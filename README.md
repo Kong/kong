@@ -15,9 +15,9 @@ lua-resty-apenode - Lua Apenode core dependencies
 
 # Running
 
-You can run the apenode in two different modes:
+You can run the Apenode in two different modes:
 
 * In background, with: `sudo nginx`
 * Or in foreground, with: `sudo nginx -g "daemon off;"`
 
-By default it will be running on port `8000`, so navigate to `http://localhost:8000/`
+By default it will be running on port `8000`, so navigate to [http://localhost:8000/](http://localhost:8000/) after starting it.
