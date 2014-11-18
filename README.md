@@ -1,2 +1,2 @@
-lua-resty-mashape
-=================
+Name
+lua-resty-mashape - Lua Mashape proxy dependencies
