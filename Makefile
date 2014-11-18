@@ -11,7 +11,7 @@ all: ;
 
 install: all
 	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/mashape
-	$(INSTALL) lib/resty/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/mashape/
+	$(INSTALL) lib/resty/mashape/.*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/mashape/
 
 test: all
 	PATH=$(OPENRESTY_PREFIX)/nginx/sbin:$$PATH prove -I../test-nginx/lib -r t
