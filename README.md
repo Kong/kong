@@ -1,5 +1,4 @@
-Apenode
-====
+# Apenode 
 
 lua-resty-apenode - Lua Apenode core dependencies
 
@@ -8,3 +7,8 @@ lua-resty-apenode - Lua Apenode core dependencies
 
 
 ![](http://www.mediabistro.com/agencyspy/files/original/global.jpg)
+
+# Installation
+
+* [Download](http://openresty.com/#Download) the latest version of OpenResty and install it.
+* Execute `make install` to install the Apenode
