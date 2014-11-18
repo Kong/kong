@@ -1,4 +1,4 @@
-Name
+AstroAPE
 ====
 
 lua-resty-mashape - Lua Mashape proxy dependencies
