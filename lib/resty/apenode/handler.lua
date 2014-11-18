@@ -8,7 +8,7 @@ local header_filter = require "resty.apenode.header_filter"
 local body_filter = require "resty.apenode.body_filter"
 local log = require "resty.apenode.log"
 
-local _M = { _VERSION    = '0.1' }
+local _M = { _VERSION = '0.1' }
 
 
 function _M.init()
