@@ -1,44 +1,48 @@
 -- Copyright (C) Mashape, Inc.
 
+local init = require "resty.apenode.init"
+local access = require "resty.apenode.access"
+local content = require "resty.apenode.content"
+local rewrite = require "resty.apenode.rewrite"
+local header_filter = require "resty.apenode.header_filter"
+local body_filter = require "resty.apenode.body_filter"
+local log = require "resty.apenode.log"
 
 local _M = { _VERSION    = '0.1' }
 
 
 function _M.init()
-    ngx.log(ngx.INFO, "Init")
+    init.execute()
 end
 
 
 function _M.access()
-    ngx.log(ngx.INFO, "Access")
-
-    local querystring = ngx.encode_args(ngx.req.get_uri_args());
-    ngx.var.backend_url = "https://www.mashape.com" .. ngx.var.uri .. "?" .. querystring
+    access.execute()
 end
 
 
 function _M.content()
-    ngx.log(ngx.INFO, "Content")
+    content.execute()
 end
 
 
 function _M.rewrite()
-    ngx.log(ngx.INFO, "Rewrite")
+    rewrite.execute()
 end
 
 
 function _M.header_filter()
-    ngx.log(ngx.INFO, "Header Filter")
+    header_filter.execute()
 end
 
 
 function _M.body_filter()
-    ngx.log(ngx.INFO, "Body Filter")
+    body_filter.execute()
 end
 
 
 function _M.log()
-    ngx.log(ngx.INFO, "Log")
+   	log.execute()
 end
 
 

@@ -4,8 +4,8 @@
 local _M = { _VERSION    = '0.1' }
 
 
-function _M.log()
-    ngx.print("Hello World")
+function _M.execute()
+    ngx.log(ngx.INFO, "Content")
 end
 
 
