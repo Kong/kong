@@ -12,37 +12,37 @@ local _M = { _VERSION = '0.1' }
 
 
 function _M.init()
-    init.execute()
+	init.execute()
 end
 
 
 function _M.access()
-    access.execute()
+	access.execute()
 end
 
 
 function _M.content()
-    content.execute()
+	content.execute()
 end
 
 
 function _M.rewrite()
-    rewrite.execute()
+	rewrite.execute()
 end
 
 
 function _M.header_filter()
-    header_filter.execute()
+	header_filter.execute()
 end
 
 
 function _M.body_filter()
-    body_filter.execute()
+	body_filter.execute()
 end
 
 
 function _M.log()
-   	log.execute()
+	log.execute()
 end
 
 

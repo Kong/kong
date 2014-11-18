@@ -9,36 +9,36 @@ local _M = { _VERSION = '0.1' }
 
 
 function _M.execute()
-    ngx.log(ngx.DEBUG, "Access")
+	ngx.log(ngx.DEBUG, "Access")
 
-    -- Setting the version header
-    ngx.header["X-Apenode-Version"] = _M._VERSION
+	-- Setting the version header
+	ngx.header["X-Apenode-Version"] = _M._VERSION
 
-    -- Retrieving the API from the Host that has been requested
-    local api = _M.get_api(ngx.var.http_host)
-    if not api then
-    	_M.show_error(404, "API not found")
-    end
+	-- Retrieving the API from the Host that has been requested
+	local api = _M.get_api(ngx.var.http_host)
+	if not api then
+		_M.show_error(404, "API not found")
+	end
 
-    -- Setting the backend URL for the proxy_pass directive
-    local querystring = ngx.encode_args(ngx.req.get_uri_args());
-    ngx.var.backend_url = api.backend_url .. ngx.var.uri .. "?" .. querystring
+	-- Setting the backend URL for the proxy_pass directive
+	local querystring = ngx.encode_args(ngx.req.get_uri_args());
+	ngx.var.backend_url = api.backend_url .. ngx.var.uri .. "?" .. querystring
 
-    -- There are some requests whose authentication needs to be skipped
-    if _M.skip_authentication(ngx.req.get_headers()) then
-    	return -- Returning and keeping the Lua code running to the next handler
-    end
+	-- There are some requests whose authentication needs to be skipped
+	if _M.skip_authentication(ngx.req.get_headers()) then
+		return -- Returning and keeping the Lua code running to the next handler
+	end
 
-    -- Retrieving the application from the key being passed along with the request
-    local application_key = _M.get_application_key(ngx.req, api)
-    local application = _M.get_application(application_key)
-    if not application or not _M.is_application_valid(application, api) then
+	-- Retrieving the application from the key being passed along with the request
+	local application_key = _M.get_application_key(ngx.req, api)
+	local application = _M.get_application(application_key)
+	if not application or not _M.is_application_valid(application, api) then
 		_M.show_error(403, "Your authentication credentials are invalid")
-    end
+	end
 
-    -- Saving these properties for the other handlers, especially the log handler
-    ngx.ctx.application = application
-    ngx.ctx.api = api
+	-- Saving these properties for the other handlers, especially the log handler
+	ngx.ctx.application = application
+	ngx.ctx.api = api
 
 end
 
