@@ -15,6 +15,8 @@ install: all
 
 	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base
 	$(INSTALL) lib/resty/apenode/base/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/
+	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/dao
+	$(INSTALL) lib/resty/apenode/base/dao/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/dao/
 
 	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/transformations
 	$(INSTALL) lib/resty/apenode/transformations/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/transformations/

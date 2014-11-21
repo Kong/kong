@@ -43,6 +43,7 @@ end
 
 function _M.header_filter()
 	ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
+	if ngx.ctx.error then return end
 	for k, v in pairs(plugins) do -- Iterate over all the plugins
 		v.header_filter()
 	end

@@ -41,7 +41,7 @@ end
 
 function _M.log(premature, message)
 	-- TODO: Log the information
-	ngx.log(ngx.INFO, cjson.encode(message))
+	ngx.log(ngx.DEBUG, cjson.encode(message))
 end
 
 
