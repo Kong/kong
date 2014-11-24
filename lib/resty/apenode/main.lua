@@ -43,9 +43,10 @@ end
 
 function _M.header_filter()
 	ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
-	if ngx.ctx.error then return end
-	for k, v in pairs(plugins) do -- Iterate over all the plugins
-		v.header_filter()
+	if not ngx.ctx.error then
+		for k, v in pairs(plugins) do -- Iterate over all the plugins
+			v.header_filter()
+		end
 	end
 end
 
@@ -58,6 +59,28 @@ end
 
 
 function _M.log()
+	local now = ngx.now()
+
+	-- Creating the log variable that will be serialized
+	local message = {
+		request = {
+			headers = ngx.req.get_headers(),
+			size = ngx.var.request_length
+		},
+		response = {
+			headers = ngx.resp.get_headers(),
+			size = ngx.var.body_bytes_sent
+		},
+		application = ngx.ctx.application,
+		api = ngx.ctx.api,
+		ip = ngx.var.remote_addr,
+		status = ngx.status,
+		url = ngx.var.uri,
+		created_at = now
+	}
+
+	ngx.ctx.log_message = message
+
 	for k, v in pairs(plugins) do -- Iterate over all the plugins
 		v.log()
 	end

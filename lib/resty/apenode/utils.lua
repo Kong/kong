@@ -15,4 +15,14 @@ function _M.show_error(status, message)
 end
 
 
+function _M.create_timer(func, data)
+	local ok, err = ngx.timer.at(0, func, data)
+	if not ok then
+		ngx.log(ngx.ERR, "failed to create timer: ", err)
+		return
+	end
+
+end
+
+
 return _M
