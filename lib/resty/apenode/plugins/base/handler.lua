@@ -1,18 +1,21 @@
 -- Copyright (C) Mashape, Inc.
 
-local header_filter = require "resty.apenode.transformations.header_filter"
-local body_filter = require "resty.apenode.transformations.body_filter"
+local init = require "resty.apenode.plugins.base.init"
+local access = require "resty.apenode.plugins.base.access"
+local header_filter = require "resty.apenode.plugins.base.header_filter"
+local log = require "resty.apenode.plugins.base.log"
+
 
 local _M = { _VERSION = '0.1' }
 
 
 function _M.init()
-	-- Do nothing
+	init.execute()
 end
 
 
 function _M.access()
-	-- Do nothing
+	access.execute()
 end
 
 
@@ -32,12 +35,12 @@ end
 
 
 function _M.body_filter()
-	body_filter.execute()
+	-- Do nothing
 end
 
 
 function _M.log()
-	-- Do nothing
+	log.execute()
 end
 
 

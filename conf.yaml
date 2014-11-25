@@ -1,6 +1,6 @@
 ---
 
 # Specify the DAO to use
-dao_factory: resty.apenode.base.dao.mock.factory
+dao_factory: resty.apenode.dao.mock.factory
 
-...	
+...

@@ -3,8 +3,8 @@
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {
-	base = require "resty.apenode.base.handler", -- The base handler must be the first one
-	transformations = require "resty.apenode.transformations.handler"
+	base = require "resty.apenode.plugins.base.handler", -- The base handler must be the first one
+	transformations = require "resty.apenode.plugins.transformations.handler"
 }
 
 
