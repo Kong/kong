@@ -4,8 +4,7 @@
 local cjson = require "cjson"
 local inspect = require "inspect"
 local utils = require "resty.apenode.utils"
-local dao = require "resty.apenode.base.dao.mock"
-
+local dao = nil
 
 local _M = { _VERSION = '0.1' }
 
@@ -13,11 +12,16 @@ local _M = { _VERSION = '0.1' }
 function _M.execute()
 	ngx.log(ngx.DEBUG, "Access")
 
+	if not dao then
+		ngx.log(ngx.DEBUG, "Loading DAO: " .. configuration.dao_factory)
+		dao = require(configuration.dao_factory)
+	end
+
 	-- Setting the version header
 	ngx.header["X-Apenode-Version"] = _M._VERSION
 
 	-- Retrieving the API from the Host that has been requested
-	local api = dao.get_api(ngx.var.http_host)
+	local api = dao.api.get_by_host(ngx.var.http_host)
 	if not api then
 		utils.show_error(404, "API not found")
 	end
@@ -33,8 +37,8 @@ function _M.execute()
 
 	-- Retrieving the application from the key being passed along with the request
 	local application_key = _M.get_application_key(ngx.req, api)
-	local application = dao.get_application(application_key)
-	if not dao.is_application_valid(application, api) then
+	local application = dao.application.get_by_key(application_key)
+	if not dao.application.is_valid(application, api) then
 		utils.show_error(403, "Your authentication credentials are invalid")
 	end
 
@@ -82,7 +86,7 @@ function _M.get_application_key(request, api)
 		application_key = request.get_headers()[api.authentication_header_name]
 	end
 
-	return dao.get_application(application_key)
+	return dao.application.get_by_key(application_key)
 end
 
 

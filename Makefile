@@ -15,13 +15,16 @@ install: all
 
 	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base
 	$(INSTALL) lib/resty/apenode/base/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/
-	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/dao
-	$(INSTALL) lib/resty/apenode/base/dao/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/dao/
+	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/dao/mock
+	$(INSTALL) lib/resty/apenode/base/dao/mock/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/base/dao/mock
 
 	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/transformations
 	$(INSTALL) lib/resty/apenode/transformations/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/transformations/
 
 	$(INSTALL) nginx.conf $(OPENRESTY_PREFIX)/nginx/conf/
+
+	$(INSTALL) -d /etc/apenode
+	$(INSTALL) conf.yaml /etc/apenode/
 
 test: all
 	PATH=$(OPENRESTY_PREFIX)/nginx/sbin:$$PATH prove -I../test-nginx/lib -r t
