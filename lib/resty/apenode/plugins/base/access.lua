@@ -4,7 +4,6 @@
 local cjson = require "cjson"
 local inspect = require "inspect"
 local utils = require "resty.apenode.utils"
-local dao = nil
 
 local _M = { _VERSION = '0.1' }
 
@@ -12,13 +11,8 @@ local _M = { _VERSION = '0.1' }
 function _M.execute()
 	ngx.log(ngx.DEBUG, "Access")
 
-	if not dao then
-		ngx.log(ngx.DEBUG, "Loading DAO: " .. configuration.dao_factory)
-		dao = require(configuration.dao_factory)
-	end
-
 	-- Setting the version header
-	ngx.header["X-Apenode-Version"] = _M._VERSION
+	ngx.header["X-Apenode-Version"] = configuration.version
 
 	-- Retrieving the API from the Host that has been requested
 	local api = dao.api.get_by_host(ngx.var.http_host)

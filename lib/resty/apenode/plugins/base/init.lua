@@ -16,6 +16,7 @@ function _M.execute()
 
 	-- Loading configuration
 	configuration = yaml.load(contents)
+	dao = require(configuration.dao_factory)
 end
 
 
