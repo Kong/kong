@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
 
-local application_dao = require "resty.apenode.dao.mock.application"
-local api_dao = require "resty.apenode.dao.mock.api"
+local application_dao = require "resty.apenode.dao.memory.application"
+local api_dao = require "resty.apenode.dao.memory.api"
 
 
 local _M = { 

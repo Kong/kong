@@ -21,8 +21,8 @@ install: all
 	$(INSTALL) lib/resty/apenode/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/
 
 # - DAO
-	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/dao/mock
-	$(INSTALL) lib/resty/apenode/dao/mock/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/dao/mock
+	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/dao/memory
+	$(INSTALL) lib/resty/apenode/dao/memory/*.lua $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/dao/memory
 
 # - Web
 	$(INSTALL) -d $(DESTDIR)/$(LUA_LIB_DIR)/resty/apenode/web
