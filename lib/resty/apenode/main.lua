@@ -12,8 +12,8 @@ local plugins = {}
 local _M = { _VERSION = '0.1' }
 
 
-function _M.init()
-	local file = io.open("/etc/apenode/conf.yaml", "rb")
+function _M.init(configuration_path)
+	local file = io.open(configuration_path, "rb")
 	local contents = file:read("*all")
 	file:close()
 
