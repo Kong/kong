@@ -1,7 +1,8 @@
 package = "Apenode"
 version = "0.1-1"
 source = {
-   url = "https://github.com/Mashape/lua-resty-apenode"
+   url = "git://github.com/Mashape/lua-resty-apenode",
+   tag = "master"
 }
 description = {
    summary = "Apenode, the fastest and most installed API layer in the universe",
