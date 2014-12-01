@@ -17,7 +17,7 @@ function _M.execute()
 	-- Retrieving the API from the Host that has been requested
 	local api = dao.api.get_by_host(ngx.var.http_host)
 	if not api then
-		utils.show_error(404, "API not foundasdasdsa")
+		utils.show_error(404, "API not found")
 	end
 
 	-- Setting the backend URL for the proxy_pass directive

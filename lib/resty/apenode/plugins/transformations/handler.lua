@@ -6,11 +6,6 @@ local body_filter = require "resty.apenode.plugins.transformations.body_filter"
 local _M = { _VERSION = '0.1' }
 
 
-function _M.init()
-	-- Do nothing
-end
-
-
 function _M.access()
 	-- Do nothing
 end

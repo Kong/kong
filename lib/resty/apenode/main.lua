@@ -1,19 +1,29 @@
 -- Copyright (C) Mashape, Inc.
 
 
+local yaml = require "yaml"
+local inspect = require "inspect"
+
+
 -- Define the plugins to load here, in the appropriate order
-local plugins = {
-	base = require "resty.apenode.plugins.base.handler", -- The base handler must be the first one
-	transformations = require "resty.apenode.plugins.transformations.handler"
-}
+local plugins = {}
 
 
 local _M = { _VERSION = '0.1' }
 
 
 function _M.init()
-	for k, v in pairs(plugins) do -- Iterate over all the plugins
-		v.init()
+	local file = io.open("/etc/apenode/conf.yaml", "rb")
+	local contents = file:read("*all")
+	file:close()
+
+	-- Loading configuration
+	configuration = yaml.load(contents)
+	dao = require(configuration.dao_factory)
+
+	-- Requiring the plugins
+	for i, plugin_name in ipairs(configuration.plugins) do
+		table.insert(plugins, require("resty.apenode.plugins." .. plugin_name .. ".handler"))
 	end
 end
 
