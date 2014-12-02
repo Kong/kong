@@ -20,7 +20,8 @@ dependencies = {
    "uuid ~> 0.2-1",
    "yaml ~> 1.1.1-1",
    "lapis ~> 1.0.6-1",
-   "inspect ~> 3.0-1"
+   "inspect ~> 3.0-1",
+   "LuaXML ~> 1.7.4"
 }
 build = {
    type = "make"
