@@ -4,7 +4,7 @@
 local lapis = require("lapis")
 local app_helpers = require("lapis.application")
 local validate = require("lapis.validate")
-local utils = require "resty.apenode.utils"
+local utils = require "apenode.core.utils"
 local capture_errors, yield_error = app_helpers.capture_errors, app_helpers.yield_error
 
 
@@ -23,7 +23,7 @@ end)
 
 app:get("/apis/:id", function(self)
 	local api = dao.api.get_by_id(self.params.id)
-	if api then 
+	if api then
 		return utils.show_response(200, dao.api.get_by_id(self.params.id))
 	else
 		return utils.show_error(404, "Not found")

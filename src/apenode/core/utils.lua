@@ -31,7 +31,6 @@ function _M.create_timer(func, data)
 		ngx.log(ngx.ERR, "failed to create timer: ", err)
 		return
 	end
-
 end
 
 

@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
-local access = require "resty.apenode.plugins.core.access"
-local header_filter = require "resty.apenode.plugins.core.header_filter"
-local log = require "resty.apenode.plugins.core.log"
+local access = require "apenode.core.access"
+local header_filter = require "apenode.core.header_filter"
+local log = require "apenode.core.log"
 
 
 local _M = { _VERSION = '0.1' }

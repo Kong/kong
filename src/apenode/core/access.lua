@@ -3,7 +3,7 @@
 
 local cjson = require "cjson"
 local inspect = require "inspect"
-local utils = require "resty.apenode.utils"
+local utils = require "apenode.core.utils"
 
 local _M = { _VERSION = '0.1' }
 

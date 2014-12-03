@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
-local header_filter = require "resty.apenode.plugins.transformations.header_filter"
-local body_filter = require "resty.apenode.plugins.transformations.body_filter"
+local header_filter = require "apenode.plugins.transformations.header_filter"
+local body_filter = require "apenode.plugins.transformations.body_filter"
 
 local _M = { _VERSION = '0.1' }
 

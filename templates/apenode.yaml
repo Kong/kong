@@ -4,11 +4,10 @@
 version: 0.1
 
 # Specify the DAO to use
-dao_factory: resty.apenode.dao.memory.factory
+dao_factory: apenode.dao.memory
 
 # Plugins
 plugins:
-  - core
   - transformations
 
-...
+---

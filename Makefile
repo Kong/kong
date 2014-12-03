@@ -1,75 +1,35 @@
-PREFIX ?= /usr/local
-OPENRESTY_PREFIX ?= $(PREFIX)/openresty
-INSTALL ?= @install
-LUA_INCLUDE_DIR ?= $(PREFIX)/include
-LUA_LIB_DIR ?= $(PREFIX)/lib/lua/$(LUA_VERSION)
-CURRENT_FOLDER ?= `pwd`
+PWD = `pwd`
+# Dev environment variables
+DEV_DAEMON ?= off
+DEV_LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
+DEV_LUA_CODE_CACHE ?= off
+DEV_APENODE_CONF ?= $(PWD)/tmp/apenode.dev.yaml
+DEV_APENODE_PORT ?= 8000
+DEV_APENODE_WEB_PORT ?= 8001
 
-# Env variables
-DEV_DAEMON=off
-PROD_DAEMON=on
+.PHONY: test local global
 
-DEV_LUA_CODE_CACHE=off
-PROD_LUA_CODE_CACHE=on
+test:
+	@echo "Tests with busted"
 
-DEV_LUA_PATH ?= $(CURRENT_FOLDER)/lib/?.lua;;
-PROD_LUA_PATH ?= $(LUA_LIB_DIR)/?.lua;;
+local:
+	@luarocks make apenode-0.0-1.rockspec --local
 
-PROD_CONF_DIR ?= /etc/apenode
+global:
+	@sudo luarocks make apenode-0.0-1.rockspec
 
-DEV_CONF_PATH ?= $(CURRENT_FOLDER)/etc/conf.yaml
-PROD_CONF_PATH ?= $(PROD_CONF_DIR)/conf.yaml
-
-.PHONY: all test install
-
-all: ;
-
-install: all
-
-##############################
-# Install the base structure #
-##############################
-
-	$(INSTALL) -d $(LUA_LIB_DIR)/resty/apenode
-	@cp -R lib/resty/apenode/ $(LUA_LIB_DIR)/resty/apenode/
-
-#############################
-# Install the configuration #
-#############################
-
-# - nginx.conf
+run:
+	@mkdir -p tmp/nginx/logs
+	@cp templates/apenode.yaml $(DEV_APENODE_CONF)
+	@echo "" > tmp/nginx/logs/error.log
+	@echo "" > tmp/nginx/logs/access.log
 	@sed \
-	  -e "s/{DAEMON}/$(PROD_DAEMON)/g" \
-	  -e "s/{LUA_CODE_CACHE}/$(PROD_LUA_CODE_CACHE)/g" \
-	  -e "s@{LUA_PATH}@$(PROD_LUA_PATH)@g" \
-	  -e "s@{CONF_PATH}@$(PROD_CONF_PATH)@g" nginx.conf > $(OPENRESTY_PREFIX)/nginx/conf/nginx.conf;
-	@if [ -a $(OPENRESTY_PREFIX)/nginx/conf/nginx.conf ]; then \
-		cp $(OPENRESTY_PREFIX)/nginx/conf/nginx.conf $(OPENRESTY_PREFIX)/nginx/conf/nginx.conf.old; \
-	fi;
+		-e "s/{{DAEMON}}/$(DEV_DAEMON)/g" \
+		-e "s@{{LUA_LIB_PATH}}@$(DEV_LUA_LIB)@g" \
+		-e "s/{{LUA_CODE_CACHE}}/$(DEV_LUA_CODE_CACHE)/g" \
+		-e "s/{{PORT}}/$(DEV_APENODE_PORT)/g" \
+		-e "s/{{WEB_PORT}}/$(DEV_APENODE_WEB_PORT)/g" \
+		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
+		templates/nginx.conf > tmp/nginx/nginx.conf;
 
-# - conf.yaml
-	$(INSTALL) -d $(PROD_CONF_DIR)
-	$(INSTALL) etc/conf.yaml $(PROD_CONF_DIR)
-
-uninstall: all
-
-	@rm -rf $(LUA_LIB_DIR)/resty/apenode
-	@rm -rf $(PROD_CONF_DIR)
-	@mv $(OPENRESTY_PREFIX)/nginx/conf/nginx.conf.old $(OPENRESTY_PREFIX)/nginx/conf/nginx.conf
-
-run-dev: all
-	@rm -rf nginx_tmp
-	@mkdir -p nginx_tmp/logs
-	@echo "" > nginx_tmp/logs/error.log
-	@echo "" > nginx_tmp/logs/access.log
-
-	@sed \
-	  -e "s/{DAEMON}/$(DEV_DAEMON)/g" \
-	  -e "s/{LUA_CODE_CACHE}/$(DEV_LUA_CODE_CACHE)/g" \
-	  -e "s@{LUA_PATH}@$(DEV_LUA_PATH)@g" \
-	  -e "s@{CONF_PATH}@$(DEV_CONF_PATH)@g" nginx.conf > nginx_tmp/nginx_dev.conf;
-
-	@nginx -p ./nginx_tmp -c nginx_dev.conf
-
-test: all
-	PATH=$(OPENRESTY_PREFIX)/nginx/sbin:$$PATH prove -I../test-nginx/lib -r t
+	@nginx -p ./tmp/nginx -c nginx.conf

@@ -23,7 +23,7 @@ function _M.init(configuration_path)
 
 	-- Requiring the plugins
 	for i, plugin_name in ipairs(configuration.plugins) do
-		table.insert(plugins, require("resty.apenode.plugins." .. plugin_name .. ".handler"))
+		table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler"))
 	end
 end
 
