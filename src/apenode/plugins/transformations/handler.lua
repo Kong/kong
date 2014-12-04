@@ -3,37 +3,30 @@
 local header_filter = require "apenode.plugins.transformations.header_filter"
 local body_filter = require "apenode.plugins.transformations.body_filter"
 
-local _M = { _VERSION = '0.1' }
-
+local _M = {}
 
 function _M.access()
-	-- Do nothing
+  -- Do nothing
 end
-
 
 function _M.content()
-	-- Do nothing
+  -- Do nothing
 end
-
 
 function _M.rewrite()
-	-- Do nothing
+  -- Do nothing
 end
-
 
 function _M.header_filter()
-	header_filter.execute()
+  header_filter.execute()
 end
-
 
 function _M.body_filter()
-	body_filter.execute()
+  body_filter.execute()
 end
-
 
 function _M.log()
-	-- Do nothing
+  -- Do nothing
 end
-
 
 return _M
