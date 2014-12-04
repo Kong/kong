@@ -10,7 +10,7 @@ DEV_APENODE_WEB_PORT ?= 8001
 .PHONY: test local global run
 
 test:
-	@echo "Tests with busted"
+	@busted spec/
 
 local:
 	@luarocks make apenode-*.rockspec --local
