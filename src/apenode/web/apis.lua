@@ -42,7 +42,7 @@ app:post("/apis/", capture_errors({
       public_dns = self.params.public_dns,
       target_url = self.params.target_url,
       authentication_type = self.params.authentication_type,
-    authentication_key_names = "apikey"
+      authentication_key_names = "apikey"
     })
 
     return utils.success(api)

@@ -2,7 +2,6 @@
 
 local utils = require "apenode.core.utils"
 local cjson = require "cjson"
-local inspect = require "inspect"
 local file_path = configuration.dao.properties.file_path
 
 local _M = {}

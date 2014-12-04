@@ -3,7 +3,6 @@
 local file_table = require "apenode.dao.json.file_table"
 local uuid = require "uuid"
 local cjson = require "cjson"
-local inspect = require "inspect"
 
 local BaseDao = {}
 BaseDao.__index = BaseDao
@@ -31,7 +30,11 @@ function BaseDao:get_all()
 end
 
 function BaseDao:get_by_id(id)
-  return self._data[id]
+  if id then
+    return self._data[id]
+  else
+    return nil
+  end
 end
 
 function BaseDao:delete(id)
