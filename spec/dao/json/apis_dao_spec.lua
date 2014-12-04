@@ -10,7 +10,7 @@ describe("JSON APIsDao #dao", function()
 		os.remove(configuration.dao.properties.file_path)
 	end)
 
-	describe("APIsapisdao", function()
+	describe("APIsDao", function()
 
 		it("should implement BaseDao", function()
 			assert.truthy(apisdao.save)

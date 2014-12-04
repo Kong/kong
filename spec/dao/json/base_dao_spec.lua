@@ -25,6 +25,11 @@ describe("JSON DAO #dao", function()
 	  			assert.truthy(savedEntity.id)
 	  		end)
 
+	  		it("should set a created_at property", function()
+	  			local savedEntity = dao:save({ key = "value2" })
+	  			assert.truthy(savedEntity.created_at)
+	  		end)
+
 	  end)
 
 	  describe("#get_by_id()", function()
@@ -34,7 +39,8 @@ describe("JSON DAO #dao", function()
 				local retrievedEntity = dao:get_by_id(savedEntity.id)
 				assert.are.same(retrievedEntity, {
 					key = "value3",
-					id = savedEntity.id
+					id = savedEntity.id,
+					created_at = savedEntity.created_at
 				})
 			end)
 
@@ -55,7 +61,7 @@ describe("JSON DAO #dao", function()
 	  		it("should retrieve all saved entities", function()
 	  			local retrieved = dao:get_all()
 	  			assert.are.unique(retrieved)
-	  			assert.are.equal(3, table.getn(retrieved))
+	  			assert.are.equal(4, table.getn(retrieved))
 	  		end)
 
 	  end)
