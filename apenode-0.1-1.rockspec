@@ -23,7 +23,8 @@ dependencies = {
   "lapis ~> 1.0.6-1",
   "inspect ~> 3.0-1",
   "luaxml ~> 101012-1",
-  "busted ~> 2.0.rc3-0"
+  "busted ~> 2.0.rc3-0",
+  "stringy ~> 0.2-1"
 }
 build = {
   type = "builtin",
@@ -32,7 +33,6 @@ build = {
     ["apenode.core.access"] = "src/apenode/core/access.lua",
     ["apenode.core.handler"] = "src/apenode/core/handler.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
-    ["apenode.core.log"] = "src/apenode/core/log.lua",
     ["apenode.core.utils"] = "src/apenode/core/utils.lua",
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",
@@ -42,6 +42,10 @@ build = {
     ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
     ["apenode.dao.json.api"] = "src/apenode/dao/json/apis.lua",
     ["apenode.dao.json.application"] = "src/apenode/dao/json/applications.lua",
+
+    ["apenode.plugins.base.handler"] = "src/apenode/plugins/base/handler.lua",
+    ["apenode.plugins.base.access"] = "src/apenode/plugins/base/access.lua",
+    ["apenode.plugins.base.log"] = "src/apenode/plugins/base/log.lua",
 
     ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",

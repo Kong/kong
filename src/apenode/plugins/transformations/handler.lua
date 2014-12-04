@@ -1,4 +1,5 @@
 -- Copyright (C) Mashape, Inc.
+-- Copyright (C) Mashape, Inc.
 
 local header_filter = require "apenode.plugins.transformations.header_filter"
 local body_filter = require "apenode.plugins.transformations.body_filter"

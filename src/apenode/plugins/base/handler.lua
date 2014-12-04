@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
-local access = require "apenode.core.access"
-local header_filter = require "apenode.core.header_filter"
+local access = require "apenode.plugins.base.access"
+local log = require "apenode.plugins.base.log"
 
 local _M = {}
 
@@ -18,7 +18,7 @@ function _M.rewrite()
 end
 
 function _M.header_filter()
-  header_filter.execute()
+  -- Do nothing
 end
 
 function _M.body_filter()
@@ -26,7 +26,7 @@ function _M.body_filter()
 end
 
 function _M.log()
-  -- Do nothing
+  log.execute()
 end
 
 return _M

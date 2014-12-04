@@ -1,9 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
-require "LuaXML"
-
 local cjson = require "cjson"
-local inspect = require "inspect"
+require "LuaXML"
 
 local _M = {}
 

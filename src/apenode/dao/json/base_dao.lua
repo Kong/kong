@@ -21,6 +21,7 @@ end
 
 function BaseDao:save(entity)
   entity.id = uuid()
+  entity.created_at = ngx.now() * 1000
   self._data[entity.id] = entity
   return entity
 end

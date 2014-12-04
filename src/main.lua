@@ -2,7 +2,7 @@
 
 local utils = require "apenode.core.utils"
 local yaml = require "yaml"
-local inspect = require "inspect"
+local core = require "apenode.core.handler"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -15,6 +15,7 @@ function _M.init(configuration_path)
   dao = require(configuration.dao.factory)
 
   -- Requiring the plugins
+  table.insert(plugins, require("apenode.core.handler")) -- Adding the core first
   for i, plugin_name in ipairs(configuration.plugins) do
     table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler"))
   end
@@ -68,7 +69,7 @@ function _M.log()
       headers = ngx.resp.get_headers(),
       size = ngx.var.body_bytes_sent
     },
-    application = ngx.ctx.application,
+    authenticated_entity = ngx.ctx.authenticated_entity,
     api = ngx.ctx.api,
     ip = ngx.var.remote_addr,
     status = ngx.status,
