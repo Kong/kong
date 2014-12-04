@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local uuid = require("uuid")
+local uuid = require "uuid"
 
 local _M = {}
 local data = {}
