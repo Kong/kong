@@ -1,11 +1,11 @@
 -- Copyright (C) Mashape, Inc.
 
-local application_dao = require "apenode.dao.memory.application"
-local api_dao = require "apenode.dao.memory.api"
+local Applications = require "apenode.dao.memory.applications"
+local Apis = require "apenode.dao.memory.apis"
 
 local _M = {
-  api = api_dao,
-  application = application_dao
+  apis = Apis:new(),
+  applications = Applications:new()
 }
 
 return _M

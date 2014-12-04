@@ -13,7 +13,7 @@ function _M.execute()
   ngx.header["X-Apenode-Version"] = configuration.version
 
   -- Retrieving the API from the Host that has been requested
-  local api = dao.api.get_by_host(ngx.var.http_host)
+  local api = dao.apis:get_by_host(ngx.var.http_host)
   if not api then
     utils.show_error(404, "API not found")
   end
@@ -29,8 +29,8 @@ function _M.execute()
 
   -- Retrieving the application from the key being passed along with the request
   local application_key = _M.get_application_key(ngx.req, api)
-  local application = dao.application.get_by_key(application_key)
-  if not dao.application.is_valid(application, api) then
+  local application = dao.applications:get_by_key(application_key)
+  if not dao.applications:is_valid(application, api) then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
@@ -76,7 +76,7 @@ function _M.get_application_key(request, api)
     application_key = request.get_headers()[api.authentication_header_name]
   end
 
-  return dao.application.get_by_key(application_key)
+  return dao.applications:get_by_key(application_key)
 end
 
 function _M.starts_with(str, piece)

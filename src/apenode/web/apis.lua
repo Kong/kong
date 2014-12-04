@@ -2,14 +2,15 @@
 
 local utils = require "apenode.core.utils"
 local app_helpers = require "lapis.application"
+local validate = require "lapis.validate"
 local capture_errors, yield_error = app_helpers.capture_errors, app_helpers.yield_error
 
 app:get("/apis/", function(self)
-  return utils.success(dao.api.get_all())
+  return utils.success(dao.apis:get_all())
 end)
 
 app:get("/apis/:id", function(self)
-  local api = dao.api.get_by_id(self.params.id)
+  local api = dao.apis:get_by_id(self.params.id)
   if api then
     return utils.success(api)
   else
@@ -18,7 +19,7 @@ app:get("/apis/:id", function(self)
 end)
 
 app:delete("/apis/:id", function(self)
-  local api = dao.api.delete(self.params.id)
+  local api = dao.apis:delete(self.params.id)
   if api then
     return utils.success(api)
   else
@@ -37,7 +38,7 @@ app:post("/apis/", capture_errors({
       { "authentication_type", exists = true, one_of = { "query", "header", "basic"}, "Invalid authentication_type" }
     })
 
-    local api = dao.api.save({
+    local api = dao.apis:save({
       public_dns = self.params.public_dns,
       target_url = self.params.target_url,
       authentication_type = self.params.authentication_type,
