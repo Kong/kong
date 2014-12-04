@@ -1,13 +1,23 @@
 -- Copyright (C) Mashape, Inc.
 
+local file_table = require "apenode.dao.json.file_table"
 local uuid = require "uuid"
+local cjson = require "cjson"
+local inspect = require "inspect"
 
 local BaseDao = {}
+BaseDao.__index = BaseDao
 
-function BaseDao:new()
-  new_obj = { _data = {} }
-  self.__index = self
-  return setmetatable(new_obj, self)
+setmetatable(BaseDao, {
+  __call = function (cls, ...)
+    local self = setmetatable({}, cls)
+    self:_init(...)
+    return self
+  end,
+})
+
+function BaseDao:_init(collection)
+  self._data = file_table.init(collection)
 end
 
 function BaseDao:save(entity)
@@ -17,11 +27,7 @@ function BaseDao:save(entity)
 end
 
 function BaseDao:get_all()
-  local result = {}
-  for k,v in pairs(self._data) do
-      table.insert(result, v)
-  end
-  return result
+  return self._data[nil]
 end
 
 function BaseDao:get_by_id(id)

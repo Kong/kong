@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local utils = require "apenode.core.utils"
 local yaml = require "yaml"
 local inspect = require "inspect"
 
@@ -9,13 +10,9 @@ local plugins = {}
 local _M = {}
 
 function _M.init(configuration_path)
-  local file = io.open(configuration_path, "rb")
-  local contents = file:read("*all")
-  file:close()
-
   -- Loading configuration
-  configuration = yaml.load(contents)
-  dao = require(configuration.dao_factory)
+  configuration = yaml.load(utils.read_file(configuration_path))
+  dao = require(configuration.dao.factory)
 
   -- Requiring the plugins
   for i, plugin_name in ipairs(configuration.plugins) do

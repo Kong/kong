@@ -4,7 +4,10 @@
 version: 0.1
 
 # Specify the DAO to use
-dao_factory: apenode.dao.memory
+dao:
+  factory: apenode.dao.json
+  properties:
+    file_path: /tmp/apenode123.json
 
 # Plugins
 plugins:

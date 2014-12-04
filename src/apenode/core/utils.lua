@@ -37,4 +37,20 @@ function _M.notFound(message)
 	_M.show_error(404, message)
 end
 
+function _M.read_file(path)
+  local contents = nil
+  local file = io.open(path, "rb")
+  if file then
+    contents = file:read("*all")
+    file:close()
+  end
+  return contents
+end
+
+function _M.write_to_file(path, value)
+  local file = io.open(path, "w")
+  file:write(value)
+  file:close()
+end
+
 return _M

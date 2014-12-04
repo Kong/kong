@@ -37,10 +37,11 @@ build = {
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",
 
-    ["apenode.dao.memory"] = "src/apenode/dao/memory/factory.lua",
-    ["apenode.dao.memory.base_dao"] = "src/apenode/dao/memory/base_dao.lua",
-    ["apenode.dao.memory.api"] = "src/apenode/dao/memory/apis.lua",
-    ["apenode.dao.memory.application"] = "src/apenode/dao/memory/applications.lua",
+    ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
+    ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
+    ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
+    ["apenode.dao.json.api"] = "src/apenode/dao/json/apis.lua",
+    ["apenode.dao.json.application"] = "src/apenode/dao/json/applications.lua",
 
     ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
