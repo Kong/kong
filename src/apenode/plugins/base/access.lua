@@ -42,6 +42,7 @@ function do_get_application_key(authentication_key_name, request, api)
     if not application_key and content_type then -- If missing from querystring, get it from the body
       content_type = string.lower(content_type) -- Lower it for easier comparison
       if content_type == "application/x-www-form-urlencoded" or stringy.startswith(content_type, "multipart/form-data") then
+        request.read_body()
         local post_args = request.get_post_args()
         if post_args then
           application_key = post_args[authentication_key_name]
