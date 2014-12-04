@@ -13,10 +13,10 @@ test:
 	@echo "Tests with busted"
 
 local:
-	@luarocks make apenode-0.0-1.rockspec --local
+	@luarocks make apenode-*.rockspec --local
 
 global:
-	@sudo luarocks make apenode-0.0-1.rockspec
+	@sudo luarocks make apenode-*.rockspec
 
 run:
 	@mkdir -p tmp/nginx/logs
