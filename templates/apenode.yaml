@@ -7,7 +7,7 @@ version: 0.1
 dao:
   factory: apenode.dao.json
   properties:
-    file_path: /tmp/apenode123.json
+    file_path: /tmp/apenode.json
 
 # Plugins
 plugins:
