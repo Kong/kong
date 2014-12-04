@@ -29,20 +29,20 @@ build = {
    type = "builtin",
    modules = {
       ["apenode"] = "src/main.lua",
-      ["apenode.core.access"] = "src/core/access.lua",
-      ["apenode.core.handler"] = "src/core/handler.lua",
-      ["apenode.core.handler_filter"] = "src/core/header_filter.lua",
-      ["apenode.core.log"] = "src/core/log.lua",
-      ["apenode.core.utils"] = "src/core/utils.lua",
+      ["apenode.core.access"] = "src/apenode/core/access.lua",
+      ["apenode.core.handler"] = "src/apenode/core/handler.lua",
+      ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
+      ["apenode.core.log"] = "src/apenode/core/log.lua",
+      ["apenode.core.utils"] = "src/apenode/core/utils.lua",
 
-      ["apenode.web.app"] = "src/web/app.lua",
+      ["apenode.web.app"] = "src/apenode/web/app.lua",
 
-      ["apenode.dao.memory"] = "src/dao/memory/factory.lua",
-      ["apenode.dao.memory.api"] = "src/dao/memory/api.lua",
-      ["apenode.dao.memory.application"] = "src/dao/memory/application.lua",
+      ["apenode.dao.memory"] = "src/apenode/dao/memory/factory.lua",
+      ["apenode.dao.memory.api"] = "src/apenode/dao/memory/api.lua",
+      ["apenode.dao.memory.application"] = "src/apenode/dao/memory/application.lua",
 
-      ["apenode.plugins.transformations.handler"] = "src/plugins/transformations/handler.lua",
-      ["apenode.plugins.transformations.header_filter"] = "src/plugins/transformations/header_filter.lua",
-      ["apenode.plugins.transformations.body_filter"] = "src/plugins/transformations/body_filter.lua"
+      ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
+      ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
+      ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua"
    }
 }
