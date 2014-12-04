@@ -1,13 +1,8 @@
+require "spec.dao.json.configuration"
+
 describe("JSON DAO #dao", function()
 
 	setup(function()
-		_G.configuration = {
-			dao = {
-				properties = {
-					file_path = './spec_store.json'
-				}
-			}
-		}
 		_G.dao = require("apenode.dao.json.base_dao")("entities")
 	end)
 

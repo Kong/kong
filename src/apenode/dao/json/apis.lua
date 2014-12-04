@@ -21,11 +21,13 @@ end
 function Apis:get_by_host(host)
   if not host then return nil end
 
-  for k,v in pairs(self._data) do
-    if v.publicn_dns == host then
+  for k,v in pairs(self:get_all()) do
+    if v.public_dns == host then
       return v
     end
   end
+
+  return nil
 end
 
 return Apis
