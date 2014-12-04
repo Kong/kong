@@ -28,4 +28,13 @@ function _M.create_timer(func, data)
   end
 end
 
+function _M.success(message)
+	_M.show_response(200, message)
+end
+
+function _M.notFound(message)
+	message = message or "Not found"
+	_M.show_error(404, message)
+end
+
 return _M

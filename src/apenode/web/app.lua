@@ -9,7 +9,7 @@ require "apenode.web.apis"
 require "apenode.web.applications"
 
 app:get("/", function(self)
-  return utils.show_response(200, "Welcome to Apenode")
+  return utils.success("Welcome to Apenode")
 end)
 
 return app

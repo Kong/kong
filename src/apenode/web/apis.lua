@@ -5,24 +5,24 @@ local app_helpers = require "lapis.application"
 local capture_errors, yield_error = app_helpers.capture_errors, app_helpers.yield_error
 
 app:get("/apis/", function(self)
-  return utils.show_response(200, dao.api.get_all())
+  return utils.success(dao.api.get_all())
 end)
 
 app:get("/apis/:id", function(self)
   local api = dao.api.get_by_id(self.params.id)
   if api then
-    return utils.show_response(200, dao.api.get_by_id(self.params.id))
+    return utils.success(api)
   else
-    return utils.show_error(404, "Not found")
+    return utils.notFound()
   end
 end)
 
 app:delete("/apis/:id", function(self)
   local api = dao.api.delete(self.params.id)
   if api then
-    return utils.show_response(200, dao.api.delete(self.params.id))
+    return utils.success(api)
   else
-    return utils.show_error(404, "Not found")
+    return utils.notFound()
   end
 end)
 
@@ -44,6 +44,6 @@ app:post("/apis/", capture_errors({
     authentication_key_names = "apikey"
     })
 
-    return utils.show_response(200, api)
+    return utils.success(api)
   end
 }))
