@@ -7,7 +7,7 @@ DEV_APENODE_CONF ?= $(PWD)/tmp/apenode.dev.yaml
 DEV_APENODE_PORT ?= 8000
 DEV_APENODE_WEB_PORT ?= 8001
 
-.PHONY: test local global
+.PHONY: test local global run
 
 test:
   @echo "Tests with busted"
