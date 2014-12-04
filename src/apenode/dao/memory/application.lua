@@ -1,27 +1,37 @@
 -- Copyright (C) Mashape, Inc.
 
+local uuid = require "uuid"
+
 local _M = {}
+local data = {}
 
-function _M.get_by_key(key)
-  if not key then return nil end
-
-  -- This is just a mock response
-  return {
-    id = "application123",
-    key = application_key,
-    throttle = nil,
-    account = {
-      id = "account123",
-      throttle = nil
-    }
-  }
+function _M.save(entity)
+  entity.id = uuid()
+  data[entity.id] = entity
+  return entity
 end
 
-function _M.is_valid(application, api)
-  if not application or not api then return false end
+function _M.get_all()
+  local result = {}
+  for k,v in pairs(data) do
+      table.insert(result, v)
+  end
+  return result
+end
 
-  -- This is just a mock response
-  return true
+function _M.get_by_id(id)
+  return data[id]
+end
+
+function _M.delete(id)
+  local item = data[id]
+  data[id] = nil
+  return item
+end
+
+function _M.update(entity)
+  data[entity.id] = entity
+  return entity
 end
 
 return _M
