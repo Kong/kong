@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local access = require "apenode.plugins.base.access"
-local log = require "apenode.plugins.base.log"
+local access = require "apenode.plugins.authentication.access"
 
 local _M = {}
 
@@ -26,7 +25,7 @@ function _M.body_filter()
 end
 
 function _M.log()
-  log.execute()
+  -- Do nothing
 end
 
 return _M

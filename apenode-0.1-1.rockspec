@@ -43,9 +43,11 @@ build = {
     ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
     ["apenode.dao.json.metrics"] = "src/apenode/dao/json/metrics.lua",
 
-    ["apenode.plugins.base.access"] = "src/apenode/plugins/base/access.lua",
-    ["apenode.plugins.base.handler"] = "src/apenode/plugins/base/handler.lua",
-    ["apenode.plugins.base.log"] = "src/apenode/plugins/base/log.lua",
+    ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
+    ["apenode.plugins.authentication.handler"] = "src/apenode/plugins/authentication/handler.lua",
+
+    ["apenode.plugins.networklog.handler"] = "src/apenode/plugins/networklog/handler.lua",
+    ["apenode.plugins.networklog.log"] = "src/apenode/plugins/networklog/log.lua",
 
     ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
     ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",

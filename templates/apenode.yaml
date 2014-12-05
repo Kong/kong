@@ -11,7 +11,13 @@ dao:
 
 # Plugins
 plugins:
-  - base
+  - authentication
+  - networklog:
+    - type: tcp # Available values: tcp, log
+    - host: "127.0.0.1"
+    - port: 4444
+    - timeout: 10000
+    - keepalive: 60000
   - transformations
 
 ---

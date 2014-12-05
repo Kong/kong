@@ -16,9 +16,7 @@ function _M.init(configuration_path)
 
   -- Requiring the plugins
   table.insert(plugins, require("apenode.core.handler")) -- Adding the core first
-  for i, plugin_name in ipairs(configuration.plugins) do
-    table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler"))
-  end
+  load_plugins()
 end
 
 function _M.access()
@@ -82,6 +80,48 @@ function _M.log()
   for k, v in pairs(plugins) do -- Iterate over all the plugins
     v.log()
   end
+end
+
+function load_plugins()
+  local plugin_properties = {}
+
+  for k, v in pairs(configuration.plugins) do
+    local plugin_name = nil
+    if type(v) == "table" then
+      for k, v in pairs(v) do
+        plugin_name = k
+
+        --[[
+        Normalizing the properties for an easier access into the plugins,
+        like configuration.plugins[plugin_name].[property_name], for
+        example: configuration.plugins.networklog.host
+        --]]
+        plugin_properties[plugin_name] = normalize_properties(v)
+      end
+    else
+      plugin_name = v
+    end
+
+    table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler"))
+  end
+
+  configuration.plugins = plugin_properties
+end
+
+function normalize_properties(properties)
+  local result = {}
+
+  if properties then
+    for i, property in ipairs(properties) do
+      if property then
+        for k,v in pairs(property) do
+          result[k] = v
+        end
+      end
+    end
+  end
+
+  return result
 end
 
 return _M
