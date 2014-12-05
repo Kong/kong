@@ -5,10 +5,10 @@ local cjson = require "cjson"
 local _M = {}
 
 function _M.execute()
-  utils.create_timer(_M.log, ngx.ctx.log_message)
+  utils.create_timer(log, ngx.ctx.log_message)
 end
 
-function _M.log(premature, message)
+function log(premature, message)
 
   local lower_type = string.lower(configuration.plugins.networklog.type)
   if lower_type == "log" then
