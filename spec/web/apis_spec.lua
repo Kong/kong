@@ -1,4 +1,4 @@
-local http = require("socket.http")
+local http = require "socket.http"
 
 describe("/apis/ #web", function()
 	pending("Later.")

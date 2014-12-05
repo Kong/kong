@@ -40,7 +40,7 @@ function Applications:_init()
         status = "ACTIVE"
       })
 
-      return utils.success(application)
+      return utils.created(application)
     end
   }))
 end

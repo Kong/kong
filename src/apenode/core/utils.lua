@@ -32,6 +32,10 @@ function _M.success(message)
 	_M.show_response(200, message)
 end
 
+function _M.created(message)
+  _M.show_response(201, message)
+end
+
 function _M.not_found(message)
 	message = message or "Not found"
 	_M.show_error(404, message)

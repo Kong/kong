@@ -41,7 +41,7 @@ function Apis:_init()
         authentication_key_names =  { "apikey", "cazzo" }
       })
 
-      return utils.success(api)
+      return utils.created(api)
     end
   }))
 end
