@@ -31,24 +31,33 @@ build = {
   modules = {
     ["apenode"] = "src/main.lua",
     ["apenode.core.access"] = "src/apenode/core/access.lua",
+    ["apenode.core.constants"] = "src/apenode/core/constants.lua",
     ["apenode.core.handler"] = "src/apenode/core/handler.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
     ["apenode.core.utils"] = "src/apenode/core/utils.lua",
 
-    ["apenode.web.app"] = "src/apenode/web/app.lua",
-
-    ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
-    ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
+    ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
+    ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
     ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
-    ["apenode.dao.json.api"] = "src/apenode/dao/json/apis.lua",
-    ["apenode.dao.json.application"] = "src/apenode/dao/json/applications.lua",
+    ["apenode.dao.json.factory"] = "src/apenode/dao/json/factory.lua",
+    ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
+    ["apenode.dao.json.metrics"] = "src/apenode/dao/json/metrics.lua",
 
-    ["apenode.plugins.base.handler"] = "src/apenode/plugins/base/handler.lua",
     ["apenode.plugins.base.access"] = "src/apenode/plugins/base/access.lua",
+    ["apenode.plugins.base.handler"] = "src/apenode/plugins/base/handler.lua",
     ["apenode.plugins.base.log"] = "src/apenode/plugins/base/log.lua",
 
+    ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
     ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
-    ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua"
+
+    ["apenode.web.app"] = "src/apenode/web/app.lua",
+    ["apenode.web.apis"] = "src/apenode/web/apis.lua",
+    ["apenode.web.applications"] = "src/apenode/web/applications.lua",
+    ["apenode.web.base_controller"] = "src/apenode/web/base_controller.lua"
+  },
+  copy_directories = { "src/apenode/web/admin", "src/apenode/web/static" },
+  install = {
+    bin = { "bin/apenode" }
   }
 }

@@ -32,4 +32,6 @@ run:
 		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
 		templates/nginx.conf > tmp/nginx/nginx.conf;
 
+	@cp -R src/apenode/web/static tmp/nginx/
+	@cp -R src/apenode/web/admin tmp/nginx/
 	@nginx -p ./tmp/nginx -c nginx.conf
