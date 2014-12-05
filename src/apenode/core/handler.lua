@@ -4,10 +4,10 @@ local access = require "apenode.core.access"
 local header_filter = require "apenode.core.header_filter"
 local BasePlugin = require "apenode.base_plugin"
 
-local Handler = {}
-Handler.__index = Handler
+local CoreHandler = {}
+CoreHandler.__index = CoreHandler
 
-setmetatable(Handler, {
+setmetatable(CoreHandler, {
   __index = BasePlugin, -- this is what makes the inheritance work
   __call = function (cls, ...)
     local self = setmetatable({}, cls)
@@ -16,18 +16,18 @@ setmetatable(Handler, {
   end,
 })
 
-function Handler:_init(name)
-  BasePlugin._init(self, name) -- call the base class constructor
+function CoreHandler:_init(name)
+  BasePlugin:_init(name) -- call the base class constructor
 end
 
-function Handler:access()
-  BasePlugin.access(self)
+function CoreHandler:access()
+  BasePlugin:access()
   access.execute()
 end
 
-function Handler:header_filter()
-  BasePlugin.access(self)
+function CoreHandler:header_filter()
+  BasePlugin:access()
   header_filter.execute()
 end
 
-return Handler
+return CoreHandler

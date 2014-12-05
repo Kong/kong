@@ -19,7 +19,7 @@ setmetatable(Apis, {
 })
 
 function Apis:_init()
-  BaseController._init(self, constants.APIS_COLLECTION) -- call the base class constructor
+  BaseController:_init(constants.APIS_COLLECTION) -- call the base class constructor
 
   app:post("/" .. constants.APIS_COLLECTION .. "/", capture_errors({
     on_error = function(self)

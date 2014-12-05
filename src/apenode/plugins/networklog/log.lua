@@ -9,12 +9,10 @@ function _M.execute()
 end
 
 function log(premature, message)
-
   local lower_type = string.lower(configuration.plugins.networklog.type)
   if lower_type == "log" then
     ngx.log(ngx.INFO, cjson.encode(message))
   elseif lower_type == "tcp" then
-
     local host = configuration.plugins.networklog.host
     local port = configuration.plugins.networklog.port
     local timeout = configuration.plugins.networklog.timeout
@@ -42,7 +40,6 @@ function log(premature, message)
       ngx.log(ngx.ERR, "failed to keepalive to " .. host .. ":" .. tostring(port) .. ": ", err)
       return
     end
-
   end
 end
 

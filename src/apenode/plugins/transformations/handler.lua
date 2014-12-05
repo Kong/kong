@@ -1,13 +1,13 @@
 -- Copyright (C) Mashape, Inc.
 
+local BasePlugin = require "apenode.base_plugin"
 local header_filter = require "apenode.plugins.transformations.header_filter"
 local body_filter = require "apenode.plugins.transformations.body_filter"
-local BasePlugin = require "apenode.base_plugin"
 
-local Handler = {}
-Handler.__index = Handler
+local TransformationsHandler = {}
+TransformationsHandler.__index = TransformationsHandler
 
-setmetatable(Handler, {
+setmetatable(TransformationsHandler, {
   __index = BasePlugin, -- this is what makes the inheritance work
   __call = function (cls, ...)
     local self = setmetatable({}, cls)
@@ -16,18 +16,18 @@ setmetatable(Handler, {
   end,
 })
 
-function Handler:_init(name)
-  BasePlugin._init(self, name) -- call the base class constructor
+function TransformationsHandler:_init(name)
+  BasePlugin:_init(name) -- call the base class constructor
 end
 
-function Handler:header_filter()
-  BasePlugin.header_filter(self)
+function TransformationsHandler:header_filter()
+  BasePlugin:header_filter()
   header_filter.execute()
 end
 
-function Handler:body_filter()
-  BasePlugin.body_filter(self)
+function TransformationsHandler:body_filter()
+  BasePlugin:body_filter()
   body_filter.execute()
 end
 
-return Handler
+return TransformationsHandler

@@ -2,9 +2,9 @@
 
 constants = require "apenode.constants"
 configuration = {
-	dao = {
-		properties = {
-			file_path = './spec_store.json'
-		}
-	}
+  dao = {
+    properties = {
+      file_path = './spec_store.json'
+    }
+  }
 }

@@ -23,7 +23,7 @@ function _M.show_error(status, message)
 end
 
 function _M.success(message)
-	_M.show_response(200, message)
+  _M.show_response(200, message)
 end
 
 function _M.created(message)
@@ -31,8 +31,8 @@ function _M.created(message)
 end
 
 function _M.not_found(message)
-	message = message or "Not found"
-	_M.show_error(404, message)
+  message = message or "Not found"
+  _M.show_error(404, message)
 end
 
 function _M.create_timer(func, data)
@@ -77,10 +77,18 @@ function _M.http_call(method, url, querystring, body, cb)
 end
 
 function _M.get(url, querystring, cb)
+  if type(querystring) == "function" then
+    cb = querystring
+    querystring = nil
+  end
   _M.http_call("GET", url, querystring, nil, cb)
 end
 
 function _M.post(url, form, cb)
+  if type(form) == "function" then
+    cb = form
+    form = nil
+  end
   _M.http_call("POST", url, nil, form, cb)
 end
 

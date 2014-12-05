@@ -1,12 +1,12 @@
 -- Copyright (C) Mashape, Inc.
 
-local log = require "apenode.plugins.networklog.log"
 local BasePlugin = require "apenode.base_plugin"
+local log = require "apenode.plugins.networklog.log"
 
-local Handler = {}
-Handler.__index = Handler
+local NetworkLogHandler = {}
+NetworkLogHandler.__index = NetworkLogHandler
 
-setmetatable(Handler, {
+setmetatable(NetworkLogHandler, {
   __index = BasePlugin, -- this is what makes the inheritance work
   __call = function (cls, ...)
     local self = setmetatable({}, cls)
@@ -15,13 +15,13 @@ setmetatable(Handler, {
   end,
 })
 
-function Handler:_init(name)
-  BasePlugin._init(self, name) -- call the base class constructor
+function NetworkLogHandler:_init(name)
+  BasePlugin:_init(name)
 end
 
-function Handler:log()
-  BasePlugin.log(self)
+function NetworkLogHandler:log()
+  BasePlugin:log()
   log.execute()
 end
 
-return Handler
+return NetworkLogHandler

@@ -7,16 +7,38 @@ DEV_APENODE_CONF ?= $(PWD)/tmp/apenode.dev.yaml
 DEV_APENODE_PORT ?= 8000
 DEV_APENODE_WEB_PORT ?= 8001
 
-.PHONY: test local global run populate
-
-test:
-	@busted spec/
+.PHONY: test local global run populate test-web test-all
 
 local:
 	@luarocks make apenode-*.rockspec --local
 
 global:
 	@sudo luarocks make apenode-*.rockspec
+
+test:
+	@busted spec/dao
+
+test-web:
+	@sed \
+		-e "s/{{DAEMON}}/on/g" \
+		-e "s@{{LUA_LIB_PATH}}@$(DEV_LUA_LIB)@g" \
+		-e "s/{{LUA_CODE_CACHE}}/on/g" \
+		-e "s/{{PORT}}/$(DEV_APENODE_PORT)/g" \
+		-e "s/{{WEB_PORT}}/$(DEV_APENODE_WEB_PORT)/g" \
+		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
+		templates/nginx.conf > tmp/nginx/nginx.conf;
+
+	@cp -R src/apenode/web/static tmp/nginx/
+	@cp -R src/apenode/web/admin tmp/nginx/
+	@nginx -p ./tmp/nginx -c nginx.conf
+	@busted spec/web/
+	@nginx -p ./tmp/nginx -c nginx.conf -s stop
+
+test-all:
+	@echo "Unit tests:"
+	@$(MAKE) test
+	@echo "\nAPI tests:"
+	@$(MAKE) test-web
 
 populate:
 	@lua scripts/populate.lua
