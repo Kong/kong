@@ -2,7 +2,6 @@
 
 local utils = require "apenode.utils"
 local yaml = require "yaml"
-local core = require "apenode.core.handler"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -15,7 +14,7 @@ function _M.init(configuration_path)
   dao = require(configuration.dao.factory)
 
   -- Requiring the plugins
-  table.insert(plugins, require("apenode.core.handler")) -- Adding the core first
+  table.insert(plugins, require("apenode.core")) -- Adding the core first
   load_plugins()
 end
 
@@ -102,7 +101,7 @@ function load_plugins()
       plugin_name = v
     end
 
-    table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler"))
+    table.insert(plugins, require("apenode.plugins." .. plugin_name))
   end
 
   configuration.plugins = plugin_properties
