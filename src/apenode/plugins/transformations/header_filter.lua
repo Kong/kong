@@ -3,8 +3,6 @@
 local _M = {}
 
 function _M.execute()
-  ngx.log(ngx.DEBUG, "Header Filter")
-
   local api = ngx.ctx.api
   if api and api.transformations then
     if api.transformations.xml_to_json and ngx.header["content-type"] == "application/xml" then

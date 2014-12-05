@@ -4,11 +4,6 @@ local cjson = require "cjson"
 
 local _M = {}
 
-function _M.show_error(status, message)
-  ngx.ctx.error = true
-  _M.show_response(status, message)
-end
-
 function _M.show_response(status, message)
   ngx.header["X-Apenode-Version"] = configuration.version
   ngx.status = status
@@ -20,12 +15,9 @@ function _M.show_response(status, message)
   ngx.exit(status)
 end
 
-function _M.create_timer(func, data)
-  local ok, err = ngx.timer.at(0, func, data)
-  if not ok then
-    ngx.log(ngx.ERR, "failed to create timer: ", err)
-    return
-  end
+function _M.show_error(status, message)
+  ngx.ctx.error = true
+  _M.show_response(status, message)
 end
 
 function _M.success(message)
@@ -39,6 +31,14 @@ end
 function _M.not_found(message)
 	message = message or "Not found"
 	_M.show_error(404, message)
+end
+
+function _M.create_timer(func, data)
+  local ok, err = ngx.timer.at(0, func, data)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to create timer: ", err)
+    return
+  end
 end
 
 function _M.read_file(path)

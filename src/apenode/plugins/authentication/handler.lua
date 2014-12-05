@@ -8,14 +8,6 @@ function _M.access()
   access.execute()
 end
 
-function _M.content()
-  -- Do nothing
-end
-
-function _M.rewrite()
-  -- Do nothing
-end
-
 function _M.header_filter()
   -- Do nothing
 end

@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
-local constants = require "apenode.core.constants"
-local utils = require "apenode.core.utils"
+local constants = require "apenode.constants"
+local utils = require "apenode.utils"
 local app_helpers = require "lapis.application"
 local validate = require "lapis.validate"
 local capture_errors, yield_error = app_helpers.capture_errors, app_helpers.yield_error

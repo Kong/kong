@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.core.utils"
+local utils = require "apenode.utils"
 local yaml = require "yaml"
 local core = require "apenode.core.handler"
 

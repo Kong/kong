@@ -30,11 +30,12 @@ build = {
   type = "builtin",
   modules = {
     ["apenode"] = "src/main.lua",
+    ["apenode.constants"] = "src/apenode/constants.lua",
+    ["apenode.utils"] = "src/apenode/utils.lua",
+
     ["apenode.core.access"] = "src/apenode/core/access.lua",
-    ["apenode.core.constants"] = "src/apenode/core/constants.lua",
     ["apenode.core.handler"] = "src/apenode/core/handler.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
-    ["apenode.core.utils"] = "src/apenode/core/utils.lua",
 
     ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
     ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
@@ -49,8 +50,8 @@ build = {
     ["apenode.plugins.networklog.handler"] = "src/apenode/plugins/networklog/handler.lua",
     ["apenode.plugins.networklog.log"] = "src/apenode/plugins/networklog/log.lua",
 
-    ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
     ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
+    ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",

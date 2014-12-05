@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.core.utils"
+local utils = require "apenode.utils"
 local cjson = require "cjson"
 local file_path = configuration.dao.properties.file_path
 

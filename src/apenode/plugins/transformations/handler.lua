@@ -10,14 +10,6 @@ function _M.access()
   -- Do nothing
 end
 
-function _M.content()
-  -- Do nothing
-end
-
-function _M.rewrite()
-  -- Do nothing
-end
-
 function _M.header_filter()
   header_filter.execute()
 end

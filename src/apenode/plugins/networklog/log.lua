@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
 local cjson = require "cjson"
-local utils = require "apenode.core.utils"
+local utils = require "apenode.utils"
 
 local _M = {}
 
