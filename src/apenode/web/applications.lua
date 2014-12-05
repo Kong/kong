@@ -19,7 +19,7 @@ setmetatable(Applications, {
 })
 
 function Applications:_init()
-  BaseController._init(self, constants.APPLICATIONS_COLLECTION) -- call the base class constructor
+  BaseController:_init(constants.APPLICATIONS_COLLECTION) -- call the base class constructor
 
   app:post("/" .. constants.APPLICATIONS_COLLECTION .. "/", capture_errors({
     on_error = function(self)
