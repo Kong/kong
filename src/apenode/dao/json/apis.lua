@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local constants = require "apenode.core.constants"
+local constants = require "apenode.constants"
 local BaseDao = require "apenode.dao.json.base_dao"
 
 local Apis = {}

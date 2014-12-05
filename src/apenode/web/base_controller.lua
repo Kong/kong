@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.core.utils"
+local utils = require "apenode.utils"
 
 local BaseController = {}
 BaseController.__index = BaseController

@@ -30,11 +30,12 @@ build = {
   type = "builtin",
   modules = {
     ["apenode"] = "src/main.lua",
+    ["apenode.constants"] = "src/apenode/constants.lua",
+    ["apenode.utils"] = "src/apenode/utils.lua",
+
+    ["apenode.core"] = "src/apenode/core/handler.lua",
     ["apenode.core.access"] = "src/apenode/core/access.lua",
-    ["apenode.core.constants"] = "src/apenode/core/constants.lua",
-    ["apenode.core.handler"] = "src/apenode/core/handler.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
-    ["apenode.core.utils"] = "src/apenode/core/utils.lua",
 
     ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
     ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
@@ -43,14 +44,14 @@ build = {
     ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
     ["apenode.dao.json.metrics"] = "src/apenode/dao/json/metrics.lua",
 
+    ["apenode.plugins.authentication"] = "src/apenode/plugins/authentication/handler.lua",
     ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
-    ["apenode.plugins.authentication.handler"] = "src/apenode/plugins/authentication/handler.lua",
 
-    ["apenode.plugins.networklog.handler"] = "src/apenode/plugins/networklog/handler.lua",
+    ["apenode.plugins.networklog"] = "src/apenode/plugins/networklog/handler.lua",
     ["apenode.plugins.networklog.log"] = "src/apenode/plugins/networklog/log.lua",
 
+    ["apenode.plugins.transformations"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
-    ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",

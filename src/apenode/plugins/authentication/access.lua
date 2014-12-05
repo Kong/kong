@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.core.utils"
-require "stringy"
+local utils = require "apenode.utils"
+local stringy = require "stringy"
 
 local _M = {}
 

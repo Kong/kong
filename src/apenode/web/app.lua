@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
 local lapis = require "lapis"
-local utils = require "apenode.core.utils"
+local utils = require "apenode.utils"
 local Apis = require "apenode.web.apis"
 local Applications = require "apenode.web.applications"
 

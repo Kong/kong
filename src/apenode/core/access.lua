@@ -1,20 +1,18 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.core.utils"
-require "stringy"
+local utils = require "apenode.utils"
+local stringy = require "stringy"
 
 local _M = {}
 
 function _M.execute()
-  ngx.log(ngx.DEBUG, "Access")
-
   -- Setting the version header
   ngx.header["X-Apenode-Version"] = configuration.version
 
   -- Retrieving the API from the Host that has been requested
   local api = dao.apis:get_by_host(stringy.split(ngx.var.http_host, ":")[1])
   if not api then
-    utils.show_error(404, "API not found")
+    utils.not_found("API not found")
   end
 
   -- Setting the backend URL for the proxy_pass directive
