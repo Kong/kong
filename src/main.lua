@@ -3,6 +3,7 @@
 local utils = require "apenode.core.utils"
 local yaml = require "yaml"
 local core = require "apenode.core.handler"
+local inspect = require "inspect"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -15,42 +16,30 @@ function _M.init(configuration_path)
   dao = require(configuration.dao.factory)
 
   -- Requiring the plugins
-  table.insert(plugins, require("apenode.core.handler")) -- Adding the core first
+  table.insert(plugins, require("apenode.core.handler")("core")) -- Adding the core first
   load_plugins()
 end
 
 function _M.access()
   ngx.ctx.start = ngx.now() -- Setting a property that will be available for every plugin
   for k, v in pairs(plugins) do -- Iterate over all the plugins
-    v.access()
+    v:access()
   end
   ngx.ctx.proxy_start = ngx.now() -- Setting a property that will be available for every plugin
-end
-
-function _M.content()
-  for k, v in pairs(plugins) do -- Iterate over all the plugins
-    v.content()
-  end
-end
-
-function _M.rewrite()
-  for k, v in pairs(plugins) do -- Iterate over all the plugins
-    v.rewrite()
-  end
 end
 
 function _M.header_filter()
   ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
   if not ngx.ctx.error then
     for k, v in pairs(plugins) do -- Iterate over all the plugins
-      v.header_filter()
+      v:header_filter()
     end
   end
 end
 
 function _M.body_filter()
   for k, v in pairs(plugins) do -- Iterate over all the plugins
-    v.body_filter()
+    v:body_filter()
   end
 end
 
@@ -78,7 +67,7 @@ function _M.log()
   ngx.ctx.log_message = message
 
   for k, v in pairs(plugins) do -- Iterate over all the plugins
-    v.log()
+    v:log()
   end
 end
 
@@ -102,7 +91,7 @@ function load_plugins()
       plugin_name = v
     end
 
-    table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler"))
+    table.insert(plugins, require("apenode.plugins." .. plugin_name .. ".handler")(plugin_name))
   end
 
   configuration.plugins = plugin_properties

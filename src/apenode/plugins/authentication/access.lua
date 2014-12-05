@@ -6,8 +6,6 @@ require "stringy"
 local _M = {}
 
 function _M.execute()
-  ngx.log(ngx.DEBUG, "Access Filter")
-
   local api = ngx.ctx.api
 
   local application_key = get_application_key(ngx.req, api)
