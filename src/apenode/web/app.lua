@@ -22,6 +22,4 @@ end
 Apis()
 Applications()
 
-
-
 return app

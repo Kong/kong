@@ -7,7 +7,7 @@ DEV_APENODE_CONF ?= $(PWD)/tmp/apenode.dev.yaml
 DEV_APENODE_PORT ?= 8000
 DEV_APENODE_WEB_PORT ?= 8001
 
-.PHONY: test local global run
+.PHONY: test local global run populate
 
 test:
 	@busted spec/
@@ -17,6 +17,9 @@ local:
 
 global:
 	@sudo luarocks make apenode-*.rockspec
+
+populate:
+	@lua scripts/populate.lua
 
 run:
 	@mkdir -p tmp/nginx/logs

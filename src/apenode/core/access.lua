@@ -1,6 +1,5 @@
 -- Copyright (C) Mashape, Inc.
 
-local cjson = require "cjson"
 local utils = require "apenode.core.utils"
 require "stringy"
 
