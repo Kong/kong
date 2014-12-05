@@ -23,8 +23,8 @@ test-web:
 		-e "s/{{DAEMON}}/on/g" \
 		-e "s@{{LUA_LIB_PATH}}@$(DEV_LUA_LIB)@g" \
 		-e "s/{{LUA_CODE_CACHE}}/on/g" \
-		-e "s/{{PORT}}/$(DEV_APENODE_PORT)/g" \
-		-e "s/{{WEB_PORT}}/$(DEV_APENODE_WEB_PORT)/g" \
+		-e "s/{{PORT}}/8000/g" \
+		-e "s/{{WEB_PORT}}/8001/g" \
 		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
 		templates/nginx.conf > tmp/nginx/nginx.conf;
 
