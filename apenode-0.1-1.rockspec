@@ -24,7 +24,8 @@ dependencies = {
   "inspect ~> 3.0-1",
   "luaxml ~> 101012-1",
   "busted ~> 2.0.rc3-0",
-  "stringy ~> 0.2-1"
+  "stringy ~> 0.2-1",
+  "lsqlite3 ~> 0.9.1-2"
 }
 build = {
   type = "builtin",
