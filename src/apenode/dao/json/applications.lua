@@ -1,6 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
+local constants = require "apenode.core.constants"
 local BaseDao = require "apenode.dao.json.base_dao"
+
 local Applications = {}
 Applications.__index = Applications
 
@@ -14,7 +16,7 @@ setmetatable(Applications, {
 })
 
 function Applications:_init()
-  BaseDao._init(self, "applications") -- call the base class constructor
+  BaseDao._init(self, constants.APPLICATIONS_COLLECTION) -- call the base class constructor
 end
 
 function Applications:get_by_key(key)

@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local constants = require "apenode.core.constants"
 local BaseDao = require "apenode.dao.json.base_dao"
 
 local Apis = {}
@@ -15,7 +16,7 @@ setmetatable(Apis, {
 })
 
 function Apis:_init()
-  BaseDao._init(self, "apis") -- call the base class constructor
+  BaseDao._init(self, constants.APIS_COLLECTION) -- call the base class constructor
 end
 
 function Apis:get_by_host(host)

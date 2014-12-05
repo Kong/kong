@@ -1,50 +1,49 @@
 -- Copyright (C) Mashape, Inc.
 
+local constants = require "apenode.core.constants"
 local utils = require "apenode.core.utils"
 local app_helpers = require "lapis.application"
 local validate = require "lapis.validate"
 local capture_errors, yield_error = app_helpers.capture_errors, app_helpers.yield_error
 
-app:get("/apis/", function(self)
-  return utils.success(dao.apis:get_all())
-end)
+local BaseController = require "apenode.web.base_controller"
 
-app:get("/apis/:id", function(self)
-  local api = dao.apis:get_by_id(self.params.id)
-  if api then
-    return utils.success(api)
-  else
-    return utils.notFound()
-  end
-end)
+local Apis = {}
+Apis.__index = Apis
 
-app:delete("/apis/:id", function(self)
-  local api = dao.apis:delete(self.params.id)
-  if api then
-    return utils.success(api)
-  else
-    return utils.notFound()
-  end
-end)
-
-app:post("/apis/", capture_errors({
-  on_error = function(self)
-    return utils.show_error(400, self.errors)
+setmetatable(Apis, {
+  __index = BaseController, -- this is what makes the inheritance work
+  __call = function (cls, ...)
+    local self = setmetatable({}, cls)
+    self:_init(...)
+    return self
   end,
-  function(self)
-    validate.assert_valid(self.params, {
-      { "public_dns", exists = true, min_length = 1, "Invalid public_dns" },
-      { "target_url", exists = true, min_length = 1, "Invalid target_url" },
-      { "authentication_type", exists = true, one_of = { "query", "header", "basic"}, "Invalid authentication_type" }
-    })
+})
 
-    local api = dao.apis:save({
-      public_dns = self.params.public_dns,
-      target_url = self.params.target_url,
-      authentication_type = self.params.authentication_type,
-      authentication_key_names =  { "apikey", "cazzo" }
-    })
+function Apis:_init()
+  BaseController._init(self, constants.APIS_COLLECTION) -- call the base class constructor
 
-    return utils.success(api)
-  end
-}))
+  app:post("/" .. constants.APIS_COLLECTION .. "/", capture_errors({
+    on_error = function(self)
+      return utils.show_error(400, self.errors)
+    end,
+    function(self)
+      validate.assert_valid(self.params, {
+        { "public_dns", exists = true, min_length = 1, "Invalid public_dns" },
+        { "target_url", exists = true, min_length = 1, "Invalid target_url" },
+        { "authentication_type", exists = true, one_of = { "query", "header", "basic"}, "Invalid authentication_type" }
+      })
+
+      local api = dao.apis:save({
+        public_dns = self.params.public_dns,
+        target_url = self.params.target_url,
+        authentication_type = self.params.authentication_type,
+        authentication_key_names =  { "apikey", "cazzo" }
+      })
+
+      return utils.success(api)
+    end
+  }))
+end
+
+return Apis

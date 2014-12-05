@@ -31,7 +31,6 @@ function get_application_key(request, api)
   return nil
 end
 
-
 function do_get_application_key(authentication_key_name, request, api)
   local application_key = nil
 
@@ -66,6 +65,5 @@ function do_get_application_key(authentication_key_name, request, api)
 
   return application_key
 end
-
 
 return _M
