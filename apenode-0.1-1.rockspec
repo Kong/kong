@@ -37,10 +37,10 @@ build = {
     ["apenode.core.access"] = "src/apenode/core/access.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
+    ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
     ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
     ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
     ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
-    ["apenode.dao.json.factory"] = "src/apenode/dao/json/factory.lua",
     ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
     ["apenode.dao.json.metrics"] = "src/apenode/dao/json/metrics.lua",
 

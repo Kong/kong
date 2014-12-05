@@ -1,5 +1,4 @@
-local inspect = require "inspect"
-local utils = require "scripts.utils"
+local utils = require "apenode.utils"
 local kApenodeWebURL = "http://localhost:8001"
 
 local APIS = {
