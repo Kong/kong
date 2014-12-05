@@ -2,106 +2,106 @@ require "spec.dao.json.configuration"
 
 describe("JSON DAO #dao", function()
 
-	setup(function()
-		_G.dao = require("apenode.dao.json.base_dao")("entities")
-	end)
+  setup(function()
+    _G.dao = require("apenode.dao.json.base_dao")("entities")
+  end)
 
-	teardown(function()
-		os.remove(configuration.dao.properties.file_path)
-	end)
+  teardown(function()
+    os.remove(configuration.dao.properties.file_path)
+  end)
 
-	describe("BaseDao", function()
+  describe("BaseDao", function()
 
-	  describe("#save()", function()
+    describe("#save()", function()
 
-	  		it("should return the saved entity", function()
-	  			local entity = { key = "value1" }
-	  			local savedEntity = dao:save(entity)
-	  			assert.are.same(entity, savedEntity)
-	  		end)
+        it("should return the saved entity", function()
+          local entity = { key = "value1" }
+          local savedEntity = dao:save(entity)
+          assert.are.same(entity, savedEntity)
+        end)
 
-	  		it("should set an id property", function()
-	  			local savedEntity = dao:save({ key = "value2" })
-	  			assert.truthy(savedEntity.id)
-	  		end)
+        it("should set an id property", function()
+          local savedEntity = dao:save({ key = "value2" })
+          assert.truthy(savedEntity.id)
+        end)
 
-	  		it("should set a created_at property", function()
-	  			local savedEntity = dao:save({ key = "value2" })
-	  			assert.truthy(savedEntity.created_at)
-	  		end)
+        it("should set a created_at property", function()
+          local savedEntity = dao:save({ key = "value2" })
+          assert.truthy(savedEntity.created_at)
+        end)
 
-	  end)
+    end)
 
-	  describe("#get_by_id()", function()
+    describe("#get_by_id()", function()
 
-			it("should retrieve an entity", function()
-				local savedEntity = dao:save({ key = "value3" })
-				local retrievedEntity = dao:get_by_id(savedEntity.id)
-				assert.are.same(retrievedEntity, {
-					key = "value3",
-					id = savedEntity.id,
-					created_at = savedEntity.created_at
-				})
-			end)
+      it("should retrieve an entity", function()
+        local savedEntity = dao:save({ key = "value3" })
+        local retrievedEntity = dao:get_by_id(savedEntity.id)
+        assert.are.same(retrievedEntity, {
+          key = "value3",
+          id = savedEntity.id,
+          created_at = savedEntity.created_at
+        })
+      end)
 
-			it("should return nil if entity is not found", function()
-				local retrievedEntity = dao:get_by_id("0")
-				assert.falsy(retrievedEntity)
-			end)
+      it("should return nil if entity is not found", function()
+        local retrievedEntity = dao:get_by_id("0")
+        assert.falsy(retrievedEntity)
+      end)
 
-			it("should return nil if id is nil", function()
-				local retrievedEntity = dao:get_by_id(nil)
-				assert.falsy(retrievedEntity)
-			end)
+      it("should return nil if id is nil", function()
+        local retrievedEntity = dao:get_by_id(nil)
+        assert.falsy(retrievedEntity)
+      end)
 
-	  end)
+    end)
 
-	  describe("#get_all()", function()
+    describe("#get_all()", function()
 
-	  		it("should retrieve all saved entities", function()
-	  			local retrieved = dao:get_all()
-	  			assert.are.unique(retrieved)
-	  			assert.are.equal(4, table.getn(retrieved))
-	  		end)
+        it("should retrieve all saved entities", function()
+          local retrieved = dao:get_all()
+          assert.are.unique(retrieved)
+          assert.are.equal(4, table.getn(retrieved))
+        end)
 
-	  end)
+    end)
 
-	  describe("#update()", function()
+    describe("#update()", function()
 
-	  		it("should return the updated entity", function()
-	  			local savedEntity = dao:save({ key = "oldvalue" })
-	  			local updatedEntity = dao:update(savedEntity)
-	  			assert.truthy(updatedEntity)
-	  		end)
+        it("should return the updated entity", function()
+          local savedEntity = dao:save({ key = "oldvalue" })
+          local updatedEntity = dao:update(savedEntity)
+          assert.truthy(updatedEntity)
+        end)
 
-	  		it("should update the entity", function()
-				local savedEntity = dao:save({ key = "oldvalue" })
-				savedEntity.key = "newvalue"
-				dao:update(savedEntity)
+        it("should update the entity", function()
+        local savedEntity = dao:save({ key = "oldvalue" })
+        savedEntity.key = "newvalue"
+        dao:update(savedEntity)
 
-				local updatedEntity = dao:get_by_id(savedEntity.id)
+        local updatedEntity = dao:get_by_id(savedEntity.id)
 
-				assert.are.equal("newvalue", updatedEntity.key)
-	  		end)
+        assert.are.equal("newvalue", updatedEntity.key)
+        end)
 
-	  end)
+    end)
 
-	  describe("#delete()", function()
+    describe("#delete()", function()
 
-	  		it("should delete an entity", function()
-				local savedEntity = dao:save({ key = "value4" })
-				local retrievedEntity = dao:get_by_id(savedEntity.id)
-				assert.truthy(retrievedEntity)
+        it("should delete an entity", function()
+        local savedEntity = dao:save({ key = "value4" })
+        local retrievedEntity = dao:get_by_id(savedEntity.id)
+        assert.truthy(retrievedEntity)
 
-				local deletedEntity = dao:delete(savedEntity.id)
-				assert.truthy(deletedEntity)
+        local deletedEntity = dao:delete(savedEntity.id)
+        assert.truthy(deletedEntity)
 
-	 			retrievedEntity = dao:get_by_id(savedEntity.id)
-				assert.falsy(retrievedEntity)
-	  		end)
+        retrievedEntity = dao:get_by_id(savedEntity.id)
+        assert.falsy(retrievedEntity)
+        end)
 
-	  end)
+    end)
 
-	end)
+  end)
 
 end)
