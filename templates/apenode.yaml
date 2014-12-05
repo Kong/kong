@@ -5,7 +5,7 @@ version: 0.1
 
 # Specify the DAO to use
 dao:
-  factory: apenode.dao.json
+  factory: apenode.dao.json.factory
   properties:
     file_path: /tmp/apenode.json
 
