@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
 local stringy = require "stringy"
-local inspect = require "inspect"
 
 local _M = {}
 
@@ -9,14 +8,7 @@ function _M.execute()
   local api = ngx.ctx.api
 
   local public_key, secret_key = get_keys(ngx.req, api)
-
-  print(public_key)
-  print(secret_key)
-
   local application = dao.applications:get_by_key(public_key, secret_key)
-
-  print(inspect(application))
-
   if not dao.applications:is_valid(application, api) then
     utils.show_error(403, "Your authentication credentials are invalid")
   end

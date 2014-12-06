@@ -20,7 +20,6 @@ end
 
 function Applications:get_by_key(public_key, secret_key)
   for k,v in pairs(self:get_all()) do
-    print(public_key)
     if v.public_key == public_key and v.secret_key == secret_key then
       return v
     end
