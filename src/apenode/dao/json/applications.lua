@@ -18,11 +18,11 @@ function Applications:_init()
   BaseDao._init(self, constants.APPLICATIONS_COLLECTION) -- call the base class constructor
 end
 
-function Applications:get_by_key(key)
-  if not key then return nil end
+function Applications:get_by_key(secret_key)
+  if not secret_key then return nil end
 
   for k,v in pairs(self:get_all()) do
-    if v.secret_key == key then
+    if v.secret_key == secret_key then
       return v
     end
   end

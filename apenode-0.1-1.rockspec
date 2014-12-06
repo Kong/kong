@@ -38,6 +38,7 @@ build = {
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
     ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
+    ["apenode.dao.json.accounts"] = "src/apenode/dao/json/accounts.lua",
     ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
     ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
     ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
@@ -55,9 +56,10 @@ build = {
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",
-    ["apenode.web.apis"] = "src/apenode/web/apis.lua",
-    ["apenode.web.applications"] = "src/apenode/web/applications.lua",
-    ["apenode.web.base_controller"] = "src/apenode/web/base_controller.lua"
+    ["apenode.web.routes.apis"] = "src/apenode/web/routes/accounts.lua",
+    ["apenode.web.routes.apis"] = "src/apenode/web/routes/apis.lua",
+    ["apenode.web.routes.applications"] = "src/apenode/web/routes/applications.lua",
+    ["apenode.web.routes.base_controller"] = "src/apenode/web/routes/base_controller.lua"
   },
   copy_directories = { "src/apenode/web/admin", "src/apenode/web/static" },
   install = {

@@ -22,6 +22,7 @@ end
 function BaseDao:save(entity)
   entity.id = uuid()
   entity.created_at = os.time()
+  entity.status = "ACTIVE"
   self._data[entity.id] = entity
   return entity
 end

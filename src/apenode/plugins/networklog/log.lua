@@ -10,7 +10,7 @@ end
 
 function log(premature, message)
   local lower_type = string.lower(configuration.plugins.networklog.type)
-  if lower_type == "log" then
+  if lower_type == "nginx_log" then
     ngx.log(ngx.INFO, cjson.encode(message))
   elseif lower_type == "tcp" then
     local host = configuration.plugins.networklog.host
