@@ -18,6 +18,14 @@ setmetatable(Accounts, {
   end,
 })
 
+validate.validate_functions.provider_id_exists = function(input)
+  if dao.accounts:get_by_provider_id(input) then
+    return false, "%s already exists"
+  else
+    return true
+  end
+end
+
 function Accounts:_init()
   BaseController:_init(constants.ACCOUNTS_COLLECTION) -- call the base class constructor
 
@@ -27,11 +35,10 @@ function Accounts:_init()
     end,
     function(self)
       validate.assert_valid(self.params, {
-        { "provider_id", exists = true, min_length = 1, "Invalid secret_key" },
-        { "account_id", exists = true, min_length = 1, "Invalid account_id" }
+        { "provider_id", provider_id_exists = true }
       })
 
-      local account = dao.applications:save({
+      local account = dao.accounts:save({
         provider_id = self.params.provider_id
       })
 

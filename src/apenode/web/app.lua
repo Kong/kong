@@ -1,6 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
 local lapis = require "lapis"
+local Accounts = require "apenode.web.routes.accounts"
 local Apis = require "apenode.web.routes.apis"
 local Applications = require "apenode.web.routes.applications"
 
@@ -18,7 +19,8 @@ app.handle_404 = function(self)
 end
 
 -- Load controllers
-Apis()
+Accounts()
 Applications()
+Apis()
 
 return app

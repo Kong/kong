@@ -39,6 +39,10 @@ function Applications:_init()
         { "account_id", exists = true, account_exists = true }
       })
 
+      if dao.applications:get_by_key(self.params.public_key, self.params.secret_key) then
+        return utils.show_error(400, { "An application with the same keys already exist" })
+      end
+
       local application = dao.applications:save({
         account_id = self.params.account_id,
         public_key = self.params.public_key,

@@ -18,4 +18,16 @@ function Accounts:_init()
   BaseDao._init(self, constants.ACCOUNTS_COLLECTION) -- call the base class constructor
 end
 
+function Accounts:get_by_provider_id(provider_id)
+  if not provider_id then return nil end
+
+  for k,v in pairs(self:get_all()) do
+    if v.provider_id == provider_id then
+      return v
+    end
+  end
+
+  return nil
+end
+
 return Accounts

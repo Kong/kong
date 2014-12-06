@@ -1,4 +1,4 @@
-## Apenode 
+## Apenode
 
 lua-resty-apenode - Lua Apenode core dependencies
 
@@ -17,3 +17,32 @@ lua-resty-apenode - Lua Apenode core dependencies
 - `make run`
   - Proxy: http://localhost:8000/
   - API: http://localhost:8001/
+
+### APIs
+
+The Apenode provides APIs to interact with the underlyind data model and create APIs, Accounts and Applications
+
+#### Create APIs
+
+`POST /apis/`
+
+* `public_dns`: The public DNS of the API
+* `target_url`: The target URL
+* `authentication_type`: The authentication to enable on the API, can be `query`, `header`, `basic`.
+* `authentication_key_names`: A *comma-separated* list of authentication parameter names, like `apikey` or `x-mashape-key`.
+
+
+#### Create Accounts
+
+`POST /accounts/`
+
+* `provider_id`: A custom id to be set in the account entity
+
+#### Create Applications
+
+`POST /applications/`
+
+* `account_id`: The `account_id` that the application belongs to.
+* `public_key`: The public key, or username if Basic Authentication is enabled.
+* `secret_key`: The secret key, or api key, or password if Basic authentication is enabled. Use only this fields for simple api keys.
+
