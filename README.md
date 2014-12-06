@@ -26,10 +26,10 @@ The Apenode provides APIs to interact with the underlyind data model and create 
 
 `POST /apis/`
 
-* `public_dns`: The public DNS of the API
-* `target_url`: The target URL
-* `authentication_type`: The authentication to enable on the API, can be `query`, `header`, `basic`.
-* `authentication_key_names`: A *comma-separated* list of authentication parameter names, like `apikey` or `x-mashape-key`.
+* *required* `public_dns`: The public DNS of the API
+* *required* `target_url`: The target URL
+* *required* `authentication_type`: The authentication to enable on the API, can be `query`, `header`, `basic`.
+* *required* `authentication_key_names`: A *comma-separated* list of authentication parameter names, like `apikey` or `x-mashape-key`.
 
 
 #### Create Accounts
@@ -42,7 +42,7 @@ The Apenode provides APIs to interact with the underlyind data model and create 
 
 `POST /applications/`
 
-* `account_id`: The `account_id` that the application belongs to.
+* *required* `account_id`: The `account_id` that the application belongs to.
 * `public_key`: The public key, or username if Basic Authentication is enabled.
-* `secret_key`: The secret key, or api key, or password if Basic authentication is enabled. Use only this fields for simple api keys.
+* *required* `secret_key`: The secret key, or api key, or password if Basic authentication is enabled. Use only this fields for simple api keys.
 
