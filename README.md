@@ -9,11 +9,11 @@ lua-resty-apenode - Lua Apenode core dependencies
 - Luarocks for Lua `5.1`
 - Openrestify ([Download](http://openresty.com/#Download) the latest version of OpenResty and install it.)
 
-### Installation
-- `make global` (requires `sudo`)
-
-### Running for development
+### Contribute
+- `make global` installation (requires `sudo`)
+- `make test` Run unit tests
+- `make test-web` Run API instegration tests
+- `make test-all` Run all tests:
 - `make run`
-
-- Proxy: http://localhost:8000/
-- API: http://localhost:8001/
+  - Proxy: http://localhost:8000/
+  - API: http://localhost:8001/
