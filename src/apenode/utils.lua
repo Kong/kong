@@ -6,6 +6,40 @@ local cjson = require "cjson"
 
 local _M = {}
 
+-- Builds a querystring from a table, separated by `&`
+-- @param tab The key/value parameters
+-- @param key The parent key if the value is multi-dimensional (optional)
+-- @return a string representing the built querystring
+local function build_query(tab, key)
+  local query = {}
+  local keys = {}
+
+  for k in pairs(tab) do
+    keys[#keys+1] = k
+  end
+
+  table.sort(keys)
+
+  for _,name in ipairs(keys) do
+    local value = tab[name]
+    if key then
+      name = string.format("%s[%s]", tostring(key), tostring(name))
+    end
+    if type(value) == "table" then
+      query[#query+1] = build_query(value, name)
+    else
+      local value = tostring(value)
+      if value ~= "" then
+        query[#query+1] = string.format("%s=%s", name, value)
+      else
+        query[#query+1] = name
+      end
+    end
+  end
+
+  return table.concat(query, "&")
+end
+
 function _M.show_response(status, message)
   ngx.header["X-Apenode-Version"] = configuration.version
   ngx.status = status
@@ -90,44 +124,6 @@ function _M.post(url, form, cb)
     form = nil
   end
   _M.http_call("POST", url, nil, form, cb)
-end
-
----------------------
--- PRIVATE METHODS --
----------------------
-
--- Builds a querystring from a table, separated by `&`
--- @param tab The key/value parameters
--- @param key The parent key if the value is multi-dimensional (optional)
--- @return a string representing the built querystring
-function build_query(tab, key)
-  local query = {}
-  local keys = {}
-
-  for k in pairs(tab) do
-    keys[#keys+1] = k
-  end
-
-  table.sort(keys)
-
-  for _,name in ipairs(keys) do
-    local value = tab[name]
-    if key then
-      name = string.format("%s[%s]", tostring(key), tostring(name))
-    end
-    if type(value) == "table" then
-      query[#query+1] = build_query(value, name)
-    else
-      local value = tostring(value)
-      if value ~= "" then
-        query[#query+1] = string.format("%s=%s", name, value)
-      else
-        query[#query+1] = name
-      end
-    end
-  end
-
-  return table.concat(query, "&")
 end
 
 return _M

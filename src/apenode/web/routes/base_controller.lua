@@ -11,6 +11,24 @@ setmetatable(BaseController, {
   end,
 })
 
+local function render_list_response(req, data, total, page, size)
+  local url = req.parsed_url.scheme .. "://" .. req.parsed_url.host .. ":" .. req.parsed_url.port .. req.parsed_url.path
+  local result = {
+    data = data,
+    total = total
+  }
+
+  if page > 1 then
+    result["previous"] = url .. "?" .. ngx.encode_args({page = page -1, size = size})
+  end
+
+  if page * size < total then
+     result["next"] = url .. "?" .. ngx.encode_args({page = page + 1, size = size})
+  end
+
+  return result
+end
+
 function BaseController:_init(collection_name)
 
   app:get("/" .. collection_name .. "/", function(self)
@@ -42,24 +60,6 @@ function BaseController:_init(collection_name)
     end
   end)
 
-end
-
-function render_list_response(req, data, total, page, size)
-  local url = req.parsed_url.scheme .. "://" .. req.parsed_url.host .. ":" .. req.parsed_url.port .. req.parsed_url.path
-  local result = {
-    data = data,
-    total = total
-  }
-
-  if page > 1 then
-    result["previous"] = url .. "?" .. ngx.encode_args({page = page -1, size = size})
-  end
-
-  if page * size < total then
-     result["next"] = url .. "?" .. ngx.encode_args({page = page + 1, size = size})
-  end
-
-  return result
 end
 
 return BaseController

@@ -6,6 +6,18 @@ local file_path = configuration.dao.properties.file_path
 
 local _M = {}
 
+local function read_file()
+  local contents = utils.read_file(file_path)
+  if not contents or contents == "" then
+    contents = "{}"
+  end
+  return contents
+end
+
+local function load_file()
+  return cjson.decode(read_file())
+end
+
 function _M.init(collection_name)
 
   local json = load_file()
@@ -47,18 +59,6 @@ function _M.init(collection_name)
   setmetatable(t, mt)
 
   return t
-end
-
-function load_file()
-  return cjson.decode(read_file())
-end
-
-function read_file()
-  local contents = utils.read_file(file_path)
-  if not contents or contents == "" then
-    contents = "{}"
-  end
-  return contents
 end
 
 return _M

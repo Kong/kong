@@ -4,19 +4,7 @@ local stringy = require "stringy"
 
 local _M = {}
 
-function _M.execute()
-  local api = ngx.ctx.api
-
-  local public_key, secret_key = get_keys(ngx.req, api)
-  local application = dao.applications:get_by_key(public_key, secret_key)
-  if not dao.applications:is_valid(application, api) then
-    utils.show_error(403, "Your authentication credentials are invalid")
-  end
-
-  ngx.ctx.authenticated_entity = application
-end
-
-function get_keys(request, api)
+local function get_keys(request, api)
   -- Let's check if the credential is in a request parameter
   if api.authentication_key_names then
     for i, authentication_key_name in ipairs(api.authentication_key_names) do
@@ -28,7 +16,7 @@ function get_keys(request, api)
   return nil, nil
 end
 
-function do_get_keys(authentication_key_name, request, api)
+local function do_get_keys(authentication_key_name, request, api)
   local secret_key = nil
 
   local headers = request.get_headers()
@@ -68,7 +56,7 @@ function do_get_keys(authentication_key_name, request, api)
   end
 end
 
-function get_basic_auth(header)
+local function get_basic_auth(header)
   local iterator, err = ngx.re.gmatch(header, "\\s*[Bb]asic\\s*(.+)")
   if not iterator then
       ngx.log(ngx.ERR, "error: ", err)
@@ -91,6 +79,18 @@ function get_basic_auth(header)
   if stringy.strip(password) == "" then password = nil end
 
   return username, password
+end
+
+function _M.execute()
+  local api = ngx.ctx.api
+
+  local public_key, secret_key = get_keys(ngx.req, api)
+  local application = dao.applications:get_by_key(public_key, secret_key)
+  if not dao.applications:is_valid(application, api) then
+    utils.show_error(403, "Your authentication credentials are invalid")
+  end
+
+  ngx.ctx.authenticated_entity = application
 end
 
 return _M
