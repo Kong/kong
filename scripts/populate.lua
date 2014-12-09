@@ -1,6 +1,5 @@
 local utils = require "apenode.utils"
 local cjson = require "cjson"
-local inspect = require "inspect"
 local kApenodeWebURL = "http://localhost:8001"
 
 local APIS = {
