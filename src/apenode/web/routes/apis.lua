@@ -47,7 +47,7 @@ function Apis:_init()
       validate.assert_valid(self.params, {
         { "public_dns", exists = true, is_dns = true, public_dns_exists = true },
         { "target_url", exists = true, min_length = 8, "Invalid target_url" },
-        { "authentication_type", exists = true, one_of = { "query", "header", "basic"}, "Invalid authentication_type" },
+        { "authentication_type", exists = true, one_of = { "query", "header", "basic" }, "Invalid authentication_type" },
         { "authentication_key_names", exists = true, min_length = 1 }
       })
 
