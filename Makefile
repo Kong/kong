@@ -34,6 +34,24 @@ test-web:
 	@busted spec/web/
 	@nginx -p ./tmp/nginx -c nginx.conf -s stop
 
+test-proxy:
+	@sed \
+		-e "s/{{DAEMON}}/on/g" \
+		-e "s@{{LUA_LIB_PATH}}@$(DEV_LUA_LIB)@g" \
+		-e "s/{{LUA_CODE_CACHE}}/on/g" \
+		-e "s/{{PORT}}/8000/g" \
+		-e "s/{{WEB_PORT}}/8001/g" \
+		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
+		templates/nginx.conf > tmp/nginx/nginx.conf;
+
+	@cp -R src/apenode/web/static tmp/nginx/
+	@cp -R src/apenode/web/admin tmp/nginx/
+	rm -f /tmp/apenode.json
+	@nginx -p ./tmp/nginx -c nginx.conf
+	@$(MAKE) populate
+	@busted spec/proxy/
+	@nginx -p ./tmp/nginx -c nginx.conf -s stop
+
 test-all:
 	@echo "Unit tests:"
 	@$(MAKE) test
