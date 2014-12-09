@@ -28,12 +28,17 @@ function BaseDao:save(entity)
 end
 
 function BaseDao:get_all(page, size)
+  local result = {}
+
   local data = self._data[nil]
 
-  local start_offset = (page - 1) * size
-  local result = {}
-  for i=start_offset + 1, start_offset + size do
-    table.insert(result, data[i])
+  if page == nil or size == nil then
+    result = data
+  else
+    local start_offset = (page - 1) * size
+    for i=start_offset + 1, start_offset + size do
+      table.insert(result, data[i])
+    end
   end
 
   return result, table.getn(data)

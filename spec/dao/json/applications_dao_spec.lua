@@ -31,7 +31,7 @@ describe("JSON ApplicationsDao #dao", function()
         local app = { secret_key = "abcd" }
         local savedApp = applicationsdao:save(app)
 
-        local retrievedApp = applicationsdao:get_by_key(app.secret_key)
+        local retrievedApp = applicationsdao:get_by_key(nil, app.secret_key)
         assert.are.same(savedApp, retrievedApp)
       end)
 

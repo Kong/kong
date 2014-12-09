@@ -45,6 +45,23 @@ function Accounts:_init()
       return utils.created(account)
     end
   }))
+
+  app:delete("/" .. constants.ACCOUNTS_COLLECTION .. "/:id", function(self)
+    local entity = dao.accounts:get_by_id(self.params.id)
+    if entity then
+      -- Delete all the applications belonging to the account
+      local applications = dao.applications:get_by_account_id(self.params.id)
+      for _, v in ipairs(applications) do
+        dao.applications:delete(v.id)
+      end
+
+      -- Ultimately delete the account
+      dao.accounts:delete(entity.id)
+      return utils.success(entity)
+    else
+      return utils.not_found()
+    end
+  end)
 end
 
 return Accounts

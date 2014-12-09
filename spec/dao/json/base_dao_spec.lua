@@ -40,7 +40,8 @@ describe("JSON DAO #dao", function()
         assert.are.same(retrievedEntity, {
           key = "value3",
           id = savedEntity.id,
-          created_at = savedEntity.created_at
+          created_at = savedEntity.created_at,
+          status = "ACTIVE"
         })
       end)
 

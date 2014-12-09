@@ -28,6 +28,17 @@ function Applications:get_by_key(public_key, secret_key)
   return nil
 end
 
+function Applications:get_by_account_id(account_id)
+  local result = {}
+  for k,v in pairs(self:get_all()) do
+    if v.account_id == account_id then
+      table.insert(result, v)
+    end
+  end
+
+  return result
+end
+
 function Applications:is_valid(application, api)
   if not application or not api then return false end
 
