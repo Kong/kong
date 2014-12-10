@@ -8,11 +8,12 @@ local function db_exec(stmt)
 end
 
 -- Create schema
-db_exec[[
+db_exec [[
 
   CREATE TABLE accounts (
     id	 INTEGER PRIMARY KEY,
-    provider_id TEXT
+    provider_id TEXT UNIQUE,
+    created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
   );
 
   CREATE TABLE apis (
@@ -28,18 +29,21 @@ db_exec[[
 
 -- Build factory
 local Apis = require "apenode.dao.sqlite.apis"
+local Accounts = require "apenode.dao.sqlite.accounts"
+
 
 local _M = {
   _db = db,
-  apis = Apis(db)
+  apis = Apis(db),
+  accounts = Accounts(db)
 }
 
 function _M.populate()
   -- Build insert APIs
   local insert_apis_stmt = ""
-  for i = 1, 100 do
+  for i = 1, 1000 do
     insert_apis_stmt = insert_apis_stmt .. [[
-    INSERT INTO apis(name, public_dns, target_url, authentication_type)
+      INSERT INTO apis(name, public_dns, target_url, authentication_type)
         VALUES("httpbin]]..i..[[",
           "apebin]]..i..[[.com",
           "http://httpbin.org/",
@@ -47,7 +51,16 @@ function _M.populate()
     ]]
   end
 
+  -- Build insert Accounts
+  local insert_accounts_stmt = ""
+  for j = 1, 1000 do
+    insert_accounts_stmt = insert_accounts_stmt .. [[
+      INSERT INTO accounts(provider_id) VALUES("provider]]..j..[[");
+    ]]
+  end
+
   db_exec(insert_apis_stmt)
+  db_exec(insert_accounts_stmt)
 end
 
 return _M

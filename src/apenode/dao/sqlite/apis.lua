@@ -1,4 +1,3 @@
-local inspect = require "inspect"
 local BaseDao = require "apenode.dao.sqlite.base_dao"
 
 local Apis = {}
@@ -73,11 +72,11 @@ function Apis:delete(id)
 end
 
 function Apis:get_all(page, size)
-  local results, err = self:exec_paginated_stmt(self.select_all_stmt, page, size)
   -- TODO handle errors for count request
+  local results = self:exec_paginated_stmt(self.select_all_stmt, page, size)
   local count = self:exec_stmt(self.select_count_stmt)
 
-  return results, count, err
+  return results, count
 end
 
 function Apis:get_by_id(id)
