@@ -1,26 +1,27 @@
 local sqlite3 = require "lsqlite3"
 local db = sqlite3.open_memory()
 
--- Apenode DAOs
-local Apis = require "apenode.dao.sqlite.apis"
-
 function db_exec(stmt)
   if db:exec(stmt) ~= sqlite3.OK then
-    print("Sqlite ERROR:        ", db:errmsg())
+    print("Sqlite ERROR: ", db:errmsg())
   end
 end
 
+-- Create schema
 db_exec[[
 
   CREATE TABLE apis (
     id	 INTEGER PRIMARY KEY,
-    name	 VARCHAR(50),
-    public_dns VARCHAR(50),
+    name	 VARCHAR(50) UNIQUE,
+    public_dns VARCHAR(50) UNIQUE,
     target_url VARCHAR(50),
     authentication_type VARCHAR(10)
   );
 
 ]]
+
+-- Build factory
+local Apis = require "apenode.dao.sqlite.apis"
 
 local _M = {
   _db = db,
@@ -28,53 +29,19 @@ local _M = {
 }
 
 function _M.populate()
-  db_exec[[
-  
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin6", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin7", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin8", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin9", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin10", "apebin.com5", "http://httpbin.org/", "query");
+  -- Build insert APIs
+  local insert_apis_stmt = ""
+  for i = 1, 100 do
+    insert_apis_stmt = insert_apis_stmt .. [[
+    INSERT INTO apis(name, public_dns, target_url, authentication_type)
+        VALUES("httpbin]]..i..[[",
+          "apebin]]..i..[[.com",
+          "http://httpbin.org/",
+          "query");
+    ]]
+  end
 
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin", "apebin.com", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin2", "apebin.com2", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin3", "apebin.com3", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin4", "apebin.com4", "http://httpbin.org/", "query");
-    INSERT INTO apis(name, public_dns, target_url, authentication_type) VALUES("httpbin5", "apebin.com5", "http://httpbin.org/", "query");
-
-  ]]
+  db_exec(insert_apis_stmt)
 end
 
 return _M

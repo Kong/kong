@@ -1,6 +1,6 @@
 local _M = {}
 
-function _M.select_paginated(stmt, page, size)
+function _M.exec_paginated_stmt(stmt, page, size)
   if not page then page = 1 end
   if not size then size = 30 end
   -- Max size value
@@ -21,30 +21,50 @@ function _M.select_paginated(stmt, page, size)
     step_result = stmt:step()
   end
 
-  stmt:reset()
+  -- Reset statement and get status code
+  local reset = stmt:reset()
 
   -- Error handling
-  if step_result == sqlite3.ERROR then
-    return nil, "SQLite error" -- call stmt:reset() here and/or db:errmsg()
-  elseif step_result == sqlite3.DONE then
+  if step_result == sqlite3.DONE and reset == sqlite3.OK then
     return results
+  else
+    return nil, reset
   end
 end
 
-function _M.select_by_key(stmt, value)
+function _M.exec_select_stmt(stmt)
+  -- Execute query
+  local step_result, results = stmt:step()
 
+  if step_result == sqlite3.ROW then
+    results = stmt:get_named_values()
+    step_result = stmt:step()
+  end
+
+  -- Reset statement and get status code
+  local reset = stmt:reset()
+
+  -- Error handling
+  if step_result == sqlite3.DONE and reset == sqlite3.OK then
+    return results
+  else
+    return nil, reset
+  end
 end
 
-function _M.save()
+function _M.exec_stmt(stmt)
+  -- Execute query
+  local step_result = stmt:step()
 
-end
+  -- Reset statement and get status code
+  local reset = stmt:reset()
 
-function _M.update()
-
-end
-
-function _M.delete()
-
+  -- Error handling
+  if step_result == sqlite3.DONE and reset == sqlite3.OK then
+    return true
+  else
+    return nil, reset
+  end
 end
 
 return _M
