@@ -43,8 +43,9 @@ describe("SQLite APIsDao #dao", function()
         assert.are.equal(40, result[5].id)
       end)
 
-      it("should return an error if", function()
-
+      it("should return the total number of APIs too", function()
+        local result, count = apisdao:get_all()
+        assert.are.equal(100, count)
       end)
 
     end)

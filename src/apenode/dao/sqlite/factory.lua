@@ -3,7 +3,7 @@ local db = sqlite3.open_memory()
 
 function db_exec(stmt)
   if db:exec(stmt) ~= sqlite3.OK then
-    print("Sqlite ERROR: ", db:errmsg())
+    print("SQLite ERROR: ", db:errmsg())
   end
 end
 
