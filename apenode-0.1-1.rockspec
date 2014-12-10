@@ -39,7 +39,7 @@ build = {
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
     ["apenode.dao.sqlite"] = "src/apenode/dao/sqlite/factory.lua",
-    ["apenode.dao.sqlite.utils"] = "src/apenode/dao/sqlite/utils.lua",
+    ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
 
     ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
     ["apenode.dao.json.accounts"] = "src/apenode/dao/json/accounts.lua",

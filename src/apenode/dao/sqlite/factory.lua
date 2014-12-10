@@ -1,7 +1,7 @@
 local sqlite3 = require "lsqlite3"
 local db = sqlite3.open_memory()
 
-function db_exec(stmt)
+local function db_exec(stmt)
   if db:exec(stmt) ~= sqlite3.OK then
     print("SQLite ERROR: ", db:errmsg())
   end
@@ -10,12 +10,18 @@ end
 -- Create schema
 db_exec[[
 
+  CREATE TABLE accounts (
+    id	 INTEGER PRIMARY KEY,
+    provider_id TEXT
+  );
+
   CREATE TABLE apis (
     id	 INTEGER PRIMARY KEY,
     name	 VARCHAR(50) UNIQUE,
     public_dns VARCHAR(50) UNIQUE,
     target_url VARCHAR(50),
-    authentication_type VARCHAR(10)
+    authentication_type VARCHAR(10),
+    created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
   );
 
 ]]

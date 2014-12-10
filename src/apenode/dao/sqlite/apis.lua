@@ -1,10 +1,11 @@
 local inspect = require "inspect"
-local utils = require "apenode.dao.sqlite.utils"
+local BaseDao = require "apenode.dao.sqlite.base_dao"
 
 local Apis = {}
 Apis.__index = Apis
 
 setmetatable(Apis, {
+  __index = BaseDao,
   __call = function (cls, ...)
     local self = setmetatable({}, cls)
     self:_init(...)
@@ -13,12 +14,14 @@ setmetatable(Apis, {
 })
 
 function Apis:_init(database)
-  self._db = database
+  BaseDao:_init(database)
 
   self.insert_stmt = database:prepare [[
-    INSERT INTO apis
-    VALUES(NULL,
-           :name,
+    INSERT INTO apis(name,
+                     public_dns,
+                     target_url,
+                     authentication_type)
+    VALUES(:name,
            :public_dns,
            :target_url,
            :authentication_type);
@@ -54,44 +57,37 @@ function Apis:_init(database)
   ]]
 end
 
-function Apis:handle_error(result, err)
-  if not err then
-    return result
-  else
-    return nil, self._db:errmsg()
-  end
-end
-
 function Apis:save(api)
   self.insert_stmt:bind_names(api)
-  return self:handle_error(utils.exec_stmt(self.insert_stmt))
+  return self:exec_insert_stmt(self.insert_stmt)
 end
 
 function Apis:update(api)
   self.update_stmt:bind_names(api)
-  return self:handle_error(utils.exec_stmt(self.update_stmt))
+  return self:exec_stmt(self.update_stmt)
 end
 
 function Apis:delete(id)
   self.delete_stmt:bind_values(id)
-  return self:handle_error(utils.exec_stmt(self.delete_stmt))
+  return self:exec_stmt(self.delete_stmt)
 end
 
 function Apis:get_all(page, size)
-  local results, err = self:handle_error(utils.exec_paginated_stmt(self.select_all_stmt, page, size))
-  local count = utils.exec_stmt(self.select_count_stmt)
+  local results, err = self:exec_paginated_stmt(self.select_all_stmt, page, size)
+  -- TODO handle errors for count request
+  local count = self:exec_stmt(self.select_count_stmt)
 
   return results, count, err
 end
 
 function Apis:get_by_id(id)
   self.select_by_id_stmt:bind_values(id)
-  return self:handle_error(utils.exec_select_stmt(self.select_by_id_stmt))
+  return self:exec_select_stmt(self.select_by_id_stmt)
 end
 
 function Apis:get_by_host(public_dns)
   self.select_by_host_stmt:bind_values(public_dns)
-  return self:handle_error(utils.exec_select_stmt(self.select_by_host_stmt))
+  return self:exec_select_stmt(self.select_by_host_stmt)
 end
 
 return Apis

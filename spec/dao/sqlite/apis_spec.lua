@@ -84,25 +84,35 @@ describe("SQLite APIsDao #dao", function()
 
     describe("#save()", function()
 
-      it("should save an API", function()
-        local result, err = apisdao:save({
-          name = "new api",
-          public_dns = "httpbin.com",
-          target_url = "http://httpbin.org",
-          authentication_type = "query"
-        })
+      it("should save an API and return the id", function()
+        local saved_id, err = apisdao:save {
+          name = "new api"
+        }
 
         assert.falsy(err)
+        assert.truthy(saved_id)
+
+        local result = apisdao:get_by_id(saved_id)
         assert.truthy(result)
+        assert.are.same(saved_id, result.id)
       end)
 
       it("should return an error if failed", function()
-        local result, err = apisdao:save({
+        local saved_id, err = apisdao:save {
           name = "new api"
-        })
+        }
 
         assert.truthy(err)
-        assert.falsy(result)
+        assert.falsy(saved_id)
+      end)
+
+      it("should default the created_at timestamp", function()
+        local saved_id = apisdao:save {
+          name = "my api"
+        }
+
+        local result = apisdao:get_by_id(saved_id)
+        assert.truthy(result.created_at)
       end)
 
     end)
