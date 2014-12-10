@@ -5,9 +5,17 @@ version: 0.1
 
 # Specify the DAO to use
 dao:
-  factory: apenode.dao.json
+  factory: json
   properties:
-    file_path: /tmp/apenode.json
+    - file_path: /tmp/apenode.json
+
+  #factory: cassandra
+  #properties:
+  #  - host: "127.0.0.1"
+  #  - port: 9042
+  #  - timeout: 1000
+  #  - keyspace: apenode
+  #  - keepalive: 60000
 
 # Plugins
 plugins:
