@@ -18,8 +18,11 @@ end
 function BaseDao:save(entity)
   self.insert_stmt:bind_names(entity)
   local inserted_id, err = self:exec_insert_stmt(self.insert_stmt)
-  entity.id = inserted_id
-  return inserted_id, err
+  if err then
+    return nil, err
+  end
+
+  return self:get_by_id(inserted_id)
 end
 
 function BaseDao:update(entity)

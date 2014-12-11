@@ -69,29 +69,34 @@ describe("BaseDao", function()
       end)
 
       describe("#save()", function()
-        it("should save an account and return the id", function()
+        it("should save an entity", function()
           local random_entity = dao_factory.fake_entity(dao_name)
-          local saved_id, err = dao:save(random_entity)
+          local saved_entity, err = dao:save(random_entity)
           assert.falsy(err)
-          assert.truthy(saved_id)
-          local result = dao:get_by_id(saved_id)
-          assert.truthy(result)
-          assert.are.same(saved_id, result.id)
+          assert.truthy(saved_entity)
         end)
         if dao_name ~= "ApplicationsDao" and dao_name ~= "MetricsDao" then
           it("should return an error if failed", function()
             local random_entity = dao_factory.fake_entity(dao_name, true)
-            local saved_id, err = dao:save(random_entity)
+            local saved_entity, err = dao:save(random_entity)
             assert.truthy(err)
-            assert.falsy(saved_id)
+            assert.falsy(saved_entity)
           end)
         end
+        it("should return the created entity", function()
+          local random_entity = dao_factory.fake_entity(dao_name)
+          local saved_entity, err = dao:save(random_entity)
+          random_entity.id = saved_entity.id
+          random_entity.created_at = saved_entity.created_at
+          for k,v in pairs(random_entity) do
+            assert.truthy(saved_entity[k])
+          end
+        end)
         if dao_name ~= "MetricsDao" then
           it("should default the created_at timestamp", function()
             local random_entity = dao_factory.fake_entity(dao_name)
-            local saved_id = dao:save(random_entity)
-            local result = dao:get_by_id(saved_id)
-            assert.truthy(result.created_at)
+            local saved_entity = dao:save(random_entity)
+            assert.truthy(saved_entity.created_at)
           end)
         end
       end)
