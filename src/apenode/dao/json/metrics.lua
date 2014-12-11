@@ -19,11 +19,11 @@ function Metrics:_init()
   BaseDao._init(self, constants.METRICS_COLLECTION) -- call the base class constructor
 end
 
-function Metrics:increment_metric(name, value)
+function Metrics:increment_metric(api_id, account_id, name, value)
 
 end
 
-function Metrics:retrive_metric(name, precision)
+function Metrics:retrive_metric(api_id, account_id, name)
 
 end
 
