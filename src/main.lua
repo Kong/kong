@@ -54,7 +54,8 @@ end
 function _M.init(configuration_path)
   -- Loading configuration
   configuration = yaml.load(utils.read_file(configuration_path))
-  dao = require(configuration.dao.factory)
+  dao = require("apenode.dao." .. configuration.dao.factory .. ".factory")
+  configuration.dao.properties = normalize_properties(configuration.dao.properties)
 
   -- Requiring the plugins
   table.insert(plugins, require("apenode.core")("core")) -- Adding the core first
