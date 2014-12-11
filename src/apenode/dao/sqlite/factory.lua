@@ -21,13 +21,13 @@ end
 -- Create schema
 db_exec [[
 
-  CREATE TABLE accounts (
+  CREATE TABLE IF NOT EXISTS accounts (
     id	 INTEGER PRIMARY KEY,
     provider_id TEXT UNIQUE,
     created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
   );
 
-  CREATE TABLE apis (
+  CREATE TABLE IF NOT EXISTS apis (
     id	 INTEGER PRIMARY KEY,
     name	 VARCHAR(50) UNIQUE,
     public_dns VARCHAR(50) UNIQUE,
@@ -36,7 +36,7 @@ db_exec [[
     created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
   );
 
-  CREATE TABLE applications (
+  CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY,
     account_id INTEGER,
     public_key TEXT,
@@ -46,7 +46,7 @@ db_exec [[
     FOREIGN KEY(account_id) REFERENCES accounts(id)
   );
 
-  CREATE TABLE metrics (
+  CREATE TABLE IF NOT EXISTS metrics (
     id INTEGER PRIMARY KEY,
     api_id INTEGER,
     account_id INTEGER,
