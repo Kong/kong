@@ -15,14 +15,15 @@ function BaseDao:_init(database)
   self._db = database
 end
 
-function BaseDao:save(api)
-  self.insert_stmt:bind_names(api)
-  -- todo return original entity
-  return self:exec_insert_stmt(self.insert_stmt)
+function BaseDao:save(entity)
+  self.insert_stmt:bind_names(entity)
+  local inserted_id, err = self:exec_insert_stmt(self.insert_stmt)
+  entity.id = inserted_id
+  return inserted_id, err
 end
 
-function BaseDao:update(api)
-  self.update_stmt:bind_names(api)
+function BaseDao:update(entity)
+  self.update_stmt:bind_names(entity)
   return self:exec_stmt(self.update_stmt)
 end
 

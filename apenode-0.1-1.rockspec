@@ -45,14 +45,6 @@ build = {
     ["apenode.dao.sqlite.applications"] = "src/apenode/dao/sqlite/applications.lua",
     ["apenode.dao.sqlite.metrics"] = "src/apenode/dao/sqlite/metrics.lua",
 
-    ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
-    ["apenode.dao.json.accounts"] = "src/apenode/dao/json/accounts.lua",
-    ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
-    ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
-    ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
-    ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
-    ["apenode.dao.json.metrics"] = "src/apenode/dao/json/metrics.lua",
-
     ["apenode.plugins.authentication"] = "src/apenode/plugins/authentication/handler.lua",
     ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
 
