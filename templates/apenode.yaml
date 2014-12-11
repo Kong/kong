@@ -7,8 +7,8 @@ version: 0.1
 dao:
   factory: sqlite
   properties:
-    file_path: /tmp/apenode.sqlite3
     memory: false
+    file_path: /tmp/apenode.sqlite3
 
   #factory: cassandra
   #properties:
