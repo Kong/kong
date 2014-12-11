@@ -23,7 +23,7 @@ function Metrics:increment_metric(api_id, account_id, name, value)
 
 end
 
-function Metrics:retrive_metric(api_id, account_id, name)
+function Metrics:retrive_metric(api_id, account_id, name, timestamp)
 
 end
 
