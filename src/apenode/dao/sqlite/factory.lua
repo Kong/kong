@@ -1,5 +1,14 @@
 local sqlite3 = require "lsqlite3"
-local db = sqlite3.open_memory()
+local db
+
+if configuration.dao.properties.memory then
+  db = sqlite3.open_memory()
+elseif configuration.dao.properties.file_path ~= nil then
+  db = sqlite3.open(configuration.dao.properties.file_path)
+else
+  ngx.log(ngx.ERR, "cannot open sqlite database")
+  return
+end
 
 math.randomseed(os.time())
 

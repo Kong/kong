@@ -6,26 +6,27 @@ version: 0.1
 # Specify the DAO to use
 dao:
   factory: sqlite
-  #properties:
-  #  - file_path: /tmp/apenode.json
+  properties:
+    file_path: /tmp/apenode.sqlite3
+    memory: false
 
   #factory: cassandra
   #properties:
-  #  - host: "127.0.0.1"
-  #  - port: 9042
-  #  - timeout: 1000
-  #  - keyspace: apenode
-  #  - keepalive: 60000
+  #  host: "127.0.0.1"
+  #  port: 9042
+  #  timeout: 1000
+  #  keyspace: apenode
+  #  keepalive: 60000
 
 # Plugins
 plugins:
   - authentication
   - networklog:
-    - type: tcp # Available values: tcp, nginx_log
-    - host: "127.0.0.1"
-    - port: 4444
-    - timeout: 10000
-    - keepalive: 60000
+      type: tcp # Available values: tcp, nginx_log
+      host: "127.0.0.1"
+      port: 4444
+      timeout: 10000
+      keepalive: 60000
   - transformations
 
 ---
