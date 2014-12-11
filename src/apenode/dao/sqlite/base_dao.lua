@@ -17,7 +17,7 @@ end
 
 function BaseDao:save(api)
   self.insert_stmt:bind_names(api)
-  -- todo
+  -- todo return original entity
   return self:exec_insert_stmt(self.insert_stmt)
 end
 

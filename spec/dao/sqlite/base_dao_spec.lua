@@ -3,37 +3,9 @@ local dao_factory = require "apenode.dao.sqlite"
 local daos = {
   ApisDao = dao_factory.apis,
   AccountsDao = dao_factory.accounts,
-  ApplicationsDao = dao_factory.applications
+  ApplicationsDao = dao_factory.applications,
+  MetricsDao = dao_factory.metrics
 }
-
-math.randomseed(os.time())
-
-local function fake_entity(type, invalid)
-  local r = math.random(1, 10000000)
-
-  if type == "ApisDao" then
-    local name
-    if invalid then name = "httpbin1" else name = "random"..r end
-    return {
-      name = name,
-      public_dns = "random"..r..".com",
-      target_url = "http://random"..r..".com",
-      authentication_type = "query",
-    }
-  elseif type == "AccountsDao" then
-    local provider_id
-    if invalid then provider_id = "provider1" else provider_id = "random_provider_id_"..r end
-    return {
-      provider_id = provider_id
-    }
-  elseif type == "ApplicationsDao" then
-    return {
-      account_id = 1,
-      public_key = "random"..r,
-      secret_key = "random"..r,
-    }
-  end
-end
 
 describe("BaseDao", function()
 
@@ -97,7 +69,7 @@ describe("BaseDao", function()
 
       describe("#save()", function()
         it("should save an account and return the id", function()
-          local random_entity = fake_entity(dao_name)
+          local random_entity = dao_factory.fake_entity(dao_name)
           local saved_id, err = dao:save(random_entity)
           assert.falsy(err)
           assert.truthy(saved_id)
@@ -105,25 +77,27 @@ describe("BaseDao", function()
           assert.truthy(result)
           assert.are.same(saved_id, result.id)
         end)
-        it("should return an error if failed", function()
-          if dao_name ~= "ApplicationsDao" then
-            local random_entity = fake_entity(dao_name, true)
+        if dao_name ~= "ApplicationsDao" and dao_name ~= "MetricsDao" then
+          it("should return an error if failed", function()
+            local random_entity = dao_factory.fake_entity(dao_name, true)
             local saved_id, err = dao:save(random_entity)
             assert.truthy(err)
             assert.falsy(saved_id)
-          end
-        end)
-        it("should default the created_at timestamp", function()
-          local random_entity = fake_entity(dao_name)
-          local saved_id = dao:save(random_entity)
-          local result = dao:get_by_id(saved_id)
-          assert.truthy(result.created_at)
-        end)
+          end)
+        end
+        if dao_name ~= "MetricsDao" then
+          it("should default the created_at timestamp", function()
+            local random_entity = dao_factory.fake_entity(dao_name)
+            local saved_id = dao:save(random_entity)
+            local result = dao:get_by_id(saved_id)
+            assert.truthy(result.created_at)
+          end)
+        end
       end)
 
       describe("#update()", function()
         it("should update an entity", function()
-          local random_entity = fake_entity(dao_name)
+          local random_entity = dao_factory.fake_entity(dao_name)
           random_entity.id = 1
           local result, err = dao:update(random_entity)
           assert.falsy(err)

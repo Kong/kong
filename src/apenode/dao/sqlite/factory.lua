@@ -1,6 +1,8 @@
 local sqlite3 = require "lsqlite3"
 local db = sqlite3.open_memory()
 
+math.randomseed(os.time())
+
 local function db_exec(stmt)
   if db:exec(stmt) ~= sqlite3.OK then
     print("SQLite ERROR: ", db:errmsg())
@@ -31,7 +33,20 @@ db_exec [[
     public_key TEXT,
     secret_key TEXT,
     created_at TIMESTAMP DEFAULT (strftime('%s', 'now')),
+
     FOREIGN KEY(account_id) REFERENCES accounts(id)
+  );
+
+  CREATE TABLE metrics (
+    id INTEGER PRIMARY KEY,
+    api_id INTEGER,
+    account_id INTEGER,
+    name TEXT,
+    value INTEGER,
+    timestamp TEXT,
+
+    FOREIGN KEY(account_id) REFERENCES accounts(id),
+    FOREIGN KEY(api_id) REFERENCES apis(id)
   );
 
 ]]
@@ -40,13 +55,50 @@ db_exec [[
 local Apis = require "apenode.dao.sqlite.apis"
 local Accounts = require "apenode.dao.sqlite.accounts"
 local Applications = require "apenode.dao.sqlite.applications"
+local Metrics = require "apenode.dao.sqlite.metrics"
 
 local _M = {
   _db = db,
   apis = Apis(db),
   accounts = Accounts(db),
-  applications = Applications(db)
+  applications = Applications(db),
+  metrics = Metrics(db)
 }
+
+function _M.fake_entity(type, invalid)
+  local r = math.random(1, 10000000)
+
+  if type == "ApisDao" then
+    local name
+    if invalid then name = "httpbin1" else name = "random"..r end
+    return {
+      name = name,
+      public_dns = "random"..r..".com",
+      target_url = "http://random"..r..".com",
+      authentication_type = "query",
+    }
+  elseif type == "AccountsDao" then
+    local provider_id
+    if invalid then provider_id = "provider1" else provider_id = "random_provider_id_"..r end
+    return {
+      provider_id = provider_id
+    }
+  elseif type == "ApplicationsDao" then
+    return {
+      account_id = 1,
+      public_key = "random"..r,
+      secret_key = "random"..r,
+    }
+  elseif type == "MetricsDao" then
+    return {
+      api_id = 1,
+      account_id = 1,
+      name = "requests",
+      value = r,
+      timestamp = 123
+    }
+  end
+end
 
 function _M.populate()
   -- Build insert APIs
@@ -80,15 +132,30 @@ function _M.populate()
     ]]
   end
 
+  -- Build insert metrics
+  local insert_metrics_stmt = ""
+  for i = 1, 1000 do
+    insert_metrics_stmt = insert_metrics_stmt .. [[
+      INSERT INTO metrics(api_id, account_id, name, value, timestamp)
+        VALUES(1,
+               1,
+               "requests",
+               256,
+               NULL);
+    ]]
+  end
+
   db_exec(insert_apis_stmt)
   db_exec(insert_accounts_stmt)
   db_exec(insert_applications_stmt)
+  db_exec(insert_metrics_stmt)
 end
 
 function _M.drop()
   db_exec("DELETE FROM apis")
   db_exec("DELETE FROM accounts")
   db_exec("DELETE FROM applications")
+  db_exec("DELETE FROM metrics")
 end
 
 return _M
