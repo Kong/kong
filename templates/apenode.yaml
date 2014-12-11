@@ -5,9 +5,9 @@ version: 0.1
 
 # Specify the DAO to use
 dao:
-  factory: json
-  properties:
-    - file_path: /tmp/apenode.json
+  factory: sqlite
+  #properties:
+  #  - file_path: /tmp/apenode.json
 
   #factory: cassandra
   #properties:
