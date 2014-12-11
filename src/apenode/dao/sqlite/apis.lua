@@ -56,34 +56,6 @@ function Apis:_init(database)
   ]]
 end
 
-function Apis:save(api)
-  self.insert_stmt:bind_names(api)
-  return self:exec_insert_stmt(self.insert_stmt)
-end
-
-function Apis:update(api)
-  self.update_stmt:bind_names(api)
-  return self:exec_stmt(self.update_stmt)
-end
-
-function Apis:delete(id)
-  self.delete_stmt:bind_values(id)
-  return self:exec_stmt(self.delete_stmt)
-end
-
-function Apis:get_all(page, size)
-  -- TODO handle errors for count request
-  local results = self:exec_paginated_stmt(self.select_all_stmt, page, size)
-  local count = self:exec_stmt(self.select_count_stmt)
-
-  return results, count
-end
-
-function Apis:get_by_id(id)
-  self.select_by_id_stmt:bind_values(id)
-  return self:exec_select_stmt(self.select_by_id_stmt)
-end
-
 function Apis:get_by_host(public_dns)
   self.select_by_host_stmt:bind_values(public_dns)
   return self:exec_select_stmt(self.select_by_host_stmt)

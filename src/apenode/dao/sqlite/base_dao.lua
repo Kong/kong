@@ -15,6 +15,36 @@ function BaseDao:_init(database)
   self._db = database
 end
 
+function BaseDao:save(api)
+  self.insert_stmt:bind_names(api)
+  -- todo
+  return self:exec_insert_stmt(self.insert_stmt)
+end
+
+function BaseDao:update(api)
+  self.update_stmt:bind_names(api)
+  return self:exec_stmt(self.update_stmt)
+end
+
+function BaseDao:delete(id)
+  self.delete_stmt:bind_values(id)
+  return self:exec_stmt(self.delete_stmt)
+end
+
+function BaseDao:get_by_id(id)
+  self.select_by_id_stmt:bind_values(id)
+  return self:exec_select_stmt(self.select_by_id_stmt)
+end
+
+function BaseDao:get_all(page, size)
+  -- TODO all ine one query
+  -- TODO handle errors for count request
+  local results = self:exec_paginated_stmt(self.select_all_stmt, page, size)
+  local count = self:exec_stmt(self.select_count_stmt)
+
+  return results, count
+end
+
 function BaseDao:get_error(status)
   return {
     status = result,

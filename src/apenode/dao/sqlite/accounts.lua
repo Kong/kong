@@ -44,34 +44,6 @@ function Accounts:_init(database)
   ]]
 end
 
-function Accounts:save(account)
-  self.insert_stmt:bind_names(account)
-  return self:exec_insert_stmt(self.insert_stmt)
-end
-
-function Accounts:update(account)
-  self.update_stmt:bind_names(account)
-  return self:exec_stmt(self.update_stmt)
-end
-
-function Accounts:delete(id)
-  self.delete_stmt:bind_values(id)
-  return self:exec_stmt(self.delete_stmt)
-end
-
-function Accounts:get_all(page, size)
-  -- TODO handle errors for count request
-  local results = self:exec_paginated_stmt(self.select_all_stmt, page, size)
-  local count = self:exec_stmt(self.select_count_stmt)
-
-  return results, count
-end
-
-function Accounts:get_by_id(id)
-  self.select_by_id_stmt:bind_values(id)
-  return self:exec_select_stmt(self.select_by_id_stmt)
-end
-
 function Accounts:get_by_provider_id(provider_id)
   self.select_by_provider_id_stmt:bind_values(provider_id)
   return self:exec_select_stmt(self.select_by_provider_id_stmt)

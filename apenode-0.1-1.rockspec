@@ -40,6 +40,9 @@ build = {
 
     ["apenode.dao.sqlite"] = "src/apenode/dao/sqlite/factory.lua",
     ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
+    ["apenode.dao.sqlite.apis"] = "src/apenode/dao/sqlite/apis.lua",
+    ["apenode.dao.sqlite.accounts"] = "src/apenode/dao/sqlite/accounts.lua",
+    ["apenode.dao.sqlite.applications"] = "src/apenode/dao/sqlite/applications.lua",
 
     ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
     ["apenode.dao.json.accounts"] = "src/apenode/dao/json/accounts.lua",
