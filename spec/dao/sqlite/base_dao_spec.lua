@@ -1,3 +1,4 @@
+require "spec.dao.sqlite.configuration"
 local dao_factory = require "apenode.dao.sqlite"
 
 local daos = {

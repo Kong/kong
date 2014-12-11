@@ -1,7 +1,5 @@
-local inspect = require "inspect"
+require "spec.dao.sqlite.configuration"
 local dao_factory = require "apenode.dao.sqlite"
-local apisdao = dao_factory.apis
-local accountsdao = dao_factory.accounts
 
 describe("DetailedDaos", function()
 
@@ -17,12 +15,12 @@ describe("DetailedDaos", function()
 
     describe("#get_by_provider_id()", function()
       it("should get an account by provider_id", function()
-        local result, err = accountsdao:get_by_provider_id("provider3")
+        local result, err = dao_factory.accounts:get_by_provider_id("provider3")
         assert.truthy(result)
         assert.are.equal("provider3", result.provider_id)
       end)
       it("should return nil if account does not exist", function()
-        local result = accountsdao:get_by_provider_id("nothing")
+        local result = dao_factory.accounts:get_by_provider_id("nothing")
         assert.falsy(result)
         assert.are.equal(nil, result)
       end)
@@ -34,12 +32,12 @@ describe("DetailedDaos", function()
 
     describe("#get_by_host()", function()
       it("should get an API by host", function()
-        local result, err = apisdao:get_by_host("apebin20.com")
+        local result, err = dao_factory.apis:get_by_host("apebin20.com")
         assert.truthy(result)
         assert.are.equal("apebin20.com", result.public_dns)
       end)
       it("should return nil if API does not exist", function()
-        local result = apisdao:get_by_host("nothing")
+        local result = dao_factory.apis:get_by_host("nothing")
         assert.falsy(result)
         assert.are.equal(nil, result)
       end)
