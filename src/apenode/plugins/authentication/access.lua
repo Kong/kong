@@ -86,7 +86,7 @@ function _M.execute()
 
   local public_key, secret_key = get_keys(ngx.req, api)
   local application = dao.applications:get_by_key(public_key, secret_key)
-  if not dao.applications:is_valid(application, api) then
+  if not application then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
