@@ -3,8 +3,8 @@ local cjson = require "cjson"
 local kWebURL = "http://localhost:8001/"
 
 describe("Web API #web", function()
-  describe("/", function()
 
+  describe("/", function()
     it("should return the apenode version and a welcome message", function()
       local response, status, headers = utils.get(kWebURL)
       local body = cjson.decode(response)
@@ -12,6 +12,6 @@ describe("Web API #web", function()
       assert.truthy(body.version)
       assert.truthy(body.tagline)
     end)
-
   end)
+
 end)
