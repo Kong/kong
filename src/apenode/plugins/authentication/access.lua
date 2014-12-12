@@ -33,6 +33,11 @@ local function get_basic_auth(header)
   return username, password
 end
 
+local function set_new_body(request, data)
+  request.set_header("content-length", string.len(data))
+  request.set_body_data(data)
+end
+
 local function do_get_keys(authentication_key_name, request, api)
   local secret_key = nil
 
@@ -41,9 +46,17 @@ local function do_get_keys(authentication_key_name, request, api)
   if authentication_key_name then
     if api.authentication_type == "header" and headers[authentication_key_name] then
       secret_key = headers[authentication_key_name]
+      if configuration.hide_credentials then
+        request.set_header(authentication_key_name, nil)
+      end
     else
       -- Try to get it from the querystring
-      secret_key = request.get_uri_args()[authentication_key_name]
+      local uri_args = request.get_uri_args()
+      secret_key = uri_args[authentication_key_name]
+      if secret_key and configuration.hide_credentials then
+        uri_args[authentication_key_name] = nil
+        request.set_uri_args(uri_args)
+      end
       local content_type = ngx.req.get_headers()["content-type"]
       if not secret_key and content_type then -- If missing from querystring, get it from the body
         content_type = string.lower(content_type) -- Lower it for easier comparison
@@ -52,6 +65,10 @@ local function do_get_keys(authentication_key_name, request, api)
           local post_args = request.get_post_args()
           if post_args then
             secret_key = post_args[authentication_key_name]
+            if configuration.hide_credentials then
+              post_args[authentication_key_name] = nil
+              set_new_body(request, ngx.encode_args(post_args))
+            end
           end
         elseif content_type == "application/json" then
           -- Call ngx.req.read_body to read the request body first or turn on the lua_need_request_body directive to avoid errors.
@@ -60,6 +77,10 @@ local function do_get_keys(authentication_key_name, request, api)
           if body_data and string.len(body_data) > 0 then
             local json = cjson.decode(body_data)
             secret_key = json[authentication_key_name]
+            if configuration.hide_credentials then
+              json[authentication_key_name] = nil
+              set_new_body(request, cjson.encode(json))
+            end
           end
         end
       end
@@ -67,18 +88,15 @@ local function do_get_keys(authentication_key_name, request, api)
   end
 
   if api.authentication_type == "basic" then
-    return get_basic_auth(headers["authorization"])
+    local public_key, secret_key = get_basic_auth(headers["authorization"])
+    request.set_header("authorization", nil)
+    return public_key, secret_key
   else
     return nil, secret_key
   end
 end
 
 local function get_keys(request, api)
-  -- Let's check if the credential is in a request parameter
-
-  -- TODO: Remove this once the DAO implementation is ready
-  api.authentication_key_names = {"apikey"}
-
   if api.authentication_key_names then
     for i, authentication_key_name in ipairs(api.authentication_key_names) do
       local public_key, secret_key = do_get_keys(authentication_key_name, request, api)

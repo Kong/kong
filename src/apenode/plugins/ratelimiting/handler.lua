@@ -1,12 +1,12 @@
 -- Copyright (C) Mashape, Inc.
 
 local BasePlugin = require "apenode.base_plugin"
-local access = require "apenode.plugins.authentication.access"
+local access = require "apenode.plugins.ratelimiting.access"
 
-local AuthenticationHandler = {}
-AuthenticationHandler.__index = AuthenticationHandler
+local RateLimitingHandler = {}
+RateLimitingHandler.__index = RateLimitingHandler
 
-setmetatable(AuthenticationHandler, {
+setmetatable(RateLimitingHandler, {
   __index = BasePlugin, -- this is what makes the inheritance work
   __call = function (cls, ...)
     local self = setmetatable({}, cls)
@@ -15,13 +15,13 @@ setmetatable(AuthenticationHandler, {
   end,
 })
 
-function AuthenticationHandler:_init(name)
+function RateLimitingHandler:_init(name)
   BasePlugin._init(self, name) -- call the base class constructor
 end
 
-function AuthenticationHandler:access()
+function RateLimitingHandler:access()
   BasePlugin.access(self)
   access.execute()
 end
 
-return AuthenticationHandler
+return RateLimitingHandler

@@ -18,6 +18,10 @@ dao:
   #  keyspace: apenode
   #  keepalive: 60000
 
+
+# Tuning
+hide_credentials: false
+
 # Plugins
 plugins:
   - authentication
