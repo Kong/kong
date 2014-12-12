@@ -158,6 +158,16 @@ function _M.populate(real)
         VALUES("test", "test.com", "http://httpbin.org", "query");
     ]]
 
+    insert_apis_stmt = insert_apis_stmt .. [[
+      INSERT INTO apis(name, public_dns, target_url, authentication_type)
+        VALUES("test2", "test2.com", "http://httpbin.org", "header");
+    ]]
+
+    insert_apis_stmt = insert_apis_stmt .. [[
+      INSERT INTO apis(name, public_dns, target_url, authentication_type)
+        VALUES("test3", "test3.com", "http://httpbin.org", "basic");
+    ]]
+
     insert_accounts_stmt = insert_accounts_stmt .. [[
       INSERT INTO accounts(provider_id) VALUES("provider_123");
     ]]
@@ -166,6 +176,13 @@ function _M.populate(real)
       INSERT INTO applications(account_id, public_key, secret_key)
         VALUES("1",
                NULL,
+               "apikey123");
+    ]]
+
+    insert_applications_stmt = insert_applications_stmt .. [[
+      INSERT INTO applications(account_id, public_key, secret_key)
+        VALUES("1",
+               "user123",
                "apikey123");
     ]]
   end

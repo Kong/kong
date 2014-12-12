@@ -5,26 +5,30 @@ local stringy = require "stringy"
 local _M = {}
 
 local function get_basic_auth(header)
-  local iterator, err = ngx.re.gmatch(header, "\\s*[Bb]asic\\s*(.+)")
-  if not iterator then
-      ngx.log(ngx.ERR, "error: ", err)
-      return
+  local username = nil
+  local password = nil
+
+  if header then
+    local iterator, err = ngx.re.gmatch(header, "\\s*[Bb]asic\\s*(.+)")
+    if not iterator then
+        ngx.log(ngx.ERR, "error: ", err)
+        return
+    end
+
+    local m, err = iterator()
+    if err then
+        ngx.log(ngx.ERR, "error: ", err)
+        return
+    end
+
+    if m and table.getn(m) > 0 then
+      local decoded_basic = ngx.decode_base64(m[1])
+      local basic_parts = stringy.split(decoded_basic, ":")
+
+      username = basic_parts[1]
+      password = basic_parts[2]
+    end
   end
-
-  local m, err = iterator()
-  if err then
-      ngx.log(ngx.ERR, "error: ", err)
-      return
-  end
-
-  local decoded_basic = ngx.decode_base64(m[1])
-  local basic_parts = stringy.split(decoded_basic, ":")
-
-  local username = basic_parts[1]
-  local password = basic_parts[2]
-
-  if stringy.strip(username) == "" then username = nil end
-  if stringy.strip(password) == "" then password = nil end
 
   return username, password
 end
@@ -35,7 +39,7 @@ local function do_get_keys(authentication_key_name, request, api)
   local headers = request.get_headers()
 
   if authentication_key_name then
-    if headers[authentication_key_name] then
+    if api.authentication_type == "header" and headers[authentication_key_name] then
       secret_key = headers[authentication_key_name]
     else
       -- Try to get it from the querystring
@@ -63,7 +67,7 @@ local function do_get_keys(authentication_key_name, request, api)
   end
 
   if api.authentication_type == "basic" then
-    return get_basic_auth(secret_key)
+    return get_basic_auth(headers["authorization"])
   else
     return nil, secret_key
   end
