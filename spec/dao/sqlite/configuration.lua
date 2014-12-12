@@ -1,7 +1,8 @@
 configuration = {
   dao = {
     properties = {
-      memory = true
+       memory = false,
+    file_path = "/tmp/apenode.sqlite3"
     }
   }
 }

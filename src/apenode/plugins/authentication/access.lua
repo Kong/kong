@@ -4,16 +4,29 @@ local stringy = require "stringy"
 
 local _M = {}
 
-local function get_keys(request, api)
-  -- Let's check if the credential is in a request parameter
-  if api.authentication_key_names then
-    for i, authentication_key_name in ipairs(api.authentication_key_names) do
-      local public_key, secret_key = do_get_keys(authentication_key_name, request, api)
-      if public_key or secret_key then return public_key, secret_key end
-    end
+local function get_basic_auth(header)
+  local iterator, err = ngx.re.gmatch(header, "\\s*[Bb]asic\\s*(.+)")
+  if not iterator then
+      ngx.log(ngx.ERR, "error: ", err)
+      return
   end
 
-  return nil, nil
+  local m, err = iterator()
+  if err then
+      ngx.log(ngx.ERR, "error: ", err)
+      return
+  end
+
+  local decoded_basic = ngx.decode_base64(m[1])
+  local basic_parts = stringy.split(decoded_basic, ":")
+
+  local username = basic_parts[1]
+  local password = basic_parts[2]
+
+  if stringy.strip(username) == "" then username = nil end
+  if stringy.strip(password) == "" then password = nil end
+
+  return username, password
 end
 
 local function do_get_keys(authentication_key_name, request, api)
@@ -56,29 +69,20 @@ local function do_get_keys(authentication_key_name, request, api)
   end
 end
 
-local function get_basic_auth(header)
-  local iterator, err = ngx.re.gmatch(header, "\\s*[Bb]asic\\s*(.+)")
-  if not iterator then
-      ngx.log(ngx.ERR, "error: ", err)
-      return
+local function get_keys(request, api)
+  -- Let's check if the credential is in a request parameter
+
+  -- TODO: Remove this once the DAO implementation is ready
+  api.authentication_key_names = {"apikey"}
+
+  if api.authentication_key_names then
+    for i, authentication_key_name in ipairs(api.authentication_key_names) do
+      local public_key, secret_key = do_get_keys(authentication_key_name, request, api)
+      if public_key or secret_key then return public_key, secret_key end
+    end
   end
 
-  local m, err = iterator()
-  if err then
-      ngx.log(ngx.ERR, "error: ", err)
-      return
-  end
-
-  local decoded_basic = ngx.decode_base64(m[1])
-  local basic_parts = stringy.split(decoded_basic, ":")
-
-  local username = basic_parts[1]
-  local password = basic_parts[2]
-
-  if stringy.strip(username) == "" then username = nil end
-  if stringy.strip(password) == "" then password = nil end
-
-  return username, password
+  return nil, nil
 end
 
 function _M.execute()

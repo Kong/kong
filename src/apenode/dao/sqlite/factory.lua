@@ -109,48 +109,53 @@ function _M.fake_entity(type, invalid)
   end
 end
 
-function _M.populate()
-  -- Build insert APIs
+function _M.populate(real)
   local insert_apis_stmt = ""
-  for i = 1, 1000 do
+  local insert_accounts_stmt = ""
+  local insert_applications_stmt = ""
+  local insert_metrics_stmt = ""
+
+  if not real then
+    -- Build insert APIs
+    for i = 1, 1000 do
+      insert_apis_stmt = insert_apis_stmt .. [[
+        INSERT INTO apis(name, public_dns, target_url, authentication_type)
+          VALUES("httpbin]]..i..[[",
+                 "apebin]]..i..[[.com",
+                 "http://httpbin.org/",
+                 "query");
+      ]]
+    end
+    -- Build insert Accounts
+    for i = 1, 1000 do
+      insert_accounts_stmt = insert_accounts_stmt .. [[
+        INSERT INTO accounts(provider_id) VALUES("provider]]..i..[[");
+      ]]
+    end
+    -- Build insert applications
+    for i = 1, 1000 do
+      insert_applications_stmt = insert_applications_stmt .. [[
+        INSERT INTO applications(account_id, public_key, secret_key)
+          VALUES("1",
+                 "public_key",
+                 "cazzo");
+      ]]
+    end
+    -- Build insert metrics
+    for i = 1, 1000 do
+      insert_metrics_stmt = insert_metrics_stmt .. [[
+        INSERT INTO metrics(api_id, account_id, name, value, timestamp)
+          VALUES(1,
+                 1,
+                 "requests",
+                 256,
+                 NULL);
+      ]]
+    end
+  else
     insert_apis_stmt = insert_apis_stmt .. [[
       INSERT INTO apis(name, public_dns, target_url, authentication_type)
-        VALUES("httpbin]]..i..[[",
-               "apebin]]..i..[[.com",
-               "http://httpbin.org/",
-               "query");
-    ]]
-  end
-
-  -- Build insert Accounts
-  local insert_accounts_stmt = ""
-  for i = 1, 1000 do
-    insert_accounts_stmt = insert_accounts_stmt .. [[
-      INSERT INTO accounts(provider_id) VALUES("provider]]..i..[[");
-    ]]
-  end
-
-  -- Build insert applications
-  local insert_applications_stmt = ""
-  for i = 1, 1000 do
-    insert_applications_stmt = insert_applications_stmt .. [[
-      INSERT INTO applications(account_id, public_key, secret_key)
-        VALUES("1",
-               "public_key",
-               "cazzo");
-    ]]
-  end
-
-  -- Build insert metrics
-  local insert_metrics_stmt = ""
-  for i = 1, 1000 do
-    insert_metrics_stmt = insert_metrics_stmt .. [[
-      INSERT INTO metrics(api_id, account_id, name, value, timestamp)
-        VALUES(1,
-               1,
-               "requests",
-               256,
-               NULL);
+        VALUES("test", "test.com", "http://httpbin.org", "query");
     ]]
   end
 

@@ -2,6 +2,7 @@
 
 local http = require "socket.http"
 local url = require "socket.url"
+local ltn12 = require "ltn12"
 local cjson = require "cjson"
 
 local _M = {}
@@ -11,33 +12,37 @@ local _M = {}
 -- @param key The parent key if the value is multi-dimensional (optional)
 -- @return a string representing the built querystring
 local function build_query(tab, key)
-  local query = {}
-  local keys = {}
+  if ngx then
+    return ngx.encode_args(tab)
+  else
+    local query = {}
+    local keys = {}
 
-  for k in pairs(tab) do
-    keys[#keys+1] = k
-  end
-
-  table.sort(keys)
-
-  for _,name in ipairs(keys) do
-    local value = tab[name]
-    if key then
-      name = string.format("%s[%s]", tostring(key), tostring(name))
+    for k in pairs(tab) do
+      keys[#keys+1] = k
     end
-    if type(value) == "table" then
-      query[#query+1] = build_query(value, name)
-    else
-      local value = tostring(value)
-      if value ~= "" then
-        query[#query+1] = string.format("%s=%s", name, value)
+
+    table.sort(keys)
+
+    for _,name in ipairs(keys) do
+      local value = tab[name]
+      if key then
+        name = string.format("%s[%s]", tostring(key), tostring(name))
+      end
+      if type(value) == "table" then
+        query[#query+1] = build_query(value, name)
       else
-        query[#query+1] = name
+        local value = tostring(value)
+        if value ~= "" then
+          query[#query+1] = string.format("%s=%s", name, value)
+        else
+          query[#query+1] = name
+        end
       end
     end
-  end
 
-  return table.concat(query, "&")
+    return table.concat(query, "&")
+  end
 end
 
 function _M.show_response(status, message)
@@ -93,23 +98,6 @@ function _M.write_to_file(path, value)
   file:close()
 end
 
-function _M.http_call(method, url, querystring, body, cb)
-  local bodyStr
-
-  if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
-  end
-  if body then
-    bodyStr = build_query(body)
-  end
-
-  local body, res_code, res_headers, res_status = http.request(url, bodyStr)
-
-  if cb then
-    cb(res_code, body, res_headers)
-  end
-end
-
 local epoch = {year=1970, month=1, day=1, hour=0, min=0, sec=0, isdst=false }
 local function gmtime(t)
    t.isdst =  false
@@ -135,20 +123,43 @@ function _M.get_timestamps(now)
   return {second=second * 1000, minute=minute * 1000, hour=hour * 1000,day=day * 1000, month=month * 1000, year=year * 1000}
 end
 
-function _M.get(url, querystring, cb)
-  if type(querystring) == "function" then
-    cb = querystring
-    querystring = nil
-  end
-  _M.http_call("GET", url, querystring, nil, cb)
+local function http_call(options)
+  -- Returns: response, code, headers
+  local resp = {}
+  options.sink = ltn12.sink.table(resp)
+
+  local r, code, headers = http.request(options)
+  return resp[1], code, headers
 end
 
-function _M.post(url, form, cb)
-  if type(form) == "function" then
-    cb = form
-    form = nil
+function _M.get(url, querystring, headers)
+  if not headers then headers = {} end
+
+  if querystring then
+    url = string.format("%s?%s", url, build_query(querystring))
   end
-  _M.http_call("POST", url, nil, form, cb)
+
+  return http_call {
+    method = "GET",
+    url = url,
+    headers = headers
+  }
+end
+
+function _M.post(url, form, headers)
+  if not headers then headers = {} end
+  if not form then form = {} end
+
+  local body = build_query(form)
+  headers["content-length"] = string.len(body)
+  headers["content-type"] = "application/x-www-form-urlencoded"
+
+  return http_call {
+    method = "POST",
+    url = url,
+    headers = headers,
+    source = ltn12.source.string(body)
+  }
 end
 
 return _M
