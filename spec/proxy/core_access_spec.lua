@@ -17,7 +17,7 @@ describe("Proxy API #proxy", function()
     end)
   end)
 
-  describe("Existing API, but invalid authentication credentials", function ()
+  describe("Existing API, but invalid query authentication credentials", function ()
 
     setup(function()
       dao_factory.populate(true)

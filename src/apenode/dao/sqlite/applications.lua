@@ -1,7 +1,5 @@
 local BaseDao = require "apenode.dao.sqlite.base_dao"
 
-local inspect = require "inspect"
-
 local Applications = {}
 Applications.__index = Applications
 
@@ -80,9 +78,6 @@ function Applications:get_by_account_id(account_id, page, size)
 end
 
 function Applications:get_by_key(public_key, secret_key)
-  print(public_key)
-  print(secret_key)
-
   if public_key then
     self.select_by_keys_stmt:bind_values(public_key, secret_key)
     return self:exec_select_stmt(self.select_by_keys_stmt)
