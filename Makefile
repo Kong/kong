@@ -31,7 +31,7 @@ test-web:
 	@cp -R src/apenode/web/static tmp/nginx/
 	@cp -R src/apenode/web/admin tmp/nginx/
 	@nginx -p ./tmp/nginx -c nginx.conf
-	@busted spec/web/
+	- @busted spec/web/
 	@nginx -p ./tmp/nginx -c nginx.conf -s stop
 
 test-proxy:
@@ -47,7 +47,7 @@ test-proxy:
 	@cp -R src/apenode/web/static tmp/nginx/
 	@cp -R src/apenode/web/admin tmp/nginx/
 	@nginx -p ./tmp/nginx -c nginx.conf
-	@busted spec/proxy/
+	- @busted spec/proxy/
 	@nginx -p ./tmp/nginx -c nginx.conf -s stop
 
 test-all:
