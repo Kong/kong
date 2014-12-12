@@ -157,6 +157,17 @@ function _M.populate(real)
       INSERT INTO apis(name, public_dns, target_url, authentication_type)
         VALUES("test", "test.com", "http://httpbin.org", "query");
     ]]
+
+    insert_accounts_stmt = insert_accounts_stmt .. [[
+      INSERT INTO accounts(provider_id) VALUES("provider_123");
+    ]]
+
+    insert_applications_stmt = insert_applications_stmt .. [[
+      INSERT INTO applications(account_id, public_key, secret_key)
+        VALUES("1",
+               NULL,
+               "apikey123");
+    ]]
   end
 
   db_exec(insert_apis_stmt)

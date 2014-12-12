@@ -1,5 +1,7 @@
 local BaseDao = require "apenode.dao.sqlite.base_dao"
 
+local inspect = require "inspect"
+
 local Applications = {}
 Applications.__index = Applications
 
@@ -59,6 +61,10 @@ function Applications:_init(database)
   self.select_by_keys_stmt = database:prepare [[
     SELECT * FROM applications WHERE public_key = ? AND secret_key = ?;
   ]]
+
+  self.select_by_keys_null_public_stmt = database:prepare [[
+    SELECT * FROM applications WHERE public_key IS NULL AND secret_key = ?;
+  ]]
 end
 
 function Applications:get_by_account_id(account_id, page, size)
@@ -74,8 +80,16 @@ function Applications:get_by_account_id(account_id, page, size)
 end
 
 function Applications:get_by_key(public_key, secret_key)
-  self.select_by_keys_stmt:bind_values(public_key, secret_key)
-  return self:exec_select_stmt(self.select_by_keys_stmt)
+  print(public_key)
+  print(secret_key)
+
+  if public_key then
+    self.select_by_keys_stmt:bind_values(public_key, secret_key)
+    return self:exec_select_stmt(self.select_by_keys_stmt)
+  else
+    self.select_by_keys_null_public_stmt:bind_values(secret_key)
+    return self:exec_select_stmt(self.select_by_keys_null_public_stmt)
+  end
 end
 
 return Applications
