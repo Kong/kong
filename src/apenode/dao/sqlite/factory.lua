@@ -24,12 +24,7 @@ function SQLiteFactory:_init(configuration)
   elseif configuration.file_path ~= nil then
     self._db = sqlite3.open(configuration.file_path)
   else
-    if nxg then
-      ngx.log(ngx.ERR, "cannot open sqlite database")
-    else
-      print("cannot open sqlite database")
-    end
-
+    error("Cannot open SQLite database")
   end
 
   -- Temporary

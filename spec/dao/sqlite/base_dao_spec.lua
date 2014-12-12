@@ -1,4 +1,4 @@
-local configuration = require "spec.dao.sqlite.configuration"
+local configuration = require "spec.dao.sqlite.dao_configuration"
 local SQLiteFactory = require "apenode.dao.sqlite"
 
 local dao_factory = SQLiteFactory(configuration)
