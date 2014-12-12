@@ -8,7 +8,7 @@ setmetatable(BaseDao, {
     local self = setmetatable({}, cls)
     self:_init(...)
     return self
-  end,
+  end
 })
 
 function BaseDao:_init(database)

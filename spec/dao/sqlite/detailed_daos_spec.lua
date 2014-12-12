@@ -1,23 +1,25 @@
-require "spec.dao.sqlite.configuration"
-local dao_factory = require "apenode.dao.sqlite"
+local configuration = require "spec.dao.sqlite.configuration"
+local SQLiteFactory = require "apenode.dao.sqlite"
+
+local dao_factory = SQLiteFactory(configuration)
 
 describe("DetailedDaos", function()
 
   setup(function()
-    dao_factory.populate()
+    dao_factory:populate(true)
   end)
 
   teardown(function()
-    dao_factory.drop()
+    dao_factory:drop()
   end)
 
   describe("AccountsDao", function()
 
     describe("#get_by_provider_id()", function()
       it("should get an account by provider_id", function()
-        local result, err = dao_factory.accounts:get_by_provider_id("provider3")
+        local result, err = dao_factory.accounts:get_by_provider_id("provider_123")
         assert.truthy(result)
-        assert.are.equal("provider3", result.provider_id)
+        assert.are.equal("provider_123", result.provider_id)
       end)
       it("should return nil if account does not exist", function()
         local result = dao_factory.accounts:get_by_provider_id("nothing")
@@ -33,14 +35,14 @@ describe("DetailedDaos", function()
     describe("authentication_key_names serialization", function()
       describe("#save()", function()
         it("should serialize the authentication_key_names property", function()
-          local api_to_save = dao_factory.fake_entity("ApisDao")
+          local api_to_save = dao_factory.fake_entity("api")
           local saved_api = dao_factory.apis:save(api_to_save)
           assert.truthy(saved_api.authentication_key_names)
           assert.is_true(type(saved_api.authentication_key_names) == "table")
           assert.are.same({ "X-Mashape-Key", "X-Apenode-Key" }, saved_api.authentication_key_names)
         end)
         it("should be an empty table with an empty authentication_key_names value", function()
-          local api_to_save = dao_factory.fake_entity("ApisDao")
+          local api_to_save = dao_factory.fake_entity("api")
           api_to_save.authentication_key_names = nil
           local saved_api = dao_factory.apis:save(api_to_save)
           assert.truthy(saved_api.authentication_key_names)
@@ -50,7 +52,7 @@ describe("DetailedDaos", function()
       end)
       describe("#update()", function()
         it("should serialize the authentication_key_names property", function()
-          local random_entity = dao_factory.fake_entity("ApisDao")
+          local random_entity = dao_factory.fake_entity("api")
           random_entity.id = 1
           local result, err = dao_factory.apis:update(random_entity)
           assert.is_true(type(result.authentication_key_names) == "table")
@@ -74,9 +76,9 @@ describe("DetailedDaos", function()
 
     describe("#get_by_host()", function()
       it("should get an API by host", function()
-        local result, err = dao_factory.apis:get_by_host("apebin20.com")
+        local result, err = dao_factory.apis:get_by_host("test3.com")
         assert.truthy(result)
-        assert.are.equal("apebin20.com", result.public_dns)
+        assert.are.equal("test3.com", result.public_dns)
       end)
       it("should return nil if API does not exist", function()
         local result = dao_factory.apis:get_by_host("nothing")

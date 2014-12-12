@@ -1,21 +1,22 @@
-require "spec.dao.sqlite.configuration"
-local dao_factory = require "apenode.dao.sqlite"
+local configuration = require "spec.dao.sqlite.configuration"
+local SQLiteFactory = require "apenode.dao.sqlite"
 
+local dao_factory = SQLiteFactory(configuration)
 local daos = {
-  ApisDao = dao_factory.apis,
-  AccountsDao = dao_factory.accounts,
-  ApplicationsDao = dao_factory.applications,
-  MetricsDao = dao_factory.metrics
+  api = dao_factory.apis,
+  metric = dao_factory.metrics,
+  account = dao_factory.accounts,
+  application = dao_factory.applications
 }
 
 describe("BaseDao", function()
 
   setup(function()
-    dao_factory.populate()
+    dao_factory:populate(true)
   end)
 
   teardown(function()
-    dao_factory.drop()
+    dao_factory:drop()
   end)
 
   for dao_name, dao in pairs(daos) do
@@ -23,7 +24,7 @@ describe("BaseDao", function()
 
       describe("#get_all()", function()
         it("should return the 1st page of 30 entities by default", function()
-          local result, err = dao:get_all()
+          local result = dao:get_all()
           assert.are.equal(30, table.getn(result))
           assert.are.equal(1, result[1].id)
         end)
@@ -75,9 +76,10 @@ describe("BaseDao", function()
           assert.falsy(err)
           assert.truthy(saved_entity)
         end)
-        if dao_name ~= "ApplicationsDao" and dao_name ~= "MetricsDao" then
+        if dao_name ~= "application" and dao_name ~= "metric" then
           it("should return an error if failed", function()
             local random_entity = dao_factory.fake_entity(dao_name, true)
+            local inspect = require "inspect"
             local saved_entity, err = dao:save(random_entity)
             assert.truthy(err)
             assert.falsy(saved_entity)
@@ -92,7 +94,7 @@ describe("BaseDao", function()
             assert.truthy(saved_entity[k])
           end
         end)
-        if dao_name ~= "MetricsDao" then
+        if dao_name ~= "metric" then
           it("should default the created_at timestamp", function()
             local random_entity = dao_factory.fake_entity(dao_name)
             local saved_entity = dao:save(random_entity)
@@ -111,11 +113,11 @@ describe("BaseDao", function()
           result, err = dao:get_by_id(1)
           assert.falsy(err)
 
-          if dao_name == "ApisDao" then
+          if dao_name == "api" then
             assert.are.equal(random_entity.name, result.name)
-          elseif dao_name == "AccountsDao" then
+          elseif dao_name == "account" then
             assert.are.equal(random_entity.provider_id, result.provider_id)
-          elseif dao_name == "ApplicationsDao" then
+          elseif dao_name == "application" then
             assert.are.equal(random_entity.public_key, result.public_key)
             assert.are.equal(random_entity.secret_key, result.secret_key)
           end

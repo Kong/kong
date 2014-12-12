@@ -38,6 +38,8 @@ build = {
     ["apenode.core.access"] = "src/apenode/core/access.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
+    ["apenode.dao.faker"] = "src/apenode/dao/faker.lua",
+
     ["apenode.dao.sqlite"] = "src/apenode/dao/sqlite/factory.lua",
     ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
     ["apenode.dao.sqlite.apis"] = "src/apenode/dao/sqlite/apis.lua",
