@@ -22,12 +22,23 @@ function BaseDao:save(entity)
     return nil, err
   end
 
+  -- We need to get the inserted row because SQLite might
+  -- change the type of the inserted values
+  -- or not have saved some values from the entity
   return self:get_by_id(inserted_id)
 end
 
 function BaseDao:update(entity)
   self.update_stmt:bind_names(entity)
-  return self:exec_stmt(self.update_stmt)
+  local updated, err = self:exec_stmt(self.update_stmt)
+  if err then
+    return nil, err
+  end
+
+  -- We need to get the inserted row because SQLite might
+  -- change the type of the inserted values
+  -- or not have saved some values from the entity
+  return self:get_by_id(entity.id)
 end
 
 function BaseDao:delete(id)
@@ -42,7 +53,7 @@ end
 
 function BaseDao:get_all(page, size)
   -- TODO all ine one query
-  -- TODO handle errors for count request
+  -- TODO handle errors
   local results = self:exec_paginated_stmt(self.select_all_stmt, page, size)
   local count = self:exec_stmt(self.select_count_stmt)
 

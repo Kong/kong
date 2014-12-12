@@ -119,7 +119,13 @@ describe("BaseDao", function()
             assert.are.equal(random_entity.public_key, result.public_key)
             assert.are.equal(random_entity.secret_key, result.secret_key)
           end
-
+        end)
+        it("should return the updated entity", function()
+          local random_entity = dao_factory.fake_entity(dao_name)
+          random_entity.id = 1
+          local result, err = dao:update(random_entity)
+          assert.falsy(err)
+          assert.is_true(type(result) == "table")
         end)
       end)
 

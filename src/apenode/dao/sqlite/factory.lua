@@ -33,6 +33,7 @@ db_exec [[
     public_dns VARCHAR(50) UNIQUE,
     target_url VARCHAR(50),
     authentication_type VARCHAR(10),
+    authentication_key_names VARCHAR(50),
     created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
   );
 
@@ -85,6 +86,10 @@ function _M.fake_entity(type, invalid)
       public_dns = "random"..r..".com",
       target_url = "http://random"..r..".com",
       authentication_type = "query",
+      authentication_key_names = {
+        "X-Mashape-Key",
+        "X-Apenode-Key"
+      }
     }
   elseif type == "AccountsDao" then
     local provider_id
@@ -119,11 +124,12 @@ function _M.populate(real)
     -- Build insert APIs
     for i = 1, 1000 do
       insert_apis_stmt = insert_apis_stmt .. [[
-        INSERT INTO apis(name, public_dns, target_url, authentication_type)
+        INSERT INTO apis(name, public_dns, target_url, authentication_type, authentication_key_names)
           VALUES("httpbin]]..i..[[",
                  "apebin]]..i..[[.com",
                  "http://httpbin.org/",
-                 "query");
+                 "query",
+                 "X-Apenode-Key;X-Mashape-Key");
       ]]
     end
     -- Build insert Accounts
