@@ -18,13 +18,10 @@ dao:
   #  keyspace: apenode
   #  keepalive: 60000
 
-
-# Tuning
-hide_credentials: false
-
 # Plugins
 plugins:
-  - authentication
+  - authentication:
+      hide_credentials: true
   - networklog:
       type: tcp # Available values: tcp, nginx_log
       host: "127.0.0.1"

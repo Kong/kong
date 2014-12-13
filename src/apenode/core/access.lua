@@ -16,7 +16,8 @@ function _M.execute()
 
   -- Setting the backend URL for the proxy_pass directive
   local querystring = ngx.encode_args(ngx.req.get_uri_args());
-  ngx.var.backend_url = api.target_url .. ngx.var.uri .. "?" .. querystring
+  ngx.var.backend_url = api.target_url .. ngx.var.uri
+  ngx.var.querystring = querystring
 
   -- There are some requests whose authentication needs to be skipped
   if skip_authentication(ngx.req.get_headers()) then

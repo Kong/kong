@@ -1,6 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
 local stringy = require "stringy"
+local cjson = require "cjson"
+local inspect = require "inspect"
 
 local _M = {}
 
@@ -38,7 +40,11 @@ local function set_new_body(request, data)
   request.set_body_data(data)
 end
 
-local function do_get_keys(authentication_key_name, request, api)
+local function do_get_keys(authentication_key_name, request, api, vars)
+  local hide_credentials = configuration.plugins.authentication.hide_credentials
+
+  print(hide_credentials)
+
   local secret_key = nil
 
   local headers = request.get_headers()
@@ -46,16 +52,16 @@ local function do_get_keys(authentication_key_name, request, api)
   if authentication_key_name then
     if api.authentication_type == "header" and headers[authentication_key_name] then
       secret_key = headers[authentication_key_name]
-      if configuration.hide_credentials then
+      if hide_credentials then
         request.set_header(authentication_key_name, nil)
       end
     else
       -- Try to get it from the querystring
       local uri_args = request.get_uri_args()
       secret_key = uri_args[authentication_key_name]
-      if secret_key and configuration.hide_credentials then
+      if secret_key and hide_credentials then
         uri_args[authentication_key_name] = nil
-        request.set_uri_args(uri_args)
+        vars.querystring = ngx.encode_args(uri_args)
       end
       local content_type = ngx.req.get_headers()["content-type"]
       if not secret_key and content_type then -- If missing from querystring, get it from the body
@@ -65,7 +71,7 @@ local function do_get_keys(authentication_key_name, request, api)
           local post_args = request.get_post_args()
           if post_args then
             secret_key = post_args[authentication_key_name]
-            if configuration.hide_credentials then
+            if hide_credentials then
               post_args[authentication_key_name] = nil
               set_new_body(request, ngx.encode_args(post_args))
             end
@@ -77,7 +83,7 @@ local function do_get_keys(authentication_key_name, request, api)
           if body_data and string.len(body_data) > 0 then
             local json = cjson.decode(body_data)
             secret_key = json[authentication_key_name]
-            if configuration.hide_credentials then
+            if hide_credentials then
               json[authentication_key_name] = nil
               set_new_body(request, cjson.encode(json))
             end
@@ -96,10 +102,10 @@ local function do_get_keys(authentication_key_name, request, api)
   end
 end
 
-local function get_keys(request, api)
+local function get_keys(request, api, vars)
   if api.authentication_key_names then
     for i, authentication_key_name in ipairs(api.authentication_key_names) do
-      local public_key, secret_key = do_get_keys(authentication_key_name, request, api)
+      local public_key, secret_key = do_get_keys(authentication_key_name, request, api, vars)
       if public_key or secret_key then return public_key, secret_key end
     end
   end
@@ -110,7 +116,7 @@ end
 function _M.execute()
   local api = ngx.ctx.api
 
-  local public_key, secret_key = get_keys(ngx.req, api)
+  local public_key, secret_key = get_keys(ngx.req, api, ngx.var)
   local application = dao.applications:get_by_key(public_key, secret_key)
   if not application then
     utils.show_error(403, "Your authentication credentials are invalid")
