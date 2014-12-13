@@ -53,7 +53,7 @@ local function do_get_keys(authentication_key_name, request, api, vars)
     if api.authentication_type == "header" and headers[authentication_key_name] then
       secret_key = headers[authentication_key_name]
       if hide_credentials then
-        request.set_header(authentication_key_name, nil)
+        request.clear_header(authentication_key_name)
       end
     else
       -- Try to get it from the querystring
@@ -95,7 +95,7 @@ local function do_get_keys(authentication_key_name, request, api, vars)
 
   if api.authentication_type == "basic" then
     local public_key, secret_key = get_basic_auth(headers["authorization"])
-    request.set_header("authorization", nil)
+    request.clear_header("authorization")
     return public_key, secret_key
   else
     return nil, secret_key
@@ -121,6 +121,8 @@ function _M.execute()
   if not application then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
+
+  ngx.req.set_header("x-account-id", application.account_id)
 
   ngx.ctx.authenticated_entity = application
 end
