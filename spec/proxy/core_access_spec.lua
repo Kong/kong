@@ -1,10 +1,7 @@
-require "spec.dao.sqlite.configuration"
-local dao_factory = require "apenode.dao.sqlite"
-
 local utils = require "apenode.utils"
 local cjson = require "cjson"
+
 local kProxyURL = "http://localhost:8000/"
-local kWebURL = "http://localhost:8001/"
 
 describe("Proxy API #proxy", function()
 
@@ -17,16 +14,7 @@ describe("Proxy API #proxy", function()
     end)
   end)
 
-  describe("Existing API, but invalid query authentication credentials", function ()
-
-    setup(function()
-      dao_factory.populate(true)
-    end)
-
-    teardown(function()
-      dao_factory.drop()
-    end)
-
+  describe("Existing API, but invalid query authentication credentials", function()
     it("should return API found when the API has been created", function()
       local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test.com"})
       local body = cjson.decode(response)
@@ -34,7 +22,7 @@ describe("Proxy API #proxy", function()
       assert.are.equal("Your authentication credentials are invalid", body.message)
     end)
 
-    describe("Query Authentication", function ()
+    describe("Query Authentication", function()
       it("should return invalid credentials when the credential value is wrong", function()
         local response, status, headers = utils.get(kProxyURL .. "get", {apikey = "asd"}, {host = "test.com"})
         local body = cjson.decode(response)
@@ -67,7 +55,7 @@ describe("Proxy API #proxy", function()
       end)
     end)
 
-    describe("Header Authentication", function ()
+    describe("Header Authentication", function()
       it("should return invalid credentials when the credential value is wrong", function()
         local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test2.com", apikey = "asd"})
         local body = cjson.decode(response)
@@ -100,7 +88,7 @@ describe("Proxy API #proxy", function()
       end)
     end)
 
-    describe("Basic Authentication", function ()
+    describe("Basic Authentication", function()
       it("should return invalid credentials when the credential value is wrong", function()
         local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test3.com", authorization = "asd"})
         local body = cjson.decode(response)
@@ -144,6 +132,7 @@ describe("Proxy API #proxy", function()
         assert.are.equal("Basic dXNlcjEyMzphcGlrZXkxMjM=", parsed_response.headers.Authorization)
       end)
     end)
+
   end)
 
 end)

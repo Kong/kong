@@ -52,10 +52,16 @@ function BaseDao:get_by_id(id)
 end
 
 function BaseDao:get_all(page, size)
-  -- TODO all ine one query
-  -- TODO handle errors
-  local results = self:exec_paginated_stmt(self.select_all_stmt, page, size)
-  local count = self:exec_stmt(self.select_count_stmt)
+  -- TODO all in one query
+  local results, err = self:exec_paginated_stmt(self.select_all_stmt, page, size)
+  if err then
+    return nil, nil, err
+  end
+
+  local count, err = self:exec_stmt(self.select_count_stmt)
+  if err then
+    return nil, nil, err
+  end
 
   return results, count
 end

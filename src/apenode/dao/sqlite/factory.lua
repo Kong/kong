@@ -106,4 +106,8 @@ function SQLiteFactory:drop()
   self:db_exec("DELETE FROM metrics")
 end
 
+function SQLiteFactory:close()
+  self._db:close()
+end
+
 return SQLiteFactory
