@@ -49,21 +49,20 @@ function _M.populate(factory, random, amount)
         public_dns = "test.com",
         target_url = "http://httpbin.org",
         authentication_type = "query",
-        authentication_key_names = { "X-Mashape-Key" }
+        authentication_key_names = { "apikey" }
       },
       {
         name = "test2",
         public_dns = "test2.com",
         target_url = "http://httpbin.org",
         authentication_type = "header",
-        authentication_key_names = { "X-Mashape-Key" }
+        authentication_key_names = { "apikey" }
       },
       {
         name = "test3",
         public_dns = "test3.com",
         target_url = "http://httpbin.org",
-        authentication_type = "basic",
-        authentication_key_names = { "X-Mashape-Key" }
+        authentication_type = "basic"
       }
     },
     account = {

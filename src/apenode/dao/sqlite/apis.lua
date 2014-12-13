@@ -108,7 +108,10 @@ end
 
 -- @override
 function Apis:get_all(page, size)
-  local results, count = BaseDao.get_all(self, page, size)
+  local results, count, err = BaseDao.get_all(self, page, size)
+  if err then
+    return nil, nil, err
+  end
 
   for _,api in ipairs(results) do
     api = deserialize_api(api)
