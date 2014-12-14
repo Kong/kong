@@ -21,7 +21,7 @@ dao:
 # Plugins
 plugins:
   - authentication:
-      hide_credentials: true
+      hide_credentials: false
   - networklog:
       type: tcp # Available values: tcp, nginx_log
       host: "127.0.0.1"
