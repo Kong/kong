@@ -40,14 +40,8 @@ local function set_new_body(request, data)
   request.set_body_data(data)
 end
 
-local function do_get_keys(authentication_key_name, request, api, vars)
-  local hide_credentials = configuration.plugins.authentication.hide_credentials
-
-  print(hide_credentials)
-
+local function do_get_keys(authentication_key_name, request, api, vars, headers, hide_credentials)
   local secret_key = nil
-
-  local headers = request.get_headers()
 
   if authentication_key_name then
     if api.authentication_type == "header" and headers[authentication_key_name] then
@@ -93,24 +87,28 @@ local function do_get_keys(authentication_key_name, request, api, vars)
     end
   end
 
-  if api.authentication_type == "basic" then
-    local public_key, secret_key = get_basic_auth(headers["authorization"])
-    request.clear_header("authorization")
-    return public_key, secret_key
-  else
-    return nil, secret_key
-  end
+  return nil, secret_key
 end
 
 local function get_keys(request, api, vars)
-  if api.authentication_key_names then
+  local public_key, secret_key
+
+  local hide_credentials = configuration.plugins.authentication.hide_credentials
+  local headers = request.get_headers()
+
+  if api.authentication_type == "basic" then
+    public_key, secret_key = get_basic_auth(headers["authorization"])
+    if hide_credentials then
+      request.clear_header("authorization")
+    end
+  elseif api.authentication_key_names then
     for i, authentication_key_name in ipairs(api.authentication_key_names) do
-      local public_key, secret_key = do_get_keys(authentication_key_name, request, api, vars)
-      if public_key or secret_key then return public_key, secret_key end
+      public_key, secret_key = do_get_keys(authentication_key_name, request, api, vars, headers, hide_credentials)
+      if public_key or secret_key then break end
     end
   end
 
-  return nil, nil
+  return public_key, secret_key
 end
 
 function _M.execute()

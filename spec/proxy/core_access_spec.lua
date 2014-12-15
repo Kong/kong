@@ -15,6 +15,7 @@ describe("Proxy API #proxy", function()
   end)
 
   describe("Existing API, but invalid query authentication credentials", function()
+
     it("should return API found when the API has been created", function()
       local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test.com"})
       local body = cjson.decode(response)
@@ -89,6 +90,7 @@ describe("Proxy API #proxy", function()
     end)
 
     describe("Basic Authentication", function()
+
       it("should return invalid credentials when the credential value is wrong", function()
         local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test3.com", authorization = "asd"})
         local body = cjson.decode(response)
