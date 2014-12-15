@@ -50,15 +50,15 @@ end
 function SQLiteFactory:create_schema()
   self:db_exec [[
 
-    CREATE TABLE IF NOT EXISTS accounts (
-      id	 INTEGER PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS accounts(
+      id INTEGER PRIMARY KEY,
       provider_id TEXT UNIQUE,
       created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
     );
 
-    CREATE TABLE IF NOT EXISTS apis (
-      id	 INTEGER PRIMARY KEY,
-      name	 VARCHAR(50) UNIQUE,
+    CREATE TABLE IF NOT EXISTS apis(
+      id INTEGER PRIMARY KEY,
+      name VARCHAR(50) UNIQUE,
       public_dns VARCHAR(50) UNIQUE,
       target_url VARCHAR(50),
       authentication_type VARCHAR(10),
@@ -66,7 +66,7 @@ function SQLiteFactory:create_schema()
       created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
     );
 
-    CREATE TABLE IF NOT EXISTS applications (
+    CREATE TABLE IF NOT EXISTS applications(
       id INTEGER PRIMARY KEY,
       account_id INTEGER,
       public_key TEXT,
@@ -76,16 +76,16 @@ function SQLiteFactory:create_schema()
       FOREIGN KEY(account_id) REFERENCES accounts(id)
     );
 
-    CREATE TABLE IF NOT EXISTS metrics (
-      id INTEGER PRIMARY KEY,
-      api_id INTEGER,
-      account_id INTEGER,
+    CREATE TABLE IF NOT EXISTS metrics(
+      api_id INTEGER NOT NULL,
+      application_id INTEGER NOT NULL,
       name TEXT,
+      timestamp INTEGER,
       value INTEGER,
-      timestamp TEXT,
 
-      FOREIGN KEY(account_id) REFERENCES accounts(id),
-      FOREIGN KEY(api_id) REFERENCES apis(id)
+      FOREIGN KEY(application_id) REFERENCES applications(id),
+      FOREIGN KEY(api_id) REFERENCES apis(id),
+      PRIMARY KEY(api_id, application_id, name)
     );
 
   ]]

@@ -25,6 +25,7 @@ function BaseDao:save(entity)
   -- We need to get the inserted row because SQLite might
   -- change the type of the inserted values
   -- or not have saved some values from the entity
+  -- TODO: Actually we should have a model layer/ORM so we don't need to do that
   return self:get_by_id(inserted_id)
 end
 
@@ -38,6 +39,7 @@ function BaseDao:update(entity)
   -- We need to get the inserted row because SQLite might
   -- change the type of the inserted values
   -- or not have saved some values from the entity
+  -- TODO: Actually we should have a model layer/ORM so we don't need to do that
   return self:get_by_id(entity.id)
 end
 

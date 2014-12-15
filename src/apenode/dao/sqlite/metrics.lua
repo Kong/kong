@@ -15,52 +15,86 @@ setmetatable(Metrics, {
 function Metrics:_init(database)
   BaseDao:_init(database)
 
-  self.insert_stmt = database:prepare [[
-    INSERT INTO metrics(api_id,
-                        account_id,
-                        name,
-                        value,
-                        timestamp)
-    VALUES(:api_id,
-           :account_id,
-           :name,
-           :value,
-           :timestamp);
+  self.insert_or_update_stmt = database:prepare [[
+    INSERT OR REPLACE INTO metrics
+      VALUES (:api_id, :application_id, :name, :timestamp,
+        COALESCE(
+          (SELECT value FROM metrics
+            WHERE api_id = :api_id
+              AND application_id = :application_id
+              AND name = :name
+              AND timestamp = :timestamp),
+        -1) + :step);
   ]]
 
-  self.update_stmt = database:prepare [[
-    UPDATE metrics
-    SET api_id = :api_id,
-        account_id = :account_id,
-        name = :name,
-        value = :value,
-        timestamp = :timestamp
-    WHERE id = :id;
+  self.retrieve_stmt = database:prepare [[
+    SELECT * FROM metrics WHERE api_id = ?
+                            AND application_id = ?
+                            AND name = ?
+                            AND timestamp = ?;
+  ]]
+
+  self.get_by_rowid = database:prepare [[
+    SELECT * FROM metrics WHERE rowid = ?;
   ]]
 
   self.delete_stmt = database:prepare [[
-    DELETE FROM metrics WHERE id = ?;
-  ]]
-
-  self.select_count_stmt = database:prepare [[
-    SELECT COUNT(*) FROM metrics;
-  ]]
-
-  self.select_all_stmt = database:prepare [[
-    SELECT * FROM metrics LIMIT :page, :size;
-  ]]
-
-  self.select_by_id_stmt = database:prepare [[
-    SELECT * FROM metrics WHERE id = ?;
+    DELETE FROM metrics WHERE api_id = ?
+                          AND application_id = ?
+                          AND name = ?
+                          AND timestamp = ?;
   ]]
 end
 
-function Metrics:increment_metric(api_id, account_id, name, timestamp, value)
-
+-- @override
+function Metrics:get_by_id()
+ error("Metrics:get_by_id() not supported")
 end
 
-function Metrics:retrieve_metric(api_id, account_id, name, timestamp)
+-- @override
+function Metrics:get_all()
+  error("Metrics:get_all() not supported")
+end
 
+-- @override
+function Metrics:update()
+  error("Metrics:update() not supported")
+end
+
+-- @override
+function Metrics:save()
+  error("Metrics:save() not supported")
+end
+
+-- @override
+function Metrics:delete(api_id, application_id, name, timestamp)
+  self.delete_stmt:bind_values(api_id, application_id, name, timestamp)
+  return self:exec_stmt(self.delete_stmt)
+end
+
+function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
+  if not step then step = 1 end
+
+  self.insert_or_update_stmt:bind_names {
+      name = name,
+      step = step,
+      value = value,
+      api_id = api_id,
+      timestamp = timestamp,
+      application_id = application_id
+  }
+  local rowid, err = self:exec_insert_stmt(self.insert_or_update_stmt)
+  if err then
+    return nil, err
+  end
+
+  self.get_by_rowid:bind_values(rowid)
+  return self:exec_select_stmt(self.get_by_rowid)
+end
+
+function Metrics:retrieve_metric(api_id, application_id, name, timestamp)
+  self.retrieve_stmt:bind_values(api_id, application_id, name, timestamp)
+  return self:exec_select_stmt(self.retrieve_stmt)
 end
 
 return Metrics

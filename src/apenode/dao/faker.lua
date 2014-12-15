@@ -3,7 +3,7 @@ math.randomseed(os.time())
 local _M = {}
 
 function _M.fake_entity(type, invalid)
-  local r = math.random(1, 10000000)
+  local r = math.random(1, 1000000000)
 
   if type == "api" then
     local name
@@ -33,10 +33,10 @@ function _M.fake_entity(type, invalid)
   elseif type == "metric" then
     return {
       api_id = 1,
-      account_id = 1,
+      application_id = 1,
       name = "requests",
       value = r,
-      timestamp = 123
+      timestamp = r
     }
   end
 end
@@ -81,7 +81,15 @@ function _M.populate(factory, random, amount)
         secret_key = "apikey123"
       }
     },
-    metric = {}
+    metric = {
+      {
+        api_id = 1,
+        application_id = 1,
+        name = "requests",
+        value = 0,
+        timestamp = 123
+      }
+    }
   }
 
   if random then
@@ -107,7 +115,7 @@ function _M.populate(factory, random, amount)
   end
 
   for _,metric in ipairs(entities_to_insert.metric) do
-    factory.metrics:save(metric)
+    factory.metrics:increment_metric(metric.api_id, metric.application_id, metric.name, metric.timestamp)
   end
 end
 

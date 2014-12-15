@@ -4,7 +4,6 @@ local SQLiteFactory = require "apenode.dao.sqlite"
 local dao_factory = SQLiteFactory(configuration)
 local daos = {
   api = dao_factory.apis,
-  metric = dao_factory.metrics,
   account = dao_factory.accounts,
   application = dao_factory.applications
 }
@@ -76,7 +75,7 @@ describe("BaseDao", function()
           assert.falsy(err)
           assert.truthy(saved_entity)
         end)
-        if dao_name ~= "application" and dao_name ~= "metric" then
+        if dao_name ~= "application" then
           it("should return an error if failed", function()
             local random_entity = dao_factory.fake_entity(dao_name, true)
             local inspect = require "inspect"
@@ -94,13 +93,11 @@ describe("BaseDao", function()
             assert.truthy(saved_entity[k])
           end
         end)
-        if dao_name ~= "metric" then
-          it("should default the created_at timestamp", function()
-            local random_entity = dao_factory.fake_entity(dao_name)
-            local saved_entity = dao:save(random_entity)
-            assert.truthy(saved_entity.created_at)
-          end)
-        end
+        it("should default the created_at timestamp", function()
+          local random_entity = dao_factory.fake_entity(dao_name)
+          local saved_entity = dao:save(random_entity)
+          assert.truthy(saved_entity.created_at)
+        end)
       end)
 
       describe("#update()", function()
