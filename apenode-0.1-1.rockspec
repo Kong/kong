@@ -53,6 +53,9 @@ build = {
     ["apenode.plugins.networklog"] = "src/apenode/plugins/networklog/handler.lua",
     ["apenode.plugins.networklog.log"] = "src/apenode/plugins/networklog/log.lua",
 
+    ["apenode.plugins.ratelimiting"] = "src/apenode/plugins/ratelimiting/handler.lua",
+    ["apenode.plugins.ratelimiting.access"] = "src/apenode/plugins/ratelimiting/access.lua",
+
     ["apenode.plugins.transformations"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",

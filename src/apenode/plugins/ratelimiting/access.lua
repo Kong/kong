@@ -21,6 +21,7 @@ function _M.execute()
   end
 
   -- Increment usage for all the metrics
+  -- TODO: this could also be done asynchronously in a timer maybe if specified in the conf (more performance, less security)?
   for k,v in pairs(timestamps) do
     dao.metrics:increment_metric(ngx.ctx.api.id,
                                 ngx.ctx.authenticated_entity.id,
