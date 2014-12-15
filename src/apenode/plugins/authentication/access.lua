@@ -2,7 +2,6 @@
 
 local stringy = require "stringy"
 local cjson = require "cjson"
-local inspect = require "inspect"
 
 local _M = {}
 
