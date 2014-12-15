@@ -28,6 +28,8 @@ plugins:
       port: 4444
       timeout: 10000
       keepalive: 60000
-  - transformations
+  - ratelimiting:
+      limit: 100
+      period: second # Available: second, minute, hour, day, month, year
 
 ---

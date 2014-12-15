@@ -55,7 +55,7 @@ function Metrics:_init(database)
   ]]
 end
 
-function Metrics:increment_metric(api_id, account_id, name, value)
+function Metrics:increment_metric(api_id, account_id, name, timestamp, value)
 
 end
 
