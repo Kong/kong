@@ -53,8 +53,7 @@ describe("DetailedDaos", function()
       describe("#update()", function()
         it("should serialize the authentication_key_names property", function()
           local random_entity = dao_factory.fake_entity("api")
-          random_entity.id = 1
-          local result, err = dao_factory.apis:update(random_entity)
+          local result, err = dao_factory.apis:update({ id = 1 }, random_entity)
           assert.is_true(type(result.authentication_key_names) == "table")
         end)
       end)
@@ -109,6 +108,7 @@ describe("DetailedDaos", function()
   end)
 
   describe("MetricsDao", function()
+    pending("Metrics temp pending")
 
     describe("#save()", function()
       it("should throw an error as it is not implemented", function()

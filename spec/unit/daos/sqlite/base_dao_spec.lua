@@ -74,6 +74,12 @@ describe("BaseDao", function()
           local saved_entity, err = dao:save(random_entity)
           assert.falsy(err)
           assert.truthy(saved_entity)
+
+          local result, err = dao:get_by_id(saved_entity.id)
+          assert.falsy(err)
+          assert.truthy(result)
+          random_entity.id = saved_entity.id
+          assert.are.same(random_entity, saved_entity)
         end)
         if dao_name ~= "application" then
           it("should return an error if failed", function()
@@ -97,12 +103,18 @@ describe("BaseDao", function()
       describe("#update()", function()
         it("should update an entity", function()
           local random_entity = dao_factory.fake_entity(dao_name)
-          random_entity.id = 1
-          local result, err = dao:update(random_entity)
+          local result, err = dao:update({ id = 1 }, random_entity)
           assert.falsy(err)
           assert.truthy(result)
           result, err = dao:get_by_id(1)
           assert.falsy(err)
+
+          -- PROBLEM: update sets to NULL any field not included in the passed entity...
+          -- ex API: UPDATE apis name = :name WHERE id = :id
+          --         -----> all other properties than name will be NULL
+          -- DESIRED BEHAVIOUR
+          local inspect = require "inspect"
+          print("get:", inspect(result))
 
           if dao_name == "api" then
             assert.are.equal(random_entity.name, result.name)
@@ -115,10 +127,9 @@ describe("BaseDao", function()
         end)
         it("should return the updated entity", function()
           local random_entity = dao_factory.fake_entity(dao_name)
-          random_entity.id = 1
-          local result, err = dao:update(random_entity)
+          local result, err = dao:update({ id = 1 }, random_entity)
           assert.falsy(err)
-          assert.is_true(type(result) == "table")
+          assert.are.same("table", type(result))
         end)
       end)
 

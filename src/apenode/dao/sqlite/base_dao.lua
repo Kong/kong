@@ -18,7 +18,14 @@ function BaseDao:_init(database, collection)
   self._stmt_cache = {}
 end
 
-function BaseDao:build_fields(entity)
+--
+-- Ex:
+-- { name = "api name", key = "value" }
+-- Returns: "name, key", ":name, :key"
+-- @param table Entity to build fields for
+-- @return string Built string for fields
+-- @return string Built string for bindings
+function BaseDao:build_insert_fields(entity)
   local names, bindings = {}, {}
   for k,_ in pairs(entity) do
     table.insert(names, k)
@@ -26,6 +33,30 @@ function BaseDao:build_fields(entity)
   end
 
   return table.concat(names, ","), table.concat(bindings, ",")
+end
+
+--
+-- Ex:
+-- { name = "api name", key = "value" }
+-- Returns: "name = :name, key = :key"
+-- @param table Entity to build fields for
+-- @return string Built string for update statement
+function BaseDao:build_update_fields(entity)
+  local fields = {}
+  for k,_ in pairs(entity) do
+    table.insert(fields, k.."=:"..k)
+  end
+
+  return table.concat(fields, ",")
+end
+
+function BaseDao:build_where_fields(t)
+  local fields = {}
+  for k,_ in pairs(t) do
+    table.insert(fields, k.."=:"..k)
+  end
+
+  return table.concat(fields, " AND ")
 end
 
 -- Return a cached prepared statement if present, create one if not present
@@ -47,7 +78,7 @@ function BaseDao:get_statement(query)
 end
 
 function BaseDao:save(entity)
-  local field_names, field_bindings = BaseDao:build_fields(entity)
+  local field_names, field_bindings = BaseDao:build_insert_fields(entity)
   local stmt = BaseDao:get_statement("INSERT INTO "..self._collection.."("..field_names..") VALUES("..field_bindings..")")
 
   stmt:bind_names(entity)
@@ -55,24 +86,26 @@ function BaseDao:save(entity)
   local inserted_id, err = self:exec_stmt(stmt)
   if err then
     return nil, err
-  else
-    entity.id = inserted_id
-    return entity
   end
+
+  entity.id = inserted_id
+  return entity
 end
 
-function BaseDao:update(entity)
-  self.update_stmt:bind_names(entity)
-  local updated, err = self:exec_stmt(self.update_stmt)
+function BaseDao:update(keys, entity)
+  local update_fields = self:build_update_fields(entity)
+  local where_fields = self:build_where_fields(keys)
+  local stmt = BaseDao:get_statement("UPDATE "..self._collection.." SET "..update_fields.." WHERE "..where_fields)
+
+  stmt:bind_names(entity)
+  stmt:bind_names(keys)
+
+  local rowid, err = self:exec_stmt(stmt)
   if err then
     return nil, err
   end
 
-  -- We need to get the inserted row because SQLite might
-  -- change the type of the inserted values
-  -- or not have saved some values from the entity
-  -- TODO: Actually we should have a model layer/ORM so we don't need to do that
-  return self:get_by_id(entity.id)
+  return entity
 end
 
 function BaseDao:delete(id)

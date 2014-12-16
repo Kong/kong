@@ -62,7 +62,7 @@ end
 local function deserialize_api(api)
   local key_names
 
-  if api.authentication_key_names ~= "" then
+  if api.authentication_key_names ~= nil and api.authentication_key_names ~= "" then
     key_names = stringy.split(api.authentication_key_names, ";")
   else
     key_names = {}
@@ -91,8 +91,13 @@ function Apis:save(api)
 end
 
 -- @override
-function Apis:update(api)
-  return BaseDao.update(self, serialize_api(api))
+function Apis:update(keys, api)
+  local rowid, err = BaseDao.update(self, keys, serialize_api(api))
+  if err then
+    return nil, err
+  end
+
+  return deserialize_api(api)
 end
 
 -- @override
