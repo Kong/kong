@@ -1,5 +1,6 @@
 local stringy = require "stringy"
 local BaseDao = require "apenode.dao.sqlite.base_dao"
+local ApiModel = require "apenode.models.api"
 
 local Apis = {}
 Apis.__index = Apis
@@ -15,19 +16,7 @@ setmetatable(Apis, {
 
 function Apis:_init(database)
   BaseDao:_init(database)
-
-  self.insert_stmt = database:prepare [[
-    INSERT INTO apis(name,
-                     public_dns,
-                     target_url,
-                     authentication_type,
-                     authentication_key_names)
-    VALUES(:name,
-           :public_dns,
-           :target_url,
-           :authentication_type,
-           :authentication_key_names);
-  ]]
+  self._collection = ApiModel._COLLECTION
 
   self.update_stmt = database:prepare [[
     UPDATE apis
@@ -93,7 +82,12 @@ end
 
 -- @override
 function Apis:save(api)
-  return BaseDao.save(self, serialize_api(api))
+  local api, err = BaseDao.save(self, serialize_api(api))
+  if err then
+    return nil, err
+  end
+
+  return deserialize_api(api)
 end
 
 -- @override

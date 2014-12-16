@@ -14,15 +14,7 @@ setmetatable(Applications, {
 
 function Applications:_init(database)
   BaseDao:_init(database)
-
-  self.insert_stmt = database:prepare [[
-    INSERT INTO applications(account_id,
-                             public_key,
-                             secret_key)
-    VALUES(:account_id,
-           :public_key,
-           :secret_key);
-  ]]
+  self._collection = "applications"
 
   self.update_stmt = database:prepare [[
     UPDATE applications

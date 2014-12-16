@@ -14,6 +14,7 @@ setmetatable(Metrics, {
 
 function Metrics:_init(database)
   BaseDao:_init(database)
+  self._collection = "metrics"
 
   self.insert_or_update_stmt = database:prepare [[
     INSERT OR REPLACE INTO metrics
@@ -83,7 +84,7 @@ function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
       timestamp = timestamp,
       application_id = application_id
   }
-  local rowid, err = self:exec_insert_stmt(self.insert_or_update_stmt)
+  local rowid, err = self:exec_stmt(self.insert_or_update_stmt)
   if err then
     return nil, err
   end

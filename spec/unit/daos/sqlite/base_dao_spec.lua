@@ -92,11 +92,6 @@ describe("BaseDao", function()
             assert.truthy(saved_entity[k])
           end
         end)
-        it("should default the created_at timestamp", function()
-          local random_entity = dao_factory.fake_entity(dao_name)
-          local saved_entity = dao:save(random_entity)
-          assert.truthy(saved_entity.created_at)
-        end)
       end)
 
       describe("#update()", function()

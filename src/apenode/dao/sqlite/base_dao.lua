@@ -11,22 +11,54 @@ setmetatable(BaseDao, {
   end
 })
 
-function BaseDao:_init(database)
+function BaseDao:_init(database, collection)
   self._db = database
+
+  -- Cache the prepared statements if already prepared
+  self._stmt_cache = {}
+end
+
+function BaseDao:build_fields(entity)
+  local names, bindings = {}, {}
+  for k,_ in pairs(entity) do
+    table.insert(names, k)
+    table.insert(bindings, ":"..k)
+  end
+
+  return table.concat(names, ","), table.concat(bindings, ",")
+end
+
+-- Return a cached prepared statement if present, create one if not present
+-- @param query The query to execute, used as key to retrieve the cached statement
+-- @return sqlite3 prepared statement
+function BaseDao:get_statement(query)
+  local statement = self._stmt_cache[query]
+  if statement then
+    return statement
+  else
+    statement = self._db:prepare(query)
+    if not statement then
+      error("SQLite Error. Failed to prepare statement: "..self._db:errmsg())
+    else
+      self._stmt_cache[query] = statement
+      return statement
+    end
+  end
 end
 
 function BaseDao:save(entity)
-  self.insert_stmt:bind_names(entity)
-  local inserted_id, err = self:exec_insert_stmt(self.insert_stmt)
+  local field_names, field_bindings = BaseDao:build_fields(entity)
+  local stmt = BaseDao:get_statement("INSERT INTO "..self._collection.."("..field_names..") VALUES("..field_bindings..")")
+
+  stmt:bind_names(entity)
+
+  local inserted_id, err = self:exec_stmt(stmt)
   if err then
     return nil, err
+  else
+    entity.id = inserted_id
+    return entity
   end
-
-  -- We need to get the inserted row because SQLite might
-  -- change the type of the inserted values
-  -- or not have saved some values from the entity
-  -- TODO: Actually we should have a model layer/ORM so we don't need to do that
-  return self:get_by_id(inserted_id)
 end
 
 function BaseDao:update(entity)
@@ -142,7 +174,7 @@ end
 -- The statement can optionally return a row (useful for COUNT) statement
 -- but this might be another method in the future
 -- @param stmt A sqlite3 prepared statement
--- @return true if the statement does not return any row
+-- @return rowid if the statement does not return any row
 --         value of the fetched row if the statement returns a row
 --         nil if error
 -- @return A sqlite3 status code if error
@@ -162,31 +194,14 @@ function BaseDao:exec_stmt(stmt)
 
   -- Error handling
   if step_result == sqlite3.DONE and status == sqlite3.OK then
-    if results then return results else return true end;
+    if results then
+      return results
+    else
+      return self._db:last_insert_rowid()
+    end
   else
     return nil, self:get_error(status)
   end
 end
-
--- Execute a statement and return the last inserted rowid
--- useful for INSERTS
--- @param stmt A sqlite3 prepared statement
--- @return The created entity
--- @return A sqlite3 status code if error
-function BaseDao:exec_insert_stmt(stmt)
-  -- Execute query
-  local step_result = stmt:step()
-
-  -- Reset statement and get status code
-  local status = stmt:reset()
-
-  -- Error handling
-  if step_result == sqlite3.DONE and status == sqlite3.OK then
-    return self._db:last_insert_rowid()
-  else
-    return nil, self:get_error(status)
-  end
-end
-
 
 return BaseDao

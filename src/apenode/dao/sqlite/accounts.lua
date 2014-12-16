@@ -14,10 +14,7 @@ setmetatable(Accounts, {
 
 function Accounts:_init(database)
   BaseDao:_init(database)
-
-  self.insert_stmt = database:prepare [[
-    INSERT INTO accounts(provider_id) VALUES(:provider_id);
-  ]]
+  self._collection = "accounts"
 
   self.update_stmt = database:prepare [[
     UPDATE accounts SET provider_id = :provider_id WHERE id = :id;

@@ -27,7 +27,6 @@ function SQLiteFactory:_init(configuration)
     error("Cannot open SQLite database")
   end
 
-  -- Temporary
   self:create_schema()
 
   -- Build factory
@@ -39,11 +38,7 @@ end
 
 function SQLiteFactory:db_exec(stmt)
   if self._db:exec(stmt) ~= sqlite3.OK then
-    if nxg then
-      ngx.log(ngx.ERR, "SQLite ERROR: "..self._db:errmsg())
-    else
-      print("SQLite ERROR: ", self._db:errmsg())
-    end
+    error("SQLite ERROR: ", self._db:errmsg())
   end
 end
 
@@ -53,7 +48,7 @@ function SQLiteFactory:create_schema()
     CREATE TABLE IF NOT EXISTS accounts(
       id INTEGER PRIMARY KEY,
       provider_id TEXT UNIQUE,
-      created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
+      created_at TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS apis(
@@ -63,7 +58,7 @@ function SQLiteFactory:create_schema()
       target_url VARCHAR(50),
       authentication_type VARCHAR(10),
       authentication_key_names VARCHAR(50),
-      created_at TIMESTAMP DEFAULT (strftime('%s', 'now'))
+      created_at TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS applications(
@@ -71,7 +66,7 @@ function SQLiteFactory:create_schema()
       account_id INTEGER,
       public_key TEXT,
       secret_key TEXT,
-      created_at TIMESTAMP DEFAULT (strftime('%s', 'now')),
+      created_at TIMESTAMP,
 
       FOREIGN KEY(account_id) REFERENCES accounts(id)
     );

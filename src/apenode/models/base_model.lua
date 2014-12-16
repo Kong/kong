@@ -70,7 +70,6 @@ function BaseModel:_init(collection, t, schema)
   end
 
   self._t = self
-  self._schema = schema
   self._collection = collection
 
   return self
@@ -87,7 +86,7 @@ function BaseModel:delete()
 end
 
 function BaseModel:update()
-  local res, err = validate(self, self._t, self._schema, true)
+  local res, err = validate(self, self._t, self._SCHEMA, true)
   if not res then
     return nil, err
   else
