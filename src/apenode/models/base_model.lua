@@ -6,12 +6,17 @@ BaseModel.__index = BaseModel
 setmetatable(BaseModel, {
   __call = function (cls, ...)
     local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
+    return self:_init(...)
+  end
 })
 
+-------------
+-- PRIVATE --
+-------------
+
 local function add_error(errors, k, v)
+  if not errors then errors = {} end
+
   if errors[k] then
     local list = {}
     table.insert(list, errors[k])
@@ -24,19 +29,17 @@ local function add_error(errors, k, v)
 end
 
 local function validate(object, t, schema, is_update)
-  local errors = {}
+  local errors
 
   for k,v in pairs(schema) do
-    if v.required and not t[k] then
-      if v.default then
-        t[k] = v.default
-      else
-        errors = add_error(errors, k, k .. " is required")
-      end
-    end
-    if not is_update and v.read_only and t[k] then
+    if not t[k] and v.default ~= nil then
+      t[k] = v.default
+    elseif not t[k] and v.required then
+      errors = add_error(errors, k, k .. " is required")
+    elseif t[k] and not is_update and v.read_only then
       errors = add_error(errors, k, k .. " is read only")
     end
+
     if t[k] and type(t[k]) ~= v.type then
       errors = add_error(errors, k, k .. " should be a " .. v.type)
     end
@@ -44,21 +47,26 @@ local function validate(object, t, schema, is_update)
     object[k] = t[k]
   end
 
-  if errors then
-    return false, errors
-  end
-
-  return true
+  return errors
 end
+
+---------------
+-- BaseModel --
+---------------
 
 function BaseModel:_init(collection, t, schema)
   if not t then t = {} end
 
-  validate(self, t, schema)
+  local errors = validate(self, t, schema)
+  if errors then
+    return nil, errors
+  end
 
-  self._t = t
+  self._t = self
   self._schema = schema
   self._collection = collection
+
+  return self
 end
 
 function BaseModel:save()
@@ -67,7 +75,7 @@ function BaseModel:save()
 end
 
 function BaseModel:delete()
-  local n_success, err = BaseModel:find_and_delete({id = self._t.id})
+  local n_success, err = BaseModel:find_and_delete { id = self._t.id }
   return n_success, err
 end
 
