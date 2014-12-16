@@ -32,7 +32,7 @@ describe("BaseModel", function()
       assert.truthy(entity)
       assert.truthy(entity.created_at)
     end)
-    it("should ignore given values not included in the schema", function()
+    it("should return error when unexpected values are included in the schema", function()
       local entity, err = BaseModel("", {
         name = "httpbin entity",
         public_dns = "test.com",
@@ -40,12 +40,9 @@ describe("BaseModel", function()
         wot = 123
       }, validator)
 
-      api.public_dns = "something else"
-      save()
-
-      assert.falsy(err)
-      assert.truthy(entity)
-      assert.falsy(entity.wot)
+      assert.truthy(err)
+      assert.falsy(entity)
+      assert.are.same("wot is an unknown field", err.wot)
     end)
     it("should return errors if trying to pass read_only properties", function()
       local entity, err = BaseModel("", {

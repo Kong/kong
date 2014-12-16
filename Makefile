@@ -16,7 +16,7 @@ global:
 	@sudo luarocks make apenode-*.rockspec
 
 test:
-	@busted spec/dao
+	@busted spec/unit
 
 test-web:
 	@sed \
