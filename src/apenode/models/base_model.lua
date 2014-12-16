@@ -101,7 +101,7 @@ function BaseModel.find(args, page, size)
 end
 
 function BaseModel.find_and_delete(args)
-  local n_success, err = dao[self._collection]:delete(args)
+  local n_success, err = dao[self._collection]:find_and_delete(args)
   return n_success, err
 end
 
