@@ -15,11 +15,11 @@ setmetatable(Api, {
 
 function Api:_init(t)
   return BaseModel:_init("apis", t, {
-    id = { type = "number", read_only = true },
+    id = { type = "string", read_only = true },
     name = { type = "string", required = true },
     public_dns = { type = "string", required = true },
     target_url = { type = "string", required = true },
-    created_at = { type = "number", read_only = true, default = 123 }
+    created_at = { type = "number", read_only = true, default = os.time() }
   })
 end
 
