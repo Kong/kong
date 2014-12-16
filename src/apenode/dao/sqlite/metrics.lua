@@ -24,7 +24,7 @@ function Metrics:_init(database)
               AND application_id = :application_id
               AND name = :name
               AND timestamp = :timestamp),
-        -1) + :step);
+        0) + :step);
   ]]
 
   self.retrieve_stmt = database:prepare [[
