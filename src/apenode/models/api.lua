@@ -24,8 +24,4 @@ function Api:_init(t)
   }) -- call the base class constructor]
 end
 
-function Api:find()
-
-end
-
 return Api
