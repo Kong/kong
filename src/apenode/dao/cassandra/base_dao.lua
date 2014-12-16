@@ -16,6 +16,7 @@ setmetatable(BaseDao, {
 
 function BaseDao:_init(collection)
   self._collection = collection
+  self._cache = {}
 end
 
 -- Utility function to execute queries
@@ -43,8 +44,18 @@ function BaseDao:query(cmd, args)
     return
   end
 
+  local stmt = self._cache[cmd]
+  if not stmt then
+    local new_stmt, err = session:prepare(cmd)
+    if err then
+      ngx.log(ngx.ERR, "error: ", err)
+    end
+    self._cache[cmd] = new_stmt
+    stmt = new_stmt
+  end
+
   -- Executes the command
-  local result, err = session:execute(cmd, args)
+  local result, err = session:execute(stmt, args)
   if err then
     ngx.log(ngx.ERR, "error: ", err)
     return
