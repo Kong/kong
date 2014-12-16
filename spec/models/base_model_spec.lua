@@ -8,7 +8,7 @@ local validator = {
   created_at = { type = "number", read_only = true, default = 123 }
 }
 
-describe("BaseModel Validator", function()
+describe("BaseModel", function()
 
   describe("#init()", function()
     it("should instanciate an entity entity", function()

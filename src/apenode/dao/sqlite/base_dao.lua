@@ -43,8 +43,8 @@ function BaseDao:update(entity)
   return self:get_by_id(entity.id)
 end
 
-function BaseDao:delete(entity)
-  self.delete_stmt:bind_values(entity.id)
+function BaseDao:delete(id)
+  self.delete_stmt:bind_values(id)
   return self:exec_stmt(self.delete_stmt)
 end
 
