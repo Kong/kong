@@ -78,7 +78,6 @@ describe("BaseDao", function()
         if dao_name ~= "application" then
           it("should return an error if failed", function()
             local random_entity = dao_factory.fake_entity(dao_name, true)
-            local inspect = require "inspect"
             local saved_entity, err = dao:save(random_entity)
             assert.truthy(err)
             assert.falsy(saved_entity)
