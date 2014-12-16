@@ -47,6 +47,13 @@ local function validate(object, t, schema, is_update)
     object[k] = t[k]
   end
 
+  -- Check for unexpected fields
+  for k,v in pairs(t) do
+    if not schema[k] then
+      errors = add_error(errors, k, k .. " is an unknown field")
+    end
+  end
+
   return errors
 end
 
