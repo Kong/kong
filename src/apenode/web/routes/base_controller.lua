@@ -1,5 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
+local inspect = require "inspect"
+
 local BaseController = {}
 BaseController.__index = BaseController
 
