@@ -18,7 +18,6 @@ dependencies = {
   "lua ~> 5.1",
 
   "luasec ~> 0.5-2",
-  "uuid ~> 0.2-1",
   "yaml ~> 1.1.1-1",
   "lapis ~> 1.0.6-1",
   "inspect ~> 3.0-1",

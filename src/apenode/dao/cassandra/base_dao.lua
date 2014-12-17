@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
 local cassandra = require "cassandra"
-local uuid = require "uuid"
 
 local BaseDao = {}
 BaseDao.__index = BaseDao
@@ -96,10 +95,6 @@ local function get_cmd_args(entity)
 end
 
 function BaseDao:save(entity)
-  entity.id = uuid() -- TODO: This function doesn't return a really unique UUID !
-  entity.created_at = os.time()
-  entity.status = "ACTIVE"
-
   -- Prepares the cmd arguments
   local cmd_fields, cmd_values, cmd_field_values = get_cmd_args(entity)
 
@@ -110,21 +105,29 @@ function BaseDao:save(entity)
   return entity
 end
 
-function BaseDao:get_all(page, size)
-  local result = {}
-  return result, 0
+function BaseModel:delete()
+  local n_success, err = BaseModel:find_and_delete { id = self._t.id }
+  return n_success, err
 end
 
-function BaseDao:get_by_id(id)
-  return nil
+function BaseDao:update()
+  local res, err = validate(self, self._t, self._SCHEMA, true)
+  if not res then
+    return nil, err
+  else
+    local data, err = dao[self._collection]:update(self._t)
+    return data, err
+  end
 end
 
-function BaseDao:delete(id)
-  return {}
+function BaseDao.find(args, page, size)
+  local data, total, err = dao[self._collection]:find(args, page, size)
+  return data, total, err
 end
 
-function BaseDao:update(entity)
-  return entity
+function BaseDao.find_and_delete(args)
+  local n_success, err = dao[self._collection]:find_and_delete(args)
+  return n_success, err
 end
 
 return BaseDao
