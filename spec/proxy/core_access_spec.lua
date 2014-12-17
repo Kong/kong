@@ -14,7 +14,7 @@ describe("Proxy API #proxy", function()
     end)
   end)
 
-  describe("Existing API, but invalid query authentication credentials", function()
+  describe("Existing API", function()
 
     it("should return API found when the API has been created", function()
       local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test.com"})
