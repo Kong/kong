@@ -12,7 +12,6 @@ setmetatable(BasePlugin, {
 })
 
 function BasePlugin:_init(name)
-  print(name)
   self._name = name
 end
 

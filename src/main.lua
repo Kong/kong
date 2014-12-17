@@ -33,13 +33,7 @@ local function load_plugins()
     if type(v) == "table" then
       for k, v in pairs(v) do
         plugin_name = k
-
-        --[[
-        Normalizing the properties for an easier access into the plugins,
-        like configuration.plugins[plugin_name].[property_name], for
-        example: configuration.plugins.networklog.host
-        --]]
-        plugin_properties[plugin_name] = normalize_properties(v)
+        plugin_properties[plugin_name] = v
       end
     else
       plugin_name = v
@@ -54,8 +48,11 @@ end
 function _M.init(configuration_path)
   -- Loading configuration
   configuration = yaml.load(utils.read_file(configuration_path))
-  dao = require("apenode.dao." .. configuration.dao.factory .. ".factory")
-  configuration.dao.properties = normalize_properties(configuration.dao.properties)
+
+  -- Loading DAO
+  local dao_factory = require("apenode.dao." .. configuration.dao.factory)
+  local dao_config = normalize_properties(configuration.dao.properties)
+  dao = dao_factory(configuration.dao.properties)
 
   -- Requiring the plugins
   table.insert(plugins, require("apenode.core")("core")) -- Adding the core first

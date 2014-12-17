@@ -7,7 +7,7 @@ DEV_APENODE_CONF ?= $(PWD)/tmp/apenode.dev.yaml
 DEV_APENODE_PORT ?= 8000
 DEV_APENODE_WEB_PORT ?= 8001
 
-.PHONY: test local global run populate test-web test-all
+.PHONY: test local global run populate drop test-web test-all
 
 local:
 	@luarocks make apenode-*.rockspec --local
@@ -16,13 +16,13 @@ global:
 	@sudo luarocks make apenode-*.rockspec
 
 test:
-	@busted spec/dao
+	@busted spec/unit
 
 test-web:
 	@sed \
 		-e "s/{{DAEMON}}/on/g" \
 		-e "s@{{LUA_LIB_PATH}}@$(DEV_LUA_LIB)@g" \
-		-e "s/{{LUA_CODE_CACHE}}/on/g" \
+		-e "s/{{LUA_CODE_CACHE}}/off/g" \
 		-e "s/{{PORT}}/8000/g" \
 		-e "s/{{WEB_PORT}}/8001/g" \
 		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
@@ -30,16 +30,17 @@ test-web:
 
 	@cp -R src/apenode/web/static tmp/nginx/
 	@cp -R src/apenode/web/admin tmp/nginx/
-	rm -f /tmp/apenode.json
+	@scripts/populate --conf=$(DEV_APENODE_CONF)
 	@nginx -p ./tmp/nginx -c nginx.conf
-	@busted spec/web/
+	- @busted spec/web/
 	@nginx -p ./tmp/nginx -c nginx.conf -s stop
+	@scripts/populate --conf=$(DEV_APENODE_CONF) --drop
 
 test-proxy:
 	@sed \
 		-e "s/{{DAEMON}}/on/g" \
 		-e "s@{{LUA_LIB_PATH}}@$(DEV_LUA_LIB)@g" \
-		-e "s/{{LUA_CODE_CACHE}}/on/g" \
+		-e "s/{{LUA_CODE_CACHE}}/off/g" \
 		-e "s/{{PORT}}/8000/g" \
 		-e "s/{{WEB_PORT}}/8001/g" \
 		-e "s@{{APENODE_CONF}}@$(DEV_APENODE_CONF)@g" \
@@ -47,11 +48,11 @@ test-proxy:
 
 	@cp -R src/apenode/web/static tmp/nginx/
 	@cp -R src/apenode/web/admin tmp/nginx/
-	rm -f /tmp/apenode.json
+	@scripts/populate --conf=$(DEV_APENODE_CONF)
 	@nginx -p ./tmp/nginx -c nginx.conf
-	@$(MAKE) populate
-	@busted spec/proxy/
+	- @busted spec/proxy/
 	@nginx -p ./tmp/nginx -c nginx.conf -s stop
+	@scripts/populate --conf=$(DEV_APENODE_CONF) --drop
 
 test-all:
 	@echo "Unit tests:"
@@ -62,7 +63,10 @@ test-all:
 	@$(MAKE) test-proxy
 
 populate:
-	@lua scripts/populate.lua
+	@scripts/populate --conf=$(DEV_APENODE_CONF)
+
+drop:
+	@scripts/populate --conf=$(DEV_APENODE_CONF) --drop
 
 run:
 	@mkdir -p tmp/nginx/logs

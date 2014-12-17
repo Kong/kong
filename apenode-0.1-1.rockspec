@@ -25,7 +25,8 @@ dependencies = {
   "luaxml ~> 101012-1",
   "busted ~> 2.0.rc3-0",
   "stringy ~> 0.2-1",
-  "cassandra ~> 0.2-1"
+  "cassandra ~> 0.2-1",
+  "lsqlite3 ~> 0.9.1-2"
 }
 build = {
   type = "builtin",
@@ -38,19 +39,23 @@ build = {
     ["apenode.core.access"] = "src/apenode/core/access.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
-    ["apenode.dao.json"] = "src/apenode/dao/json/factory.lua",
-    ["apenode.dao.json.accounts"] = "src/apenode/dao/json/accounts.lua",
-    ["apenode.dao.json.apis"] = "src/apenode/dao/json/apis.lua",
-    ["apenode.dao.json.applications"] = "src/apenode/dao/json/applications.lua",
-    ["apenode.dao.json.base_dao"] = "src/apenode/dao/json/base_dao.lua",
-    ["apenode.dao.json.file_table"] = "src/apenode/dao/json/file_table.lua",
-    ["apenode.dao.json.metrics"] = "src/apenode/dao/json/metrics.lua",
+    ["apenode.dao.faker"] = "src/apenode/dao/faker.lua",
+
+    ["apenode.dao.sqlite"] = "src/apenode/dao/sqlite/factory.lua",
+    ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
+    ["apenode.dao.sqlite.apis"] = "src/apenode/dao/sqlite/apis.lua",
+    ["apenode.dao.sqlite.accounts"] = "src/apenode/dao/sqlite/accounts.lua",
+    ["apenode.dao.sqlite.applications"] = "src/apenode/dao/sqlite/applications.lua",
+    ["apenode.dao.sqlite.metrics"] = "src/apenode/dao/sqlite/metrics.lua",
 
     ["apenode.plugins.authentication"] = "src/apenode/plugins/authentication/handler.lua",
     ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
 
     ["apenode.plugins.networklog"] = "src/apenode/plugins/networklog/handler.lua",
     ["apenode.plugins.networklog.log"] = "src/apenode/plugins/networklog/log.lua",
+
+    ["apenode.plugins.ratelimiting"] = "src/apenode/plugins/ratelimiting/handler.lua",
+    ["apenode.plugins.ratelimiting.access"] = "src/apenode/plugins/ratelimiting/access.lua",
 
     ["apenode.plugins.transformations"] = "src/apenode/plugins/transformations/handler.lua",
     ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",

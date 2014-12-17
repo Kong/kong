@@ -15,13 +15,16 @@ dao:
 
 # Plugins
 plugins:
-  - authentication
+  - authentication:
+      hide_credentials: false
   - networklog:
-    - type: tcp # Available values: tcp, nginx_log
-    - host: "127.0.0.1"
-    - port: 4444
-    - timeout: 10000
-    - keepalive: 60000
-  - transformations
+      type: tcp # Available values: tcp, nginx_log
+      host: "127.0.0.1"
+      port: 4444
+      timeout: 10000
+      keepalive: 60000
+  - ratelimiting:
+      limit: 10
+      period: minute # Available: second, minute, hour, day, month, year
 
 ---

@@ -48,6 +48,7 @@ function Accounts:_init()
 
   app:delete("/" .. constants.ACCOUNTS_COLLECTION .. "/:id", function(self)
     local entity = dao.accounts:get_by_id(self.params.id)
+    -- TODO handled by DAO
     if entity then
       -- Delete all the applications belonging to the account
       local applications = dao.applications:get_by_account_id(self.params.id)
