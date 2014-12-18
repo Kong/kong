@@ -40,7 +40,7 @@ function _M.fake_entity(type, invalid)
     }
   elseif type == "plugin" then
     return {
-      api_id = 1,
+      api_id = r,
       name = "random"..r,
       value = {
         authentication_key_names = { "apikey", "x-api-key"}

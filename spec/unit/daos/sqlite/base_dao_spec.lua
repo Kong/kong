@@ -118,7 +118,7 @@ describe("BaseDao", function()
         }
       })
       assert.falsy(err)
-      assert.are.equal(1000, count)
+      assert.are.equal(1, count)
     end)
   end)
 
