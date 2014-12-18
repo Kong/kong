@@ -59,8 +59,6 @@ function BaseDao:find_one(where_keys)
     return nil, err
   elseif #results > 0 then
     return results[1]
-  else
-    return nil
   end
 end
 

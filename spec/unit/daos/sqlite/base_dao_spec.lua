@@ -23,11 +23,23 @@ describe("BaseDao", function()
       local entity, err = dao_factory.apis:find_one { id = 1 }
       assert.falsy(err)
       assert.truthy(entity)
+      assert.truthy(entity.public_dns)
       end)
     it("should find an entity given any field", function()
       local entity, err = dao_factory.apis:find_one { public_dns = "test.com" }
       assert.falsy(err)
       assert.truthy(entity)
+      assert.are.same("test.com", entity.public_dns)
+    end)
+    it("should return nil if entity does not exist", function()
+      local entity, err = dao_factory.apis:find_one { public_dns = "mashape.com" }
+      assert.falsy(err)
+      assert.falsy(entity)
+    end)
+    it("shoud throw an error if the satement is invalid", function()
+      assert.has_error(function()
+        local entity, err = dao_factory.apis:find_one { foo = "bar" }
+      end)
     end)
   end)
 
