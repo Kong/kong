@@ -30,13 +30,8 @@ function Metrics:_init(database)
 end
 
 -- @override
-function Metrics:find()
-  error("Metrics:find() not supported")
-end
-
--- @override
-function Metrics:insert_or_udpate()
-  error("Metrics:insert_or_udpate() not supported")
+function Metrics:insert_or_update(metric)
+  error("Metrics:insert_or_update() not supported")
 end
 
 -- @override

@@ -53,13 +53,33 @@ end
 -- @PUBLIC
 
 -- @override
+function Apis:insert(api)
+  local api, err = BaseDao.insert(self, serialize_api(api))
+  if err then
+    return nil, err
+  elseif api then
+    return deserialize_api(api)
+  end
+end
+
+-- @override
+function Apis:update(api, where_keys)
+  local result, err = BaseDao.update(self, serialize_api(api), where_keys)
+  if err then
+    return nil, err
+  elseif api then
+    return result
+  end
+end
+
+-- @override
 function Apis:insert_or_update(api)
   local api, err = BaseDao.insert_or_update(self, serialize_api(api))
   if err then
     return nil, err
+  elseif api then
+    return deserialize_api(api)
   end
-
-  return deserialize_api(api)
 end
 
 -- @override
@@ -68,8 +88,8 @@ function Apis:find_one(keys)
 end
 
 -- @override
-function Apis:get_all(page, size)
-  local results, count, err = BaseDao.get_all(self, page, size)
+function Apis:find(where_keys, page, size)
+  local results, count, err = BaseDao.find(self, where_keys, page, size)
   if err then
     return nil, nil, err
   end
@@ -79,11 +99,6 @@ function Apis:get_all(page, size)
   end
 
   return results, count
-end
-
-function Apis:get_by_host(public_dns)
-  self.select_by_host_stmt:bind_values(public_dns)
-  return deserializer(self:exec_select_stmt(self.select_by_host_stmt))
 end
 
 return Apis
