@@ -42,8 +42,7 @@ function BaseDao:insert_or_update(entity, where_keys)
 end
 
 -- Find one row according to a condition determined by the keys
--- @param table keys Keys used to build a WHERE condition
--- @param table where_keys Selector for the row to insert or update
+-- @param table where_keys Keys used to build a WHERE condition
 -- @return table Retrieved row or nil
 -- @return table Error if error
 function BaseDao:find_one(where_keys)
@@ -53,10 +52,25 @@ function BaseDao:find_one(where_keys)
   where_keys.page = 1
   stmt:bind_names(where_keys)
 
-  return self:exec_select_stmt(stmt)
+  local results, err = self:exec_select_stmt(stmt)
+  if err then
+    return nil, err
+  elseif #results > 0 then
+    return results[1]
+  else
+    return nil
+  end
 end
 
+-- Find rows according to a condition determined by the keys
+-- @param table (optional) where_keys Keys used to build a WHERE condition
+-- @param number page Page to retrieve (default: 1)
+-- @param number size Size of the page (default = 30, max = 100)
+-- @return table Retrieved rows or empty list
+-- @return number Total count of entityes matching the SELECT
+-- @return table Error if error
 function BaseDao:find(where_keys, page, size)
+  -- where_keys is optional
   if type(where_keys) ~= "table" then
     size = page
     page = where_keys
@@ -85,7 +99,7 @@ function BaseDao:find(where_keys, page, size)
   stmt:bind_names(k)
   count_stmt:bind_names(k)
 
-  local results, err = self:exec_paginated_stmt(stmt, page, size)
+  local results, err = self:exec_select_stmt(stmt)
   if err then
     return nil, nil, err
   end
@@ -221,49 +235,18 @@ function BaseDao:get_error(status)
   }
 end
 
--- Execute a statement supposed to return a page
+-- Execute a statement supposed to return one or many rows
 -- @param stmt A sqlite3 prepared statement
--- @param page The page to query
--- @param size The size of the page
--- @return A list of tables representing the fetched entities, nil if error
--- @return A sqlite3 status code if error
-function BaseDao:exec_paginated_stmt(stmt, page, size)
-  local results = {}
-  -- values binding
-  --stmt:bind_names { page = start_offset, size = size }
-
+-- @return table The results in an array
+-- @return table an error if error
+function BaseDao:exec_select_stmt(stmt)
   -- Execute query
+  local results = {}
   local step_result = stmt:step()
 
   -- Aggregate rows
   while step_result == sqlite3.ROW do
     table.insert(results, stmt:get_named_values())
-    step_result = stmt:step()
-  end
-
-  -- Reset statement and get status code
-  local status = stmt:reset()
-
-  -- Error handling
-  if step_result == sqlite3.DONE and status == sqlite3.OK then
-    return results
-  else
-    return nil, self:get_error(status)
-  end
-end
-
--- Execute a statement supposed to return one row
--- @param stmt A sqlite3 prepared statement
--- @return A table representing the fetched entity, nil if error
--- @return A sqlite3 status code if error
-function BaseDao:exec_select_stmt(stmt)
-  -- Execute query
-  local results
-  local step_result = stmt:step()
-
-  -- Aggregate rows
-  if step_result == sqlite3.ROW then
-    results = stmt:get_named_values()
     step_result = stmt:step()
   end
 
@@ -285,7 +268,7 @@ end
 -- @return rowid if the statement does not return any row
 --         value of the fetched row if the statement returns a row
 --         nil if error
--- @return A sqlite3 status code if error
+-- @return table an error if error
 function BaseDao:exec_stmt(stmt)
   -- Execute query
   local results
