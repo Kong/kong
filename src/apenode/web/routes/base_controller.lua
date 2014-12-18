@@ -1,5 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
+local cjson = require "cjson"
+local stringy = require "stringy"
+
 local BaseController = {}
 BaseController.__index = BaseController
 
@@ -29,9 +32,30 @@ local function render_list_response(req, data, total, page, size)
   return result
 end
 
+local function decode_json(json, out)
+  out = cjson.decode(json)
+end
+
+local function parse_params(model, params)
+  for k,v in pairs(params) do
+    if model._SCHEMA[k] and model._SCHEMA[k].type == "table" then
+      -- It can either be a JSON map or a string array separated by comma
+      local status, res = pcall(cjson.decode, v)
+      if status then
+        params[k] = res
+      else
+        params[k] = stringy.split(v, ",")
+      end
+    end
+  end
+  return params
+end
+
 function BaseController:_init(model)
   app:post("/" .. model._COLLECTION .. "/", function(self)
-    local entity, err = model(self.params)
+    local params = parse_params(model, self.params)
+    local entity, err = model(params)
+
     if not entity then
       return utils.show_error(400, err)
     else

@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local cjson = require "cjson"
 local utils = require "apenode.utils"
 
 local BaseDao = {}
@@ -12,6 +13,28 @@ setmetatable(BaseDao, {
     return self
   end
 })
+
+local function serialize(schema, entity)
+  if entity then
+    for k,v in pairs(schema) do
+      if entity[k] and v.type == "table" then
+        entity[k] = cjson.encode(entity[k])
+      end
+    end
+  end
+  return entity
+end
+
+local function deserialize(schema, entity)
+  if entity then
+    for k,v in pairs(schema) do
+      if entity[k] and v.type == "table" then
+        entity[k] = cjson.decode(entity[k])
+      end
+    end
+  end
+  return entity
+end
 
 function BaseDao._init(instance, database, collection, schema)
   instance._db = database
@@ -28,7 +51,12 @@ end
 -- @return table Inserted/updated entity with its rowid property
 -- @return table Error if error
 function BaseDao:insert_or_update(entity, where_keys)
-  if not entity then entity = {} end
+  if entity then
+    entity = serialize(self._schema, entity)
+  else
+    entity = {}
+  end
+
   local query = self:build_insert_or_update_query(entity, where_keys)
   local stmt = self:get_statement(query)
   stmt:bind_names(entity)
@@ -58,7 +86,7 @@ function BaseDao:find_one(where_keys)
   if err then
     return nil, err
   elseif #results > 0 then
-    return results[1]
+    return deserialize(self._schema, results[1])
   else
     return nil
   end
@@ -109,6 +137,10 @@ function BaseDao:find(where_keys, page, size)
   local count_result, err = self:exec_stmt(count_stmt)
   if err then
     return nil, nil, err
+  end
+
+  for _,result in ipairs(results) do
+    result = deserialize(self._schema, result)
   end
 
   return results, count_result
