@@ -45,6 +45,59 @@ function BaseDao._init(instance, database, collection, schema)
   instance._stmt_cache = {}
 end
 
+-- Insert an entity
+-- @param table entity Entity to insert
+-- @return table Inserted entity with its rowid property
+-- @return table Error if error
+function BaseDao:insert(entity)
+  if entity then
+    entity = serialize(self._schema, entity)
+  else
+    return nil
+  end
+
+  local query = self:build_insert_query(entity)
+  local stmt = self:get_statement(query)
+  stmt:bind_names(entity)
+
+  local rowid, err = self:exec_stmt_rowid(stmt)
+  if err then
+    return nil, err
+  end
+
+  entity.id = rowid
+
+  return entity
+end
+
+-- Update an entity
+-- @param table entity Entity to update
+-- @return table Updated entity
+-- @return table Error if error
+function BaseDao:update(entity, where_keys)
+  if entity then
+    entity = serialize(self._schema, entity)
+  else
+    return nil
+  end
+
+  -- Remove duplicated values between entity and where_keys
+  -- it would be incorrect to have:
+  -- entity { id = 1 } and where_keys { id = "none" }
+  -- 1 would be binded in the statement for the WHERE clause instead of "none"
+  for k,_ in pairs(entity) do
+    if where_keys and where_keys[k] then
+      entity[k] = where_keys[k]
+    end
+  end
+
+  local query = self:build_udpate_query(entity, where_keys)
+  local stmt = self:get_statement(query)
+  stmt:bind_names(entity)
+
+  return self:exec_stmt_count_rows(stmt)
+end
+
 -- Insert or update an entity
 -- @param table entity Entity to insert or replace
 -- @param table where_keys Selector for the row to insert or update
@@ -54,14 +107,14 @@ function BaseDao:insert_or_update(entity, where_keys)
   if entity then
     entity = serialize(self._schema, entity)
   else
-    entity = {}
+    return nil
   end
 
   local query = self:build_insert_or_update_query(entity, where_keys)
   local stmt = self:get_statement(query)
   stmt:bind_names(entity)
 
-  local rowid, err = self:exec_stmt(stmt)
+  local rowid, err = self:exec_stmt_rowid(stmt)
   if err then
     return nil, err
   end
@@ -134,7 +187,7 @@ function BaseDao:find(where_keys, page, size)
     return nil, nil, err
   end
 
-  local count_result, err = self:exec_stmt(count_stmt)
+  local count_result, err = self:exec_stmt_rowid(count_stmt)
   if err then
     return nil, nil, err
   end
@@ -175,8 +228,8 @@ end
 -- Build a SELECT query on the current collection and model schema
 -- with a WHERE condition
 -- @param table where_keys Selector for the row to select
--- @param
--- @return string The computed SELECT statement
+-- @param boolean paginated Indicates if the request needs a LIMIT :page[, :size]
+-- @return string The computed SELECT query to be binded
 function BaseDao:build_select_query(where_keys, paginated)
   local where = self:build_where_fields(where_keys)
   local query = [[ SELECT * FROM ]]..self._collection..where..[[ LIMIT :page ]]
@@ -188,11 +241,46 @@ function BaseDao:build_select_query(where_keys, paginated)
   return query
 end
 
+-- Build a SELECT COUNT(*) query
+-- @param table where_keys Selector for the count to select
+-- @return string A SELECT COUNT(*) query to be binded
 function BaseDao:build_count_query(where_keys)
   local where = self:build_where_fields(where_keys)
   local query = [[ SELECT COUNT(*) FROM ]]..self._collection..where
 
   return query
+end
+
+-- Build an INSERT query
+-- @param table entity Object with keys that will be in the prepared statement
+-- @return string An INSERT into query to be binded
+function BaseDao:build_insert_query(entity)
+  local fields, values = {}, {}
+
+  for k,_ in pairs(self._schema) do
+    table.insert(fields, k)
+    table.insert(values, ":"..k)
+  end
+
+  return [[ INSERT INTO ]]..self._collection..[[ ( ]]..table.concat(fields, ",")..[[ )
+              VALUES( ]]..table.concat(values, ",")..[[ ); ]]
+end
+
+-- Build an UPDATE query
+-- @param table entity Object with keys that will be in the prepared statement
+-- @return string An UPDATE into query to be binded
+function BaseDao:build_udpate_query(entity, where_keys)
+  if where_keys == nil then where_keys = { id = "" } end
+
+  local fields = {}
+  local where = self:build_where_fields(where_keys)
+
+  -- Build the VALUES to insert
+  for k,_ in pairs(entity) do
+    table.insert(fields, k.."=:"..k)
+  end
+
+  return [[ UPDATE ]]..self._collection..[[ SET ]]..table.concat(fields, ",")..where
 end
 
 -- Allows to insert or update if already existing a row on the current collection
@@ -208,7 +296,7 @@ end
 --
 -- @param table entity Entity to insert or update on the current collection
 -- @param table where_keys Selector for the row to insert or update
--- @return string The computed INSERT OR REPLACE statement
+-- @return string The computed INSERT OR REPLACE query to be binded
 function BaseDao:build_insert_or_update_query(entity, where_keys)
   if where_keys == nil then where_keys = { id = "" } end
 
@@ -285,7 +373,25 @@ function BaseDao:exec_select_stmt(stmt)
   end
 end
 
--- Execute a simple statement
+-- Execute a statement and returnw the number of rows affected
+-- @param stmt A sqlite3 prepared statement
+-- @return number Number of rows affected by the query
+-- @return table an error if error
+function BaseDao:exec_stmt_count_rows(stmt)
+  -- Execute query
+  local step_result = stmt:step()
+  -- Reset statement and get status code
+  local status = stmt:reset()
+
+  -- Error handling
+  if step_result == sqlite3.DONE and status == sqlite3.OK then
+    return self._db:changes()
+  else
+    return nil, self:get_error(status)
+  end
+end
+
+-- Execute a statement and returns the last inserted rowid
 -- The statement can optionally return a row (useful for COUNT) statement
 -- but this might be another method in the future
 -- @param stmt A sqlite3 prepared statement
@@ -293,7 +399,7 @@ end
 --         value of the fetched row if the statement returns a row
 --         nil if error
 -- @return table an error if error
-function BaseDao:exec_stmt(stmt)
+function BaseDao:exec_stmt_rowid(stmt)
   -- Execute query
   local results
   local step_result = stmt:step()

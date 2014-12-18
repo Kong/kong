@@ -38,10 +38,12 @@ describe("DetailedDaos", function()
   end)
 
   describe("MetricsDao", function()
+
     describe("#insert_or_update()", function()
       it("should throw an error as it is not implemented", function()
-        assert.has_error(function () dao_factory.metrics:insert_or_update() end)
+        assert.has_error(function() dao_factory.metrics:insert_or_update() end)
       end)
+
     end)
 --[[
     describe("#increment_metric()", function()
