@@ -11,53 +11,100 @@ setmetatable(BaseDao, {
   end
 })
 
-function BaseDao:_init(database, collection)
-  self._db = database
+function BaseDao._init(instance, database, collection, schema)
+  instance._db = database
+  instance._collection = collection
+  instance._schema = schema
 
   -- Cache the prepared statements if already prepared
-  self._stmt_cache = {}
+  instance._stmt_cache = {}
 end
 
---
--- Ex:
--- { name = "api name", key = "value" }
--- Returns: "name, key", ":name, :key"
--- @param table Entity to build fields for
--- @return string Built string for fields
--- @return string Built string for bindings
-function BaseDao:build_insert_fields(entity)
-  local names, bindings = {}, {}
-  for k,_ in pairs(entity) do
-    table.insert(names, k)
-    table.insert(bindings, ":"..k)
+-- Insert or update an entity
+-- @param table entity Entity to insert or replace
+-- @param table where_keys Selector for the row to insert or update
+-- @return table Inserted/updated entity with its rowid property
+-- @return table Error if error
+function BaseDao:insert_or_update(entity, where_keys)
+  if not entity then entity = {} end
+  local query = self:build_insert_or_update_query(entity, where_keys)
+  local stmt = self:get_statement(query)
+  stmt:bind_names(entity)
+
+  local rowid, err = self:exec_stmt(stmt)
+  if err then
+    return nil, err
   end
 
-  return table.concat(names, ","), table.concat(bindings, ",")
+  entity.id = rowid
+
+  return entity
 end
 
---
--- Ex:
--- { name = "api name", key = "value" }
--- Returns: "name = :name, key = :key"
--- @param table Entity to build fields for
--- @return string Built string for update statement
-function BaseDao:build_update_fields(entity)
-  local fields = {}
-  for k,_ in pairs(entity) do
-    table.insert(fields, k.."=:"..k)
+-- Find one row according to a condition determined by the keys
+-- @param table keys Keys used to build a WHERE condition
+-- @param table where_keys Selector for the row to insert or update
+-- @return table Retrieved row or nil
+-- @return table Error if error
+function BaseDao:find_one(where_keys)
+  local query = self:build_select_query(where_keys)
+  local stmt = self:get_statement(query)
+
+  where_keys.page = 1
+  stmt:bind_names(where_keys)
+
+  return self:exec_select_stmt(stmt)
+end
+
+function BaseDao:find(where_keys, page, size)
+  if type(where_keys) ~= "table" then
+    size = page
+    page = where_keys
+    where_keys = nil
   end
 
-  return table.concat(fields, ",")
-end
+  if not page then page = 1 end
+  if not size then size = 30 end
+  size = math.min(size, 100)
 
-function BaseDao:build_where_fields(t)
-  local fields = {}
-  for k,_ in pairs(t) do
-    table.insert(fields, k.."=:"..k)
+  local start_offset = ((page - 1) * size)
+
+  local query = self:build_select_query(where_keys, true)
+  local count_query = self:build_count_query(where_keys)
+  local stmt = self:get_statement(query)
+  local count_stmt = self:get_statement(count_query)
+
+  local k = {}
+  if where_keys then
+    k = where_keys
   end
 
-  return table.concat(fields, " AND ")
+  k.page = start_offset
+  k.size = size
+
+  stmt:bind_names(k)
+  count_stmt:bind_names(k)
+
+  local results, err = self:exec_paginated_stmt(stmt, page, size)
+  if err then
+    return nil, nil, err
+  end
+
+  local count_result, err = self:exec_stmt(count_stmt)
+  if err then
+    return nil, nil, err
+  end
+
+  return results, count_result
 end
+
+function BaseDao:delete_by_keys(keys)
+
+end
+
+-----------------
+-- QUERY UTILS --
+-----------------
 
 -- Return a cached prepared statement if present, create one if not present
 -- @param query The query to execute, used as key to retrieve the cached statement
@@ -77,61 +124,95 @@ function BaseDao:get_statement(query)
   end
 end
 
-function BaseDao:save(entity)
-  local field_names, field_bindings = BaseDao:build_insert_fields(entity)
-  local stmt = BaseDao:get_statement("INSERT INTO "..self._collection.."("..field_names..") VALUES("..field_bindings..")")
+-- Build a SELECT query on the current collection and model schema
+-- with a WHERE condition
+-- @param table where_keys Selector for the row to select
+-- @param
+-- @return string The computed SELECT statement
+function BaseDao:build_select_query(where_keys, paginated)
+  local where = self:build_where_fields(where_keys)
+  local query = [[ SELECT * FROM ]]..self._collection
 
-  stmt:bind_names(entity)
-
-  local inserted_id, err = self:exec_stmt(stmt)
-  if err then
-    return nil, err
+  if where ~= nil then
+    query = query..where
   end
 
-  entity.id = inserted_id
-  return entity
-end
+  query = query..[[ LIMIT :page ]]
 
-function BaseDao:update(keys, entity)
-  local update_fields = self:build_update_fields(entity)
-  local where_fields = self:build_where_fields(keys)
-  local stmt = BaseDao:get_statement("UPDATE "..self._collection.." SET "..update_fields.." WHERE "..where_fields)
-
-  stmt:bind_names(entity)
-  stmt:bind_names(keys)
-
-  local rowid, err = self:exec_stmt(stmt)
-  if err then
-    return nil, err
+  if paginated then
+    query = query..[[, :size]]
   end
 
-  return entity
+  return query
 end
 
-function BaseDao:delete(id)
-  self.delete_stmt:bind_values(id)
-  return self:exec_stmt(self.delete_stmt)
-end
+function BaseDao:build_count_query(where_keys)
+  local where = self:build_where_fields(where_keys)
+  local query = [[ SELECT COUNT(*) FROM ]]..self._collection
 
-function BaseDao:get_by_id(id)
-  self.select_by_id_stmt:bind_values(id)
-  return self:exec_select_stmt(self.select_by_id_stmt)
-end
-
-function BaseDao:get_all(page, size)
-  -- TODO all in one query
-  local results, err = self:exec_paginated_stmt(self.select_all_stmt, page, size)
-  if err then
-    return nil, nil, err
+  if where then
+    query = query..where
   end
 
-  local count, err = self:exec_stmt(self.select_count_stmt)
-  if err then
-    return nil, nil, err
+  return query
+end
+
+-- Allows to insert or update if already existing a row on the current collection
+-- from a WHERE condition with an INSERT OR REPLACE query.
+--
+-- Ex:
+-- build_insert_or_update_query({ name = "hello", host = "mashape.com" }, { "id" = 1 })
+
+-- returns: INSERT OR REPLACE INTO apis(:name, :host, :target)
+--          VALUES(?,
+--                 ?,
+--                 (SELECT target FROM apis WHERE id = :id))
+--
+-- @param table entity Entity to insert or update on the current collection
+-- @param table where_keys Selector for the row to insert or update
+-- @return string The computed INSERT OR REPLACE statement
+function BaseDao:build_insert_or_update_query(entity, where_keys)
+  if where_keys == nil then where_keys = { id = "" } end
+
+  local fields, values = {}, {}
+  local where = self:build_where_fields(where_keys)
+
+  -- Build the VALUES to insert
+  for k,_ in pairs(self._schema) do
+    table.insert(fields, k)
+    -- value is specified in entity
+    if entity[k] ~= nil then
+      table.insert(values, ":"..k)
+    -- value is not specified in entity, thus is not to update, thus we select the existing one
+    else
+      table.insert(values, "(SELECT "..k.." FROM "..self._collection..where..")")
+    end
   end
 
-  return results, count
+  return [[ INSERT OR REPLACE INTO ]]..self._collection..[[ ( ]]..table.concat(fields, ",")..[[ )
+              VALUES( ]]..table.concat(values, ",")..[[ ); ]]
 end
+
+-- Build a WHERE statement from an array of
+-- Ex:
+--
+-- @param table t
+-- @return string WHERE statement or nil
+function BaseDao:build_where_fields(t)
+  if t == nil then return nil end
+
+  local fields = {}
+
+  for k,_ in pairs(t) do
+    table.insert(fields, k.."=:"..k)
+  end
+
+  return " WHERE "..table.concat(fields, " AND ")
+end
+
+------------------
+-- SQLite UTILS --
+------------------
 
 function BaseDao:get_error(status)
   return {
@@ -147,15 +228,9 @@ end
 -- @return A list of tables representing the fetched entities, nil if error
 -- @return A sqlite3 status code if error
 function BaseDao:exec_paginated_stmt(stmt, page, size)
-  if not page then page = 1 end
-  if not size then size = 30 end
-  size = math.min(size, 100)
-
   local results = {}
-  local start_offset = ((page - 1) * size)
-
   -- values binding
-  stmt:bind_names { page = start_offset, size = size }
+  --stmt:bind_names { page = start_offset, size = size }
 
   -- Execute query
   local step_result = stmt:step()

@@ -1,3 +1,4 @@
 return {
-  memory = true
+  memory = true,
+  file_path = "/tmp/apenode.sqlite3"
 }

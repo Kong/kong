@@ -1,4 +1,5 @@
 local BaseDao = require "apenode.dao.sqlite.base_dao"
+local MetricModel = require "apenode.models.metric"
 
 local Metrics = {}
 Metrics.__index = Metrics
@@ -13,10 +14,9 @@ setmetatable(Metrics, {
 })
 
 function Metrics:_init(database)
-  BaseDao:_init(database)
-  self._collection = "metrics"
+  BaseDao._init(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA)
 
-  self.insert_or_update_stmt = database:prepare [[
+  self.increment_stmt = database:prepare [[
     INSERT OR REPLACE INTO metrics
       VALUES (:api_id, :application_id, :name, :timestamp,
         COALESCE(
@@ -27,44 +27,16 @@ function Metrics:_init(database)
               AND timestamp = :timestamp),
         0) + :step);
   ]]
-
-  self.retrieve_stmt = database:prepare [[
-    SELECT * FROM metrics WHERE api_id = ?
-                            AND application_id = ?
-                            AND name = ?
-                            AND timestamp = ?;
-  ]]
-
-  self.get_by_rowid = database:prepare [[
-    SELECT * FROM metrics WHERE rowid = ?;
-  ]]
-
-  self.delete_stmt = database:prepare [[
-    DELETE FROM metrics WHERE api_id = ?
-                          AND application_id = ?
-                          AND name = ?
-                          AND timestamp = ?;
-  ]]
 end
 
 -- @override
-function Metrics:get_by_id()
- error("Metrics:get_by_id() not supported")
+function Metrics:find()
+  error("Metrics:find() not supported")
 end
 
 -- @override
-function Metrics:get_all()
-  error("Metrics:get_all() not supported")
-end
-
--- @override
-function Metrics:update()
-  error("Metrics:update() not supported")
-end
-
--- @override
-function Metrics:save()
-  error("Metrics:save() not supported")
+function Metrics:insert_or_udpate()
+  error("Metrics:insert_or_udpate() not supported")
 end
 
 -- @override
@@ -76,7 +48,7 @@ end
 function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
   if not step then step = 1 end
 
-  self.insert_or_update_stmt:bind_names {
+  self.increment_stmt:bind_names {
       name = name,
       step = step,
       value = value,
@@ -91,11 +63,6 @@ function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
 
   self.get_by_rowid:bind_values(rowid)
   return self:exec_select_stmt(self.get_by_rowid)
-end
-
-function Metrics:retrieve_metric(api_id, application_id, name, timestamp)
-  self.retrieve_stmt:bind_values(api_id, application_id, name, timestamp)
-  return self:exec_select_stmt(self.retrieve_stmt)
 end
 
 return Metrics

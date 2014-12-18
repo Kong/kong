@@ -1,4 +1,5 @@
 local BaseDao = require "apenode.dao.sqlite.base_dao"
+local AccountModel = require "apenode.models.account"
 
 local Accounts = {}
 Accounts.__index = Accounts
@@ -13,37 +14,7 @@ setmetatable(Accounts, {
 })
 
 function Accounts:_init(database)
-  BaseDao:_init(database)
-  self._collection = "accounts"
-
-  self.update_stmt = database:prepare [[
-    UPDATE accounts SET provider_id = :provider_id WHERE id = :id;
-  ]]
-
-  self.delete_stmt = database:prepare [[
-    DELETE FROM accounts WHERE id = ?;
-  ]]
-
-  self.select_count_stmt = database:prepare [[
-    SELECT COUNT(*) FROM accounts;
-  ]]
-
-  self.select_all_stmt = database:prepare [[
-    SELECT * FROM accounts LIMIT :page, :size;
-  ]]
-
-  self.select_by_id_stmt = database:prepare [[
-    SELECT * FROM accounts WHERE id = ?;
-  ]]
-
-  self.select_by_provider_id_stmt = database:prepare [[
-    SELECT * FROM accounts WHERE provider_id = ?;
-  ]]
-end
-
-function Accounts:get_by_provider_id(provider_id)
-  self.select_by_provider_id_stmt:bind_values(provider_id)
-  return self:exec_select_stmt(self.select_by_provider_id_stmt)
+  BaseDao._init(self, database, AccountModel._COLLECTION, AccountModel._SCHEMA)
 end
 
 return Accounts

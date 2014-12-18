@@ -9,6 +9,8 @@ local Api = {
     name = { type = "string", required = true },
     public_dns = { type = "string", required = true },
     target_url = { type = "string", required = true },
+    authentication_type = { type = "string", required = true },
+    authentication_key_names = { type = "table", required = true },
     created_at = { type = "number", read_only = true, default = os.time() }
   }
 }

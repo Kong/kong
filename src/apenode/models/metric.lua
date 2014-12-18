@@ -24,7 +24,11 @@ setmetatable(Metric, {
 })
 
 function Metric:_init(t)
-  return BaseModel:_init(Metric._COLLECTION, t, Metric._SCHEMA)
+  return BaseModel._init(self, Metric._COLLECTION, t, Metric._SCHEMA)
+end
+
+function Metric:insert_or_update(entity, where_keys)
+  error("Metric: insert_or_update not supported")
 end
 
 return Metric
