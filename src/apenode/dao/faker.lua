@@ -38,6 +38,14 @@ function _M.fake_entity(type, invalid)
       value = r,
       timestamp = r
     }
+  elseif type == "plugin" then
+    return {
+      api_id = 1,
+      name = "random"..r,
+      value = {
+        authentication_key_names = { "apikey", "x-api-key"}
+      }
+    }
   end
 end
 
@@ -96,6 +104,15 @@ function _M.populate(factory, random, amount)
         value = 0,
         timestamp = 123456
       }
+    },
+    plugin = {
+      {
+        api_id = 1,
+        name = "authentication",
+        value = {
+          authentication_key_names = { "apikey", "x-api-key"}
+        }
+      }
     }
   }
 
@@ -119,6 +136,10 @@ function _M.populate(factory, random, amount)
 
   for _,application in ipairs(entities_to_insert.application) do
     factory.applications:insert_or_update(application)
+  end
+
+  for _,plugin in ipairs(entities_to_insert.plugin) do
+    factory.plugins:insert_or_update(plugin)
   end
 
   for _,metric in ipairs(entities_to_insert.metric) do

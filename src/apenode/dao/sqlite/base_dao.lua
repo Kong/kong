@@ -129,20 +129,12 @@ end
 -- @return table Retrieved row or nil
 -- @return table Error if error
 function BaseDao:find_one(where_keys)
-  local query = self:build_select_query(where_keys)
-  local stmt = self:get_statement(query)
-
-  where_keys.page = 1
-  stmt:bind_names(where_keys)
-
-  local results, err = self:exec_select_stmt(stmt)
-  if err then
-    return nil, err
-  elseif #results > 0 then
-    return deserialize(self._schema, results[1])
-  else
-    return nil
+  local data, total, err = self:find(where_keys, 1, 1)
+  local result = nil
+  if total > 0 then
+    result = table.remove(data, 1) -- Pop out first element in table
   end
+  return result, err
 end
 
 -- Find rows according to a condition determined by the keys
@@ -159,6 +151,8 @@ function BaseDao:find(where_keys, page, size)
     page = where_keys
     where_keys = nil
   end
+
+  where_keys = serialize(self._schema, where_keys)
 
   if not page then page = 1 end
   if not size then size = 30 end

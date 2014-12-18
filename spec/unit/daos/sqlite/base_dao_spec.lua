@@ -92,6 +92,34 @@ describe("BaseDao", function()
       assert.falsy(err)
       assert.are.equal(1000, count)
     end)
+    it("find plugins with table args", function()
+      local result, count, err = dao_factory.plugins:find({
+        value = {
+          authentication_key_names = { "apikey", "x-api-key"}
+        }
+      })
+      assert.falsy(err)
+      assert.are.equal(1000, count)
+    end)
+    it("find plugins with wrong table args", function()
+      local result, count, err = dao_factory.plugins:find({
+        value = {
+          authentication_key_names = { "apikey", "x-api-key2"}
+        }
+      })
+      assert.falsy(err)
+      assert.are.equal(0, count)
+    end)
+    it("find plugins with composite table args", function()
+      local result, count, err = dao_factory.plugins:find({
+        api_id = 1,
+        value = {
+          authentication_key_names = { "apikey", "x-api-key"}
+        }
+      })
+      assert.falsy(err)
+      assert.are.equal(1000, count)
+    end)
   end)
 
   describe("#update()", function()

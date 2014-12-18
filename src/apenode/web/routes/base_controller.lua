@@ -69,16 +69,29 @@ function BaseController:_init(model)
   end)
 
   app:get("/" .. model._COLLECTION .. "/", function(self)
+    local params = parse_params(model, self.params)
+
     local page = 1
     local size = 10
-    if self.params.page and tonumber(page) > 0 then
-      page = tonumber(self.params.page)
+
+    if params.page and tonumber(params.page) > 0 then
+      page = tonumber(params.page)
+    else
+      page = 1
     end
-    if self.params.size and tonumber(size) > 0 then
-      size = tonumber(self.params.size)
+    if params.size and tonumber(params.size) > 0 then
+      size = tonumber(params.size)
+    else
+      size = 10
     end
 
-    local data, total, err = model.find({}, page, size)
+    params.size = nil
+    params.page = nil
+
+    local inspect = require "inspect"
+    print(inspect(params))
+
+    local data, total, err = model.find(params, page, size)
     if err then
       return utils.show_error(500, err)
     end
