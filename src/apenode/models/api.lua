@@ -2,17 +2,20 @@
 
 local BaseModel = require "apenode.models.base_model"
 
+local COLLECTION = "apis"
+local SCHEMA = {
+  id = { type = "string", read_only = true },
+  name = { type = "string", required = true, unique = true },
+  public_dns = { type = "string", required = true, unique = true, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
+  target_url = { type = "string", required = true },
+  authentication_type = { type = "string", required = true },
+  authentication_key_names = { type = "table", required = false },
+  created_at = { type = "number", read_only = true, default = os.time() }
+}
+
 local Api = {
-  _COLLECTION = "apis",
-  _SCHEMA = {
-    id = { type = "string", read_only = true },
-    name = { type = "string", required = true },
-    public_dns = { type = "string", required = true },
-    target_url = { type = "string", required = true },
-    authentication_type = { type = "string", required = true },
-    authentication_key_names = { type = "table", required = true },
-    created_at = { type = "number", read_only = true, default = os.time() }
-  }
+  _COLLECTION = COLLECTION,
+  _SCHEMA = SCHEMA
 }
 
 Api.__index = Api
@@ -26,7 +29,21 @@ setmetatable(Api, {
 })
 
 function Api:_init(t)
-  return BaseModel:_init(Api._COLLECTION, t, Api._SCHEMA)
+  return BaseModel:_init(COLLECTION, t, SCHEMA)
 end
+
+function Api.find_one(args)
+  return BaseModel._find_one(COLLECTION, args)
+end
+
+function Api.find(args, page, size)
+  return BaseModel._find(COLLECTION, args, page, size)
+end
+
+function Api.find_and_delete(args)
+  return BaseModel._find_and_delete(COLLECTION, args)
+end
+
+-- TODO: When deleting an API, also delete all his plugins/metrics
 
 return Api

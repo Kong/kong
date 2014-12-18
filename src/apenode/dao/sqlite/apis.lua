@@ -16,7 +16,6 @@ setmetatable(Apis, {
 })
 
 function Apis:_init(database)
-  local inspect = require "inspect"
   BaseDao._init(self, database, ApiModel._COLLECTION, ApiModel._SCHEMA)
 end
 

@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
 utils = require "apenode.utils"
-constants = require "apenode.constants"
 local yaml = require "yaml"
 
 -- Define the plugins to load here, in the appropriate order

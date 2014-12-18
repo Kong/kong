@@ -45,6 +45,14 @@ local function build_query(tab, key)
   end
 end
 
+function _M.table_size(t)
+  local res = 0
+  for _,_ in pairs(t) do
+    res = res + 1
+  end
+  return res
+end
+
 function _M.show_response(status, message)
   ngx.header["X-Apenode-Version"] = configuration.version
   ngx.status = status

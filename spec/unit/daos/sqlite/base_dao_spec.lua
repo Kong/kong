@@ -75,6 +75,11 @@ describe("BaseDao", function()
       assert.are.equal(3, count)
       assert.are.equal("table", type(result))
     end)
+     it("should handle empty args", function()
+      local result, count, err = dao_factory.apis:find({})
+      assert.falsy(err)
+      assert.are.equal(1000, count)
+    end)
   end)
 
   for dao_name, dao in pairs(daos) do

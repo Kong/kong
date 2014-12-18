@@ -1,5 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
+local rex = require("rex_pcre")
+
 local BaseModel = {}
 BaseModel.__index = BaseModel
 
@@ -28,7 +30,8 @@ local function add_error(errors, k, v)
   return errors
 end
 
-local function validate(object, t, schema, is_update)
+function BaseModel:_validate(t, schema, is_update)
+  local result = {}
   local errors
 
   for k,v in pairs(schema) do
@@ -44,7 +47,28 @@ local function validate(object, t, schema, is_update)
       errors = add_error(errors, k, k .. " should be a " .. v.type)
     end
 
-    object[k] = t[k]
+    if t[k] and v.unique then
+      local data, total, err = self._find(self._collection, {[k] = t[k]})
+      if total > 0 then
+        errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
+      end
+    end
+
+    if t[k] and v.regex then
+      if not rex.match(t[k], v.regex) then
+        errors = add_error(errors, k, k .. " has an invalid value")
+      end
+    end
+
+    if t[k] and v.func then
+      local success, err = v.func(t[k])
+      if not success then
+        errors = add_error(errors, k, err)
+      end
+    end
+
+    result[k] = t[k]
+    self[k] = t[k]
   end
 
   -- Check for unexpected fields
@@ -54,7 +78,11 @@ local function validate(object, t, schema, is_update)
     end
   end
 
-  return errors
+  if errors then
+    result = nil
+  end
+
+  return result, errors
 end
 
 ---------------
@@ -62,21 +90,23 @@ end
 ---------------
 
 function BaseModel:_init(collection, t, schema)
-  if not t then t = {} end
+  -- The collection needs to be declared before just in case
+  -- the validator needs it for the "unique" check
+  self._collection = collection
 
-  local errors = validate(self, t, schema)
+  -- Validate the entity
+  if not t then t = {} end
+  local result, errors = self:_validate(t, schema)
   if errors then
     return nil, errors
   end
 
-  self._t = self
-  self._collection = collection
-
+  self._t = result
   return self
 end
 
 function BaseModel:save()
-  local data, err = dao[self._collection]:save(self._t)
+  local data, err = dao[self._collection]:insert_or_update(self._t)
   return data, err
 end
 
@@ -95,13 +125,18 @@ function BaseModel:update()
   end
 end
 
-function BaseModel.find(args, page, size)
-  local data, total, err = dao[self._collection]:find(args, page, size)
+function BaseModel._find_one(collection, args)
+  local data, err = dao[collection]:find_one(args)
+  return data, err
+end
+
+function BaseModel._find(collection, args, page, size)
+  local data, total, err = dao[collection]:find(args, page, size)
   return data, total, err
 end
 
-function BaseModel.find_and_delete(args)
-  local n_success, err = dao[self._collection]:find_and_delete(args)
+function BaseModel._find_and_delete(collection, args)
+  local n_success, err = dao[collection]:find_and_delete(args)
   return n_success, err
 end
 

@@ -6,6 +6,7 @@ local Apis = require "apenode.dao.sqlite.apis"
 local Metrics = require "apenode.dao.sqlite.metrics"
 local Accounts = require "apenode.dao.sqlite.accounts"
 local Applications = require "apenode.dao.sqlite.applications"
+local Plugins = require "apenode.dao.sqlite.plugins"
 
 local SQLiteFactory = {}
 SQLiteFactory.__index = SQLiteFactory
@@ -34,6 +35,7 @@ function SQLiteFactory:_init(configuration)
   self.metrics = Metrics(self._db)
   self.accounts = Accounts(self._db)
   self.applications = Applications(self._db)
+  self.plugins = Plugins(self._db)
 end
 
 function SQLiteFactory:db_exec(stmt)
@@ -83,6 +85,17 @@ function SQLiteFactory:create_schema()
       PRIMARY KEY(api_id, application_id, name)
     );
 
+    CREATE TABLE IF NOT EXISTS plugins(
+      id INTEGER PRIMARY KEY,
+      api_id INTEGER,
+      application_id INTEGER,
+      name TEXT,
+      value TEXT,
+      created_at TIMESTAMP,
+
+      FOREIGN KEY(api_id) REFERENCES apis(id), FOREIGN KEY(application_id) REFERENCES applications(id)
+    );
+
   ]]
 end
 
@@ -99,6 +112,7 @@ function SQLiteFactory:drop()
   self:db_exec("DELETE FROM accounts")
   self:db_exec("DELETE FROM applications")
   self:db_exec("DELETE FROM metrics")
+  self:db_exec("DELETE FROM plugins")
 end
 
 function SQLiteFactory:close()

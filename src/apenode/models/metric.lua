@@ -2,15 +2,19 @@
 
 local BaseModel = require "apenode.models.base_model"
 
+local COLLECTION = "metrics"
+local SCHEMA = {
+  id = { type = "string", read_only = true },
+  api_id = { type = "string", required = true },
+  application_id = { type = "string", required = false },
+  name = { type = "string", required = true },
+  timestamp = { type = "number", required = true },
+  value = { type = "number", required = true }
+}
+
 local Metric = {
-  _COLLECTION = "metrics",
-  _SCHEMA = {
-    api_id = { type = "string", required = true },
-    application_id = { type = "string", required = false },
-    name = { type = "string", required = true },
-    timestamp = { type = "number", required = true },
-    value = { type = "number", required = true }
-  }
+  _COLLECTION = COLLECTION,
+  _SCHEMA = SCHEMA
 }
 
 Metric.__index = Metric
@@ -24,7 +28,19 @@ setmetatable(Metric, {
 })
 
 function Metric:_init(t)
-  return BaseModel._init(self, Metric._COLLECTION, t, Metric._SCHEMA)
+  return BaseModel:_init(COLLECTION, t, SCHEMA)
+end
+
+function Metric.find_one(args)
+  return BaseModel._find_one(COLLECTION, args)
+end
+
+function Metric.find(args, page, size)
+  return BaseModel._find(COLLECTION, args, page, size)
+end
+
+function Metric.find_and_delete(args)
+  return BaseModel._find_and_delete(COLLECTION, args)
 end
 
 function Metric:insert_or_update(entity, where_keys)

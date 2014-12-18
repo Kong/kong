@@ -1,5 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
+local utils = require "apenode.utils"
+
 local BaseDao = {}
 BaseDao.__index = BaseDao
 
@@ -116,7 +118,7 @@ function BaseDao:get_statement(query)
   else
     statement = self._db:prepare(query)
     if not statement then
-      error("SQLite Error. Failed to prepare statement: "..self._db:errmsg())
+      error("SQLite Error. Failed to prepare statement: "..self._db:errmsg().."\n"..query)
     else
       self._stmt_cache[query] = statement
       return statement
@@ -131,13 +133,7 @@ end
 -- @return string The computed SELECT statement
 function BaseDao:build_select_query(where_keys, paginated)
   local where = self:build_where_fields(where_keys)
-  local query = [[ SELECT * FROM ]]..self._collection
-
-  if where ~= nil then
-    query = query..where
-  end
-
-  query = query..[[ LIMIT :page ]]
+  local query = [[ SELECT * FROM ]]..self._collection..where..[[ LIMIT :page ]]
 
   if paginated then
     query = query..[[, :size]]
@@ -148,11 +144,7 @@ end
 
 function BaseDao:build_count_query(where_keys)
   local where = self:build_where_fields(where_keys)
-  local query = [[ SELECT COUNT(*) FROM ]]..self._collection
-
-  if where then
-    query = query..where
-  end
+  local query = [[ SELECT COUNT(*) FROM ]]..self._collection..where
 
   return query
 end
@@ -199,7 +191,7 @@ end
 -- @param table t
 -- @return string WHERE statement or nil
 function BaseDao:build_where_fields(t)
-  if t == nil then return nil end
+  if t == nil or utils.table_size(t) == 0 then return " " end
 
   local fields = {}
 

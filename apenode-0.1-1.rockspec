@@ -23,6 +23,7 @@ dependencies = {
   "lapis ~> 1.0.6-1",
   "inspect ~> 3.0-1",
   "luaxml ~> 101012-1",
+  "lrexlib-pcre ~> 2.7.2-1",
   "busted ~> 2.0.rc3-0",
   "stringy ~> 0.2-1",
   "lsqlite3 ~> 0.9.1-2"
@@ -31,8 +32,8 @@ build = {
   type = "builtin",
   modules = {
     ["apenode"] = "src/main.lua",
-    ["apenode.constants"] = "src/apenode/constants.lua",
     ["apenode.utils"] = "src/apenode/utils.lua",
+    ["apenode.base_plugin"] = "src/apenode/base_plugin.lua",
 
     ["apenode.core"] = "src/apenode/core/handler.lua",
     ["apenode.core.access"] = "src/apenode/core/access.lua",
@@ -46,6 +47,14 @@ build = {
     ["apenode.dao.sqlite.accounts"] = "src/apenode/dao/sqlite/accounts.lua",
     ["apenode.dao.sqlite.applications"] = "src/apenode/dao/sqlite/applications.lua",
     ["apenode.dao.sqlite.metrics"] = "src/apenode/dao/sqlite/metrics.lua",
+    ["apenode.dao.sqlite.plugins"] = "src/apenode/dao/sqlite/plugins.lua",
+
+    ["apenode.models.base_model"] = "src/apenode/models/base_model.lua",
+    ["apenode.models.account"] = "src/apenode/models/account.lua",
+    ["apenode.models.api"] = "src/apenode/models/api.lua",
+    ["apenode.models.application"] = "src/apenode/models/application.lua",
+    ["apenode.models.metric"] = "src/apenode/models/metric.lua",
+    ["apenode.models.plugin"] = "src/apenode/models/plugin.lua",
 
     ["apenode.plugins.authentication"] = "src/apenode/plugins/authentication/handler.lua",
     ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
@@ -61,9 +70,10 @@ build = {
     ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",
-    ["apenode.web.routes.apis"] = "src/apenode/web/routes/accounts.lua",
+    ["apenode.web.routes.accounts"] = "src/apenode/web/routes/accounts.lua",
     ["apenode.web.routes.apis"] = "src/apenode/web/routes/apis.lua",
     ["apenode.web.routes.applications"] = "src/apenode/web/routes/applications.lua",
+    ["apenode.web.routes.plugins"] = "src/apenode/web/routes/plugins.lua",
     ["apenode.web.routes.base_controller"] = "src/apenode/web/routes/base_controller.lua"
   },
   copy_directories = { "src/apenode/web/admin", "src/apenode/web/static" },

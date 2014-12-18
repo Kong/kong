@@ -29,32 +29,63 @@ local function render_list_response(req, data, total, page, size)
   return result
 end
 
-function BaseController:_init(collection_name)
+function BaseController:_init(model)
+  app:post("/" .. model._COLLECTION .. "/", function(self)
+    local entity, err = model(self.params)
+    if not entity then
+      return utils.show_error(400, err)
+    else
+      local data, err = entity:save()
+      if err then
+        return utils.show_error(500, err)
+      else
+        return utils.created(data)
+      end
+    end
+  end)
 
-  app:get("/" .. collection_name .. "/", function(self)
-    local page = tonumber(self.params.page)
-    local size = tonumber(self.params.size)
+  app:get("/" .. model._COLLECTION .. "/", function(self)
+    local page = 1
+    local size = 10
+    if self.params.page and tonumber(page) > 0 then
+      page = tonumber(self.params.page)
+    end
+    if self.params.size and tonumber(size) > 0 then
+      size = tonumber(self.params.size)
+    end
 
-    if not page or page <= 0 then page = 1 end
-    if not size or size <= 0 then size = 10 end
+    local data, total, err = model.find({}, page, size)
+    if err then
+      return utils.show_error(500, err)
+    end
 
-    local data, total = dao[collection_name]:get_all(page, size)
     return utils.success(render_list_response(self.req, data, total, page, size))
   end)
 
-  app:get("/" .. collection_name .. "/:id", function(self)
-    local entity = dao[collection_name]:get_by_id(self.params.id)
-    if entity then
-      return utils.success(entity)
+  app:get("/" .. model._COLLECTION .. "/:id", function(self)
+    local data, err = model.find_one({id = self.params.id})
+
+    if err then
+      return utils.show_error(500, err)
+    end
+
+    if data then
+      return utils.success(data)
     else
       return utils.not_found()
     end
   end)
 
-  app:delete("/" .. collection_name .. "/:id", function(self)
-    local entity = dao[collection_name]:delete(self.params.id)
-    if entity then
-      return utils.success(entity)
+  app:delete("/" .. model._COLLECTION .. "/:id", function(self)
+
+    local data, err = model.find_one({ id = self.params.id})
+    if err then
+      return utils.show_error(500, err)
+    end
+
+    if data then
+      data:delete()
+      return utils.success(data)
     else
       return utils.not_found()
     end
