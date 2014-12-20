@@ -20,35 +20,24 @@ local SCHEMA = {
   created_at = { type = "number", read_only = true, default = os.time() }
 }
 
-local Application = {
-  _COLLECTION = COLLECTION,
-  _SCHEMA = SCHEMA
-}
+local Application = BaseModel:extend()
+Application["_COLLECTION"] = COLLECTION
+Application["_SCHEMA"] = SCHEMA
 
-Application.__index = Application
-
-setmetatable(Application, {
-  __index = BaseModel,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
-
-function Application:_init(t)
-  return BaseModel:_init(COLLECTION, t, SCHEMA)
+function Application:new(t)
+  return Application.super:new(COLLECTION, SCHEMA, t)
 end
 
 function Application.find_one(args)
-  return BaseModel._find_one(COLLECTION, args)
+  return Application.super._find_one(COLLECTION, args)
 end
 
 function Application.find(args, page, size)
-  return BaseModel._find(COLLECTION, args, page, size)
+  return  Application.super._find(COLLECTION, args, page, size)
 end
 
 function Application.find_and_delete(args)
-  return BaseModel._find_and_delete(COLLECTION, args)
+  return  Application.super._find_and_delete(COLLECTION, args)
 end
 
 -- TODO: When deleting an application, also delete all his plugins/metrics

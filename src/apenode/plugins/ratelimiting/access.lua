@@ -2,9 +2,9 @@
 
 local _M = {}
 
-function _M.execute()
-  local period = configuration.plugins.ratelimiting.period
-  local limit = configuration.plugins.ratelimiting.limit
+function _M.execute(conf)
+  local period = conf.period
+  local limit = conf.limit
 
   local timestamps = utils.get_timestamps(ngx.now())
   local current_usage = dao.metrics:retrieve_metric(ngx.ctx.api.id,

@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 local sqlite3 = require "lsqlite3"
+local Object = require "classic"
 
 local Faker = require "apenode.dao.faker"
 local Apis = require "apenode.dao.sqlite.apis"
@@ -8,18 +9,10 @@ local Accounts = require "apenode.dao.sqlite.accounts"
 local Applications = require "apenode.dao.sqlite.applications"
 local Plugins = require "apenode.dao.sqlite.plugins"
 
-local SQLiteFactory = {}
-SQLiteFactory.__index = SQLiteFactory
 
-setmetatable(SQLiteFactory, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end
-})
+local SQLiteFactory = Object:extend()
 
-function SQLiteFactory:_init(configuration)
+function SQLiteFactory:new(configuration)
   if configuration.memory then
     self._db = sqlite3.open_memory()
   elseif configuration.file_path ~= nil then

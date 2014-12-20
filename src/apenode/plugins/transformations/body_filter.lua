@@ -5,7 +5,7 @@ require "LuaXML"
 
 local _M = {}
 
-function _M.execute()
+function _M.execute(conf)
   if ngx.ctx.xml_to_json then
     local xml = xml.eval(ngx.arg[1])
     local json = cjson.encode(xml)

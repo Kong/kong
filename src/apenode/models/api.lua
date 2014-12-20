@@ -13,35 +13,24 @@ local SCHEMA = {
   created_at = { type = "number", read_only = true, default = os.time() }
 }
 
-local Api = {
-  _COLLECTION = COLLECTION,
-  _SCHEMA = SCHEMA
-}
+local Api = BaseModel:extend()
+Api["_COLLECTION"] = COLLECTION
+Api["_SCHEMA"] = SCHEMA
 
-Api.__index = Api
-
-setmetatable(Api, {
-  __index = BaseModel,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
-
-function Api:_init(t)
-  return BaseModel:_init(COLLECTION, t, SCHEMA)
+function Api:new(t)
+  return Api.super:new(COLLECTION, SCHEMA, t)
 end
 
 function Api.find_one(args)
-  return BaseModel._find_one(COLLECTION, args)
+  return Api.super._find_one(COLLECTION, args)
 end
 
 function Api.find(args, page, size)
-  return BaseModel._find(COLLECTION, args, page, size)
+  return Api.super._find(COLLECTION, args, page, size)
 end
 
 function Api.find_and_delete(args)
-  return BaseModel._find_and_delete(COLLECTION, args)
+  return Api.super._find_and_delete(COLLECTION, args)
 end
 
 -- TODO: When deleting an API, also delete all his plugins/metrics

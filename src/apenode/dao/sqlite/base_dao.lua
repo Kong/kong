@@ -2,17 +2,9 @@
 
 local cjson = require "cjson"
 local utils = require "apenode.utils"
+local Object = require "classic"
 
-local BaseDao = {}
-BaseDao.__index = BaseDao
-
-setmetatable(BaseDao, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end
-})
+local BaseDao = Object:extend()
 
 local function serialize(schema, entity)
   if entity then
@@ -36,13 +28,13 @@ local function deserialize(schema, entity)
   return entity
 end
 
-function BaseDao._init(instance, database, collection, schema)
-  instance._db = database
-  instance._collection = collection
-  instance._schema = schema
+function BaseDao:new(database, collection, schema)
+  self._db = database
+  self._collection = collection
+  self._schema = schema
 
   -- Cache the prepared statements if already prepared
-  instance._stmt_cache = {}
+  self._stmt_cache = {}
 end
 
 -- Insert an entity

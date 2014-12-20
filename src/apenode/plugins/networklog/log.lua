@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local _M = {}
 
-function _M.execute()
+function _M.execute(conf)
   utils.create_timer(log, ngx.ctx.log_message)
 end
 

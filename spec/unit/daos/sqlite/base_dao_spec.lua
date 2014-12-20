@@ -11,11 +11,11 @@ local daos = {
 describe("BaseDao", function()
 
   setup(function()
-    dao_factory:populate(true)
+   dao_factory:populate(true)
   end)
 
   teardown(function()
-    dao_factory:drop()
+   dao_factory:drop()
   end)
 
   describe("#find_one()", function()
@@ -257,8 +257,7 @@ describe("BaseDao", function()
           assert.falsy(saved_entity)
         end)
       end)
-
---[[
+      --[[
       describe("#delete()", function()
         pending()
         it("should delete an entity", function()
@@ -270,7 +269,7 @@ describe("BaseDao", function()
           assert.falsy(result)
         end)
       end)
---]]
+      --]]
     end)
   end
 

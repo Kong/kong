@@ -2,7 +2,7 @@
 
 local _M = {}
 
-function _M.execute()
+function _M.execute(conf)
   local api = ngx.ctx.api
   if api and api.transformations then
     if api.transformations.xml_to_json and ngx.header["content-type"] == "application/xml" then

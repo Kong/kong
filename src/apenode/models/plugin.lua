@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
+local BaseModel = require "apenode.models.base_model"
 local ApplicationModel = require "apenode.models.application"
 local ApiModel = require "apenode.models.api"
-local BaseModel = require "apenode.models.base_model"
 
 local function check_application_id(application_id)
   if ApplicationModel.find_one({id = application_id}) then
@@ -29,44 +29,32 @@ local SCHEMA = {
   value = { type = "table", required = true }
 }
 
-local Plugin = {
-  _COLLECTION = COLLECTION,
-  _SCHEMA = SCHEMA
-}
+local Plugin = BaseModel:extend()
+Plugin["_COLLECTION"] = COLLECTION
+Plugin["_SCHEMA"] = SCHEMA
 
-Plugin.__index = Plugin
-
-setmetatable(Plugin, {
-  __index = BaseModel,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
-
-function Plugin:_init(t)
-  return BaseModel:_init(COLLECTION, t, SCHEMA)
+function Plugin:new(t)
+  return Plugin.super:new(COLLECTION, SCHEMA, t)
 end
 
 function Plugin:save()
-  print("FIXME: THIS IS NEVER CALLED")
   if self.find_one({api_id = self.api_id, application_id = self.application_id, name = name }) then
     return nil, "The plugin already exist, update the current one"
   else
-    return BaseModel:save()
+    return Plugin.super:save()
   end
 end
 
 function Plugin.find_one(args)
-  return BaseModel._find_one(COLLECTION, args)
+  return Plugin.super._find_one(COLLECTION, args)
 end
 
 function Plugin.find(args, page, size)
-  return BaseModel._find(COLLECTION, args, page, size)
+  return Plugin.super._find(COLLECTION, args, page, size)
 end
 
 function Plugin.find_and_delete(args)
-  return BaseModel._find_and_delete(COLLECTION, args)
+  return Plugin.super._find_and_delete(COLLECTION, args)
 end
 
 return Plugin

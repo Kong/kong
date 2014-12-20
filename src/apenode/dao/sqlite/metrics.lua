@@ -1,20 +1,10 @@
 local BaseDao = require "apenode.dao.sqlite.base_dao"
 local MetricModel = require "apenode.models.metric"
 
-local Metrics = {}
-Metrics.__index = Metrics
+local Metrics = BaseDao:extend()
 
-setmetatable(Metrics, {
-  __index = BaseDao,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end
-})
-
-function Metrics:_init(database)
-  BaseDao._init(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA)
+function Metrics:new(database)
+  Metrics.super:new(database, MetricModel._COLLECTION, MetricModel._SCHEMA)
 
   self.increment_stmt = database:prepare [[
     INSERT OR REPLACE INTO metrics

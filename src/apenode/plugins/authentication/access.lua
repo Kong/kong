@@ -110,7 +110,7 @@ local function get_keys(request, api, vars)
   return public_key, secret_key
 end
 
-function _M.execute()
+function _M.execute(conf)
   local api = ngx.ctx.api
 
   local public_key, secret_key = get_keys(ngx.req, api, ngx.var)

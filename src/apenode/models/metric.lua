@@ -12,35 +12,24 @@ local SCHEMA = {
   value = { type = "number", required = true }
 }
 
-local Metric = {
-  _COLLECTION = COLLECTION,
-  _SCHEMA = SCHEMA
-}
+local Metric = BaseModel:extend()
+Metric["_COLLECTION"] = COLLECTION
+Metric["_SCHEMA"] = SCHEMA
 
-Metric.__index = Metric
-
-setmetatable(Metric, {
-  __index = BaseModel,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
-
-function Metric:_init(t)
-  return BaseModel:_init(COLLECTION, t, SCHEMA)
+function Metric:new(t)
+  return Metric.super:new(COLLECTION, SCHEMA, t)
 end
 
 function Metric.find_one(args)
-  return BaseModel._find_one(COLLECTION, args)
+  return Metric.super._find_one(COLLECTION, args)
 end
 
 function Metric.find(args, page, size)
-  return BaseModel._find(COLLECTION, args, page, size)
+  return Metric.super._find(COLLECTION, args, page, size)
 end
 
 function Metric.find_and_delete(args)
-  return BaseModel._find_and_delete(COLLECTION, args)
+  return Metric.super._find_and_delete(COLLECTION, args)
 end
 
 function Metric:insert_or_update(entity, where_keys)

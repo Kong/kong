@@ -3,25 +3,15 @@
 local BasePlugin = require "apenode.base_plugin"
 local log = require "apenode.plugins.networklog.log"
 
-local NetworkLogHandler = {}
-NetworkLogHandler.__index = NetworkLogHandler
+local NetworkLogHandler = BasePlugin:extend()
 
-setmetatable(NetworkLogHandler, {
-  __index = BasePlugin, -- this is what makes the inheritance work
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
-
-function NetworkLogHandler:_init(name)
-  BasePlugin:_init(name)
+function NetworkLogHandler:new()
+  NetworkLogHandler.super:new("networklog")
 end
 
-function NetworkLogHandler:log()
-  BasePlugin:log()
-  log.execute()
+function NetworkLogHandler:log(conf)
+  NetworkLogHandler.super:log()
+  log.execute(conf)
 end
 
 return NetworkLogHandler

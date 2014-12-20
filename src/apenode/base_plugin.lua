@@ -1,17 +1,9 @@
 -- Copyright (C) Mashape, Inc.
 
-local BasePlugin = {}
-BasePlugin.__index = BasePlugin
+local Object = require "classic"
+local BasePlugin = Object:extend()
 
-setmetatable(BasePlugin, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
-
-function BasePlugin:_init(name)
+function BasePlugin:new(name)
   self._name = name
 end
 

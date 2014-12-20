@@ -2,17 +2,9 @@
 
 local cjson = require "cjson"
 local stringy = require "stringy"
+local Object = require "classic"
 
-local BaseController = {}
-BaseController.__index = BaseController
-
-setmetatable(BaseController, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
+local BaseController = Object:extend()
 
 local function render_list_response(req, data, total, page, size)
   local url = req.parsed_url.scheme .. "://" .. req.parsed_url.host .. ":" .. req.parsed_url.port .. req.parsed_url.path
@@ -51,7 +43,7 @@ local function parse_params(model, params)
   return params
 end
 
-function BaseController:_init(model)
+function BaseController:new(model)
   app:post("/" .. model._COLLECTION .. "/", function(self)
     local params = parse_params(model, self.params)
     local entity, err = model(params)
@@ -73,7 +65,6 @@ function BaseController:_init(model)
 
     local page = 1
     local size = 10
-
     if params.page and tonumber(params.page) > 0 then
       page = tonumber(params.page)
     else
@@ -84,18 +75,13 @@ function BaseController:_init(model)
     else
       size = 10
     end
-
     params.size = nil
     params.page = nil
-
-    local inspect = require "inspect"
-    print(inspect(params))
 
     local data, total, err = model.find(params, page, size)
     if err then
       return utils.show_error(500, err)
     end
-
     return utils.success(render_list_response(self.req, data, total, page, size))
   end)
 

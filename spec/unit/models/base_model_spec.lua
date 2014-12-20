@@ -23,47 +23,47 @@ describe("BaseModel", function()
 
   describe("#init()", function()
     it("should instantiate an entity entity", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org"
-      }, validator)
+      })
 
       assert.falsy(err)
       assert.truthy(entity)
       assert.are.same("test.com", entity.public_dns)
     end)
     it("should set default values if specified in the validator", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org"
-      }, validator)
+      })
 
       assert.falsy(err)
       assert.truthy(entity)
       assert.truthy(entity.created_at)
     end)
     it("should return error when unexpected values are included in the schema", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org",
         wot = 123
-      }, validator)
+      })
 
       assert.truthy(err)
       assert.falsy(entity)
       assert.are.same("wot is an unknown field", err.wot)
     end)
     it("should return errors if trying to pass read_only properties", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         id = 1,
         created_at = 123456,
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org"
-      }, validator)
+      })
 
       assert.falsy(entity)
       assert.truthy(err)
@@ -71,10 +71,10 @@ describe("BaseModel", function()
       assert.are.same("created_at is read only", err.created_at)
     end)
     it("should return errors when validation fails", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         public_dns = 123,
         target_url = "target asdads"
-      }, validator)
+      })
 
       assert.falsy(entity)
       assert.truthy(err)
@@ -83,24 +83,24 @@ describe("BaseModel", function()
       assert.are.same("public_dns has an invalid value", err.public_dns[2])
     end)
     it("should return errors when func validation fails", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         name = "test",
         public_dns = "test.com",
         target_url = "target asdads",
         random_value = 1234
-      }, validator)
+      })
 
       assert.falsy(entity)
       assert.truthy(err)
       assert.are.same("The value should be 123", err.random_value)
     end)
     it("should not return errors when func validation succeeds", function()
-      local entity, err = BaseModel(collection, {
+      local entity, err = BaseModel(collection, validator, {
         name = "test",
         public_dns = "test.com",
         target_url = "target asdads",
         random_value = 123
-      }, validator)
+      })
 
       assert.truthy(entity)
       assert.falsy(err)

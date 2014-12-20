@@ -2,15 +2,8 @@
 
 local rex = require("rex_pcre")
 
-local BaseModel = {}
-BaseModel.__index = BaseModel
-
-setmetatable(BaseModel, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
+local Object = require "classic"
+local BaseModel = Object:extend()
 
 -------------
 -- PRIVATE --
@@ -29,8 +22,26 @@ local function add_error(errors, k, v)
   end
   return errors
 end
+---------------
+-- BaseModel --
+---------------
 
-function BaseModel:_validate(t, schema, is_update)
+function BaseModel:new(collection, schema, t)
+  -- The collection needs to be declared before just in case
+  -- the validator needs it for the "unique" check
+  self._collection = collection
+
+  -- Validate the entity
+  if not t then t = {} end
+  local result, errors = self:_validate(schema, t)
+  if errors then
+    return nil, errors
+  end
+
+  self._t = result
+end
+
+function BaseModel:_validate(schema, t, is_update)
   local result = {}
   local errors
 
@@ -85,25 +96,6 @@ function BaseModel:_validate(t, schema, is_update)
   return result, errors
 end
 
----------------
--- BaseModel --
----------------
-
-function BaseModel:_init(collection, t, schema)
-  -- The collection needs to be declared before just in case
-  -- the validator needs it for the "unique" check
-  self._collection = collection
-
-  -- Validate the entity
-  if not t then t = {} end
-  local result, errors = self:_validate(t, schema)
-  if errors then
-    return nil, errors
-  end
-
-  self._t = result
-  return self
-end
 
 function BaseModel:save()
   local data, err = dao[self._collection]:insert_or_update(self._t)
@@ -116,7 +108,7 @@ function BaseModel:delete()
 end
 
 function BaseModel:update()
-  local res, err = validate(self, self._t, self._SCHEMA, true)
+  local res, err = self:_validate(self._SCHEMA, self._t, true)
   if not res then
     return nil, err
   else

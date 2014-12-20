@@ -4,30 +4,20 @@ local BasePlugin = require "apenode.base_plugin"
 local header_filter = require "apenode.plugins.transformations.header_filter"
 local body_filter = require "apenode.plugins.transformations.body_filter"
 
-local TransformationsHandler = {}
-TransformationsHandler.__index = TransformationsHandler
+local TransformationsHandler = BasePlugin:extend()
 
-setmetatable(TransformationsHandler, {
-  __index = BasePlugin, -- this is what makes the inheritance work
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
-
-function TransformationsHandler:_init(name)
-  BasePlugin:_init(name) -- call the base class constructor
+function TransformationsHandler:new()
+  TransformationsHandler.super:new("transformations")
 end
 
-function TransformationsHandler:header_filter()
-  BasePlugin:header_filter()
-  header_filter.execute()
+function TransformationsHandler:header_filter(conf)
+  TransformationsHandler.super:header_filter()
+  header_filter.execute(conf)
 end
 
-function TransformationsHandler:body_filter()
-  BasePlugin:body_filter()
-  body_filter.execute()
+function TransformationsHandler:body_filter(conf)
+  TransformationsHandler.super:body_filter()
+  body_filter.execute(conf)
 end
 
 return TransformationsHandler
