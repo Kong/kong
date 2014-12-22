@@ -10,7 +10,7 @@ function AuthenticationHandler:new()
 end
 
 function AuthenticationHandler:access(conf)
-  AuthenticationHandler.super:access()
+  AuthenticationHandler.super.access(self)
   access.execute(conf)
 end
 

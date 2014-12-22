@@ -66,10 +66,6 @@ build = {
     ["apenode.plugins.ratelimiting.handler"] = "src/apenode/plugins/ratelimiting/handler.lua",
     ["apenode.plugins.ratelimiting.access"] = "src/apenode/plugins/ratelimiting/access.lua",
 
-    ["apenode.plugins.transformations.handler"] = "src/apenode/plugins/transformations/handler.lua",
-    ["apenode.plugins.transformations.body_filter"] = "src/apenode/plugins/transformations/body_filter.lua",
-    ["apenode.plugins.transformations.header_filter"] = "src/apenode/plugins/transformations/header_filter.lua",
-
     ["apenode.web.app"] = "src/apenode/web/app.lua",
     ["apenode.web.routes.accounts"] = "src/apenode/web/routes/accounts.lua",
     ["apenode.web.routes.apis"] = "src/apenode/web/routes/apis.lua",

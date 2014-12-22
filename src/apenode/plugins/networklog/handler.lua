@@ -10,7 +10,7 @@ function NetworkLogHandler:new()
 end
 
 function NetworkLogHandler:log(conf)
-  NetworkLogHandler.super:log()
+  NetworkLogHandler.super.log(self)
   log.execute(conf)
 end
 

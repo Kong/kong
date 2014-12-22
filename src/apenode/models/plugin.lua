@@ -41,7 +41,7 @@ function Plugin:save()
   if self.find_one({api_id = self.api_id, application_id = self.application_id, name = name }) then
     return nil, "The plugin already exist, update the current one"
   else
-    return Plugin.super:save()
+    return Plugin.super.save(self)
   end
 end
 

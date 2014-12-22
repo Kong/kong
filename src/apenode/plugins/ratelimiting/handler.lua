@@ -10,7 +10,7 @@ function RateLimitingHandler:new()
 end
 
 function RateLimitingHandler:access(conf)
-  RateLimitingHandler.super:access()
+  RateLimitingHandler.super.access(self)
   access.execute(conf)
 end
 

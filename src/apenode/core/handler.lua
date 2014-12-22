@@ -11,12 +11,12 @@ function CoreHandler:new()
 end
 
 function CoreHandler:access(conf)
-  CoreHandler.super:access()
+  CoreHandler.super.access(self)
   access.execute(conf)
 end
 
 function CoreHandler:header_filter(conf)
-  CoreHandler.super:header_filter()
+  CoreHandler.super.header_filter(self)
   header_filter.execute(conf)
 end
 
