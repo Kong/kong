@@ -6,7 +6,7 @@ local log = require "apenode.plugins.networklog.log"
 local NetworkLogHandler = BasePlugin:extend()
 
 function NetworkLogHandler:new()
-  NetworkLogHandler.super:new("networklog")
+  NetworkLogHandler.super.new(self, "networklog")
 end
 
 function NetworkLogHandler:log(conf)

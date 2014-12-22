@@ -34,7 +34,7 @@ Plugin["_COLLECTION"] = COLLECTION
 Plugin["_SCHEMA"] = SCHEMA
 
 function Plugin:new(t)
-  return Plugin.super:new(COLLECTION, SCHEMA, t)
+  return Plugin.super.new(self, COLLECTION, SCHEMA, t)
 end
 
 function Plugin:save()

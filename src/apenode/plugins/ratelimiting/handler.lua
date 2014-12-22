@@ -6,7 +6,7 @@ local access = require "apenode.plugins.ratelimiting.access"
 local RateLimitingHandler = BasePlugin:extend()
 
 function RateLimitingHandler:new()
-  RateLimitingHandler.super:new("ratelimiting")
+  RateLimitingHandler.super.new(self, "ratelimiting")
 end
 
 function RateLimitingHandler:access(conf)

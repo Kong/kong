@@ -4,7 +4,7 @@ local MetricModel = require "apenode.models.metric"
 local Metrics = BaseDao:extend()
 
 function Metrics:new(database)
-  Metrics.super:new(database, MetricModel._COLLECTION, MetricModel._SCHEMA)
+  Metrics.super.new(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA)
 
   self.increment_stmt = database:prepare [[
     INSERT OR REPLACE INTO metrics

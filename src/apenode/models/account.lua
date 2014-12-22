@@ -15,7 +15,7 @@ Account["_COLLECTION"] = COLLECTION
 Account["_SCHEMA"] = SCHEMA
 
 function Account:new(t)
-  Account.super:new(COLLECTION, SCHEMA, t)
+  Account.super.new(self, COLLECTION, SCHEMA, t)
 end
 
 function Account.find_one(args)

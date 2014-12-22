@@ -6,7 +6,7 @@ local access = require "apenode.plugins.authentication.access"
 local AuthenticationHandler = BasePlugin:extend()
 
 function AuthenticationHandler:new()
-  AuthenticationHandler.super:new("authentication")
+  AuthenticationHandler.super.new(self, "authentication")
 end
 
 function AuthenticationHandler:access(conf)

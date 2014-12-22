@@ -25,7 +25,7 @@ Application["_COLLECTION"] = COLLECTION
 Application["_SCHEMA"] = SCHEMA
 
 function Application:new(t)
-  return Application.super:new(COLLECTION, SCHEMA, t)
+  return Application.super.new(self, COLLECTION, SCHEMA, t)
 end
 
 function Application.find_one(args)

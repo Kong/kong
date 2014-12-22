@@ -17,7 +17,7 @@ Metric["_COLLECTION"] = COLLECTION
 Metric["_SCHEMA"] = SCHEMA
 
 function Metric:new(t)
-  return Metric.super:new(COLLECTION, SCHEMA, t)
+  return Metric.super.new(self, COLLECTION, SCHEMA, t)
 end
 
 function Metric.find_one(args)

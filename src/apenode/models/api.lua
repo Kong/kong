@@ -18,7 +18,7 @@ Api["_COLLECTION"] = COLLECTION
 Api["_SCHEMA"] = SCHEMA
 
 function Api:new(t)
-  return Api.super:new(COLLECTION, SCHEMA, t)
+  return Api.super.new(self, COLLECTION, SCHEMA, t)
 end
 
 function Api.find_one(args)

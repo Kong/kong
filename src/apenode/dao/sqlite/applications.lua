@@ -4,7 +4,7 @@ local ApplicationsModel = require "apenode.models.application"
 local Applications = BaseDao:extend()
 
 function Applications:new(database)
-  Applications.super:new(database, ApplicationsModel._COLLECTION, ApplicationsModel._SCHEMA)
+  Applications.super.new(self, database, ApplicationsModel._COLLECTION, ApplicationsModel._SCHEMA)
 end
 
 return Applications

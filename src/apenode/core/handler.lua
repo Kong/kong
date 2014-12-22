@@ -7,7 +7,7 @@ local BasePlugin = require "apenode.base_plugin"
 local CoreHandler = BasePlugin:extend()
 
 function CoreHandler:new()
-  CoreHandler.super:new("core")
+  CoreHandler.super.new(self, "core")
 end
 
 function CoreHandler:access(conf)
