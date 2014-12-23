@@ -2,11 +2,17 @@ local BaseModel = require "apenode.models.base_model"
 
 
 local function check_number(val)
-  if val == 123 then
+  if not val or val == 123 then
     return true
   else
     return false, "The value should be 123"
   end
+end
+
+local function get_schema(v)
+  return {
+    smart = { type = "boolean" }
+  }
 end
 
 local collection = "apis"
@@ -16,7 +22,8 @@ local validator = {
   public_dns = { type = "string", required = true, unique = false, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true, unique = false },
   created_at = { type = "number", read_only = true, default = 123 },
-  random_value = { type = "number", func = check_number }
+  random_value = { type = "number", func = check_number },
+  some_schema = { type = "table", schema_from_func = get_schema}
 }
 
 describe("BaseModel", function()
@@ -100,6 +107,35 @@ describe("BaseModel", function()
         public_dns = "test.com",
         target_url = "target asdads",
         random_value = 123
+      })
+
+      assert.truthy(entity)
+      assert.falsy(err)
+    end)
+    it("should return errors when testing nested schemas", function()
+      local entity, err = BaseModel(collection, validator, {
+        name = "test",
+        public_dns = "test.com",
+        target_url = "target asdads",
+        random_value = 123,
+        some_schema = {
+          smart = "hello world this is wrong"
+        }
+      })
+
+      assert.falsy(entity)
+      assert.truthy(err)
+      assert.are.same({smart = 'smart should be a boolean' }, err.some_schema)
+    end)
+    it("should not return errors when testing nested schemas", function()
+      local entity, err = BaseModel(collection, validator, {
+        name = "test",
+        public_dns = "test.com",
+        target_url = "target asdads",
+        random_value = 123,
+        some_schema = {
+          smart = true
+        }
       })
 
       assert.truthy(entity)

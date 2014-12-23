@@ -2,8 +2,6 @@ local utils = require "apenode.utils"
 local cjson = require "cjson"
 local kWebURL = "http://localhost:8001/"
 
-local inspect = require "inspect"
-
 local ENDPOINTS = {
   apis = {
     total = 3,

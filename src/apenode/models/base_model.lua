@@ -69,8 +69,8 @@ function BaseModel:_validate(schema, t, is_update)
       end
     end
 
-    if t[k] and v.func then
-      local success, err = v.func(t[k])
+    if v.func then
+      local success, err = v.func(t[k], t)
       if not success then
         errors = add_error(errors, k, err)
       end
@@ -85,10 +85,14 @@ function BaseModel:_validate(schema, t, is_update)
 
     if t[k] and v.type == "table" then
       if v.schema_from_func then
-        local table_schema = v.schema_from_func(t)
-        local _, table_schema_err = BaseModel:_validate(table_schema, t[k], false)
-        if table_schema_err then
-          add_error(errors, k, table_schema_err)
+        local table_schema, err = v.schema_from_func(t)
+        if not table_schema then
+          errors = add_error(errors, k, err)
+        else
+          local _, table_schema_err = BaseModel:_validate(table_schema, t[k], false)
+          if table_schema_err then
+            errors = add_error(errors, k, table_schema_err)
+          end
         end
       end
     end

@@ -4,15 +4,15 @@ local BaseModel = require "apenode.models.base_model"
 local ApplicationModel = require "apenode.models.application"
 local ApiModel = require "apenode.models.api"
 
-local function check_application_id(application_id)
-  if ApplicationModel.find_one({id = application_id}) then
+local function check_application_id(application_id, t)
+  if not application_id or ApplicationModel.find_one({id = application_id}) then
     return true
   else
     return false, "Application not found"
   end
 end
 
-local function check_api_id(api_id)
+local function check_api_id(api_id, t)
   if ApiModel.find_one({id = api_id}) then
     return true
   else
@@ -21,7 +21,6 @@ local function check_api_id(api_id)
 end
 
 local function get_schema(object)
-
   local status, plugin = pcall(require, "apenode.plugins."..object.name..".handler")
   if not status then
     return false, "Plugin \""..object.name.."\" not found"

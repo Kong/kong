@@ -3,7 +3,7 @@
 local AccountModel = require "apenode.models.account"
 local BaseModel = require "apenode.models.base_model"
 
-local function check_account_id(account_id)
+local function check_account_id(account_id, t)
   if AccountModel.find_one({id = account_id}) then
     return true
   else
