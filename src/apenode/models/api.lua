@@ -8,8 +8,6 @@ local SCHEMA = {
   name = { type = "string", required = true, unique = true },
   public_dns = { type = "string", required = true, unique = true, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
-  authentication_type = { type = "string", required = true },
-  authentication_key_names = { type = "table", required = false },
   created_at = { type = "number", read_only = true, default = os.time() }
 }
 

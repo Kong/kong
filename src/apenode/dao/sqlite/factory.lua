@@ -51,8 +51,6 @@ function SQLiteFactory:create_schema()
       name VARCHAR(50) UNIQUE,
       public_dns VARCHAR(50) UNIQUE,
       target_url VARCHAR(50),
-      authentication_type VARCHAR(10),
-      authentication_key_names VARCHAR(50),
       created_at TIMESTAMP
     );
 

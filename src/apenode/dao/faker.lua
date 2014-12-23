@@ -11,12 +11,7 @@ function _M.fake_entity(type, invalid)
     return {
       name = name,
       public_dns = "random"..r..".com",
-      target_url = "http://random"..r..".com",
-      authentication_type = "query",
-      authentication_key_names = {
-        "X-Mashape-Key",
-        "X-Apenode-Key"
-      }
+      target_url = "http://random"..r..".com"
     }
   elseif type == "account" then
     local provider_id
@@ -43,7 +38,8 @@ function _M.fake_entity(type, invalid)
       api_id = r,
       name = "random"..r,
       value = {
-        authentication_key_names = { "apikey", "x-api-key"}
+        authentication_type = "query",
+        authentication_key_names = { "apikey" }
       }
     }
   end
@@ -55,22 +51,17 @@ function _M.populate(factory, random, amount)
       {
         name = "test",
         public_dns = "test.com",
-        target_url = "http://httpbin.org",
-        authentication_type = "query",
-        authentication_key_names = { "apikey" }
+        target_url = "http://httpbin.org"
       },
       {
         name = "test2",
         public_dns = "test2.com",
-        target_url = "http://httpbin.org",
-        authentication_type = "header",
-        authentication_key_names = { "apikey" }
+        target_url = "http://httpbin.org"
       },
       {
         name = "test3",
         public_dns = "test3.com",
-        target_url = "http://httpbin.org",
-        authentication_type = "basic"
+        target_url = "http://httpbin.org"
       }
     },
     account = {
@@ -110,7 +101,23 @@ function _M.populate(factory, random, amount)
         api_id = 1,
         name = "authentication",
         value = {
-          authentication_key_names = { "apikey", "x-api-key"}
+          authentication_type = "query",
+          authentication_key_names = { "apikey" }
+        }
+      },
+      {
+        api_id = 2,
+        name = "authentication",
+        value = {
+          authentication_type = "header",
+          authentication_key_names = { "apikey" }
+        }
+      },
+      {
+        api_id = 3,
+        name = "authentication",
+        value = {
+          authentication_type = "basic"
         }
       }
     }

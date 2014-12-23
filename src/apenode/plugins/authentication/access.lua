@@ -111,8 +111,17 @@ local function get_keys(request, conf, vars)
 end
 
 function _M.execute(conf)
+  if not conf then return end
+
   local public_key, secret_key = get_keys(ngx.req, conf, ngx.var)
-  local application = dao.applications:get_by_key(public_key, secret_key)
+  local application = nil
+  if secret_key then -- We need this check because if the value is nil, then the table below won't have the query
+    application = dao.applications:find_one({
+      public_key = public_key,
+      secret_key = secret_key
+    })
+  end
+
   if not application then
     utils.show_error(403, "Your authentication credentials are invalid")
   end

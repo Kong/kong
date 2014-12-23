@@ -4,7 +4,6 @@ local Object = require "classic"
 local BasePlugin = Object:extend()
 
 function BasePlugin:new(name)
-  print(name)
   self._name = name
 end
 

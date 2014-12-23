@@ -29,13 +29,15 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
   local res, err = PluginModel.find_one({
     api_id = api_id,
     application_id = application_id,
-    plugin_name = plugin_name
+    name = plugin_name
   })
-  if not err then
-    return res.value
-  else
-    ngx.log(ngx.ERROR, err)
+
+  if res then
+    return res
+  elseif err then
+      ngx.log(ngx.ERROR, err)
   end
+  return nil
 end
 
 function _M.init(configuration_path)
@@ -69,19 +71,24 @@ function _M.access()
   -- Iterate over all the plugins
   for _, v in ipairs(plugins) do
     if ngx.ctx.api then
-      ngx.ctx.plugin_conf[v.name] = load_plugin_configuration(ngx.ctx.api.id, nil, v.name) -- Loading the "API-specific" configuration
+      ngx.ctx.plugin_conf[v.name] = load_plugin_conf(ngx.ctx.api.id, nil, v.name) -- Loading the "API-specific" configuration
     end
     if not ngx.ctx.error then
-      v.handler:access(ngx.ctx.plugin_conf[v.name])
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if not ngx.ctx.api then -- If not ngx.ctx.api then it's the core plugin
+        v.handler:access(nil)
+      elseif conf then
+        v.handler:access(conf.value)
+      end
     end
   end
 
   -- Load the "authenticated entity-specific" plugin configurations, and override them if it exists
   if ngx.ctx.authenticated_entity then
-    for k, v in pairs(plugins) do
-      local plugin_conf = load_plugin_configuration(ngx.ctx.api.id, ngx.ctx.authenticated_entity.id, k)
+    for _, v in pairs(plugins) do
+      local plugin_conf = load_plugin_conf(ngx.ctx.api.id, ngx.ctx.authenticated_entity.id, v.name)
       if plugin_conf then -- Override only if not nil
-        ngx.ctx.plugin_conf[k] = plugin_conf
+        ngx.ctx.plugin_conf[v.name] = plugin_conf
       end
     end
   end
@@ -94,7 +101,10 @@ function _M.header_filter()
 
   if not ngx.ctx.error then
     for _, v in ipairs(plugins) do -- Iterate over all the plugins
-      v.handler:header_filter(ngx.ctx.plugin_conf[v.name])
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if conf then
+        v.handler:header_filter(conf.value)
+      end
     end
   end
 end
@@ -102,7 +112,10 @@ end
 function _M.body_filter()
   if not ngx.ctx.error then
     for _, v in ipairs(plugins) do -- Iterate over all the plugins
-      v.handler:body_filter(ngx.ctx.plugin_conf[v.name])
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if conf then
+        v.handler:body_filter(conf.value)
+      end
     end
   end
 end
@@ -132,7 +145,10 @@ function _M.log()
 
     ngx.ctx.log_message = message
     for _, v in ipairs(plugins) do -- Iterate over all the plugins
-      v.handler:log(ngx.ctx.plugin_conf[v.name])
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if conf then
+        v.handler:log(conf.value)
+      end
     end
   end
 end
