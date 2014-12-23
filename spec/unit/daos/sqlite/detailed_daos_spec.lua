@@ -16,14 +16,13 @@ describe("DetailedDaos", function()
   describe("MetricsDao", function()
 
     describe("#insert_or_update()", function()
-      it("should throw an error as it is not implemented", function()
+      it("should throw an error as it is not supported", function()
         assert.has_error(function() dao_factory.metrics:insert_or_update() end)
       end)
-
     end)
---[[
+
     describe("#increment_metric()", function()
-      it("should create the metric of not already existing", function()
+      it("should create the metric if not already existing", function()
         local inserted, err = dao_factory.metrics:increment_metric(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.truthy(inserted)
@@ -50,14 +49,15 @@ describe("DetailedDaos", function()
 
     describe("#delete()", function()
       it("should delete an existing metric", function()
-        local success, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
+        local count, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
         assert.falsy(err)
-        local result, err = dao_factory.metrics:retrieve_metric(1, 1, "new_metric_1", 123)
+        assert.are.same(1, count)
+        local result, err = dao_factory.metrics:find_one(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.falsy(result)
       end)
     end)
-]]
+
   end)
 
   describe("PluginsDao", function()

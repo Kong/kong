@@ -6,7 +6,7 @@ local Metrics = BaseDao:extend()
 function Metrics:new(database)
   Metrics.super.new(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA)
 
-  self.increment_stmt = database:prepare [[
+  self.increment_stmt = Metrics.super.get_statement(self, [[
     INSERT OR REPLACE INTO metrics
       VALUES (:api_id, :application_id, :name, :timestamp,
         COALESCE(
@@ -16,38 +16,51 @@ function Metrics:new(database)
               AND name = :name
               AND timestamp = :timestamp),
         0) + :step);
-  ]]
+  ]])
 end
 
 -- @override
-function Metrics:insert_or_update(metric)
+function Metrics:insert_or_update()
   error("Metrics:insert_or_update() not supported")
 end
 
 -- @override
+function Metrics:find_one(api_id, application_id, name, timestamp)
+  return Metrics.super.find_one(self, {
+    api_id = api_id,
+    application_id = application_id,
+    name = name,
+    timestamp = timestamp
+  })
+end
+
+-- @override
 function Metrics:delete(api_id, application_id, name, timestamp)
-  self.delete_stmt:bind_values(api_id, application_id, name, timestamp)
-  return self:exec_stmt(self.delete_stmt)
+  return Metrics.super.delete(self, {
+    api_id = api_id,
+    application_id = application_id,
+    name = name,
+    timestamp = timestamp
+  })
 end
 
 function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
   if not step then step = 1 end
 
   self.increment_stmt:bind_names {
-      name = name,
-      step = step,
-      value = value,
-      api_id = api_id,
-      timestamp = timestamp,
-      application_id = application_id
+    api_id = api_id,
+    application_id = application_id,
+    name = name,
+    timestamp = timestamp,
+    step = step
   }
-  local rowid, err = self:exec_stmt(self.insert_or_update_stmt)
+
+  local count, err = self:exec_stmt_count_rows(self.increment_stmt)
   if err then
     return nil, err
   end
 
-  self.get_by_rowid:bind_values(rowid)
-  return self:exec_select_stmt(self.get_by_rowid)
+  return self:find_one(api_id, application_id, name, timestamp)
 end
 
 return Metrics
