@@ -5,6 +5,12 @@ local access = require "apenode.plugins.authentication.access"
 
 local AuthenticationHandler = BasePlugin:extend()
 
+AuthenticationHandler["_SCHEMA"] = {
+  authentication_type = { type = "string", required = true },
+  authentication_key_names = { type = "table" },
+  hide_credentials = { type = "boolean", required = true }
+}
+
 function AuthenticationHandler:new()
   AuthenticationHandler.super.new(self, "authentication")
 end

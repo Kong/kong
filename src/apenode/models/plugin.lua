@@ -20,13 +20,23 @@ local function check_api_id(api_id)
   end
 end
 
+local function get_schema(object)
+
+  local status, plugin = pcall(require, "apenode.plugins."..object.name..".handler")
+  if not status then
+    return false, "Plugin \""..object.name.."\" not found"
+  end
+
+  return plugin._SCHEMA
+end
+
 local COLLECTION = "plugins"
 local SCHEMA = {
   id = { type = "string", read_only = true },
   api_id = { type = "string", required = true, func = check_api_id },
   application_id = { type = "string", required = false, func = check_application_id },
   name = { type = "string", required = true },
-  value = { type = "table", required = true }
+  value = { type = "table", required = true, schema_from_func = get_schema }
 }
 
 local Plugin = BaseModel:extend()

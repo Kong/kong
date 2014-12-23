@@ -31,12 +31,16 @@ end
 local function parse_params(model, params)
   for k,v in pairs(params) do
     if model._SCHEMA[k] and model._SCHEMA[k].type == "table" then
-      -- It can either be a JSON map or a string array separated by comma
-      local status, res = pcall(cjson.decode, v)
-      if status then
-        params[k] = res
+      if not v or stringy.strip(v) == "" then
+        params[k] = nil
       else
-        params[k] = stringy.split(v, ",")
+        -- It can either be a JSON map or a string array separated by comma
+        local status, res = pcall(cjson.decode, v)
+        if status then
+          params[k] = res
+        else
+          params[k] = stringy.split(v, ",")
+        end
       end
     end
   end

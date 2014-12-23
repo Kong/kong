@@ -1,6 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
 local rex = require("rex_pcre")
+local stringy = require "stringy"
 
 local Object = require "classic"
 local BaseModel = Object:extend()
@@ -38,6 +39,10 @@ function BaseModel:new(collection, schema, t)
     return nil, errors
   end
 
+  for k,v in pairs(t) do
+    self[k] = t[k]
+  end
+
   self._t = result
 end
 
@@ -48,7 +53,7 @@ function BaseModel:_validate(schema, t, is_update)
   for k,v in pairs(schema) do
     if not t[k] and v.default ~= nil then
       t[k] = v.default
-    elseif not t[k] and v.required then
+    elseif v.required and (t[k] == nil or t[k] == "") then
       errors = add_error(errors, k, k .. " is required")
     elseif t[k] and not is_update and v.read_only then
       errors = add_error(errors, k, k .. " is read only")
@@ -56,13 +61,6 @@ function BaseModel:_validate(schema, t, is_update)
 
     if t[k] and type(t[k]) ~= v.type then
       errors = add_error(errors, k, k .. " should be a " .. v.type)
-    end
-
-    if t[k] and v.unique then
-      local data, total, err = self._find(self._collection, {[k] = t[k]})
-      if total > 0 then
-        errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
-      end
     end
 
     if t[k] and v.regex then
@@ -78,8 +76,24 @@ function BaseModel:_validate(schema, t, is_update)
       end
     end
 
+    if t[k] and v.unique then
+      local data, total, err = self._find(self._collection, {[k] = t[k]})
+      if total > 0 then
+        errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
+      end
+    end
+
+    if t[k] and v.type == "table" then
+      if v.schema_from_func then
+        local table_schema = v.schema_from_func(t)
+        local _, table_schema_err = BaseModel:_validate(table_schema, t[k], false)
+        if table_schema_err then
+          add_error(errors, k, table_schema_err)
+        end
+      end
+    end
+
     result[k] = t[k]
-    self[k] = t[k]
   end
 
   -- Check for unexpected fields
