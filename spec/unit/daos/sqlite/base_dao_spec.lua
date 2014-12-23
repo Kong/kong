@@ -14,8 +14,9 @@ describe("BaseDao", function()
    dao_factory:populate(true)
   end)
 
-  teardown(function()
+  teardown(function()    
    dao_factory:drop()
+   dao_factory:close()
   end)
 
   describe("#find_one()", function()
@@ -91,60 +92,14 @@ describe("BaseDao", function()
       local result, count, err = dao_factory.apis:find({})
       assert.falsy(err)
       assert.are.equal(1000, count)
-    end)
-    it("find plugins with table args", function()
-      local result, count, err = dao_factory.plugins:find({
-        value = {
-          authentication_type = "query",
-          authentication_key_names = { "apikey" }
-        }
-      })
-
+      result, count, err = dao_factory.apis:find()
       assert.falsy(err)
-      assert.are.equal(998, count)
+      assert.are.equal(1000, count)
     end)
-    it("find plugins with wrong table args", function()
-      local result, count, err = dao_factory.plugins:find({
-        value = {
-          authentication_type = "query",
-          authentication_key_names = { "apikey", "x-api-key2"}
-        }
-      })
-      assert.falsy(err)
-      assert.are.equal(0, count)
-    end)
-    it("find plugins with composite table args", function()
-      local result, count, err = dao_factory.plugins:find({
-        api_id = 1,
-        value = {
-          authentication_type = "query",
-          authentication_key_names = { "apikey" }
-        }
-      })
-      assert.falsy(err)
-      assert.are.equal(1, count)
-    end)
-    it("find plugins with composite table args in reversed order", function()
-      local result, count, err = dao_factory.plugins:find({
-        value = {
-          authentication_key_names = { "apikey" },
-          authentication_type = "query"
-        },
-        api_id = 1
-      })
-      assert.falsy(err)
-      assert.are.equal(1, count)
-    end)
-    it("find plugins with composite table args in reversed order should return zero", function()
-      local result, count, err = dao_factory.plugins:find({
-        value = {
-          authentication_key_names = { "apikey" },
-          authentication_type = "query"
-        },
-        api_id = 2
-      })
-      assert.falsy(err)
-      assert.are.equal(0, count)
+    it("shoud throw an error if the satement is invalid", function()
+      assert.has_error(function()
+        local entity, err = dao_factory.apis:find { foo = "bar" }
+      end)
     end)
   end)
 
@@ -156,14 +111,6 @@ describe("BaseDao", function()
       local updated_rows, err = dao_factory.apis:update(existing_entity, { id = existing_entity.id })
       assert.falsy(err)
       assert.are.same(1, updated_rows)
-    end)
-    it("should throw an error if invalid column is updated", function()
-      local existing_entity = dao_factory.apis:find_one { id = 1 }
-      existing_entity.foo = "hello.com"
-
-      assert.has_error(function()
-        dao_factory.apis:update(existing_entity, { id = existing_entity.id })
-      end)
     end)
     it("should return the number of rows affected", function()
       local existing_entity = dao_factory.apis:find_one { id = 1 }
@@ -233,6 +180,14 @@ describe("BaseDao", function()
           assert.falsy(err)
           assert.falsy(updated_entity)
         end)
+        it("should throw an error if invalid column is updated", function()
+          local existing_entity = dao:find_one { id = 1 }
+          existing_entity.foo = "hello.com"
+
+          assert.has_error(function()
+            dao:update(existing_entity, { id = existing_entity.id })
+          end)
+        end)
       end)
 
       describe("#insert_or_update()", function()
@@ -283,19 +238,56 @@ describe("BaseDao", function()
           assert.falsy(saved_entity)
         end)
       end)
-      --[[
+
       describe("#delete()", function()
-        pending()
-        it("should delete an entity", function()
-          local result, err = dao:delete(1)
+        it("should delete an entity by key", function()
+          local result, err = dao:delete { id = 1 }
           assert.falsy(err)
           assert.truthy(result)
-          result, err = dao:get_by_id(1)
+          result, err = dao:find_one { id = 1 }
           assert.falsy(err)
           assert.falsy(result)
         end)
+        it("should delete an object by composite key", function()
+          local random_entity = dao_factory.fake_entity(dao_name)
+          -- Save entity
+          local saved_entity, err = dao:insert(random_entity)
+          assert.falsy(err)
+          assert.truthy(saved_entity)
+          -- Check if saved
+          local result, err = dao:find_one { id = saved_entity.id }
+          assert.falsy(err)
+          assert.truthy(result)
+          -- Delete entity
+          local result, err = dao:delete(saved_entity)
+          assert.falsy(err)
+          assert.truthy(result)
+          -- Check if deleted
+          local result, err = dao:find_one { id = saved_entity.id }
+          assert.falsy(err)
+          assert.falsy(result)
+        end)
+        it("should return the number of deleted rows", function()
+          local result, err = dao:delete { id = 2 }
+          assert.falsy(err)
+          assert.are.same(1, result)
+        end)
+        it("should prevent the execution if passed key is about to delete the entire collection", function()
+          local result, err = dao:delete({})
+          assert.truthy(err)
+          assert.falsy(result)
+          local result, err = dao:delete()
+          assert.truthy(err)
+          assert.falsy(result)
+          assert.are.same("Cannot delete an entire collection", err.message)
+        end)
+        it("should throw an error if composite key has invalid columns", function()
+          assert.has_error(function()
+            dao:delete { foo = "bar" }
+          end)
+        end)
       end)
-      --]]
+
     end)
   end
 

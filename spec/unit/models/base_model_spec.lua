@@ -1,6 +1,5 @@
 local BaseModel = require "apenode.models.base_model"
 
-
 local function check_number(val)
   if not val or val == 123 then
     return true
@@ -35,7 +34,6 @@ describe("BaseModel", function()
         public_dns = "test.com",
         target_url = "http://httpbin.org"
       })
-
       assert.falsy(err)
       assert.truthy(entity)
       assert.are.same("test.com", entity.public_dns)
@@ -46,7 +44,6 @@ describe("BaseModel", function()
         public_dns = "test.com",
         target_url = "http://httpbin.org"
       })
-
       assert.falsy(err)
       assert.truthy(entity)
       assert.truthy(entity.created_at)
@@ -58,7 +55,6 @@ describe("BaseModel", function()
         target_url = "http://httpbin.org",
         wot = 123
       })
-
       assert.truthy(err)
       assert.falsy(entity)
       assert.are.same("wot is an unknown field", err.wot)
@@ -71,7 +67,6 @@ describe("BaseModel", function()
         public_dns = "test.com",
         target_url = "http://httpbin.org"
       })
-
       assert.falsy(entity)
       assert.truthy(err)
       assert.are.same("id is read only", err.id)
@@ -82,7 +77,6 @@ describe("BaseModel", function()
         public_dns = 123,
         target_url = "target asdads"
       })
-
       assert.falsy(entity)
       assert.truthy(err)
       assert.are.same("name is required", err.name)
@@ -96,7 +90,6 @@ describe("BaseModel", function()
         target_url = "target asdads",
         random_value = 1234
       })
-
       assert.falsy(entity)
       assert.truthy(err)
       assert.are.same("The value should be 123", err.random_value)
@@ -108,7 +101,6 @@ describe("BaseModel", function()
         target_url = "target asdads",
         random_value = 123
       })
-
       assert.truthy(entity)
       assert.falsy(err)
     end)
@@ -122,7 +114,6 @@ describe("BaseModel", function()
           smart = "hello world this is wrong"
         }
       })
-
       assert.falsy(entity)
       assert.truthy(err)
       assert.are.same({smart = 'smart should be a boolean' }, err.some_schema)
@@ -137,11 +128,9 @@ describe("BaseModel", function()
           smart = true
         }
       })
-
       assert.truthy(entity)
       assert.falsy(err)
     end)
-
   end)
 
 end)

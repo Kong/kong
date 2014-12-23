@@ -11,43 +11,19 @@ describe("DetailedDaos", function()
 
   teardown(function()
     dao_factory:drop()
-  end)
-
-  describe("APIsDao", function()
---[[
-    describe("authentication_key_names serialization", function()
-      describe("#save()", function()
-        it("should serialize the authentication_key_names property", function()
-          local api_to_save = dao_factory.fake_entity("api")
-          local saved_api = dao_factory.apis:save(api_to_save)
-          assert.truthy(saved_api.authentication_key_names)
-          assert.are.same("table", type(saved_api.authentication_key_names))
-          assert.are.same({ "X-Mashape-Key", "X-Apenode-Key" }, saved_api.authentication_key_names)
-        end)
-        it("should be an empty table with an empty authentication_key_names value", function()
-          local api_to_save = dao_factory.fake_entity("api")
-          api_to_save.authentication_key_names = nil
-          local saved_api = dao_factory.apis:save(api_to_save)
-          assert.truthy(saved_api.authentication_key_names)
-          assert.are.same("table", type(saved_api.authentication_key_names))
-          assert.are.same({}, saved_api.authentication_key_names)
-        end)
-      end)
-    end)
---]]
+    dao_factory:close()
   end)
 
   describe("MetricsDao", function()
 
     describe("#insert_or_update()", function()
-      it("should throw an error as it is not implemented", function()
+      it("should throw an error as it is not supported", function()
         assert.has_error(function() dao_factory.metrics:insert_or_update() end)
       end)
-
     end)
---[[
+
     describe("#increment_metric()", function()
-      it("should create the metric of not already existing", function()
+      it("should create the metric if not already existing", function()
         local inserted, err = dao_factory.metrics:increment_metric(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.truthy(inserted)
@@ -74,14 +50,75 @@ describe("DetailedDaos", function()
 
     describe("#delete()", function()
       it("should delete an existing metric", function()
-        local success, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
+        local count, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
         assert.falsy(err)
-        local result, err = dao_factory.metrics:retrieve_metric(1, 1, "new_metric_1", 123)
+        assert.are.same(1, count)
+        local result, err = dao_factory.metrics:find_one(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.falsy(result)
       end)
     end)
-]]
+
+  end)
+
+  describe("PluginsDao", function()
+
+    describe("#find()", function()
+      it("find plugins with table args", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey" }
+          }
+        })
+        assert.falsy(err)
+        assert.are.equal(998, count)
+      end)
+      it("find plugins with wrong table args", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey", "x-api-key2" }
+          }
+        })
+        assert.falsy(err)
+        assert.are.equal(0, count)
+      end)
+      it("find plugins with composite table args", function()
+        local result, count, err = dao_factory.plugins:find({
+          api_id = 1,
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey" }
+          }
+        })
+        assert.falsy(err)
+        assert.are.equal(1, count)
+      end)
+      it("find plugins with composite table args in reversed order", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_key_names = { "apikey" },
+            authentication_type = "query"
+          },
+          api_id = 1
+        })
+        assert.falsy(err)
+        assert.are.equal(1, count)
+      end)
+      it("find plugins with composite table args in reversed order should return zero", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_key_names = { "apikey" },
+            authentication_type = "query"
+          },
+          api_id = 2
+        })
+        assert.falsy(err)
+        assert.are.equal(0, count)
+      end)
+    end)
+
   end)
 
 end)

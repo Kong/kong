@@ -9,7 +9,6 @@ local Accounts = require "apenode.dao.sqlite.accounts"
 local Applications = require "apenode.dao.sqlite.applications"
 local Plugins = require "apenode.dao.sqlite.plugins"
 
-
 local SQLiteFactory = Object:extend()
 
 function SQLiteFactory:new(configuration)
@@ -107,6 +106,11 @@ function SQLiteFactory:drop()
 end
 
 function SQLiteFactory:close()
+  self.apis:finalize()
+  self.metrics:finalize()
+  self.accounts:finalize()
+  self.applications:finalize()
+  self.plugins:finalize()
   self._db:close()
 end
 
