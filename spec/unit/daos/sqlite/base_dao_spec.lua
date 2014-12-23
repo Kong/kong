@@ -14,8 +14,9 @@ describe("BaseDao", function()
    dao_factory:populate(true)
   end)
 
-  teardown(function()
+  teardown(function()    
    dao_factory:drop()
+   dao_factory:close()
   end)
 
   describe("#find_one()", function()

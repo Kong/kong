@@ -11,6 +11,7 @@ describe("DetailedDaos", function()
 
   teardown(function()
     dao_factory:drop()
+    dao_factory:close()
   end)
 
   describe("MetricsDao", function()

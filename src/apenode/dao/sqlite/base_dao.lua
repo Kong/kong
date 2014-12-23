@@ -37,6 +37,13 @@ function BaseDao:new(database, collection, schema)
   self._stmt_cache = {}
 end
 
+-- Finalize the cached prepared statements
+function BaseDao:finalize()
+  for k,v in pairs(self._stmt_cache) do
+    v:finalize()
+  end
+end
+
 -- Insert an entity
 -- @param table entity Entity to insert
 -- @return table Inserted entity with its rowid property
