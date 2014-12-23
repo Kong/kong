@@ -62,7 +62,7 @@ function BaseDao:insert(entity)
   return entity
 end
 
--- Update an entity
+-- Update one or many entities according to a WHERE statement
 -- @param table entity Entity to update
 -- @return table Updated entity
 -- @return table Error if error
@@ -124,17 +124,17 @@ function BaseDao:find_one(where_keys)
   local data, total, err = self:find(where_keys, 1, 1)
   local result = nil
   if total > 0 then
-    result = table.remove(data, 1) -- Pop out first element in table
+    result = data[1]
   end
   return result, err
 end
 
--- Find rows according to a condition determined by the keys
+-- Find rows according to a WHERE condition determined by the passed keys
 -- @param table (optional) where_keys Keys used to build a WHERE condition
 -- @param number page Page to retrieve (default: 1)
 -- @param number size Size of the page (default = 30, max = 100)
 -- @return table Retrieved rows or empty list
--- @return number Total count of entityes matching the SELECT
+-- @return number Total count of entities matching the SELECT
 -- @return table Error if error
 function BaseDao:find(where_keys, page, size)
   -- where_keys is optional
@@ -146,10 +146,10 @@ function BaseDao:find(where_keys, page, size)
 
   where_keys = serialize(self._schema, where_keys)
 
+  -- Pagination
   if not page then page = 1 end
   if not size then size = 30 end
   size = math.min(size, 100)
-
   local start_offset = ((page - 1) * size)
 
   local query = self:build_select_query(where_keys, true)
@@ -157,17 +157,19 @@ function BaseDao:find(where_keys, page, size)
   local stmt = self:get_statement(query)
   local count_stmt = self:get_statement(count_query)
 
-  local k = {}
+  -- Build binding table
+  local values_to_bind = {}
   if where_keys then
-    k = where_keys
+    values_to_bind = where_keys
   end
 
-  k.page = start_offset
-  k.size = size
+  values_to_bind.page = start_offset
+  values_to_bind.size = size
 
-  stmt:bind_names(k)
-  count_stmt:bind_names(k)
+  stmt:bind_names(values_to_bind)
+  count_stmt:bind_names(values_to_bind)
 
+  -- Statements execution
   local results, err = self:exec_select_stmt(stmt)
   if err then
     return nil, nil, err
@@ -178,6 +180,7 @@ function BaseDao:find(where_keys, page, size)
     return nil, nil, err
   end
 
+  -- Deserialization
   for _,result in ipairs(results) do
     result = deserialize(self._schema, result)
   end
@@ -185,8 +188,24 @@ function BaseDao:find(where_keys, page, size)
   return results, count_result
 end
 
-function BaseDao:delete_by_keys(keys)
+-- Delete row(s) according to a WHERE condition determined by the passed keys
+-- @param table where_keys Keys used to build a WHERE condition
+-- @return number Number of rows affected by the executed query
+-- @return table Error if error
+function BaseDao:delete(where_keys)
+  where_keys = serialize(self._schema, where_keys)
 
+  if not where_keys or  utils.table_size(where_keys) == 0 then
+    return nil, { message = "Cannot delete an entire collection" }
+  end
+
+  local query = self:build_delete_query(where_keys)
+  local stmt = self:get_statement(query)
+
+  -- Build binding table
+  stmt:bind_names(where_keys)
+
+  return self:exec_stmt_count_rows(stmt)
 end
 
 -----------------
@@ -254,7 +273,7 @@ end
 
 -- Build an UPDATE query
 -- @param table entity Object with keys that will be in the prepared statement
--- @return string An UPDATE into query to be binded
+-- @return string An UPDATE query to be binded
 function BaseDao:build_udpate_query(entity, where_keys)
   if where_keys == nil then where_keys = { id = "" } end
 
@@ -292,8 +311,8 @@ function BaseDao:build_insert_or_update_query(entity, where_keys)
   -- Build the VALUES to insert
   for k,_ in pairs(self._schema) do
     table.insert(fields, k)
-    -- value is specified in entity
-    if entity[k] ~= nil then
+    -- value is specified in entity and not in where_keys
+    if entity[k] ~= nil and where_keys[k] == nil then
       table.insert(values, ":"..k)
     -- value is not specified in entity, thus is not to update, thus we select the existing one
     else
@@ -305,11 +324,26 @@ function BaseDao:build_insert_or_update_query(entity, where_keys)
               VALUES( ]]..table.concat(values, ",")..[[ ); ]]
 end
 
--- Build a WHERE statement from an array of
+-- Build a DELETE statement from a table of keys to delete from
+-- @param table where_keys Selector for the row(s) to delete
+-- @return string The computed DELETE query to be binded
+function BaseDao:build_delete_query(where_keys)
+  if where_keys == nil then where_keys = { id = "" } end
+
+  local where = self:build_where_fields(where_keys)
+
+  return [[ DELETE FROM ]]..self._collection..where
+end
+
+-- Build a WHERE statement from keys of a table
+-- If the passed table is nil or empty, we return a space,
+-- so all our query utils don't have to do supplementary checks
+-- to know if the WHERE statement is empty or not.
 -- Ex:
+--  { public_dns = "host.com" } returns: WHERE public_dns = ?
 --
 -- @param table t
--- @return string WHERE statement or nil
+-- @return string WHERE statement or a space
 function BaseDao:build_where_fields(t)
   if t == nil or utils.table_size(t) == 0 then return " " end
 

@@ -1,9 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
 local rex = require("rex_pcre")
-local stringy = require "stringy"
-
 local Object = require "classic"
+
 local BaseModel = Object:extend()
 
 -------------
@@ -23,6 +22,7 @@ local function add_error(errors, k, v)
   end
   return errors
 end
+
 ---------------
 -- BaseModel --
 ---------------
@@ -46,29 +46,42 @@ function BaseModel:new(collection, schema, t)
   self._t = result
 end
 
+-- Validate a table against a given schema
+-- @param table schema A model schema to validate the entity against
+-- @param table t A given entity to be validated against the schema
+-- @param boolean is_update Ignores read_only fields during the validation if true
+-- @return A filtered, valid table if success, nil if error
+-- @return table A list of encountered errors during the validation
 function BaseModel:_validate(schema, t, is_update)
   local result = {}
   local errors
 
+  -- Check the given table against a given schema
   for k,v in pairs(schema) do
+    -- Set default value for the filed if given
     if not t[k] and v.default ~= nil then
       t[k] = v.default
+    -- Check required field is set
     elseif v.required and (t[k] == nil or t[k] == "") then
       errors = add_error(errors, k, k .. " is required")
+    -- Check field is not read only
     elseif t[k] and not is_update and v.read_only then
       errors = add_error(errors, k, k .. " is read only")
     end
 
+    -- Chck type of the field
     if t[k] and type(t[k]) ~= v.type then
       errors = add_error(errors, k, k .. " should be a " .. v.type)
     end
 
+    -- Check field against a regex
     if t[k] and v.regex then
       if not rex.match(t[k], v.regex) then
         errors = add_error(errors, k, k .. " has an invalid value")
       end
     end
 
+    -- Check field against a function
     if v.func then
       local success, err = v.func(t[k], t)
       if not success then
@@ -76,6 +89,7 @@ function BaseModel:_validate(schema, t, is_update)
       end
     end
 
+    -- Check if field's value is unique
     if t[k] and v.unique then
       local data, total, err = self._find(self._collection, {[k] = t[k]})
       if total > 0 then
@@ -100,7 +114,7 @@ function BaseModel:_validate(schema, t, is_update)
     result[k] = t[k]
   end
 
-  -- Check for unexpected fields
+  -- Check for unexpected fields in the entity
   for k,v in pairs(t) do
     if not schema[k] then
       errors = add_error(errors, k, k .. " is an unknown field")
@@ -113,7 +127,6 @@ function BaseModel:_validate(schema, t, is_update)
 
   return result, errors
 end
-
 
 function BaseModel:save()
   local data, err = dao[self._collection]:insert_or_update(self._t)
