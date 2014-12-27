@@ -1,15 +1,10 @@
 -- Copyright (C) Mashape, Inc.
 
-local BaseController = {}
-BaseController.__index = BaseController
+local cjson = require "cjson"
+local stringy = require "stringy"
+local Object = require "classic"
 
-setmetatable(BaseController, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
+local BaseController = Object:extend()
 
 local function render_list_response(req, data, total, page, size)
   local url = req.parsed_url.scheme .. "://" .. req.parsed_url.host .. ":" .. req.parsed_url.port .. req.parsed_url.path
@@ -29,32 +24,95 @@ local function render_list_response(req, data, total, page, size)
   return result
 end
 
-function BaseController:_init(collection_name)
+local function decode_json(json, out)
+  out = cjson.decode(json)
+end
 
-  app:get("/" .. collection_name .. "/", function(self)
-    local page = tonumber(self.params.page)
-    local size = tonumber(self.params.size)
+local function parse_params(model, params)
+  for k,v in pairs(params) do
+    if model._SCHEMA[k] and model._SCHEMA[k].type == "table" then
+      if not v or stringy.strip(v) == "" then
+        params[k] = nil
+      else
+        -- It can either be a JSON map or a string array separated by comma
+        local status, res = pcall(cjson.decode, v)
+        if status then
+          params[k] = res
+        else
+          params[k] = stringy.split(v, ",")
+        end
+      end
+    end
+  end
+  return params
+end
 
-    if not page or page <= 0 then page = 1 end
-    if not size or size <= 0 then size = 10 end
+function BaseController:new(model)
+  app:post("/" .. model._COLLECTION .. "/", function(self)
+    local params = parse_params(model, self.params)
+    local entity, err = model(params)
 
-    local data, total = dao[collection_name]:get_all(page, size)
+    if not entity then
+      return utils.show_error(400, err)
+    else
+      local data, err = entity:save()
+      if err then
+        return utils.show_error(500, err)
+      else
+        return utils.created(data)
+      end
+    end
+  end)
+
+  app:get("/" .. model._COLLECTION .. "/", function(self)
+    local params = parse_params(model, self.params)
+
+    local page = 1
+    local size = 10
+    if params.page and tonumber(params.page) > 0 then
+      page = tonumber(params.page)
+    else
+      page = 1
+    end
+    if params.size and tonumber(params.size) > 0 then
+      size = tonumber(params.size)
+    else
+      size = 10
+    end
+    params.size = nil
+    params.page = nil
+
+    local data, total, err = model.find(params, page, size)
+    if err then
+      return utils.show_error(500, err)
+    end
     return utils.success(render_list_response(self.req, data, total, page, size))
   end)
 
-  app:get("/" .. collection_name .. "/:id", function(self)
-    local entity = dao[collection_name]:get_by_id(self.params.id)
-    if entity then
-      return utils.success(entity)
+  app:get("/" .. model._COLLECTION .. "/:id", function(self)
+    local data, err = model.find_one({id = self.params.id})
+
+    if err then
+      return utils.show_error(500, err)
+    end
+
+    if data then
+      return utils.success(data)
     else
       return utils.not_found()
     end
   end)
 
-  app:delete("/" .. collection_name .. "/:id", function(self)
-    local entity = dao[collection_name]:delete(self.params.id)
-    if entity then
-      return utils.success(entity)
+  app:delete("/" .. model._COLLECTION .. "/:id", function(self)
+
+    local data, err = model.find_one({ id = self.params.id})
+    if err then
+      return utils.show_error(500, err)
+    end
+
+    if data then
+      data:delete()
+      return utils.success(data)
     else
       return utils.not_found()
     end

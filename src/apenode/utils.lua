@@ -45,6 +45,14 @@ local function build_query(tab, key)
   end
 end
 
+function _M.table_size(t)
+  local res = 0
+  for _,_ in pairs(t) do
+    res = res + 1
+  end
+  return res
+end
+
 function _M.show_response(status, message)
   ngx.header["X-Apenode-Version"] = configuration.version
   ngx.status = status
@@ -124,6 +132,16 @@ function _M.get_timestamps(now)
 end
 
 local function http_call(options)
+  -- Set Host header accordingly
+  if not options.headers["host"] then
+    local parsed_url = url.parse(options.url)
+    local port_segment = ""
+    if parsed_url.port then
+      port_segment = ":" .. parsed_url.port
+    end
+    options.headers["host"] = parsed_url.host .. port_segment
+  end
+
   -- Returns: response, code, headers
   local resp = {}
   options.sink = ltn12.sink.table(resp)

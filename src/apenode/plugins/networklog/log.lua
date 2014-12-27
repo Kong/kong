@@ -4,21 +4,21 @@ local cjson = require "cjson"
 
 local _M = {}
 
-function _M.execute()
-  utils.create_timer(log, ngx.ctx.log_message)
+function _M.execute(conf)
+  utils.create_timer(log, conf, ngx.ctx.log_message)
 end
 
-function log(premature, message)
-  local lower_type = string.lower(configuration.plugins.networklog.type)
+function log(premature, conf, message)
+  local lower_type = string.lower(conf.type)
   if lower_type == "nginx_log" then
     ngx.log(ngx.INFO, cjson.encode(message))
   elseif lower_type == "tcp" then
-    local host = configuration.plugins.networklog.host
-    local port = configuration.plugins.networklog.port
-    local timeout = configuration.plugins.networklog.timeout
+    local host = conf.host
+    local port = conf.port
+    local timeout = conf.timeout
     if not timeout then timeout = 60000 end
 
-    local keepalive = configuration.plugins.networklog.keepalive
+    local keepalive = conf.keepalive
     if not keepalive then keepalive = 10000 end
 
     local sock = ngx.socket.tcp()

@@ -11,131 +11,19 @@ describe("DetailedDaos", function()
 
   teardown(function()
     dao_factory:drop()
-  end)
-
-  describe("AccountsDao", function()
-
-    describe("#get_by_provider_id()", function()
-      it("should get an account by provider_id", function()
-        local result, err = dao_factory.accounts:get_by_provider_id("provider_123")
-        assert.truthy(result)
-        assert.are.equal("provider_123", result.provider_id)
-      end)
-      it("should return nil if account does not exist", function()
-        local result = dao_factory.accounts:get_by_provider_id("nothing")
-        assert.falsy(result)
-        assert.are.equal(nil, result)
-      end)
-    end)
-
-  end)
-
-  describe("APIsDao", function()
-
-    describe("authentication_key_names serialization", function()
-      describe("#save()", function()
-        it("should serialize the authentication_key_names property", function()
-          local api_to_save = dao_factory.fake_entity("api")
-          local saved_api = dao_factory.apis:save(api_to_save)
-          assert.truthy(saved_api.authentication_key_names)
-          assert.are.same("table", type(saved_api.authentication_key_names))
-          assert.are.same({ "X-Mashape-Key", "X-Apenode-Key" }, saved_api.authentication_key_names)
-        end)
-        it("should be an empty table with an empty authentication_key_names value", function()
-          local api_to_save = dao_factory.fake_entity("api")
-          api_to_save.authentication_key_names = nil
-          local saved_api = dao_factory.apis:save(api_to_save)
-          assert.truthy(saved_api.authentication_key_names)
-          assert.are.same("table", type(saved_api.authentication_key_names))
-          assert.are.same({}, saved_api.authentication_key_names)
-        end)
-      end)
-      describe("#update()", function()
-        it("should serialize the authentication_key_names property", function()
-          local random_entity = dao_factory.fake_entity("api")
-          local result, err = dao_factory.apis:update({ id = 1 }, random_entity)
-          assert.is_true(type(result.authentication_key_names) == "table")
-        end)
-      end)
-      describe("#get_by_id()", function()
-        it("should serialize the authentication_key_names property", function()
-          local result = dao_factory.apis:get_by_id(4)
-          assert.is_true(type(result.authentication_key_names) == "table")
-        end)
-      end)
-      describe("#get_all()", function()
-        it("should serialize the authentication_key_names property", function()
-          local result, err = dao_factory.apis:get_all()
-          for _,api in ipairs(result) do
-            assert.is_true(type(api.authentication_key_names) == "table")
-          end
-        end)
-      end)
-    end)
-
-    describe("#get_by_host()", function()
-      it("should get an API by host", function()
-        local result, err = dao_factory.apis:get_by_host("test3.com")
-        assert.truthy(result)
-        assert.are.equal("test3.com", result.public_dns)
-      end)
-      it("should return nil if API does not exist", function()
-        local result = dao_factory.apis:get_by_host("nothing")
-        assert.falsy(result)
-        assert.are.equal(nil, result)
-      end)
-    end)
-
-  end)
-
-  describe("ApplicationsDao", function()
-
-    describe("#get_by_account_id()", function()
-      it("should get a list of applications by account_id", function()
-        local result, count = dao_factory.applications:get_by_account_id(1)
-        assert.truthy(count)
-        assert.are.equal(1000, count)
-        assert.truthy(result)
-      end)
-      it("should return an empty list if application does not exist", function()
-        local result, count = dao_factory.applications:get_by_account_id("none")
-        assert.truthy(count)
-        assert.are.equal(0, count)
-        assert.are.same({}, result)
-      end)
-    end)
-
+    dao_factory:close()
   end)
 
   describe("MetricsDao", function()
-    pending("Metrics temp pending")
 
-    describe("#save()", function()
-      it("should throw an error as it is not implemented", function()
-        assert.has_error(function () dao_factory.metrics:save() end)
-      end)
-    end)
-
-    describe("#update()", function()
-      it("should throw an error as it is not implemented", function()
-        assert.has_error(function () dao_factory.metrics:update() end)
-      end)
-    end)
-
-    describe("#get_all()", function()
-      it("should throw an error as it is not implemented", function()
-        assert.has_error(function () dao_factory.metrics:get_all() end)
-      end)
-    end)
-
-    describe("#get_by_id()", function()
-      it("should throw an error as it is not implemented", function()
-        assert.has_error(function () dao_factory.metrics:get_by_id() end)
+    describe("#insert_or_update()", function()
+      it("should throw an error as it is not supported", function()
+        assert.has_error(function() dao_factory.metrics:insert_or_update() end)
       end)
     end)
 
     describe("#increment_metric()", function()
-      it("should create the metric of not already existing", function()
+      it("should create the metric if not already existing", function()
         local inserted, err = dao_factory.metrics:increment_metric(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.truthy(inserted)
@@ -160,29 +48,74 @@ describe("DetailedDaos", function()
       end)
     end)
 
-    describe("#retrieve_metric()", function()
-      it("should retrieve a metric", function()
-        local metric, err = dao_factory.metrics:retrieve_metric(1, 1, "new_metric_1", 123)
-        assert.falsy(err)
-        assert.truthy(metric)
-      end)
-      it("should return nil if no metric", function()
-        local metric, err = dao_factory.metrics:retrieve_metric(1, 1, "new_metric_1")
-        assert.falsy(err)
-        assert.falsy(metric)
-        metric, err = dao_factory.metrics:retrieve_metric(1, 36, "__none__", 123)
-        assert.falsy(err)
-        assert.falsy(metric)
-        end)
-    end)
-
     describe("#delete()", function()
       it("should delete an existing metric", function()
-        local success, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
+        local count, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
         assert.falsy(err)
-        local result, err = dao_factory.metrics:retrieve_metric(1, 1, "new_metric_1", 123)
+        assert.are.same(1, count)
+        local result, err = dao_factory.metrics:find_one(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.falsy(result)
+      end)
+    end)
+
+  end)
+
+  describe("PluginsDao", function()
+
+    describe("#find()", function()
+      it("find plugins with table args", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey" }
+          }
+        })
+        assert.falsy(err)
+        assert.are.equal(998, count)
+      end)
+      it("find plugins with wrong table args", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey", "x-api-key2" }
+          }
+        })
+        assert.falsy(err)
+        assert.are.equal(0, count)
+      end)
+      it("find plugins with composite table args", function()
+        local result, count, err = dao_factory.plugins:find({
+          api_id = 1,
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey" }
+          }
+        })
+        assert.falsy(err)
+        assert.are.equal(1, count)
+      end)
+      it("find plugins with composite table args in reversed order", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_key_names = { "apikey" },
+            authentication_type = "query"
+          },
+          api_id = 1
+        })
+        assert.falsy(err)
+        assert.are.equal(1, count)
+      end)
+      it("find plugins with composite table args in reversed order should return zero", function()
+        local result, count, err = dao_factory.plugins:find({
+          value = {
+            authentication_key_names = { "apikey" },
+            authentication_type = "query"
+          },
+          api_id = 2
+        })
+        assert.falsy(err)
+        assert.are.equal(0, count)
       end)
     end)
 

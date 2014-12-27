@@ -39,11 +39,11 @@ local function set_new_body(request, data)
   request.set_body_data(data)
 end
 
-local function do_get_keys(authentication_key_name, request, api, vars, headers, hide_credentials)
+local function do_get_keys(authentication_key_name, request, conf, vars, headers, hide_credentials)
   local secret_key = nil
 
   if authentication_key_name then
-    if api.authentication_type == "header" and headers[authentication_key_name] then
+    if conf.authentication_type == "header" and headers[authentication_key_name] then
       secret_key = headers[authentication_key_name]
       if hide_credentials then
         request.clear_header(authentication_key_name)
@@ -89,20 +89,20 @@ local function do_get_keys(authentication_key_name, request, api, vars, headers,
   return nil, secret_key
 end
 
-local function get_keys(request, api, vars)
+local function get_keys(request, conf, vars)
   local public_key, secret_key
 
-  local hide_credentials = configuration.plugins.authentication.hide_credentials
+  local hide_credentials = conf.hide_credentials
   local headers = request.get_headers()
 
-  if api.authentication_type == "basic" then
+  if conf.authentication_type == "basic" then
     public_key, secret_key = get_basic_auth(headers["authorization"])
     if hide_credentials then
       request.clear_header("authorization")
     end
-  elseif api.authentication_key_names then
-    for i, authentication_key_name in ipairs(api.authentication_key_names) do
-      public_key, secret_key = do_get_keys(authentication_key_name, request, api, vars, headers, hide_credentials)
+  elseif conf.authentication_key_names then
+    for i, authentication_key_name in ipairs(conf.authentication_key_names) do
+      public_key, secret_key = do_get_keys(authentication_key_name, request, conf, vars, headers, hide_credentials)
       if public_key or secret_key then break end
     end
   end
@@ -110,11 +110,18 @@ local function get_keys(request, api, vars)
   return public_key, secret_key
 end
 
-function _M.execute()
-  local api = ngx.ctx.api
+function _M.execute(conf)
+  if not conf then return end
 
-  local public_key, secret_key = get_keys(ngx.req, api, ngx.var)
-  local application = dao.applications:get_by_key(public_key, secret_key)
+  local public_key, secret_key = get_keys(ngx.req, conf, ngx.var)
+  local application = nil
+  if secret_key then -- We need this check because if the value is nil, then the table below won't have the query
+    application = dao.applications:find_one({
+      public_key = public_key,
+      secret_key = secret_key
+    })
+  end
+
   if not application then
     utils.show_error(403, "Your authentication credentials are invalid")
   end

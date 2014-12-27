@@ -1,14 +1,9 @@
 -- Copyright (C) Mashape, Inc.
 
-local BaseModel = {}
-BaseModel.__index = BaseModel
+local rex = require("rex_pcre")
+local Object = require "classic"
 
-setmetatable(BaseModel, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
+local BaseModel = Object:extend()
 
 -------------
 -- PRIVATE --
@@ -28,17 +23,52 @@ local function add_error(errors, k, v)
   return errors
 end
 
-local function validate(object, t, schema, is_update)
+---------------
+-- BaseModel --
+---------------
+
+function BaseModel:new(collection, schema, t)
+  -- The collection needs to be declared before just in case
+  -- the validator needs it for the "unique" check
+  self._collection = collection
+
+  -- Validate the entity
+  if not t then t = {} end
+  local result, errors = self:_validate(schema, t)
+  if errors then
+    return nil, errors
+  end
+
+  for k,v in pairs(t) do
+    self[k] = t[k]
+  end
+
+  self._t = result
+end
+
+-- Validate a table against a given schema
+-- @param table schema A model schema to validate the entity against
+-- @param table t A given entity to be validated against the schema
+-- @param boolean is_update Ignores read_only fields during the validation if true
+-- @return A filtered, valid table if success, nil if error
+-- @return table A list of encountered errors during the validation
+function BaseModel:_validate(schema, t, is_update)
+  local result = {}
   local errors
 
+  -- Check the given table against a given schema
   for k,v in pairs(schema) do
+    -- Set default value for the filed if given
     if not t[k] and v.default ~= nil then
       t[k] = v.default
-    elseif not t[k] and v.required then
+    -- Check required field is set
+    elseif v.required and (t[k] == nil or t[k] == "") then
       errors = add_error(errors, k, k .. " is required")
+    -- Check field is not read only
     elseif t[k] and not is_update and v.read_only then
       errors = add_error(errors, k, k .. " is read only")
     end
+    -- Check type of the field
     if t[k] and type(t[k]) ~= v.type then
       errors = add_error(errors, k, k .. " should be a " .. v.type)
     end
@@ -46,39 +76,62 @@ local function validate(object, t, schema, is_update)
       -- TODO: Check uniquity
     end
 
-    object[k] = t[k]
+    -- Check field against a regex
+    if t[k] and v.regex then
+      if not rex.match(t[k], v.regex) then
+        errors = add_error(errors, k, k .. " has an invalid value")
+      end
+    end
+
+    -- Check field against a function
+    if v.func then
+      local success, err = v.func(t[k], t)
+      if not success then
+        errors = add_error(errors, k, err)
+      end
+    end
+
+    -- Check if field's value is unique
+    if t[k] and v.unique then
+      local data, total, err = self._find(self._collection, {[k] = t[k]})
+      if total > 0 then
+        errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
+      end
+    end
+
+    if t[k] and v.type == "table" then
+      if v.schema_from_func then
+        local table_schema, err = v.schema_from_func(t)
+        if not table_schema then
+          errors = add_error(errors, k, err)
+        else
+          local _, table_schema_err = BaseModel:_validate(table_schema, t[k], false)
+          if table_schema_err then
+            errors = add_error(errors, k, table_schema_err)
+          end
+        end
+      end
+    end
+
+    result[k] = t[k]
   end
 
-  -- Check for unexpected fields
+  -- Check for unexpected fields in the entity
   for k,v in pairs(t) do
     if not schema[k] then
       errors = add_error(errors, k, k .. " is an unknown field")
     end
   end
 
-  return errors
-end
-
----------------
--- BaseModel --
----------------
-
-function BaseModel:_init(collection, t, schema)
-  if not t then t = {} end
-
-  local errors = validate(self, t, schema)
   if errors then
-    return nil, errors
+    result = nil
   end
 
-  self._t = self
-  self._collection = collection
-
-  return self
+  return result, errors
 end
 
 function BaseModel:save()
-  local data, err = dao[self._collection]:save(self._t)
+  local data, err = dao[self._collection]:insert_or_update(self._t)
   return data, err
 end
 
@@ -88,7 +141,7 @@ function BaseModel:delete()
 end
 
 function BaseModel:update()
-  local res, err = validate(self, self._t, self._SCHEMA, true)
+  local res, err = self:_validate(self._SCHEMA, self._t, true)
   if not res then
     return nil, err
   else
@@ -97,13 +150,18 @@ function BaseModel:update()
   end
 end
 
-function BaseModel.find(args, page, size)
-  local data, total, err = dao[self._collection]:find(args, page, size)
+function BaseModel._find_one(collection, args)
+  local data, err = dao[collection]:find_one(args)
+  return data, err
+end
+
+function BaseModel._find(collection, args, page, size)
+  local data, total, err = dao[collection]:find(args, page, size)
   return data, total, err
 end
 
-function BaseModel.find_and_delete(args)
-  local n_success, err = dao[self._collection]:find_and_delete(args)
+function BaseModel._find_and_delete(collection, args)
+  local n_success, err = dao[collection]:find_and_delete(args)
   return n_success, err
 end
 

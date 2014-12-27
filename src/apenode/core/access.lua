@@ -1,15 +1,18 @@
 -- Copyright (C) Mashape, Inc.
 
 local stringy = require "stringy"
+local ApiModel = require "apenode.models.api"
 
 local _M = {}
 
-function _M.execute()
+function _M.execute(conf)
   -- Setting the version header
   ngx.header["X-Apenode-Version"] = configuration.version
 
   -- Retrieving the API from the Host that has been requested
-  local api = dao.apis:get_by_host(stringy.split(ngx.var.http_host, ":")[1])
+  local api, err = ApiModel.find_one({
+    public_dns = stringy.split(ngx.var.http_host, ":")[1]
+  })
   if not api then
     utils.not_found("API not found")
   end
@@ -19,6 +22,7 @@ function _M.execute()
   ngx.var.backend_url = api.target_url .. ngx.var.uri
   ngx.var.querystring = querystring
 
+  -- TODO: Move this away from here
   -- There are some requests whose authentication needs to be skipped
   if skip_authentication(ngx.req.get_headers()) then
     return -- Returning and keeping the Lua code running to the next handler

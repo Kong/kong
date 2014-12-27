@@ -1,30 +1,45 @@
 -- Copyright (C) Mashape, Inc.
 
+local AccountModel = require "apenode.models.account"
 local BaseModel = require "apenode.models.base_model"
 
-local Application = {
-  _COLLECTION = "applications",
-  _SCHEMA = {
-    id = { type = "string", read_only = true },
-    account_id = { type = "string", required = true },
-    public_key = { type = "string", required = false },
-    secret_key = { type = "string", required = true, unique = true },
-    created_at = { type = "number", read_only = true, default = os.time() }
-  }
+local function check_account_id(account_id, t)
+  if AccountModel.find_one({id = account_id}) then
+    return true
+  else
+    return false, "Account not found"
+  end
+end
+
+local COLLECTION = "applications"
+local SCHEMA = {
+  id = { type = "string", read_only = true },
+  account_id = { type = "string", required = true, func = check_account_id },
+  public_key = { type = "string", required = false },
+  secret_key = { type = "string", required = true, unique = true },
+  created_at = { type = "number", read_only = true, default = os.time() }
 }
 
-Application.__index = Application
+local Application = BaseModel:extend()
+Application["_COLLECTION"] = COLLECTION
+Application["_SCHEMA"] = SCHEMA
 
-setmetatable(Application, {
-  __index = BaseModel,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
-
-function Application:_init(t)
-  return BaseModel:_init(Application._COLLECTION, t, Application._SCHEMA)
+function Application:new(t)
+  return Application.super.new(self, COLLECTION, SCHEMA, t)
 end
+
+function Application.find_one(args)
+  return Application.super._find_one(COLLECTION, args)
+end
+
+function Application.find(args, page, size)
+  return  Application.super._find(COLLECTION, args, page, size)
+end
+
+function Application.find_and_delete(args)
+  return  Application.super._find_and_delete(COLLECTION, args)
+end
+
+-- TODO: When deleting an application, also delete all his plugins/metrics
 
 return Application

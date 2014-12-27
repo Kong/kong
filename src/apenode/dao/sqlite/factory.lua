@@ -1,24 +1,17 @@
 -- Copyright (C) Mashape, Inc.
 local sqlite3 = require "lsqlite3"
+local Object = require "classic"
 
 local Faker = require "apenode.dao.faker"
 local Apis = require "apenode.dao.sqlite.apis"
 local Metrics = require "apenode.dao.sqlite.metrics"
 local Accounts = require "apenode.dao.sqlite.accounts"
 local Applications = require "apenode.dao.sqlite.applications"
+local Plugins = require "apenode.dao.sqlite.plugins"
 
-local SQLiteFactory = {}
-SQLiteFactory.__index = SQLiteFactory
+local SQLiteFactory = Object:extend()
 
-setmetatable(SQLiteFactory, {
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end
-})
-
-function SQLiteFactory:_init(configuration)
+function SQLiteFactory:new(configuration)
   if configuration.memory then
     self._db = sqlite3.open_memory()
   elseif configuration.file_path ~= nil then
@@ -34,6 +27,7 @@ function SQLiteFactory:_init(configuration)
   self.metrics = Metrics(self._db)
   self.accounts = Accounts(self._db)
   self.applications = Applications(self._db)
+  self.plugins = Plugins(self._db)
 end
 
 function SQLiteFactory:db_exec(stmt)
@@ -56,8 +50,6 @@ function SQLiteFactory:create_schema()
       name VARCHAR(50) UNIQUE,
       public_dns VARCHAR(50) UNIQUE,
       target_url VARCHAR(50),
-      authentication_type VARCHAR(10),
-      authentication_key_names VARCHAR(50),
       created_at TIMESTAMP
     );
 
@@ -83,6 +75,17 @@ function SQLiteFactory:create_schema()
       PRIMARY KEY(api_id, application_id, name)
     );
 
+    CREATE TABLE IF NOT EXISTS plugins(
+      id INTEGER PRIMARY KEY,
+      api_id INTEGER,
+      application_id INTEGER,
+      name TEXT,
+      value TEXT,
+      created_at TIMESTAMP,
+
+      FOREIGN KEY(api_id) REFERENCES apis(id), FOREIGN KEY(application_id) REFERENCES applications(id)
+    );
+
   ]]
 end
 
@@ -99,9 +102,15 @@ function SQLiteFactory:drop()
   self:db_exec("DELETE FROM accounts")
   self:db_exec("DELETE FROM applications")
   self:db_exec("DELETE FROM metrics")
+  self:db_exec("DELETE FROM plugins")
 end
 
 function SQLiteFactory:close()
+  self.apis:finalize()
+  self.metrics:finalize()
+  self.accounts:finalize()
+  self.applications:finalize()
+  self.plugins:finalize()
   self._db:close()
 end
 

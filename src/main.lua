@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
 utils = require "apenode.utils"
-constants = require "apenode.constants"
 local yaml = require "yaml"
+local PluginModel = require "apenode.models.plugin"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -25,24 +25,19 @@ local function normalize_properties(properties)
   return result
 end
 
-local function load_plugins()
-  local plugin_properties = {}
+local function load_plugin_conf(api_id, application_id, plugin_name)
+  local res, err = PluginModel.find_one({
+    api_id = api_id,
+    application_id = application_id,
+    name = plugin_name
+  })
 
-  for _, v in pairs(configuration.plugins) do
-    local plugin_name = nil
-    if type(v) == "table" then
-      for k, v in pairs(v) do
-        plugin_name = k
-        plugin_properties[plugin_name] = v
-      end
-    else
-      plugin_name = v
-    end
-
-    table.insert(plugins, require("apenode.plugins." .. plugin_name)(plugin_name))
+  if res then
+    return res
+  elseif err then
+      ngx.log(ngx.ERROR, err)
   end
-
-  configuration.plugins = plugin_properties
+  return nil
 end
 
 function _M.init(configuration_path)
@@ -54,59 +49,107 @@ function _M.init(configuration_path)
   local dao_config = normalize_properties(configuration.dao.properties)
   dao = dao_factory(configuration.dao.properties)
 
-  -- Requiring the plugins
-  table.insert(plugins, require("apenode.core")("core")) -- Adding the core first
-  load_plugins()
+  -- Loading the plugins:
+  -- Core is the first plugin
+  table.insert(plugins, {
+    name = "core",
+    handler = require("apenode.core.handler")()
+  })
+  for _,v in ipairs(configuration.plugins_enabled) do
+    table.insert(plugins, {
+      name = v,
+      handler = require("apenode.plugins." .. v .. ".handler")()
+    })
+  end
 end
 
 function _M.access()
-  ngx.ctx.start = ngx.now() -- Setting a property that will be available for every plugin
-  for _, v in pairs(plugins) do -- Iterate over all the plugins
-    v:access()
+  -- Setting a property that will be available for every plugin
+  ngx.ctx.start = ngx.now()
+  ngx.ctx.plugin_conf = {}
+
+  -- Iterate over all the plugins
+  for _, v in ipairs(plugins) do
+    if ngx.ctx.api then
+      ngx.ctx.plugin_conf[v.name] = load_plugin_conf(ngx.ctx.api.id, nil, v.name) -- Loading the "API-specific" configuration
+    end
+    if not ngx.ctx.error then
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if not ngx.ctx.api then -- If not ngx.ctx.api then it's the core plugin
+        v.handler:access(nil)
+      elseif conf then
+        v.handler:access(conf.value)
+      end
+    end
   end
+
+  -- Load the "authenticated entity-specific" plugin configurations, and override them if it exists
+  if ngx.ctx.authenticated_entity then
+    for _, v in pairs(plugins) do
+      local plugin_conf = load_plugin_conf(ngx.ctx.api.id, ngx.ctx.authenticated_entity.id, v.name)
+      if plugin_conf then -- Override only if not nil
+        ngx.ctx.plugin_conf[v.name] = plugin_conf
+      end
+    end
+  end
+
   ngx.ctx.proxy_start = ngx.now() -- Setting a property that will be available for every plugin
 end
 
 function _M.header_filter()
   ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
+
   if not ngx.ctx.error then
-    for _, v in pairs(plugins) do -- Iterate over all the plugins
-      v:header_filter()
+    for _, v in ipairs(plugins) do -- Iterate over all the plugins
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if conf then
+        v.handler:header_filter(conf.value)
+      end
     end
   end
 end
 
 function _M.body_filter()
-  for _, v in pairs(plugins) do -- Iterate over all the plugins
-    v:body_filter()
+  if not ngx.ctx.error then
+    for _, v in ipairs(plugins) do -- Iterate over all the plugins
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if conf then
+        v.handler:body_filter(conf.value)
+      end
+    end
   end
 end
 
 function _M.log()
-  local now = ngx.now()
+  if not ngx.ctx.error then
 
-  -- Creating the log variable that will be serialized
-  local message = {
-    request = {
-      headers = ngx.req.get_headers(),
-      size = ngx.var.request_length
-    },
-    response = {
-      headers = ngx.resp.get_headers(),
-      size = ngx.var.body_bytes_sent
-    },
-    authenticated_entity = ngx.ctx.authenticated_entity,
-    api = ngx.ctx.api,
-    ip = ngx.var.remote_addr,
-    status = ngx.status,
-    url = ngx.var.uri,
-    created_at = now
-  }
+    local now = ngx.now()
 
-  ngx.ctx.log_message = message
+    -- Creating the log variable that will be serialized
+    local message = {
+      request = {
+        headers = ngx.req.get_headers(),
+        size = ngx.var.request_length
+      },
+      response = {
+        headers = ngx.resp.get_headers(),
+        size = ngx.var.body_bytes_sent
+      },
+      authenticated_entity = ngx.ctx.authenticated_entity,
+      api = ngx.ctx.api,
+      ip = ngx.var.remote_addr,
+      status = ngx.status,
+      url = ngx.var.uri,
+      created_at = now
+    }
 
-  for _, v in pairs(plugins) do -- Iterate over all the plugins
-    v:log()
+    ngx.ctx.log_message = message
+    for _, v in ipairs(plugins) do -- Iterate over all the plugins
+      local conf = ngx.ctx.plugin_conf[v.name]
+      if conf then
+        v.handler:log(conf.value)
+      end
+    end
   end
 end
 

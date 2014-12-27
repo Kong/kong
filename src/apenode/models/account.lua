@@ -2,27 +2,34 @@
 
 local BaseModel = require "apenode.models.base_model"
 
-local Account = {
-  _COLLECTION = "accounts",
-  _SCHEMA = {
-    id = { type = "string", read_only = true },
-    provider_id = { type = "string", required = false },
-    created_at = { type = "number", read_only = true, default = os.time() }
-  }
+local COLLECTION = "accounts"
+local SCHEMA = {
+  id = { type = "string", read_only = true },
+  provider_id = { type = "string", required = false, unique = true },
+  created_at = { type = "number", read_only = true, default = os.time() }
 }
 
-Account.__index = Account
+local Account = BaseModel:extend()
 
-setmetatable(Account, {
-  __index = BaseModel,
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    return self:_init(...)
-  end
-})
+Account["_COLLECTION"] = COLLECTION
+Account["_SCHEMA"] = SCHEMA
 
-function Account:_init(t)
-  return BaseModel:_init(Account._COLLECTION, t, Account._SCHEMA)
+function Account:new(t)
+  Account.super.new(self, COLLECTION, SCHEMA, t)
 end
+
+function Account.find_one(args)
+  return Account.super._find_one(COLLECTION, args)
+end
+
+function Account.find(args, page, size)
+  return Account.super._find(COLLECTION, args, page, size)
+end
+
+function Account.find_and_delete(args)
+  return Account.super._find_and_delete(COLLECTION, args)
+end
+
+-- TODO: When deleting an account, also delete all his applications
 
 return Account

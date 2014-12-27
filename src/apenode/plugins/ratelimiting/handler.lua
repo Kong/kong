@@ -3,25 +3,28 @@
 local BasePlugin = require "apenode.base_plugin"
 local access = require "apenode.plugins.ratelimiting.access"
 
-local RateLimitingHandler = {}
-RateLimitingHandler.__index = RateLimitingHandler
-
-setmetatable(RateLimitingHandler, {
-  __index = BasePlugin, -- this is what makes the inheritance work
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
-
-function RateLimitingHandler:_init(name)
-  BasePlugin._init(self, name) -- call the base class constructor
+local function check_period(v)
+  if v == "second" or v == "minute" or v == "hour" or v == "day" or v == "day" or v == "month" or v == "year" then
+    return true
+  else
+    return false, "Available values are: second, minute, hour, day, month, year"
+  end
 end
 
-function RateLimitingHandler:access()
-  BasePlugin.access(self)
-  access.execute()
+local RateLimitingHandler = BasePlugin:extend()
+
+RateLimitingHandler["_SCHEMA"] = {
+  limit = { type = "number", required = true },
+  period = { type = "string", required = true, func = check_period }
+}
+
+function RateLimitingHandler:new()
+  RateLimitingHandler.super.new(self, "ratelimiting")
+end
+
+function RateLimitingHandler:access(conf)
+  RateLimitingHandler.super.access(self)
+  access.execute(conf)
 end
 
 return RateLimitingHandler

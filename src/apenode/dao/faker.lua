@@ -11,12 +11,7 @@ function _M.fake_entity(type, invalid)
     return {
       name = name,
       public_dns = "random"..r..".com",
-      target_url = "http://random"..r..".com",
-      authentication_type = "query",
-      authentication_key_names = {
-        "X-Mashape-Key",
-        "X-Apenode-Key"
-      }
+      target_url = "http://random"..r..".com"
     }
   elseif type == "account" then
     local provider_id
@@ -38,6 +33,15 @@ function _M.fake_entity(type, invalid)
       value = r,
       timestamp = r
     }
+  elseif type == "plugin" then
+    return {
+      api_id = r,
+      name = "random"..r,
+      value = {
+        authentication_type = "query",
+        authentication_key_names = { "apikey" }
+      }
+    }
   end
 end
 
@@ -47,22 +51,17 @@ function _M.populate(factory, random, amount)
       {
         name = "test",
         public_dns = "test.com",
-        target_url = "http://httpbin.org",
-        authentication_type = "query",
-        authentication_key_names = { "apikey" }
+        target_url = "http://httpbin.org"
       },
       {
         name = "test2",
         public_dns = "test2.com",
-        target_url = "http://httpbin.org",
-        authentication_type = "header",
-        authentication_key_names = { "apikey" }
+        target_url = "http://httpbin.org"
       },
       {
         name = "test3",
         public_dns = "test3.com",
-        target_url = "http://httpbin.org",
-        authentication_type = "basic"
+        target_url = "http://httpbin.org"
       }
     },
     account = {
@@ -88,6 +87,38 @@ function _M.populate(factory, random, amount)
         name = "requests",
         value = 0,
         timestamp = 123
+      },
+      {
+        api_id = 1,
+        application_id = 1,
+        name = "requests",
+        value = 0,
+        timestamp = 123456
+      }
+    },
+    plugin = {
+      {
+        api_id = 1,
+        name = "authentication",
+        value = {
+          authentication_type = "query",
+          authentication_key_names = { "apikey" }
+        }
+      },
+      {
+        api_id = 2,
+        name = "authentication",
+        value = {
+          authentication_type = "header",
+          authentication_key_names = { "apikey" }
+        }
+      },
+      {
+        api_id = 3,
+        name = "authentication",
+        value = {
+          authentication_type = "basic"
+        }
       }
     }
   }
@@ -103,19 +134,23 @@ function _M.populate(factory, random, amount)
   end
 
   for _,api in ipairs(entities_to_insert.api) do
-    factory.apis:save(api)
+    factory.apis:insert_or_update(api)
   end
 
   for _,account in ipairs(entities_to_insert.account) do
-    factory.accounts:save(account)
+    factory.accounts:insert_or_update(account)
   end
 
   for _,application in ipairs(entities_to_insert.application) do
-    factory.applications:save(application)
+    factory.applications:insert_or_update(application)
+  end
+
+  for _,plugin in ipairs(entities_to_insert.plugin) do
+    factory.plugins:insert_or_update(plugin)
   end
 
   for _,metric in ipairs(entities_to_insert.metric) do
-    factory.metrics:increment_metric(metric.api_id, metric.application_id, metric.name, metric.timestamp)
+    --factory.metrics:insert_or_update(metric)
   end
 end
 
