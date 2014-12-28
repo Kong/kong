@@ -1,0 +1,38 @@
+local utils = require "apenode.utils"
+local cjson = require "cjson"
+
+local kProxyURL = "http://localhost:8000/"
+
+describe("RateLimiting Plugin", function()
+
+    describe("Without authentication", function()
+      it("should get stick to the IP address", function()
+        local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test5.com"})
+        assert.are.equal(200, status)
+
+        response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test5.com"})
+        assert.are.equal(200, status)
+
+        response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test5.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(429, status)
+        assert.are.equal("API rate limit exceeded", body.message)
+      end)
+    end)
+
+     describe("With authentication", function()
+      it("should get stick to the IP address", function()
+        local response, status, headers = utils.get(kProxyURL .. "get", {apikey = "apikey123"}, {host = "test6.com"})
+        assert.are.equal(200, status)
+
+        response, status, headers = utils.get(kProxyURL .. "get", {apikey = "apikey123"}, {host = "test6.com"})
+        assert.are.equal(200, status)
+
+        response, status, headers = utils.get(kProxyURL .. "get", {apikey = "apikey123"}, {host = "test6.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(429, status)
+        assert.are.equal("API rate limit exceeded", body.message)
+      end)
+    end)
+
+end)

@@ -72,7 +72,7 @@ describe("DetailedDaos", function()
           }
         })
         assert.falsy(err)
-        assert.are.equal(998, count)
+        assert.are.equal(996, count)
       end)
       it("find plugins with wrong table args", function()
         local result, count, err = dao_factory.plugins:find({

@@ -62,6 +62,21 @@ function _M.populate(factory, random, amount)
         name = "test3",
         public_dns = "test3.com",
         target_url = "http://httpbin.org"
+      },
+      {
+        name = "test4",
+        public_dns = "test4.com",
+        target_url = "http://httpbin.org"
+      },
+      {
+        name = "test5",
+        public_dns = "test5.com",
+        target_url = "http://httpbin.org"
+      },
+      {
+        name = "test6",
+        public_dns = "test6.com",
+        target_url = "http://httpbin.org"
       }
     },
     account = {
@@ -118,6 +133,30 @@ function _M.populate(factory, random, amount)
         name = "authentication",
         value = {
           authentication_type = "basic"
+        }
+      },
+      {
+        api_id = 6,
+        name = "authentication",
+        value = {
+          authentication_type = "query",
+          authentication_key_names = { "apikey" }
+        }
+      },
+      {
+        api_id = 5,
+        name = "ratelimiting",
+        value = {
+          period = "minute",
+          limit = 2
+        }
+      },
+       {
+        api_id = 6,
+        name = "ratelimiting",
+        value = {
+          period = "minute",
+          limit = 2
         }
       }
     }
