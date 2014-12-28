@@ -2,6 +2,10 @@
 
 local _M = {}
 
+local function set_header_limit_remaining(usage)
+  ngx.header["X-RateLimit-Remaining"] = usage
+end
+
 function _M.execute(conf)
   local authenticated_entity_id = nil
   if ngx.ctx.authenticated_entity then
@@ -15,20 +19,19 @@ function _M.execute(conf)
 
   local timestamps = utils.get_timestamps(ngx.now())
 
-  local current_usage = dao.metrics:find_one({
-    api_id = ngx.ctx.api.id,
-    application_id = authenticated_entity_id,
-    name = "requests." .. period,
-    timestamp = timestamps[period]
-  })
+  local current_usage = dao.metrics:find_one(ngx.ctx.api.id,
+                                            authenticated_entity_id,
+                                            "requests." .. period,
+                                            timestamps[period])
 
   if current_usage then current_usage = current_usage.value else current_usage = 0 end
 
   ngx.header["X-RateLimit-Limit"] = limit
-  ngx.header["X-RateLimit-Remaining"] = limit - current_usage
-
   if current_usage >= limit then
+    set_header_limit_remaining(limit - current_usage)
     utils.show_error(429, "API rate limit exceeded")
+  else
+    set_header_limit_remaining(limit - current_usage - 1)
   end
 
   -- Increment usage for all the metrics
