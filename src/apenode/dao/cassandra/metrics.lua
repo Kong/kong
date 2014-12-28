@@ -1,30 +1,29 @@
--- Copyright (C) Mashape, Inc.
+local BaseDao = require "apenode.dao.sqlite.base_dao"
+local MetricModel = require "apenode.models.metric"
 
-local constants = require "apenode.constants"
-local BaseDao = require "apenode.dao.cassandra.base_dao"
+local Metrics = BaseDao:extend()
 
-local Metrics = {}
-Metrics.__index = Metrics
-
-setmetatable(Metrics, {
-  __index = BaseDao, -- this is what makes the inheritance work
-  __call = function (cls, ...)
-    local self = setmetatable({}, cls)
-    self:_init(...)
-    return self
-  end,
-})
-
-function Metrics:_init()
-  BaseDao._init(self, constants.METRICS_COLLECTION) -- call the base class constructor
+function Metrics:new(configuration)
+  Metrics.super.new(self, configuration, MetricModel._COLLECTION, MetricModel._SCHEMA)
 end
 
-function Metrics:increment_metric(name, value)
-
+-- @override
+function Metrics:insert_or_update()
+  error("Metrics:insert_or_update() not supported")
 end
 
-function Metrics:retrive_metric(name, precision)
+-- @override
+function Metrics:find_one(api_id, application_id, name, timestamp)
+  --TODO
+end
 
+-- @override
+function Metrics:delete(api_id, application_id, name, timestamp)
+  --TODO
+end
+
+function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
+  --TODO
 end
 
 return Metrics

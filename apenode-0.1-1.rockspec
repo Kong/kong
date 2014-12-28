@@ -41,6 +41,7 @@ build = {
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
     ["apenode.dao.faker"] = "src/apenode/dao/faker.lua",
+    ["apenode.dao.dao_utils"] = "src/apenode/dao/dao_utils.lua",
 
     ["apenode.dao.sqlite"] = "src/apenode/dao/sqlite/factory.lua",
     ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
@@ -49,6 +50,14 @@ build = {
     ["apenode.dao.sqlite.applications"] = "src/apenode/dao/sqlite/applications.lua",
     ["apenode.dao.sqlite.metrics"] = "src/apenode/dao/sqlite/metrics.lua",
     ["apenode.dao.sqlite.plugins"] = "src/apenode/dao/sqlite/plugins.lua",
+
+    ["apenode.dao.cassandra"] = "src/apenode/dao/cassandra/factory.lua",
+    ["apenode.dao.cassandra.base_dao"] = "src/apenode/dao/cassandra/base_dao.lua",
+    ["apenode.dao.cassandra.apis"] = "src/apenode/dao/cassandra/apis.lua",
+    ["apenode.dao.cassandra.accounts"] = "src/apenode/dao/cassandra/accounts.lua",
+    ["apenode.dao.cassandra.applications"] = "src/apenode/dao/cassandra/applications.lua",
+    ["apenode.dao.cassandra.metrics"] = "src/apenode/dao/cassandra/metrics.lua",
+    ["apenode.dao.cassandra.plugins"] = "src/apenode/dao/cassandra/plugins.lua",
 
     ["apenode.models.base_model"] = "src/apenode/models/base_model.lua",
     ["apenode.models.account"] = "src/apenode/models/account.lua",

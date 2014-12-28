@@ -1,32 +1,10 @@
 -- Copyright (C) Mashape, Inc.
 
-local cjson = require "cjson"
 local utils = require "apenode.utils"
+local dao_utils = require "apenode.dao.dao_utils"
 local Object = require "classic"
 
 local BaseDao = Object:extend()
-
-local function serialize(schema, entity)
-  if entity then
-    for k,v in pairs(schema) do
-      if entity[k] and v.type == "table" then
-        entity[k] = cjson.encode(entity[k])
-      end
-    end
-  end
-  return entity
-end
-
-local function deserialize(schema, entity)
-  if entity then
-    for k,v in pairs(schema) do
-      if entity[k] and v.type == "table" then
-        entity[k] = cjson.decode(entity[k])
-      end
-    end
-  end
-  return entity
-end
 
 function BaseDao:new(database, collection, schema)
   self._db = database
@@ -50,7 +28,7 @@ end
 -- @return table Error if error
 function BaseDao:insert(entity)
   if entity then
-    entity = serialize(self._schema, entity)
+    entity = dao_utils.serialize(self._schema, entity)
   else
     return nil
   end
@@ -75,7 +53,7 @@ end
 -- @return table Error if error
 function BaseDao:update(entity, where_keys)
   if entity then
-    entity = serialize(self._schema, entity)
+    entity = dao_utils.serialize(self._schema, entity)
   else
     return nil
   end
@@ -104,7 +82,7 @@ end
 -- @return table Error if error
 function BaseDao:insert_or_update(entity, where_keys)
   if entity then
-    entity = serialize(self._schema, entity)
+    entity = dao_utils.serialize(self._schema, entity)
   else
     return nil
   end
@@ -151,7 +129,7 @@ function BaseDao:find(where_keys, page, size)
     where_keys = nil
   end
 
-  where_keys = serialize(self._schema, where_keys)
+  where_keys = dao_utils.serialize(self._schema, where_keys)
 
   -- Pagination
   if not page then page = 1 end
@@ -189,7 +167,7 @@ function BaseDao:find(where_keys, page, size)
 
   -- Deserialization
   for _,result in ipairs(results) do
-    result = deserialize(self._schema, result)
+    result = dao_utils.deserialize(self._schema, result)
   end
 
   return results, count_result
@@ -200,7 +178,7 @@ end
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
 function BaseDao:delete(where_keys)
-  where_keys = serialize(self._schema, where_keys)
+  where_keys = dao_utils.serialize(self._schema, where_keys)
 
   if not where_keys or  utils.table_size(where_keys) == 0 then
     return nil, { message = "Cannot delete an entire collection" }
