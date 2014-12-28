@@ -16,10 +16,9 @@ describe("Proxy API #proxy", function()
 
   describe("Existing API", function()
     it("should return API found when the API has been created", function()
-      local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test.com"})
+      local response, status, headers = utils.get(kProxyURL .. "get", {}, {host = "test4.com"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Your authentication credentials are invalid", body.message)
+      assert.are.equal(200, status)
     end)
   end)
 

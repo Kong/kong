@@ -4,7 +4,7 @@ local kWebURL = "http://localhost:8001/"
 
 local ENDPOINTS = {
   apis = {
-    total = 3,
+    total = 6,
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
   accounts = {
@@ -16,7 +16,7 @@ local ENDPOINTS = {
     error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required"}'
   },
   plugins = {
-    total = 3,
+    total = 6,
     error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}'
   }
 }
