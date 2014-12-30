@@ -1,4 +1,4 @@
-local BaseDao = require "apenode.dao.sqlite.base_dao"
+local BaseDao = require "apenode.dao.cassandra.base_dao"
 local ApplicationsModel = require "apenode.models.application"
 
 local Applications = BaseDao:extend()

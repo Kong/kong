@@ -7,44 +7,49 @@ USE apenode;
 
 -- Create the tables
 CREATE TABLE accounts (
-  id timeuuid,
+  id uuid,
   provider_id text,
-  status text,
   created_at timestamp,
   PRIMARY KEY (id, created_at)
 );
+-- Create index
+CREATE INDEX ON accounts(provider_id);
 
 CREATE TABLE applications (
-  id timeuuid,
-  account_id timeuuid,
+  id uuid,
+  account_id uuid,
   public_key text, -- This is the public
   secret_key text, -- This is the secret key, it could be an apikey or basic password
-  status text,
   created_at timestamp,
   PRIMARY KEY (id, account_id)
 );
+-- Create index
+CREATE INDEX ON applications(public_key);
+CREATE INDEX ON applications(secret_key);
 
 CREATE TABLE apis (
-  id timeuuid,
+  id uuid,
   name text,
-  status text,
   public_dns text,
   target_url text,
   created_at timestamp,
   PRIMARY KEY (id, public_dns)
 );
+-- Create index
+CREATE INDEX ON apis(name);
+CREATE INDEX ON apis(target_url);
 
 CREATE TABLE plugins (
-  api_id timeuuid,
-  application_id timeuuid,
+  api_id uuid,
+  application_id uuid,
   name text,
   value text, -- We can't use a map because we don't know if the value is a text, int or a list
   PRIMARY KEY ((api_id, application_id, name))
 );
 
 CREATE TABLE metrics (
-  api_id timeuuid,
-  application_id timeuuid,
+  api_id uuid,
+  application_id uuid,
   name text,
   timestamp timestamp,
   value counter,

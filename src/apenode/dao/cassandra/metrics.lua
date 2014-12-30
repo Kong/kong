@@ -1,4 +1,4 @@
-local BaseDao = require "apenode.dao.sqlite.base_dao"
+local BaseDao = require "apenode.dao.cassandra.base_dao"
 local MetricModel = require "apenode.models.metric"
 
 local Metrics = BaseDao:extend()

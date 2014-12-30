@@ -1,8 +1,14 @@
 -- Copyright (C) Mashape, Inc.
 
+local cassandra = require "cassandra"
 local utils = require "apenode.utils"
 local dao_utils = require "apenode.dao.dao_utils"
 local Object = require "classic"
+local uuid = require "uuid"
+local inspect = require "inspect"
+
+-- This is important to seed the UUID generator
+uuid.seed()
 
 local BaseDao = Object:extend()
 
@@ -18,10 +24,16 @@ end
 -- Utility function to create query fields and values from an entity, useful for save and update
 -- @param entity The entity whose fields needs to be parsed
 -- @return A list of fields, of values placeholders, and the actual values table
-local function get_cmd_args(entity)
+local function get_cmd_args(entity, update)
   local cmd_field_values = {}
   local cmd_fields = {}
   local cmd_values = {}
+
+  if update then
+    entity.id = nil
+    entity.created_at = nil
+  end
+
   for k, v in pairs(entity) do
     table.insert(cmd_fields, k)
     table.insert(cmd_values, "?")
@@ -30,7 +42,11 @@ local function get_cmd_args(entity)
     elseif k == "id" then
       table.insert(cmd_field_values, cassandra.uuid(v))
     elseif k == "created_at" then
-      table.insert(cmd_field_values, cassandra.timestamp(v))
+      local _created_at = v
+      if string.len(tostring(_created_at)) == 10 then
+        _created_at = _created_at * 1000 -- Convert to milliseconds
+      end
+      table.insert(cmd_field_values, cassandra.timestamp(_created_at))
     else
       table.insert(cmd_field_values, v)
     end
@@ -50,12 +66,16 @@ function BaseDao:insert(entity)
     return nil
   end
 
-  local cmd_fields, cmd_values, cmd_field_values = get_cmd_args(entity)
+  -- Set an UUID as the ID of the entity
+  entity.id = uuid()
 
-  -- Executes the command
+  -- Prepare the command
+  local cmd_fields, cmd_values, cmd_field_values = get_cmd_args(entity, false)
+
+  -- Execute the command
   local cmd = "INSERT INTO " .. self._collection .. " (" .. cmd_fields .. ") VALUES (" .. cmd_values .. ")"
-  self:query(cmd, cmd_field_values)
 
+  local result, err = self:_query(cmd, cmd_field_values)
   return entity
 end
 
@@ -223,39 +243,35 @@ function BaseDao:_query(cmd, args)
   -- Connects to Cassandra
   local connected, err = session:connect(self._configuration.host, self._configuration.port)
   if not connected then
-    ngx.log(ngx.ERR, "error: ", err)
-    return
+    return nil, err
   end
 
   -- Sets the default keyspace
   local ok, err = session:set_keyspace(self._configuration.keyspace)
   if not ok then
-    ngx.log(ngx.ERR, "error: ", err)
-    return
+    return nil, err
   end
 
-  local stmt = self._cache[cmd]
+  local stmt = self._stmt_cache[cmd]
   if not stmt then
     local new_stmt, err = session:prepare(cmd)
     if err then
-      ngx.log(ngx.ERR, "error: ", err)
+      return nil, err
     end
-    self._cache[cmd] = new_stmt
+    self._stmt_cache[cmd] = new_stmt
     stmt = new_stmt
   end
 
   -- Executes the command
   local result, err = session:execute(stmt, args)
   if err then
-    ngx.log(ngx.ERR, "error: ", err)
-    return
+    return nil, err
   end
 
   -- Puts back the connection in the nginx pool
   local ok, err = session:set_keepalive(self._configuration.keepalive)
   if not ok then
-    ngx.log(ngx.ERR, "error: ", err)
-    return
+    return nil, err
   end
 
   return result

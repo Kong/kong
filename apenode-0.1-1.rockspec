@@ -26,7 +26,8 @@ dependencies = {
   "busted ~> 2.0.rc3-0",
   "stringy ~> 0.2-1",
   "cassandra ~> 0.2-1",
-  "lsqlite3 ~> 0.9.1-2"
+  "lsqlite3 ~> 0.9.1-2",
+  "uuid ~> 0.2-1"
 }
 build = {
   type = "builtin",
