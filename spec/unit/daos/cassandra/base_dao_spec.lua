@@ -14,8 +14,9 @@ local daos = {
 describe("BaseDao", function()
 
   setup(function()
-    local entity = dao_factory.accounts:insert({provider_id = "scemo", created_at = os.time()})
-    print(inspect(entity))
+    local results, count = dao_factory.accounts:find({provider_id = "scemo"})
+    print(inspect(results))
+    print(count)
   --  dao_factory:populate(true)
   end)
 

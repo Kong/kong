@@ -44,6 +44,7 @@ CREATE TABLE plugins (
   application_id uuid,
   name text,
   value text, -- We can't use a map because we don't know if the value is a text, int or a list
+  created_at timestamp,
   PRIMARY KEY ((api_id, application_id, name))
 );
 

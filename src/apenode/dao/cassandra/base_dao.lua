@@ -6,6 +6,7 @@ local dao_utils = require "apenode.dao.dao_utils"
 local Object = require "classic"
 local uuid = require "uuid"
 local inspect = require "inspect"
+local stringy = require "stringy"
 
 -- This is important to seed the UUID generator
 uuid.seed()
@@ -55,6 +56,25 @@ local function get_cmd_args(entity, update)
   return table.concat(cmd_fields, ","), table.concat(cmd_values, ","), cmd_field_values
 end
 
+-- Utility function to get where arguments
+-- @param entity The entity whose fields needs to be parsed
+-- @return A list of fields for the where clause, and the actual values table
+local function get_where_args(entity)
+  if utils.table_size(entity) == 0 then
+    return nil, nil
+  end
+
+  local cmd_fields, cmd_values, cmd_field_values = get_cmd_args(entity, false)
+
+  local result = {}
+  local args = stringy.split(cmd_fields, ",")
+  for _,v in ipairs(args) do
+    table.insert(result, v .. "=?")
+  end
+
+  return table.concat(result, ","), cmd_field_values
+end
+
 -- Insert an entity
 -- @param table entity Entity to insert
 -- @return table Inserted entity with its rowid property
@@ -67,7 +87,9 @@ function BaseDao:insert(entity)
   end
 
   -- Set an UUID as the ID of the entity
-  entity.id = uuid()
+  if not entity.id then
+    entity.id = uuid()
+  end
 
   -- Prepare the command
   local cmd_fields, cmd_values, cmd_field_values = get_cmd_args(entity, false)
@@ -100,6 +122,8 @@ function BaseDao:update(entity, where_keys)
     end
   end
 
+
+
   local query = self:build_udpate_query(entity, where_keys)
   local stmt = self:get_statement(query)
   stmt:bind_names(entity)
@@ -113,24 +137,7 @@ end
 -- @return table Inserted/updated entity with its rowid property
 -- @return table Error if error
 function BaseDao:insert_or_update(entity, where_keys)
-  if entity then
-    entity = dao_utils.serialize(self._schema, entity)
-  else
-    return nil
-  end
-
-  local query = self:build_insert_or_update_query(entity, where_keys)
-  local stmt = self:get_statement(query)
-  stmt:bind_names(entity)
-
-  local rowid, err = self:exec_stmt_rowid(stmt)
-  if err then
-    return nil, err
-  end
-
-  entity.id = rowid
-
-  return entity
+  return self:insert(entity) -- In Cassandra inserts are upserts
 end
 
 -- Find one row according to a condition determined by the keys
@@ -164,63 +171,64 @@ function BaseDao:find(where_keys, page, size)
   where_keys = dao_utils.serialize(self._schema, where_keys)
 
   -- Pagination
-  if not page then page = 1 end
-  if not size then size = 30 end
-  size = math.min(size, 100)
-  local start_offset = ((page - 1) * size)
+  -- if not page then page = 1 end
+  -- if not size then size = 30 end
+  -- size = math.min(size, 100)
+  -- local start_offset = ((page - 1) * size)
 
-  local query = self:build_select_query(where_keys, true)
-  local count_query = self:build_count_query(where_keys)
-  local stmt = self:get_statement(query)
-  local count_stmt = self:get_statement(count_query)
-
-  -- Build binding table
-  local values_to_bind = {}
-  if where_keys then
-    values_to_bind = where_keys
+  -- Prepare the command
+  local cmd_fields, cmd_field_values = get_where_args(where_keys)
+  local cmd = "SELECT * FROM " .. self._collection
+  local cmd_count = "SELECT COUNT(*) FROM " .. self._collection
+  if cmd_fields then
+    cmd = cmd .. " WHERE " .. cmd_fields
+    cmd_count = cmd_count .. " WHERE " .. cmd_fields
   end
 
-  values_to_bind.page = start_offset
-  values_to_bind.size = size
-
-  stmt:bind_names(values_to_bind)
-  count_stmt:bind_names(values_to_bind)
-
-  -- Statements execution
-  local results, err = self:exec_select_stmt(stmt)
-  if err then
+  -- Execute the command
+  local results, err = self:_query(cmd, cmd_field_values)
+  if not results then
     return nil, nil, err
   end
 
-  local count_result, err = self:exec_stmt_rowid(count_stmt)
-  if err then
+  -- Count the results too
+  local count, err = self:_query(cmd_count, cmd_field_values)
+  if not count then
     return nil, nil, err
   end
+  local count_value = table.remove(count, 1).count
 
   -- Deserialization
   for _,result in ipairs(results) do
     result = dao_utils.deserialize(self._schema, result)
   end
 
-  return results, count_result
+  return results, count_value
 end
 
 -- Delete row(s) according to a WHERE condition determined by the passed keys
 -- @param table where_keys Keys used to build a WHERE condition
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
-function BaseDao:delete(where_keys)
+function BaseDao:delete(id)
   where_keys = dao_utils.serialize(self._schema, where_keys)
 
   if not where_keys or  utils.table_size(where_keys) == 0 then
     return nil, { message = "Cannot delete an entire collection" }
   end
 
-  local query = self:build_delete_query(where_keys)
-  local stmt = self:get_statement(query)
+  local cmd = "DELETE FROM " .. self._collection
+  local cmd_fields, cmd_field_values = get_where_args(where_keys)
+  if cmd_fields then
+    cmd = cmd .. " WHERE " .. cmd_fields
+  end
 
-  -- Build binding table
-  stmt:bind_names(where_keys)
+  -- Execute the command
+  local results, err = self:_query(cmd, cmd_field_values)
+  if not results then
+    return nil, nil, err
+  end
+
 
   return self:exec_stmt_count_rows(stmt)
 end
@@ -264,13 +272,13 @@ function BaseDao:_query(cmd, args)
 
   -- Executes the command
   local result, err = session:execute(stmt, args)
-  if err then
+  if not results and err then
     return nil, err
   end
 
   -- Puts back the connection in the nginx pool
   local ok, err = session:set_keepalive(self._configuration.keepalive)
-  if not ok then
+  if not ok and err ~= "luasocket does not support reusable sockets" then
     return nil, err
   end
 
