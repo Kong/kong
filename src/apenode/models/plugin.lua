@@ -62,8 +62,4 @@ function Plugin.find(args, page, size)
   return Plugin.super._find(COLLECTION, args, page, size)
 end
 
-function Plugin.find_and_delete(args)
-  return Plugin.super._find_and_delete(COLLECTION, args)
-end
-
 return Plugin

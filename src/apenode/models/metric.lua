@@ -4,7 +4,6 @@ local BaseModel = require "apenode.models.base_model"
 
 local COLLECTION = "metrics"
 local SCHEMA = {
-  id = { type = "string", read_only = true },
   api_id = { type = "string", required = true },
   application_id = { type = "string", required = false },
   name = { type = "string", required = true },
@@ -26,10 +25,6 @@ end
 
 function Metric.find(args, page, size)
   return Metric.super._find(COLLECTION, args, page, size)
-end
-
-function Metric.find_and_delete(args)
-  return Metric.super._find_and_delete(COLLECTION, args)
 end
 
 function Metric:insert_or_update(entity, where_keys)

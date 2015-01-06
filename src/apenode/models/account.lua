@@ -26,10 +26,6 @@ function Account.find(args, page, size)
   return Account.super._find(COLLECTION, args, page, size)
 end
 
-function Account.find_and_delete(args)
-  return Account.super._find_and_delete(COLLECTION, args)
-end
-
 -- TODO: When deleting an account, also delete all his applications
 
 return Account

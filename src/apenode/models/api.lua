@@ -27,10 +27,6 @@ function Api.find(args, page, size)
   return Api.super._find(COLLECTION, args, page, size)
 end
 
-function Api.find_and_delete(args)
-  return Api.super._find_and_delete(COLLECTION, args)
-end
-
 -- TODO: When deleting an API, also delete all his plugins/metrics
 
 return Api

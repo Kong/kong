@@ -36,10 +36,6 @@ function Application.find(args, page, size)
   return  Application.super._find(COLLECTION, args, page, size)
 end
 
-function Application.find_and_delete(args)
-  return  Application.super._find_and_delete(COLLECTION, args)
-end
-
 -- TODO: When deleting an application, also delete all his plugins/metrics
 
 return Application

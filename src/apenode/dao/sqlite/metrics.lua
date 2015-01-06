@@ -17,6 +17,14 @@ function Metrics:new(database)
               AND timestamp = :timestamp),
         0) + :step);
   ]])
+
+
+  self.delete_stmt = Metrics.super.get_statement(self, [[
+    DELETE FROM metrics WHERE api_id = :api_id
+              AND application_id = :application_id
+              AND name = :name
+              AND timestamp = :timestamp;
+  ]]);
 end
 
 -- @override
@@ -36,12 +44,14 @@ end
 
 -- @override
 function Metrics:delete(api_id, application_id, name, timestamp)
-  return Metrics.super.delete(self, {
+  self.delete_stmt:bind_names {
     api_id = api_id,
     application_id = application_id,
     name = name,
     timestamp = timestamp
-  })
+  }
+
+  return self:exec_stmt_count_rows(self.delete_stmt)
 end
 
 function Metrics:increment_metric(api_id, application_id, name, timestamp, step)

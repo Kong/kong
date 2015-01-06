@@ -136,7 +136,7 @@ function BaseModel:save()
 end
 
 function BaseModel:delete()
-  local n_success, err = BaseModel:find_and_delete { id = self._t.id }
+  local n_success, err = dao[self._collection]:delete(self._t.id)
   return n_success, err
 end
 
@@ -158,11 +158,6 @@ end
 function BaseModel._find(collection, args, page, size)
   local data, total, err = dao[collection]:find(args, page, size)
   return data, total, err
-end
-
-function BaseModel._find_and_delete(collection, args)
-  local n_success, err = dao[collection]:find_and_delete(args)
-  return n_success, err
 end
 
 return BaseModel

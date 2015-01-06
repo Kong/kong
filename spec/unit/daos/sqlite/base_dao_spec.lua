@@ -241,7 +241,7 @@ describe("BaseDao", function()
 
       describe("#delete()", function()
         it("should delete an entity by key", function()
-          local result, err = dao:delete { id = 1 }
+          local result, err = dao:delete(1)
           assert.falsy(err)
           assert.truthy(result)
           result, err = dao:find_one { id = 1 }
@@ -259,7 +259,7 @@ describe("BaseDao", function()
           assert.falsy(err)
           assert.truthy(result)
           -- Delete entity
-          local result, err = dao:delete(saved_entity)
+          local result, err = dao:delete(saved_entity.id)
           assert.falsy(err)
           assert.truthy(result)
           -- Check if deleted
@@ -268,23 +268,18 @@ describe("BaseDao", function()
           assert.falsy(result)
         end)
         it("should return the number of deleted rows", function()
-          local result, err = dao:delete { id = 2 }
+          local result, err = dao:delete(2)
           assert.falsy(err)
           assert.are.same(1, result)
         end)
         it("should prevent the execution if passed key is about to delete the entire collection", function()
-          local result, err = dao:delete({})
+          local result, err = dao:delete()
           assert.truthy(err)
           assert.falsy(result)
           local result, err = dao:delete()
           assert.truthy(err)
           assert.falsy(result)
           assert.are.same("Cannot delete an entire collection", err.message)
-        end)
-        it("should throw an error if composite key has invalid columns", function()
-          assert.has_error(function()
-            dao:delete { foo = "bar" }
-          end)
         end)
       end)
 
