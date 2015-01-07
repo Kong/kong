@@ -46,22 +46,6 @@ function getopt( arg, options )
   return tab
 end
 
-local function normalize_properties(properties)
-  local result = {}
-
-  if properties then
-    for _, property in ipairs(properties) do
-      if property then
-        for k,v in pairs(property) do
-          result[k] = v
-        end
-      end
-    end
-  end
-
-  return result
-end
-
 -- Load configuration
 local opts = {}
 opts.random = getopt(arg, "random").random
@@ -75,7 +59,7 @@ local configuration = yaml.load(configuration_file)
 
 -- Load DAO
 local dao_factory = require("apenode.dao."..configuration.dao.factory)
-local dao = dao_factory(normalize_properties(configuration.dao.properties))
+local dao = dao_factory(configuration.dao.properties)
 
 -- Drop if exists
 dao:drop()
