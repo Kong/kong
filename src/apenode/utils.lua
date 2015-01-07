@@ -164,6 +164,20 @@ function _M.get(url, querystring, headers)
   }
 end
 
+function _M.delete(url, querystring, headers)
+  if not headers then headers = {} end
+
+  if querystring then
+    url = string.format("%s?%s", url, build_query(querystring))
+  end
+
+  return http_call {
+    method = "DELETE",
+    url = url,
+    headers = headers
+  }
+end
+
 function _M.post(url, form, headers)
   if not headers then headers = {} end
   if not form then form = {} end

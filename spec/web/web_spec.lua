@@ -63,6 +63,13 @@ describe("Web API #web", function()
           assert.are.equal(2, body.id)
         end
       end)
+      it("delete", function()
+        local response, status, headers = utils.delete(kWebURL .. "/" .. k .. "/1")
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.truthy(body)
+        assert.are.equal(1, body.id)
+      end)
     end)
   end
 
