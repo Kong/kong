@@ -1,0 +1,24 @@
+language: erlang
+
+env:
+  - LUA=""
+  - LUA="luajit"
+
+branches:
+  only:
+    - master
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make luajit luarocks luafilesystem busted
+  - wget http://openresty.org/download/ngx_openresty-1.7.7.1.tar.gz
+  - tar xzf ngx_openresty-1.7.7.1.tar.gz
+  - cd ngx_openresty-1.7.7.1/
+  - ./configure
+  - make
+  - make install
+
+install:
+  - sudo make global
+
+script: "make test-all"
