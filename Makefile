@@ -13,7 +13,7 @@ local:
 	@luarocks make apenode-*.rockspec --local
 
 global:
-	@sudo luarocks make apenode-*.rockspec
+	@luarocks make apenode-*.rockspec
 
 test:
 	@busted spec/unit
