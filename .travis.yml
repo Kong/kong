@@ -13,10 +13,9 @@ before_install:
   - sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make
   - wget http://openresty.org/download/ngx_openresty-1.7.7.1.tar.gz
   - tar xzf ngx_openresty-1.7.7.1.tar.gz
-  - cd ngx_openresty-1.7.7.1/
-  - ./configure
-  - make
-  - sudo make install
+  - ./ngx_openresty-1.7.7.1/configure
+  - make -C ngx_openresty-1.7.7.1/
+  - sudo make install -C ngx_openresty-1.7.7.1/
 
 install:
   - sudo apt-get install luajit
