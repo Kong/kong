@@ -189,7 +189,7 @@ function BaseDao:find(where_keys, page, size)
 
   -- Execute the command
   local results, err = self:_query(cmd, cmd_field_values)
-  if not results then
+  if err then
     return nil, nil, err
   end
 
