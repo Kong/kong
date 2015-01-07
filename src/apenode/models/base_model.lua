@@ -151,13 +151,18 @@ function BaseModel:update()
   end
 end
 
-function BaseModel._find_one(args, collection, dao_factory)
-  local data, err = dao_factory[collection]:find_one(args)
+function BaseModel._delete_by_id(id, dao)
+  local count, err = dao:delete_by_id(id)
+  return count, err
+end
+
+function BaseModel._find_one(args, dao)
+  local data, err = dao:find_one(args)
   return data, err
 end
 
-function BaseModel._find(args, page, size, collection, dao_factory)
-  local data, total, err = dao_factory[collection]:find(args, page, size)
+function BaseModel._find(args, page, size, dao)
+  local data, total, err = dao:find(args, page, size)
   return data, total, err
 end
 

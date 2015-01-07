@@ -217,7 +217,7 @@ end
 -- @param table where_keys Keys used to build a WHERE condition
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
-function BaseDao:delete(id)
+function BaseDao:delete_by_id(id)
   local cmd = "DELETE FROM " .. self._collection .. " WHERE id = ?"
 
   -- Execute the command

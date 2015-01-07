@@ -20,15 +20,19 @@ function Metric:new(t, dao_factory)
 end
 
 function Metric.find_one(args, dao_factory)
-  return Metric.super._find_one(args, COLLECTION, dao_factory)
+  return Metric.super._find_one(args, dao_factory[COLLECTION])
 end
 
 function Metric.find(args, page, size, dao_factory)
-  return Metric.super._find(args, page, size, COLLECTION, dao_factory)
+  return Metric.super._find(args, page, size, dao_factory[COLLECTION])
 end
 
 function Metric.increment(api_id, application_id, name, timestamp, step, dao_factory)
   return dao_factory[COLLECTION]:increment(api_id, application_id, name, timestamp, step)
+end
+
+function Metric.delete_by_id(id, dao_factory)
+  return Metric.super._delete_by_id(id, dao_factory[COLLECTION])
 end
 
 function Metric:insert_or_update(entity, where_keys)

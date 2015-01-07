@@ -55,11 +55,15 @@ function Plugin:save()
 end
 
 function Plugin.find_one(args, dao_factory)
-  return Plugin.super._find_one(args, COLLECTION, dao_factory)
+  return Plugin.super._find_one(args, dao_factory[COLLECTION])
 end
 
 function Plugin.find(args, page, size, dao_factory)
-  return Plugin.super._find(args, page, size, COLLECTION, dao_factory)
+  return Plugin.super._find(args, page, size, dao_factory[COLLECTION])
+end
+
+function Plugin.delete_by_id(id, dao_factory)
+  return Plugin.super._delete_by_id(id, dao_factory[COLLECTION])
 end
 
 return Plugin

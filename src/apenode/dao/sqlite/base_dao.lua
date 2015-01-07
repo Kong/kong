@@ -177,7 +177,7 @@ end
 -- @param table where_keys Keys used to build a WHERE condition
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
-function BaseDao:delete(id)
+function BaseDao:delete_by_id(id)
   where_keys = dao_utils.serialize(self._schema, { id = id})
 
   if not where_keys or  utils.table_size(where_keys) == 0 then

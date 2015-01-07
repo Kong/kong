@@ -19,11 +19,15 @@ function Account:new(t, dao_factory)
 end
 
 function Account.find_one(args, dao_factory)
-  return Account.super._find_one(args, COLLECTION, dao_factory)
+  return Account.super._find_one(args, dao_factory[COLLECTION])
 end
 
 function Account.find(args, page, size, dao_factory)
-  return Account.super._find(args, page, size, COLLECTION, dao_factory)
+  return Account.super._find(args, page, size, dao_factory[COLLECTION])
+end
+
+function Account.delete_by_id(id, dao_factory)
+  return Account.super._delete_by_id(id, dao_factory[COLLECTION])
 end
 
 -- TODO: When deleting an account, also delete all his applications

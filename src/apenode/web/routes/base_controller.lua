@@ -111,7 +111,7 @@ function BaseController:new(model)
     end
 
     if data then
-      data:delete()
+      model.delete_by_id(data.id, dao)
       return utils.success(data)
     else
       return utils.not_found()

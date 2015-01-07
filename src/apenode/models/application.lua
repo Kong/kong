@@ -29,11 +29,15 @@ function Application:new(t, dao_factory)
 end
 
 function Application.find_one(args, dao_factory)
-  return Application.super._find_one(args, COLLECTION, dao_factory)
+  return Application.super._find_one(args, dao_factory[COLLECTION])
 end
 
 function Application.find(args, page, size, dao_factory)
-  return  Application.super._find(args, page, size, COLLECTION, dao_factory)
+  return  Application.super._find(args, page, size, dao_factory[COLLECTION])
+end
+
+function Application.delete_by_id(id, dao_factory)
+  return Application.super._delete_by_id(id, dao_factory[COLLECTION])
 end
 
 -- TODO: When deleting an application, also delete all his plugins/metrics
