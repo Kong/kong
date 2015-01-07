@@ -7,15 +7,15 @@ version: 0.1
 dao:
   factory: sqlite
   properties:
-    - memory: false
-    - file_path: /tmp/wot
+    memory: false
+    file_path: /tmp/wot
   #factory: cassandra
   #properties:
-  #  - host: "127.0.0.1"
-  #  - port: 9042
-  #  - timeout: 1000
-  #  - keyspace: apenode
-  #  - keepalive: 60000
+  #  host: "127.0.0.1"
+  #  port: 9042
+  #  timeout: 1000
+  #  keyspace: apenode
+  #  keepalive: 60000
 
 # Enabled Plugins, in this order
 plugins_enabled:
