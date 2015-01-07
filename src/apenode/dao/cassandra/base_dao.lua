@@ -5,7 +5,6 @@ local utils = require "apenode.utils"
 local dao_utils = require "apenode.dao.dao_utils"
 local Object = require "classic"
 local uuid = require "uuid"
-local inspect = require "inspect"
 local stringy = require "stringy"
 
 -- This is important to seed the UUID generator
@@ -219,11 +218,7 @@ end
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
 function BaseDao:delete(id)
-
-  print("DELETE")
-
   local cmd = "DELETE FROM " .. self._collection .. " WHERE id = ?"
-  print(cmd)
 
   -- Execute the command
   local results, err = self:_query(cmd, { cassandra.uuid(id) })

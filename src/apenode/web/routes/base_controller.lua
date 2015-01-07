@@ -111,10 +111,6 @@ function BaseController:new(model)
     end
 
     if data then
-
-      local inspect = require "inspect"
-     -- print(inspect(data))
-      print(data.id)
       data:delete()
       return utils.success(data)
     else
