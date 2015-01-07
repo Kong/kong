@@ -73,22 +73,20 @@ function _M.access()
     if ngx.ctx.api then
       ngx.ctx.plugin_conf[v.name] = load_plugin_conf(ngx.ctx.api.id, nil, v.name) -- Loading the "API-specific" configuration
     end
+
+    if ngx.ctx.authenticated_entity then
+      local plugin_conf = load_plugin_conf(ngx.ctx.api.id, ngx.ctx.authenticated_entity.id, v.name)
+      if plugin_conf then -- Override only if not nil
+        ngx.ctx.plugin_conf[v.name] = plugin_conf
+      end
+    end
+
     if not ngx.ctx.error then
       local conf = ngx.ctx.plugin_conf[v.name]
       if not ngx.ctx.api then -- If not ngx.ctx.api then it's the core plugin
         v.handler:access(nil)
       elseif conf then
         v.handler:access(conf.value)
-      end
-    end
-  end
-
-  -- Load the "authenticated entity-specific" plugin configurations, and override them if it exists
-  if ngx.ctx.authenticated_entity then
-    for _, v in pairs(plugins) do
-      local plugin_conf = load_plugin_conf(ngx.ctx.api.id, ngx.ctx.authenticated_entity.id, v.name)
-      if plugin_conf then -- Override only if not nil
-        ngx.ctx.plugin_conf[v.name] = plugin_conf
       end
     end
   end

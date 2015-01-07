@@ -13,6 +13,10 @@ local function check_authentication_type(v)
 end
 
 local function check_authentication_key_names(v, t)
+  if v and type(v) ~= "table" then
+    return false, "You need to specify an array"
+  end
+
   if t.authentication_type and t.authentication_type ~= "basic" and v and utils.table_size(v) > 0 then
     return true
   else

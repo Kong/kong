@@ -93,7 +93,11 @@ function _M.populate(factory, random, amount)
         account_id = 1,
         public_key = "user123",
         secret_key = "apikey123"
-      }
+      },
+      {
+        account_id = 1,
+        secret_key = "apikey124"
+      },
     },
     metric = {
       {
@@ -151,12 +155,21 @@ function _M.populate(factory, random, amount)
           limit = 2
         }
       },
-       {
+      {
         api_id = 6,
         name = "ratelimiting",
         value = {
           period = "minute",
           limit = 2
+        }
+      },
+      {
+        api_id = 6,
+        application_id = 3,
+        name = "ratelimiting",
+        value = {
+          period = "minute",
+          limit = 4
         }
       }
     }

@@ -94,7 +94,7 @@ function BaseModel:_validate(schema, t, is_update)
 
     -- Check if field's value is unique
     if t[k] and v.unique then
-      local data, err = self._find_one({[k] = t[k]}, self._collection, self._dao_factory)
+      local data, err = self._find_one({[k] = t[k]}, self._dao)
       if data ~= nil then
         errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
       end

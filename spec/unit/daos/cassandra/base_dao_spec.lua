@@ -12,12 +12,6 @@ describe("BaseDao", function()
 
    --local res, err = Account({}, dao_factory):save()
 
-   local res, err = Account.find({id = "f2376522-f5d0-4400-c4d9-2b249c2fc613"}, 1, 1, dao_factory)
-
-   for k,v in pairs(res) do
-      print(v.crea)
-    end
-
 
    --print(inspect(err))
 

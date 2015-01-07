@@ -12,11 +12,11 @@ local ENDPOINTS = {
     error_message = nil
   },
   applications = {
-    total = 2,
+    total = 3,
     error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required"}'
   },
   plugins = {
-    total = 6,
+    total = 7,
     error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}'
   }
 }

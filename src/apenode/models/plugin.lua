@@ -47,7 +47,7 @@ function Plugin:new(t, dao_factory)
 end
 
 function Plugin:save()
-  if self.find_one({api_id = self.api_id, application_id = self.application_id, name = name }) then
+  if self.find_one({api_id = self.api_id, application_id = self.application_id, name = self.name }, self._dao_factory) then
     return nil, "The plugin already exist, update the current one"
   else
     return Plugin.super.save(self)
