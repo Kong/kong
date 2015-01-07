@@ -16,7 +16,7 @@ before_install:
   - cd ngx_openresty-1.7.7.1/
   - ./configure
   - make
-  - make install
+  - sudo make install
 
 install:
   - sudo apt-get install luajit
