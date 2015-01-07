@@ -20,7 +20,7 @@ function CassandraFactory:new(configuration)
 end
 
 function CassandraFactory:create_schema()
-  error("Cann't create Cassandra schema")
+  --error("Cannot create Cassandra schema")
 end
 
 function CassandraFactory:populate(random, number)
@@ -32,7 +32,7 @@ function CassandraFactory.fake_entity(type, invalid)
 end
 
 function CassandraFactory:drop()
-  error("Can't drop Cassandra")
+  --error("Can't drop Cassandra")
 end
 
 return CassandraFactory

@@ -105,13 +105,16 @@ function BaseController:new(model)
   end)
 
   app:delete("/" .. model._COLLECTION .. "/:id", function(self)
-
     local data, err = model.find_one({ id = self.params.id}, dao)
     if err then
       return utils.show_error(500, err)
     end
 
     if data then
+
+      local inspect = require "inspect"
+     -- print(inspect(data))
+      print(data.id)
       data:delete()
       return utils.success(data)
     else

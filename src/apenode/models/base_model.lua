@@ -137,6 +137,7 @@ function BaseModel:save()
 end
 
 function BaseModel:delete()
+  print(self._t.id)
   local n_success, err = self._dao:delete(self._t.id)
   return n_success, err
 end

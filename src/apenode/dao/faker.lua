@@ -189,7 +189,7 @@ function _M.populate(factory, random, amount)
   end
 
   for _,metric in ipairs(entities_to_insert.metric) do
-    --factory.metrics:insert_or_update(metric)
+    factory.metrics:increment(metric.api_id, metric.application_id, metric.name, metric.timestamp, metric.value)
   end
 end
 

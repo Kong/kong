@@ -148,6 +148,7 @@ end
 -- @return table Error if error
 function BaseDao:find_one(where_keys)
   local data, total, err = self:find(where_keys, 1, 1)
+
   local result = nil
   if total > 0 then
     result = data[1]
@@ -203,6 +204,11 @@ function BaseDao:find(where_keys, page, size)
   -- Deserialization
   for _,result in ipairs(results) do
     result = dao_utils.deserialize(self._schema, result)
+    for k,_ in pairs(result) do -- Remove unexisting fields
+      if not self._schema[k] then
+        result[k] = nil
+      end
+    end
   end
 
   return results, count_value
@@ -213,7 +219,11 @@ end
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
 function BaseDao:delete(id)
+
+  print("DELETE")
+
   local cmd = "DELETE FROM " .. self._collection .. " WHERE id = ?"
+  print(cmd)
 
   -- Execute the command
   local results, err = self:_query(cmd, { cassandra.uuid(id) })

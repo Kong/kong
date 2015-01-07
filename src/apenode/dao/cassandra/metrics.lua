@@ -22,7 +22,7 @@ function Metrics:delete(api_id, application_id, name, timestamp)
   --TODO
 end
 
-function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
+function Metrics:increment(api_id, application_id, name, timestamp, step)
   --TODO
 end
 
