@@ -9,22 +9,6 @@ local plugins = {}
 
 local _M = {}
 
-local function normalize_properties(properties)
-  local result = {}
-
-  if properties then
-    for _, property in ipairs(properties) do
-      if property then
-        for k,v in pairs(property) do
-          result[k] = v
-        end
-      end
-    end
-  end
-
-  return result
-end
-
 local function load_plugin_conf(api_id, application_id, plugin_name)
   local res, err = PluginModel.find_one({
     api_id = api_id,
@@ -46,8 +30,7 @@ function _M.init(configuration_path)
 
   -- Loading DAO
   local dao_factory = require("apenode.dao." .. configuration.dao.factory)
-  local dao_config = normalize_properties(configuration.dao.properties)
-  dao = dao_factory(dao_config)
+  dao = dao_factory(configuration.dao.properties)
 
   -- Loading the plugins:
   -- Core is the first plugin
