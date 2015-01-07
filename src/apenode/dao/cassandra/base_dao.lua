@@ -122,13 +122,15 @@ function BaseDao:update(entity, where_keys)
     end
   end
 
+  local cmd = "UPDATE " .. self._collection
+  for k,_ in pairs(entity) do
+    cmd = cmd .. " SET " .. k .. "=?"
+  end
 
+  cmd = cmd .. " WHERE id = ? AND created_at = ?"
 
-  local query = self:build_udpate_query(entity, where_keys)
-  local stmt = self:get_statement(query)
-  stmt:bind_names(entity)
-
-  return self:exec_stmt_count_rows(stmt)
+  local result, err = self:_query(cmd, entity)
+  return entity
 end
 
 -- Insert or update an entity
@@ -211,26 +213,15 @@ end
 -- @return number Number of rows affected by the executed query
 -- @return table Error if error
 function BaseDao:delete(id)
-  where_keys = dao_utils.serialize(self._schema, where_keys)
-
-  if not where_keys or  utils.table_size(where_keys) == 0 then
-    return nil, { message = "Cannot delete an entire collection" }
-  end
-
-  local cmd = "DELETE FROM " .. self._collection
-  local cmd_fields, cmd_field_values = get_where_args(where_keys)
-  if cmd_fields then
-    cmd = cmd .. " WHERE " .. cmd_fields
-  end
+  local cmd = "DELETE FROM " .. self._collection .. " WHERE id = ?"
 
   -- Execute the command
-  local results, err = self:_query(cmd, cmd_field_values)
+  local results, err = self:_query(cmd, { cassandra.uuid(id) })
   if not results then
-    return nil, nil, err
+    return nil, err
   end
 
-
-  return self:exec_stmt_count_rows(stmt)
+  return 1
 end
 
 -----------------

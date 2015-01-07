@@ -33,12 +33,12 @@ function Metrics:insert_or_update()
 end
 
 -- @override
-function Metrics:find_one(api_id, application_id, name, timestamp)
+function Metrics:find_one(args)
   return Metrics.super.find_one(self, {
-    api_id = api_id,
-    application_id = application_id,
-    name = name,
-    timestamp = timestamp
+    api_id = args.api_id,
+    application_id = args.application_id,
+    name = args.name,
+    timestamp = args.timestamp
   })
 end
 
@@ -54,7 +54,7 @@ function Metrics:delete(api_id, application_id, name, timestamp)
   return self:exec_stmt_count_rows(self.delete_stmt)
 end
 
-function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
+function Metrics:increment(api_id, application_id, name, timestamp, step)
   if not step then step = 1 end
 
   self.increment_stmt:bind_names {
@@ -70,7 +70,12 @@ function Metrics:increment_metric(api_id, application_id, name, timestamp, step)
     return nil, err
   end
 
-  return self:find_one(api_id, application_id, name, timestamp)
+  return self:find_one({
+    api_id = api_id,
+    application_id = application_id,
+    name = name,
+    timestamp = timestamp
+    })
 end
 
 return Metrics

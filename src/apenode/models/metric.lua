@@ -15,16 +15,20 @@ local Metric = BaseModel:extend()
 Metric["_COLLECTION"] = COLLECTION
 Metric["_SCHEMA"] = SCHEMA
 
-function Metric:new(t)
-  return Metric.super.new(self, COLLECTION, SCHEMA, t)
+function Metric:new(t, dao_factory)
+  return Metric.super.new(self, COLLECTION, SCHEMA, t, dao_factory)
 end
 
-function Metric.find_one(args)
-  return Metric.super._find_one(COLLECTION, args)
+function Metric.find_one(args, dao_factory)
+  return Metric.super._find_one(args, COLLECTION, dao_factory)
 end
 
-function Metric.find(args, page, size)
-  return Metric.super._find(COLLECTION, args, page, size)
+function Metric.find(args, page, size, dao_factory)
+  return Metric.super._find(args, page, size, COLLECTION, dao_factory)
+end
+
+function Metric.increment(api_id, application_id, name, timestamp, step, dao_factory)
+  return dao_factory[COLLECTION]:increment(api_id, application_id, name, timestamp, step)
 end
 
 function Metric:insert_or_update(entity, where_keys)

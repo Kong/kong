@@ -50,18 +50,19 @@ end
 function BaseController:new(model)
   app:post("/" .. model._COLLECTION .. "/", function(self)
     local params = parse_params(model, self.params)
-    local entity, err = model(params)
 
-    if not entity then
-      return utils.show_error(400, err)
+    local status, res = pcall(model, params, dao)
+    if not status then
+      return utils.show_error(400, res)
     else
-      local data, err = entity:save()
+      local data, err = res:save()
       if err then
         return utils.show_error(500, err)
       else
         return utils.created(data)
       end
     end
+
   end)
 
   app:get("/" .. model._COLLECTION .. "/", function(self)
@@ -82,7 +83,7 @@ function BaseController:new(model)
     params.size = nil
     params.page = nil
 
-    local data, total, err = model.find(params, page, size)
+    local data, total, err = model.find(params, page, size, dao)
     if err then
       return utils.show_error(500, err)
     end
@@ -90,7 +91,7 @@ function BaseController:new(model)
   end)
 
   app:get("/" .. model._COLLECTION .. "/:id", function(self)
-    local data, err = model.find_one({id = self.params.id})
+    local data, err = model.find_one({id = self.params.id}, dao)
 
     if err then
       return utils.show_error(500, err)
@@ -105,7 +106,7 @@ function BaseController:new(model)
 
   app:delete("/" .. model._COLLECTION .. "/:id", function(self)
 
-    local data, err = model.find_one({ id = self.params.id})
+    local data, err = model.find_one({ id = self.params.id}, dao)
     if err then
       return utils.show_error(500, err)
     end

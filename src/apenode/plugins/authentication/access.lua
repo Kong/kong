@@ -119,7 +119,7 @@ function _M.execute(conf)
     application = dao.applications:find_one({
       public_key = public_key,
       secret_key = secret_key
-    })
+    }, dao)
   end
 
   if not application then

@@ -1,5 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
+local Metric = require "apenode.models.metric"
+
 local _M = {}
 
 local function set_header_limit_remaining(usage)
@@ -19,10 +21,11 @@ function _M.execute(conf)
 
   local timestamps = utils.get_timestamps(ngx.now())
 
-  local current_usage = dao.metrics:find_one(ngx.ctx.api.id,
-                                            authenticated_entity_id,
-                                            "requests." .. period,
-                                            timestamps[period])
+  local current_usage = Metric.find_one({
+                  api_id = ngx.ctx.api.id,
+                  application_id = authenticated_entity_id,
+                  name = "requests." .. period,
+                  timestamp = timestamps[period]}, dao)
 
   if current_usage then current_usage = current_usage.value else current_usage = 0 end
 
@@ -37,10 +40,10 @@ function _M.execute(conf)
   -- Increment usage for all the metrics
   -- TODO: this could also be done asynchronously in a timer maybe if specified in the conf (more performance, less security)?
   for k,v in pairs(timestamps) do
-    dao.metrics:increment_metric(ngx.ctx.api.id,
+    Metric.increment(ngx.ctx.api.id,
                                 authenticated_entity_id,
                                 "requests." .. k,
-                                v, 1)
+                                v, 1, dao)
   end
 
 end

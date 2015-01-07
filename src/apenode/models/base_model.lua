@@ -27,16 +27,20 @@ end
 -- BaseModel --
 ---------------
 
-function BaseModel:new(collection, schema, t)
+function BaseModel:new(collection, schema, t, dao_factory)
   -- The collection needs to be declared before just in case
   -- the validator needs it for the "unique" check
+  self._dao_factory = dao_factory
   self._collection = collection
+  self._dao = dao_factory[collection]
 
   -- Validate the entity
   if not t then t = {} end
   local result, errors = self:_validate(schema, t)
+
   if errors then
-    return nil, errors
+    error(errors)
+    --return nil, errors
   end
 
   for k,v in pairs(t) do
@@ -72,9 +76,6 @@ function BaseModel:_validate(schema, t, is_update)
     if t[k] and type(t[k]) ~= v.type then
       errors = add_error(errors, k, k .. " should be a " .. v.type)
     end
-    if t[k] and v.unique then
-      -- TODO: Check uniquity
-    end
 
     -- Check field against a regex
     if t[k] and v.regex then
@@ -85,7 +86,7 @@ function BaseModel:_validate(schema, t, is_update)
 
     -- Check field against a function
     if v.func then
-      local success, err = v.func(t[k], t)
+      local success, err = v.func(t[k], t, self._dao_factory)
       if not success then
         errors = add_error(errors, k, err)
       end
@@ -93,8 +94,8 @@ function BaseModel:_validate(schema, t, is_update)
 
     -- Check if field's value is unique
     if t[k] and v.unique then
-      local data, total, err = self._find(self._collection, {[k] = t[k]})
-      if total > 0 then
+      local data, err = self._find_one({[k] = t[k]}, self._collection, self._dao_factory)
+      if data ~= nil then
         errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
       end
     end
@@ -131,12 +132,12 @@ function BaseModel:_validate(schema, t, is_update)
 end
 
 function BaseModel:save()
-  local data, err = dao[self._collection]:insert_or_update(self._t)
+  local data, err = self._dao:insert_or_update(self._t)
   return data, err
 end
 
 function BaseModel:delete()
-  local n_success, err = dao[self._collection]:delete(self._t.id)
+  local n_success, err = self._dao:delete(self._t.id)
   return n_success, err
 end
 
@@ -145,18 +146,18 @@ function BaseModel:update()
   if not res then
     return nil, err
   else
-    local data, err = dao[self._collection]:update(self._t)
+    local data, err = self._dao:update(self._t)
     return data, err
   end
 end
 
-function BaseModel._find_one(collection, args)
-  local data, err = dao[collection]:find_one(args)
+function BaseModel._find_one(args, collection, dao_factory)
+  local data, err = dao_factory[collection]:find_one(args)
   return data, err
 end
 
-function BaseModel._find(collection, args, page, size)
-  local data, total, err = dao[collection]:find(args, page, size)
+function BaseModel._find(args, page, size, collection, dao_factory)
+  local data, total, err = dao_factory[collection]:find(args, page, size)
   return data, total, err
 end
 

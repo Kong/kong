@@ -3,8 +3,8 @@
 local AccountModel = require "apenode.models.account"
 local BaseModel = require "apenode.models.base_model"
 
-local function check_account_id(account_id, t)
-  if AccountModel.find_one({id = account_id}) then
+local function check_account_id(account_id, t, dao_factory)
+  if AccountModel.find_one({id = account_id}, dao_factory) then
     return true
   else
     return false, "Account not found"
@@ -24,16 +24,16 @@ local Application = BaseModel:extend()
 Application["_COLLECTION"] = COLLECTION
 Application["_SCHEMA"] = SCHEMA
 
-function Application:new(t)
-  return Application.super.new(self, COLLECTION, SCHEMA, t)
+function Application:new(t, dao_factory)
+  return Application.super.new(self, COLLECTION, SCHEMA, t, dao_factory)
 end
 
-function Application.find_one(args)
-  return Application.super._find_one(COLLECTION, args)
+function Application.find_one(args, dao_factory)
+  return Application.super._find_one(args, COLLECTION, dao_factory)
 end
 
-function Application.find(args, page, size)
-  return  Application.super._find(COLLECTION, args, page, size)
+function Application.find(args, page, size, dao_factory)
+  return  Application.super._find(args, page, size, COLLECTION, dao_factory)
 end
 
 -- TODO: When deleting an application, also delete all his plugins/metrics

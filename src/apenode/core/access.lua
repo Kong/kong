@@ -12,7 +12,7 @@ function _M.execute(conf)
   -- Retrieving the API from the Host that has been requested
   local api, err = ApiModel.find_one({
     public_dns = stringy.split(ngx.var.http_host, ":")[1]
-  })
+  }, dao)
   if not api then
     utils.not_found("API not found")
   end

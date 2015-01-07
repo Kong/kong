@@ -30,7 +30,7 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
     api_id = api_id,
     application_id = application_id,
     name = plugin_name
-  })
+  }, dao)
 
   if res then
     return res
@@ -47,7 +47,7 @@ function _M.init(configuration_path)
   -- Loading DAO
   local dao_factory = require("apenode.dao." .. configuration.dao.factory)
   local dao_config = normalize_properties(configuration.dao.properties)
-  dao = dao_factory(configuration.dao.properties)
+  dao = dao_factory(dao_config)
 
   -- Loading the plugins:
   -- Core is the first plugin

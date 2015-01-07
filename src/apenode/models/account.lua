@@ -14,16 +14,16 @@ local Account = BaseModel:extend()
 Account["_COLLECTION"] = COLLECTION
 Account["_SCHEMA"] = SCHEMA
 
-function Account:new(t)
-  Account.super.new(self, COLLECTION, SCHEMA, t)
+function Account:new(t, dao_factory)
+  Account.super.new(self, COLLECTION, SCHEMA, t, dao_factory)
 end
 
-function Account.find_one(args)
-  return Account.super._find_one(COLLECTION, args)
+function Account.find_one(args, dao_factory)
+  return Account.super._find_one(args, COLLECTION, dao_factory)
 end
 
-function Account.find(args, page, size)
-  return Account.super._find(COLLECTION, args, page, size)
+function Account.find(args, page, size, dao_factory)
+  return Account.super._find(args, page, size, COLLECTION, dao_factory)
 end
 
 -- TODO: When deleting an account, also delete all his applications

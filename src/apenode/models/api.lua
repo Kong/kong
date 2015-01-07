@@ -15,16 +15,16 @@ local Api = BaseModel:extend()
 Api["_COLLECTION"] = COLLECTION
 Api["_SCHEMA"] = SCHEMA
 
-function Api:new(t)
-  return Api.super.new(self, COLLECTION, SCHEMA, t)
+function Api:new(t, dao_factory)
+  return Api.super.new(self, COLLECTION, SCHEMA, t, dao_factory)
 end
 
-function Api.find_one(args)
-  return Api.super._find_one(COLLECTION, args)
+function Api.find_one(args, dao_factory)
+  return Api.super._find_one(args, COLLECTION, dao_factory)
 end
 
-function Api.find(args, page, size)
-  return Api.super._find(COLLECTION, args, page, size)
+function Api.find(args, page, size, dao_factory)
+  return Api.super._find(args, page, size, COLLECTION, dao_factory)
 end
 
 -- TODO: When deleting an API, also delete all his plugins/metrics

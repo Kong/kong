@@ -4,16 +4,16 @@ local BaseModel = require "apenode.models.base_model"
 local ApplicationModel = require "apenode.models.application"
 local ApiModel = require "apenode.models.api"
 
-local function check_application_id(application_id, t)
-  if not application_id or ApplicationModel.find_one({id = application_id}) then
+local function check_application_id(application_id, t, dao_factory)
+  if not application_id or ApplicationModel.find_one({id = application_id}, dao_factory) then
     return true
   else
     return false, "Application not found"
   end
 end
 
-local function check_api_id(api_id, t)
-  if ApiModel.find_one({id = api_id}) then
+local function check_api_id(api_id, t, dao_factory)
+  if ApiModel.find_one({id = api_id}, dao_factory) then
     return true
   else
     return false, "API not found"
@@ -42,8 +42,8 @@ local Plugin = BaseModel:extend()
 Plugin["_COLLECTION"] = COLLECTION
 Plugin["_SCHEMA"] = SCHEMA
 
-function Plugin:new(t)
-  return Plugin.super.new(self, COLLECTION, SCHEMA, t)
+function Plugin:new(t, dao_factory)
+  return Plugin.super.new(self, COLLECTION, SCHEMA, t, dao_factory)
 end
 
 function Plugin:save()
@@ -54,12 +54,12 @@ function Plugin:save()
   end
 end
 
-function Plugin.find_one(args)
-  return Plugin.super._find_one(COLLECTION, args)
+function Plugin.find_one(args, dao_factory)
+  return Plugin.super._find_one(args, COLLECTION, dao_factory)
 end
 
-function Plugin.find(args, page, size)
-  return Plugin.super._find(COLLECTION, args, page, size)
+function Plugin.find(args, page, size, dao_factory)
+  return Plugin.super._find(args, page, size, COLLECTION, dao_factory)
 end
 
 return Plugin
