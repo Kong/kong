@@ -1,64 +1,25 @@
 #!/usr/bin/env lua
 
+local utils = require "scripts.utils"
 local yaml = require "yaml"
-local utils = require "apenode.utils"
-
--- getopt, POSIX style command line argument parser
--- param arg contains the command line arguments in a standard table.
--- param options is a string with the letters that expect string values.
--- returns a table where associated keys are true, nil, or a string value.
--- The following example styles are supported
---   -a one  ==> opts["a"]=="one"
---   -bone   ==> opts["b"]=="one"
---   -c      ==> opts["c"]==true
---   --c=one ==> opts["c"]=="one"
---   -cdaone ==> opts["c"]==true opts["d"]==true opts["a"]=="one"
--- note POSIX demands the parser ends at the first non option
---      this behavior isn't implemented.
-function getopt( arg, options )
-  local tab = {}
-  for k, v in ipairs(arg) do
-    if string.sub( v, 1, 2) == "--" then
-      local x = string.find( v, "=", 1, true )
-      if x then tab[ string.sub( v, 3, x-1 ) ] = string.sub( v, x+1 )
-      else tab[ string.sub( v, 3 ) ] = true
-      end
-    elseif string.sub( v, 1, 1 ) == "-" then
-      local y = 2
-      local l = string.len(v)
-      local jopt
-      while ( y <= l ) do
-        jopt = string.sub( v, y, y )
-        if string.find( options, jopt, 1, true ) then
-          if y < l then
-            tab[ jopt ] = string.sub( v, y+1 )
-            y = l
-          else
-            tab[ jopt ] = arg[ k + 1 ]
-          end
-          else
-            tab[ jopt ] = true
-          end
-          y = y + 1
-        end
-      end
-    end
-  return tab
-end
 
 -- Load configuration
 local opts = {}
-opts.random = getopt(arg, "random").random
-opts.conf = getopt(arg, "conf").conf
-opts.drop = getopt(arg, "drop").drop
+opts.random = utils.getopt(arg, "random").random
+opts.conf = utils.getopt(arg, "conf").conf
+opts.drop = utils.getopt(arg, "drop").drop
+
 local configuration_file = utils.read_file(opts.conf)
+
 if not configuration_file then
   error("No configuration file at: "..opts.conf)
 end
+
 local configuration = yaml.load(configuration_file)
 
 dao_configuration = configuration.databases_available[configuration.database]
-if dao_configuration == nil then
+
+if not dao_configuration then
   error("No dao \""..configuration.database.."\" defined in "..opts.conf)
 end
 
