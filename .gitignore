@@ -1,3 +1,4 @@
 tmp/
+.vagrant/
 .buildpath
 .project
