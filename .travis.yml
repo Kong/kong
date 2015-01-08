@@ -20,10 +20,13 @@ before_install:
   - cd ..
 
 install:
+  - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo apt-get install luajit
   - sudo apt-get install luarocks
   - sudo luarocks install luafilesystem
   - sudo luarocks install busted
+  - sudo luarocks install lrexlib-pcre PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
+  - sudo luarocks install luasec OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global
 
 script: "make test-all"
