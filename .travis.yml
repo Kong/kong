@@ -10,15 +10,23 @@ branches:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make luajit luarocks luafilesystem busted
+  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libpcre++-dev libssl-dev perl make
   - wget http://openresty.org/download/ngx_openresty-1.7.7.1.tar.gz
   - tar xzf ngx_openresty-1.7.7.1.tar.gz
   - cd ngx_openresty-1.7.7.1/
   - ./configure
   - make
-  - make install
+  - sudo make install
+  - cd ..
 
 install:
+  - sudo apt-get install sqlite3 libsqlite3-dev
+  - sudo apt-get install luajit
+  - sudo apt-get install luarocks
+  - sudo luarocks install luafilesystem
+  - sudo luarocks install busted
+  - export PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
+  - export OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global
 
 script: "make test-all"

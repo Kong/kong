@@ -1,5 +1,6 @@
 package = "apenode"
 version = "0.1-1"
+supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/lua-resty-apenode",
   branch = "master"

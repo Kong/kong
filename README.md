@@ -1,6 +1,6 @@
 ## Apenode
 
-lua-resty-apenode - Lua Apenode
+lua-resty-apenode - Lua Apenode [![Build Status](https://api.travis-ci.org/Mashape/lua-resty-apenode.png)](https://travis-ci.org/Mashape/lua-resty-apenode)
 
 [![The beginning of a new era](http://img.youtube.com/vi/U2iiPpcwfCA/0.jpg)](http://www.youtube.com/watch?v=U2iiPpcwfCA)
 
