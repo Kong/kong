@@ -8,7 +8,7 @@ dao:
   factory: sqlite
   properties:
     memory: false
-    file_path: /tmp/wot
+    file_path: /tmp/apenode
   #factory: cassandra
   #properties:
   #  host: "127.0.0.1"
