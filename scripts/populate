@@ -5,9 +5,10 @@ local yaml = require "yaml"
 
 -- Load configuration
 local opts = {}
-opts.random = utils.getopt(arg, "random").random
 opts.conf = utils.getopt(arg, "conf").conf
 opts.drop = utils.getopt(arg, "drop").drop
+opts.silent = utils.getopt(arg, "s").s
+opts.random = utils.getopt(arg, "random").random
 
 local configuration_file = utils.read_file(opts.conf)
 
@@ -30,8 +31,16 @@ local dao = dao_factory(dao_configuration.properties)
 -- Drop if exists
 dao:drop()
 
+if not opts.silent then
+  print(utils.green("✔").." Dropped")
+end
+
 if not opts.drop then
   dao:populate(opts.random)
+end
+
+if not opts.silent then
+  print(utils.green("✔").." Populated")
 end
 
 dao:close()

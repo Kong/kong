@@ -43,10 +43,10 @@ test-all:
 	@$(MAKE) test-proxy
 
 populate:
-	@scripts/populate --conf=$(ENV_APENODE_CONF)
+	@scripts/populate -s --conf=$(ENV_APENODE_CONF)
 
 drop:
-	@scripts/populate --conf=$(ENV_APENODE_CONF) --drop
+	@scripts/populate -s --conf=$(ENV_APENODE_CONF) --drop
 
 run:
 	@$(MAKE) build
