@@ -1,15 +1,15 @@
 PWD = `pwd`
 
 # Dev environment variables
-ENV_DAEMON ?= off
-ENV_LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
-ENV_LUA_CODE_CACHE ?= off
-ENV_APENODE_PORT ?= 8000
-ENV_APENODE_WEB_PORT ?= 8001
-ENV_DIR ?= $(PWD)/tmp
-ENV_APENODE_CONF ?= $(ENV_DIR)/apenode.dev.yaml
+export ENV_DAEMON ?= off
+export ENV_LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
+export ENV_LUA_CODE_CACHE ?= off
+export ENV_APENODE_PORT ?= 8000
+export ENV_APENODE_WEB_PORT ?= 8001
+export ENV_DIR ?= $(PWD)/tmp
+export ENV_APENODE_CONF ?= $(ENV_DIR)/apenode.dev.yaml
 
-.PHONY: test local global run populate drop test-web test-all
+.PHONY: build local global test test-web test-all run populate drop
 
 local:
 	@luarocks make apenode-*.rockspec --local
@@ -21,20 +21,18 @@ test:
 	@busted spec/unit
 
 test-web:
-	@$(MAKE) build ENV_DAEMON=on
-	@scripts/populate --conf=$(ENV_APENODE_CONF)
-	@nginx -p ./tmp/nginx -c nginx.conf
+	@$(MAKE) run ENV_DAEMON=on
+	@$(MAKE) populate
 	- @busted spec/web/
-	@nginx -p ./tmp/nginx -c nginx.conf -s stop
-	@scripts/populate --conf=$(ENV_APENODE_CONF) --drop
+	@$(MAKE) stop
+	@$(MAKE) drop
 
 test-proxy:
-	@$(MAKE) build ENV_DAEMON=on
-	@scripts/populate --conf=$(ENV_APENODE_CONF)
-	@nginx -p ./tmp/nginx -c nginx.conf
+	@$(MAKE) run ENV_DAEMON=on
+	@$(MAKE) populate
 	- @busted spec/proxy/
-	@nginx -p ./tmp/nginx -c nginx.conf -s stop
-	@scripts/populate --conf=$(ENV_APENODE_CONF) --drop
+	@$(MAKE) stop
+	@$(MAKE) drop
 
 test-all:
 	@echo "Unit tests:"
@@ -52,7 +50,10 @@ drop:
 
 run:
 	@$(MAKE) build
-	@nginx -p ./tmp/nginx -c nginx.conf
+	@nginx -p $(ENV_DIR)/nginx -c nginx.conf
+
+stop:
+	@nginx -p $(ENV_DIR)/nginx -c nginx.conf -s stop
 
 build:
 	@mkdir -p $(ENV_DIR)/nginx/logs
