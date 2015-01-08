@@ -25,8 +25,8 @@ install:
   - sudo apt-get install luarocks
   - sudo luarocks install luafilesystem
   - sudo luarocks install busted
-  - export PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
-  - export OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
+  - sudo luarocks install lrexlib-pcre PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
+  - sudo luarocks install luasec OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global
 
 script: "make test-all"
