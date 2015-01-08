@@ -1,26 +1,26 @@
----
-
 # Apenode version
 version: 0.1
 
-# Specify the DAO to use
-dao:
-  factory: sqlite
-  properties:
-    memory: false
-    file_path: /tmp/apenode
-  #factory: cassandra
-  #properties:
-  #  host: "127.0.0.1"
-  #  port: 9042
-  #  timeout: 1000
-  #  keyspace: apenode
-  #  keepalive: 60000
+# Specify the dao to use
+database: sqlite
 
-# Enabled Plugins, in this order
+# Enabled plugins, in this order
 plugins_enabled:
   - authentication
   - ratelimiting
   - networklog
 
----
+# Databases configuration
+databases_available:
+  sqlite:
+    properties:
+      memory: false
+      file_path: /tmp/apenode
+
+  cassandra:
+    properties:
+      host: "127.0.0.1"
+      port: 9042
+      timeout: 1000
+      keyspace: apenode
+      keepalive: 60000
