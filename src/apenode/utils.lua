@@ -45,6 +45,10 @@ local function build_query(tab, key)
   end
 end
 
+function _M.get_utc()
+  return os.time(os.date("!*t", os.time()))
+end
+
 function _M.table_size(t)
   local res = 0
   for _,_ in pairs(t) do

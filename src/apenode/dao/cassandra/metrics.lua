@@ -12,16 +12,6 @@ function Metrics:insert_or_update()
   error("Metrics:insert_or_update() not supported")
 end
 
--- @override
-function Metrics:find_one(api_id, application_id, name, timestamp)
-  --TODO
-end
-
--- @override
-function Metrics:delete(api_id, application_id, name, timestamp)
-  --TODO
-end
-
 function Metrics:increment(api_id, application_id, name, timestamp, step)
   --TODO
 end

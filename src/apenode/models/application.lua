@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local utils = require "apenode.utils"
 local AccountModel = require "apenode.models.account"
 local BaseModel = require "apenode.models.base_model"
 
@@ -17,7 +18,7 @@ local SCHEMA = {
   account_id = { type = "string", required = true, func = check_account_id },
   public_key = { type = "string", required = false },
   secret_key = { type = "string", required = true, unique = true },
-  created_at = { type = "number", read_only = true, default = os.time() }
+  created_at = { type = "number", read_only = true, default = utils.get_utc() }
 }
 
 local Application = BaseModel:extend()

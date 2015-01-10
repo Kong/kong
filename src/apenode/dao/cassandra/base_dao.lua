@@ -105,31 +105,31 @@ end
 -- @return table Updated entity
 -- @return table Error if error
 function BaseDao:update(entity, where_keys)
-  if entity then
+  if entity and utils.table_size(entity) > 0 then
     entity = dao_utils.serialize(self._schema, entity)
   else
     return nil
   end
+  if where_keys and utils.table_size(where_keys) > 0 then
+    where_keys = dao_utils.serialize(self._schema, where_keys)
+  else
+    return nil
+  end
 
-  -- Remove duplicated values between entity and where_keys
-  -- it would be incorrect to have:
-  -- entity { id = 1 } and where_keys { id = "none" }
-  -- 1 would be binded in the statement for the WHERE clause instead of "none"
-  for k,_ in pairs(entity) do
-    if where_keys and where_keys[k] then
-      entity[k] = where_keys[k]
+  local cmd_entity_fields, cmd_entity_values = get_where_args(entity)
+  local cmd_where_fields, cmd_where_values = get_where_args(where_keys)
+
+  local cmd = "UPDATE " .. self._collection .. " SET " .. cmd_entity_fields .. " WHERE " .. cmd_where_fields
+
+  -- Merging tables
+  for k,v in pairs(cmd_where_values) do
+    if k == "id" then
+      v = cassandra.uuid(v)
     end
+    table.insert(cmd_entity_values, v)
   end
 
-  local cmd = "UPDATE " .. self._collection
-  for k,_ in pairs(entity) do
-    cmd = cmd .. " SET " .. k .. "=?"
-  end
-
-  cmd = cmd .. " WHERE id = ? AND created_at = ?"
-
-  local result, err = self:_query(cmd, entity)
-  return entity
+  return self:_query(cmd, cmd_entity_values)
 end
 
 -- Insert or update an entity

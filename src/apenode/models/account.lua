@@ -1,12 +1,13 @@
 -- Copyright (C) Mashape, Inc.
 
+local utils = require "apenode.utils"
 local BaseModel = require "apenode.models.base_model"
 
 local COLLECTION = "accounts"
 local SCHEMA = {
   id = { type = "string", read_only = true },
   provider_id = { type = "string", required = false, unique = true },
-  created_at = { type = "number", read_only = true, default = os.time() }
+  created_at = { type = "number", read_only = true, default = utils.get_utc() }
 }
 
 local Account = BaseModel:extend()

@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local utils = require "apenode.utils"
 local BaseModel = require "apenode.models.base_model"
 
 local COLLECTION = "apis"
@@ -8,7 +9,7 @@ local SCHEMA = {
   name = { type = "string", required = true, unique = true },
   public_dns = { type = "string", required = true, unique = true, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
-  created_at = { type = "number", read_only = true, default = os.time() }
+  created_at = { type = "number", read_only = true, default = utils.get_utc() }
 }
 
 local Api = BaseModel:extend()

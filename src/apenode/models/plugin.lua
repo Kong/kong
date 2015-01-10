@@ -2,6 +2,7 @@
 
 local BaseModel = require "apenode.models.base_model"
 local ApplicationModel = require "apenode.models.application"
+local utils = require "apenode.utils"
 local ApiModel = require "apenode.models.api"
 
 local function check_application_id(application_id, t, dao_factory)
@@ -35,7 +36,8 @@ local SCHEMA = {
   api_id = { type = "string", required = true, func = check_api_id },
   application_id = { type = "string", required = false, func = check_application_id },
   name = { type = "string", required = true },
-  value = { type = "table", required = true, schema_from_func = get_schema }
+  value = { type = "table", required = true, schema_from_func = get_schema },
+  created_at = { type = "number", read_only = true, default = utils.get_utc() }
 }
 
 local Plugin = BaseModel:extend()
