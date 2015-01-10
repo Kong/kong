@@ -16,28 +16,33 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
     name = plugin_name
   }, dao)
 
-  if res then
-    return res
-  elseif err then
-      ngx.log(ngx.ERROR, err)
+  if err then
+    ngx.log(ngx.ERROR, err)
+    return nil
   end
-  return nil
+
+  return res
 end
 
 function _M.init(configuration_path)
   -- Loading configuration
   configuration = yaml.load(utils.read_file(configuration_path))
+  dao_configuration = configuration.databases_available[configuration.database]
+  if dao_configuration == nil then
+    ngx.log(ngx.ERROR, "No dao \""..configuration.database.."\" defined in "..configuration_path)
+  end
 
   -- Loading DAO
-  local dao_factory = require("apenode.dao." .. configuration.dao.factory)
-  dao = dao_factory(configuration.dao.properties)
+  local dao_factory = require("apenode.dao." .. configuration.database)
+  dao = dao_factory(dao_configuration.properties)
 
-  -- Loading the plugins:
-  -- Core is the first plugin
+  -- core is the first plugin
   table.insert(plugins, {
     name = "core",
     handler = require("apenode.core.handler")()
   })
+
+  -- Loading defined plugins
   for _,v in ipairs(configuration.plugins_enabled) do
     table.insert(plugins, {
       name = v,

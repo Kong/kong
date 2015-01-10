@@ -1,8 +1,5 @@
 -- Copyright (C) Mashape, Inc.
 
-local http = require "socket.http"
-local url = require "socket.url"
-local ltn12 = require "ltn12"
 local cjson = require "cjson"
 
 local _M = {}
@@ -133,69 +130,6 @@ function _M.get_timestamps(now)
   local year = gmtime(date)
 
   return {second=second * 1000, minute=minute * 1000, hour=hour * 1000,day=day * 1000, month=month * 1000, year=year * 1000}
-end
-
-local function http_call(options)
-  -- Set Host header accordingly
-  if not options.headers["host"] then
-    local parsed_url = url.parse(options.url)
-    local port_segment = ""
-    if parsed_url.port then
-      port_segment = ":" .. parsed_url.port
-    end
-    options.headers["host"] = parsed_url.host .. port_segment
-  end
-
-  -- Returns: response, code, headers
-  local resp = {}
-  options.sink = ltn12.sink.table(resp)
-
-  local r, code, headers = http.request(options)
-  return resp[1], code, headers
-end
-
-function _M.get(url, querystring, headers)
-  if not headers then headers = {} end
-
-  if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
-  end
-
-  return http_call {
-    method = "GET",
-    url = url,
-    headers = headers
-  }
-end
-
-function _M.delete(url, querystring, headers)
-  if not headers then headers = {} end
-
-  if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
-  end
-
-  return http_call {
-    method = "DELETE",
-    url = url,
-    headers = headers
-  }
-end
-
-function _M.post(url, form, headers)
-  if not headers then headers = {} end
-  if not form then form = {} end
-
-  local body = build_query(form)
-  headers["content-length"] = string.len(body)
-  headers["content-type"] = "application/x-www-form-urlencoded"
-
-  return http_call {
-    method = "POST",
-    url = url,
-    headers = headers,
-    source = ltn12.source.string(body)
-  }
 end
 
 return _M

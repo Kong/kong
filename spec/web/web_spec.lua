@@ -1,4 +1,4 @@
-local utils = require "apenode.utils"
+local utils = require "scripts.utils"
 local cjson = require "cjson"
 local kWebURL = "http://localhost:8001/"
 
