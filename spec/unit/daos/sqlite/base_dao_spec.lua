@@ -108,7 +108,7 @@ describe("BaseDao", function()
       local existing_entity = dao_factory.apis:find_one { id = 1 }
       existing_entity.public_dns = "hello.com"
 
-      local updated_rows, err = dao_factory.apis:update(existing_entity, { id = existing_entity.id })
+      local updated_rows, err = dao_factory.apis:update(existing_entity)
       assert.falsy(err)
       assert.are.same(1, updated_rows)
     end)
@@ -116,7 +116,7 @@ describe("BaseDao", function()
       local existing_entity = dao_factory.apis:find_one { id = 1 }
       existing_entity.public_dns = "hello2.com"
 
-      local updated_rows, err = dao_factory.apis:update(existing_entity, { id = "none" })
+      local updated_rows, err = dao_factory.apis:update(nil)
       assert.falsy(err)
       assert.are.same(0, updated_rows)
     end)
@@ -178,14 +178,14 @@ describe("BaseDao", function()
         it("should return nil if given nil to insert", function()
           local updated_entity, err = dao:update(nil)
           assert.falsy(err)
-          assert.falsy(updated_entity)
+          assert.are.same(0, updated_entity)
         end)
         it("should throw an error if invalid column is updated", function()
           local existing_entity = dao:find_one { id = 1 }
           existing_entity.foo = "hello.com"
 
           assert.has_error(function()
-            dao:update(existing_entity, { id = existing_entity.id })
+            dao:update(existing_entity)
           end)
         end)
       end)

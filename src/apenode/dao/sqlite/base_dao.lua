@@ -51,22 +51,20 @@ end
 -- @param table entity Entity to update
 -- @return table Updated entity
 -- @return table Error if error
-function BaseDao:update(entity, where_keys)
+function BaseDao:update(entity)
   if entity then
     entity = dao_utils.serialize(self._schema, entity)
   else
-    return nil
+    return 0
   end
 
   -- Remove duplicated values between entity and where_keys
   -- it would be incorrect to have:
   -- entity { id = 1 } and where_keys { id = "none" }
   -- 1 would be binded in the statement for the WHERE clause instead of "none"
-  for k,_ in pairs(entity) do
-    if where_keys and where_keys[k] then
-      entity[k] = where_keys[k]
-    end
-  end
+  local where_keys = {
+    id = entity.id
+  }
 
   local query = self:build_udpate_query(entity, where_keys)
   local stmt = self:get_statement(query)

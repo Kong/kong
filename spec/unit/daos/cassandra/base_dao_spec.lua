@@ -20,9 +20,9 @@ describe("BaseDao", function()
 
       --local res, err = Account.find({created_at=1420681471000}, 10, 10, dao_factory)
 
-      local res, err = dao_factory.accounts:update({provider_id = "hello22222"}, {provider_id = "hello"})
-      print(inspect(res))
-      print(inspect(err))
+      --local res, err = dao_factory.accounts:update({provider_id = "hello22222"}, {provider_id = "hello"})
+     -- print(inspect(res))
+      --print(inspect(err))
 
     end)
   end)

@@ -104,17 +104,16 @@ end
 -- @param table entity Entity to update
 -- @return table Updated entity
 -- @return table Error if error
-function BaseDao:update(entity, where_keys)
+function BaseDao:update(entity)
   if entity and utils.table_size(entity) > 0 then
     entity = dao_utils.serialize(self._schema, entity)
   else
     return nil
   end
-  if where_keys and utils.table_size(where_keys) > 0 then
-    where_keys = dao_utils.serialize(self._schema, where_keys)
-  else
-    return nil
-  end
+
+  local where_keys = {
+    id = entity.id
+  }
 
   local cmd_entity_fields, cmd_entity_values = get_where_args(entity)
   local cmd_where_fields, cmd_where_values = get_where_args(where_keys)
