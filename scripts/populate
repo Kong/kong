@@ -1,7 +1,6 @@
 #!/usr/bin/env lua
 
 local utils = require "scripts.utils"
-local yaml = require "yaml"
 
 -- Load configuration
 local opts = {}
@@ -10,15 +9,8 @@ opts.drop = utils.getopt(arg, "drop").drop
 opts.silent = utils.getopt(arg, "s").s
 opts.random = utils.getopt(arg, "random").random
 
-local configuration_file = utils.read_file(opts.conf)
-
-if not configuration_file then
-  error("No configuration file at: "..opts.conf)
-end
-
-local configuration = yaml.load(configuration_file)
-
-dao_configuration = configuration.databases_available[configuration.database]
+local configuration = sutils.load_configuration(opts.conf)
+local dao_configuration = configuration.databases_available[configuration.database]
 
 if not dao_configuration then
   error("No dao \""..configuration.database.."\" defined in "..opts.conf)

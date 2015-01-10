@@ -1,6 +1,8 @@
 local ltn12 = require "ltn12"
+local yaml = require "yaml"
 local http = require "socket.http"
 local url = require "socket.url"
+local lfs = require "lfs"
 
 local _M = {}
 
@@ -22,6 +24,31 @@ function _M.write_to_file(path, value)
   file:write(value)
   file:close()
 end
+
+function _M.retrieve_files(path)
+  local files = {}
+
+  for file in lfs.dir(path) do
+    local f = path..'/'..file
+    local attr = lfs.attributes(f)
+    if attr.mode ~= "directory" then
+      files[#files+1] = f
+    end
+  end
+
+  return files
+end
+
+function _M.load_configuration(path)
+  local configuration_file = _M.read_file(path)
+
+  if not configuration_file then
+    error("No configuration file at: "..path)
+  end
+
+  return yaml.load(configuration_file)
+end
+
 
 --
 -- Lua script utils

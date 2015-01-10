@@ -18,17 +18,19 @@ description = {
 dependencies = {
   "lua ~> 5.1",
 
+  "lsqlite3 ~> 0.9.1-2",
+  "cassandra ~> 0.2-1",
+  "uuid ~> 0.2-1",
+  "lapis ~> 1.0.6-1",
   "luasec ~> 0.5-2",
   "yaml ~> 1.1.1-1",
-  "lapis ~> 1.0.6-1",
-  "inspect ~> 3.0-1",
   "luaxml ~> 101012-1",
   "lrexlib-pcre ~> 2.7.2-1",
-  "busted ~> 2.0.rc3-0",
   "stringy ~> 0.2-1",
-  "cassandra ~> 0.2-1",
-  "lsqlite3 ~> 0.9.1-2",
-  "uuid ~> 0.2-1"
+  "inspect ~> 3.0-1",
+
+  "busted ~> 2.0.rc3-0",
+  "luafilesystem ~> 1.6.2"
 }
 build = {
   type = "builtin",

@@ -1,0 +1,84 @@
+#!/usr/bin/env lua
+
+local sutils = require "scripts.utils"
+local utils = require "apenode.utils"
+local lfs = require "lfs"
+
+-- Constants
+local kMigrationsPath = "database/migrations"
+
+-- Load configuration
+local opts = {}
+opts.create = sutils.getopt(arg, "create").create
+opts.conf = sutils.getopt(arg, "conf").conf
+--opts.down = sutils.getopt(arg, "down").down
+
+local configuration = sutils.load_configuration(opts.conf)
+
+--
+-- Create a migration
+--
+if opts.create then
+  local date_str = os.date("%Y_%m_%d_%H%M%S")
+
+  for k,v in pairs(configuration.databases_available) do
+    local interface = [[
+-- Inserted variables
+local Object = require "classic"
+local dao_factory = require "apenode.dao.]]..k..[["
+
+
+-- Migration interface
+local Migration = Object:extend()
+
+function Migration:new(dao_configuration)
+  self.dao = dao_factory(dao_configuration.properties, true)
+end
+
+function Migration:up()
+  self.dao:execute ]].."[["..[[
+
+
+  ]].."]]"..[[
+
+
+  self.dao:close()
+end
+
+function Migration:down()
+  self.dao.execute ]].."[["..[[
+
+
+  ]].."]]"..[[
+
+
+  self.dao:close()
+end
+
+return Migration
+    ]]
+
+    local file_path = kMigrationsPath.."/"..k
+    local file_name = date_str.."_"..opts.create
+
+    os.execute("mkdir -p "..file_path)
+
+    sutils.write_to_file(file_path.."/"..file_name..".lua", interface)
+  end
+--
+-- Execute migrations
+--
+else
+  local migrations_files = sutils.retrieve_files(kMigrationsPath.."/"..configuration.database)
+
+  for _,migration_file in ipairs(migrations_files) do
+    local migration_module = loadfile(migration_file)()
+    local migration = migration_module(configuration.databases_available[configuration.database])
+
+    -- Migrate up
+    migration:up()
+
+    print(sutils.green("✔").." Migrated "..migration_file)
+
+  end
+end
