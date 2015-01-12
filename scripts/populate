@@ -58,7 +58,7 @@ end
 local configuration = yaml.load(configuration_file)
 
 -- Load DAO
-local dao_factory = require("apenode.dao."..configuration.dao.factory)
+local dao_factory = require("apenode.dao."..configuration.dao.factory..".factory")
 local dao = dao_factory(configuration.dao.properties)
 
 -- Drop if exists

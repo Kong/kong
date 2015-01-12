@@ -45,7 +45,7 @@ function _M.init(configuration_path)
   configuration = yaml.load(utils.read_file(configuration_path))
 
   -- Loading DAO
-  local dao_factory = require("apenode.dao." .. configuration.dao.factory)
+  local dao_factory = require("apenode.dao."..configuration.dao.factory..".factory")
   local dao_config = normalize_properties(configuration.dao.properties)
   dao = dao_factory(configuration.dao.properties)
 
