@@ -57,6 +57,7 @@ end
 function _M.show_response(status, message)
   ngx.header["X-Apenode-Version"] = configuration.version
   ngx.status = status
+
   if (type(message) == "table") then
     ngx.print(cjson.encode(message))
   else

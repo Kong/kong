@@ -18,6 +18,8 @@ function _M.deserialize(schema, entity)
     for k,v in pairs(schema) do
       if entity[k] and v.type == "table" then
         entity[k] = cjson.decode(entity[k])
+      elseif entity[k] and v.type == "string" then
+        entity[k] = tostring(entity[k])
       end
     end
   end

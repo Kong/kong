@@ -105,10 +105,12 @@ end
 -- @return table Error if error
 function BaseDao:find_one(where_keys)
   local data, total, err = self:find(where_keys, 1, 1)
+
   local result = nil
   if total > 0 then
     result = data[1]
   end
+
   return result, err
 end
 

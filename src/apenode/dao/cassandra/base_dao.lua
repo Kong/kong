@@ -108,7 +108,7 @@ function BaseDao:update(entity)
   if entity and utils.table_size(entity) > 0 then
     entity = dao_utils.serialize(self._schema, entity)
   else
-    return nil
+    return 0
   end
 
   local where_keys = {
