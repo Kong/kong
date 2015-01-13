@@ -47,10 +47,10 @@ migrate:
 	@scripts/migrate migrate --conf=$(ENV_APENODE_CONF)
 
 populate:
-	@scripts/populate $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
+	@scripts/seed seed $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
 
 drop:
-	@scripts/populate $(ENV_SILENT) --conf=$(ENV_APENODE_CONF) --drop
+	@scripts/seed drop $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
 
 run:
 	@$(MAKE) build
