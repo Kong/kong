@@ -1,9 +1,9 @@
-local configuration = require "spec.unit.daos.cassandra.dao_configuration"
-local CassandraFactory = require "apenode.dao.cassandra"
-local Account = require "apenode.models.account"
-local inspect = require "inspect"
+local utils = require "apenode.utils"
+local configuration = require "spec.unit.daos.cassandra.configuration"
+local CassandraFactory = require "apenode.dao.cassandra.factory"
 
-local dao_factory = CassandraFactory(configuration)
+local configuration, dao_properties = utils.parse_configuration(configuration)
+local dao_factory = CassandraFactory(dao_properties)
 
 describe("BaseDao", function()
 

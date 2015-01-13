@@ -55,7 +55,7 @@ build = {
     ["apenode.dao.sqlite.metrics"] = "src/apenode/dao/sqlite/metrics.lua",
     ["apenode.dao.sqlite.plugins"] = "src/apenode/dao/sqlite/plugins.lua",
 
-    ["apenode.dao.cassandra"] = "src/apenode/dao/cassandra/factory.lua",
+    ["apenode.dao.cassandra.factory"] = "src/apenode/dao/cassandra/factory.lua",
     ["apenode.dao.cassandra.base_dao"] = "src/apenode/dao/cassandra/base_dao.lua",
     ["apenode.dao.cassandra.apis"] = "src/apenode/dao/cassandra/apis.lua",
     ["apenode.dao.cassandra.accounts"] = "src/apenode/dao/cassandra/accounts.lua",
