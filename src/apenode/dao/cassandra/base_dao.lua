@@ -1,11 +1,11 @@
 -- Copyright (C) Mashape, Inc.
 
 local cassandra = require "cassandra"
-local utils = require "apenode.utils"
 local dao_utils = require "apenode.dao.dao_utils"
-local Object = require "classic"
-local uuid = require "uuid"
 local stringy = require "stringy"
+local Object = require "classic"
+local utils = require "apenode.tools.utils"
+local uuid = require "uuid"
 
 -- This is important to seed the UUID generator
 uuid.seed()

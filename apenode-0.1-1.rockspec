@@ -37,7 +37,7 @@ build = {
   modules = {
     ["apenode"] = "src/main.lua",
     ["classic"] = "src/classic.lua",
-    ["apenode.utils"] = "src/apenode/utils.lua",
+    ["apenode.tools.utils"] = "src/apenode/tools/utils.lua",
     ["apenode.base_plugin"] = "src/apenode/base_plugin.lua",
 
     ["apenode.core.handler"] = "src/apenode/core/handler.lua",

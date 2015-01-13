@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.utils"
 local dao_utils = require "apenode.dao.dao_utils"
 local Object = require "classic"
+local utils = require "apenode.tools.utils"
 
 local BaseDao = Object:extend()
 

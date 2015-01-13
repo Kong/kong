@@ -1,4 +1,4 @@
-local utils = require "apenode.utils"
+local utils = require "apenode.tools.utils"
 local configuration = require "spec.unit.daos.sqlite.configuration"
 local SQLiteFactory = require "apenode.dao.sqlite.factory"
 local BaseModel = require "apenode.models.base_model"

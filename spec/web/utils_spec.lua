@@ -1,4 +1,4 @@
-local utils = require "scripts.utils"
+local utils = require "apenode.tools.utils"
 local cjson = require "cjson"
 
 describe("Utils #utils", function()

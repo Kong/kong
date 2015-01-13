@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
-local cjson = require "cjson"
 local stringy = require "stringy"
 local Object = require "classic"
+local cjson = require "cjson"
 
 local BaseController = Object:extend()
 

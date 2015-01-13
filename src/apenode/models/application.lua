@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local utils = require "apenode.utils"
+local utils = require "apenode.tools.utils"
 local AccountModel = require "apenode.models.account"
 local BaseModel = require "apenode.models.base_model"
 

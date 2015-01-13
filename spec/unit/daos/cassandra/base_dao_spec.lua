@@ -1,4 +1,4 @@
-local utils = require "apenode.utils"
+local utils = require "apenode.tools.utils"
 local configuration = require "spec.unit.daos.cassandra.configuration"
 local CassandraFactory = require "apenode.dao.cassandra.factory"
 

@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-utils = require "apenode.utils"
+utils = require "apenode.tools.utils"
 local PluginModel = require "apenode.models.plugin"
 
 -- Define the plugins to load here, in the appropriate order

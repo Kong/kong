@@ -1,10 +1,10 @@
 -- Copyright (C) Mashape, Inc.
 
 local lapis = require "lapis"
-local Accounts = require "apenode.web.routes.accounts"
 local Apis = require "apenode.web.routes.apis"
-local Applications = require "apenode.web.routes.applications"
 local Plugins = require "apenode.web.routes.plugins"
+local Accounts = require "apenode.web.routes.accounts"
+local Applications = require "apenode.web.routes.applications"
 
 app = lapis.Application()
 

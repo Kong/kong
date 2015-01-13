@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-local utils = require "scripts.utils"
+local utils = require "apenode.tools.utils"
 
 -- Load configuration
 local opts = {}

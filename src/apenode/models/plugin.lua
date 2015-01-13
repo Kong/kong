@@ -1,9 +1,9 @@
 -- Copyright (C) Mashape, Inc.
 
-local BaseModel = require "apenode.models.base_model"
 local ApplicationModel = require "apenode.models.application"
-local utils = require "apenode.utils"
+local BaseModel = require "apenode.models.base_model"
 local ApiModel = require "apenode.models.api"
+local utils = require "apenode.tools.utils"
 
 local function check_application_id(application_id, t, dao_factory)
   if not application_id or ApplicationModel.find_one({id = application_id}, dao_factory) then
