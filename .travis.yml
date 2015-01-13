@@ -25,7 +25,7 @@ install:
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
   - cd luarocks-2.1.2
-  - ./configure --with-lua=/usr/local/share/lua/5.1
+  - ./configure --with-lua=/usr/include/lua5.1
   - make build
   - sudo make install
   - cd ..
