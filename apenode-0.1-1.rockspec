@@ -47,7 +47,7 @@ build = {
     ["apenode.dao.faker"] = "src/apenode/dao/faker.lua",
     ["apenode.dao.dao_utils"] = "src/apenode/dao/dao_utils.lua",
 
-    ["apenode.dao.sqlite"] = "src/apenode/dao/sqlite/factory.lua",
+    ["apenode.dao.sqlite.factory"] = "src/apenode/dao/sqlite/factory.lua",
     ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
     ["apenode.dao.sqlite.apis"] = "src/apenode/dao/sqlite/apis.lua",
     ["apenode.dao.sqlite.accounts"] = "src/apenode/dao/sqlite/accounts.lua",

@@ -17,7 +17,7 @@ if not dao_configuration then
 end
 
 -- Load DAO
-local dao_factory = require("apenode.dao."..configuration.database)
+local dao_factory = require("apenode.dao."..configuration.database..".factory")
 local dao = dao_factory(dao_configuration.properties)
 
 -- Drop if exists
