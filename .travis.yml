@@ -22,11 +22,10 @@ before_install:
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo apt-get install luajit
-  - export LUA_PATH='/usr/local/share/lua/5.1//?.lua;/usr/local/share/lua/5.1//?/init.lua;/home/vagrant/.luarocks/share/lua/5.1//?.lua;/home/vagrant/.luarocks/share/lua/5.1//?/init.lua;/usr/share/lua/5.1//?.lua;/usr/share/lua/6.1//?/init.lua;./?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;/usr/local/lib/lua/5.1/?.lua;/usr/local/lib/lua/5.1/?/init.lua;/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/init.lua'
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
   - cd luarocks-2.1.2
-  - ./configure
+  - ./configure --with-lua /usr/local/share/lua/5.1/
   - make build
   - sudo make install
   - cd ..
