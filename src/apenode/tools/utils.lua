@@ -20,6 +20,14 @@ function _M.table_size(t)
   return res
 end
 
+function _M.reverse(arr)
+  local reversed = {}
+  for _,i in ipairs(arr) do
+    table.insert(reversed, 1, i)
+  end
+  return reversed
+end
+
 -- Builds a querystring from a table, separated by `&`
 -- @param tab The key/value parameters
 -- @param key The parent key if the value is multi-dimensional (optional)

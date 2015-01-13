@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 local Object = require "classic"
 
-local Faker = require "apenode.dao.faker"
+local Faker = require "apenode.tools.faker"
 local Apis = require "apenode.dao.cassandra.apis"
 local Metrics = require "apenode.dao.cassandra.metrics"
 local Accounts = require "apenode.dao.cassandra.accounts"

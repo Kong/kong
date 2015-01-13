@@ -39,6 +39,7 @@ build = {
     ["classic"] = "src/classic.lua",
 
     ["apenode.tools.utils"] = "src/apenode/tools/utils.lua",
+    ["apenode.tools.faker"] = "src/apenode/tools/faker.lua",
     ["apenode.tools.migrations"] = "src/apenode/tools/migrations.lua",
 
     ["apenode.base_plugin"] = "src/apenode/base_plugin.lua",
@@ -47,7 +48,6 @@ build = {
     ["apenode.core.access"] = "src/apenode/core/access.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
-    ["apenode.dao.faker"] = "src/apenode/dao/faker.lua",
     ["apenode.dao.dao_utils"] = "src/apenode/dao/dao_utils.lua",
 
     ["apenode.dao.sqlite.factory"] = "src/apenode/dao/sqlite/factory.lua",

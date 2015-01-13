@@ -4,14 +4,6 @@ local utils = require "apenode.tools.utils"
 -- Constants
 local kMigrationsPath = "database/migrations"
 
-local function reverse(arr)
-  local reversed = {}
-  for _,i in ipairs(arr) do
-    table.insert(reversed, 1, i)
-  end
-  return reversed
-end
-
 -- Migrations
 local Migrations = Object:extend()
 
@@ -80,7 +72,7 @@ function Migrations:rollback(callback)
 end
 
 function Migrations:reset(callback)
-  for _,migration_file in ipairs(reverse(self.migrations_files)) do
+  for _,migration_file in ipairs(utils.reverse(self.migrations_files)) do
     local migration = loadfile(migration_file)()
 
     self.dao:execute(migration.down)

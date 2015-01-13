@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 local Object = require "classic"
 local sqlite3 = require "lsqlite3"
-local Faker = require "apenode.dao.faker"
+local Faker = require "apenode.tools.faker"
 local Apis = require "apenode.dao.sqlite.apis"
 local Metrics = require "apenode.dao.sqlite.metrics"
 local Plugins = require "apenode.dao.sqlite.plugins"
