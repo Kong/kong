@@ -1,54 +1,10 @@
+local utils = require "apenode.utils"
 local ltn12 = require "ltn12"
-local yaml = require "yaml"
 local http = require "socket.http"
 local url = require "socket.url"
 local lfs = require "lfs"
 
-local _M = {}
-
---
--- Disk I/O utils
---
-function _M.read_file(path)
-  local contents = nil
-  local file = io.open(path, "rb")
-  if file then
-    contents = file:read("*all")
-    file:close()
-  end
-  return contents
-end
-
-function _M.write_to_file(path, value)
-  local file = io.open(path, "w")
-  file:write(value)
-  file:close()
-end
-
-function _M.retrieve_files(path)
-  local files = {}
-
-  for file in lfs.dir(path) do
-    local f = path..'/'..file
-    local attr = lfs.attributes(f)
-    if attr.mode ~= "directory" then
-      files[#files+1] = f
-    end
-  end
-
-  return files
-end
-
-function _M.load_configuration(path)
-  local configuration_file = _M.read_file(path)
-
-  if not configuration_file then
-    error("No configuration file at: "..path)
-  end
-
-  return yaml.load(configuration_file)
-end
-
+local _M = utils
 
 --
 -- Lua script utils
@@ -96,48 +52,25 @@ function _M.getopt( arg, options )
   return tab
 end
 
+function _M.retrieve_files(path)
+  local files = {}
+
+  for file in lfs.dir(path) do
+    if file ~= "." and file ~= ".." then
+      local f = path..'/'..file
+      local attr = lfs.attributes(f)
+      if attr.mode == "file" then
+        table.insert(files, f)
+      end
+    end
+  end
+
+  return files
+end
+
 --
 -- HTTP calls utils
 --
-
--- Builds a querystring from a table, separated by `&`
--- @param tab The key/value parameters
--- @param key The parent key if the value is multi-dimensional (optional)
--- @return a string representing the built querystring
-local function build_query(tab, key)
-  if ngx then
-    return ngx.encode_args(tab)
-  else
-    local query = {}
-    local keys = {}
-
-    for k in pairs(tab) do
-      keys[#keys+1] = k
-    end
-
-    table.sort(keys)
-
-    for _,name in ipairs(keys) do
-      local value = tab[name]
-      if key then
-        name = string.format("%s[%s]", tostring(key), tostring(name))
-      end
-      if type(value) == "table" then
-        query[#query+1] = build_query(value, name)
-      else
-        local value = tostring(value)
-        if value ~= "" then
-          query[#query+1] = string.format("%s=%s", name, value)
-        else
-          query[#query+1] = name
-        end
-      end
-    end
-
-    return table.concat(query, "&")
-  end
-end
-
 local function http_call(options)
   -- Set Host header accordingly
   if not options.headers["host"] then
@@ -161,7 +94,7 @@ function _M.get(url, querystring, headers)
   if not headers then headers = {} end
 
   if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
+    url = string.format("%s?%s", url, _M.build_query(querystring))
   end
 
   return http_call {
@@ -175,7 +108,7 @@ function _M.delete(url, querystring, headers)
   if not headers then headers = {} end
 
   if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
+    url = string.format("%s?%s", url, _M.build_query(querystring))
   end
 
   return http_call {
@@ -189,7 +122,7 @@ function _M.post(url, form, headers)
   if not headers then headers = {} end
   if not form then form = {} end
 
-  local body = build_query(form)
+  local body = _M.build_query(form)
   headers["content-length"] = string.len(body)
   headers["content-type"] = "application/x-www-form-urlencoded"
 
@@ -202,7 +135,7 @@ function _M.post(url, form, headers)
 end
 
 --
--- Colors
+-- Printable
 --
 local colors = {
   -- attributes

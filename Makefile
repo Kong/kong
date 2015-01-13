@@ -8,8 +8,9 @@ export ENV_APENODE_PORT ?= 8000
 export ENV_APENODE_WEB_PORT ?= 8001
 export ENV_DIR ?= $(PWD)/tmp
 export ENV_APENODE_CONF ?= $(ENV_DIR)/apenode.dev.yaml
+export ENV_SILENT ?=
 
-.PHONY: build local global test test-web test-all run populate drop
+.PHONY: build local global test test-web test-all run migrate populate drop
 
 local:
 	@luarocks make apenode-*.rockspec --local
@@ -22,17 +23,17 @@ test:
 
 test-web:
 	@$(MAKE) run ENV_DAEMON=on
-	@$(MAKE) populate
+	@$(MAKE) populate ENV_SILENT=-s
 	- @busted spec/web/
 	@$(MAKE) stop
-	@$(MAKE) drop
+	@$(MAKE) drop ENV_SILENT=-s
 
 test-proxy:
 	@$(MAKE) run ENV_DAEMON=on
-	@$(MAKE) populate
+	@$(MAKE) populate ENV_SILENT=-s
 	- @busted spec/proxy/
 	@$(MAKE) stop
-	@$(MAKE) drop
+	@$(MAKE) drop ENV_SILENT=-s
 
 test-all:
 	@echo "Unit tests:"
@@ -42,11 +43,14 @@ test-all:
 	@echo "\nProxy tests:"
 	@$(MAKE) test-proxy
 
+migrate:
+	@scripts/migrate migrate --conf=$(ENV_APENODE_CONF)
+
 populate:
-	@scripts/populate -s --conf=$(ENV_APENODE_CONF)
+	@scripts/populate $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
 
 drop:
-	@scripts/populate -s --conf=$(ENV_APENODE_CONF) --drop
+	@scripts/populate $(ENV_SILENT) --conf=$(ENV_APENODE_CONF) --drop
 
 run:
 	@$(MAKE) build
@@ -58,8 +62,8 @@ stop:
 build:
 	@mkdir -p $(ENV_DIR)/nginx/logs
 	@cp templates/apenode.yaml $(ENV_APENODE_CONF)
-	@echo "" > tmp/nginx/logs/error.log
-	@echo "" > tmp/nginx/logs/access.log
+	@echo "" > $(ENV_DIR)/nginx/logs/error.log
+	@echo "" > $(ENV_DIR)/nginx/logs/access.log
 	@sed \
 		-e "s/{{DAEMON}}/$(ENV_DAEMON)/g" \
 		-e "s@{{LUA_LIB_PATH}}@$(ENV_LUA_LIB)@g" \

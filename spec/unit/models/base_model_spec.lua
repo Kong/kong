@@ -1,7 +1,10 @@
-local configuration = require "spec.unit.daos.sqlite.dao_configuration"
+local utils = require "apenode.utils"
+local configuration = require "spec.unit.daos.sqlite.configuration"
 local SQLiteFactory = require "apenode.dao.sqlite"
-local dao_factory = SQLiteFactory(configuration)
 local BaseModel = require "apenode.models.base_model"
+
+local configuration, dao_properties = utils.parse_configuration(configuration)
+local dao_factory = SQLiteFactory(dao_properties)
 
 local function check_number(val)
   if not val or val == 123 then

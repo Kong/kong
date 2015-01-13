@@ -1,7 +1,9 @@
-local configuration = require "spec.unit.daos.sqlite.dao_configuration"
+local utils = require "apenode.utils"
+local configuration = require "spec.unit.daos.sqlite.configuration"
 local SQLiteFactory = require "apenode.dao.sqlite"
 
-local dao_factory = SQLiteFactory(configuration)
+local configuration, dao_properties = utils.parse_configuration(configuration)
+local dao_factory = SQLiteFactory(dao_properties)
 
 describe("DetailedDaos", function()
 

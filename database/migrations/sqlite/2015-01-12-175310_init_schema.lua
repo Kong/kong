@@ -1,18 +1,7 @@
--- Inserted variables
-local Object = require "classic"
-local dao_factory = require "apenode.dao.sqlite"
+local Migration = {
+  name = "2015-01-12-175310_init_schema",
 
-
--- Migration interface
-local Migration = Object:extend()
-
-function Migration:new(dao_configuration)
-  self.dao = dao_factory(dao_configuration.properties, true)
-end
-
-function Migration:up()
-  self.dao:execute [[
-
+  up = [[
     CREATE TABLE IF NOT EXISTS accounts(
       id INTEGER PRIMARY KEY,
       provider_id TEXT UNIQUE,
@@ -59,18 +48,15 @@ function Migration:up()
 
       FOREIGN KEY(api_id) REFERENCES apis(id), FOREIGN KEY(application_id) REFERENCES applications(id)
     );
+  ]],
 
+  down = [[
+    DROP TABLE accounts;
+    DROP TABLE apis;
+    DROP TABLE applications;
+    DROP TABLE metrics;
+    DROP TABLE plugins;
   ]]
-
-  self.dao:close()
-end
-
-function Migration:down()
-  self.dao:execute [[
-
-  ]]
-
-  self.dao:close()
-end
+}
 
 return Migration

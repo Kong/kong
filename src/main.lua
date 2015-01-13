@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
 utils = require "apenode.utils"
-local yaml = require "yaml"
 local PluginModel = require "apenode.models.plugin"
 
 -- Define the plugins to load here, in the appropriate order
@@ -26,15 +25,11 @@ end
 
 function _M.init(configuration_path)
   -- Loading configuration
-  configuration = yaml.load(utils.read_file(configuration_path))
-  dao_configuration = configuration.databases_available[configuration.database]
-  if dao_configuration == nil then
-    ngx.log(ngx.ERROR, "No dao \""..configuration.database.."\" defined in "..configuration_path)
-  end
+  configuration, dao_configuration = utils.load_configuration(configuration_path)
 
   -- Loading DAO
   local dao_factory = require("apenode.dao." .. configuration.database)
-  dao = dao_factory(dao_configuration.properties)
+  dao = dao_factory(dao_configuration)
 
   -- core is the first plugin
   table.insert(plugins, {

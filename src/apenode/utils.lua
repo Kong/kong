@@ -1,14 +1,26 @@
 -- Copyright (C) Mashape, Inc.
 
 local cjson = require "cjson"
+local yaml = require "yaml"
 
 local _M = {}
+
+--
+-- General utils
+--
+function _M.table_size(t)
+  local res = 0
+  for _,_ in pairs(t) do
+    res = res + 1
+  end
+  return res
+end
 
 -- Builds a querystring from a table, separated by `&`
 -- @param tab The key/value parameters
 -- @param key The parent key if the value is multi-dimensional (optional)
 -- @return a string representing the built querystring
-local function build_query(tab, key)
+function _M.build_query(tab, key)
   if ngx then
     return ngx.encode_args(tab)
   else
@@ -42,18 +54,66 @@ local function build_query(tab, key)
   end
 end
 
+--
+-- Apenode utils
+--
+function _M.load_configuration(path)
+  local configuration_file = _M.read_file(path)
+
+  if not configuration_file then
+    error("No configuration file at: "..path)
+  end
+
+  local configuration = yaml.load(configuration_file)
+
+  return _M.parse_configuration(configuration)
+end
+
+function _M.parse_configuration(configuration)
+  local dao_properties = configuration.databases_available[configuration.database]
+
+  if dao_properties == nil then
+    error("No dao \""..configuration.database.."\" defined")
+  end
+
+  return configuration, dao_properties.properties
+end
+
+--
+-- Date utils
+--
 function _M.get_utc()
   return os.time(os.date("!*t", os.time()))
 end
 
-function _M.table_size(t)
-  local res = 0
-  for _,_ in pairs(t) do
-    res = res + 1
-  end
-  return res
+local epoch = {year=1970, month=1, day=1, hour=0, min=0, sec=0, isdst=false }
+local function gmtime(t)
+  t.isdst =  false
+  return os.time(t) - os.time(epoch)
 end
 
+function _M.get_timestamps(now)
+  local _now = math.floor(now) -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
+  local date = os.date("!*t", _now) -- In milliseconds
+
+  local second = _now
+  date.sec = 0
+  local minute = gmtime(date)
+  date.min = 0
+  local hour = gmtime(date)
+  date.hour = 0
+  local day = gmtime(date)
+  date.day = 1
+  local month = gmtime(date)
+  date.month = 1
+  local year = gmtime(date)
+
+  return {second=second * 1000, minute=minute * 1000, hour=hour * 1000,day=day * 1000, month=month * 1000, year=year * 1000}
+end
+
+--
+-- Lapis utils
+--
 function _M.show_response(status, message)
   ngx.header["X-Apenode-Version"] = configuration.version
   ngx.status = status
@@ -91,6 +151,9 @@ function _M.create_timer(func, data)
   end
 end
 
+--
+-- Disk I/O utils
+--
 function _M.read_file(path)
   local contents = nil
   local file = io.open(path, "rb")
@@ -105,31 +168,6 @@ function _M.write_to_file(path, value)
   local file = io.open(path, "w")
   file:write(value)
   file:close()
-end
-
-local epoch = {year=1970, month=1, day=1, hour=0, min=0, sec=0, isdst=false }
-local function gmtime(t)
-   t.isdst =  false
-   return os.time(t) - os.time(epoch)
-end
-
-function _M.get_timestamps(now)
-  local _now = math.floor(now) -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
-  local date = os.date("!*t", _now) -- In milliseconds
-
-  local second = _now
-  date.sec = 0
-  local minute = gmtime(date)
-  date.min = 0
-  local hour = gmtime(date)
-  date.hour = 0
-  local day = gmtime(date)
-  date.day = 1
-  local month = gmtime(date)
-  date.month = 1
-  local year = gmtime(date)
-
-  return {second=second * 1000, minute=minute * 1000, hour=hour * 1000,day=day * 1000, month=month * 1000, year=year * 1000}
 end
 
 return _M

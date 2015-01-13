@@ -1,7 +1,9 @@
-local configuration = require "spec.unit.daos.sqlite.dao_configuration"
+local utils = require "apenode.utils"
+local configuration = require "spec.unit.daos.sqlite.configuration"
 local SQLiteFactory = require "apenode.dao.sqlite"
 
-local dao_factory = SQLiteFactory(configuration)
+local configuration, dao_properties = utils.parse_configuration(configuration)
+local dao_factory = SQLiteFactory(dao_properties)
 local daos = {
   api = dao_factory.apis,
   account = dao_factory.accounts,
@@ -11,12 +13,12 @@ local daos = {
 describe("BaseDao", function()
 
   setup(function()
-   dao_factory:populate(true)
+    dao_factory:populate(true)
   end)
 
   teardown(function()
-   dao_factory:drop()
-   dao_factory:close()
+    dao_factory:drop()
+    dao_factory:close()
   end)
 
   describe("#find_one()", function()

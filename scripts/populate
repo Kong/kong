@@ -9,16 +9,11 @@ opts.drop = utils.getopt(arg, "drop").drop
 opts.silent = utils.getopt(arg, "s").s
 opts.random = utils.getopt(arg, "random").random
 
-local configuration = sutils.load_configuration(opts.conf)
-local dao_configuration = configuration.databases_available[configuration.database]
-
-if not dao_configuration then
-  error("No dao \""..configuration.database.."\" defined in "..opts.conf)
-end
+local configuration, dao_properties = utils.load_configuration(opts.conf)
 
 -- Load DAO
 local dao_factory = require("apenode.dao."..configuration.database)
-local dao = dao_factory(dao_configuration.properties)
+local dao = dao_factory(dao_properties)
 
 -- Drop if exists
 dao:drop()
@@ -29,10 +24,9 @@ end
 
 if not opts.drop then
   dao:populate(opts.random)
-end
-
-if not opts.silent then
-  print(utils.green("✔").." Populated")
+  if not opts.silent then
+    print(utils.green("✔").." Populated")
+  end
 end
 
 dao:close()

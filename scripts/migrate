@@ -1,84 +1,53 @@
 #!/usr/bin/env lua
 
 local sutils = require "scripts.utils"
-local utils = require "apenode.utils"
-local lfs = require "lfs"
+local Migrations = require "scripts.migrations"
 
--- Constants
-local kMigrationsPath = "database/migrations"
+local function print_usage()
+  print("Usage:")
+  print("  create   --conf=[conf] --name=[name] # Create a migration file for configured DAOs")
+  print("  migrate  --conf=[conf]               # Migrate to the latest migration available")
+  print("  rollback --conf=[conf]               # Rollback the latest executed migration")
+  print("  reset    --conf=[conf]               # Rollback all migrations")
+  os.exit(1)
+end
+
+-- Command
+local command = arg[1]
+
+-- Arguments
+local opts = {}
+opts.name = sutils.getopt(arg, "name").name
+opts.conf = sutils.getopt(arg, "conf").conf
+if not opts.conf then
+  print_usage()
+end
 
 -- Load configuration
-local opts = {}
-opts.create = sutils.getopt(arg, "create").create
-opts.conf = sutils.getopt(arg, "conf").conf
---opts.down = sutils.getopt(arg, "down").down
+local configuration, dao_properties = sutils.load_configuration(opts.conf)
+local migrations = Migrations(configuration, dao_properties)
 
-local configuration = sutils.load_configuration(opts.conf)
+if command == "create" then
+  if not opts.name then
+    print_usage()
+  end
 
---
--- Create a migration
---
-if opts.create then
-  local date_str = os.date("%Y_%m_%d_%H%M%S")
-
-  for k,v in pairs(configuration.databases_available) do
-    local interface = [[
--- Inserted variables
-local Object = require "classic"
-local dao_factory = require "apenode.dao.]]..k..[["
-
-
--- Migration interface
-local Migration = Object:extend()
-
-function Migration:new(dao_configuration)
-  self.dao = dao_factory(dao_configuration.properties, true)
-end
-
-function Migration:up()
-  self.dao:execute ]].."[["..[[
-
-
-  ]].."]]"..[[
-
-
-  self.dao:close()
-end
-
-function Migration:down()
-  self.dao.execute ]].."[["..[[
-
-
-  ]].."]]"..[[
-
-
-  self.dao:close()
-end
-
-return Migration
-    ]]
-
-    local file_path = kMigrationsPath.."/"..k
-    local file_name = date_str.."_"..opts.create
-
+  migrations:create(opts.name, function(interface, file_path, file_name)
     os.execute("mkdir -p "..file_path)
-
     sutils.write_to_file(file_path.."/"..file_name..".lua", interface)
-  end
---
--- Execute migrations
---
+  end)
+elseif command == "migrate" then
+  migrations:migrate(function(migration)
+    print(sutils.green("✔").." Migrated up to: "..sutils.yellow(migration.name))
+  end)
+elseif command == "rollback" then
+  migrations:rollback(function(migration)
+    print(sutils.green("✔").." Rollbacked to: "..sutils.yellow(migration.name))
+  end)
+elseif command == "reset" then
+  migrations:reset(function(migration)
+    print(sutils.green("✔").." Rollbacked: "..sutils.yellow(migration.name))
+  end)
 else
-  local migrations_files = sutils.retrieve_files(kMigrationsPath.."/"..configuration.database)
-
-  for _,migration_file in ipairs(migrations_files) do
-    local migration_module = loadfile(migration_file)()
-    local migration = migration_module(configuration.databases_available[configuration.database])
-
-    -- Migrate up
-    migration:up()
-
-    print(sutils.green("✔").." Migrated "..migration_file)
-
-  end
+  print_usage()
 end
