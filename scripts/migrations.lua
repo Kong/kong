@@ -17,7 +17,7 @@ end
 local Migrations = Object:extend()
 
 function Migrations:new(configuration, dao_properties)
-  local dao_factory = require("apenode.dao."..configuration.database)
+  local dao_factory = require("apenode.dao."..configuration.database..".factory")
 
   self.configuration = configuration
   self.dao = dao_factory(dao_properties, true)
