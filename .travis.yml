@@ -25,7 +25,7 @@ install:
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
   - cd luarocks-2.1.2
-  - ./configure --with-lua=$(dirname `sudo find / -type f -name "lua.h" -print -quit`)
+  - ./configure --with-lua-include=$(dirname `sudo find / -type f -name "lua.h" -print -quit`)
   - make build
   - sudo make install
   - cd ..
