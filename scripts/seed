@@ -20,7 +20,7 @@ local command = arg[1]
 local opts = {}
 opts.conf = utils.getopt(arg, "conf").conf
 opts.silent = utils.getopt(arg, "s").s
-opts.random = utils.getopt(arg, "random").random
+opts.random = utils.getopt(arg, "r").r
 
 -- Load configuration
 local configuration, dao_properties = utils.load_configuration(opts.conf)

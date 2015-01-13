@@ -8,6 +8,7 @@ local dao_factory = SQLiteFactory(dao_properties)
 describe("DetailedDaos", function()
 
   setup(function()
+    dao_factory:drop()
     dao_factory:populate(true)
   end)
 
@@ -55,11 +56,11 @@ describe("DetailedDaos", function()
         local count, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
         assert.falsy(err)
         assert.are.same(1, count)
-        local result, err = dao_factory.metrics:find_one({
+        local result, err = dao_factory.metrics:find_one {
           api_id = 1,
           application_id = 1,
           name = "new_metric_1",
-          timestamp = 123})
+          timestamp = 123 }
         assert.falsy(err)
         assert.falsy(result)
       end)
@@ -81,45 +82,45 @@ describe("DetailedDaos", function()
         assert.are.equal(995, count)
       end)
       it("find plugins with wrong table args", function()
-        local result, count, err = dao_factory.plugins:find({
+        local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_type = "query",
             authentication_key_names = { "apikey", "x-api-key2" }
           }
-        })
+        }
         assert.falsy(err)
         assert.are.equal(0, count)
       end)
       it("find plugins with composite table args", function()
-        local result, count, err = dao_factory.plugins:find({
+        local result, count, err = dao_factory.plugins:find {
           api_id = 1,
           value = {
             authentication_type = "query",
             authentication_key_names = { "apikey" }
           }
-        })
+        }
         assert.falsy(err)
         assert.are.equal(1, count)
       end)
       it("find plugins with composite table args in reversed order", function()
-        local result, count, err = dao_factory.plugins:find({
+        local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_key_names = { "apikey" },
             authentication_type = "query"
           },
           api_id = 1
-        })
+        }
         assert.falsy(err)
         assert.are.equal(1, count)
       end)
       it("find plugins with composite table args in reversed order should return zero", function()
-        local result, count, err = dao_factory.plugins:find({
+        local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_key_names = { "apikey" },
             authentication_type = "query"
           },
           api_id = 2
-        })
+        }
         assert.falsy(err)
         assert.are.equal(0, count)
       end)

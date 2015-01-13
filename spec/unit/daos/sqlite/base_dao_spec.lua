@@ -13,6 +13,7 @@ local daos = {
 describe("BaseDao", function()
 
   setup(function()
+    dao_factory:drop()
     dao_factory:populate(true)
   end)
 
