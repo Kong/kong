@@ -18,17 +18,17 @@ before_install:
   - make
   - sudo make install
   - cd ..
-  - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
-  - tar xzf luarocks-2.1.2.tar.gz
-  - cd luarocks-2.1.2
-  - ./configure
-  - make
-  - sudo make install
-  - cd ..
 
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo apt-get install luajit
+  - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
+  - tar xzf luarocks-2.1.2.tar.gz
+  - cd luarocks-2.1.2
+  - ./configure
+  - make build
+  - sudo make install
+  - cd ..
   - sudo luarocks install lrexlib-pcre PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
   - sudo luarocks install luasec OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global
