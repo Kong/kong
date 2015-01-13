@@ -23,33 +23,6 @@ local function add_error(errors, k, v)
   return errors
 end
 
----------------
--- BaseModel --
----------------
-
-function BaseModel:new(collection, schema, t, dao_factory)
-  -- The collection needs to be declared before just in case
-  -- the validator needs it for the "unique" check
-  self._dao_factory = dao_factory
-  self._collection = collection
-  self._dao = dao_factory[collection]
-
-  -- Validate the entity
-  if not t then t = {} end
-  local result, errors = self:_validate(schema, t)
-
-  if errors then
-    error(errors)
-    --return nil, errors
-  end
-
-  for k,v in pairs(t) do
-    self[k] = t[k]
-  end
-
-  self._t = result
-end
-
 -- Validate a table against a given schema
 -- @param table schema A model schema to validate the entity against
 -- @param table t A given entity to be validated against the schema
@@ -62,33 +35,25 @@ function BaseModel:_validate(schema, t, is_update)
 
   -- Check the given table against a given schema
   for k,v in pairs(schema) do
-    -- Set default value for the filed if given
-    if not t[k] and v.default ~= nil then
+    if not t[k] and v.default ~= nil then -- Set default value for the filed if given
       t[k] = v.default
-    -- Check required field is set
-    elseif v.required and (t[k] == nil or t[k] == "") then
+    elseif v.required and (t[k] == nil or t[k] == "") then -- Check required field is set
       errors = add_error(errors, k, k .. " is required")
-    -- Check field is not read only
-    elseif t[k] and not is_update and v.read_only then
+    elseif t[k] and not is_update and v.read_only then -- Check field is not read only
       errors = add_error(errors, k, k .. " is read only")
-    end
-    -- Check type of the field
-    if t[k] and type(t[k]) ~= v.type then
+    elseif t[k] and type(t[k]) ~= v.type then -- Check type of the field
       errors = add_error(errors, k, k .. " should be a " .. v.type)
+    elseif v.func then -- Check field against a function
+      local success, err = v.func(t[k], t, self._dao_factory)
+      if not success then
+        errors = add_error(errors, k, err)
+      end
     end
 
     -- Check field against a regex
     if t[k] and v.regex then
       if not rex.match(t[k], v.regex) then
         errors = add_error(errors, k, k .. " has an invalid value")
-      end
-    end
-
-    -- Check field against a function
-    if v.func then
-      local success, err = v.func(t[k], t, self._dao_factory)
-      if not success then
-        errors = add_error(errors, k, err)
       end
     end
 
@@ -131,18 +96,44 @@ function BaseModel:_validate(schema, t, is_update)
   return result, errors
 end
 
+---------------
+-- BaseModel --
+---------------
+
+function BaseModel:new(collection, schema, t, dao_factory)
+  -- The collection needs to be declared before just in case
+  -- the validator needs it for the "unique" check
+  self._dao_factory = dao_factory
+  self._collection = collection
+  self._dao = dao_factory[collection]
+  self._schema = schema
+
+  -- Populate the new object with the same fields
+  if not t then t = {} end
+  for k,v in pairs(t) do
+    self[k] = t[k]
+  end
+
+  self._t = t
+end
+
 function BaseModel:save()
-  local data, err = self._dao:insert_or_update(self._t)
-  return data, err
+  local res, err = self:_validate(self._schema, self._t, false)
+  if not res then
+    return nil, err
+  else
+    local data, err = self._dao:insert_or_update(self._t)
+    return data, err
+  end
 end
 
 function BaseModel:delete()
-  local n_success, err = self._dao:delete(self._t.id)
+  local n_success, err = self._dao:delete_by_id(self._t.id)
   return n_success, err
 end
 
 function BaseModel:update()
-  local res, err = self:_validate(self._SCHEMA, self._t, true)
+  local res, err = self:_validate(self._schema, self._t, true)
   if not res then
     return nil, err
   else

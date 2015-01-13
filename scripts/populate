@@ -12,7 +12,7 @@ opts.random = utils.getopt(arg, "random").random
 local configuration, dao_properties = utils.load_configuration(opts.conf)
 
 -- Load DAO
-local dao_factory = require("apenode.dao."..configuration.database)
+local dao_factory = require("apenode.dao."..configuration.database..".factory")
 local dao = dao_factory(dao_properties)
 
 -- Drop if exists

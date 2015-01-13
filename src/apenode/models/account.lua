@@ -20,11 +20,21 @@ function Account:new(t, dao_factory)
 end
 
 function Account.find_one(args, dao_factory)
-  return Account.super._find_one(args, dao_factory[COLLECTION])
+  local data, err =  Account.super._find_one(args, dao_factory[COLLECTION])
+  if data then
+    data = Account(data, dao_factory)
+  end
+  return data, err
 end
 
 function Account.find(args, page, size, dao_factory)
-  return Account.super._find(args, page, size, dao_factory[COLLECTION])
+  local data, total, err = Account.super._find(args, page, size, dao_factory[COLLECTION])
+  if data then
+    for i,v in ipairs(data) do
+      data[i] = Account(v, dao_factory)
+    end
+  end
+  return data, total, err
 end
 
 function Account.delete_by_id(id, dao_factory)

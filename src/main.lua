@@ -28,7 +28,7 @@ function _M.init(configuration_path)
   configuration, dao_configuration = utils.load_configuration(configuration_path)
 
   -- Loading DAO
-  local dao_factory = require("apenode.dao." .. configuration.database)
+  local dao_factory = require("apenode.dao." .. configuration.database..".factory")
   dao = dao_factory(dao_configuration)
 
   -- core is the first plugin

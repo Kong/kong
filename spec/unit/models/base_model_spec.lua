@@ -35,83 +35,84 @@ describe("BaseModel", function()
 
   describe("#init()", function()
     it("should instantiate an entity entity", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org"
-      }, dao_factory)
-      assert.truthy(status)
+      }, dao_factory):save()
+      assert.falsy(err)
       assert.truthy(res)
       assert.are.same("test.com", res.public_dns)
     end)
+
     it("should set default values if specified in the validator", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org"
-      }, dao_factory)
-      assert.truthy(status)
+      }, dao_factory):save()
       assert.truthy(res)
+      assert.falsy(err)
       assert.truthy(res.created_at)
     end)
     it("should return error when unexpected values are included in the schema", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org",
         wot = 123
-      }, dao_factory)
-      assert.falsy(status)
-      assert.truthy(res)
-      assert.are.same("wot is an unknown field", res.wot)
+      }, dao_factory):save()
+      assert.falsy(res)
+      assert.truthy(err)
+      assert.are.same("wot is an unknown field", err.wot)
     end)
     it("should return errors if trying to pass read_only properties", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         id = 1,
         created_at = 123456,
         name = "httpbin entity",
         public_dns = "test.com",
         target_url = "http://httpbin.org"
-      }, dao_factory)
-      assert.falsy(status)
-      assert.truthy(res)
-      assert.are.same("id is read only", res.id)
-      assert.are.same("created_at is read only", res.created_at)
+      }, dao_factory):save()
+      assert.falsy(res)
+      assert.truthy(err)
+      assert.are.same("id is read only", err.id)
+      assert.are.same("created_at is read only", err.created_at)
     end)
     it("should return errors when validation fails", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         public_dns = 123,
         target_url = "target asdads"
-      }, dao_factory)
-      assert.falsy(status)
-      assert.truthy(res)
-      assert.are.same("name is required", res.name)
-      assert.are.same("public_dns should be a string", res.public_dns[1])
-      assert.are.same("public_dns has an invalid value", res.public_dns[2])
+      }, dao_factory):save()
+      assert.falsy(res)
+      assert.truthy(err)
+      assert.are.same("name is required", err.name)
+      assert.are.same("public_dns should be a string", err.public_dns[1])
+      assert.are.same("public_dns has an invalid value", err.public_dns[2])
     end)
     it("should return errors when func validation fails", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "test",
         public_dns = "test.com",
         target_url = "target asdads",
         random_value = 1234
-      }, dao_factory)
-      assert.falsy(status)
-      assert.truthy(res)
-      assert.are.same("The value should be 123", res.random_value)
+      }, dao_factory):save()
+      assert.falsy(res)
+      assert.truthy(err)
+      assert.are.same("The value should be 123", err.random_value)
     end)
     it("should not return errors when func validation succeeds", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "test",
         public_dns = "test.com",
         target_url = "target asdads",
         random_value = 123
-      }, dao_factory)
-      assert.truthy(status)
+      }, dao_factory):save()
       assert.truthy(res)
+      assert.falsy(err)
     end)
     it("should return errors when testing nested schemas", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "test",
         public_dns = "test.com",
         target_url = "target asdads",
@@ -119,13 +120,13 @@ describe("BaseModel", function()
         some_schema = {
           smart = "hello world this is wrong"
         }
-      }, dao_factory)
-      assert.falsy(status)
-      assert.truthy(res)
-      assert.are.same({smart = 'smart should be a boolean' }, res.some_schema)
+      }, dao_factory):save()
+      assert.falsy(res)
+      assert.truthy(err)
+      assert.are.same({smart = 'smart should be a boolean' }, err.some_schema)
     end)
     it("should not return errors when testing nested schemas", function()
-      local status, res = pcall(BaseModel, collection, validator, {
+      local res, err = BaseModel(collection, validator, {
         name = "test",
         public_dns = "test.com",
         target_url = "target asdads",
@@ -133,9 +134,9 @@ describe("BaseModel", function()
         some_schema = {
           smart = true
         }
-      }, dao_factory)
-      assert.truthy(status)
+      }, dao_factory):save()
       assert.truthy(res)
+      assert.falsy(err)
     end)
   end)
 

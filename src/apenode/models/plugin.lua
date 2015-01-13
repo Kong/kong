@@ -49,23 +49,41 @@ function Plugin:new(t, dao_factory)
 end
 
 function Plugin:save()
-  if self.find_one({api_id = self.api_id, application_id = self.application_id, name = self.name }, self._dao_factory) then
-    return nil, "The plugin already exist, update the current one"
-  else
-    return Plugin.super.save(self)
+  local res, err = self:_validate(self._schema, self._t, false)
+  if not err then
+    if self.find_one({api_id = self.api_id, application_id = self.application_id, name = self.name }, self._dao_factory) then
+      return nil, "The plugin already exist, update the current one"
+    else
+      return Plugin.super.save(self)
+    end
   end
+  return res, err
 end
 
 function Plugin.find_one(args, dao_factory)
-  return Plugin.super._find_one(args, dao_factory[COLLECTION])
+  local data, err =  Plugin.super._find_one(args, dao_factory[COLLECTION])
+  if data then
+    data = Plugin(data, dao_factory)
+  end
+  return data, err
 end
 
 function Plugin.find(args, page, size, dao_factory)
-  return Plugin.super._find(args, page, size, dao_factory[COLLECTION])
+  local data, total, err = Plugin.super._find(args, page, size, dao_factory[COLLECTION])
+  if data then
+    for i,v in ipairs(data) do
+      data[i] = Plugin(v, dao_factory)
+    end
+  end
+  return data, total, err
 end
 
 function Plugin.delete_by_id(id, dao_factory)
   return Plugin.super._delete_by_id(id, dao_factory[COLLECTION])
+end
+
+function Plugin.update(entity, dao_factory)
+  return Plugin.super._update(entity, dao_factory[COLLECTION])
 end
 
 return Plugin

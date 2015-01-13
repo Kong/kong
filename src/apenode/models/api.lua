@@ -21,15 +21,29 @@ function Api:new(t, dao_factory)
 end
 
 function Api.find_one(args, dao_factory)
-  return Api.super._find_one(args, dao_factory[COLLECTION])
+  local data, err =  Api.super._find_one(args, dao_factory[COLLECTION])
+  if data then
+    data = Api(data, dao_factory)
+  end
+  return data, err
 end
 
 function Api.find(args, page, size, dao_factory)
-  return Api.super._find(args, page, size, dao_factory[COLLECTION])
+  local data, total, err = Api.super._find(args, page, size, dao_factory[COLLECTION])
+  if data then
+    for i,v in ipairs(data) do
+      data[i] = Api(v, dao_factory)
+    end
+  end
+  return data, total, err
 end
 
 function Api.delete_by_id(id, dao_factory)
   return Api.super._delete_by_id(id, dao_factory[COLLECTION])
+end
+
+function Api.update(entity, dao_factory)
+  return Api.super._update(entity, dao_factory[COLLECTION])
 end
 
 -- TODO: When deleting an API, also delete all his plugins/metrics

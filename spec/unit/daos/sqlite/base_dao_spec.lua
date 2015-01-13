@@ -1,6 +1,6 @@
 local utils = require "apenode.utils"
 local configuration = require "spec.unit.daos.sqlite.configuration"
-local SQLiteFactory = require "apenode.dao.sqlite"
+local SQLiteFactory = require "apenode.dao.sqlite.factory"
 
 local configuration, dao_properties = utils.parse_configuration(configuration)
 local dao_factory = SQLiteFactory(dao_properties)
@@ -51,14 +51,14 @@ describe("BaseDao", function()
       local result, count, err = dao_factory.apis:find()
       assert.falsy(err)
       assert.are.equal(30, #result)
-      assert.are.equal(1, result[1].id)
+      assert.are.equal("1", result[1].id)
     end)
     it("should be able to specify a page size", function()
       local result, count, err = dao_factory.apis:find(1, 5)
       assert.falsy(err)
       assert.are.equal(5, #result)
-      assert.are.equal(1, result[1].id)
-      assert.are.equal(4, result[4].id)
+      assert.are.equal("1", result[1].id)
+      assert.are.equal("4", result[4].id)
     end)
     it("should limit the page size to 100", function()
       local result, count, err = dao_factory.apis:find(8, 1000)
@@ -69,15 +69,15 @@ describe("BaseDao", function()
       local result, count, err = dao_factory.apis:find(3, 6)
       assert.falsy(err)
       assert.are.equal(6, #result)
-      assert.are.equal(13, result[1].id)
-      assert.are.equal(16, result[4].id)
+      assert.are.equal("13", result[1].id)
+      assert.are.equal("16", result[4].id)
     end)
     it("should be able to query the last page from a paginated entity", function()
       local result, count, err = dao_factory.apis:find(8, 5)
       assert.falsy(err)
       assert.are.equal(5, #result)
-      assert.are.equal(36, result[1].id)
-      assert.are.equal(40, result[5].id)
+      assert.are.equal("36", result[1].id)
+      assert.are.equal("40", result[5].id)
     end)
     it("should return the total number of entity too", function()
       local result, count, err = dao_factory.apis:find()
@@ -174,7 +174,7 @@ describe("BaseDao", function()
 
           -- Assert all fields have been updated
           for k,v in pairs(random_entity) do
-            assert.are.same(random_entity[k], updated_entity[k])
+            assert.are.same(tostring(random_entity[k]), updated_entity[k])
           end
         end)
         it("should return nil if given nil to insert", function()
@@ -231,7 +231,7 @@ describe("BaseDao", function()
 
           -- Assert all fields have been updated
           for k,v in pairs(random_entity) do
-            assert.are.same(random_entity[k], updated_entity[k])
+            assert.are.same(tostring(random_entity[k]), updated_entity[k])
           end
         end)
         it("should return nil if given nil to insert", function()
