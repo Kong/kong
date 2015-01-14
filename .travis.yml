@@ -35,8 +35,8 @@ before_script:
   - sudo make global
   - make build
   - make migrate
-  - make seed
   - make run &
   - sleep 2 # give it some time to start
+  - make seed
 
 script: "busted spec/"
