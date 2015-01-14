@@ -43,6 +43,7 @@ test-all:
 	@$(MAKE) build ENV_DAEMON=on
 	@$(MAKE) migrate ENV_SILENT=-s
 	@$(MAKE) run
+	@sleep 2 # Wait for the nginx process to start
 	@$(MAKE) seed ENV_SILENT=-s
 	@busted spec/ || (make stop;make drop; exit 1)
 	@$(MAKE) stop
