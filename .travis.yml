@@ -2,7 +2,6 @@ language: erlang
 
 env:
   - LUA=""
-  - LUA="luajit"
 
 branches:
   only:
@@ -10,7 +9,9 @@ branches:
 
 before_install:
   - sudo apt-get update
+  - sudo apt-get install software-properties-common python-software-properties
   - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libpcre++-dev libssl-dev perl make
+  - sudo apt-get update
   - wget http://openresty.org/download/ngx_openresty-1.7.7.1.tar.gz
   - tar xzf ngx_openresty-1.7.7.1.tar.gz
   - cd ngx_openresty-1.7.7.1/
@@ -21,11 +22,11 @@ before_install:
 
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
-  - sudo apt-get install luajit
+  - sudo apt-get install lua5.1
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
   - cd luarocks-2.1.2
-  - ./configure --with-lua=/usr/local/share/lua/5.1 --with-lua-include=$(dirname `sudo find / -type f -name "lua.h" -print -quit`)
+  - ./configure
   - make build
   - sudo make install
   - cd ..
