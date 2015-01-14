@@ -31,7 +31,8 @@ install:
   - sudo luarocks install lrexlib-pcre PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
   - sudo luarocks install luasec OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global
-  - make build
+  - nohup make run &
   - make migrate
+  - make seed
 
-script: "make test-all"
+script: "busted spec/"
