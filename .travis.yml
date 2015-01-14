@@ -22,7 +22,7 @@ before_install:
 
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
-  - sudo apt-get install lua5.1
+  - sudo apt-get install lua5.1 lua5.1-dev
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
   - cd luarocks-2.1.2
