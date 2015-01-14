@@ -8,6 +8,7 @@ local Metrics = require "apenode.dao.cassandra.metrics"
 local Plugins = require "apenode.dao.cassandra.plugins"
 local Accounts = require "apenode.dao.cassandra.accounts"
 local Applications = require "apenode.dao.cassandra.applications"
+local Client = require "apenode.dao.cassandra.client"
 
 local CassandraFactory = Object:extend()
 
@@ -17,11 +18,14 @@ function CassandraFactory:new(properties)
   self.type = "cassandra"
   self.migrations = Migrations(self)
 
-  self.apis = Apis(properties)
-  self.metrics = Metrics(properties)
-  self.plugins = Plugins(properties)
-  self.accounts = Accounts(properties)
-  self.applications = Applications(properties)
+  -- Initialize client
+  self._client = Client(properties)
+
+  self.apis = Apis(self._client)
+  self.metrics = Metrics(self._client)
+  self.plugins = Plugins(self._client)
+  self.accounts = Accounts(self._client)
+  self.applications = Applications(self._client)
 end
 
 --
@@ -62,7 +66,7 @@ function CassandraFactory:prepare()
 end
 
 function CassandraFactory:execute(stmt)
-
+  self._client:query(stmt, nil, true)
 end
 
 function CassandraFactory:close()
@@ -71,8 +75,6 @@ function CassandraFactory:close()
   self.plugins:finalize()
   self.accounts:finalize()
   self.applications:finalize()
-
-  self._db:close()
 end
 
 return CassandraFactory

@@ -3,8 +3,8 @@ local MetricModel = require "apenode.models.metric"
 
 local Metrics = BaseDao:extend()
 
-function Metrics:new(configuration)
-  Metrics.super.new(self, configuration, MetricModel._COLLECTION, MetricModel._SCHEMA)
+function Metrics:new(client)
+  Metrics.super.new(self, client, MetricModel._COLLECTION, MetricModel._SCHEMA)
 end
 
 -- @override

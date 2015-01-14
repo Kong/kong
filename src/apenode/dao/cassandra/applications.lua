@@ -3,8 +3,8 @@ local ApplicationsModel = require "apenode.models.application"
 
 local Applications = BaseDao:extend()
 
-function Applications:new(configuration)
-  Applications.super.new(self, configuration, ApplicationsModel._COLLECTION, ApplicationsModel._SCHEMA)
+function Applications:new(client)
+  Applications.super.new(self, client, ApplicationsModel._COLLECTION, ApplicationsModel._SCHEMA)
 end
 
 return Applications

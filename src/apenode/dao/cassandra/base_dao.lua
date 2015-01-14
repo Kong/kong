@@ -1,24 +1,24 @@
 -- Copyright (C) Mashape, Inc.
 
-local cassandra = require "cassandra"
 local dao_utils = require "apenode.dao.dao_utils"
 local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "apenode.tools.utils"
 local uuid = require "uuid"
+local cassandra = require "cassandra"
 
 -- This is important to seed the UUID generator
 uuid.seed()
 
 local BaseDao = Object:extend()
 
-function BaseDao:new(configuration, collection, schema)
+function BaseDao:new(client, collection, schema)
   self._configuration = configuration
   self._collection = collection
   self._schema = schema
 
   -- Cache the prepared statements if already prepared
-  self._stmt_cache = {}
+  self._client = client
 end
 
 -- Utility function to create query fields and values from an entity, useful for save and update
@@ -96,7 +96,7 @@ function BaseDao:insert(entity)
   -- Execute the command
   local cmd = "INSERT INTO " .. self._collection .. " (" .. cmd_fields .. ") VALUES (" .. cmd_values .. ")"
 
-  local result, err = self:_query(cmd, cmd_field_values)
+  local result, err = self._client:query(cmd, cmd_field_values)
   return entity
 end
 
@@ -128,7 +128,7 @@ function BaseDao:update(entity)
     table.insert(cmd_entity_values, v)
   end
 
-  return self:_query(cmd, cmd_entity_values)
+  return self._client:query(cmd, cmd_entity_values)
 end
 
 -- Insert or update an entity
@@ -187,13 +187,13 @@ function BaseDao:find(where_keys, page, size)
   end
 
   -- Execute the command
-  local results, err = self:_query(cmd, cmd_field_values)
+  local results, err = self._client:query(cmd, cmd_field_values)
   if err then
     return nil, nil, err
   end
 
   -- Count the results too
-  local count, err = self:_query(cmd_count, cmd_field_values)
+  local count, err = self._client:query(cmd_count, cmd_field_values)
   if not count then
     return nil, nil, err
   end
@@ -220,64 +220,12 @@ function BaseDao:delete_by_id(id)
   local cmd = "DELETE FROM " .. self._collection .. " WHERE id = ?"
 
   -- Execute the command
-  local results, err = self:_query(cmd, { cassandra.uuid(id) })
+  local results, err = self._client:query(cmd, { cassandra.uuid(id) })
   if not results then
     return nil, err
   end
 
   return 1
-end
-
------------------
--- QUERY UTILS --
------------------
-
--- Utility function to execute queries
--- @param cmd The CQL command to execute
--- @param args The arguments of the command
--- @return the result of the operation
-function BaseDao:_query(cmd, args)
-  -- Creates a new session
-  local session = cassandra.new()
-
-  -- Sets the timeout for the subsequent operations
-  session:set_timeout(self._configuration.timeout)
-
-  -- Connects to Cassandra
-  local connected, err = session:connect(self._configuration.host, self._configuration.port)
-  if not connected then
-    return nil, err
-  end
-
-  -- Sets the default keyspace
-  local ok, err = session:set_keyspace(self._configuration.keyspace)
-  if not ok then
-    return nil, err
-  end
-
-  local stmt = self._stmt_cache[cmd]
-  if not stmt then
-    local new_stmt, err = session:prepare(cmd)
-    if err then
-      return nil, err
-    end
-    self._stmt_cache[cmd] = new_stmt
-    stmt = new_stmt
-  end
-
-  -- Executes the command
-  local result, err = session:execute(stmt, args)
-  if not results and err then
-    return nil, err
-  end
-
-  -- Puts back the connection in the nginx pool
-  local ok, err = session:set_keepalive(self._configuration.keepalive)
-  if not ok and err ~= "luasocket does not support reusable sockets" then
-    return nil, err
-  end
-
-  return result
 end
 
 return BaseDao

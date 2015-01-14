@@ -3,8 +3,8 @@ local PluginModel = require "apenode.models.plugin"
 
 local Plugins = BaseDao:extend()
 
-function Plugins:new(configuration)
-  Plugins.super.new(self, configuration, PluginModel._COLLECTION, PluginModel._SCHEMA)
+function Plugins:new(client)
+  Plugins.super.new(self, client, PluginModel._COLLECTION, PluginModel._SCHEMA)
 end
 
 return Plugins

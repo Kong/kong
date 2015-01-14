@@ -65,6 +65,7 @@ build = {
     ["apenode.dao.cassandra.applications"] = "src/apenode/dao/cassandra/applications.lua",
     ["apenode.dao.cassandra.metrics"] = "src/apenode/dao/cassandra/metrics.lua",
     ["apenode.dao.cassandra.plugins"] = "src/apenode/dao/cassandra/plugins.lua",
+    ["apenode.dao.cassandra.client"] = "src/apenode/dao/cassandra/client.lua",
 
     ["apenode.models.base_model"] = "src/apenode/models/base_model.lua",
     ["apenode.models.account"] = "src/apenode/models/account.lua",

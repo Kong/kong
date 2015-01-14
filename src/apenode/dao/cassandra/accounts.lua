@@ -3,8 +3,8 @@ local AccountModel = require "apenode.models.account"
 
 local Accounts = BaseDao:extend()
 
-function Accounts:new(configuration)
-  Accounts.super.new(self, configuration, AccountModel._COLLECTION, AccountModel._SCHEMA)
+function Accounts:new(client)
+  Accounts.super.new(self, client, AccountModel._COLLECTION, AccountModel._SCHEMA)
 end
 
 return Accounts
