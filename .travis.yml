@@ -33,9 +33,9 @@ install:
 
 before_script:
   - sudo make global
-  - make run &
-  - sleep 2
   - make migrate
   - make seed
+  - make run &
+  - sleep 2 # give it some time to start
 
 script: "busted spec/"
