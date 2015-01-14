@@ -22,29 +22,34 @@ test:
 	@busted spec/unit
 
 test-web:
-	@$(MAKE) run ENV_DAEMON=on
+	@$(MAKE) build ENV_DAEMON=on
+	@$(MAKE) migrate ENV_SILENT=-s
+	@$(MAKE) run
 	@$(MAKE) seed ENV_SILENT=-s
-	- @busted spec/web/
+	@busted spec/web/ || (make stop;make drop; exit 1)
 	@$(MAKE) stop
 	@$(MAKE) drop ENV_SILENT=-s
 
 test-proxy:
-	@$(MAKE) run ENV_DAEMON=on
+	@$(MAKE) build ENV_DAEMON=on
+	@$(MAKE) migrate ENV_SILENT=-s
+	@$(MAKE) run
 	@$(MAKE) seed ENV_SILENT=-s
-	- @busted spec/proxy/
+	@busted spec/proxy/ || (make stop;make drop; exit 1)
 	@$(MAKE) stop
 	@$(MAKE) drop ENV_SILENT=-s
 
 test-all:
-	@echo "Unit tests:"
-	@$(MAKE) test
-	@echo "\nAPI tests:"
-	@$(MAKE) test-web
-	@echo "\nProxy tests:"
-	@$(MAKE) test-proxy
+	@$(MAKE) build ENV_DAEMON=on
+	@$(MAKE) migrate ENV_SILENT=-s
+	@$(MAKE) run
+	@$(MAKE) seed ENV_SILENT=-s
+	@busted spec/ || (make stop;make drop; exit 1)
+	@$(MAKE) stop
+	@$(MAKE) drop ENV_SILENT=-s
 
 migrate:
-	@scripts/migrate migrate --conf=$(ENV_APENODE_CONF)
+	@scripts/migrate migrate $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
 
 seed:
 	@scripts/seed seed $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
@@ -53,7 +58,6 @@ drop:
 	@scripts/seed drop $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
 
 run:
-	@$(MAKE) build
 	@nginx -p $(ENV_DIR)/nginx -c nginx.conf
 
 stop:

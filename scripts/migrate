@@ -19,6 +19,7 @@ local command = arg[1]
 local opts = {}
 opts.name = utils.getopt(arg, "name").name
 opts.conf = utils.getopt(arg, "conf").conf
+opts.silent = utils.getopt(arg, "s").s
 if not opts.conf then
   print_usage()
 end
@@ -37,15 +38,21 @@ if command == "create" then
   end)
 elseif command == "migrate" then
   dao:migrate(function(migration)
-    print(utils.green("✔").." Migrated up to: "..utils.yellow(migration.name))
+    if not opts.silent then
+      print(utils.green("✔").." Migrated up to: "..utils.yellow(migration.name))
+    end
   end)
 elseif command == "rollback" then
   dao:rollback(function(migration)
-    print(utils.green("✔").." Rollbacked to: "..utils.yellow(migration.name))
+    if not opts.silent then
+      print(utils.green("✔").." Rollbacked to: "..utils.yellow(migration.name))
+    end
   end)
 elseif command == "reset" then
   dao:reset(function(migration)
-    print(utils.green("✔").." Rollbacked: "..utils.yellow(migration.name))
+    if not opts.silent then
+      print(utils.green("✔").." Rollbacked: "..utils.yellow(migration.name))
+    end
   end)
 else
   print_usage()

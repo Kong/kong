@@ -51,11 +51,11 @@ local Migration = {
   ]],
 
   down = [[
-    DROP TABLE accounts;
     DROP TABLE apis;
-    DROP TABLE applications;
     DROP TABLE metrics;
     DROP TABLE plugins;
+    DROP TABLE accounts;
+    DROP TABLE applications;
   ]]
 }
 
