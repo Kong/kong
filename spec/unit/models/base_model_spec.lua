@@ -1,10 +1,8 @@
 local utils = require "apenode.tools.utils"
-local configuration = require "spec.unit.daos.sqlite.configuration"
-local SQLiteFactory = require "apenode.dao.sqlite.factory"
 local BaseModel = require "apenode.models.base_model"
+local configuration = require "spec.unit.daos.sqlite.configuration"
 
-local configuration, dao_properties = utils.parse_configuration(configuration)
-local dao_factory = SQLiteFactory(dao_properties)
+local configuration, dao_factory = utils.load_configuration_and_dao(configuration)
 
 local function check_number(val)
   if not val or val == 123 then
@@ -32,6 +30,11 @@ local validator = {
 }
 
 describe("BaseModel", function()
+
+  setup(function()
+    dao_factory:migrate()
+    dao_factory:prepare()
+  end)
 
   describe("#init()", function()
     it("should instantiate an entity entity", function()

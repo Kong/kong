@@ -3,7 +3,7 @@ return {
   databases_available = {
     sqlite = {
       properties = {
-        memory = false,
+        memory = true,
         file_path = "/tmp/apenode.sqlite3"
       }
     }

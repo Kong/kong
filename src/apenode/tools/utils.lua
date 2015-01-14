@@ -1,8 +1,8 @@
 -- Copyright (C) Mashape, Inc.
 
 local cjson = require "cjson"
-local yaml = require "yaml"
 local ltn12 = require "ltn12"
+local yaml = require "yaml"
 local http = require "socket.http"
 local url = require "socket.url"
 local lfs = require "lfs"
@@ -20,7 +20,7 @@ function _M.table_size(t)
   return res
 end
 
-function _M.reverse(arr)
+function _M.reverse_table(arr)
   local reversed = {}
   for _,i in ipairs(arr) do
     table.insert(reversed, 1, i)
@@ -69,26 +69,27 @@ end
 --
 -- Apenode utils
 --
-function _M.load_configuration(path)
-  local configuration_file = _M.read_file(path)
+function _M.load_configuration_and_dao(configuration)
+  if type(configuration) == "string" then
+    local configuration_file = _M.read_file(configuration)
 
-  if not configuration_file then
-    error("No configuration file at: "..path)
+    if not configuration_file then
+      error("No configuration file at: "..path)
+    end
+
+    configuration = yaml.load(configuration_file)
   end
 
-  local configuration = yaml.load(configuration_file)
+  local dao_config = configuration.databases_available[configuration.database]
 
-  return _M.parse_configuration(configuration)
-end
-
-function _M.parse_configuration(configuration)
-  local dao_properties = configuration.databases_available[configuration.database]
-
-  if dao_properties == nil then
+  if dao_config == nil then
     error("No dao \""..configuration.database.."\" defined")
   end
 
-  return configuration, dao_properties.properties
+  local dao_factory = require("apenode.dao."..configuration.database..".factory")
+  local dao = dao_factory(dao_config.properties)
+
+  return configuration, dao
 end
 
 --

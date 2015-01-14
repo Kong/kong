@@ -23,9 +23,9 @@ opts.silent = utils.getopt(arg, "s").s
 opts.random = utils.getopt(arg, "r").r
 
 -- Load configuration
-local configuration, dao_properties = utils.load_configuration(opts.conf)
-local dao_factory = require("apenode.dao."..configuration.database..".factory")
-local dao = dao_factory(dao_properties)
+local configuration, dao = utils.load_configuration_and_dao(opts.conf)
+
+dao:prepare()
 
 if command == "seed" then
   -- Drop if exists
