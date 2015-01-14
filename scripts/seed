@@ -30,7 +30,7 @@ dao:prepare()
 if command == "seed" then
   -- Drop if exists
   dao:drop()
-  dao:populate(opts.random)
+  dao:seed(opts.random)
   if not opts.silent then
     print(utils.green("✔").." Populated")
   end

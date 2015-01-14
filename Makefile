@@ -23,14 +23,14 @@ test:
 
 test-web:
 	@$(MAKE) run ENV_DAEMON=on
-	@$(MAKE) populate ENV_SILENT=-s
+	@$(MAKE) seed ENV_SILENT=-s
 	- @busted spec/web/
 	@$(MAKE) stop
 	@$(MAKE) drop ENV_SILENT=-s
 
 test-proxy:
 	@$(MAKE) run ENV_DAEMON=on
-	@$(MAKE) populate ENV_SILENT=-s
+	@$(MAKE) seed ENV_SILENT=-s
 	- @busted spec/proxy/
 	@$(MAKE) stop
 	@$(MAKE) drop ENV_SILENT=-s
@@ -46,7 +46,7 @@ test-all:
 migrate:
 	@scripts/migrate migrate --conf=$(ENV_APENODE_CONF)
 
-populate:
+seed:
 	@scripts/seed seed $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
 
 drop:

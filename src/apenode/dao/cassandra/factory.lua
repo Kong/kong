@@ -23,8 +23,8 @@ function CassandraFactory:create_schema()
   --error("Cannot create Cassandra schema")
 end
 
-function CassandraFactory:populate(random, number)
-  Faker.populate(self, random, number)
+function CassandraFactory:seed(random, number)
+  Faker.seed(self, random, number)
 end
 
 function CassandraFactory.fake_entity(type, invalid)

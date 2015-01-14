@@ -8,7 +8,7 @@ describe("BaseDao", function()
   setup(function()
     dao_factory:migrate()
     dao_factory:prepare()
-    dao_factory:populate(true)
+    dao_factory:seed(true)
   end)
 
   teardown(function()

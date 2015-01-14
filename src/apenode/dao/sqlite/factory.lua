@@ -52,8 +52,8 @@ end
 --
 -- Seeding
 --
-function SQLiteFactory:populate(random, number)
-  Faker.populate(self, random, number)
+function SQLiteFactory:seed(random, number)
+  Faker.seed(self, random, number)
 end
 
 function SQLiteFactory.fake_entity(type, invalid)

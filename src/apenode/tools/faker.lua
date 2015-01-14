@@ -47,7 +47,7 @@ function _M.fake_entity(type, invalid)
   end
 end
 
-function _M.populate(factory, random, amount)
+function _M.seed(factory, random, amount)
   local entities_to_insert = {
     api = {
       {
