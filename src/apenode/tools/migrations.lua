@@ -7,16 +7,13 @@ local kMigrationsPath = "database/migrations"
 -- Migrations
 local Migrations = Object:extend()
 
-function Migrations:new(configuration, dao_properties)
-  local dao_factory = require("apenode.dao."..configuration.database..".factory")
-
-  self.configuration = configuration
-  self.dao = dao_factory(dao_properties, true)
-  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..configuration.database)
+function Migrations:new(dao)
+  self.dao = dao
+  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..dao.type)
 end
 
-function Migrations:create(name, callback)
-  for k,_ in pairs(self.configuration.databases_available) do
+function Migrations.create(configuration, name, callback)
+  for k,_ in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
     local file_path = kMigrationsPath.."/"..k
     local file_name = date_str.."_"..name
@@ -72,7 +69,7 @@ function Migrations:rollback(callback)
 end
 
 function Migrations:reset(callback)
-  for _,migration_file in ipairs(utils.reverse(self.migrations_files)) do
+  for _,migration_file in ipairs(utils.reverse_table(self.migrations_files)) do
     local migration = loadfile(migration_file)()
 
     self.dao:execute(migration.down)

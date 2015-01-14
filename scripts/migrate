@@ -24,28 +24,27 @@ if not opts.conf then
 end
 
 -- Load configuration
-local configuration, dao_properties = utils.load_configuration(opts.conf)
-local migrations = Migrations(configuration, dao_properties)
+local configuration, dao = utils.load_configuration_and_dao(opts.conf)
 
 if command == "create" then
   if not opts.name then
     print_usage()
   end
 
-  migrations:create(opts.name, function(interface, file_path, file_name)
+  Migrations.create(configuration, opts.name, function(interface, file_path, file_name)
     os.execute("mkdir -p "..file_path)
     utils.write_to_file(file_path.."/"..file_name..".lua", interface)
   end)
 elseif command == "migrate" then
-  migrations:migrate(function(migration)
+  dao:migrate(function(migration)
     print(utils.green("✔").." Migrated up to: "..utils.yellow(migration.name))
   end)
 elseif command == "rollback" then
-  migrations:rollback(function(migration)
+  dao:rollback(function(migration)
     print(utils.green("✔").." Rollbacked to: "..utils.yellow(migration.name))
   end)
 elseif command == "reset" then
-  migrations:reset(function(migration)
+  dao:reset(function(migration)
     print(utils.green("✔").." Rollbacked: "..utils.yellow(migration.name))
   end)
 else

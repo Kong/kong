@@ -1,19 +1,13 @@
 local utils = require "apenode.tools.utils"
 local configuration = require "spec.unit.daos.sqlite.configuration"
-local SQLiteFactory = require "apenode.dao.sqlite.factory"
 
-local configuration, dao_properties = utils.parse_configuration(configuration)
-local dao_factory = SQLiteFactory(dao_properties)
-local daos = {
-  api = dao_factory.apis,
-  account = dao_factory.accounts,
-  application = dao_factory.applications
-}
+local configuration, dao_factory = utils.load_configuration_and_dao(configuration)
 
 describe("BaseDao", function()
 
   setup(function()
-    dao_factory:drop()
+    dao_factory:migrate()
+    dao_factory:prepare()
     dao_factory:populate(true)
   end)
 
@@ -125,7 +119,9 @@ describe("BaseDao", function()
     end)
   end)
 
-  for dao_name, dao in pairs(daos) do
+  for dao_name, dao in pairs({ api = dao_factory.apis,
+                               application = dao_factory.applications,
+                               account = dao_factory.accounts }) do
     describe(dao_name, function()
 
       describe("#insert()", function()

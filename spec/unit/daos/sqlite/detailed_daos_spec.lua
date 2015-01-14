@@ -1,14 +1,18 @@
 local utils = require "apenode.tools.utils"
 local configuration = require "spec.unit.daos.sqlite.configuration"
-local SQLiteFactory = require "apenode.dao.sqlite.factory"
 
-local configuration, dao_properties = utils.parse_configuration(configuration)
-local dao_factory = SQLiteFactory(dao_properties)
+local configuration, dao_factory = utils.load_configuration_and_dao(configuration)
+local daos = {
+  api = dao_factory.apis,
+  account = dao_factory.accounts,
+  application = dao_factory.applications
+}
 
 describe("DetailedDaos", function()
 
   setup(function()
-    dao_factory:drop()
+    dao_factory:migrate()
+    dao_factory:prepare()
     dao_factory:populate(true)
   end)
 

@@ -6,25 +6,33 @@ local Metrics = BaseDao:extend()
 function Metrics:new(database)
   Metrics.super.new(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA)
 
-  self.increment_stmt = Metrics.super.get_statement(self, [[
-    INSERT OR REPLACE INTO metrics
-      VALUES (:api_id, :application_id, :name, :timestamp,
-        COALESCE(
-          (SELECT value FROM metrics
-            WHERE api_id = :api_id
-              AND application_id = :application_id
-              AND name = :name
-              AND timestamp = :timestamp),
-        0) + :step);
-  ]])
+  self.prepared_stmts = {}
 
+  self.stmts = {
+    increment = [[
+      INSERT OR REPLACE INTO metrics
+        VALUES (:api_id, :application_id, :name, :timestamp,
+          COALESCE(
+          (SELECT value FROM metrics WHERE api_id = :api_id
+                                       AND application_id = :application_id
+                                       AND name = :name
+                                       AND timestamp = :timestamp),
+          0) + :step
+      );
+    ]],
+    delete = [[
+      DELETE FROM metrics WHERE api_id = :api_id
+                            AND application_id = :application_id
+                            AND name = :name
+                            AND timestamp = :timestamp;
+    ]]
+  }
+end
 
-  self.delete_stmt = Metrics.super.get_statement(self, [[
-    DELETE FROM metrics WHERE api_id = :api_id
-              AND application_id = :application_id
-              AND name = :name
-              AND timestamp = :timestamp;
-  ]]);
+function Metrics:prepare()
+  for k,stmt in pairs(self.stmts) do
+    self.prepared_stmts[k] = Metrics.super.get_statement(self, stmt)
+  end
 end
 
 -- @override
@@ -44,20 +52,20 @@ end
 
 -- @override
 function Metrics:delete(api_id, application_id, name, timestamp)
-  self.delete_stmt:bind_names {
+  self.prepared_stmts.delete:bind_names {
     api_id = api_id,
     application_id = application_id,
     name = name,
     timestamp = timestamp
   }
 
-  return self:exec_stmt_count_rows(self.delete_stmt)
+  return self:exec_stmt_count_rows(self.prepared_stmts.delete)
 end
 
 function Metrics:increment(api_id, application_id, name, timestamp, step)
   if not step then step = 1 end
 
-  self.increment_stmt:bind_names {
+  self.prepared_stmts.increment:bind_names {
     api_id = api_id,
     application_id = application_id,
     name = name,
@@ -65,17 +73,17 @@ function Metrics:increment(api_id, application_id, name, timestamp, step)
     step = step
   }
 
-  local count, err = self:exec_stmt_count_rows(self.increment_stmt)
+  local count, err = self:exec_stmt_count_rows(self.prepared_stmts.increment)
   if err then
     return nil, err
   end
 
-  return self:find_one({
+  return self:find_one {
     api_id = api_id,
     application_id = application_id,
     name = name,
     timestamp = timestamp
-    })
+  }
 end
 
 return Metrics

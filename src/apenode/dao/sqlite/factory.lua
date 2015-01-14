@@ -1,7 +1,10 @@
 -- Copyright (C) Mashape, Inc.
 local Object = require "classic"
 local sqlite3 = require "lsqlite3"
+
 local Faker = require "apenode.tools.faker"
+local Migrations = require "apenode.tools.migrations"
+
 local Apis = require "apenode.dao.sqlite.apis"
 local Metrics = require "apenode.dao.sqlite.metrics"
 local Plugins = require "apenode.dao.sqlite.plugins"
@@ -12,9 +15,7 @@ local SQLiteFactory = Object:extend()
 
 -- Instanciate an SQLite DAO.
 -- @param properties The parsed apenode configuration
--- @param db_only Only instanciate the BD connection if true, doesn't prepare statements
---                very probably because the tables don't exist yet.
-function SQLiteFactory:new(properties, db_only)
+function SQLiteFactory:new(properties)
   if properties.memory then
     self._db = sqlite3.open_memory()
   elseif properties.file_path ~= nil then
@@ -23,24 +24,34 @@ function SQLiteFactory:new(properties, db_only)
     error("Cannot open SQLite database: missing path to file")
   end
 
-  self.db_only = db_only
+  self.type = "sqlite"
+  self.migrations = Migrations(self)
 
-  -- Build factory
-  if not db_only then
-    self.apis = Apis(self._db)
-    self.metrics = Metrics(self._db)
-    self.plugins = Plugins(self._db)
-    self.accounts = Accounts(self._db)
-    self.applications = Applications(self._db)
-  end
+  self.apis = Apis(self._db)
+  self.metrics = Metrics(self._db)
+  self.plugins = Plugins(self._db)
+  self.accounts = Accounts(self._db)
+  self.applications = Applications(self._db)
 end
 
-function SQLiteFactory:execute(stmt)
-  if self._db:exec(stmt) ~= sqlite3.OK then
-    error("SQLite ERROR: "..self._db:errmsg())
-  end
+--
+-- Migrations
+--
+function SQLiteFactory:migrate(callback)
+  self.migrations:migrate(callback)
 end
 
+function SQLiteFactory:rollback(callback)
+  self.migrations:rollback(callback)
+end
+
+function SQLiteFactory:reset(callback)
+  self.migrations:reset(callback)
+end
+
+--
+-- Seeding
+--
 function SQLiteFactory:populate(random, number)
   Faker.populate(self, random, number)
 end
@@ -57,14 +68,25 @@ function SQLiteFactory:drop()
   self:execute("DELETE FROM applications")
 end
 
-function SQLiteFactory:close()
-  if not self.db_only then
-    self.apis:finalize()
-    self.metrics:finalize()
-    self.plugins:finalize()
-    self.accounts:finalize()
-    self.applications:finalize()
+--
+-- Utilities
+--
+function SQLiteFactory:prepare()
+  self.metrics:prepare()
+end
+
+function SQLiteFactory:execute(stmt)
+  if self._db:exec(stmt) ~= sqlite3.OK then
+    error("SQLite ERROR: "..self._db:errmsg())
   end
+end
+
+function SQLiteFactory:close()
+  self.apis:finalize()
+  self.metrics:finalize()
+  self.plugins:finalize()
+  self.accounts:finalize()
+  self.applications:finalize()
 
   self._db:close()
 end

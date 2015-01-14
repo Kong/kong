@@ -42,6 +42,8 @@ function _M.fake_entity(type, invalid)
         authentication_key_names = { "apikey" }
       }
     }
+  else
+    error("Model of type "..type.." cannot be genereated.")
   end
 end
 

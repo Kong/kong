@@ -25,11 +25,9 @@ end
 
 function _M.init(configuration_path)
   -- Loading configuration
-  configuration, dao_configuration = utils.load_configuration(configuration_path)
+  configuration, dao = utils.load_configuration_and_dao(configuration_path)
 
-  -- Loading DAO
-  local dao_factory = require("apenode.dao." .. configuration.database..".factory")
-  dao = dao_factory(dao_configuration)
+  dao:prepare()
 
   -- core is the first plugin
   table.insert(plugins, {

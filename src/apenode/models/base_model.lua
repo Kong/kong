@@ -103,10 +103,11 @@ end
 function BaseModel:new(collection, schema, t, dao_factory)
   -- The collection needs to be declared before just in case
   -- the validator needs it for the "unique" check
-  self._dao_factory = dao_factory
-  self._collection = collection
-  self._dao = dao_factory[collection]
   self._schema = schema
+  self._collection = collection
+
+  self._dao = dao_factory[collection]
+  self._dao_factory = dao_factory
 
   -- Populate the new object with the same fields
   if not t then t = {} end
