@@ -9,9 +9,7 @@ branches:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install software-properties-common python-software-properties
-  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libpcre++-dev libssl-dev perl make
-  - sudo apt-get update
+  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libssl-dev perl make lua5.1 lua5.1-dev
   - wget http://openresty.org/download/ngx_openresty-1.7.7.1.tar.gz
   - tar xzf ngx_openresty-1.7.7.1.tar.gz
   - cd ngx_openresty-1.7.7.1/
@@ -19,10 +17,7 @@ before_install:
   - make
   - sudo make install
   - cd ..
-
-install:
-  - sudo apt-get install sqlite3 libsqlite3-dev
-  - sudo apt-get install lua5.1 lua5.1-dev
+  - export PATH=$PATH:/usr/local/openresty/nginx/sbin/
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
   - cd luarocks-2.1.2
@@ -30,6 +25,9 @@ install:
   - make build
   - sudo make install
   - cd ..
+
+install:
+  - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo luarocks install lrexlib-pcre PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
   - sudo luarocks install luasec OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global
