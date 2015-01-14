@@ -33,6 +33,7 @@ install:
 
 before_script:
   - sudo make global
+  - make build
   - make migrate
   - make seed
   - make run &
