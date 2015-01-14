@@ -74,7 +74,7 @@ function _M.load_configuration_and_dao(configuration)
     local configuration_file = _M.read_file(configuration)
 
     if not configuration_file then
-      error("No configuration file at: "..path)
+      error("No configuration file at: "..configuration)
     end
 
     configuration = yaml.load(configuration_file)
