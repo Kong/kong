@@ -38,6 +38,8 @@ function Client:query(cmd, args, disable_keyspace)
     end
   end
 
+  local result, err = nil
+
   local cmds = stringy.split(cmd, ";")
   for i,v in ipairs(cmds) do
     if stringy.strip(v) ~= "" then
@@ -52,8 +54,8 @@ function Client:query(cmd, args, disable_keyspace)
       end
 
       -- Executes the command
-      local result, err = session:execute(stmt, args)
-      if not results and err then
+      result, err = session:execute(stmt, args)
+      if result == nil and err then
         return nil, err
       end
     end

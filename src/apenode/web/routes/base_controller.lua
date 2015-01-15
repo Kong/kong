@@ -66,9 +66,7 @@ function BaseController:new(model)
   app:post("/" .. model._COLLECTION .. "/", function(self)
     local params = parse_params(model, self.params)
 
-    local entity = model(params, dao)
-    local status, res = pcall(model, params, dao)
-    local data, err = entity:save()
+    local data, err = model(params, dao):save()
     if err then
       return utils.show_error(400, err)
     else
@@ -121,10 +119,6 @@ function BaseController:new(model)
     end
 
     if data then
-
-      local inspect = require "inspect"
-      print(inspect(data))
-
       data:delete()
       return utils.success(remove_private_properties(data))
     else

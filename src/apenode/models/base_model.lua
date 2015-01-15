@@ -36,7 +36,11 @@ function BaseModel:_validate(schema, t, is_update)
   -- Check the given table against a given schema
   for k,v in pairs(schema) do
     if not t[k] and v.default ~= nil then -- Set default value for the filed if given
-      t[k] = v.default
+      if type(v.default) == "function" then
+        t[k] = v.default()
+      else
+        t[k] = v.default
+      end
     elseif v.required and (t[k] == nil or t[k] == "") then -- Check required field is set
       errors = add_error(errors, k, k .. " is required")
     elseif t[k] and not is_update and v.read_only then -- Check field is not read only
@@ -141,11 +145,6 @@ function BaseModel:update()
     local data, err = self._dao:update(self._t)
     return data, err
   end
-end
-
-function BaseModel._delete_by_id(id, dao)
-  local count, err = dao:delete_by_id(id)
-  return count, err
 end
 
 function BaseModel._find_one(args, dao)

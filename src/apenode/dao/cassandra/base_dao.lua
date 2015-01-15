@@ -1,11 +1,11 @@
 -- Copyright (C) Mashape, Inc.
 
 local dao_utils = require "apenode.dao.dao_utils"
-local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "apenode.tools.utils"
 local uuid = require "uuid"
 local cassandra = require "cassandra"
+require "stringy"
 
 -- This is important to seed the UUID generator
 uuid.seed()
@@ -39,14 +39,14 @@ local function get_cmd_args(entity, update)
     table.insert(cmd_values, "?")
     if type(v) == "table" then
       table.insert(cmd_field_values, cassandra.list(v))
-    elseif k == "id" then
-      table.insert(cmd_field_values, cassandra.uuid(v))
-    elseif k == "created_at" then
+    elseif k == "created_at" or k == "timestamp" then
       local _created_at = v
       if string.len(tostring(_created_at)) == 10 then
         _created_at = _created_at * 1000 -- Convert to milliseconds
       end
       table.insert(cmd_field_values, cassandra.timestamp(_created_at))
+    elseif stringy.endswith(k, "id") then
+      table.insert(cmd_field_values, cassandra.uuid(v))
     else
       table.insert(cmd_field_values, v)
     end
@@ -58,7 +58,7 @@ end
 -- Utility function to get where arguments
 -- @param entity The entity whose fields needs to be parsed
 -- @return A list of fields for the where clause, and the actual values table
-local function get_where_args(entity)
+function BaseDao._get_where_args(entity)
   if utils.table_size(entity) == 0 then
     return nil, nil
   end
@@ -71,7 +71,7 @@ local function get_where_args(entity)
     table.insert(result, v .. "=?")
   end
 
-  return table.concat(result, ","), cmd_field_values
+  return table.concat(result, " AND "), cmd_field_values
 end
 
 -- Insert an entity
@@ -115,13 +115,14 @@ function BaseDao:update(entity)
     id = entity.id
   }
 
-  local cmd_entity_fields, cmd_entity_values = get_where_args(entity)
-  local cmd_where_fields, cmd_where_values = get_where_args(where_keys)
+  local cmd_entity_fields, cmd_entity_values = BaseDao._get_where_args(entity)
+  local cmd_where_fields, cmd_where_values = BaseDao._get_where_args(where_keys)
 
   local cmd = "UPDATE " .. self._collection .. " SET " .. cmd_entity_fields .. " WHERE " .. cmd_where_fields
 
   -- Merging tables
   for k,v in pairs(cmd_where_values) do
+    --TODO: Maybe we can remove this IF statement because get_where_args already handles the ids?
     if k == "id" then
       v = cassandra.uuid(v)
     end
@@ -178,12 +179,12 @@ function BaseDao:find(where_keys, page, size)
   -- local start_offset = ((page - 1) * size)
 
   -- Prepare the command
-  local cmd_fields, cmd_field_values = get_where_args(where_keys)
+  local cmd_fields, cmd_field_values = BaseDao._get_where_args(where_keys)
   local cmd = "SELECT * FROM " .. self._collection
   local cmd_count = "SELECT COUNT(*) FROM " .. self._collection
   if cmd_fields then
-    cmd = cmd .. " WHERE " .. cmd_fields
-    cmd_count = cmd_count .. " WHERE " .. cmd_fields
+    cmd = cmd .. " WHERE " .. cmd_fields .. " ALLOW FILTERING"
+    cmd_count = cmd_count .. " WHERE " .. cmd_fields .. " ALLOW FILTERING"
   end
 
   -- Execute the command
@@ -194,9 +195,10 @@ function BaseDao:find(where_keys, page, size)
 
   -- Count the results too
   local count, err = self._client:query(cmd_count, cmd_field_values)
-  if not count then
+  if count == nil then
     return nil, nil, err
   end
+
   local count_value = table.remove(count, 1).count
 
   -- Deserialization
@@ -226,6 +228,10 @@ function BaseDao:delete_by_id(id)
   end
 
   return 1
+end
+
+function BaseDao:query(cmd, args)
+  return self._client:query(cmd, args)
 end
 
 return BaseDao

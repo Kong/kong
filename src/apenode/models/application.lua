@@ -18,7 +18,7 @@ local SCHEMA = {
   account_id = { type = "string", required = true, func = check_account_id },
   public_key = { type = "string", required = false },
   secret_key = { type = "string", required = true, unique = true },
-  created_at = { type = "number", read_only = true, default = utils.get_utc() }
+  created_at = { type = "number", read_only = false, default = utils.get_utc }
 }
 
 local Application = BaseModel:extend()
@@ -45,14 +45,6 @@ function Application.find(args, page, size, dao_factory)
     end
   end
   return data, total, err
-end
-
-function Application.delete_by_id(id, dao_factory)
-  return Application.super._delete_by_id(id, dao_factory[COLLECTION])
-end
-
-function Application.update(entity, dao_factory)
-  return Application.super._update(entity, dao_factory[COLLECTION])
 end
 
 -- TODO: When deleting an application, also delete all his plugins/metrics

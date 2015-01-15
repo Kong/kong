@@ -9,7 +9,7 @@ local SCHEMA = {
   name = { type = "string", required = true, unique = true },
   public_dns = { type = "string", required = true, unique = true, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
-  created_at = { type = "number", read_only = true, default = utils.get_utc() }
+  created_at = { type = "number", read_only = false, default = utils.get_utc }
 }
 
 local Api = BaseModel:extend()
@@ -36,14 +36,6 @@ function Api.find(args, page, size, dao_factory)
     end
   end
   return data, total, err
-end
-
-function Api.delete_by_id(id, dao_factory)
-  return Api.super._delete_by_id(id, dao_factory[COLLECTION])
-end
-
-function Api.update(entity, dao_factory)
-  return Api.super._update(entity, dao_factory[COLLECTION])
 end
 
 -- TODO: When deleting an API, also delete all his plugins/metrics

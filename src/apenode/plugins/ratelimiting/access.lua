@@ -37,15 +37,8 @@ function _M.execute(conf)
     set_header_limit_remaining(limit - current_usage - 1)
   end
 
-  -- Increment usage for all the metrics
-  -- TODO: this could also be done asynchronously in a timer maybe if specified in the conf (more performance, less security)?
-  for k,v in pairs(timestamps) do
-    Metric.increment(ngx.ctx.api.id,
-                                authenticated_entity_id,
-                                "requests." .. k,
-                                v, 1, dao)
-  end
-
+  -- Increment metric
+  Metric.increment(ngx.ctx.api.id, authenticated_entity_id, "requests", 1, dao)
 end
 
 return _M

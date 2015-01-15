@@ -7,7 +7,7 @@ local COLLECTION = "accounts"
 local SCHEMA = {
   id = { type = "string", read_only = true },
   provider_id = { type = "string", required = false, unique = true },
-  created_at = { type = "number", read_only = true, default = utils.get_utc() }
+  created_at = { type = "number", read_only = false, default = utils.get_utc }
 }
 
 local Account = BaseModel:extend()
@@ -35,10 +35,6 @@ function Account.find(args, page, size, dao_factory)
     end
   end
   return data, total, err
-end
-
-function Account.delete_by_id(id, dao_factory)
-  return Account.super._delete_by_id(id, dao_factory[COLLECTION])
 end
 
 -- TODO: When deleting an account, also delete all his applications

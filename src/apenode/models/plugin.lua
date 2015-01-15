@@ -37,7 +37,7 @@ local SCHEMA = {
   application_id = { type = "string", required = false, func = check_application_id },
   name = { type = "string", required = true },
   value = { type = "table", required = true, schema_from_func = get_schema },
-  created_at = { type = "number", read_only = true, default = utils.get_utc() }
+  created_at = { type = "number", read_only = false, default = utils.get_utc }
 }
 
 local Plugin = BaseModel:extend()
@@ -76,14 +76,6 @@ function Plugin.find(args, page, size, dao_factory)
     end
   end
   return data, total, err
-end
-
-function Plugin.delete_by_id(id, dao_factory)
-  return Plugin.super._delete_by_id(id, dao_factory[COLLECTION])
-end
-
-function Plugin.update(entity, dao_factory)
-  return Plugin.super._update(entity, dao_factory[COLLECTION])
 end
 
 return Plugin
