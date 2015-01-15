@@ -17,8 +17,8 @@ describe("BaseDao", function()
   describe("do something", function()
 
 
-    local res, err = Plugin.find_one({name="cazzo", api_id="a3b2123b-f2ea-4f69-cf4d-887094191eca"}, dao_factory)
-    print(err)
+    --local res, err = Plugin.find_one({name="cazzo", api_id="a3b2123b-f2ea-4f69-cf4d-887094191eca"}, dao_factory)
+    --print(err)
 
     --it("should do something", function()
       --Account({}, dao_factory):save()
