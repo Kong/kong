@@ -62,7 +62,7 @@ function BaseModel:_validate(schema, t, is_update)
     end
 
     -- Check if field's value is unique
-    if t[k] and v.unique then
+    if t[k] and v.unique and not is_update then
       local data, err = self._find_one({[k] = t[k]}, self._dao)
       if data ~= nil then
         errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
@@ -138,6 +138,11 @@ function BaseModel:delete()
 end
 
 function BaseModel:update()
+  -- Check if there are updated fields
+  for k,_ in pairs(self._t) do
+    self._t[k] = self[k]
+  end
+
   local res, err = self:_validate(self._schema, self._t, true)
   if not res then
     return nil, err
