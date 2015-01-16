@@ -15,37 +15,37 @@
 ### Requirements
 - Lua `5.1`
 - Luarocks for Lua `5.1`
-- [Openrestify](http://openresty.com/#Download) `1.7.4.1`)
+- [Openrestify](http://openresty.com/#Download) `1.7.4.1`
 
 ### Run apenode (development)
 
-- `make global`
-- `make build`
-- `make migrate`
-- `make run`
+- ` global`
+- ` build`
+- ` migrate`
+- ` run`
   - Proxy: `http://localhost:8000/`
   - API: `http://localhost:8001/`
 
 ### Commands
 
-Commands consist of apenode's scripts and Makefile
+Commands consist of apenode's scripts and Makefile:
 
 #### Makefile
 
-| Name              | Description                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------- |
-| `make global`     | Install the apenode luarock globally                                                                |
-| `make local`      | Install the apenode luarock locally (`~`)                                                           |
-| `make build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
-| `make migrate`    | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
-| `make seed`       | Seed your database according to the given apenode config                                            |
-| `make drop`       | Drop your database according to the given apenode config                                            |
-| `make run`        | Runs the given apenode environment in a given folder (see `ENV_DIR`)                                |
-| `make stop`       | Stops the given apenode environment in a given folder (see `ENV_DIR`)                               |
-| `make test`       | Runs the unit tests                                                                                 |
-| `make test-proxy` | Runs the proxy integration tests                                                                    |
-| `make test-web`   | Runs the web integration tests                                                                      |
-| `make test-all`   | Runs all unit + integration tests at once                                                           |
+| Name         | Description                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| `global`     | Install the apenode luarock globally                                                                |
+| `local`      | Install the apenode luarock locally (`~`)                                                           |
+| `build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
+| `migrate`    | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
+| `seed`       | Seed your database according to the given apenode config                                            |
+| `drop`       | Drop your database according to the given apenode config                                            |
+| `run`        | Runs the given apenode environment in a given folder (see `ENV_DIR`)                                |
+| `stop`       | Stops the given apenode environment in a given folder (see `ENV_DIR`)                               |
+| `test`       | Runs the unit tests                                                                                 |
+| `test-proxy` | Runs the proxy integration tests                                                                    |
+| `test-web`   | Runs the web integration tests                                                                      |
+| `test-all`   | Runs all unit + integration tests at once                                                           |
 
 #### Makefile variables
 
