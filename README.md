@@ -32,20 +32,20 @@ Commands consist of apenode's scripts and Makefile
 
 #### Makefile
 
-| Name                  | Description                                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `make global`         | Install the apenode luarock globally                                                                |
-| `make local`          | Install the apenode luarock locally (`~`)                                                           |
-| `make build`          | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
-| `make migrate`        | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
-| `make seed`           | Seed your database according to the given apenode config                                            |
-| `make drop`           | Drop your database according to the given apenode config                                            |
-| `make run`            | Runs the given apenode environment in a given folder (see `ENV_DIR`)                                |
-| `make stop`           | Stops the given apenode environment in a given folder (see `ENV_DIR`)                               |
-| `make test`           | Runs the unit tests                                                                                 |
-| `make test-proxy`     | Runs the proxy integration tests                                                                    |
-| `make test-web`       | Runs the web integration tests                                                                      |
-| `make test-all`       | Runs all unit + integration tests at once                                                           |
+| Name              | Description                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `make global`     | Install the apenode luarock globally                                                                |
+| `make local`      | Install the apenode luarock locally (`~`)                                                           |
+| `make build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
+| `make migrate`    | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
+| `make seed`       | Seed your database according to the given apenode config                                            |
+| `make drop`       | Drop your database according to the given apenode config                                            |
+| `make run`        | Runs the given apenode environment in a given folder (see `ENV_DIR`)                                |
+| `make stop`       | Stops the given apenode environment in a given folder (see `ENV_DIR`)                               |
+| `make test`       | Runs the unit tests                                                                                 |
+| `make test-proxy` | Runs the proxy integration tests                                                                    |
+| `make test-web`   | Runs the web integration tests                                                                      |
+| `make test-all`   | Runs all unit + integration tests at once                                                           |
 
 #### Makefile variables
 
@@ -61,17 +61,17 @@ Commands consist of apenode's scripts and Makefile
 
 #### Scripts
 
-| Name       | Commands                               | Description                                                           | Arguments                                                   |
-| ---------- | -------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `migrate`  |                                        |                                                                       |                                                             |
-|            | `create --conf=[conf]`                 | Create a migration file for all available databases in the given conf | `--name=[name]` Name of the migration                       |
-|            | `migrate --conf=[conf]`                | Migrate the database set in the given conf                            |                                                             |
-|            | `rollback --conf=[conf]`               | Rollback to the latest executed migration (TODO)                      |                                                             |
-|            | `reset --conf=[conf]`                  | Rollback all migrations                                               |                                                             |
-| `seed`     |                                        |                                                                       |                                                             |
-|            | `seed --conf=[conf]`                   | Seed the database configured in the given conf                        | `-s` (Optional) No output                                   |
-|            |                                        |                                                                       | `-r` (Optional) Also populate random data (1000 by default) |
-|            | `drop --conf=[conf]`                   | Drop the database configured in the given conf                        | `-s` (Optional) No output                                   |
+| Name       | Commands                 | Description                                                           | Arguments                                                   |
+| ---------- | ------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `migrate`  |                          |                                                                       |                                                             |
+|            | `create --conf=[conf]`   | Create a migration file for all available databases in the given conf | `--name=[name]` Name of the migration                       |
+|            | `migrate --conf=[conf]`  | Migrate the database set in the given conf                            |                                                             |
+|            | `rollback --conf=[conf]` | Rollback to the latest executed migration (TODO)                      |                                                             |
+|            | `reset --conf=[conf]`    | Rollback all migrations                                               |                                                             |
+| `seed`     |                          |                                                                       |                                                             |
+|            | `seed --conf=[conf]`     | Seed the database configured in the given conf                        | `-s` (Optional) No output                                   |
+|            |                          |                                                                       | `-r` (Optional) Also populate random data (1000 by default) |
+|            | `drop --conf=[conf]`     | Drop the database configured in the given conf                        | `-s` (Optional) No output                                   |
 
 ### API
 
