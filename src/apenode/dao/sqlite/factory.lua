@@ -16,22 +16,25 @@ local SQLiteFactory = Object:extend()
 -- Instanciate an SQLite DAO.
 -- @param properties The parsed apenode configuration
 function SQLiteFactory:new(properties)
+  self.type = "sqlite"
+  self.migrations = Migrations(self)
+
   if properties.memory then
     self._db = sqlite3.open_memory()
+    -- In memory needs to be migrated instantly
+    self:migrate()
   elseif properties.file_path ~= nil then
     self._db = sqlite3.open(properties.file_path)
   else
     error("Cannot open SQLite database: missing path to file")
   end
 
-  self.type = "sqlite"
-  self.migrations = Migrations(self)
-
   self.apis = Apis(self._db)
   self.metrics = Metrics(self._db)
   self.plugins = Plugins(self._db)
   self.accounts = Accounts(self._db)
   self.applications = Applications(self._db)
+  self:prepare()
 end
 
 --

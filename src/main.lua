@@ -27,8 +27,6 @@ function _M.init(configuration_path)
   -- Loading configuration
   configuration, dao = utils.load_configuration_and_dao(configuration_path)
 
-  dao:prepare()
-
   -- core is the first plugin
   table.insert(plugins, {
     name = "core",

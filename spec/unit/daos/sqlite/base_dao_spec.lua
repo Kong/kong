@@ -6,8 +6,6 @@ local configuration, dao_factory = utils.load_configuration_and_dao(configuratio
 describe("BaseDao", function()
 
   setup(function()
-    dao_factory:migrate()
-    dao_factory:prepare()
     dao_factory:seed(true)
   end)
 

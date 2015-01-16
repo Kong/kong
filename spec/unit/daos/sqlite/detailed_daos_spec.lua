@@ -11,8 +11,6 @@ local daos = {
 describe("DetailedDaos", function()
 
   setup(function()
-    dao_factory:migrate()
-    dao_factory:prepare()
     dao_factory:seed(true)
   end)
 
