@@ -19,10 +19,10 @@
 
 ### Run apenode (development)
 
-- ` global`
-- ` build`
-- ` migrate`
-- ` run`
+- `make global`
+- `make build`
+- `make migrate`
+- `make run`
   - Proxy: `http://localhost:8000/`
   - API: `http://localhost:8001/`
 
