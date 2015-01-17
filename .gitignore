@@ -2,3 +2,7 @@ tmp/
 .vagrant/
 .buildpath
 .project
+
+# gh-pages
+node_modules/
+bower_components/
