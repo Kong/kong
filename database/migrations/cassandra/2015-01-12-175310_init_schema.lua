@@ -73,7 +73,7 @@ local Migration = {
   ]],
 
   down = [[
-
+    DROP KEYSPACE apenode;
   ]]
 }
 

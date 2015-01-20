@@ -9,7 +9,7 @@ local Migrations = Object:extend()
 
 function Migrations:new(dao)
   self.dao = dao
-  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..dao.type)
+  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..dao.type, '.lua')
 end
 
 function Migrations.create(configuration, name, callback)

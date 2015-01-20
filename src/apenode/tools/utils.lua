@@ -230,11 +230,12 @@ function _M.getopt( arg, options )
   return tab
 end
 
-function _M.retrieve_files(path)
+function _M.retrieve_files(path, pattern)
+  if not pattern then pattern = "" end
   local files = {}
 
   for file in lfs.dir(path) do
-    if file ~= "." and file ~= ".." then
+    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
       local f = path..'/'..file
       local attr = lfs.attributes(f)
       if attr.mode == "file" then
