@@ -28,8 +28,6 @@ function CassandraFactory:new(properties)
   self.plugins = Plugins(self._db, properties)
   self.accounts = Accounts(self._db, properties)
   self.applications = Applications(self._db, properties)
-
-  -- self:prepare()
 end
 
 --

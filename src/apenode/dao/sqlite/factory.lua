@@ -14,8 +14,9 @@ local Applications = require "apenode.dao.sqlite.applications"
 local SQLiteFactory = Object:extend()
 
 -- Instanciate an SQLite DAO.
--- @param properties The parsed apenode configuration
-function SQLiteFactory:new(properties)
+-- @param table properties The parsed apenode configuration
+-- @param boolean no_prepare Don't prepare statements if true (will fail if tables are not yet migrated)
+function SQLiteFactory:new(properties, no_prepare)
   self.type = "sqlite"
   self.migrations = Migrations(self)
 
@@ -34,7 +35,6 @@ function SQLiteFactory:new(properties)
   self.plugins = Plugins(self._db)
   self.accounts = Accounts(self._db)
   self.applications = Applications(self._db)
-  self:prepare()
 end
 
 --
