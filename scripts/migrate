@@ -12,11 +12,17 @@ local function print_usage()
   os.exit(1)
 end
 
+local function log(str)
+  if not opts.silent then
+    print(str)
+  end
+end
+
 -- Command
 local command = arg[1]
 
 -- Arguments
-local opts = {}
+opts = {}
 opts.name = utils.getopt(arg, "name").name
 opts.conf = utils.getopt(arg, "conf").conf
 opts.silent = utils.getopt(arg, "s").s
@@ -37,25 +43,19 @@ if command == "create" then
     utils.write_to_file(file_path.."/"..file_name..".lua", interface)
   end)
 elseif command == "migrate" then
-  print("Migrating "..utils.yellow(dao.type))
+  log("Migrating "..utils.yellow(dao.type))
   dao:migrate(function(migration)
-    if not opts.silent then
-      print(utils.green("✔").." Migrated up to: "..utils.yellow(migration.name))
-    end
+    log(utils.green("✔").." Migrated up to: "..utils.yellow(migration.name))
   end)
 elseif command == "rollback" then
-  print("Rolling back "..utils.yellow(dao.type))
+  log("Rolling back "..utils.yellow(dao.type))
   dao:rollback(function(migration)
-    if not opts.silent then
-      print(utils.green("✔").." Rollbacked to: "..utils.yellow(migration.name))
-    end
+    log(utils.green("✔").." Rollbacked to: "..utils.yellow(migration.name))
   end)
 elseif command == "reset" then
-  print("Resetting "..utils.yellow(dao.type))
+  log("Resetting "..utils.yellow(dao.type))
   dao:reset(function(migration)
-    if not opts.silent then
-      print(utils.green("✔").." Rollbacked: "..utils.yellow(migration.name))
-    end
+    log(utils.green("✔").." Rollbacked: "..utils.yellow(migration.name))
   end)
 else
   print_usage()

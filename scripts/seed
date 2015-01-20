@@ -13,11 +13,17 @@ local function print_usage()
   os.exit(1)
 end
 
+local function log(str)
+  if not opts.silent then
+    print(str)
+  end
+end
+
 -- Command
 local command = arg[1]
 
 -- Arguments
-local opts = {}
+opts = {}
 opts.conf = utils.getopt(arg, "conf").conf
 opts.silent = utils.getopt(arg, "s").s
 opts.random = utils.getopt(arg, "r").r
@@ -31,14 +37,10 @@ if command == "seed" then
   -- Drop if exists
   dao:drop()
   dao:seed(opts.random)
-  if not opts.silent then
-    print(utils.green("✔").." Populated")
-  end
+  log(utils.green("✔").." Populated")
 elseif command == "drop" then
   dao:drop()
-  if not opts.silent then
-    print(utils.green("✔").." Dropped")
-  end
+  log(utils.green("✔").." Dropped")
 else
   dao:close()
   print_usage()
