@@ -8,8 +8,8 @@ local BaseDao = Object:extend()
 
 function BaseDao:new(database, collection, schema)
   self._db = database
-  self._collection = collection
   self._schema = schema
+  self._collection = collection
 
   -- Cache the prepared statements if already prepared
   self._stmt_cache = {}
@@ -49,6 +49,7 @@ end
 
 -- Update one or many entities according to a WHERE statement
 -- @param table entity Entity to update
+-- @param table where_keys Selector for what entity to update
 -- @return table Updated entity
 -- @return table Error if error
 function BaseDao:update(entity)
@@ -58,13 +59,14 @@ function BaseDao:update(entity)
     return 0
   end
 
-  -- Remove duplicated values between entity and where_keys
-  -- it would be incorrect to have:
-  -- entity { id = 1 } and where_keys { id = "none" }
-  -- 1 would be binded in the statement for the WHERE clause instead of "none"
+  -- Only support id as a selector
   local where_keys = {
     id = entity.id
   }
+
+  if entity.id ~= nil then
+    entity.id = nil
+  end
 
   local query = self:build_udpate_query(entity, where_keys)
   local stmt = self:get_statement(query)
@@ -236,9 +238,8 @@ end
 -- @return string A SELECT COUNT(*) query to be binded
 function BaseDao:build_count_query(where_keys)
   local where = self:build_where_fields(where_keys)
-  local query = [[ SELECT COUNT(*) FROM ]]..self._collection..where
 
-  return query
+  return [[ SELECT COUNT(*) FROM ]]..self._collection..where
 end
 
 -- Build an INSERT query

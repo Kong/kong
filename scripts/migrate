@@ -37,18 +37,21 @@ if command == "create" then
     utils.write_to_file(file_path.."/"..file_name..".lua", interface)
   end)
 elseif command == "migrate" then
+  print("Migrating "..utils.yellow(dao.type))
   dao:migrate(function(migration)
     if not opts.silent then
       print(utils.green("✔").." Migrated up to: "..utils.yellow(migration.name))
     end
   end)
 elseif command == "rollback" then
+  print("Rolling back "..utils.yellow(dao.type))
   dao:rollback(function(migration)
     if not opts.silent then
       print(utils.green("✔").." Rollbacked to: "..utils.yellow(migration.name))
     end
   end)
 elseif command == "reset" then
+  print("Resetting "..utils.yellow(dao.type))
   dao:reset(function(migration)
     if not opts.silent then
       print(utils.green("✔").." Rollbacked: "..utils.yellow(migration.name))

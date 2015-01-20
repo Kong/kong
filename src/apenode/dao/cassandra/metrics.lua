@@ -1,5 +1,4 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
-local Client = require "apenode.dao.cassandra.client"
 local MetricModel = require "apenode.models.metric"
 
 local Metrics = BaseDao:extend()
