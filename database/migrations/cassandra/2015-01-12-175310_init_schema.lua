@@ -4,21 +4,21 @@ local Migration = {
   up = [[
 
     -- Create the Keyspace
-    CREATE KEYSPACE "apenode" WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
+    CREATE KEYSPACE IF NOT EXISTS "apenode" WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
 
     USE apenode;
 
-    CREATE TABLE accounts(
+    CREATE TABLE IF NOT EXISTS accounts(
       id uuid,
       provider_id text,
       created_at timestamp,
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX ON accounts(provider_id);
-    CREATE INDEX ON accounts(created_at);
+    CREATE INDEX IF NOT EXISTS ON accounts(provider_id);
+    CREATE INDEX IF NOT EXISTS ON accounts(created_at);
 
-    CREATE TABLE applications(
+    CREATE TABLE IF NOT EXISTS applications(
       id uuid,
       account_id uuid,
       public_key text, -- This is the public
@@ -27,12 +27,12 @@ local Migration = {
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX ON applications(created_at);
-    CREATE INDEX ON applications(public_key);
-    CREATE INDEX ON applications(secret_key);
-    CREATE INDEX ON applications(account_id);
+    CREATE INDEX IF NOT EXISTS ON applications(created_at);
+    CREATE INDEX IF NOT EXISTS ON applications(public_key);
+    CREATE INDEX IF NOT EXISTS ON applications(secret_key);
+    CREATE INDEX IF NOT EXISTS ON applications(account_id);
 
-    CREATE TABLE apis(
+    CREATE TABLE IF NOT EXISTS apis(
       id uuid,
       name text,
       public_dns text,
@@ -41,12 +41,12 @@ local Migration = {
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX ON apis(created_at);
-    CREATE INDEX ON apis(name);
-    CREATE INDEX ON apis(public_dns);
-    CREATE INDEX ON apis(target_url);
+    CREATE INDEX IF NOT EXISTS ON apis(created_at);
+    CREATE INDEX IF NOT EXISTS ON apis(name);
+    CREATE INDEX IF NOT EXISTS ON apis(public_dns);
+    CREATE INDEX IF NOT EXISTS ON apis(target_url);
 
-    CREATE TABLE plugins(
+    CREATE TABLE IF NOT EXISTS plugins(
       id uuid,
       api_id uuid,
       application_id uuid,
@@ -56,12 +56,12 @@ local Migration = {
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX ON plugins(created_at);
-    CREATE INDEX ON plugins(api_id);
-    CREATE INDEX ON plugins(application_id);
-    CREATE INDEX ON plugins(name);
+    CREATE INDEX IF NOT EXISTS ON plugins(created_at);
+    CREATE INDEX IF NOT EXISTS ON plugins(api_id);
+    CREATE INDEX IF NOT EXISTS ON plugins(application_id);
+    CREATE INDEX IF NOT EXISTS ON plugins(name);
 
-    CREATE TABLE metrics(
+    CREATE TABLE IF NOT EXISTS metrics(
       api_id uuid,
       application_id uuid,
       name text,
