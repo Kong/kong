@@ -14,11 +14,11 @@ end
 
 local COLLECTION = "applications"
 local SCHEMA = {
-  id = { type = "string", read_only = true },
-  account_id = { type = "string", required = true, func = check_account_id },
+  id = { type = "uuid", read_only = true },
+  account_id = { type = "uuid", required = true, func = check_account_id },
   public_key = { type = "string", required = false },
   secret_key = { type = "string", required = true, unique = true },
-  created_at = { type = "number", read_only = false, default = utils.get_utc }
+  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
 }
 
 local Application = BaseModel:extend()

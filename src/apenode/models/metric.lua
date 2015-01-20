@@ -5,11 +5,11 @@ local BaseModel = require "apenode.models.base_model"
 
 local COLLECTION = "metrics"
 local SCHEMA = {
-  api_id = { type = "string", required = true },
-  application_id = { type = "string", required = false },
+  api_id = { type = "uuid", required = true },
+  application_id = { type = "uuid", required = false },
   name = { type = "string", required = true },
-  timestamp = { type = "number", required = true },
-  value = { type = "number", required = true }
+  value = { type = "number", required = true },
+  timestamp = { type = "timestamp", required = true }
 }
 
 local Metric = BaseModel:extend()

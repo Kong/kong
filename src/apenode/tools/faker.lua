@@ -1,8 +1,18 @@
+local Object = require "classic"
+
 math.randomseed(os.time())
 
-local _M = {}
+local function random_from_array(arr)
+  return arr[math.random(#arr)]
+end
 
-function _M.fake_entity(type, invalid)
+local Faker = Object:extend()
+
+function Faker:new(dao)
+  self.dao = dao
+end
+
+function Faker.fake_entity(type, invalid)
   local r = math.random(1, 1000000000)
 
   if type == "api" then
@@ -47,7 +57,10 @@ function _M.fake_entity(type, invalid)
   end
 end
 
-function _M.seed(factory, random, amount)
+function Faker:seed(random, amount)
+  -- amount is optional
+  if not amount then amount = 1000 end
+
   local entities_to_insert = {
     api = {
       {
@@ -88,16 +101,13 @@ function _M.seed(factory, random, amount)
     },
     application = {
       {
-        account_id = 1,
         secret_key = "apikey123"
       },
       {
-        account_id = 1,
         public_key = "user123",
         secret_key = "apikey123"
       },
       {
-        account_id = 1,
         secret_key = "apikey124"
       },
     },
@@ -178,34 +188,56 @@ function _M.seed(factory, random, amount)
   }
 
   if random then
-    if not amount then amount = 1000 end
     for k,v in pairs(entities_to_insert) do
       number_to_insert = amount - #v
       for i = 1, number_to_insert do
-        table.insert(v, _M.fake_entity(k))
+        printl(v, i)
+        table.insert(v, Faker.fake_entity(k))
       end
     end
   end
 
+  -- Reference to entities used in compsite keys
+  local inserted_apis, inserted_accounts, inserted_applications = {}, {}, {}
+
   for _,api in ipairs(entities_to_insert.api) do
-    factory.apis:insert_or_update(api)
+    local res, err = self.dao.apis:insert_or_update(api)
+    if err then error(err) end
+
+    table.insert(inserted_apis, res)
   end
 
   for _,account in ipairs(entities_to_insert.account) do
-    factory.accounts:insert_or_update(account)
+    local res, err = self.dao.accounts:insert_or_update(account)
+    if err then error(err) end
+
+    table.insert(inserted_accounts, res)
   end
 
   for _,application in ipairs(entities_to_insert.application) do
-    factory.applications:insert_or_update(application)
+    application.account_id = random_from_array(inserted_accounts).id
+
+    local res, err = self.dao.applications:insert_or_update(application)
+    if err then error(err) end
+
+    table.insert(inserted_applications, res)
   end
 
   for _,plugin in ipairs(entities_to_insert.plugin) do
-    factory.plugins:insert_or_update(plugin)
+    plugin.api_id = random_from_array(inserted_apis).id
+    plugin.application_id = random_from_array(inserted_applications).id
+
+    local res, err = self.dao.plugins:insert_or_update(plugin)
+    if err then error(err) end
   end
 
   for _,metric in ipairs(entities_to_insert.metric) do
-    factory.metrics:increment(metric.api_id, metric.application_id, metric.name, metric.timestamp, metric.value)
+    metric.api_id = random_from_array(inserted_apis).id
+    metric.application_id = random_from_array(inserted_applications).id
+
+    local res, err = self.dao.metrics:increment(metric.api_id, metric.application_id, metric.name, metric.timestamp, metric.value)
+    if err then error(err) end
   end
 end
 
-return _M
+return Faker

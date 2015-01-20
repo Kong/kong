@@ -32,12 +32,12 @@ end
 
 local COLLECTION = "plugins"
 local SCHEMA = {
-  id = { type = "string", read_only = true },
-  api_id = { type = "string", required = true, func = check_api_id },
-  application_id = { type = "string", required = false, func = check_application_id },
+  id = { type = "uuid", read_only = true },
+  api_id = { type = "uuid", required = true, func = check_api_id },
+  application_id = { type = "uuid", required = false, func = check_application_id },
   name = { type = "string", required = true },
   value = { type = "table", required = true, schema_from_func = get_schema },
-  created_at = { type = "number", read_only = false, default = utils.get_utc }
+  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
 }
 
 local Plugin = BaseModel:extend()

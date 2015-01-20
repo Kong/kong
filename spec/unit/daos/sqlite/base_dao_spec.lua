@@ -125,7 +125,7 @@ describe("BaseDao", function()
 
       describe("#insert()", function()
         it("should insert an entity", function()
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
           local saved_entity, err = dao:insert(random_entity)
           assert.falsy(err)
           assert.truthy(saved_entity)
@@ -137,7 +137,7 @@ describe("BaseDao", function()
           assert.are.same(random_entity, saved_entity)
         end)
         it("should return the created entity", function()
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
           local saved_entity = dao:insert(random_entity)
           random_entity.id = saved_entity.id
           random_entity.created_at = saved_entity.created_at
@@ -155,7 +155,7 @@ describe("BaseDao", function()
       describe("#update()", function()
         it("should update an entity if already existing", function()
           local existing_entity = dao:find_one { id = 1 }
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
 
           -- Replace all fields in the entity
           for k,v in pairs(random_entity) do
@@ -190,7 +190,7 @@ describe("BaseDao", function()
 
       describe("#insert_or_update()", function()
         it("should save an entity if not present", function()
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
           local saved_entity, err = dao:insert_or_update(random_entity)
           assert.falsy(err)
           assert.truthy(saved_entity)
@@ -202,7 +202,7 @@ describe("BaseDao", function()
           assert.are.same(random_entity, saved_entity)
         end)
         it("should return the created entity", function()
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
           local saved_entity = dao:insert_or_update(random_entity)
           random_entity.id = saved_entity.id
           random_entity.created_at = saved_entity.created_at
@@ -212,7 +212,7 @@ describe("BaseDao", function()
         end)
         it("should update an entity if already existing", function()
           local existing_entity = dao:find_one { id = 1 }
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
 
           -- Replace all fields in the entity
           for k,v in pairs(random_entity) do
@@ -247,7 +247,7 @@ describe("BaseDao", function()
           assert.falsy(result)
         end)
         it("should delete an object by composite key", function()
-          local random_entity = dao_factory.fake_entity(dao_name)
+          local random_entity = dao_factory.faker.fake_entity(dao_name)
           -- Save entity
           local saved_entity, err = dao:insert(random_entity)
           assert.falsy(err)
