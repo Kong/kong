@@ -64,10 +64,6 @@ function BaseDao:update(entity)
     id = entity.id
   }
 
-  if entity.id ~= nil then
-    entity.id = nil
-  end
-
   local query = self:build_udpate_query(entity, where_keys)
   local stmt = self:get_statement(query)
   stmt:bind_names(entity)
