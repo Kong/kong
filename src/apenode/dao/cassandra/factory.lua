@@ -23,12 +23,13 @@ function CassandraFactory:new(properties)
   self._db = cassandra.new()
   self._db:set_timeout(properties.timeout)
 
-  self.apis = Apis(self._client)
-  self.metrics = Metrics(self._client)
-  self.plugins = Plugins(self._client)
-  self.accounts = Accounts(self._client)
-  self.applications = Applications(self._client)
-  self:prepare()
+  self.apis = Apis(self._db, properties)
+  self.metrics = Metrics(self._db, properties)
+  self.plugins = Plugins(self._db, properties)
+  self.accounts = Accounts(self._db, properties)
+  self.applications = Applications(self._db, properties)
+
+  -- self:prepare()
 end
 
 --

@@ -12,10 +12,11 @@ uuid.seed()
 
 local BaseDao = Object:extend()
 
-function BaseDao:new(database, collection, schema)
+function BaseDao:new(database, collection, schema, properties)
   self._db = database
   self._schema = schema
   self._collection = collection
+  self._properties = properties
 
   -- Cache the prepared statements if already prepared
   self._stmt_cache = {}
@@ -42,8 +43,8 @@ function BaseDao:insert(entity)
     entity.id = uuid()
   end
 
-  local query = self:build_insert_query(entity)
-  local result, err = self._client:query(cmd, values_to_bind)
+  local query, values_to_bind = self:build_insert_query(entity)
+  local result, err = self:_exec_stmt(query, values_to_bind)
 
   if err then
     return nil, err
@@ -77,7 +78,7 @@ function BaseDao:update(entity)
   -- Last '?' placeholder is the WHERE id = ?
   table.insert(values_to_bind, cassandra.uuid(entity.id))
 
-  return self._client:query(cmd, values_to_bind)
+  return self:_exec_stmt(query, values_to_bind)
 end
 
 -- Insert or update an entity
@@ -129,13 +130,13 @@ function BaseDao:find(where_keys, page, size)
   local count_query = self:build_count_query(where_keys)
 
   -- Execute SELECT query
-  local results, err = self._client:query(query, values_to_bind)
+  local results, err = self:_exec_stmt(query, values_to_bind)
   if err then
     return nil, nil, err
   end
 
   -- Execute COUNT query
-  local count, err = self._client:query(count_query, values_to_bind)
+  local count, err = self:_exec_stmt(count_query, values_to_bind)
   if count == nil then
     return nil, nil, err
   end
@@ -163,7 +164,7 @@ function BaseDao:delete_by_id(id)
   local query = self:build_delete_query({ id = id })
 
   -- Execute the command
-  local results, err = self._client:query(query, { cassandra.uuid(id) })
+  local results, err = self:_exec_stmt(query, { cassandra.uuid(id) })
   if not results then
     return nil, err
   end
@@ -206,7 +207,8 @@ end
 -- @return string An INSERT INTO query with palceholders to be binded
 function BaseDao:build_insert_query(entity)
   local columns, placeholders = BaseDao._build_query_args(entity)
-  return [[ INSERT INTO ]]..self._collection..[[ ( ]]..table.concat(columns, ",")..[[ ) VALUES ( ]]..placeholders
+  return [[ INSERT INTO ]]..self._collection..[[ ( ]]..table.concat(columns, ",")..[[ )
+              VALUES ( ]]..table.concat(placeholders, ",")..[[ ) ]], values_to_bind
 end
 
 -- Build an UPDATE query
@@ -279,8 +281,8 @@ function BaseDao._build_where_fields(t)
   if t == nil or utils.table_size(t) == 0 then return " " end
 
   local result = {}
-  for k_,v in pairs(entity) do
-    table.insert(result, v.."=?")
+  for k,v in pairs(t) do
+    table.insert(result, k.."=?")
   end
 
   return [[ WHERE ]]..table.concat(result, " AND ")
@@ -304,19 +306,19 @@ end
 -- @return table Error during connection or execution
 function BaseDao:_exec_stmt(query, args)
   -- Connects to Cassandra
-  local connected, err = session:connect(self._properties.host, self._properties.port)
+  local connected, err = self._db:connect(self._properties.host, self._properties.port)
   if not connected then
     return nil, err
   end
 
   -- Set apenode keyspace
-  local ok, err = session:set_keyspace(self._properties.keyspace)
+  local ok, err = self._db:set_keyspace(self._properties.keyspace)
   if not ok then
     return nil, err
   end
 
   -- Retrieve statement if exists in cache or creates it
-  local statement, err = session:prepare(query)
+  local statement, err = self._db:prepare(query)
   if not statement then
     error("Failed to prepare statement: "..err)
   end
@@ -328,7 +330,7 @@ function BaseDao:_exec_stmt(query, args)
   end
 
   -- Puts back the connection in the nginx pool
-  local ok, err = session:set_keepalive(self._properties.keepalive)
+  local ok, err = self._db:set_keepalive(self._properties.keepalive)
   if not ok and err ~= "luasocket does not support reusable sockets" then
     return nil, err
   end

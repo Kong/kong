@@ -3,8 +3,8 @@ local MetricModel = require "apenode.models.metric"
 
 local Metrics = BaseDao:extend()
 
-function Metrics:new(client)
-  Metrics.super.new(self, client, MetricModel._COLLECTION, MetricModel._SCHEMA)
+function Metrics:new(database, properties)
+  Metrics.super.new(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA, properties)
 end
 
 -- @override
@@ -13,17 +13,19 @@ function Metrics:insert_or_update()
 end
 
 function Metrics:increment(api_id, application_id, name, timestamp, step)
-
-  local cmd_where_fields, cmd_where_values = Metrics.super._get_where_args({
+  local where_keys = {
     api_id = api_id,
     application_id = application_id,
     name = name,
     timestamp = timestamp
-  })
+  }
 
-  local cmd = "UPDATE "..MetricModel._COLLECTION.." SET value = value + "..tostring(step).." WHERE "..cmd_where_fields
+  local _, _, where_values_to_bind = BaseDao._build_query_args(where_keys)
+  local where = Metrics.super._build_where_field(where_keys)
 
-  local res, err = Metrics.super.query(self, cmd, cmd_where_values)
+  local query = [[ UPDATE ]]..MetricModel._COLLECTION..[[ SET value = value + ]]..tostring(step)..where
+
+  local res, err = Metrics.super.query(self, query, where_values_to_bind)
   if err then
     return false, err
   end
