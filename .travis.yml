@@ -19,7 +19,7 @@ before_install:
   - ./configure
   - make
   - sudo make install
-  - cd ..
+  - popd
   - export PATH=$PATH:/usr/local/openresty/nginx/sbin/
   - wget http://luarocks.org/releases/luarocks-2.1.2.tar.gz
   - tar xzf luarocks-2.1.2.tar.gz
@@ -27,7 +27,7 @@ before_install:
   - ./configure
   - make build
   - sudo make install
-  - cd ..
+  - popd
 
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
