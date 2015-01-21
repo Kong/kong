@@ -61,11 +61,13 @@ function SQLiteFactory:seed(random, number)
 end
 
 function SQLiteFactory:drop()
-  self:execute("DELETE FROM apis")
-  self:execute("DELETE FROM metrics")
-  self:execute("DELETE FROM plugins")
-  self:execute("DELETE FROM accounts")
-  self:execute("DELETE FROM applications")
+  self:execute [[
+    DELETE FROM apis;
+    DELETE FROM metrics;
+    DELETE FROM plugins;
+    DELETE FROM accounts;
+    DELETE FROM applications;
+  ]]
 end
 
 --

@@ -136,6 +136,10 @@ function Faker:insert_from_table(entities_to_insert)
         account = random_from_table(entities_to_insert.account)
       end
 
+      entity.__api = nil
+      entity.__account = nil
+      entity.__application = nil
+
       if type == "applications" then
         entity.account_id = account.id
         res, err = self.dao.applications:insert_or_update(entity)

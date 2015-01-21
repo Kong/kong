@@ -56,7 +56,11 @@ end
 function CassandraFactory:drop()
   self:execute [[
     USE apenode;
+    TRUNCATE apis;
+    TRUNCATE metrics;
+    TRUNCATE plugins;
     TRUNCATE accounts;
+    TRUNCATE applications;
   ]]
 end
 
