@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local rex = require("rex_pcre")
+local rex = require "rex_pcre"
 local Object = require "classic"
 
 local BaseModel = Object:extend()
@@ -42,12 +42,12 @@ function BaseModel:_validate(schema, t, is_update)
         t[k] = v.default
       end
     elseif v.required and (t[k] == nil or t[k] == "") then -- Check required field is set
-      errors = add_error(errors, k, k .. " is required")
+      errors = add_error(errors, k, k.." is required")
     elseif t[k] and not is_update and v.read_only then -- Check field is not read only
-      errors = add_error(errors, k, k .. " is read only")
+      errors = add_error(errors, k, k.." is read only")
     elseif t[k] and type(t[k]) ~= v.type then -- Check type of the field
       if not (v.type == "id" or v.type == "timestamp") then
-        errors = add_error(errors, k, k .. " should be a " .. v.type)
+        errors = add_error(errors, k, k.." should be a "..v.type)
       end
     elseif v.func then -- Check field against a function
       local success, err = v.func(t[k], t, self._dao_factory)
@@ -59,7 +59,7 @@ function BaseModel:_validate(schema, t, is_update)
     -- Check field against a regex
     if t[k] and v.regex then
       if not rex.match(t[k], v.regex) then
-        errors = add_error(errors, k, k .. " has an invalid value")
+        errors = add_error(errors, k, k.." has an invalid value")
       end
     end
 
@@ -67,7 +67,7 @@ function BaseModel:_validate(schema, t, is_update)
     if t[k] and v.unique and not is_update then
       local data, err = self._find_one({[k] = t[k]}, self._dao)
       if data ~= nil then
-        errors = add_error(errors, k, k .. " with value " .. "\"" .. t[k] .. "\"" .. " already exists")
+        errors = add_error(errors, k, k.." with value ".."\""..t[k].."\"".." already exists")
       end
     end
 
@@ -91,7 +91,7 @@ function BaseModel:_validate(schema, t, is_update)
   -- Check for unexpected fields in the entity
   for k,v in pairs(t) do
     if not schema[k] then
-      errors = add_error(errors, k, k .. " is an unknown field")
+      errors = add_error(errors, k, k.." is an unknown field")
     end
   end
 

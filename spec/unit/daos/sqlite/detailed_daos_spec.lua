@@ -61,10 +61,10 @@ describe("DetailedDaos", function()
         local result, err = dao_factory.metrics:find_one {
           api_id = 1,
           application_id = 1,
-          ip = nil,
           name = "new_metric_3",
           timestamp = 123,
-          period = "second" }
+          period = "second"
+        }
 
         assert.falsy(err)
         assert.are.same(1, result.value)
@@ -77,8 +77,7 @@ describe("DetailedDaos", function()
 
         local result, err = dao_factory.metrics:find_one {
           api_id = 1,
-          application_id = nil,
-          ip = "127.0.0.1",
+          origin_ip = "127.0.0.1",
           name = "new_metric_4",
           timestamp = 123,
           period = "second"
@@ -87,18 +86,17 @@ describe("DetailedDaos", function()
         assert.falsy(err)
         assert.are.same(1, result.value)
       end)
-      it("should find all", function()
-        local result, count, err = dao_factory.metrics:find {
+      it("should find one metric when calling :find() with correct arguments", function()
+        local results, count, err = dao_factory.metrics:find {
           api_id = 1,
-          application_id = nil,
-          ip = "127.0.0.1",
+          origin_ip = "127.0.0.1",
           name = "new_metric_4",
           timestamp = 123,
           period = "second"
         }
 
         assert.falsy(err)
-        assert.are.same(1, table.remove(result, 1).value)
+        assert.are.same(1, results[1].value)
       end)
     end)
 
@@ -110,10 +108,10 @@ describe("DetailedDaos", function()
         local result, err = dao_factory.metrics:find_one {
           api_id = 1,
           application_id = 1,
-          ip = nil,
           name = "new_metric_1",
           timestamp = 123
         }
+
         assert.falsy(err)
         assert.falsy(result)
       end)

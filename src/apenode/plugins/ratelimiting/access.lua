@@ -11,8 +11,8 @@ local function set_header_limit_remaining(usage)
 end
 
 function _M.execute(conf)
-  local authenticated_entity_id = nil
-  local ip_address = nil
+  local authenticated_entity_id
+  local ip_address
 
   if ngx.ctx.authenticated_entity then
     authenticated_entity_id = ngx.ctx.authenticated_entity.id
@@ -27,7 +27,7 @@ function _M.execute(conf)
 
   local current_usage = Metric.find_one({ api_id = ngx.ctx.api.id,
                                           application_id = authenticated_entity_id,
-                                          ip = ip_address,
+                                          origin_ip = ip_address,
                                           name = REQUESTS,
                                           period = period,
                                           timestamp = timestamps[period] }, dao)
