@@ -18,6 +18,7 @@ local SQLiteFactory = Object:extend()
 -- @param boolean no_prepare Don't prepare statements if true (will fail if tables are not yet migrated)
 function SQLiteFactory:new(properties, no_prepare)
   self.type = "sqlite"
+  self.faker = Faker(self)
   self.migrations = Migrations(self)
 
   if properties.memory then
@@ -56,11 +57,7 @@ end
 -- Seeding
 --
 function SQLiteFactory:seed(random, number)
-  Faker.seed(self, random, number)
-end
-
-function SQLiteFactory.fake_entity(type, invalid)
-  return Faker.fake_entity(type, invalid)
+  self.faker:seed(random, number)
 end
 
 function SQLiteFactory:drop()

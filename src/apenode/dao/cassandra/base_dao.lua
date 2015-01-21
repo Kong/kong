@@ -22,11 +22,6 @@ function BaseDao:new(database, collection, schema, properties)
   self._stmt_cache = {}
 end
 
--- Finalize the cached prepared statements
-function BaseDao:finalize()
-  -- No finalize statements for openresty-cassandra
-end
-
 -- Insert an entity
 -- @param table entity Entity to insert
 -- @return table Inserted entity with its rowid property
@@ -123,7 +118,7 @@ function BaseDao:find(where_keys, page, size)
 
   where_keys = dao_utils.serialize(self._schema, where_keys)
 
-  local _, _, values_to_bind = BaseDao._build_query_args(where_keys)
+  local _, _, values_to_bind = self:_build_query_args(where_keys)
 
   -- Build SELECT and COUNT queries
   local query = self:build_select_query(where_keys)
@@ -206,7 +201,7 @@ end
 -- @param table entity An entity with keys representing the columns of the table
 -- @return string An INSERT INTO query with palceholders to be binded
 function BaseDao:build_insert_query(entity)
-  local columns, placeholders = BaseDao._build_query_args(entity)
+  local columns, placeholders, values_to_bind = self:_build_query_args(entity)
   return [[ INSERT INTO ]]..self._collection..[[ ( ]]..table.concat(columns, ",")..[[ )
               VALUES ( ]]..table.concat(placeholders, ",")..[[ ) ]], values_to_bind
 end
@@ -216,7 +211,7 @@ end
 -- @param table where_keys Selector for the entity to update
 -- @return string An UPDATE query with palceholders to be binded
 function BaseDao:build_udpdate_query(entity, where_keys)
-  local columns, placeholders, values_to_bind = BaseDao._build_query_args(entity, true)
+  local columns, placeholders, values_to_bind = self:_build_query_args(entity, true)
   local where = BaseDao._build_where_fields(where_keys)
 
   local update_placeholders = {}
@@ -227,7 +222,7 @@ function BaseDao:build_udpdate_query(entity, where_keys)
   return [[ UPDATE ]]..self._collection..[[ SET ]]..table.concat(update_placeholders, ",")..where, values_to_bind
 end
 
--- Utility function to create query fields and values from an entity
+-- Utility function to create query placeholders, values to bind from an entity
 --
 -- Cassandra needs special values for uuids and timestamps values in a command (cassandra.uuid() or cassandra.timestamp())
 --
@@ -236,7 +231,7 @@ end
 -- @return string A list of column names
 -- @return string A list of values placeholders parameters
 -- @return string A list of actual values to bind to the placeholders
-function BaseDao._build_query_args(entity, update)
+function BaseDao:_build_query_args(entity, update)
   -- Columns, "?,?,?"
   local columns, placeholders, values_to_bind = {}, {}, {}
 
@@ -246,20 +241,20 @@ function BaseDao._build_query_args(entity, update)
   end
 
   for k, v in pairs(entity) do
+    local schema_field = self._schema[k]
+
     table.insert(columns, k)
     table.insert(placeholders, "?")
 
-    -- Values to bind
-    if type(v) == "table" then
-      table.insert(values_to_bind, cassandra.list(v))
-    elseif k == "created_at" or k == "timestamp" then
+    -- Build values to bind with special cassandra values on uuids and timestamps
+    if schema_field.type == "uuid" then
+      table.insert(values_to_bind, cassandra.uuid(v))
+    elseif schema_field.type == "timestamp" then
       local created_at = v
       if string.len(tostring(created_at)) == 10 then
         created_at = created_at * 1000 -- Convert to milliseconds
       end
       table.insert(values_to_bind, cassandra.timestamp(created_at))
-    elseif stringy.endswith(k, "id") then
-      table.insert(values_to_bind, cassandra.uuid(v))
     else
       table.insert(values_to_bind, v)
     end
@@ -301,36 +296,43 @@ end
 -- Will throw an error if the statement cannot be prepared.
 --
 -- @param string query A CQL query
--- @param table args Values to bind to the query
+-- @param table values Values to bind to the query
 -- @return table Result(s) of the query
 -- @return table Error during connection or execution
-function BaseDao:_exec_stmt(query, args)
+function BaseDao:_exec_stmt(query, values)
   -- Connects to Cassandra
-  local connected, err = self._db:connect(self._properties.host, self._properties.port)
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+
+  --local connected, err = self._db:connect(self._properties.host, self._properties.port)
+  local connected, err = session:connect(self._properties.host, self._properties.port)
   if not connected then
     return nil, err
   end
 
   -- Set apenode keyspace
-  local ok, err = self._db:set_keyspace(self._properties.keyspace)
+  --local ok, err = self._db:set_keyspace(self._properties.keyspace)
+  local ok, err = session:set_keyspace(self._properties.keyspace)
   if not ok then
     return nil, err
   end
 
   -- Retrieve statement if exists in cache or creates it
-  local statement, err = self._db:prepare(query)
+  --local statement, err = self._db:prepare(query)
+  local statement, err = session:prepare(query)
   if not statement then
     error("Failed to prepare statement: "..err)
   end
 
   -- Execute statement
-  local result, err = self._db.execute(statement)
+  --local result, err = self._db:execute(statement, values)
+  local result, err = session:execute(statement, values)
   if err then
     return nil, err
   end
 
   -- Puts back the connection in the nginx pool
-  local ok, err = self._db:set_keepalive(self._properties.keepalive)
+  local ok, err = session:set_keepalive(self._properties.keepalive)
   if not ok and err ~= "luasocket does not support reusable sockets" then
     return nil, err
   end

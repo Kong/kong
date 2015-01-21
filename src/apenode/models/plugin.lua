@@ -32,12 +32,12 @@ end
 
 local COLLECTION = "plugins"
 local SCHEMA = {
-  id = { type = "string", read_only = true },
-  api_id = { type = "string", required = true, func = check_api_id },
-  application_id = { type = "string", required = false, func = check_application_id },
+  id = { type = "uuid", read_only = true },
+  api_id = { type = "uuid", required = true, func = check_api_id },
+  application_id = { type = "uuid", required = false, func = check_application_id },
   name = { type = "string", required = true },
   value = { type = "table", required = true, schema_from_func = get_schema },
-  created_at = { type = "number", read_only = false, default = utils.get_utc }
+  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
 }
 
 local Plugin = BaseModel:extend()
@@ -52,7 +52,7 @@ function Plugin:save()
   local res, err = self:_validate(self._schema, self._t, false)
   if not err then
     if self.find_one({api_id = self.api_id, application_id = self.application_id, name = self.name }, self._dao_factory) then
-      return nil, "The plugin already exist, update the current one"
+      return nil, "The plugin already exists, updating the current one."
     else
       return Plugin.super.save(self)
     end

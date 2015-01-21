@@ -5,11 +5,11 @@ local BaseModel = require "apenode.models.base_model"
 
 local COLLECTION = "apis"
 local SCHEMA = {
-  id = { type = "string", read_only = true },
+  id = { type = "uuid", read_only = true },
   name = { type = "string", required = true, unique = true },
   public_dns = { type = "string", required = true, unique = true, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
-  created_at = { type = "number", read_only = false, default = utils.get_utc }
+  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
 }
 
 local Api = BaseModel:extend()

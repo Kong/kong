@@ -17,6 +17,7 @@ local CassandraFactory = Object:extend()
 -- @param properties The parsed apenode configuration
 function CassandraFactory:new(properties)
   self.type = "cassandra"
+  self.faker = Faker(self)
   self.migrations = Migrations(self)
   self._properties = properties
 
@@ -49,15 +50,18 @@ end
 -- Seeding
 --
 function CassandraFactory:seed(random, number)
-  Faker.seed(self, random, number)
-end
-
-function CassandraFactory.fake_entity(type, invalid)
-  return Faker.fake_entity(type, invalid)
+  self.faker:seed(random, number)
 end
 
 function CassandraFactory:drop()
-  -- TODO
+  self:execute [[
+    USE apenode;
+    TRUNCATE apis;
+    TRUNCATE metrics;
+    TRUNCATE plugins;
+    TRUNCATE accounts;
+    TRUNCATE applications;
+  ]]
 end
 
 --
@@ -87,15 +91,9 @@ function CassandraFactory:execute(stmt)
 end
 
 function CassandraFactory:close()
-  self.apis:finalize()
-  self.metrics:finalize()
-  self.plugins:finalize()
-  self.accounts:finalize()
-  self.applications:finalize()
-
   local ok, err = self._db:close()
   if err ~= nil then
-    error("Cannot close Cassandra session:".. err)
+    error("Cannot close Cassandra session: "..err)
   end
 end
 

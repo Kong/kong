@@ -22,11 +22,11 @@ end
 
 local COLLECTION = "metrics"
 local SCHEMA = {
-  api_id = { type = "string", required = true },
-  application_id = { type = "string", required = false },
+  api_id = { type = "uuid", required = true },
+  application_id = { type = "uuid", required = false },
   name = { type = "string", required = true },
   period = { type = "string", required = true, func = check_period },
-  timestamp = { type = "number", required = true },
+  timestamp = { type = "timestamp", required = true },
   value = { type = "number", required = true }
 }
 

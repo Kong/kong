@@ -21,12 +21,12 @@ function Metrics:increment(api_id, application_id, name, timestamp, period, step
     timestamp = timestamp
   }
 
-  local _, _, where_values_to_bind = BaseDao._build_query_args(where_keys)
-  local where = Metrics.super._build_where_field(where_keys)
+  local _, _, where_values_to_bind = Metrics.super._build_query_args(self, where_keys)
+  local where = Metrics.super._build_where_fields(where_keys)
 
   local query = [[ UPDATE ]]..MetricModel._COLLECTION..[[ SET value = value + ]]..tostring(step)..where
 
-  local res, err = Metrics.super.query(self, query, where_values_to_bind)
+  local res, err = self:_exec_stmt(query, where_values_to_bind)
   if err then
     return false, err
   end

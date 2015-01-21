@@ -1,7 +1,7 @@
 local utils = require "apenode.tools.utils"
 local configuration = require "spec.unit.daos.cassandra.configuration"
 
---local configuration, dao_factory = utils.load_configuration_and_dao(configuration)
+local configuration, dao_factory = utils.load_configuration_and_dao(configuration)
 
 describe("BaseDao", function()
 
