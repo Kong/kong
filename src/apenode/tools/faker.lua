@@ -76,9 +76,11 @@ function Faker:seed(random, amount)
     },
     plugin = {
       { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 1 },
+      { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 6 },
       { name = "authentication", value = { authentication_type = "header", authentication_key_names = { "apikey" }}, __api = 2 },
       { name = "authentication", value = { authentication_type = "basic" }, __api = 3 },
       { name = "ratelimiting",   value = { period = "minute", limit = 2 },  __api = 5 },
+      { name = "ratelimiting",   value = { period = "minute", limit = 2 },  __api = 6 },
       { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 3 }
     }
   }
