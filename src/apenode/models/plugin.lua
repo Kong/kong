@@ -32,9 +32,9 @@ end
 
 local COLLECTION = "plugins"
 local SCHEMA = {
-  id = { type = "uuid", read_only = true },
-  api_id = { type = "uuid", required = true, func = check_api_id },
-  application_id = { type = "uuid", required = false, func = check_application_id },
+  id = { type = "id", read_only = true },
+  api_id = { type = "id", required = true, func = check_api_id },
+  application_id = { type = "id", required = false, func = check_application_id },
   name = { type = "string", required = true },
   value = { type = "table", required = true, schema_from_func = get_schema },
   created_at = { type = "timestamp", read_only = false, default = utils.get_utc }

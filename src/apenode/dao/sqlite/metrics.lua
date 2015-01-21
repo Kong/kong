@@ -11,10 +11,11 @@ function Metrics:new(database)
   self.stmts = {
     increment = [[
       INSERT OR REPLACE INTO metrics
-        VALUES (:api_id, :application_id, :name, :timestamp, :period,
+        VALUES (:api_id, :application_id, :ip, :name, :timestamp, :period,
           COALESCE(
           (SELECT value FROM metrics WHERE api_id = :api_id
                                        AND application_id = :application_id
+                                       AND ip = :ip
                                        AND name = :name
                                        AND timestamp = :timestamp
                                        AND period = :period),
@@ -46,6 +47,7 @@ function Metrics:find_one(args)
   return Metrics.super.find_one(self, {
     api_id = args.api_id,
     application_id = args.application_id,
+    ip = args.ip,
     name = args.name,
     period = args.period,
     timestamp = args.timestamp
@@ -53,10 +55,11 @@ function Metrics:find_one(args)
 end
 
 -- @override
-function Metrics:delete(api_id, application_id, name, timestamp)
+function Metrics:delete(api_id, application_id, ip, name, timestamp)
   self.prepared_stmts.delete:bind_names {
     api_id = api_id,
     application_id = application_id,
+    ip = ip,
     name = name,
     timestamp = timestamp
   }
@@ -64,12 +67,22 @@ function Metrics:delete(api_id, application_id, name, timestamp)
   return self:exec_stmt_count_rows(self.prepared_stmts.delete)
 end
 
-function Metrics:increment(api_id, application_id, name, timestamp, period, step)
+function Metrics:increment(api_id, application_id, ip, name, timestamp, period, step)
   if not step then step = 1 end
+
+  local stmt_application_id = ""
+  local stmt_ip = ""
+
+  if ip == nil then
+    stmt_application_id = application_id
+  else
+    stmt_ip = ip
+  end
 
   self.prepared_stmts.increment:bind_names {
     api_id = api_id,
-    application_id = application_id,
+    application_id = stmt_application_id,
+    ip = stmt_ip,
     name = name,
     timestamp = timestamp,
     period = period,
@@ -83,8 +96,10 @@ function Metrics:increment(api_id, application_id, name, timestamp, period, step
 
   return self:find_one {
     api_id = api_id,
-    application_id = application_id,
+    application_id = stmt_application_id,
+    ip = stmt_ip,
     name = name,
+    period = period,
     timestamp = timestamp
   }
 end

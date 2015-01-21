@@ -29,14 +29,15 @@ local Migration = {
     CREATE TABLE IF NOT EXISTS metrics(
       api_id INTEGER NOT NULL,
       application_id INTEGER NOT NULL,
-      name TEXT,
-      timestamp INTEGER,
-      period TEXT,
-      value INTEGER,
+      ip TEXT NOT NULL,
+      name TEXT NOT NULL,
+      timestamp INTEGER NOT NULL,
+      period TEXT NOT NULL,
+      value INTEGER NOT NULL,
 
       FOREIGN KEY(application_id) REFERENCES applications(id),
       FOREIGN KEY(api_id) REFERENCES apis(id),
-      PRIMARY KEY(api_id, application_id, name)
+      PRIMARY KEY(api_id, application_id, ip, period, name)
     );
 
     CREATE TABLE IF NOT EXISTS plugins(

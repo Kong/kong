@@ -64,11 +64,12 @@ local Migration = {
     CREATE TABLE IF NOT EXISTS metrics2(
       api_id uuid,
       application_id uuid,
+      ip text,
       name text,
       timestamp timestamp,
       period text,
       value counter,
-      PRIMARY KEY ((api_id, application_id, name, period, timestamp))
+      PRIMARY KEY ((api_id, application_id, ip, name, period, timestamp))
     );
 
   ]],

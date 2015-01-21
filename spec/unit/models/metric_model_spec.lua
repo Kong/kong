@@ -17,18 +17,39 @@ describe("Metric Model", function()
   end)
 
   describe("#init()", function()
-    it("should increment a model and retrieve it", function()
+    it("should increment a model with an application_id and retrieve it", function()
 
       local timestamps = utils.get_timestamps(os.time())
 
-      local res, err = Metric.increment(1, 1, "requests", 2, dao_factory)
+      local res, err = Metric.increment(1, 1, nil, "requests", 2, dao_factory)
       assert.falsy(err)
       assert.truthy(res)
 
       local res, err = Metric.find_one({
                   api_id = 1,
                   application_id = 1,
+                  ip = nil,
                   name = "requests",
+                  period = "second",
+                  timestamp=timestamps.second}, dao_factory)
+
+      assert.falsy(err)
+      assert.truthy(res)
+      assert.are.same(2, res.value)
+    end)
+    it("should increment a model with an IP address and retrieve it", function()
+
+      local timestamps = utils.get_timestamps(os.time())
+
+      local res, err = Metric.increment(1, nil, "127.0.0.1", "requests2", 2, dao_factory)
+      assert.falsy(err)
+      assert.truthy(res)
+
+      local res, err = Metric.find_one({
+                  api_id = 1,
+                  application_id = nil,
+                  ip = "127.0.0.1",
+                  name = "requests2",
                   period = "second",
                   timestamp=timestamps.second}, dao_factory)
 

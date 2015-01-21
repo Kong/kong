@@ -73,8 +73,8 @@ function Faker:seed(random, amount)
       { secret_key = "apikey124", __account = 1 },
     },
     metric = {
-      { name = "requests", value = 0, timestamp = 123, __api = 1, __application = 1 },
-      { name = "requests", value = 0, timestamp = 123456, __api = 1, __application = 1 }
+      { name = "requests", value = 0, timestamp = 123, period = "second", __api = 1, __application = 1, ip = nil },
+      { name = "requests", value = 0, timestamp = 123456, period = "second", __api = 1, __application = 1, ip = nil }
     },
     plugin = {
       { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 1 },
@@ -152,7 +152,7 @@ function Faker:insert_from_table(entities_to_insert)
         entity.application_id = application.id
         res, err = self.dao.plugins:insert_or_update(entity)
       elseif type == "metrics" then
-        res, err = self.dao.metrics:increment(api.id, application.id, entity.name, entity.timestamp, entity.value)
+        res, err = self.dao.metrics:increment(api.id, application.id, entity.ip, entity.name, entity.timestamp, entity.period, entity.value)
       end
 
       if err then

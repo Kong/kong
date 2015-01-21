@@ -46,7 +46,9 @@ function BaseModel:_validate(schema, t, is_update)
     elseif t[k] and not is_update and v.read_only then -- Check field is not read only
       errors = add_error(errors, k, k .. " is read only")
     elseif t[k] and type(t[k]) ~= v.type then -- Check type of the field
-      errors = add_error(errors, k, k .. " should be a " .. v.type)
+      if not (v.type == "id" or v.type == "timestamp") then
+        errors = add_error(errors, k, k .. " should be a " .. v.type)
+      end
     elseif v.func then -- Check field against a function
       local success, err = v.func(t[k], t, self._dao_factory)
       if not success then

@@ -5,7 +5,7 @@ local BaseModel = require "apenode.models.base_model"
 
 local COLLECTION = "accounts"
 local SCHEMA = {
-  id = { type = "uuid", read_only = true },
+  id = { type = "id", read_only = true },
   provider_id = { type = "string", required = false, unique = true },
   created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
 }

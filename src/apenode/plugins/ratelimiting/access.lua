@@ -4,26 +4,31 @@ local Metric = require "apenode.models.metric"
 
 local _M = {}
 
+local REQUESTS = "requests"
+
 local function set_header_limit_remaining(usage)
   ngx.header["X-RateLimit-Remaining"] = usage
 end
 
 function _M.execute(conf)
   local authenticated_entity_id = nil
+  local ip_address = nil
+
   if ngx.ctx.authenticated_entity then
     authenticated_entity_id = ngx.ctx.authenticated_entity.id
   else
-    authenticated_entity_id = ngx.var.remote_addr -- Use the IP if there is not authenticated entity
+    ip_address = ngx.var.remote_addr
   end
 
   local period = conf.period
   local limit = conf.limit
 
-  local timestamps = utils.get_timestamps(os.time())
+  local timestamps = utils.get_timestamps(ngx.now())
 
   local current_usage = Metric.find_one({ api_id = ngx.ctx.api.id,
                                           application_id = authenticated_entity_id,
-                                          name = "requests",
+                                          ip = ip_address,
+                                          name = REQUESTS,
                                           period = period,
                                           timestamp = timestamps[period] }, dao)
 
@@ -38,7 +43,7 @@ function _M.execute(conf)
   end
 
   -- Increment metric
-  Metric.increment(ngx.ctx.api.id, authenticated_entity_id, "requests", 1, dao)
+  Metric.increment(ngx.ctx.api.id, authenticated_entity_id, ip_address, REQUESTS, 1, dao)
 end
 
 return _M

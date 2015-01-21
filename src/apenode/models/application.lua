@@ -14,8 +14,8 @@ end
 
 local COLLECTION = "applications"
 local SCHEMA = {
-  id = { type = "uuid", read_only = true },
-  account_id = { type = "uuid", required = true, func = check_account_id },
+  id = { type = "id", read_only = true },
+  account_id = { type = "id", required = true, func = check_account_id },
   public_key = { type = "string", required = false },
   secret_key = { type = "string", required = true, unique = true },
   created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
