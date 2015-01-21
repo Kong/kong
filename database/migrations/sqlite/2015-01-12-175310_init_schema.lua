@@ -31,6 +31,7 @@ local Migration = {
       application_id INTEGER NOT NULL,
       name TEXT,
       timestamp INTEGER,
+      period TEXT,
       value INTEGER,
 
       FOREIGN KEY(application_id) REFERENCES applications(id),

@@ -30,33 +30,65 @@ describe("DetailedDaos", function()
 
     describe("#increment_metric()", function()
       it("should create the metric if not already existing", function()
-        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_1", 123)
+        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_1", 123, "second")
         assert.falsy(err)
         assert.truthy(inserted)
         assert.truthy(inserted.value)
       end)
       it("should start the value to 1 and have a step of 1 by default", function()
-        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_2", 123)
+        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_2", 123, "second")
         assert.falsy(err)
         assert.are.same(1, inserted.value)
       end)
       it("should increment the metric by 1 if metric exists and no step is given", function()
-        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_1", 123)
+        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_1", 123, "second")
         assert.falsy(err)
         assert.truthy(inserted)
         assert.are.same(2, inserted.value)
       end)
       it("should increment the metric by step if metric exits and step is given", function()
-        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_1", 123, 4)
+        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_1", 123, "second", 4)
         assert.falsy(err)
         assert.truthy(inserted)
         assert.are.same(6, inserted.value)
+      end)
+      it("should increment the metric and retrieve it", function()
+        local inserted, err = dao_factory.metrics:increment(1, 1, "new_metric_3", 123, "second", 1)
+        assert.falsy(err)
+        assert.truthy(inserted)
+        assert.are.same(1, inserted.value)
+
+        local result, err = dao_factory.metrics:find_one {
+          api_id = 1,
+          application_id = 1,
+          name = "new_metric_3",
+          timestamp = 123,
+          period = "second" }
+
+        assert.falsy(err)
+        assert.are.same(1, result.value)
+      end)
+      it("should increment the metric on IP address and retrieve it", function()
+        local inserted, err = dao_factory.metrics:increment(1, "127.0.0.1", "new_metric_4", 123, "second", 1)
+        assert.falsy(err)
+        assert.truthy(inserted)
+        assert.are.same(1, inserted.value)
+
+        local result, err = dao_factory.metrics:find_one {
+          api_id = 1,
+          application_id = "127.0.0.1",
+          name = "new_metric_4",
+          timestamp = 123,
+          period = "second" }
+
+        assert.falsy(err)
+        assert.are.same(1, result.value)
       end)
     end)
 
     describe("#delete()", function()
       it("should delete an existing metric", function()
-        local count, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123)
+        local count, err = dao_factory.metrics:delete(1, 1, "new_metric_1", 123, "second")
         assert.falsy(err)
         assert.are.same(1, count)
         local result, err = dao_factory.metrics:find_one {

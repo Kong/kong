@@ -11,12 +11,13 @@ function Metrics:new(database)
   self.stmts = {
     increment = [[
       INSERT OR REPLACE INTO metrics
-        VALUES (:api_id, :application_id, :name, :timestamp,
+        VALUES (:api_id, :application_id, :name, :timestamp, :period,
           COALESCE(
           (SELECT value FROM metrics WHERE api_id = :api_id
                                        AND application_id = :application_id
                                        AND name = :name
-                                       AND timestamp = :timestamp),
+                                       AND timestamp = :timestamp
+                                       AND period = :period),
           0) + :step
       );
     ]],
@@ -46,6 +47,7 @@ function Metrics:find_one(args)
     api_id = args.api_id,
     application_id = args.application_id,
     name = args.name,
+    period = args.period,
     timestamp = args.timestamp
   })
 end
@@ -62,7 +64,7 @@ function Metrics:delete(api_id, application_id, name, timestamp)
   return self:exec_stmt_count_rows(self.prepared_stmts.delete)
 end
 
-function Metrics:increment(api_id, application_id, name, timestamp, step)
+function Metrics:increment(api_id, application_id, name, timestamp, period, step)
   if not step then step = 1 end
 
   self.prepared_stmts.increment:bind_names {
@@ -70,6 +72,7 @@ function Metrics:increment(api_id, application_id, name, timestamp, step)
     application_id = application_id,
     name = name,
     timestamp = timestamp,
+    period = period,
     step = step
   }
 

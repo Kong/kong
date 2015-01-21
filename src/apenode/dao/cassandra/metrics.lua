@@ -12,11 +12,12 @@ function Metrics:insert_or_update()
   error("Metrics:insert_or_update() not supported")
 end
 
-function Metrics:increment(api_id, application_id, name, timestamp, step)
+function Metrics:increment(api_id, application_id, name, timestamp, period, step)
   local where_keys = {
     api_id = api_id,
     application_id = application_id,
     name = name,
+    period = period,
     timestamp = timestamp
   }
 

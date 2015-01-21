@@ -154,7 +154,8 @@ describe("BaseDao", function()
 
       describe("#update()", function()
         it("should update an entity if already existing", function()
-          local existing_entity = dao:find_one { id = 1 }
+          local existing_entity, err = dao:find_one { id = 1 }
+          assert.falsy(err)
           local random_entity = dao_factory.fake_entity(dao_name)
 
           -- Replace all fields in the entity

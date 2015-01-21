@@ -31,6 +31,7 @@ function _M.fake_entity(type, invalid)
       application_id = 1,
       name = "requests",
       value = r,
+      period = "second",
       timestamp = r
     }
   elseif type == "plugin" then

@@ -3,11 +3,29 @@
 local utils = require "apenode.tools.utils"
 local BaseModel = require "apenode.models.base_model"
 
+
+local AVAILABLE_PERIODS = {
+  second = true,
+  minute = true,
+  hour = true,
+  day = true,
+  month = true,
+  year = true
+}
+local function check_period(period, t)
+  if AVAILABLE_PERIODS[period] then
+    return true
+  else
+    return false, "Invalid period"
+  end
+end
+
 local COLLECTION = "metrics"
 local SCHEMA = {
   api_id = { type = "string", required = true },
   application_id = { type = "string", required = false },
   name = { type = "string", required = true },
+  period = { type = "string", required = true, func = check_period },
   timestamp = { type = "number", required = true },
   value = { type = "number", required = true }
 }
@@ -42,8 +60,8 @@ function Metric.increment(api_id, application_id, name, step, dao_factory)
   local timestamps = utils.get_timestamps(os.time())
 
   local err = nil
-  for k,v in pairs(timestamps) do
-    local success, e = dao_factory[COLLECTION]:increment(api_id, application_id, name.."."..k, v, step)
+  for period,timestamp in pairs(timestamps) do
+    local success, e = dao_factory[COLLECTION]:increment(api_id, application_id, name, timestamp, period, step)
     if not success then
       err = e
     end

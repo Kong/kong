@@ -19,12 +19,13 @@ function _M.execute(conf)
   local period = conf.period
   local limit = conf.limit
 
-  local timestamps = utils.get_timestamps(ngx.now())
+  local timestamps = utils.get_timestamps(os.time())
 
   local current_usage = Metric.find_one({
                   api_id = ngx.ctx.api.id,
                   application_id = authenticated_entity_id,
-                  name = "requests." .. period,
+                  name = "requests",
+                  period = period,
                   timestamp = timestamps[period]}, dao)
 
   if current_usage then current_usage = current_usage.value else current_usage = 0 end
