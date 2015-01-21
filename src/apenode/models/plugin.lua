@@ -52,7 +52,7 @@ function Plugin:save()
   local res, err = self:_validate(self._schema, self._t, false)
   if not err then
     if self.find_one({api_id = self.api_id, application_id = self.application_id, name = self.name }, self._dao_factory) then
-      return nil, "The plugin already exist, update the current one"
+      return nil, "The plugin already exists, updating the current one."
     else
       return Plugin.super.save(self)
     end

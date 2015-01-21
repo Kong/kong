@@ -8,9 +8,9 @@ function Metrics:new(database, properties)
 end
 
 -- @override
-function Metrics:insert_or_update()
-  error("Metrics:insert_or_update() not supported")
-end
+--function Metrics:insert_or_update()
+  --error("Metrics:insert_or_update() not supported")
+--end
 
 function Metrics:increment(api_id, application_id, name, timestamp, step)
   local where_keys = {

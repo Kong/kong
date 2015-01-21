@@ -54,7 +54,10 @@ function CassandraFactory:seed(random, number)
 end
 
 function CassandraFactory:drop()
-  -- TODO
+  self:execute [[
+    USE apenode;
+    TRUNCATE accounts;
+  ]]
 end
 
 --

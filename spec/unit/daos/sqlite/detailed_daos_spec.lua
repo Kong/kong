@@ -74,7 +74,7 @@ describe("DetailedDaos", function()
   describe("PluginsDao", function()
 
     describe("#find()", function()
-      it("find plugins with table args", function()
+      it("should find plugins with table args", function()
         local result, count, err = dao_factory.plugins:find({
           value = {
             authentication_type = "query",
@@ -82,9 +82,9 @@ describe("DetailedDaos", function()
           }
         })
         assert.falsy(err)
-        assert.are.equal(995, count)
+        assert.are.equal(996, count)
       end)
-      it("find plugins with wrong table args", function()
+      it("should find plugins with wrong table args", function()
         local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_type = "query",
@@ -94,7 +94,7 @@ describe("DetailedDaos", function()
         assert.falsy(err)
         assert.are.equal(0, count)
       end)
-      it("find plugins with composite table args", function()
+      it("should find plugins with composite table args", function()
         local result, count, err = dao_factory.plugins:find {
           api_id = 1,
           value = {
@@ -105,7 +105,7 @@ describe("DetailedDaos", function()
         assert.falsy(err)
         assert.are.equal(1, count)
       end)
-      it("find plugins with composite table args in reversed order", function()
+      it("should find plugins with composite table args in reversed order if they exist", function()
         local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_key_names = { "apikey" },
@@ -116,7 +116,7 @@ describe("DetailedDaos", function()
         assert.falsy(err)
         assert.are.equal(1, count)
       end)
-      it("find plugins with composite table args in reversed order should return zero", function()
+      it("find plugins with composite table args in reversed order should return zero if not exists", function()
         local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_key_names = { "apikey" },

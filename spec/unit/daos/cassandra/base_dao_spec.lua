@@ -6,12 +6,12 @@ local configuration, dao_factory = utils.load_configuration_and_dao(configuratio
 describe("BaseDao", function()
 
   setup(function()
-    dao_factory:seed(true)
+    --dao_factory:seed(true)
   end)
 
   teardown(function()
     --dao_factory:drop()
-    dao_factory:close()
+    --dao_factory:close()
   end)
 
   describe("", function()

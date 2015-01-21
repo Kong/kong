@@ -2,8 +2,8 @@ local Object = require "classic"
 
 math.randomseed(os.time())
 
-local function random_from_array(arr)
-  return arr[math.random(#arr)]
+local function random_from_table(t)
+  return t[math.random(#t)]
 end
 
 local Faker = Object:extend()
@@ -31,26 +31,18 @@ function Faker.fake_entity(type, invalid)
     }
   elseif type == "application" then
     return {
-      account_id = 1,
       public_key = "random"..r,
-      secret_key = "random"..r,
+      secret_key = "random"..r
     }
   elseif type == "metric" then
     return {
-      api_id = 1,
-      application_id = 1,
       name = "requests",
-      value = r,
-      timestamp = r
+      value = r, timestamp = r
     }
   elseif type == "plugin" then
     return {
-      api_id = r,
       name = "random"..r,
-      value = {
-        authentication_type = "query",
-        authentication_key_names = { "apikey" }
-      }
+      value = { authentication_type = "query", authentication_key_names = { "apikey" }}
     }
   else
     error("Model of type "..type.." cannot be genereated.")
@@ -63,180 +55,104 @@ function Faker:seed(random, amount)
 
   local entities_to_insert = {
     api = {
-      {
-        name = "test",
-        public_dns = "test.com",
-        target_url = "http://httpbin.org"
-      },
-      {
-        name = "test2",
-        public_dns = "test2.com",
-        target_url = "http://httpbin.org"
-      },
-      {
-        name = "test3",
-        public_dns = "test3.com",
-        target_url = "http://httpbin.org"
-      },
-      {
-        name = "test4",
-        public_dns = "test4.com",
-        target_url = "http://httpbin.org"
-      },
-      {
-        name = "test5",
-        public_dns = "test5.com",
-        target_url = "http://httpbin.org"
-      },
-      {
-        name = "test6",
-        public_dns = "test6.com",
-        target_url = "http://httpbin.org"
-      }
+      { name = "test",  public_dns = "test.com",  target_url = "http://httpbin.org" },
+      { name = "test2", public_dns = "test2.com", target_url = "http://httpbin.org" },
+      { name = "test3", public_dns = "test3.com", target_url = "http://httpbin.org" },
+      { name = "test4", public_dns = "test4.com", target_url = "http://httpbin.org" },
+      { name = "test5", public_dns = "test5.com", target_url = "http://httpbin.org" },
+      { name = "test6", public_dns = "test6.com", target_url = "http://httpbin.org" }
     },
     account = {
-      {
-        provider_id = "provider_123"
-      }
+      { provider_id = "provider_123" }
     },
     application = {
-      {
-        secret_key = "apikey123"
-      },
-      {
-        public_key = "user123",
-        secret_key = "apikey123"
-      },
-      {
-        secret_key = "apikey124"
-      },
+      { secret_key = "apikey123", __account = 1 },
+      { public_key = "user123", secret_key = "apikey123", __account = 1 },
+      { secret_key = "apikey124", __account = 1 },
     },
     metric = {
-      {
-        api_id = 1,
-        application_id = 1,
-        name = "requests",
-        value = 0,
-        timestamp = 123
-      },
-      {
-        api_id = 1,
-        application_id = 1,
-        name = "requests",
-        value = 0,
-        timestamp = 123456
-      }
+      { name = "requests", value = 0, timestamp = 123, __api = 1, __application = 1 },
+      { name = "requests", value = 0, timestamp = 123456, __api = 1, __application = 1 }
     },
     plugin = {
-      {
-        api_id = 1,
-        name = "authentication",
-        value = {
-          authentication_type = "query",
-          authentication_key_names = { "apikey" }
-        }
-      },
-      {
-        api_id = 2,
-        name = "authentication",
-        value = {
-          authentication_type = "header",
-          authentication_key_names = { "apikey" }
-        }
-      },
-      {
-        api_id = 3,
-        name = "authentication",
-        value = {
-          authentication_type = "basic"
-        }
-      },
-      {
-        api_id = 6,
-        name = "authentication",
-        value = {
-          authentication_type = "query",
-          authentication_key_names = { "apikey" }
-        }
-      },
-      {
-        api_id = 5,
-        name = "ratelimiting",
-        value = {
-          period = "minute",
-          limit = 2
-        }
-      },
-      {
-        api_id = 6,
-        name = "ratelimiting",
-        value = {
-          period = "minute",
-          limit = 2
-        }
-      },
-      {
-        api_id = 6,
-        application_id = 3,
-        name = "ratelimiting",
-        value = {
-          period = "minute",
-          limit = 4
-        }
-      }
+      { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 1 },
+      { name = "authentication", value = { authentication_type = "header", authentication_key_names = { "apikey" }}, __api = 2 },
+      { name = "authentication", value = { authentication_type = "basic" }, __api = 3 },
+      { name = "ratelimiting",   value = { period = "minute", limit = 2 },  __api = 5 },
+      { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 3 }
     }
   }
 
+  self:insert_from_table(entities_to_insert)
+
   if random then
-    for k,v in pairs(entities_to_insert) do
+    -- If we ask for random entities, add as many random entities to another table
+    -- as the difference between total amount requested and hard-coded ones
+    -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
+    local random_entities = {}
+    for k, v in pairs(entities_to_insert) do
       number_to_insert = amount - #v
+      random_entities[k] = {}
       for i = 1, number_to_insert do
-        printl(v, i)
-        table.insert(v, Faker.fake_entity(k))
+        table.insert(random_entities[k], Faker.fake_entity(k))
       end
+    end
+
+    self:insert_from_table(random_entities)
+  end
+end
+
+-- Insert entities in the DB using the DAO
+-- First accounts and APIs, then the rest which needs references to created accounts and APIs
+-- @param table entities_to_insert A table with the same structure as the one defined in :seed
+function Faker:insert_from_table(entities_to_insert)
+  -- 1. Insert accounts and APIs
+  for type, entities in pairs { apis = entities_to_insert.api,
+                                accounts = entities_to_insert.account } do
+    for i,entity in ipairs(entities) do
+      local res, err = self.dao[type]:insert_or_update(entity)
+
+      if err then error(err) end
+      entities[i] = res
     end
   end
 
-  -- Reference to entities used in compsite keys
-  local inserted_apis, inserted_accounts, inserted_applications = {}, {}, {}
+  -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
+  for type, entities in pairs { applications = entities_to_insert.application,
+                                plugins = entities_to_insert.plugin,
+                                metrics = entities_to_insert.metric } do
+    for i, entity in ipairs(entities) do
+      local res, err
+      local api = entities_to_insert.api[entity.__api]
+      local account = entities_to_insert.account[entity.__account]
+      local application = entities_to_insert.application[entity.__application]
+      if not api then
+        api = random_from_table(entities_to_insert.api)
+      end
+      if not application then
+        application = random_from_table(entities_to_insert.application)
+      end
+      if not account then
+        account = random_from_table(entities_to_insert.account)
+      end
 
-  for _,api in ipairs(entities_to_insert.api) do
-    local res, err = self.dao.apis:insert_or_update(api)
-    if err then error(err) end
+      if type == "applications" then
+        entity.account_id = account.id
+        res, err = self.dao.applications:insert_or_update(entity)
+      elseif type == "plugins" then
+        entity.api_id = api.id
+        entity.application_id = application.id
+        res, err = self.dao.plugins:insert_or_update(entity)
+      elseif type == "metrics" then
+        res, err = self.dao.metrics:increment(api.id, application.id, entity.name, entity.timestamp, entity.value)
+      end
 
-    table.insert(inserted_apis, res)
-  end
+      if err then
+        error(err)
+      end
 
-  for _,account in ipairs(entities_to_insert.account) do
-    local res, err = self.dao.accounts:insert_or_update(account)
-    if err then error(err) end
-
-    table.insert(inserted_accounts, res)
-  end
-
-  for _,application in ipairs(entities_to_insert.application) do
-    application.account_id = random_from_array(inserted_accounts).id
-
-    local res, err = self.dao.applications:insert_or_update(application)
-    if err then error(err) end
-
-    table.insert(inserted_applications, res)
-  end
-
-  for _,plugin in ipairs(entities_to_insert.plugin) do
-    plugin.api_id = random_from_array(inserted_apis).id
-    plugin.application_id = random_from_array(inserted_applications).id
-
-    local res, err = self.dao.plugins:insert_or_update(plugin)
-    if err then error(err) end
-  end
-
-  for _,metric in ipairs(entities_to_insert.metric) do
-    metric.api_id = random_from_array(inserted_apis).id
-    metric.application_id = random_from_array(inserted_applications).id
-
-    local res, err = self.dao.metrics:increment(metric.api_id, metric.application_id, metric.name, metric.timestamp, metric.value)
-    if err then error(err) end
+      entities[i] = res
+    end
   end
 end
 
