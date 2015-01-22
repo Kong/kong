@@ -18,7 +18,7 @@ description = {
 dependencies = {
   "lua ~> 5.1",
 
-  "lsqlite3 ~> 0.9.1-2",
+  "lsqlite3 ~> 0.9.3-0",
   "cassandra ~> 0.2-1",
   "uuid ~> 0.2-1",
   "lapis ~> 1.0.6-1",
