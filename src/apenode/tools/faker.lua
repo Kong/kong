@@ -112,14 +112,16 @@ function Faker:seed(random, amount)
       end
     end
 
-    self:insert_from_table(random_entities)
+    self:insert_from_table(random_entities, true)
   end
 end
 
 -- Insert entities in the DB using the DAO
 -- First accounts and APIs, then the rest which needs references to created accounts and APIs
 -- @param table entities_to_insert A table with the same structure as the one defined in :seed
-function Faker:insert_from_table(entities_to_insert)
+-- @param boolean random If true, will force applications, plugins and metrics to have relations by choosing
+--                       a random entity.
+function Faker:insert_from_table(entities_to_insert, random)
   -- 1. Insert accounts and APIs
   for type, entities in pairs { apis = entities_to_insert.api,
                                 accounts = entities_to_insert.account } do
@@ -140,13 +142,13 @@ function Faker:insert_from_table(entities_to_insert)
       local api = entities_to_insert.api[entity.__api]
       local account = entities_to_insert.account[entity.__account]
       local application = entities_to_insert.application[entity.__application]
-      if not api then
+      if not api and random then
         api = random_from_table(entities_to_insert.api)
       end
-      if not application then
+      if not application and random then
         application = random_from_table(entities_to_insert.application)
       end
-      if not account then
+      if not account and random then
         account = random_from_table(entities_to_insert.account)
       end
 
@@ -155,11 +157,11 @@ function Faker:insert_from_table(entities_to_insert)
       entity.__application = nil
 
       if type == "applications" then
-        entity.account_id = account.id
+        if account then entity.account_id = account.id end
         res, err = self.dao.applications:insert_or_update(entity)
       elseif type == "plugins" then
-        entity.api_id = api.id
-        entity.application_id = application.id
+        if api then entity.api_id = api.id end
+        if application then entity.application_id = application.id end
         res, err = self.dao.plugins:insert_or_update(entity)
       elseif type == "metrics" then
         res, err = self.dao.metrics:increment(api.id, application.id, entity.origin_ip, entity.name, entity.timestamp, entity.period, entity.value)
