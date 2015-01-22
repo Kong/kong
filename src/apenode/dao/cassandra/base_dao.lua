@@ -22,32 +22,6 @@ function BaseDao:new(database, collection, schema, properties)
   self._stmt_cache = {}
 end
 
--- Insert an entity
--- @param table entity Entity to insert
--- @return table Inserted entity with its rowid property
--- @return table Error if error
-function BaseDao:insert(entity)
-  if entity then
-    entity = dao_utils.serialize(self._schema, entity)
-  else
-    return nil
-  end
-
-  -- Set an UUID as the ID of the entity
-  if not entity.id then
-    entity.id = uuid()
-  end
-
-  local query, values_to_bind = self:build_insert_query(entity)
-  local result, err = self:_exec_stmt(query, values_to_bind)
-
-  if err then
-    return nil, err
-  end
-
-  return entity
-end
-
 -- Update one or many entities according to a WHERE statement
 -- @param table entity Entity to update
 -- @return table Updated entity
@@ -82,7 +56,25 @@ end
 -- @return table Inserted/updated entity with its rowid property
 -- @return table Error if error
 function BaseDao:insert_or_update(entity, where_keys)
-  return self:insert(entity) -- In Cassandra inserts are upserts
+  if entity then
+    entity = dao_utils.serialize(self._schema, entity)
+  else
+    return nil
+  end
+
+  -- Set an UUID as the ID of the entity
+  if not entity.id then
+    entity.id = uuid()
+  end
+
+  local query, values_to_bind = self:build_insert_query(entity)
+  local result, err = self:_exec_stmt(query, values_to_bind)
+
+  if err then
+    return nil, err
+  end
+
+  return entity
 end
 
 -- Find one row according to a condition determined by the keys

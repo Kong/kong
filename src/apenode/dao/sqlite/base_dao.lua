@@ -22,31 +22,6 @@ function BaseDao:finalize()
   end
 end
 
--- Insert an entity
--- @param table entity Entity to insert
--- @return table Inserted entity with its rowid property
--- @return table Error if error
-function BaseDao:insert(entity)
-  if entity then
-    entity = dao_utils.serialize(self._schema, entity)
-  else
-    return nil
-  end
-
-  local query = self:build_insert_query(entity)
-  local stmt = self:get_statement(query)
-  stmt:bind_names(entity)
-
-  local rowid, err = self:exec_stmt_rowid(stmt)
-  if err then
-    return nil, err
-  end
-
-  entity.id = rowid
-
-  return entity
-end
-
 -- Update one or many entities according to a WHERE statement
 -- @param table entity Entity to update
 -- @param table where_keys Selector for what entity to update
@@ -236,21 +211,6 @@ function BaseDao:build_count_query(where_keys)
   local where = self:build_where_fields(where_keys)
 
   return [[ SELECT COUNT(*) FROM ]]..self._collection..where
-end
-
--- Build an INSERT query
--- @param table entity Object with keys that will be in the prepared statement
--- @return string An INSERT into query to be binded
-function BaseDao:build_insert_query(entity)
-  local fields, values = {}, {}
-
-  for k,_ in pairs(self._schema) do
-    table.insert(fields, k)
-    table.insert(values, ":"..k)
-  end
-
-  return [[ INSERT INTO ]]..self._collection..[[ ( ]]..table.concat(fields, ",")..[[ )
-              VALUES( ]]..table.concat(values, ",")..[[ ); ]]
 end
 
 -- Build an UPDATE query
