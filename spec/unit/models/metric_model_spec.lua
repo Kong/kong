@@ -12,7 +12,7 @@ describe("Metric Model", function()
   end)
 
   teardown(function()
-    --dao_factory:drop()
+    dao_factory:drop()
     dao_factory:close()
   end)
 
