@@ -47,7 +47,6 @@ describe("BaseModel", function()
       assert.truthy(res)
       assert.are.same("test.com", res.public_dns)
     end)
-
     it("should set default values if specified in the validator", function()
       local res, err = BaseModel(collection, validator, {
         name = "httpbin entity",

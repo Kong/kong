@@ -30,11 +30,7 @@ describe("Metric Model", function()
                         application_id = 3,
                         id = 7,
                         name = "ratelimiting",
-                        value = {
-                          limit = 4,
-                          period = "minute"
-                        }
-                      }, res._t)
+                        value = { limit = 4, period = "minute" }}, res._t)
     end)
   end)
 
