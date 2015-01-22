@@ -1,7 +1,25 @@
 local Object = require "classic"
+local inspect = require "inspect"
 
 math.randomseed(os.time())
 
+-- Throw an error from a string or table object
+-- @param {table|string} The error to throw (will be converted to string if is table)
+local function throw(err)
+  local err_str
+  if type(err) == "table" then
+    err_str = inspect(err)
+    print(err_str)
+  else
+    err_str = err
+  end
+
+  error(err_str)
+end
+
+-- Gets a random elements from an array
+-- @param {table} t Array to get an element from
+-- @return A random element
 local function random_from_table(t)
   return t[math.random(#t)]
 end
@@ -78,7 +96,7 @@ function Faker:seed(random, amount)
       { provider_id = "provider_123" }
     },
     application = {
-      { secret_key = "apikey123", __account = 1 },
+      { secret_key = "apikey122", __account = 1 },
       { public_key = "user123", secret_key = "apikey123", __account = 1 },
       { secret_key = "apikey124", __account = 1 },
     },
@@ -123,20 +141,25 @@ end
 --                       a random entity.
 function Faker:insert_from_table(entities_to_insert, random)
   -- 1. Insert accounts and APIs
-  for type, entities in pairs { apis = entities_to_insert.api,
-                                accounts = entities_to_insert.account } do
+  for type, entities in pairs { api = entities_to_insert.api,
+                                account = entities_to_insert.account } do
     for i,entity in ipairs(entities) do
-      local res, err = self.dao[type]:insert_or_update(entity)
+      local Model = require("apenode.models."..type)
+      local model_instance = Model(entity, self.dao)
 
-      if err then error(err) end
+      local res, err = model_instance:save()
+      if err then
+        throw(err)
+      end
+
       entities[i] = res
     end
   end
 
   -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
-  for type, entities in pairs { applications = entities_to_insert.application,
-                                plugins = entities_to_insert.plugin,
-                                metrics = entities_to_insert.metric } do
+  for type, entities in pairs { application = entities_to_insert.application,
+                                plugin = entities_to_insert.plugin,
+                                metric = entities_to_insert.metric } do
     for i, entity in ipairs(entities) do
       local res, err
       local api = entities_to_insert.api[entity.__api]
@@ -156,19 +179,26 @@ function Faker:insert_from_table(entities_to_insert, random)
       entity.__account = nil
       entity.__application = nil
 
-      if type == "applications" then
+      if type == "application" then
         if account then entity.account_id = account.id end
-        res, err = self.dao.applications:insert_or_update(entity)
-      elseif type == "plugins" then
+      elseif type == "plugin" then
         if api then entity.api_id = api.id end
         if application then entity.application_id = application.id end
-        res, err = self.dao.plugins:insert_or_update(entity)
-      elseif type == "metrics" then
-        res, err = self.dao.metrics:increment(api.id, application.id, entity.origin_ip, entity.name, entity.timestamp, entity.period, entity.value)
+      elseif type == "metric" then
+        if api then entity.api_id = api.id end
+        if application then entity.application_id = application.id end
+      end
+
+      local Model = require("apenode.models."..type)
+      local model_instance = Model(entity, self.dao)
+      if type == "metric" then
+        res, err = model_instance:increment_self()
+      else
+        res, err = model_instance:save()
       end
 
       if err then
-        error(err)
+        throw(err)
       end
 
       entities[i] = res

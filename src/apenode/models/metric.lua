@@ -57,6 +57,28 @@ function Metric.find(args, page, size, dao_factory)
   return data, total, err
 end
 
+function Metric:increment_self(step)
+  if not step then step = 1 end
+  local time
+  if ngx then
+    time = ngx.now() -- This is optimized when it runs inside nginx
+  else
+    time = os.time() -- This is a syscall, thus slower
+  end
+
+  local timestamps = utils.get_timestamps(time)
+  local success, err
+  for period,timestamp in pairs(timestamps) do
+    success, err = self._dao:increment(self.api_id, self.application_id, self.origin_ip, self.name, self.timestamp, self.period, step)
+  end
+
+  if err then
+    return false, err
+  else
+    return true, nil
+  end
+end
+
 function Metric.increment(api_id, application_id, origin_ip, name, step, dao_factory)
   if application_id == nil and origin_ip == nil then
     return false, "You need to specify at least an application_id or an ip address"
