@@ -6,7 +6,7 @@ local kProxyURL = "http://localhost:8000/"
 describe("RateLimiting Plugin", function()
 
     describe("Without authentication", function()
-      it("should get stick to the IP address", function()
+      it("should get blocked if exceeding limit by IP address", function()
         local response, status, headers = utils.get(kProxyURL.."get", {}, {host = "test5.com"})
         assert.are.equal(200, status)
 
@@ -21,7 +21,7 @@ describe("RateLimiting Plugin", function()
     end)
 
      describe("With authentication", function()
-      it("should get stick to the apikey", function()
+      it("should get blocked if exceeding limit by apikey", function()
         local response, status, headers = utils.get(kProxyURL.."get", {apikey = "apikey123"}, {host = "test6.com"})
         assert.are.equal(200, status)
 
@@ -36,7 +36,7 @@ describe("RateLimiting Plugin", function()
     end)
 
     describe("With authentication and overridden application plugin", function()
-      it("should get stuck if exceeding rate limiting", function()
+      it("should get blocked if exceeding rate limiting", function()
         local response, status, headers = utils.get(kProxyURL.."get", {apikey = "apikey124"}, {host = "test6.com"})
         assert.are.equal(200, status)
 

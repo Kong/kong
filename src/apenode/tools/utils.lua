@@ -134,7 +134,7 @@ function _M.show_response(status, message)
   if (type(message) == "table") then
     ngx.print(cjson.encode(message))
   else
-    ngx.print(cjson.encode({message = message}))
+    ngx.print(cjson.encode({ message = message }))
   end
   ngx.exit(status)
 end

@@ -58,11 +58,11 @@ function Metric.find(args, page, size, dao_factory)
 end
 
 function Metric.increment(api_id, application_id, origin_ip, name, step, dao_factory)
-  if application_id == nil and ip == nil then
+  if application_id == nil and origin_ip == nil then
     return false, "You need to specify at least an application_id or an ip address"
   end
 
-  local time = nil
+  local time
   if ngx then
     time = ngx.now() -- This is optimized when it runs inside nginx
   else
@@ -70,7 +70,7 @@ function Metric.increment(api_id, application_id, origin_ip, name, step, dao_fac
   end
 
   local timestamps = utils.get_timestamps(time)
-  local err = nil
+  local err
   for period,timestamp in pairs(timestamps) do
     local success, e = dao_factory[COLLECTION]:increment(api_id, application_id, origin_ip, name, timestamp, period, step)
     if not success then

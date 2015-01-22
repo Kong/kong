@@ -2,20 +2,20 @@
 
 local Metric = require "apenode.models.metric"
 
-local _M = {}
-
-local REQUESTS = "requests"
+local kMetricName = "requests"
 
 local function set_header_limit_remaining(usage)
   ngx.header["X-RateLimit-Remaining"] = usage
 end
 
+local _M = {}
+
 function _M.execute(conf)
-  local authenticated_entity_id
+  local application_id
   local ip_address
 
   if ngx.ctx.authenticated_entity then
-    authenticated_entity_id = ngx.ctx.authenticated_entity.id
+    application_id = ngx.ctx.authenticated_entity.id
   else
     ip_address = ngx.var.remote_addr
   end
@@ -24,15 +24,20 @@ function _M.execute(conf)
   local limit = conf.limit
 
   local timestamps = utils.get_timestamps(ngx.now())
+  local usage_metric, err = Metric.find_one({ api_id = ngx.ctx.api.id,
+                                              application_id = application_id,
+                                              origin_ip = ip_address,
+                                              name = kMetricName,
+                                              period = period,
+                                              timestamp = timestamps[period] }, dao)
+  if err then
+    ngx.log(ngx.ERROR, err)
+  end
 
-  local current_usage = Metric.find_one({ api_id = ngx.ctx.api.id,
-                                          application_id = authenticated_entity_id,
-                                          origin_ip = ip_address,
-                                          name = REQUESTS,
-                                          period = period,
-                                          timestamp = timestamps[period] }, dao)
-
-  if current_usage then current_usage = current_usage.value else current_usage = 0 end
+  local current_usage = 0
+  if usage_metric then
+    current_usage = usage_metric.value
+  end
 
   ngx.header["X-RateLimit-Limit"] = limit
   if current_usage >= limit then
@@ -43,7 +48,10 @@ function _M.execute(conf)
   end
 
   -- Increment metric
-  Metric.increment(ngx.ctx.api.id, authenticated_entity_id, ip_address, REQUESTS, 1, dao)
+  local _, err = Metric.increment(ngx.ctx.api.id, application_id, ip_address, kMetricName, 1, dao)
+  if err then
+    ngx.log(ngx.ERROR, err)
+  end
 end
 
 return _M

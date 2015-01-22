@@ -16,7 +16,7 @@ describe("Metric Model", function()
     dao_factory:close()
   end)
 
-  describe("#init()", function()
+  describe("#increment()", function()
     it("should increment a model with an application_id and retrieve it", function()
       local timestamps = utils.get_timestamps(os.time())
       local res, err = Metric.increment(1, 1, nil, "requests", 2, dao_factory)
@@ -39,7 +39,6 @@ describe("Metric Model", function()
       assert.truthy(res)
 
       local res, err = Metric.find_one({ api_id = 1,
-                                         application_id = nil,
                                          origin_ip = "127.0.0.1",
                                          name = "requests2",
                                          period = "second",
