@@ -10,10 +10,7 @@ export ENV_DIR ?= $(PWD)/tmp
 export ENV_APENODE_CONF ?= $(ENV_DIR)/apenode.dev.yaml
 export ENV_SILENT ?=
 
-.PHONY: build local global test test-web test-all run migrate populate drop
-
-local:
-	@luarocks make apenode-*.rockspec --local
+.PHONY: build global test test-web test-all run migrate populate drop
 
 global:
 	@luarocks make apenode-*.rockspec

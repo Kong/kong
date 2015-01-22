@@ -35,7 +35,6 @@ Commands consist of apenode's scripts and Makefile:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `global`     | Install the apenode luarock globally                                                                |
-| `local`      | Install the apenode luarock locally (`~`)                                                           |
 | `build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
 | `migrate`    | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
 | `seed`       | Seed your database according to the given apenode config                                            |
