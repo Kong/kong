@@ -3,7 +3,6 @@
 local utils = require "apenode.tools.utils"
 local BaseModel = require "apenode.models.base_model"
 
-
 local AVAILABLE_PERIODS = {
   second = true,
   minute = true,
@@ -12,6 +11,7 @@ local AVAILABLE_PERIODS = {
   month = true,
   year = true
 }
+
 local function check_period(period, t)
   if AVAILABLE_PERIODS[period] then
     return true
@@ -24,7 +24,7 @@ local COLLECTION = "metrics"
 local SCHEMA = {
   api_id = { type = "id", required = true },
   application_id = { type = "id", required = false },
-  ip = { type = "string", required = false },
+  origin_ip = { type = "string", required = false },
   name = { type = "string", required = true },
   period = { type = "string", required = true, func = check_period },
   timestamp = { type = "timestamp", required = true },
@@ -57,7 +57,7 @@ function Metric.find(args, page, size, dao_factory)
   return data, total, err
 end
 
-function Metric.increment(api_id, application_id, ip, name, step, dao_factory)
+function Metric.increment(api_id, application_id, origin_ip, name, step, dao_factory)
   if application_id == nil and ip == nil then
     return false, "You need to specify at least an application_id or an ip address"
   end
@@ -72,7 +72,7 @@ function Metric.increment(api_id, application_id, ip, name, step, dao_factory)
   local timestamps = utils.get_timestamps(time)
   local err = nil
   for period,timestamp in pairs(timestamps) do
-    local success, e = dao_factory[COLLECTION]:increment(api_id, application_id, ip, name, timestamp, period, step)
+    local success, e = dao_factory[COLLECTION]:increment(api_id, application_id, origin_ip, name, timestamp, period, step)
     if not success then
       err = e
     end

@@ -17,7 +17,12 @@ function Faker.fake_entity(type, invalid)
 
   if type == "api" then
     local name
-    if invalid then name = "test" else name = "random"..r end
+    if invalid then
+      name = "test"
+    else
+      name = "random"..r
+    end
+
     return {
       name = name,
       public_dns = "random"..r..".com",
@@ -25,7 +30,12 @@ function Faker.fake_entity(type, invalid)
     }
   elseif type == "account" then
     local provider_id
-    if invalid then provider_id = "provider_123" else provider_id = "random_provider_id_"..r end
+    if invalid then
+      provider_id = "provider_123"
+    else
+      provider_id = "random_provider_id_"..r
+    end
+
     return {
       provider_id = provider_id
     }
@@ -73,8 +83,8 @@ function Faker:seed(random, amount)
       { secret_key = "apikey124", __account = 1 },
     },
     metric = {
-      { name = "requests", value = 0, timestamp = 123, period = "second", __api = 1, __application = 1, ip = nil },
-      { name = "requests", value = 0, timestamp = 123456, period = "second", __api = 1, __application = 1, ip = nil }
+      { name = "requests", value = 0, timestamp = 123, period = "second", __api = 1, __application = 1 },
+      { name = "requests", value = 0, timestamp = 123456, period = "second", __api = 1, __application = 1 }
     },
     plugin = {
       { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 1 },
@@ -152,7 +162,7 @@ function Faker:insert_from_table(entities_to_insert)
         entity.application_id = application.id
         res, err = self.dao.plugins:insert_or_update(entity)
       elseif type == "metrics" then
-        res, err = self.dao.metrics:increment(api.id, application.id, entity.ip, entity.name, entity.timestamp, entity.period, entity.value)
+        res, err = self.dao.metrics:increment(api.id, application.id, entity.origin_ip, entity.name, entity.timestamp, entity.period, entity.value)
       end
 
       if err then

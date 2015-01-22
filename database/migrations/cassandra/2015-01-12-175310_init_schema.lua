@@ -61,15 +61,15 @@ local Migration = {
     CREATE INDEX IF NOT EXISTS ON plugins(application_id);
     CREATE INDEX IF NOT EXISTS ON plugins(name);
 
-    CREATE TABLE IF NOT EXISTS metrics2(
+    CREATE TABLE IF NOT EXISTS metrics(
       api_id uuid,
       application_id uuid,
-      ip text,
+      origin_ip text,
       name text,
       timestamp timestamp,
       period text,
       value counter,
-      PRIMARY KEY ((api_id, application_id, ip, name, period, timestamp))
+      PRIMARY KEY ((api_id, application_id, origin_ip, name, period, timestamp))
     );
 
   ]],
