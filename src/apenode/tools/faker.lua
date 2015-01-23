@@ -3,6 +3,10 @@ local inspect = require "inspect"
 
 math.randomseed(os.time())
 
+-------------
+-- PRIVATE --
+-------------
+
 -- Throw an error from a string or table object
 -- @param {table|string} The error to throw (will be converted to string if is table)
 local function throw(err)
@@ -23,6 +27,10 @@ end
 local function random_from_table(t)
   return t[math.random(#t)]
 end
+
+-----------
+-- Faker --
+-----------
 
 local Faker = Object:extend()
 
@@ -70,12 +78,19 @@ function Faker.fake_entity(type, invalid)
       timestamp = r
     }
   elseif type == "plugin" then
-    return {
-      name = "random"..r,
+    local type = random_from_table({ "authentication", "ratelimiting" })
+    local value = {}
+    if type == "authentication" then
       value = { authentication_type = "query", authentication_key_names = { "apikey" }}
+    else
+      value = { period = "minute", limit = 2 }
+    end
+    return {
+      name = type,
+      value = value
     }
   else
-    error("Model of type "..type.." cannot be genereated.")
+    throw("Model of type "..type.." cannot be genereated.")
   end
 end
 
@@ -122,11 +137,11 @@ function Faker:seed(random, amount)
     -- as the difference between total amount requested and hard-coded ones
     -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
     local random_entities = {}
-    for k, v in pairs(entities_to_insert) do
-      number_to_insert = amount - #v
-      random_entities[k] = {}
+    for type,entities in pairs(entities_to_insert) do
+      number_to_insert = amount - #entities
+      random_entities[type] = {}
       for i = 1, number_to_insert do
-        table.insert(random_entities[k], Faker.fake_entity(k))
+        table.insert(random_entities[type], Faker.fake_entity(type))
       end
     end
 
@@ -143,10 +158,10 @@ function Faker:insert_from_table(entities_to_insert, random)
   -- 1. Insert accounts and APIs
   for type, entities in pairs { api = entities_to_insert.api,
                                 account = entities_to_insert.account } do
-    for i,entity in ipairs(entities) do
+    for i, entity in ipairs(entities) do
+      -- Save from a model instance
       local Model = require("apenode.models."..type)
       local model_instance = Model(entity, self.dao)
-
       local res, err = model_instance:save()
       if err then
         throw(err)
@@ -189,6 +204,7 @@ function Faker:insert_from_table(entities_to_insert, random)
         if application then entity.application_id = application.id end
       end
 
+      -- Save from a model instance
       local Model = require("apenode.models."..type)
       local model_instance = Model(entity, self.dao)
       if type == "metric" then
