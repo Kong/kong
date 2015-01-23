@@ -43,6 +43,10 @@ function BaseDao:update(entity)
   local stmt = self:get_statement(query)
   stmt:bind_names(entity)
 
+    local inspect = require "inspect"
+    print(inspect(query))
+    print(inspect(entity))
+
   return self:exec_stmt_count_rows(stmt)
 end
 

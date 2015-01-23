@@ -44,7 +44,7 @@ function Faker.fake_entity(type, invalid)
   if type == "api" then
     local name
     if invalid then
-      name = "test"
+      name = 123456
     else
       name = "random"..r
     end

@@ -17,14 +17,14 @@ local function add_error(errors, k, v)
 end
 
 -- Validate a table against a given schema
--- @param boolean is_update Ignores read_only fields during the validation if true
+-- @param boolean is_update
 -- @return A filtered, valid table if success, nil if error
 -- @return table A list of encountered errors during the validation
 function _M.validate(t, schema, is_update)
   local result, errors = {}
 
   -- Check the given table against a given schema
-  for k,v in pairs(schema) do
+  for k, v in pairs(schema) do
     -- Set default value for the filed if given
     if not t[k] and v.default ~= nil then
       if type(v.default) == "function" then
@@ -38,14 +38,12 @@ function _M.validate(t, schema, is_update)
       errors = add_error(errors, k, k.." is required")
 
     -- Check we're not passing an id
-    elseif t[k] and v.type == "id" then
-      errors = add_error(errors, k, k.." is an id and cannot be set")
+    elseif t[k] and v.read_only then
+      errors = add_error(errors, k, k.." is read only")
 
     -- Check types (number/string) of the field
-    elseif t[k] and type(t[k]) ~= v.type then
-      if v.type ~= "id" and v.type ~= "timestamp" then
+    elseif v.type ~= "id" and v.type ~= "timestamp" and t[k] and type(t[k]) ~= v.type then
         errors = add_error(errors, k, k.." should be a "..v.type)
-      end
 
     -- Check field against a custom function
     elseif t[k] and v.func then
@@ -61,16 +59,6 @@ function _M.validate(t, schema, is_update)
         errors = add_error(errors, k, k.." has an invalid value")
       end
     end
-
-    -- Check if field's value is unique
-    --[[
-    if t[k] and v.unique and not is_update then
-      local data, err = self._find_one({[k] = t[k]}, self._dao)
-      if data ~= nil then
-        errors = add_error(errors, k, k.." with value ".."\""..t[k].."\"".." already exists")
-      end
-    end
-    --]]
 
     result[k] = t[k]
   end

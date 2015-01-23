@@ -30,7 +30,7 @@ function Application:new(t, dao_factory)
 end
 
 function Application.find_one(args, dao_factory)
-  local data, err =  Application.super._find_one(args, dao_factory[COLLECTION])
+  local data, err = Application.super._find_one(args, dao_factory[COLLECTION])
   if data then
     data = Application(data, dao_factory)
   end
