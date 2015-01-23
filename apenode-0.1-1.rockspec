@@ -29,7 +29,7 @@ dependencies = {
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",
 
-  "busted ~> 2.0.rc3-0",
+  "busted ~> 2.0.rc5-0",
   "luafilesystem ~> 1.6.2"
 }
 build = {
@@ -66,6 +66,7 @@ build = {
     ["apenode.dao.cassandra.accounts"] = "src/apenode/dao/cassandra/accounts.lua",
     ["apenode.dao.cassandra.applications"] = "src/apenode/dao/cassandra/applications.lua",
 
+    ["apenode.models.validator"] = "src/apenode/models/validator.lua",
     ["apenode.models.base_model"] = "src/apenode/models/base_model.lua",
     ["apenode.models.account"] = "src/apenode/models/account.lua",
     ["apenode.models.api"] = "src/apenode/models/api.lua",

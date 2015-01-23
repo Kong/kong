@@ -1,6 +1,5 @@
 -- Copyright (C) Mashape, Inc.
 
-local rex = require "rex_pcre"
 local Object = require "classic"
 
 local BaseModel = Object:extend()
@@ -9,85 +8,8 @@ local BaseModel = Object:extend()
 -- PRIVATE --
 -------------
 
-local function add_error(errors, k, v)
-  if not errors then errors = {} end
-
-  if errors[k] then
-    local list = {}
-    table.insert(list, errors[k])
-    table.insert(list, v)
-    errors[k] = list
-  else
-    errors[k] = v
-  end
-  return errors
-end
-
--- Validate a table against a given schema
--- @param boolean is_update Ignores read_only fields during the validation if true
--- @return A filtered, valid table if success, nil if error
--- @return table A list of encountered errors during the validation
 function BaseModel:validate(is_update)
-  local t = self._t
-  local result, errors = {}
 
-  -- Check the given table against a given schema
-  for k,v in pairs(self._schema) do
-    if not t[k] and v.default ~= nil then -- Set default value for the filed if given
-      if type(v.default) == "function" then
-        t[k] = v.default()
-      else
-        t[k] = v.default
-      end
-    elseif v.required and (t[k] == nil or t[k] == "") then
-      -- Check required field is set
-      errors = add_error(errors, k, k.." is required")
-    elseif t[k] and not is_update and v.read_only then
-       -- Check field is not read only
-      errors = add_error(errors, k, k.." is read only")
-    elseif t[k] and type(t[k]) ~= v.type then
-       -- Check type of the field
-      if not (v.type == "id" or v.type == "timestamp") then
-        errors = add_error(errors, k, k.." should be a "..v.type)
-      end
-    elseif t[k] and v.func then
-       -- Check field against a function
-      local success, err = v.func(t[k], t, self._dao_factory)
-      if not success then
-        errors = add_error(errors, k, err)
-      end
-    end
-
-    -- Check field against a regex
-    if t[k] and v.regex then
-      if not rex.match(t[k], v.regex) then
-        errors = add_error(errors, k, k.." has an invalid value")
-      end
-    end
-
-    -- Check if field's value is unique
-    if t[k] and v.unique and not is_update then
-      local data, err = self._find_one({[k] = t[k]}, self._dao)
-      if data ~= nil then
-        errors = add_error(errors, k, k.." with value ".."\""..t[k].."\"".." already exists")
-      end
-    end
-
-    result[k] = t[k]
-  end
-
-  -- Check for unexpected fields in the entity
-  for k,v in pairs(t) do
-    if not self._schema[k] then
-      errors = add_error(errors, k, k.." is an unknown field")
-    end
-  end
-
-  if errors then
-    result = nil
-  end
-
-  return result, errors
 end
 
 ---------------
