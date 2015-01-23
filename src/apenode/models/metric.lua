@@ -22,7 +22,7 @@ end
 
 local COLLECTION = "metrics"
 local SCHEMA = {
-  api_id = { type = "id", required = true },
+  api_id = { type = "id", required = true, },
   application_id = { type = "id", required = false },
   origin_ip = { type = "string", required = false },
   name = { type = "string", required = true },
