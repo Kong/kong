@@ -18,7 +18,7 @@ local SCHEMA = {
   account_id = { type = "id", required = true, func = check_account_id },
   public_key = { type = "string", required = false },
   secret_key = { type = "string", required = true, unique = true },
-  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
+  created_at = { type = "timestamp", default = utils.get_utc }
 }
 
 local Application = BaseModel:extend()

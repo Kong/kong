@@ -7,7 +7,7 @@ local COLLECTION = "accounts"
 local SCHEMA = {
   id = { type = "id", read_only = true },
   provider_id = { type = "string", required = false, unique = true },
-  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
+  created_at = { type = "timestamp", default = utils.get_utc }
 }
 
 local Account = BaseModel:extend()

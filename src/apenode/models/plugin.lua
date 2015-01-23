@@ -6,7 +6,7 @@ local ApiModel = require "apenode.models.api"
 local utils = require "apenode.tools.utils"
 
 local function check_application_id(application_id, t, dao_factory)
-  if not application_id or ApplicationModel.find_one({id = application_id}, dao_factory) then
+  if ApplicationModel.find_one({id = application_id}, dao_factory) then
     return true
   else
     return false, "Application not found"
@@ -21,10 +21,10 @@ local function check_api_id(api_id, t, dao_factory)
   end
 end
 
-local function get_schema(object)
+local function validate_plugin_schema(object)
   local status, plugin = pcall(require, "apenode.plugins."..object.name..".handler")
   if not status then
-    return false, "Plugin \""..object.name.."\" not found"
+    return nil, "Plugin \""..object.name.."\" not found"
   end
 
   return plugin._SCHEMA
@@ -36,8 +36,8 @@ local SCHEMA = {
   api_id = { type = "id", required = true, func = check_api_id },
   application_id = { type = "id", required = false, func = check_application_id },
   name = { type = "string", required = true },
-  value = { type = "table", required = true, schema_from_func = get_schema },
-  created_at = { type = "timestamp", read_only = false, default = utils.get_utc }
+  value = { type = "table", required = true, func = validate_plugin_schema },
+  created_at = { type = "timestamp", default = utils.get_utc }
 }
 
 local Plugin = BaseModel:extend()
