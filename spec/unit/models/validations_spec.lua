@@ -22,10 +22,7 @@ local schema = {
               default = function() return "default" end  },
 
   number = { type = "number",
-             func = function(n) if n == 123 then return true else return false, "The value should be 123" end end },
-
-  table = { type = "table",
-            schema_from_func = function() return { smart = { type = "boolean" }} end }
+             func = function(n) if n == 123 then return true else return false, "The value should be 123" end end }
 }
 
 describe("Validation", function()
@@ -125,6 +122,29 @@ describe("Validation", function()
       assert.truthy(err)
       assert.are.same("id is an id and cannot be set", err.id)
       assert.are.same("unexpected is an unknown field", err.unexpected)
+    end)
+
+
+    describe("Custom validation function", function()
+      local SQLiteFactory = require "apenode.dao.sqlite.factory"
+      sqlite_dao = ({ memory = true })
+
+      local s = spy.new(function(value)end)
+      local function do_something_with_dao(dao)
+        return s
+      end
+
+      local schema_2 = {
+        something = { type = "number",
+                      func = do_something_with_dao(sqlite_dao) },
+      }
+
+      it("should be able to call a custom function with custom parameters such as a DAO", function()
+        local values = { something = 123 }
+
+        local res_values, err = validate(values, schema_2)
+        assert.spy(s).was.called_with(123)
+      end)
     end)
 
   end)
