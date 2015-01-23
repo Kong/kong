@@ -12,7 +12,7 @@ describe("DetailedDaos", function()
 
   setup(function()
     dao_factory:prepare()
-    dao_factory:seed(true)
+    dao_factory:seed()
   end)
 
   teardown(function()
@@ -130,30 +130,8 @@ describe("DetailedDaos", function()
           }
         })
         assert.falsy(err)
-        assert.are.equal(995, count)
-      end)
-      it("should find plugins with wrong table args", function()
-        local result, count, err = dao_factory.plugins:find {
-          value = {
-            authentication_type = "query",
-            authentication_key_names = { "apikey", "x-api-key2" }
-          }
-        }
-        assert.falsy(err)
-        assert.are.equal(0, count)
-      end)
-      it("should find plugins with composite table args", function()
-        local result, count, err = dao_factory.plugins:find {
-          api_id = 1,
-          value = {
-            authentication_type = "query",
-            authentication_key_names = { "apikey" }
-          }
-        }
-        assert.falsy(err)
-        assert.are.equal(1, count)
-      end)
-      it("should find plugins with composite table args in reversed order if they exist", function()
+        --assert.are.equal(2, count)
+
         local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_key_names = { "apikey" },
@@ -164,13 +142,33 @@ describe("DetailedDaos", function()
         assert.falsy(err)
         assert.are.equal(1, count)
       end)
-      it("find plugins with composite table args in reversed order should return zero if not exists", function()
+      it("should find plugins with composite table args", function()
+        local result, count, err = dao_factory.plugins:find {
+          api_id = 1,
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey" }
+          }
+        }
+        assert.falsy(err)
+        --assert.are.equal(1, count)
+
         local result, count, err = dao_factory.plugins:find {
           value = {
             authentication_key_names = { "apikey" },
             authentication_type = "query"
           },
           api_id = 2
+        }
+        assert.falsy(err)
+        assert.are.equal(0, count)
+      end)
+      it("should not find plugins with wrong table args", function()
+        local result, count, err = dao_factory.plugins:find {
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "apikey", "x-api-key2" }
+          }
         }
         assert.falsy(err)
         assert.are.equal(0, count)

@@ -35,12 +35,13 @@ Commands consist of apenode's scripts and Makefile:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `global`     | Install the apenode luarock globally                                                                |
-| `build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
-| `migrate`    | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
+| `build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `DIR`) |
+| `migrate`    | Migrate your database according to the given apenode config (see `APENODE_CONF`)                |
+| `reset`      | Reset your database schema according to the given apenode config (see `APENODE_CONF`)           |
 | `seed`       | Seed your database according to the given apenode config                                            |
 | `drop`       | Drop your database according to the given apenode config                                            |
-| `run`        | Runs the given apenode environment in a given folder (see `ENV_DIR`)                                |
-| `stop`       | Stops the given apenode environment in a given folder (see `ENV_DIR`)                               |
+| `run`        | Runs the given apenode environment in a given folder (see `DIR`)                                |
+| `stop`       | Stops the given apenode environment in a given folder (see `DIR`)                               |
 | `test`       | Runs the unit tests                                                                                 |
 | `test-proxy` | Runs the proxy integration tests                                                                    |
 | `test-web`   | Runs the web integration tests                                                                      |
@@ -50,13 +51,13 @@ Commands consist of apenode's scripts and Makefile:
 
 | Name                   | Default                   | Commands                  | Description                                                                    |
 | ---------------------- | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `ENV_DIR`              | `tmp/`                    | `build|run|stop`          | Specify a folder where an apenode environment lives or should live if building |
-| `ENV_APENODE_CONF`     | `tmp/apenode.dev.yaml`    | `build|migrate|seed|drop` | Points the command to the given apenode configuration file                     |
-| `ENV_DAEMON`           | `off`                     | `build`                   | Sets the nginx daemon property in the generated `nginx.conf`                   |
-| `ENV_APENODE_PORT`     | `8000`                    | `build`                   | Sets the apenode proxy port in the generated `nginx.conf`                      |
-| `ENV_APENODE_WEB_PORT` | `8001`                    | `build`                   | Sets the apenode web port in the generated `nginx.conf`                        |
-| `ENV_LUA_CODE_CACHE`   | `off`                     | `build`                   | Sets the nginx `lua_code_cache` property in the generated `nginx.conf`         |
-| `ENV_LUA_LIB`          | `$(PWD)/src/?.lua;;`      | `build`                   | Sets the nginx `lua_package_path` property in the generated `nginx.conf`       |
+| `DIR`                  | `tmp/`                    | `build|run|stop`          | Specify a folder where an apenode environment lives or should live if building |
+| `APENODE_CONF`         | `tmp/apenode.conf`        | `build|migrate|seed|drop` | Points the command to the given apenode configuration file                     |
+| `DAEMON`               | `off`                     | `build`                   | Sets the nginx daemon property in the generated `nginx.conf`                   |
+| `APENODE_PORT`         | `8000`                    | `build`                   | Sets the apenode proxy port in the generated `nginx.conf`                      |
+| `APENODE_WEB_PORT`     | `8001`                    | `build`                   | Sets the apenode web port in the generated `nginx.conf`                        |
+| `LUA_CODE_CACHE`       | `off`                     | `build`                   | Sets the nginx `lua_code_cache` property in the generated `nginx.conf`         |
+| `LUA_LIB`              | `$(PWD)/src/?.lua;;`      | `build`                   | Sets the nginx `lua_package_path` property in the generated `nginx.conf`       |
 
 #### Scripts
 

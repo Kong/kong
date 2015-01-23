@@ -5,7 +5,7 @@ local Migration = {
     CREATE TABLE IF NOT EXISTS accounts(
       id INTEGER PRIMARY KEY,
       provider_id TEXT UNIQUE,
-      created_at INTEGER
+      created_at TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS apis(
@@ -13,7 +13,7 @@ local Migration = {
       name VARCHAR(50) UNIQUE,
       public_dns VARCHAR(50) UNIQUE,
       target_url VARCHAR(50),
-      created_at INTEGER
+      created_at TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS applications(
@@ -21,7 +21,7 @@ local Migration = {
       account_id INTEGER,
       public_key TEXT,
       secret_key TEXT,
-      created_at INTEGER,
+      created_at TIMESTAMP,
 
       FOREIGN KEY(account_id) REFERENCES accounts(id)
     );
@@ -31,7 +31,7 @@ local Migration = {
       application_id INTEGER NOT NULL,
       origin_ip TEXT NOT NULL,
       name TEXT NOT NULL,
-      timestamp INTEGER NOT NULL,
+      timestamp TIMESTAMP NOT NULL,
       period TEXT NOT NULL,
       value INTEGER NOT NULL,
 
@@ -46,7 +46,7 @@ local Migration = {
       application_id INTEGER,
       name TEXT,
       value TEXT,
-      created_at INTEGER,
+      created_at TIMESTAMP,
 
       FOREIGN KEY(api_id) REFERENCES apis(id),
       FOREIGN KEY(application_id) REFERENCES applications(id)
