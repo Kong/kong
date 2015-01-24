@@ -22,47 +22,18 @@ function BaseDao:finalize()
   end
 end
 
--- Update one or many entities according to a WHERE statement
--- @param table entity Entity to update
--- @param table where_keys Selector for what entity to update
--- @return table Updated entity
+-- Insert an entity
+-- @param table entity Entity to insert
+-- @return table Inserted entity with its rowid property
 -- @return table Error if error
-function BaseDao:update(entity)
-  if entity then
-    entity = dao_utils.serialize(self._schema, entity)
-  else
-    return 0
-  end
-
-  -- Only support id as a selector
-  local where_keys = {
-    id = entity.id
-  }
-
-  local query = self:build_udpate_query(entity, where_keys)
-  local stmt = self:get_statement(query)
-  stmt:bind_names(entity)
-
-    local inspect = require "inspect"
-    print(inspect(query))
-    print(inspect(entity))
-
-  return self:exec_stmt_count_rows(stmt)
-end
-
--- Insert or update an entity
--- @param table entity Entity to insert or replace
--- @param table where_keys Selector for the row to insert or update
--- @return table Inserted/updated entity with its rowid property
--- @return table Error if error
-function BaseDao:insert_or_update(entity, where_keys)
+function BaseDao:insert(entity)
   if entity then
     entity = dao_utils.serialize(self._schema, entity)
   else
     return nil
   end
 
-  local query = self:build_insert_or_update_query(entity, where_keys)
+  local query = self:build_insert_query(entity)
   local stmt = self:get_statement(query)
   stmt:bind_names(entity)
 
@@ -74,6 +45,25 @@ function BaseDao:insert_or_update(entity, where_keys)
   entity.id = rowid
 
   return entity
+end
+
+-- Update one or many entities according to a WHERE statement
+-- @param table entity Entity to update
+-- @param table where_keys Selector for what entity to update
+-- @return table Number of affected rows
+-- @return table Error if error
+function BaseDao:update_by_id(entity)
+  if entity then
+    entity = dao_utils.serialize(self._schema, entity)
+  else
+    return 0
+  end
+
+  local query = self:build_udpate_query(entity)
+  local stmt = self:get_statement(query)
+  stmt:bind_names(entity)
+
+  return self:exec_stmt_count_rows(stmt)
 end
 
 -- Find one row according to a condition determined by the keys
@@ -152,22 +142,20 @@ end
 
 -- Delete row(s) according to a WHERE condition determined by the passed keys
 -- @param table where_keys Keys used to build a WHERE condition
--- @return number Number of rows affected by the executed query
+-- @return {boolean} Succes of the query
 -- @return table Error if error
 function BaseDao:delete_by_id(id)
-  where_keys = dao_utils.serialize(self._schema, { id = id})
-
-  if not where_keys or  utils.table_size(where_keys) == 0 then
+  if not id then
     return nil, { message = "Cannot delete an entire collection" }
   end
 
-  local query = self:build_delete_query(where_keys)
+  local query = self:build_delete_query { id = id }
   local stmt = self:get_statement(query)
 
-  -- Build binding table
-  stmt:bind_names(where_keys)
+  stmt:bind_names { id = id }
 
-  return self:exec_stmt_count_rows(stmt)
+  local rows_count, err = self:exec_stmt_count_rows(stmt)
+  return rows_count ~= 0, err
 end
 
 -----------------
@@ -190,6 +178,38 @@ function BaseDao:get_statement(query)
       return statement
     end
   end
+end
+
+-- Build an INSERT query
+-- @param table entity Object with keys that will be in the prepared statement
+-- @return string An INSERT into query to be binded
+function BaseDao:build_insert_query(entity)
+  local fields, values = {}, {}
+
+  for k,_ in pairs(self._schema) do
+    table.insert(fields, k)
+    table.insert(values, ":"..k)
+  end
+
+  return [[ INSERT INTO ]]..self._collection..[[ ( ]]..table.concat(fields, ",")..[[ )
+              VALUES( ]]..table.concat(values, ",")..[[ ); ]]
+end
+
+-- Build an UPDATE query
+-- @param table entity Object with keys that will be in the prepared statement
+-- @return string An UPDATE query to be binded
+function BaseDao:build_udpate_query(entity, where_keys)
+  if where_keys == nil then where_keys = { id = "" } end
+
+  local fields = {}
+  local where = self:build_where_fields(where_keys)
+
+  -- Build the VALUES to insert
+  for k,_ in pairs(entity) do
+    table.insert(fields, k.."=:"..k)
+  end
+
+  return [[ UPDATE ]]..self._collection..[[ SET ]]..table.concat(fields, ",")..where
 end
 
 -- Build a SELECT query on the current collection and model schema
@@ -215,59 +235,6 @@ function BaseDao:build_count_query(where_keys)
   local where = self:build_where_fields(where_keys)
 
   return [[ SELECT COUNT(*) FROM ]]..self._collection..where
-end
-
--- Build an UPDATE query
--- @param table entity Object with keys that will be in the prepared statement
--- @return string An UPDATE query to be binded
-function BaseDao:build_udpate_query(entity, where_keys)
-  if where_keys == nil then where_keys = { id = "" } end
-
-  local fields = {}
-  local where = self:build_where_fields(where_keys)
-
-  -- Build the VALUES to insert
-  for k,_ in pairs(entity) do
-    table.insert(fields, k.."=:"..k)
-  end
-
-  return [[ UPDATE ]]..self._collection..[[ SET ]]..table.concat(fields, ",")..where
-end
-
--- Allows to insert or update if already existing a row on the current collection
--- from a WHERE condition with an INSERT OR REPLACE query.
---
--- Ex:
--- build_insert_or_update_query({ name = "hello", host = "mashape.com" }, { "id" = 1 })
-
--- returns: INSERT OR REPLACE INTO apis(:name, :host, :target)
---          VALUES(?,
---                 ?,
---                 (SELECT target FROM apis WHERE id = :id))
---
--- @param table entity Entity to insert or update on the current collection
--- @param table where_keys Selector for the row to insert or update
--- @return string The computed INSERT OR REPLACE query to be binded
-function BaseDao:build_insert_or_update_query(entity, where_keys)
-  if where_keys == nil then where_keys = { id = "" } end
-
-  local fields, values = {}, {}
-  local where = self:build_where_fields(where_keys)
-
-  -- Build the VALUES to insert
-  for k,_ in pairs(self._schema) do
-    table.insert(fields, k)
-    -- value is specified in entity and not in where_keys
-    if entity[k] ~= nil and where_keys[k] == nil then
-      table.insert(values, ":"..k)
-    -- value is not specified in entity, thus is not to update, thus we select the existing one
-    else
-      table.insert(values, "(SELECT "..k.." FROM "..self._collection..where..")")
-    end
-  end
-
-  return [[ INSERT OR REPLACE INTO ]]..self._collection..[[ ( ]]..table.concat(fields, ",")..[[ )
-              VALUES( ]]..table.concat(values, ",")..[[ ); ]]
 end
 
 -- Build a DELETE statement from a table of keys to delete from
