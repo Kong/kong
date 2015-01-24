@@ -13,7 +13,6 @@ local function throw(err)
   local err_str
   if type(err) == "table" then
     err_str = inspect(err)
-    print(err_str)
   else
     err_str = err
   end
@@ -34,8 +33,8 @@ end
 
 local Faker = Object:extend()
 
-function Faker:new(dao)
-  self.dao = dao
+function Faker:new(dao_factory)
+  self.dao_factory = dao_factory
 end
 
 function Faker.fake_entity(type, invalid)
@@ -81,9 +80,9 @@ function Faker.fake_entity(type, invalid)
     local type = random_from_table({ "authentication", "ratelimiting" })
     local value = {}
     if type == "authentication" then
-      value = { authentication_type = "query", authentication_key_names = { "apikey" }}
+      value = { authentication_type = "query", authentication_key_names = { "apikey"..r }}
     else
-      value = { period = "minute", limit = 2 }
+      value = { period = "minute", limit = r }
     end
     return {
       name = type,
@@ -161,7 +160,7 @@ function Faker:insert_from_table(entities_to_insert, random)
     for i, entity in ipairs(entities) do
       -- Save from a model instance
       local Model = require("apenode.models."..type)
-      local model_instance = Model(entity, self.dao)
+      local model_instance = Model(entity, self.dao_factory)
       local res, err = model_instance:save()
       if err then
         throw(err)
@@ -206,7 +205,7 @@ function Faker:insert_from_table(entities_to_insert, random)
 
       -- Save from a model instance
       local Model = require("apenode.models."..type)
-      local model_instance = Model(entity, self.dao)
+      local model_instance = Model(entity, self.dao_factory)
       if type == "metric" then
         res, err = model_instance:increment_self()
       else

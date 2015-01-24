@@ -19,9 +19,10 @@ end
 -- Validate a table against a given schema
 -- @param {table} t Table to validate
 -- @param {table} schema Schema against which to validate the table
+-- @param {table} dao
 -- @return {table} A filtered, valid table if success, nil if error
 -- @return {table} A list of encountered errors during the validation
-function _M.validate(t, schema, updating)
+function _M.validate(t, schema, updating, collection, dao_factory)
   local result, errors = {}
 
   -- Check the given table against a given schema
@@ -48,7 +49,7 @@ function _M.validate(t, schema, updating)
 
     -- Check field against a custom function
     elseif t[k] and v.func then
-      local success, err = v.func(t[k])
+      local success, err = v.func(t[k], t, dao_factory)
       if not success then
         errors = add_error(errors, k, err)
       end
@@ -58,6 +59,16 @@ function _M.validate(t, schema, updating)
     if t[k] and v.regex then
       if not rex.match(t[k], v.regex) then
         errors = add_error(errors, k, k.." has an invalid value")
+      end
+    end
+
+    -- Check for unique properties
+    if v.unique and t[k] and dao_factory ~= nil then
+      local data, err = dao_factory[collection]:find_one { [k] = t[k] }
+      if data ~= nil and data.id ~= t.id then
+        errors = add_error(errors, k, k.." with value ".."\""..t[k].."\"".." already exists")
+      elseif err then
+        errors = add_error(errors, k, err)
       end
     end
 
