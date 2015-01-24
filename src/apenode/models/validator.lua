@@ -17,14 +17,15 @@ local function add_error(errors, k, v)
 end
 
 -- Validate a table against a given schema
--- @param boolean is_update
--- @return A filtered, valid table if success, nil if error
--- @return table A list of encountered errors during the validation
-function _M.validate(t, schema, is_update)
+-- @param {table} t Table to validate
+-- @param {table} schema Schema against which to validate the table
+-- @return {table} A filtered, valid table if success, nil if error
+-- @return {table} A list of encountered errors during the validation
+function _M.validate(t, schema, updating)
   local result, errors = {}
 
   -- Check the given table against a given schema
-  for k, v in pairs(schema) do
+  for k,v in pairs(schema) do
     -- Set default value for the filed if given
     if not t[k] and v.default ~= nil then
       if type(v.default) == "function" then
@@ -38,7 +39,7 @@ function _M.validate(t, schema, is_update)
       errors = add_error(errors, k, k.." is required")
 
     -- Check we're not passing an id
-    elseif t[k] and v.read_only then
+    elseif not updating and t[k] and v.read_only then
       errors = add_error(errors, k, k.." is read only")
 
     -- Check types (number/string) of the field

@@ -26,6 +26,18 @@ local Migration = {
       FOREIGN KEY(account_id) REFERENCES accounts(id)
     );
 
+    CREATE TABLE IF NOT EXISTS plugins(
+      id INTEGER PRIMARY KEY,
+      api_id INTEGER,
+      application_id INTEGER,
+      name TEXT,
+      value TEXT,
+      created_at TIMESTAMP,
+
+      FOREIGN KEY(api_id) REFERENCES apis(id),
+      FOREIGN KEY(application_id) REFERENCES applications(id)
+    );
+
     CREATE TABLE IF NOT EXISTS metrics(
       api_id INTEGER NOT NULL,
       application_id INTEGER NOT NULL,
@@ -38,18 +50,6 @@ local Migration = {
       FOREIGN KEY(application_id) REFERENCES applications(id),
       FOREIGN KEY(api_id) REFERENCES apis(id),
       PRIMARY KEY(api_id, application_id, origin_ip, name, period)
-    );
-
-    CREATE TABLE IF NOT EXISTS plugins(
-      id INTEGER PRIMARY KEY,
-      api_id INTEGER,
-      application_id INTEGER,
-      name TEXT,
-      value TEXT,
-      created_at TIMESTAMP,
-
-      FOREIGN KEY(api_id) REFERENCES apis(id),
-      FOREIGN KEY(application_id) REFERENCES applications(id)
     );
   ]],
 

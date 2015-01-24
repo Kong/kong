@@ -22,40 +22,11 @@ function BaseDao:new(database, collection, schema, properties)
   self._stmt_cache = {}
 end
 
--- Update one or many entities according to a WHERE statement
--- @param table entity Entity to update
--- @return table Updated entity
--- @return table Error if error
-function BaseDao:update(entity)
-  if entity and utils.table_size(entity) > 0 then
-    entity = dao_utils.serialize(self._schema, entity)
-  else
-    return 0
-  end
-
-  -- Only support id as a selector
-  local where_keys = {
-    id = entity.id
-  }
-
-  if entity.id ~= nil then
-    entity.id = nil
-  end
-
-  local query, values_to_bind = self:build_udpdate_query(entity, where_keys)
-
-  -- Last '?' placeholder is the WHERE id = ?
-  table.insert(values_to_bind, cassandra.uuid(entity.id))
-
-  return self:_exec_stmt(query, values_to_bind)
-end
-
--- Insert or update an entity
+-- Insert an entity
 -- @param table entity Entity to insert or replace
--- @param table where_keys Selector for the row to insert or update
--- @return table Inserted/updated entity with its rowid property
+-- @return table Inserted entity with its id property
 -- @return table Error if error
-function BaseDao:insert_or_update(entity, where_keys)
+function BaseDao:insert(entity)
   if entity then
     entity = dao_utils.serialize(self._schema, entity)
   else
@@ -72,9 +43,33 @@ function BaseDao:insert_or_update(entity, where_keys)
 
   if err then
     return nil, err
+  else
+    return entity
+  end
+end
+
+-- Update one or many entities according to a WHERE statement
+-- @param table entity Entity to update
+-- @return table Updated entity
+-- @return table Error if error
+function BaseDao:update_by_id(entity)
+  if entity and utils.table_size(entity) > 0 then
+    entity = dao_utils.serialize(self._schema, entity)
+  else
+    return 0
   end
 
-  return entity
+  local query, values_to_bind = self:build_udpdate_query(entity)
+
+  -- Last '?' placeholder is the WHERE id = ?
+  table.insert(values_to_bind, cassandra.uuid(entity.id))
+
+  local res, err = self:_exec_stmt(query, values_to_bind)
+  if err then
+    return 0, err
+  else
+    return 1
+  end
 end
 
 -- Find one row according to a condition determined by the keys
@@ -94,20 +89,11 @@ function BaseDao:find_one(where_keys)
 end
 
 -- Find rows according to a WHERE condition determined by the passed keys
--- @param table (optional) where_keys Keys used to build a WHERE condition
--- @param number page Page to retrieve (default: 1)
--- @param number size Size of the page (default = 30, max = 100)
+-- @param table (Optional) where_keys Keys used to build a WHERE condition
 -- @return table Retrieved rows or empty list
 -- @return number Total count of entities matching the SELECT
 -- @return table Error if error during execution
-function BaseDao:find(where_keys, page, size)
-  -- where_keys is optional
-  if type(where_keys) ~= "table" then
-    size = page
-    page = where_keys
-    where_keys = nil
-  end
-
+function BaseDao:find(where_keys)
   where_keys = dao_utils.serialize(self._schema, where_keys)
 
   local _, _, values_to_bind = self:_build_query_args(where_keys)
@@ -145,19 +131,21 @@ end
 
 -- Delete row(s) according to a WHERE condition determined by the passed keys
 -- @param table where_keys Keys used to build a WHERE condition
--- @return number Number of rows affected by the executed query
--- @return table Error if error
+-- @return {boolean} Success of the query
+-- @return {table} Error if error
 function BaseDao:delete_by_id(id)
-  local query = self:build_delete_query({ id = id })
-
-  -- Execute the command
-  local results, err = self:_exec_stmt(query, { cassandra.uuid(id) })
-  if not results then
-    return nil, err
+  if not id then
+    return false, { message = "Cannot delete an entire collection" }
   end
 
-  -- TODO This is another trick for cassandra
-  return 1
+  -- Check if exists before delete
+  local exists, err = self:find_one { id = id }
+  if not exists or err then
+    return false, err
+  end
+
+  local query = self:build_delete_query { id = id }
+  return self:_exec_stmt(query, { cassandra.uuid(id) })
 end
 
 -----------------
@@ -203,6 +191,8 @@ end
 -- @param table where_keys Selector for the entity to update
 -- @return string An UPDATE query with palceholders to be binded
 function BaseDao:build_udpdate_query(entity, where_keys)
+  if where_keys == nil then where_keys = { id = "" } end
+
   local columns, placeholders, values_to_bind = self:_build_query_args(entity, true)
   local where = BaseDao._build_where_fields(where_keys)
 
@@ -228,8 +218,15 @@ function BaseDao:_build_query_args(entity, update)
   local columns, placeholders, values_to_bind = {}, {}, {}
 
   if update then
-    entity.id = nil
-    entity.created_at = nil
+    for k, v in pairs(entity) do
+      local schema_field = self._schema[k]
+      if schema_field.type ~= "id" and schema_field.type ~= "timestamp" then
+        table.insert(columns, k)
+        table.insert(placeholders, "?")
+        table.insert(values_to_bind, v)
+      end
+    end
+    return columns, placeholders, values_to_bind
   end
 
   for k, v in pairs(entity) do
@@ -239,9 +236,9 @@ function BaseDao:_build_query_args(entity, update)
     table.insert(placeholders, "?")
 
     -- Build values to bind with special cassandra values on uuids and timestamps
-    if schema_field.type == "uuid" then
+    if not update and schema_field.type == "id" then
       table.insert(values_to_bind, cassandra.uuid(v))
-    elseif schema_field.type == "timestamp" then
+    elseif not update and schema_field.type == "timestamp" then
       local created_at = v
       if string.len(tostring(created_at)) == 10 then
         created_at = created_at * 1000 -- Convert to milliseconds
@@ -287,10 +284,10 @@ end
 --
 -- Will throw an error if the statement cannot be prepared.
 --
--- @param string query A CQL query
--- @param table values Values to bind to the query
--- @return table Result(s) of the query
--- @return table Error during connection or execution
+-- @param {string} query A CQL query
+-- @param {table} values Values to bind to the query
+-- @return {boolean} Success of the query
+-- @return {table} Error during connection or execution
 function BaseDao:_exec_stmt(query, values)
   -- Connects to Cassandra
   local session = cassandra.new()
@@ -299,14 +296,14 @@ function BaseDao:_exec_stmt(query, values)
   --local connected, err = self._db:connect(self._properties.host, self._properties.port)
   local connected, err = session:connect(self._properties.host, self._properties.port)
   if not connected then
-    return nil, err
+    return false, err
   end
 
   -- Set apenode keyspace
   --local ok, err = self._db:set_keyspace(self._properties.keyspace)
   local ok, err = session:set_keyspace(self._properties.keyspace)
   if not ok then
-    return nil, err
+    return false, err
   end
 
   -- Retrieve statement if exists in cache or creates it
@@ -318,18 +315,18 @@ function BaseDao:_exec_stmt(query, values)
 
   -- Execute statement
   --local result, err = self._db:execute(statement, values)
-  local result, err = session:execute(statement, values)
+  local success, err = session:execute(statement, values)
   if err then
-    return nil, err
+    return false, err
   end
 
   -- Puts back the connection in the nginx pool
   local ok, err = session:set_keepalive(self._properties.keepalive)
   if not ok and err ~= "luasocket does not support reusable sockets" then
-    return nil, err
+    return false, err
+  else
+    return success
   end
-
-  return result
 end
 
 return BaseDao

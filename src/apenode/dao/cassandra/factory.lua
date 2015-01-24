@@ -21,8 +21,8 @@ function CassandraFactory:new(properties)
   self.migrations = Migrations(self)
   self._properties = properties
 
-  self._db = cassandra.new()
-  self._db:set_timeout(properties.timeout)
+  --self._db = cassandra.new()
+  --self._db:set_timeout(properties.timeout)
 
   self.apis = Apis(self._db, properties)
   self.metrics = Metrics(self._db, properties)
@@ -72,7 +72,9 @@ function CassandraFactory:prepare()
 end
 
 function CassandraFactory:execute(stmt)
-  local connected, err = self._db:connect(self._properties.host, self._properties.port)
+  session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+  local connected, err = session:connect(self._properties.host, self._properties.port)
   if not connected then
     error(err)
   end
@@ -82,7 +84,7 @@ function CassandraFactory:execute(stmt)
   local queries = stringy.split(stmt, ";")
   for _,query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
-      local result, err = self._db:execute(query)
+      local result, err = session:execute(query)
       if err then
         error(err)
       end
