@@ -20,7 +20,7 @@ function Account:new(t, dao_factory)
 end
 
 function Account.find_one(args, dao_factory)
-  local data, err =  Account.super._find_one(args, dao_factory[COLLECTION])
+  local data, err = Account.super._find_one(args, dao_factory[COLLECTION])
   if data then
     data = Account(data, dao_factory)
   end

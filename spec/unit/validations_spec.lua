@@ -131,41 +131,5 @@ describe("Validation", function()
       assert.are.same("unexpected is an unknown field", err.unexpected)
     end)
 
-    --------------------------------
-    -- Custom Validation function --
-    --------------------------------
-
-    -- This is a test for especially useful when the desired behaviour is to
-    -- have a custom valdiaton function that need access to the DAO.
-
-    describe("Custom validation function", function()
-      local SQLiteFactory = require "apenode.dao.sqlite.factory"
-      sqlite_dao = SQLiteFactory({ memory = true })
-
-      -- This function will be called and returned _inside_ the `func` property
-      -- It will have access to the DAO
-      local spy_validate_with_context = spy.new(function(value) end)
-
-      -- This function is to call for `func` and must return the validation function
-      -- It gives access to the dao to the validation fonction
-      local spy_do_something_with_dao = spy.new(function(dao)
-        assert.are.same(sqlite_dao, dao)
-        return spy_validate_with_context
-      end)
-
-      local schema_2 = {
-        something = { type = "number",
-                      func = spy_do_something_with_dao(sqlite_dao) },
-      }
-
-      it("should be able to call a custom function with custom parameters such as a DAO", function()
-        local values = { something = 123 }
-        local res_values, err = validate(values, schema_2)
-
-        assert.spy(spy_validate_with_context).was.called_with(123)
-        assert.spy(spy_do_something_with_dao).was.called_with(sqlite_dao)
-      end)
-
-    end)
   end)
 end)

@@ -20,7 +20,7 @@ describe("Models", function()
 
     describe("Persistance", function()
 
-      local dao_configuration = require "spec.unit.dao_configuration"
+      local dao_configuration = require "spec.database.dao_configuration"
 
       -- Let's test with each DAO
       for dao_type, properties in pairs(dao_configuration) do
@@ -28,15 +28,16 @@ describe("Models", function()
         local dao = Factory(properties)
 
         describe(dao_type, function()
-          describe("#save()", function()
+          
+          teardown(function()
+            dao:drop()
+          end)
 
-            setup(function()
-              dao:drop()
-            end)
+          describe("#save()", function()
 
             it("should validate the values before saving", function()
               local values = Faker.fake_entity("api", true)
-              local api = Api(values, {})
+              local api = Api(values, dao)
 
               local res_values, err = api:save()
               assert.falsy(res_values)
@@ -66,16 +67,12 @@ describe("Models", function()
 
               local res_values, err = api_clone:save()
               assert.falsy(res_values)
-              assert.are.same("name with value \"mashape\" already exists", err)
+              assert.are.same("name with value \"mashape\" already exists", err.name)
             end)
 
           end)
 
           describe("#update()", function()
-
-            setup(function()
-              dao:drop()
-            end)
 
             it("should validate the values before updating", function()
               local values = Faker.fake_entity("api", true)
@@ -120,16 +117,12 @@ describe("Models", function()
               api_2.name = "unique name"
               local row_count, err = api_2:update()
               assert.truthy(err)
-              assert.are.same("name with value \"unique name\" already exists", err)
+              assert.are.same("name with value \"unique name\" already exists", err.name)
             end)
 
           end)
 
           describe("#delete()", function()
-
-            setup(function()
-              dao:drop()
-            end)
 
             it("should delete a model from the database", function()
               local values = Faker.fake_entity("api")
@@ -170,7 +163,7 @@ describe("Models", function()
             end)
 
           end)
-          
+
         end)
       end
     end)

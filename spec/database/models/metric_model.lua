@@ -1,6 +1,6 @@
 local utils = require "apenode.tools.utils"
 local Metric = require "apenode.models.metric"
-local configuration = require "spec.unit.models.configuration"
+local configuration = require "spec.database.dao_configuration"
 
 local configuration, dao_factory = utils.load_configuration_and_dao(configuration)
 

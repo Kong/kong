@@ -105,13 +105,13 @@ function BaseDao:find(where_keys)
   -- Execute SELECT query
   local results, err = self:_exec_stmt(query, values_to_bind)
   if err then
-    return nil, nil, err
+    return nil, 0, err
   end
 
   -- Execute COUNT query
   local count, err = self:_exec_stmt(count_query, values_to_bind)
   if count == nil then
-    return nil, nil, err
+    return nil, 0, err
   end
 
   local count_value = table.remove(count, 1).count

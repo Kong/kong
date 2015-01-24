@@ -21,10 +21,10 @@ local function check_api_id(api_id, t, dao_factory)
   end
 end
 
-local function validate_plugin_schema(object)
-  local status, plugin = pcall(require, "apenode.plugins."..object.name..".handler")
+local function validate_plugin_schema(value, t)
+  local status, plugin = pcall(require, "apenode.plugins."..t.name..".handler")
   if not status then
-    return nil, "Plugin \""..object.name.."\" not found"
+    return nil, "Plugin \""..t.name.."\" not found"
   end
 
   return plugin._SCHEMA
@@ -49,7 +49,7 @@ function Plugin:new(t, dao_factory)
 end
 
 function Plugin:save()
-  local res, err = self:_validate(self._schema, self._t, false)
+  local res, err = self:validate()
   if not err then
     if self.find_one({api_id = self.api_id, application_id = self.application_id, name = self.name }, self._dao_factory) then
       return nil, "The plugin already exists, updating the current one."
