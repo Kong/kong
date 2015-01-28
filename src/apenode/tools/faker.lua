@@ -95,7 +95,7 @@ end
 
 function Faker:seed(random, amount)
   -- amount is optional
-  if not amount then amount = 1000 end
+  if not amount then amount = 10000 end
 
   local entities_to_insert = {
     api = {
@@ -136,7 +136,7 @@ function Faker:seed(random, amount)
     -- as the difference between total amount requested and hard-coded ones
     -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
     local random_entities = {}
-    for type,entities in pairs(entities_to_insert) do
+    for type, entities in pairs(entities_to_insert) do
       number_to_insert = amount - #entities
       random_entities[type] = {}
       for i = 1, number_to_insert do
@@ -146,6 +146,8 @@ function Faker:seed(random, amount)
 
     self:insert_from_table(random_entities, true)
   end
+
+  print(os.clock())
 end
 
 -- Insert entities in the DB using the DAO
@@ -155,13 +157,10 @@ end
 --                       a random entity.
 function Faker:insert_from_table(entities_to_insert, random)
   -- 1. Insert accounts and APIs
-  for type, entities in pairs { api = entities_to_insert.api,
-                                account = entities_to_insert.account } do
+  for type, entities in pairs({ apis = entities_to_insert.api,
+                                accounts = entities_to_insert.account }) do
     for i, entity in ipairs(entities) do
-      -- Save from a model instance
-      local Model = require("apenode.models."..type)
-      local model_instance = Model(entity, self.dao_factory)
-      local res, err = model_instance:save()
+      local res, err = self.dao_factory[type]:insert(entity)
       if err then
         throw(err)
       end
@@ -170,6 +169,7 @@ function Faker:insert_from_table(entities_to_insert, random)
     end
   end
 
+--[[
   -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
   for type, entities in pairs { application = entities_to_insert.application,
                                 plugin = entities_to_insert.plugin,
@@ -219,6 +219,7 @@ function Faker:insert_from_table(entities_to_insert, random)
       entities[i] = res
     end
   end
+--]]
 end
 
 return Faker

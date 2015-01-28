@@ -18,9 +18,6 @@ global:
 test:
 	@busted spec/unit
 
-test-db:
-	@busted spec/database
-
 test-web:
 	@$(MAKE) build DAEMON=on
 	@$(MAKE) migrate SILENT=-s

@@ -50,14 +50,6 @@ build = {
 
     ["apenode.dao.dao_utils"] = "src/apenode/dao/dao_utils.lua",
 
-    ["apenode.dao.sqlite.factory"] = "src/apenode/dao/sqlite/factory.lua",
-    ["apenode.dao.sqlite.base_dao"] = "src/apenode/dao/sqlite/base_dao.lua",
-    ["apenode.dao.sqlite.apis"] = "src/apenode/dao/sqlite/apis.lua",
-    ["apenode.dao.sqlite.metrics"] = "src/apenode/dao/sqlite/metrics.lua",
-    ["apenode.dao.sqlite.plugins"] = "src/apenode/dao/sqlite/plugins.lua",
-    ["apenode.dao.sqlite.accounts"] = "src/apenode/dao/sqlite/accounts.lua",
-    ["apenode.dao.sqlite.applications"] = "src/apenode/dao/sqlite/applications.lua",
-
     ["apenode.dao.cassandra.factory"] = "src/apenode/dao/cassandra/factory.lua",
     ["apenode.dao.cassandra.base_dao"] = "src/apenode/dao/cassandra/base_dao.lua",
     ["apenode.dao.cassandra.apis"] = "src/apenode/dao/cassandra/apis.lua",

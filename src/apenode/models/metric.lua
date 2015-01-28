@@ -1,7 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 
+local Object = require "classic"
 local utils = require "apenode.tools.utils"
-local BaseModel = require "apenode.models.base_model"
 
 local AVAILABLE_PERIODS = {
   second = true,
@@ -23,64 +23,27 @@ end
 local COLLECTION = "metrics"
 local SCHEMA = {
   api_id = { type = "id", required = true, },
-  application_id = { type = "id", required = false },
-  origin_ip = { type = "string", required = false },
+  application_id = { type = "id" },
+  origin_ip = { type = "string" },
   name = { type = "string", required = true },
   period = { type = "string", required = true, func = check_period },
   timestamp = { type = "timestamp", required = true },
   value = { type = "number", required = true }
 }
 
-local Metric = BaseModel:extend()
+local Metric = Object:extend()
 Metric["_COLLECTION"] = COLLECTION
 Metric["_SCHEMA"] = SCHEMA
 
 function Metric:new(t, dao_factory)
-  return Metric.super.new(self, COLLECTION, SCHEMA, t, dao_factory)
-end
-
-function Metric.find_one(args, dao_factory)
-  local data, err =  Metric.super._find_one(args, dao_factory[COLLECTION])
-  if data then
-    data = Metric(data, dao_factory)
-  end
-  return data, err
-end
-
-function Metric.find(args, page, size, dao_factory)
-  local data, total, err = Metric.super._find(args, page, size, dao_factory[COLLECTION])
-  if data then
-    for i,v in ipairs(data) do
-      data[i] = Metric(v, dao_factory)
-    end
-  end
-  return data, total, err
+  self._dao_factory = dao_factory
+  self._t = t
 end
 
 function Metric:increment_self(step)
   if not step then step = 1 end
-  local time
-  if ngx then
-    time = ngx.now() -- This is optimized when it runs inside nginx
-  else
-    time = os.time() -- This is a syscall, thus slower
-  end
 
-  local timestamps = utils.get_timestamps(time)
-  local success, err
-  for period,timestamp in pairs(timestamps) do
-    success, err = self._dao:increment(self.api_id, self.application_id, self.origin_ip, self.name, self.timestamp, self.period, step)
-  end
-
-  if err then
-    return false, err
-  else
-    return true, nil
-  end
-end
-
-function Metric.increment(api_id, application_id, origin_ip, name, step, dao_factory)
-  if application_id == nil and origin_ip == nil then
+  if not self._t.application_id and not self._t.origin_ip then
     return false, "You need to specify at least an application_id or an ip address"
   end
 
@@ -92,19 +55,40 @@ function Metric.increment(api_id, application_id, origin_ip, name, step, dao_fac
   end
 
   local timestamps = utils.get_timestamps(time)
-  local err
-  for period,timestamp in pairs(timestamps) do
-    local success, e = dao_factory[COLLECTION]:increment(api_id, application_id, origin_ip, name, timestamp, period, step)
-    if not success then
-      err = e
+  local successes = true
+  local errors = {}
+  for period, timestamp in pairs(timestamps) do
+    local success, err = self._dao_factory[COLLECTION]:increment(self._t.api_id, self._t.application_id, self._t.origin_ip, self._t.name, timestamp, period, step)
+    if err then
+      successes = false
+      table.insert(errors, err)
     end
   end
 
-  if err then
-    return false, err
+  if successes then
+    return true
   else
-    return true, nil
+    return false, errors
   end
+end
+
+function Metric.increment(api_id, application_id, origin_ip, name, step, dao_factory)
+  local metric = Metric({
+    name = name,
+    api_id = api_id,
+    application_id = application_id,
+    origin_ip = origin_ip
+  }, dao_factory)
+
+  return metric:increment_self(step)
+end
+
+function Metric.find_one(args, dao_factory)
+  return dao_factory[COLLECTION]:find_one(args)
+end
+
+function Metric.find(args, page, size, dao_factory)
+  return dao_factory[COLLECTION]:find(args, page, size)
 end
 
 return Metric

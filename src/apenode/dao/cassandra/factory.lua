@@ -21,13 +21,15 @@ function CassandraFactory:new(properties)
   self.migrations = Migrations(self)
   self._properties = properties
 
-  --self._db = cassandra.new()
-  --self._db:set_timeout(properties.timeout)
+  self._db = cassandra.new()
+  self._db:connect(properties.host, properties.port)
+  self._db:set_keyspace(properties.keyspace)
+  self._db:set_timeout(properties.timeout)
 
-  self.apis = Apis(self._db, properties)
-  self.metrics = Metrics(self._db, properties)
-  self.plugins = Plugins(self._db, properties)
-  self.accounts = Accounts(self._db, properties)
+  self.apis = Apis(self._db)
+  --self.metrics = Metrics(self._db, properties)
+  --self.plugins = Plugins(self._db, properties)
+  self.accounts = Accounts(self._db)
   self.applications = Applications(self._db, properties)
 end
 
@@ -68,7 +70,9 @@ end
 -- Utilities
 --
 function CassandraFactory:prepare()
- -- TODO
+  self.apis:prepare()
+  self.accounts:prepare()
+  self.applications:prepare()
 end
 
 function CassandraFactory:execute(stmt)
@@ -78,6 +82,8 @@ function CassandraFactory:execute(stmt)
   if not connected then
     error(err)
   end
+
+  --session:set_keyspace(self._properties.keyspace)
 
   -- Cassandra client doesn't support batches, splitting commands
   -- https://github.com/jbochi/lua-resty-cassandra/issues/26
@@ -94,7 +100,7 @@ end
 
 function CassandraFactory:close()
   local ok, err = self._db:close()
-  if err ~= nil then
+  if err then
     error("Cannot close Cassandra session: "..err)
   end
 end

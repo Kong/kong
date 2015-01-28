@@ -27,12 +27,7 @@ function Metrics:increment(api_id, application_id, origin_ip, name, timestamp, p
 
   local query = [[ UPDATE ]]..MetricModel._COLLECTION..[[ SET value = value + ]]..tostring(step)..where
 
-  local res, err = self:_exec_stmt(query, where_values_to_bind)
-  if err then
-    return false, err
-  end
-
-  return true, nil
+  return self:_exec_stmt(query, where_values_to_bind)
 end
 
 return Metrics

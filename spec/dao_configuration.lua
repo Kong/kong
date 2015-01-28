@@ -1,8 +1,4 @@
 return {
-  sqlite = {
-    memory = true,
-    file_path = "/tmp/apenode.sqlite3"
-  },
   cassandra = {
     host = "127.0.0.1",
     port = 9042,
