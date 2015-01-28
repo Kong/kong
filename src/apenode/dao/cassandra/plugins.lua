@@ -18,7 +18,11 @@ function Plugins:new(database, properties)
     insert = [[
       INSERT INTO plugins(id, api_id, application_id, name, value, created_at)
         VALUES(?, ?, ?, ?, ?, ?);
-    ]]
+    ]],
+    exists = {
+      application_id = [[ SELECT id FROM applications WHERE id = ?; ]],
+      api_id = [[ SELECT id FROM apis WHERE id = ?; ]]
+    }
   }
 
   Plugins.super.new(self, database)

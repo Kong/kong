@@ -32,11 +32,11 @@ function _M.validate(t, schema)
     schema_keys[column] = true
 
     -- Set default value for the filed if given
-    if not t[k] and v.default ~= nil then
+    if not t[column] and v.default ~= nil then
       if type(v.default) == "function" then
-        t[k] = v.default()
+        t[column] = v.default()
       else
-        t[k] = v.default
+        t[column] = v.default
       end
     -- Check required fields are set
     elseif v.required and (t[column] == nil or t[column] == "") then
