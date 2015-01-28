@@ -146,8 +146,6 @@ function Faker:seed(random, amount)
 
     self:insert_from_table(random_entities, true)
   end
-
-  print(os.clock())
 end
 
 -- Insert entities in the DB using the DAO
