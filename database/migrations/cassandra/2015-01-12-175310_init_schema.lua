@@ -16,7 +16,6 @@ local Migration = {
     );
 
     CREATE INDEX IF NOT EXISTS ON accounts(provider_id);
-    CREATE INDEX IF NOT EXISTS ON accounts(created_at);
 
     CREATE TABLE IF NOT EXISTS applications(
       id uuid,
@@ -27,7 +26,6 @@ local Migration = {
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX IF NOT EXISTS ON applications(created_at);
     CREATE INDEX IF NOT EXISTS ON applications(public_key);
     CREATE INDEX IF NOT EXISTS ON applications(secret_key);
     CREATE INDEX IF NOT EXISTS ON applications(account_id);
@@ -41,7 +39,6 @@ local Migration = {
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX IF NOT EXISTS ON apis(created_at);
     CREATE INDEX IF NOT EXISTS ON apis(name);
     CREATE INDEX IF NOT EXISTS ON apis(public_dns);
     CREATE INDEX IF NOT EXISTS ON apis(target_url);
@@ -56,10 +53,8 @@ local Migration = {
       PRIMARY KEY (id)
     );
 
-    CREATE INDEX IF NOT EXISTS ON plugins(created_at);
     CREATE INDEX IF NOT EXISTS ON plugins(api_id);
     CREATE INDEX IF NOT EXISTS ON plugins(application_id);
-    CREATE INDEX IF NOT EXISTS ON plugins(name);
 
     CREATE TABLE IF NOT EXISTS metrics(
       api_id uuid,
