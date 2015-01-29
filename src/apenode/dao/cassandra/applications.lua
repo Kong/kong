@@ -1,6 +1,4 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
-local ApplicationsModel = require "apenode.models.application"
-local cassandra = require "cassandra"
 
 local SCHEMA = {
   { _ = "id", type = "id" },
