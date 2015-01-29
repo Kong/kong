@@ -42,8 +42,7 @@ end
 function BaseDao:insert(t)
   if not t then return nil, "Cannot insert a nil element" end
 
-  -- Override id and created_at by default values
-  t.id = uuid()
+  -- Override created_at by default value
   t.created_at = utils.get_utc() * 1000
 
   -- Validate schema
@@ -59,6 +58,12 @@ function BaseDao:insert(t)
     local value = t[column]
 
     if schema_field.type == "id" then
+      if column == "id" then
+        -- If it is the inserted entity's id, we generate it
+        -- and attach it to the table for return value
+        t[column] = uuid()
+        value = t[column]
+      end
       value = cassandra.uuid(value)
     elseif schema_field.type == "timestamp" then
       value = cassandra.timestamp(value)
