@@ -6,13 +6,14 @@ local dao_factory = CassandraFactory(configuration.cassandra)
 describe("BaseDao", function()
 
   setup(function()
+    dao_factory:migrate()
     dao_factory:prepare()
     dao_factory:seed()
   end)
 
   teardown(function()
-    --dao_factory:drop()
-    --dao_factory:close()
+    dao_factory:reset()
+    dao_factory:close()
   end)
 
   describe("Cassandra DAO", function()

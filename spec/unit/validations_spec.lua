@@ -8,7 +8,6 @@ describe("Validation", function()
     -- grab a pair of glasses, this stuff can literally explode.
     local collection = "custom_object"
     local schema = {
-      { _ = "id", type = "id" },
       { _ = "string", required = true },
       { _ = "url", required = true, regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       { _ = "date", default = 123456 },
@@ -76,7 +75,7 @@ describe("Validation", function()
     end)
 
     it("should be able to return multiple errors at once", function()
-      local values = { id = 1, string = "httpbin entity", url = "httpbin.org", unexpected = "abcdef" }
+      local values = { string = "httpbin entity", url = "httpbin.org", unexpected = "abcdef" }
 
       local valid, err = validate(values, schema)
       assert.falsy(valid)
