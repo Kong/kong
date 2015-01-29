@@ -1,7 +1,6 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
-  { _ = "id", type = "id" },
   { _ = "api_id", type = "id", required = true, exists = true },
   { _ = "application_id", type = "id", exists = true },
   { _ = "name", required = true },
@@ -15,8 +14,8 @@ function Plugins:new(database, properties)
   self._schema = SCHEMA
   self._queries = {
     insert = [[
-      INSERT INTO plugins(id, api_id, application_id, name, value, created_at)
-        VALUES(?, ?, ?, ?, ?, ?);
+      INSERT INTO plugins(api_id, application_id, name, value, created_at)
+        VALUES(?, ?, ?, ?, ?);
     ]],
     exists = {
       application_id = [[ SELECT id FROM applications WHERE id = ?; ]],

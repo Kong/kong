@@ -44,13 +44,12 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON apis(target_url);
 
       CREATE TABLE IF NOT EXISTS plugins(
-        id uuid,
         api_id uuid,
         application_id uuid,
         name text,
         value text, -- We can't use a map because we don't know if the value is a text, int or a list
         created_at timestamp,
-        PRIMARY KEY (id)
+        PRIMARY KEY ((api_id, application_id, name))
       );
 
       CREATE INDEX IF NOT EXISTS ON plugins(api_id);
