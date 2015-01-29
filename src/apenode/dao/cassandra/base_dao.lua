@@ -1,13 +1,14 @@
 -- Copyright (C) Mashape, Inc.
 
 local cassandra = require "cassandra"
-local dao_utils = require "apenode.dao.dao_utils"
+local schemas = require "apenode.dao.schemas"
 local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "apenode.tools.utils"
 local uuid = require "uuid"
+local cjson = require "cjson"
 
-local validate = require("apenode.models.validator").validate
+local validate = schemas.validate
 
 -- This is important to seed the UUID generator
 uuid.seed()
@@ -61,6 +62,8 @@ function BaseDao:insert(t)
       value = cassandra.uuid(value)
     elseif schema_field.type == "timestamp" then
       value = cassandra.timestamp(value)
+    elseif schema_field.type == "table" and value then
+      value = cjson.encode(value)
     end
 
     if schema_field.exists then

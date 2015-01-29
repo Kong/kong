@@ -48,7 +48,7 @@ build = {
     ["apenode.core.access"] = "src/apenode/core/access.lua",
     ["apenode.core.header_filter"] = "src/apenode/core/header_filter.lua",
 
-    ["apenode.dao.dao_utils"] = "src/apenode/dao/dao_utils.lua",
+    ["apenode.dao.schemas"] = "src/apenode/dao/schemas.lua",
 
     ["apenode.dao.cassandra.factory"] = "src/apenode/dao/cassandra/factory.lua",
     ["apenode.dao.cassandra.base_dao"] = "src/apenode/dao/cassandra/base_dao.lua",
@@ -58,7 +58,6 @@ build = {
     ["apenode.dao.cassandra.accounts"] = "src/apenode/dao/cassandra/accounts.lua",
     ["apenode.dao.cassandra.applications"] = "src/apenode/dao/cassandra/applications.lua",
 
-    ["apenode.models.validator"] = "src/apenode/models/validator.lua",
     ["apenode.models.base_model"] = "src/apenode/models/base_model.lua",
     ["apenode.models.account"] = "src/apenode/models/account.lua",
     ["apenode.models.api"] = "src/apenode/models/api.lua",

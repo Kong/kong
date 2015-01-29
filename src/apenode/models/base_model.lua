@@ -1,12 +1,12 @@
 -- Copyright (C) Mashape, Inc.
 
 local Object = require "classic"
-local Validator = require "apenode.models.validator"
+local schemas = require "apenode.dao.schemas"
 
 local BaseModel = Object:extend()
 
 function BaseModel:validate(update)
-  return Validator.validate(self._t, self._schema, update, self._collection, self._dao_factory)
+  return schemas.validate(self._t, self._schema, update, self._collection, self._dao_factory)
 end
 
 ---------------

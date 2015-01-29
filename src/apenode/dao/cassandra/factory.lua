@@ -27,7 +27,7 @@ function CassandraFactory:new(properties)
   self.faker = Faker(self)
   self.apis = Apis(self._db)
   --self.metrics = Metrics(self._db, properties)
-  --self.plugins = Plugins(self._db, properties)
+  self.plugins = Plugins(self._db, properties)
   self.accounts = Accounts(self._db)
   self.applications = Applications(self._db)
 end
@@ -71,6 +71,7 @@ function CassandraFactory:prepare()
   self._db:set_keyspace(self._properties.keyspace)
 
   self.apis:prepare()
+  self.plugins:prepare()
   self.accounts:prepare()
   self.applications:prepare()
 end

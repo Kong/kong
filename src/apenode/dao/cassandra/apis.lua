@@ -1,5 +1,4 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
-local ApiModel = require "apenode.models.api"
 
 local SCHEMA = {
   { _ = "id", type = "id" },

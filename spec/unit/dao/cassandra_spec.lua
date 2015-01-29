@@ -1,5 +1,6 @@
 local configuration = require "spec.dao_configuration"
 local CassandraFactory = require "apenode.dao.cassandra.factory"
+local uuid = require "uuid"
 
 local dao_factory = CassandraFactory(configuration.cassandra)
 
@@ -51,6 +52,7 @@ describe("BaseDao", function()
           api_t.name = apis[1].name
           local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(api)
+          assert.truthy(err)
           assert.are.same("Unique check failed on field: name with value: "..api_t.name, err)
         end)
 
@@ -75,16 +77,16 @@ describe("BaseDao", function()
           local app_t = dao_factory.faker.fake_entity("application")
           local app, err = dao_factory.applications:insert(app_t)
           assert.falsy(app)
+          assert.truthy(err)
           assert.are.same("account_id is required", err.account_id)
 
           -- With an invalid account_id, it's an EXISTS error
-          local uuid = require "uuid"
-
           local app_t = dao_factory.faker.fake_entity("application")
           app_t.account_id = uuid()
 
           local app, err = dao_factory.applications:insert(app_t)
           assert.falsy(app)
+          assert.truthy(err)
           assert.are.same("Exists check failed on field: account_id with value: "..app_t.account_id, err)
         end)
 
@@ -100,6 +102,47 @@ describe("BaseDao", function()
           assert.falsy(err)
           assert.truthy(app.id)
           assert.truthy(app.created_at)
+        end)
+
+      end)
+
+      describe("Plugins", function()
+
+        it("should not insert in db if API does not exist", function()
+          -- Without an api_id, it's a schema error
+          local plugin_t = dao_factory.faker.fake_entity("plugin")
+          plugin_t.api_id = nil
+          local plugin, err = dao_factory.plugins:insert(plugin_t)
+          assert.falsy(plugin)
+          assert.truthy(err)
+          assert.are.same("api_id is required", err.api_id)
+
+          -- With an invalid account_id, it's an EXISTS error
+          local plugin_t = dao_factory.faker.fake_entity("plugin")
+          plugin_t.api_id = uuid()
+
+          local plugin, err = dao_factory.plugins:insert(plugin_t)
+          assert.falsy(plugin)
+          assert.truthy(err)
+          assert.are.same("Exists check failed on field: api_id with value: "..plugin_t.api_id, err)
+        end)
+
+        it("should insert a plugin in db and add generated values", function()
+          local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+          assert.falsy(err)
+          assert.truthy(#apis > 0)
+
+          local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+          assert.falsy(err)
+          assert.truthy(#apps > 0)
+
+          local plugin_t = dao_factory.faker.fake_entity("plugin")
+          plugin_t.api_id = apis[1].id
+          plugin_t.application_id = apps[1].id
+
+          local plugin, err = dao_factory.plugins:insert(plugin_t)
+          assert.falsy(err)
+          assert.truthy(plugin)
         end)
 
       end)

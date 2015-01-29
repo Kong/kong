@@ -1,9 +1,8 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
-local PluginModel = require "apenode.models.plugin"
 
 local SCHEMA = {
   { _ = "id", type = "id" },
-  { _ = "api_id", type = "id", exists = true },
+  { _ = "api_id", type = "id", required = true, exists = true },
   { _ = "application_id", type = "id", exists = true },
   { _ = "name", required = true },
   { _ = "value", type = "table", required = true },
