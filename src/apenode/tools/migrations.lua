@@ -7,9 +7,10 @@ local kMigrationsPath = "database/migrations"
 -- Migrations
 local Migrations = Object:extend()
 
-function Migrations:new(dao)
+function Migrations:new(dao, type, options)
   self.dao = dao
-  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..dao.type, '.lua')
+  self.options = options
+  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..type, '.lua')
 end
 
 function Migrations.create(configuration, name, callback)
@@ -21,16 +22,21 @@ function Migrations.create(configuration, name, callback)
 local Migration = {
   name = "]]..file_name..[[",
 
-  up = ]].."[["..[[
+  up = function(options)
+    return ]].."[["..[[
 
 
-  ]].."]]"..[[,
+    ]].."]]"..[[
 
-  down = ]].."[["..[[
+  end,
+
+  down = function(options)
+    return ]].."[["..[[
 
 
-  ]].."]]"..[[
+    ]].."]]"..[[
 
+  end
 }
 
 return Migration
@@ -48,7 +54,10 @@ function Migrations:migrate(callback)
     if migration_module ~= nil then
       local migration = migration_module()
 
-      self.dao:execute(migration.up)
+      -- Generate UP query from string + options
+      local up_query = migration.up(self.options)
+
+      self.dao:execute(up_query, true)
 
       if callback then
         callback(migration)
@@ -61,7 +70,10 @@ function Migrations:rollback(callback)
   local migration_file = self.migrations_files[utils.table_size(self.migrations_files)]
   local migration = loadfile(migration_file)()
 
-  self.dao:execute(migration.down)
+  -- Generate DOWN query from string + options
+  local down_query = migration.down(self.options)
+
+  self.dao:execute(down_query, true)
 
   if callback then
     callback(migration)
@@ -72,7 +84,10 @@ function Migrations:reset(callback)
   for _,migration_file in ipairs(utils.reverse_table(self.migrations_files)) do
     local migration = loadfile(migration_file)()
 
-    self.dao:execute(migration.down)
+    -- Generate DOWN query from string + options
+    local down_query = migration.down(self.options)
+
+    self.dao:execute(down_query, true)
 
     if callback then
       callback(migration)
