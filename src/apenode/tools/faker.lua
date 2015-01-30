@@ -160,18 +160,16 @@ function Faker:insert_from_table(entities_to_insert, random)
     for i, entity in ipairs(entities) do
       local res, err = self.dao_factory[type]:insert(entity)
       if err then
-        throw(err)
+        throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
       end
 
       entities[i] = res
     end
   end
 
---[[
   -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
-  for type, entities in pairs { application = entities_to_insert.application,
-                                plugin = entities_to_insert.plugin,
-                                metric = entities_to_insert.metric } do
+  for type, entities in pairs { applications = entities_to_insert.application,
+                                plugins = entities_to_insert.plugin } do
     for i, entity in ipairs(entities) do
       local res, err
       local api = entities_to_insert.api[entity.__api]
@@ -191,33 +189,29 @@ function Faker:insert_from_table(entities_to_insert, random)
       entity.__account = nil
       entity.__application = nil
 
-      if type == "application" then
+      if type == "applications" then
         if account then entity.account_id = account.id end
-      elseif type == "plugin" then
+      elseif type == "plugins" then
         if api then entity.api_id = api.id end
         if application then entity.application_id = application.id end
-      elseif type == "metric" then
+      elseif type == "metrics" then
         if api then entity.api_id = api.id end
         if application then entity.application_id = application.id end
       end
 
-      -- Save from a model instance
-      local Model = require("apenode.models."..type)
-      local model_instance = Model(entity, self.dao_factory)
-      if type == "metric" then
+      if type == "metrics" then
         res, err = model_instance:increment_self()
       else
-        res, err = model_instance:save()
+        res, err = self.dao_factory[type]:insert(entity)
       end
 
       if err then
-        throw(err)
+        throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
       end
 
       entities[i] = res
     end
   end
---]]
 end
 
 return Faker

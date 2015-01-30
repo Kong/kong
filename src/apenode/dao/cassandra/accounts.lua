@@ -1,9 +1,9 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
-  { _ = "id", type = "id" },
-  { _ = "provider_id", unique = true },
-  { _ = "created_at", type = "timestamp" }
+  id = { type = "id" },
+  provider_id = { unique = true },
+  created_at = { type = "timestamp" }
 }
 
 local Accounts = BaseDao:extend()
@@ -11,11 +11,15 @@ local Accounts = BaseDao:extend()
 function Accounts:new(database)
   self._schema = SCHEMA
   self._queries = {
-    insert = [[
-      INSERT INTO accounts(id, provider_id, created_at) VALUES(?, ?, ?);
-    ]],
+    insert = {
+      params = { "id", "provider_id", "created_at" },
+      query = [[ INSERT INTO accounts(id, provider_id, created_at) VALUES(?, ?, ?); ]]
+    },
     unique = {
-      provider_id = [[ SELECT id FROM accounts WHERE provider_id = ?; ]]
+      provider_id ={
+        params = { "provider_id" },
+        query = [[ SELECT id FROM accounts WHERE provider_id = ?; ]]
+      }
     }
   }
 

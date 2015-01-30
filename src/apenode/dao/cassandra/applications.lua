@@ -1,11 +1,11 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
-  { _ = "id", type = "id" },
-  { _ = "account_id", type = "id", required = true, exists = true },
-  { _ = "public_key", required = false },
-  { _ = "secret_key", required = true, unique = true },
-  { _ = "created_at", type = "timestamp" }
+  id = { type = "id" },
+  account_id = { type = "id", required = true, exists = true },
+  public_key = {},
+  secret_key = { required = true, unique = true },
+  created_at = { type = "timestamp" }
 }
 
 local Applications = BaseDao:extend()
@@ -13,19 +13,44 @@ local Applications = BaseDao:extend()
 function Applications:new(database, properties)
   self._schema = SCHEMA
   self._queries = {
-    insert = [[
-      INSERT INTO applications(id, account_id, public_key, secret_key, created_at)
-        VALUES(?, ?, ?, ?, ?);
-    ]],
+    insert = {
+      all = {
+        params = { "id", "account_id", "public_key", "secret_key", "created_at" },
+        query = [[
+          INSERT INTO applications(id, account_id, public_key, secret_key, created_at)
+            VALUES(?, ?, ?, ?, ?);
+        ]]
+      },
+      no_public_key = {
+        params = { "id", "account_id", "secret_key", "created_at" },
+        query = [[ INSERT INTO applications(id, account_id, secret_key, created_at)
+                    VALUES(?, ?, ?, ?); ]]
+      }
+    },
     exists = {
-      account_id = [[ SELECT id FROM accounts WHERE id = ?; ]]
+      account_id = {
+        params = { "account_id" },
+        query = [[ SELECT id FROM accounts WHERE id = ?; ]]
+      }
     },
     unique = {
-      secret_key = [[ SELECT id FROM applications WHERE secret_key = ?; ]]
+      secret_key = {
+        params = { "secret_key" },
+        query = [[ SELECT id FROM applications WHERE secret_key = ?; ]]
+      }
     }
   }
 
   Applications.super.new(self, database)
+end
+
+function Applications:insert(t)
+  -- Determine which statement to use
+  if not t.public_key then
+    return Applications.super.insert(self, t, self._statements.insert.no_public_key)
+  else
+    return Applications.super.insert(self, t, self._statements.insert.all)
+  end
 end
 
 return Applications
