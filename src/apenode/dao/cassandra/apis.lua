@@ -1,12 +1,13 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
-  { _ = "id", type = "id" },
-  { _ = "name", required = true, unique = true },
-  { _ = "public_dns", required = true, unique = true,
-    regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
-  { _ = "target_url", required = true },
-  { _ = "created_at", type = "timestamp" }
+  id = { type = "id" },
+  name = { required = true, unique = true },
+  public_dns = { required = true,
+                 unique = true,
+                 regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
+  target_url = { required = true },
+  created_at = { type = "timestamp" }
 }
 
 local Apis = BaseDao:extend()
@@ -14,12 +15,24 @@ local Apis = BaseDao:extend()
 function Apis:new(database)
   self._schema = SCHEMA
   self._queries = {
-    insert = [[
-      INSERT INTO apis(id, name, public_dns, target_url, created_at) VALUES(?, ?, ?, ?, ?);
-    ]],
+    insert = {
+      params = { "id", "name", "public_dns", "target_url", "created_at" },
+      query = [[ INSERT INTO apis(id, name, public_dns, target_url, created_at)
+                  VALUES(?, ?, ?, ?, ?); ]]
+    },
     unique = {
-      name = [[ SELECT id FROM apis WHERE name = ?; ]],
-      public_dns = [[ SELECT id FROM apis WHERE public_dns = ?; ]]
+      name = {
+        params = { "name" },
+        query = [[ SELECT id FROM apis WHERE name = ?; ]]
+      },
+      public_dns = {
+        params = { "public_dns" },
+        query = [[ SELECT id FROM apis WHERE public_dns = ?; ]]
+      }
+    },
+    update = {
+      params = {},
+      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ? WHERE id = ?; ]]
     }
   }
 

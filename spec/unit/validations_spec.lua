@@ -8,11 +8,11 @@ describe("Validation", function()
     -- grab a pair of glasses, this stuff can literally explode.
     local collection = "custom_object"
     local schema = {
-      { _ = "string", required = true },
-      { _ = "table", type = "table" },
-      { _ = "url", regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
-      { _ = "date", default = 123456 },
-      { _ = "default", default = function() return "default" end  }
+      string = { required = true },
+      table = { type = "table" },
+      url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
+      date = { default = 123456 },
+      default = { default = function() return "default" end  }
     }
 
     it("should confirm a valid entity is valid", function()

@@ -1,10 +1,15 @@
 local rex = require "rex_pcre" -- Why? Lua has built in pattern which should do the job too
 local cjson = require "cjson"
 
-local function add_error(errors, k, v)
+--
+-- Schema
+--
+local _M = {}
+
+function _M.add_error(errors, k, v)
   if not errors then errors = {} end
 
-  if errors[k] then
+  if errors and errors[k] then
     local list = {}
     table.insert(list, errors[k])
     table.insert(list, v)
@@ -12,13 +17,9 @@ local function add_error(errors, k, v)
   else
     errors[k] = v
   end
+
   return errors
 end
-
---
--- Schema
---
-local _M = {}
 
 function _M.serialize(t, schema)
   if t then
@@ -51,13 +52,10 @@ end
 -- @return {boolean} Success of validation
 -- @return {table} A list of encountered errors during the validation
 function _M.validate(t, schema)
-  local errors = nil
-  local schema_keys = {}
+  local errors
 
   -- Check the given table against a given schema
-  for _,v in ipairs(schema) do
-    local column = v._
-    schema_keys[column] = true
+  for column, v in pairs(schema) do
 
     -- Set default value for the filed if given
     if not t[column] and v.default ~= nil then
@@ -66,34 +64,32 @@ function _M.validate(t, schema)
       else
         t[column] = v.default
       end
+
     -- Check required fields are set
     elseif v.required and (t[column] == nil or t[column] == "") then
-      errors = add_error(errors, column, column.." is required")
+      errors = _M.add_error(errors, column, column.." is required")
+
     -- Check type if table
     elseif v.type == "table" and t[column] and type(t[column]) ~= "table" then
-      errors = add_error(errors, column, column.." is not a table")
+      errors = _M.add_error(errors, column, column.." is not a table")
     end
 
     -- Check field against a regex if specified
     if t[column] and v.regex then
       if not rex.match(t[column], v.regex) then
-        errors = add_error(errors, column, column.." has an invalid value")
+        errors = _M.add_error(errors, column, column.." has an invalid value")
       end
     end
   end
 
   -- Check for unexpected fields in the entity
   for k,v in pairs(t) do
-    if not schema_keys[k] then
-      errors = add_error(errors, k, k.." is an unknown field")
+    if not schema[k] then
+      errors = _M.add_error(errors, k, k.." is an unknown field")
     end
   end
 
-  if errors then
-    return false, errors
-  else
-    return true
-  end
+  return errors == nil, errors
 end
 
 return _M

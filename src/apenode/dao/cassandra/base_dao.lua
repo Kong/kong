@@ -25,36 +25,129 @@ function BaseDao:prepare(queries, statements)
   if not statements then statements = self._statements end
 
   for stmt_name, query in pairs(queries) do
-    if type(query) == "table" then
+    if type(query) == "table" and query.query == nil then
       self._statements[stmt_name] = {}
       self:prepare(query, self._statements[stmt_name])
     else
-      local prepared_stmt, err = self._db:prepare(stringy.strip(query))
+      local prepared_stmt, err = self._db:prepare(stringy.strip(query.query))
       if err then
         error("Failed to prepare statement: "..err)
       else
-        statements[stmt_name] = prepared_stmt
+        statements[stmt_name] = {
+          params = query.params,
+          query = prepared_stmt
+        }
       end
     end
   end
 end
 
-function BaseDao:insert(t)
+function BaseDao:check_unique(t, statement)
+  local results, err = self:execute_prepared_stmt(t, statement)
+  if err then
+    return false, "Error during UNIQUE check: "..err
+  elseif results and #results > 0 then
+    return false
+  else
+    return true
+  end
+end
+
+function BaseDao:check_exists(t, statement)
+  local results, err = self:execute_prepared_stmt(t, statement)
+  if err then
+    return false, "Error during EXISTS check: "..err
+  elseif not results or #results == 0 then
+    return false
+  else
+    return true
+  end
+end
+
+function BaseDao:check_all_exists(t)
+  if not self._statements.exists then return true end
+
+  local errors
+  for k, statement in pairs(self._statements.exists) do
+    if t[k] then
+      local exists, err = self:check_exists(t, statement)
+      if err then
+        errors = schemas.add_error(errors, k, err)
+      elseif not exists then
+        errors = schemas.add_error(errors, k, k.." "..t[k].." does not exist")
+      end
+    end
+  end
+
+  return errors == nil, errors
+end
+
+function BaseDao:check_all_unique(t)
+  if not self._statements.unique then return true end
+
+  local errors
+  for k, statement in pairs(self._statements.unique) do
+    local unique, err = self:check_unique(t, statement)
+    if err then
+      errors = schemas.add_error(errors, k, err)
+    elseif not unique then
+      errors = schemas.add_error(errors, k, k.." already exists with value "..t[k])
+    end
+  end
+
+  return errors == nil, errors
+end
+
+function BaseDao:insert(t, statement)
   if not t then return nil, "Cannot insert a nil element" end
 
   -- Override created_at by default value
   t.created_at = utils.get_utc() * 1000
 
   -- Validate schema
-  local valid, errors = validate(t, self._schema)
-  if not valid then
+  local valid_schema, errors = validate(t, self._schema)
+  if not valid_schema then
     return nil, errors
   end
 
-  -- Build values to bind in order of the schema and query placeholders
+  local unique, errors = self:check_all_unique(t)
+  if not unique then
+    return nil, errors
+  end
+
+  local exists, errors = self:check_all_exists(t)
+  if not exists then
+    return nil, errors
+  end
+
+  local insert_statement
+  if statement then
+    insert_statement = statement
+  else
+    insert_statement = self._statements.insert
+  end
+
+  local success, err = self:execute_prepared_stmt(t, insert_statement)
+
+  if not success then
+    return nil, err
+  else
+    return t
+  end
+end
+
+function BaseDao:update(t)
+
+end
+
+---------------------
+-- Cassandra UTILS --
+---------------------
+
+function BaseDao:encode_cassandra_values(t, parameters)
   local values_to_bind = {}
-  for _, schema_field in ipairs(self._schema) do
-    local column = schema_field._
+  for _, column in ipairs(parameters) do
+    local schema_field = self._schema[column]
     local value = t[column]
 
     if schema_field.type == "id" then
@@ -64,54 +157,26 @@ function BaseDao:insert(t)
         t[column] = uuid()
         value = t[column]
       end
-      value = cassandra.uuid(value)
+      if value then
+        value = cassandra.uuid(value)
+      else
+        value = cassandra.null
+      end
     elseif schema_field.type == "timestamp" then
       value = cassandra.timestamp(value)
     elseif schema_field.type == "table" and value then
       value = cjson.encode(value)
     end
 
-    if schema_field.exists then
-      local results, err = self:_exec_stmt(self._statements.exists[column], {value})
-      if err then
-        return nil, "Error during EXISTS check: "..err
-      elseif not results or #results == 0 then
-        return nil, "Exists check failed on field: "..column.." with value: "..t[column]
-      end
-    end
-
-    if schema_field.unique then
-      local results, err = self:_exec_stmt(self._statements.unique[column], {value})
-      if err then
-        return nil, "Error during UNIQUE check: "..err
-      elseif results and #results > 0 then
-        return nil, "Unique check failed on field: "..column.." with value: "..t[column]
-      end
-    end
-
     table.insert(values_to_bind, value)
   end
 
-  local success, err = self:_exec_stmt(self._statements.insert, values_to_bind)
-  if not success then
-    return nil, err
-  else
-    return t
-  end
+  return values_to_bind
 end
 
----------------------
--- Cassandra UTILS --
----------------------
-
--- Execute prepared statement.
---
--- @param {table} statement A prepared statement
--- @param {table} values Values to bind to the statement
--- @return {boolean} Success of the query
--- @return {table} Error
-function BaseDao:_exec_stmt(statement, values)
-  return self._db:execute(statement, values)
+function BaseDao:execute_prepared_stmt(t, statement)
+  local values_to_bind = self:encode_cassandra_values(t, statement.params)
+  return self._db:execute(statement.query, values_to_bind)
 end
 
 return BaseDao
