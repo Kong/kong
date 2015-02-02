@@ -31,8 +31,12 @@ function Apis:new(database)
       }
     },
     update = {
-      params = {},
-      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ? WHERE id = ?; ]]
+      params = { "name", "public_dns", "target_url", "created_at", "id" },
+      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ?, created_at = ? WHERE id = ?; ]]
+    },
+    select_one = {
+      params = { "id" },
+      query = [[ SELECT * FROM apis WHERE id = ?; ]]
     }
   }
 

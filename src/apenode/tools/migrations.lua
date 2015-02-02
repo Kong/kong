@@ -7,10 +7,10 @@ local kMigrationsPath = "database/migrations"
 -- Migrations
 local Migrations = Object:extend()
 
-function Migrations:new(dao, type, options)
+function Migrations:new(dao, options)
   self.dao = dao
   self.options = options
-  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..type, '.lua')
+  self.migrations_files = utils.retrieve_files(kMigrationsPath.."/"..dao.type, '.lua')
 end
 
 function Migrations.create(configuration, name, callback)

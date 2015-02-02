@@ -16,9 +16,10 @@ local CassandraFactory = Object:extend()
 -- Instanciate an SQLite DAO.
 -- @param properties The parsed apenode configuration
 function CassandraFactory:new(properties)
+  self.type = "cassandra"
   -- Private
   self._properties = properties
-  self._migrations = migrations(self, "cassandra", { keyspace = properties.keyspace })
+  self._migrations = migrations(self, { keyspace = properties.keyspace })
   self._db = cassandra.new()
   self._db:connect(properties.host, properties.port)
   self._db:set_timeout(properties.timeout)
@@ -85,7 +86,7 @@ function CassandraFactory:execute(stmt, no_keyspace)
     error(err)
   end
 
-  if no_keyspace ~= nil then
+  if no_keyspace == nil then
     session:set_keyspace(self._properties.keyspace)
   end
 
