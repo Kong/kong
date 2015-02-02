@@ -19,7 +19,7 @@ dependencies = {
   "lua ~> 5.1",
 
   "lsqlite3 ~> 0.9.1-2",
-  "cassandra ~> 0.2-1",
+  "cassandra ~> 0.3-1",
   "uuid ~> 0.2-1",
   "lapis ~> 1.0.6-1",
   "luasec ~> 0.5-2",

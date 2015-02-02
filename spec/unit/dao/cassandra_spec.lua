@@ -23,7 +23,7 @@ describe("Cassandra DAO", function()
 
       describe("APIs", function()
 
-        it("should insert in db and add generated values", function()
+        it("should insert in DB and add generated values", function()
           local api_t = dao_factory.faker.fake_entity("api")
           local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(err)
@@ -60,7 +60,7 @@ describe("Cassandra DAO", function()
 
       describe("Accounts", function()
 
-        it("should insert an account in db and add generated values", function()
+        it("should insert an account in DB and add generated values", function()
           local account_t = dao_factory.faker.fake_entity("account")
           local account, err = dao_factory.accounts:insert(account_t)
           assert.falsy(err)
@@ -72,7 +72,7 @@ describe("Cassandra DAO", function()
 
       describe("Applications", function()
 
-        it("should not insert in db if account does not exist", function()
+        it("should not insert in DB if account does not exist", function()
           -- Without an account_id, it's a schema error
           local app_t = dao_factory.faker.fake_entity("application")
           local app, err = dao_factory.applications:insert(app_t)
@@ -90,7 +90,7 @@ describe("Cassandra DAO", function()
           assert.are.same("account_id "..app_t.account_id.." does not exist", err.account_id)
         end)
 
-        it("should insert in db and add generated values", function()
+        it("should insert in DB and add generated values", function()
           local accounts, err = dao_factory._db:execute("SELECT * FROM accounts")
           assert.falsy(err)
           assert.truthy(#accounts > 0)
@@ -108,7 +108,7 @@ describe("Cassandra DAO", function()
 
       describe("Plugins", function()
 
-        it("should not insert in db if invalid", function()
+        it("should not insert in DB if invalid", function()
           -- Without an api_id, it's a schema error
           local plugin_t = dao_factory.faker.fake_entity("plugin")
           plugin_t.api_id = nil
@@ -138,7 +138,7 @@ describe("Cassandra DAO", function()
           assert.are.same("application_id "..plugin_t.application_id.." does not exist", err.application_id)
         end)
 
-        it("should insert a plugin in db and add generated values", function()
+        it("should insert a plugin in DB and add generated values", function()
           -- Get existing API and Application for insert
           local apis, err = dao_factory._db:execute("SELECT * FROM apis")
           assert.falsy(err)
@@ -184,27 +184,90 @@ describe("Cassandra DAO", function()
         end)
 
       end)
---[[
     end)
+
     describe(":update()", function()
 
       describe("APIs", function()
 
-        it("should update in db", function()
+        it("should not update in DB if entity is not found", function()
+          local api_t = dao_factory.faker.fake_entity("api")
+          api_t.id = uuid()
+
+          -- No enity to update
+          local api, err = dao_factory.apis:update(api_t)
+          assert.falsy(api)
+          assert.truthy(err)
+          assert.are.same("Entity to update not found", err)
+        end)
+
+        it("should update in DB", function()
           local apis, err = dao_factory._db:execute("SELECT * FROM apis")
           assert.falsy(err)
           assert.truthy(#apis > 0)
 
           local api_t = apis[1]
+
+          -- Should be correctly updated in DB
           api_t.name = api_t.name.." updated"
 
-          --local api, err = dao_factory.apis:update(api_t)
-          --assert.falsy(err)
-          --assert.truthy(api)
+          local api, err = dao_factory.apis:update(api_t)
+          assert.falsy(err)
+          assert.truthy(api)
+
+          local apis, err = dao_factory._db:execute("SELECT * FROM apis WHERE name = '"..api_t.name.."'")
+          assert.falsy(err)
+          assert.truthy(#apis == 1)
+          assert.are.same(api_t.name, apis[1].name)
+        end)
+
+        -- Cassandra sets to NULL unset fields specified in an UPDATE query
+        -- https://issues.apache.org/jira/browse/CASSANDRA-7304
+        it("should update in DB without setting to NULL unset fields", function()
+          local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+          assert.falsy(err)
+          assert.truthy(#apis > 0)
+
+          local api_t = apis[1]
+          api_t.name = api_t.name.." updated again"
+
+          -- This should not set those values to NULL in DB
+          api_t.created_at = nil
+          api_t.public_dns = nil
+          api_t.target_url = nil
+
+          local api, err = dao_factory.apis:update(api_t)
+          assert.falsy(err)
+          assert.truthy(api)
+
+          local apis, err = dao_factory._db:execute("SELECT * FROM apis WHERE name = '"..api_t.name.."'")
+          assert.falsy(err)
+          assert.truthy(#apis == 1)
+          assert.truthy(apis[1].id)
+          assert.truthy(apis[1].created_at)
+          assert.truthy(apis[1].public_dns)
+          assert.truthy(apis[1].target_url)
+          assert.are.same(api_t.name, apis[1].name)
+        end)
+
+        it("should prevent the update if the UNIQUE check fails", function()
+          local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+          assert.falsy(err)
+          assert.truthy(#apis > 0)
+
+          local api_t = apis[1]
+          api_t.name = api_t.name.." unique update attempt"
+
+          -- Should not work because UNIQUE check fails
+          api_t.public_dns = apis[2].public_dns
+
+          local api, err = dao_factory.apis:update(api_t)
+          assert.falsy(api)
+          assert.truthy(err)
+          assert.are.same("public_dns already exists with value "..api_t.public_dns, err.public_dns)
         end)
 
       end)
---]]
     end)
   end)
 end)
