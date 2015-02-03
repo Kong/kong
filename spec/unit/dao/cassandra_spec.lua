@@ -154,17 +154,17 @@ describe("Cassandra DAO", function()
         end)
 
         it("should insert a plugin in DB and add generated values", function()
-          -- Get existing API and Application for insert
-          local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+          -- Create an API and get an Application for insert
+          local api_t = dao_factory.faker.fake_entity("api")
+          local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(err)
-          assert.True(#apis > 0)
 
           local apps, err = dao_factory._db:execute("SELECT * FROM applications")
           assert.falsy(err)
           assert.True(#apps > 0)
 
           local plugin_t = dao_factory.faker.fake_entity("plugin")
-          plugin_t.api_id = apis[1].id
+          plugin_t.api_id = api.id
           plugin_t.application_id = apps[1].id
 
           local plugin, err = dao_factory.plugins:insert(plugin_t)

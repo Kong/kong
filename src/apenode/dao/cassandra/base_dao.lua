@@ -17,8 +17,8 @@ local BaseDao = Object:extend()
 
 function BaseDao:new(database)
   self._db = database
-  self._statements = {}
-  self._select_statements_cache = {}
+  self._statements = {} -- Mirror of _queries but with prepared statements instead of strings
+  self._select_statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
 end
 
 -- Prepare all statements in self._queries and put them in self._statements.
@@ -53,7 +53,7 @@ end
 -- @param {statement} statement Statement to execute
 -- @param {boolean} is_updating is_updating If true, will ignore UNIQUE if same entity
 -- @return {boolean} true if doesn't exist (UNIQUE), false otherwise
--- @return {string} Error if any during execution
+-- @return {string|nil} Error if any during execution
 function BaseDao:check_unique(statement, t, is_updating)
   local results, err = self:execute_prepared_stmt(statement, t)
   if err then
@@ -82,8 +82,9 @@ end
 --
 -- @param {statement} statement Statement to execute
 -- @param {table} t Arguments to bind to the statement
--- @return {boolean} true if exist, false otherwise
--- @return {string} Error if any during execution
+-- @return {boolean} true if EXISTS, false otherwise
+-- @return {string|nil} Error if any during execution
+-- @return {table|nil} Results of the statement if EXISTS
 function BaseDao:check_exists(statement, t)
   local results, err = self:execute_prepared_stmt(statement, t)
   if err then
@@ -99,7 +100,7 @@ end
 --
 -- @param {table} t Arguments to bind to the __exists statements
 -- @return {boolean} true if all results EXIST, false otherwise
--- @return {table} Error if any during execution
+-- @return {table|nil} Error if any during execution
 function BaseDao:check_all_exists(t)
   if not self._statements.__exists then return true end
 
@@ -123,7 +124,7 @@ end
 -- @param {table} t Arguments to bind to the __unique statements
 -- @param {boolean} is_updating is_updating If true, will ignore UNIQUE if same entity
 -- @return {boolean} true if all results are UNIQUE, false otherwise
--- @return {table} Error if any during execution
+-- @return {table|nil} Error if any during execution
 function BaseDao:check_all_unique(t, is_updating)
   if not self._statements.__unique then return true end
 
@@ -146,7 +147,7 @@ end
 --
 -- @param {table} t Entity to insert (binded to statement)
 -- @return {table|nil} Inserted entity or nil
--- @return {table} Error if any
+-- @return {table|nil} Error if any
 function BaseDao:insert(t)
   if not t then return nil, "Cannot insert a nil element" end
 
@@ -186,7 +187,7 @@ end
 --
 -- @param {table} t Entity to insert (binded to statement)
 -- @return {table|nil} Updated entity or nil
--- @return {table} Error if any
+-- @return {table|nil} Error if any
 function BaseDao:update(t)
   if not t then return nil, "Cannot update a nil element" end
 
@@ -201,7 +202,7 @@ function BaseDao:update(t)
   else
     -- Set UNSET values to prevent cassandra from setting to NULL
     -- @see Test case
-    -- https://issues.apache.org/jira/browse/CASSANDRA-7304
+    -- @see https://issues.apache.org/jira/browse/CASSANDRA-7304
     for k,v in pairs(results[1]) do
       if not t[k] then
         t[k] = v
@@ -254,6 +255,7 @@ end
 -- Execute a SELECT statement with special WHERE values
 -- Build a new prepared statement and cache it for later use
 --
+-- @see _select_statements_cache
 -- @warning Generated statement will use ALLOW FILTERING
 --
 -- @param {table} t Table from which the WHERE will be built, and the values will be binded
@@ -292,7 +294,7 @@ end
 --
 -- @param {string} id UUID of entity to delete
 -- @return {boolean} True if deleted, false if otherwise or not found
--- @return {table} Error if any
+-- @return {table|nil} Error if any
 function BaseDao:delete(id)
   local exists, err = self:check_exists(self._statements.select_one, { id = id })
   if err then
