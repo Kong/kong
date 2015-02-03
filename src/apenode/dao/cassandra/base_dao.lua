@@ -43,7 +43,7 @@ function BaseDao:prepare(queries, statements)
 end
 
 function BaseDao:check_unique(t, statement, is_updating)
-  local results, err = self:execute_prepared_stmt(t, statement)
+  local results, err = self:execute_prepared_stmt(statement, t)
   if err then
     return false, "Error during UNIQUE check: "..err
   elseif results and #results > 0 then
@@ -66,24 +66,24 @@ function BaseDao:check_unique(t, statement, is_updating)
   end
 end
 
-function BaseDao:check_exists(t, statement)
-  local results, err = self:execute_prepared_stmt(t, statement)
+function BaseDao:check_exists(statement, t)
+  local results, err = self:execute_prepared_stmt(statement, t)
   if err then
     return false, "Error during EXISTS check: "..err
   elseif not results or #results == 0 then
     return false
   else
-    return true
+    return true, nil, results
   end
 end
 
 function BaseDao:check_all_exists(t)
-  if not self._statements.exists then return true end
+  if not self._statements.__exists then return true end
 
   local errors
-  for k, statement in pairs(self._statements.exists) do
+  for k, statement in pairs(self._statements.__exists) do
     if t[k] then
-      local exists, err = self:check_exists(t, statement)
+      local exists, err = self:check_exists(statement, t)
       if err then
         errors = schemas.add_error(errors, k, err)
       elseif not exists then
@@ -96,10 +96,10 @@ function BaseDao:check_all_exists(t)
 end
 
 function BaseDao:check_all_unique(t, is_updating)
-  if not self._statements.unique then return true end
+  if not self._statements.__unique then return true end
 
   local errors
-  for k, statement in pairs(self._statements.unique) do
+  for k, statement in pairs(self._statements.__unique) do
     local unique, err = self:check_unique(t, statement, is_updating)
     if err then
       errors = schemas.add_error(errors, k, err)
@@ -143,7 +143,7 @@ function BaseDao:insert(t, statement)
     insert_statement = self._statements.insert
   end
 
-  local success, err = self:execute_prepared_stmt(t, insert_statement)
+  local success, err = self:execute_prepared_stmt(insert_statement, t)
 
   if not success then
     return nil, err
@@ -158,10 +158,10 @@ function BaseDao:update(t)
   -- Check if exists to prevent upsert
   -- and set UNSET values
   -- (pfffff...)
-  local results, err = self:execute_prepared_stmt(t, self._statements.select_one)
+  local exists, err, results = self:check_exists(self._statements.select_one, t)
   if err then
     return nil, err
-  elseif #results == 0 then
+  elseif not exists then
     return nil, "Entity to update not found"
   else
     -- Set UNSET values to prevent cassandra from setting to NULL
@@ -192,13 +192,32 @@ function BaseDao:update(t)
     return nil, errors
   end
 
-  local success, err = self:execute_prepared_stmt(t, self._statements.update)
+  local success, err = self:execute_prepared_stmt(self._statements.update, t)
 
   if not success then
     return nil, err
   else
     return t
   end
+end
+
+function BaseDao:find()
+  return self:execute_prepared_stmt(self._statements.select)
+end
+
+function BaseDao:find_one(id)
+  return self:execute_prepared_stmt(self._statements.select_one, { id = id })
+end
+
+function BaseDao:delete(id)
+  local exists, err = self:check_exists(self._statements.select_one, { id = id })
+  if err then
+    return nil, err
+  elseif not exists then
+    return nil, "Entity to delete not found"
+  end
+
+  return self:execute_prepared_stmt(self._statements.delete, { id = id })
 end
 
 ---------------------
@@ -229,8 +248,11 @@ function BaseDao:encode_cassandra_values(t, parameters)
   return values_to_bind
 end
 
-function BaseDao:execute_prepared_stmt(t, statement)
-  local values_to_bind = self:encode_cassandra_values(t, statement.params)
+function BaseDao:execute_prepared_stmt(statement, values_to_bind)
+  if statement.params and values_to_bind then
+    values_to_bind = self:encode_cassandra_values(values_to_bind, statement.params)
+  end
+
   return self._db:execute(statement.query, values_to_bind)
 end
 

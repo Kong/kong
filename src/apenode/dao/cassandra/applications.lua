@@ -27,13 +27,29 @@ function Applications:new(database, properties)
                     VALUES(?, ?, ?, ?); ]]
       }
     },
-    exists = {
+    update = {
+      params = { "account_id", "public_key", "secret_key", "created_at", "id" },
+      query = [[ UPDATE applications SET account_id = ?, public_key = ?, secret_key = ?, created_at = ?
+                  WHERE id = ?; ]]
+    },
+    select_one = {
+      params = { "id" },
+      query = [[ SELECT * FROM applications WHERE id = ?; ]]
+    },
+    select = {
+      query = [[ SELECT * FROM applications; ]]
+    },
+    delete = {
+      params = { "id" },
+      query = [[ DELETE FROM applications WHERE id = ?; ]]
+    },
+    __exists = {
       account_id = {
         params = { "account_id" },
         query = [[ SELECT id FROM accounts WHERE id = ?; ]]
       }
     },
-    unique = {
+    __unique = {
       secret_key = {
         params = { "secret_key" },
         query = [[ SELECT id FROM applications WHERE secret_key = ?; ]]

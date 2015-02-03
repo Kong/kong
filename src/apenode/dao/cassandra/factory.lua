@@ -13,8 +13,8 @@ local Applications = require "apenode.dao.cassandra.applications"
 
 local CassandraFactory = Object:extend()
 
--- Instanciate an SQLite DAO.
--- @param properties The parsed apenode configuration
+-- Instanciate a Cassandra DAO.
+-- @param properties Cassandra properties
 function CassandraFactory:new(properties)
   self.type = "cassandra"
   -- Private
@@ -34,7 +34,7 @@ function CassandraFactory:new(properties)
 end
 
 --
--- _migrations
+-- Migrations
 --
 function CassandraFactory:migrate(callback)
   self._migrations:migrate(callback)

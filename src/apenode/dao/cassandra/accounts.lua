@@ -15,7 +15,22 @@ function Accounts:new(database)
       params = { "id", "provider_id", "created_at" },
       query = [[ INSERT INTO accounts(id, provider_id, created_at) VALUES(?, ?, ?); ]]
     },
-    unique = {
+    update = {
+      params = { "provider_id", "created_at", "id" },
+      query = [[ UPDATE accounts SET provider_id = ?, created_at = ? WHERE id = ?; ]]
+    },
+    select = {
+      query = [[ SELECT * FROM accounts; ]]
+    },
+    select_one = {
+      params = { "id" },
+      query = [[ SELECT * FROM accounts WHERE id = ?; ]]
+    },
+    delete = {
+      params = { "id" },
+      query = [[ DELETE FROM accounts WHERE id = ?; ]]
+    },
+    __unique = {
       provider_id ={
         params = { "provider_id" },
         query = [[ SELECT id FROM accounts WHERE provider_id = ?; ]]
