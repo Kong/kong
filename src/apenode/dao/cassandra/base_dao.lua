@@ -21,6 +21,8 @@ function BaseDao:new(database)
   self._select_statements_cache = {}
 end
 
+-- Prepare all statements in self._queries and put them in self._statements.
+-- Should be called without parameters and will recursively call itself for nested statements.
 function BaseDao:prepare(queries, statements)
   if not queries then queries = self._queries end
   if not statements then statements = self._statements end
@@ -45,7 +47,14 @@ function BaseDao:prepare(queries, statements)
   end
 end
 
-function BaseDao:check_unique(t, statement, is_updating)
+-- Runs a statement and check if the result exists
+--
+-- @param {table} t Arguments to bind to the statement
+-- @param {statement} statement Statement to execute
+-- @param {boolean} is_updating is_updating If true, will ignore UNIQUE if same entity
+-- @return {boolean} true if doesn't exist (UNIQUE), false otherwise
+-- @return {string} Error if any during execution
+function BaseDao:check_unique(statement, t, is_updating)
   local results, err = self:execute_prepared_stmt(statement, t)
   if err then
     return false, "Error during UNIQUE check: "..err
@@ -69,6 +78,12 @@ function BaseDao:check_unique(t, statement, is_updating)
   end
 end
 
+-- Runs a statement and check if the results exists
+--
+-- @param {statement} statement Statement to execute
+-- @param {table} t Arguments to bind to the statement
+-- @return {boolean} true if exist, false otherwise
+-- @return {string} Error if any during execution
 function BaseDao:check_exists(statement, t)
   local results, err = self:execute_prepared_stmt(statement, t)
   if err then
@@ -80,6 +95,11 @@ function BaseDao:check_exists(statement, t)
   end
 end
 
+-- Run the EXISTS on all statements in __exists
+--
+-- @param {table} t Arguments to bind to the __exists statements
+-- @return {boolean} true if all results EXIST, false otherwise
+-- @return {table} Error if any during execution
 function BaseDao:check_all_exists(t)
   if not self._statements.__exists then return true end
 
@@ -98,12 +118,18 @@ function BaseDao:check_all_exists(t)
   return errors == nil, errors
 end
 
+-- Run the UNIQUE on all statements in __unique
+--
+-- @param {table} t Arguments to bind to the __unique statements
+-- @param {boolean} is_updating is_updating If true, will ignore UNIQUE if same entity
+-- @return {boolean} true if all results are UNIQUE, false otherwise
+-- @return {table} Error if any during execution
 function BaseDao:check_all_unique(t, is_updating)
   if not self._statements.__unique then return true end
 
   local errors
   for k, statement in pairs(self._statements.__unique) do
-    local unique, err = self:check_unique(t, statement, is_updating)
+    local unique, err = self:check_unique(statement, t, is_updating)
     if err then
       errors = schemas.add_error(errors, k, err)
     elseif not unique then
@@ -114,6 +140,13 @@ function BaseDao:check_all_unique(t, is_updating)
   return errors == nil, errors
 end
 
+-- Execute the prepared INSERT statement
+-- Validate entity's schema + UNIQUE values + FOREIGN KEYS
+-- Generates id and created_at fields
+--
+-- @param {table} t Entity to insert (binded to statement)
+-- @return {table|nil} Inserted entity or nil
+-- @return {table} Error if any
 function BaseDao:insert(t)
   if not t then return nil, "Cannot insert a nil element" end
 
@@ -148,6 +181,12 @@ function BaseDao:insert(t)
   end
 end
 
+-- Execute the prepared UPDATE statement
+-- Validate entity's schema + UNIQUE values + FOREIGN KEYS
+--
+-- @param {table} t Entity to insert (binded to statement)
+-- @return {table|nil} Updated entity or nil
+-- @return {table} Error if any
 function BaseDao:update(t)
   if not t then return nil, "Cannot update a nil element" end
 
@@ -197,14 +236,28 @@ function BaseDao:update(t)
   end
 end
 
+-- Execute the prepared SELECT statement as it is
+--
+-- @return execute_prepared_stmt()
 function BaseDao:find()
   return self:execute_prepared_stmt(self._statements.select)
 end
 
+-- Execute the prepared SELECT_ONE statement as it is
+--
+-- @param {string} id UUID of element to select
+-- @return execute_prepared_stmt()
 function BaseDao:find_one(id)
   return self:execute_prepared_stmt(self._statements.select_one, { id = id })
 end
 
+-- Execute a SELECT statement with special WHERE values
+-- Build a new prepared statement and cache it for later use
+--
+-- @warning Generated statement will use ALLOW FILTERING
+--
+-- @param {table} t Table from which the WHERE will be built, and the values will be binded
+-- @return execute_prepared_stmt()
 function BaseDao:find_by_keys(t)
   local where, keys = {}, {}
   for k,v in pairs(t) do
@@ -235,6 +288,11 @@ function BaseDao:find_by_keys(t)
   return self:execute_prepared_stmt(self._select_statements_cache[select_query], t)
 end
 
+-- Execute the prepared DELETE statement
+--
+-- @param {string} id UUID of entity to delete
+-- @return {boolean} True if deleted, false if otherwise or not found
+-- @return {table} Error if any
 function BaseDao:delete(id)
   local exists, err = self:check_exists(self._statements.select_one, { id = id })
   if err then
@@ -256,6 +314,14 @@ end
 -- Cassandra UTILS --
 ---------------------
 
+-- Build the list to pass to lua-resty-cassandra :execute method.
+-- Since this method only accepts an ordered list, we build this list from
+-- the `params` property of all prepared statement, taking into account special
+-- cassandra values (uuid, timestamps, NULL)
+--
+-- @param {table} t Values to bind to a statement
+-- @param {table} parameters An ordered list of parameters
+-- @return {table} An ordered list of values to be binded to lua-resty-cassandra :execute
 function BaseDao:encode_cassandra_values(t, parameters)
   local values_to_bind = {}
   for _, column in ipairs(parameters) do
@@ -278,6 +344,11 @@ function BaseDao:encode_cassandra_values(t, parameters)
   return values_to_bind
 end
 
+-- Execute a prepared statement
+--
+-- @param {table|statement} statement The prepared statement (cassandra or build by :prepare) to execute
+-- @param {table} values_to_bind Raw values to bind
+-- @return lua-resty-cassandra :execute()
 function BaseDao:execute_prepared_stmt(statement, values_to_bind)
   if statement.params and values_to_bind then
     values_to_bind = self:encode_cassandra_values(values_to_bind, statement.params)

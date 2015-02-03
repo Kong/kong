@@ -74,7 +74,7 @@ function Plugins:insert(t)
     unique_statement = self._statements.__custom_checks.unique_application_id
   end
 
-  local unique, err = self:check_unique(t, unique_statement)
+  local unique, err = self:check_unique(unique_statement, t)
   if err then
     return nil, err
   elseif not unique then
