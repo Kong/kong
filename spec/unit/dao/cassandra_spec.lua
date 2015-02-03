@@ -157,11 +157,11 @@ describe("Cassandra DAO", function()
           -- Get existing API and Application for insert
           local apis, err = dao_factory._db:execute("SELECT * FROM apis")
           assert.falsy(err)
-          assert.truthy(#apis > 0)
+          assert.True(#apis > 0)
 
           local apps, err = dao_factory._db:execute("SELECT * FROM applications")
           assert.falsy(err)
-          assert.truthy(#apps > 0)
+          assert.True(#apps > 0)
 
           local plugin_t = dao_factory.faker.fake_entity("plugin")
           plugin_t.api_id = apis[1].id
@@ -180,7 +180,7 @@ describe("Cassandra DAO", function()
 
           local apps, err = dao_factory._db:execute("SELECT * FROM applications")
           assert.falsy(err)
-          assert.truthy(#apps > 0)
+          assert.True(#apps > 0)
 
           local plugin_t = dao_factory.faker.fake_entity("plugin")
           plugin_t.api_id = api.id
@@ -225,7 +225,7 @@ describe("Cassandra DAO", function()
         it("should update in DB without setting to NULL unset fields", function()
           local apis, err = dao_factory._db:execute("SELECT * FROM apis")
           assert.falsy(err)
-          assert.truthy(#apis > 0)
+          assert.True(#apis > 0)
 
           local api_t = apis[1]
           api_t.name = api_t.name.." updated"
@@ -252,7 +252,7 @@ describe("Cassandra DAO", function()
         it("should prevent the update if the UNIQUE check fails", function()
           local apis, err = dao_factory._db:execute("SELECT * FROM apis")
           assert.falsy(err)
-          assert.truthy(#apis > 0)
+          assert.True(#apis > 0)
 
           local api_t = apis[1]
           api_t.name = api_t.name.." unique update attempt"
@@ -273,7 +273,7 @@ describe("Cassandra DAO", function()
         it("should update in DB", function()
           local accounts, err = dao_factory._db:execute("SELECT * FROM accounts")
           assert.falsy(err)
-          assert.truthy(#accounts > 0)
+          assert.True(#accounts > 0)
 
           local account_t = accounts[1]
 
@@ -286,7 +286,7 @@ describe("Cassandra DAO", function()
 
           local accounts, err = dao_factory._db:execute("SELECT * FROM accounts WHERE provider_id = '"..account_t.provider_id.."'")
           assert.falsy(err)
-          assert.truthy(#accounts == 1)
+          assert.True(#accounts == 1)
           assert.are.same(account_t.name, accounts[1].name)
         end)
 
@@ -302,7 +302,7 @@ describe("Cassandra DAO", function()
           t.id = uuid()
 
           local success, err = dao_factory[collection]:delete(t.id)
-          assert.falsy(success)
+          assert.is_not_true(success)
           assert.truthy(err)
           assert.are.same("Entity to delete not found", err)
         end)
@@ -311,7 +311,16 @@ describe("Cassandra DAO", function()
           local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
           assert.falsy(err)
           assert.truthy(entities)
-          assert.truthy(#entities > 0)
+          assert.True(#entities > 0)
+
+          local success, err = dao_factory[collection]:delete(entities[1].id)
+          assert.falsy(err)
+          assert.True(success)
+
+          local entities, err = dao_factory._db:execute("SELECT * FROM "..collection.." WHERE id = "..entities[1].id )
+          assert.falsy(err)
+          assert.truthy(entities)
+          assert.True(#entities == 0)
         end)
 
       end)
@@ -325,34 +334,32 @@ describe("Cassandra DAO", function()
           local entities, err = dao_factory[collection]:find()
           assert.falsy(err)
           assert.truthy(entities)
-          assert.truthy(#entities > 0)
+          assert.True(#entities > 0)
         end)
 
       end)
     end)
-
+--[[
     describe(":find_by_keys()", function()
 
-      describe("APIs", function()
+      describe_all_collections(function(type, collection)
 
         it("should find entities from a built query", function()
-          local results, err = dao_factory._db:execute("SELECT * FROM apis;")
+          local results, err = dao_factory._db:execute("SELECT * FROM "..collection)
           assert.falsy(err)
           assert.truthy(results)
-          assert.truthy(#results > 0)
+          assert.True(#results > 0)
 
-          local api_t = results[1]
+          local t = results[1]
 
-          local results, err = dao_factory.apis:find_by_keys {
-            name = api_t.name,
-            target_url = api_t.target_url
-          }
+          local results, err = dao_factory[collection]:find_by_keys(t)
           assert.falsy(err)
           assert.truthy(results)
-          assert.truthy(#results == 1)
+          assert.True(#results == 1)
         end)
 
       end)
     end)
+--]]
   end)
 end)
