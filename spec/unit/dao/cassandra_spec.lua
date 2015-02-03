@@ -4,6 +4,21 @@ local uuid = require "uuid"
 
 local dao_factory = CassandraFactory(configuration.cassandra)
 
+local function describe_all_collections(tests_cb)
+  for type, dao in pairs({ api = dao_factory.apis,
+                           account = dao_factory.accounts,
+                           application = dao_factory.applications,
+                           plugin = dao_factory.plugins }) do
+
+    local collection = type.."s"
+
+    describe(collection, function()
+      tests_cb(type, collection)
+    end)
+
+  end
+end
+
 describe("Cassandra DAO", function()
 
   setup(function()
@@ -188,26 +203,20 @@ describe("Cassandra DAO", function()
 
     describe(":update()", function()
 
-      for type, dao in pairs({ api = dao_factory.apis,
-                               account = dao_factory.accounts,
-                               application = dao_factory.applications,
-                               plugin = dao_factory.plugins }) do
+      describe_all_collections(function(type, collection)
 
-        describe(type, function()
+        it("should not update in DB if entity is not found", function()
+          local t = dao_factory.faker.fake_entity(type)
+          t.id = uuid()
 
-          it("should not update in DB if entity is not found", function()
-            local t = dao_factory.faker.fake_entity(type)
-            t.id = uuid()
-
-            -- No entity to update
-            local entity, err = dao_factory[type.."s"]:update(t)
-            assert.falsy(entity)
-            assert.truthy(err)
-            assert.are.same("Entity to update not found", err)
-          end)
-
+          -- No entity to update
+          local entity, err = dao_factory[collection]:update(t)
+          assert.falsy(entity)
+          assert.truthy(err)
+          assert.are.same("Entity to update not found", err)
         end)
-      end
+
+      end)
 
       describe("APIs", function()
 
@@ -286,40 +295,40 @@ describe("Cassandra DAO", function()
 
     describe(":delete()", function()
 
-      for type, dao in pairs({ api = dao_factory.apis,
-                               account = dao_factory.accounts,
-                               application = dao_factory.applications,
-                               plugin = dao_factory.plugins }) do
+      describe_all_collections(function(type, collection)
 
-        describe(type, function()
+        it("should return an error if deleting an entity that cannot be found", function()
+          local t = dao_factory.faker.fake_entity(type)
+          t.id = uuid()
 
-          it("should return an error if deleting an entity that cannot be found", function()
-            local t = dao_factory.faker.fake_entity(type)
-            t.id = uuid()
-
-            local success, err = dao_factory[type.."s"]:delete(t.id)
-            assert.falsy(success)
-            assert.truthy(err)
-            assert.are.same("Entity to delete not found", err)
-          end)
-
-          it("should delete an entity", function()
-            local entities, err = dao_factory._db:execute("SELECT * FROM "..type.."s;")
-            assert.falsy(err)
-            assert.truthy(#entities > 0)
-
-            local success, err = dao_factory[type.."s"]:delete(entities[1].id)
-            assert.falsy(err)
-            assert.truthy(success)
-
-            local entities, err = dao_factory._db:execute("SELECT * FROM "..type.."s WHERE id = "..entities[1].id)
-            assert.falsy(err)
-            assert.truthy(#entities == 0)
-          end)
-
+          local success, err = dao_factory[collection]:delete(t.id)
+          assert.falsy(success)
+          assert.truthy(err)
+          assert.are.same("Entity to delete not found", err)
         end)
-      end
 
+        it("should delete an entity", function()
+          local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
+          assert.falsy(err)
+          assert.truthy(entities)
+          assert.truthy(#entities > 0)
+        end)
+
+      end)
+    end)
+
+    describe(":find()", function()
+
+      describe_all_collections(function(type, collection)
+
+        it("should find entities", function()
+          local entities, err = dao_factory[collection]:find()
+          assert.falsy(err)
+          assert.truthy(entities)
+          assert.truthy(#entities > 0)
+        end)
+
+      end)
     end)
   end)
 end)
