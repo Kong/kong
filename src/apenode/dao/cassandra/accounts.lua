@@ -20,7 +20,7 @@ function Accounts:new(database)
       query = [[ UPDATE accounts SET provider_id = ?, created_at = ? WHERE id = ?; ]]
     },
     select = {
-      query = [[ SELECT * FROM accounts; ]]
+      query = [[ SELECT * FROM accounts %s; ]]
     },
     select_one = {
       params = { "id" },

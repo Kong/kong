@@ -25,12 +25,12 @@ function Apis:new(database)
       query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ?, created_at = ?
                   WHERE id = ?; ]]
     },
+    select = {
+      query = [[ SELECT * FROM apis %s; ]]
+    },
     select_one = {
       params = { "id" },
       query = [[ SELECT * FROM apis WHERE id = ?; ]]
-    },
-    select = {
-      query = [[ SELECT * FROM apis; ]]
     },
     delete = {
       params = { "id" },

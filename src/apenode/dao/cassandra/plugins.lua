@@ -25,7 +25,7 @@ function Plugins:new(database, properties)
       query = [[ UPDATE plugins SET application_id = ?, value = ?, created_at = ? WHERE id = ?; ]]
     },
     select = {
-      query = [[ SELECT * FROM plugins; ]]
+      query = [[ SELECT * FROM plugins %s; ]]
     },
     select_one = {
       params = { "id" },
@@ -81,7 +81,7 @@ function Plugins:insert(t)
     return nil, "Plugin already exists"
   end
 
-  return Plugins.super.insert(self, t, insert_statement)
+  return Plugins.super.insert(self, t)
 end
 
 return Plugins

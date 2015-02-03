@@ -18,6 +18,7 @@ local BaseDao = Object:extend()
 function BaseDao:new(database)
   self._db = database
   self._statements = {}
+  self._select_statements_cache = {}
 end
 
 function BaseDao:prepare(queries, statements)
@@ -29,7 +30,9 @@ function BaseDao:prepare(queries, statements)
       self._statements[stmt_name] = {}
       self:prepare(query, self._statements[stmt_name])
     else
-      local prepared_stmt, err = self._db:prepare(stringy.strip(query.query))
+      local q = stringy.strip(query.query)
+      q = string.format(q, "")
+      local prepared_stmt, err = self._db:prepare(q)
       if err then
         error("Failed to prepare statement: "..err)
       else
@@ -111,7 +114,7 @@ function BaseDao:check_all_unique(t, is_updating)
   return errors == nil, errors
 end
 
-function BaseDao:insert(t, statement)
+function BaseDao:insert(t)
   if not t then return nil, "Cannot insert a nil element" end
 
   -- Override created_at and id by default value
@@ -136,14 +139,7 @@ function BaseDao:insert(t, statement)
     return nil, errors
   end
 
-  local insert_statement
-  if statement then
-    insert_statement = statement
-  else
-    insert_statement = self._statements.insert
-  end
-
-  local success, err = self:execute_prepared_stmt(insert_statement, t)
+  local success, err = self:execute_prepared_stmt(self._statements.insert, t)
 
   if not success then
     return nil, err
@@ -209,6 +205,35 @@ function BaseDao:find_one(id)
   return self:execute_prepared_stmt(self._statements.select_one, { id = id })
 end
 
+function BaseDao:find_by_keys(t)
+  local where, keys = {}, {}
+  for k,v in pairs(t) do
+    table.insert(where, string.format("%s = ?", k))
+    table.insert(keys, k)
+  end
+
+  local where_str = "WHERE "..table.concat(where, " AND ")
+  local select_query = string.format(self._queries.select.query, where_str.." ALLOW FILTERING")
+
+  local stmt = self._select_statements_cache[select_query]
+
+  if not stmt then
+    local prepared_stmt, err = self._db:prepare(select_query)
+    if err then
+      return nil, err
+    end
+
+    stmt = {
+      query = prepared_stmt,
+      params = keys
+    }
+    
+    self._select_statements_cache[select_query] = stmt
+  end
+
+  return self:execute_prepared_stmt(stmt, t)
+end
+
 function BaseDao:delete(id)
   local exists, err = self:check_exists(self._statements.select_one, { id = id })
   if err then
@@ -230,16 +255,14 @@ function BaseDao:encode_cassandra_values(t, parameters)
     local schema_field = self._schema[column]
     local value = t[column]
 
-    if schema_field.type == "id" then
-      if value then
-        value = cassandra.uuid(value)
-      else
-        value = cassandra.null
-      end
-    elseif schema_field.type == "timestamp" then
+    if schema_field.type == "id" and value then
+      value = cassandra.uuid(value)
+    elseif schema_field.type == "timestamp" and value then
       value = cassandra.timestamp(value)
     elseif schema_field.type == "table" and value then
       value = cjson.encode(value)
+    elseif not value then
+      value = cassandra.null
     end
 
     table.insert(values_to_bind, value)
