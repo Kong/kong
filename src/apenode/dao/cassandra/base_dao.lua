@@ -139,9 +139,9 @@ function BaseDao:insert(t)
     return nil, errors
   end
 
-  local success, err = self:execute_prepared_stmt(self._statements.insert, t)
+  local _, err = self:execute_prepared_stmt(self._statements.insert, t)
 
-  if not success then
+  if err then
     return nil, err
   else
     return t
@@ -188,9 +188,9 @@ function BaseDao:update(t)
     return nil, errors
   end
 
-  local success, err = self:execute_prepared_stmt(self._statements.update, t)
+  local _, err = self:execute_prepared_stmt(self._statements.update, t)
 
-  if not success then
+  if err then
     return nil, err
   else
     return t
@@ -215,34 +215,41 @@ function BaseDao:find_by_keys(t)
   local where_str = "WHERE "..table.concat(where, " AND ")
   local select_query = string.format(self._queries.select.query, where_str.." ALLOW FILTERING")
 
-  local stmt = self._select_statements_cache[select_query]
+  print(select_query)
 
-  if not stmt then
-    local prepared_stmt, err = self._db:prepare(select_query)
+  if not self._select_statements_cache[select_query] then
+    local stmt, err = self._db:prepare(select_query)
     if err then
       return nil, err
     end
 
-    stmt = {
-      query = prepared_stmt,
+    self._select_statements_cache[select_query] = {
+      query = stmt,
       params = keys
     }
-    
-    self._select_statements_cache[select_query] = stmt
   end
 
-  return self:execute_prepared_stmt(stmt, t)
+  local inspect = require "inspect"
+  print(inspect(keys))
+
+  return self:execute_prepared_stmt(self._select_statements_cache[select_query], t)
 end
 
 function BaseDao:delete(id)
   local exists, err = self:check_exists(self._statements.select_one, { id = id })
   if err then
-    return nil, err
+    return false, err
   elseif not exists then
-    return nil, "Entity to delete not found"
+    return false, "Entity to delete not found"
   end
 
-  return self:execute_prepared_stmt(self._statements.delete, { id = id })
+  local _, err = self:execute_prepared_stmt(self._statements.delete, { id = id })
+
+  if err then
+    return false, err
+  else
+    return true
+  end
 end
 
 ---------------------
