@@ -20,7 +20,23 @@ function Apis:new(database)
       query = [[ INSERT INTO apis(id, name, public_dns, target_url, created_at)
                   VALUES(?, ?, ?, ?, ?); ]]
     },
-    unique = {
+    update = {
+      params = { "name", "public_dns", "target_url", "created_at", "id" },
+      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ?, created_at = ?
+                  WHERE id = ?; ]]
+    },
+    select_one = {
+      params = { "id" },
+      query = [[ SELECT * FROM apis WHERE id = ?; ]]
+    },
+    select = {
+      query = [[ SELECT * FROM apis; ]]
+    },
+    delete = {
+      params = { "id" },
+      query = [[ DELETE FROM apis WHERE id = ?; ]]
+    },
+    __unique = {
       name = {
         params = { "name" },
         query = [[ SELECT id FROM apis WHERE name = ?; ]]
@@ -29,14 +45,6 @@ function Apis:new(database)
         params = { "public_dns" },
         query = [[ SELECT id FROM apis WHERE public_dns = ?; ]]
       }
-    },
-    update = {
-      params = { "name", "public_dns", "target_url", "created_at", "id" },
-      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ?, created_at = ? WHERE id = ?; ]]
-    },
-    select_one = {
-      params = { "id" },
-      query = [[ SELECT * FROM apis WHERE id = ?; ]]
     }
   }
 

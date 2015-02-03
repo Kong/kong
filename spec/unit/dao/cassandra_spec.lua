@@ -188,38 +188,28 @@ describe("Cassandra DAO", function()
 
     describe(":update()", function()
 
+      for type, dao in pairs({ api = dao_factory.apis,
+                               account = dao_factory.accounts,
+                               application = dao_factory.applications,
+                               plugin = dao_factory.plugins }) do
+
+        describe(type, function()
+
+          it("should not update in DB if entity is not found", function()
+            local t = dao_factory.faker.fake_entity(type)
+            t.id = uuid()
+
+            -- No entity to update
+            local entity, err = dao_factory[type.."s"]:update(t)
+            assert.falsy(entity)
+            assert.truthy(err)
+            assert.are.same("Entity to update not found", err)
+          end)
+
+        end)
+      end
+
       describe("APIs", function()
-
-        it("should not update in DB if entity is not found", function()
-          local api_t = dao_factory.faker.fake_entity("api")
-          api_t.id = uuid()
-
-          -- No enity to update
-          local api, err = dao_factory.apis:update(api_t)
-          assert.falsy(api)
-          assert.truthy(err)
-          assert.are.same("Entity to update not found", err)
-        end)
-
-        it("should update in DB", function()
-          local apis, err = dao_factory._db:execute("SELECT * FROM apis")
-          assert.falsy(err)
-          assert.truthy(#apis > 0)
-
-          local api_t = apis[1]
-
-          -- Should be correctly updated in DB
-          api_t.name = api_t.name.." updated"
-
-          local api, err = dao_factory.apis:update(api_t)
-          assert.falsy(err)
-          assert.truthy(api)
-
-          local apis, err = dao_factory._db:execute("SELECT * FROM apis WHERE name = '"..api_t.name.."'")
-          assert.falsy(err)
-          assert.truthy(#apis == 1)
-          assert.are.same(api_t.name, apis[1].name)
-        end)
 
         -- Cassandra sets to NULL unset fields specified in an UPDATE query
         -- https://issues.apache.org/jira/browse/CASSANDRA-7304
@@ -229,7 +219,7 @@ describe("Cassandra DAO", function()
           assert.truthy(#apis > 0)
 
           local api_t = apis[1]
-          api_t.name = api_t.name.." updated again"
+          api_t.name = api_t.name.." updated"
 
           -- This should not set those values to NULL in DB
           api_t.created_at = nil
@@ -268,6 +258,68 @@ describe("Cassandra DAO", function()
         end)
 
       end)
+
+      describe("Accounts", function()
+
+        it("should update in DB", function()
+          local accounts, err = dao_factory._db:execute("SELECT * FROM accounts")
+          assert.falsy(err)
+          assert.truthy(#accounts > 0)
+
+          local account_t = accounts[1]
+
+          -- Should be correctly updated in DB
+          account_t.provider_id = account_t.provider_id.."updated"
+
+          local account, err = dao_factory.accounts:update(account_t)
+          assert.falsy(err)
+          assert.truthy(account)
+
+          local accounts, err = dao_factory._db:execute("SELECT * FROM accounts WHERE provider_id = '"..account_t.provider_id.."'")
+          assert.falsy(err)
+          assert.truthy(#accounts == 1)
+          assert.are.same(account_t.name, accounts[1].name)
+        end)
+
+      end)
+    end)
+
+    describe(":delete()", function()
+
+      for type, dao in pairs({ api = dao_factory.apis,
+                               account = dao_factory.accounts,
+                               application = dao_factory.applications,
+                               plugin = dao_factory.plugins }) do
+
+        describe(type, function()
+
+          it("should return an error if deleting an entity that cannot be found", function()
+            local t = dao_factory.faker.fake_entity(type)
+            t.id = uuid()
+
+            local success, err = dao_factory[type.."s"]:delete(t.id)
+            assert.falsy(success)
+            assert.truthy(err)
+            assert.are.same("Entity to delete not found", err)
+          end)
+
+          it("should delete an entity", function()
+            local entities, err = dao_factory._db:execute("SELECT * FROM "..type.."s;")
+            assert.falsy(err)
+            assert.truthy(#entities > 0)
+
+            local success, err = dao_factory[type.."s"]:delete(entities[1].id)
+            assert.falsy(err)
+            assert.truthy(success)
+
+            local entities, err = dao_factory._db:execute("SELECT * FROM "..type.."s WHERE id = "..entities[1].id)
+            assert.falsy(err)
+            assert.truthy(#entities == 0)
+          end)
+
+        end)
+      end
+
     end)
   end)
 end)
