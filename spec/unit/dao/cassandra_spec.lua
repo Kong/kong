@@ -330,5 +330,29 @@ describe("Cassandra DAO", function()
 
       end)
     end)
+
+    describe(":find_by_keys()", function()
+
+      describe("APIs", function()
+
+        it("should find entities from a built query", function()
+          local results, err = dao_factory._db:execute("SELECT * FROM apis;")
+          assert.falsy(err)
+          assert.truthy(results)
+          assert.truthy(#results > 0)
+
+          local api_t = results[1]
+
+          local results, err = dao_factory.apis:find_by_keys {
+            name = api_t.name,
+            target_url = api_t.target_url
+          }
+          assert.falsy(err)
+          assert.truthy(results)
+          assert.truthy(#results == 1)
+        end)
+
+      end)
+    end)
   end)
 end)

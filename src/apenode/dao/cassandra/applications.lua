@@ -14,30 +14,23 @@ function Applications:new(database, properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      all = {
-        params = { "id", "account_id", "public_key", "secret_key", "created_at" },
-        query = [[
-          INSERT INTO applications(id, account_id, public_key, secret_key, created_at)
-            VALUES(?, ?, ?, ?, ?);
-        ]]
-      },
-      no_public_key = {
-        params = { "id", "account_id", "secret_key", "created_at" },
-        query = [[ INSERT INTO applications(id, account_id, secret_key, created_at)
-                    VALUES(?, ?, ?, ?); ]]
-      }
+      params = { "id", "account_id", "public_key", "secret_key", "created_at" },
+      query = [[
+        INSERT INTO applications(id, account_id, public_key, secret_key, created_at)
+          VALUES(?, ?, ?, ?, ?);
+      ]]
     },
     update = {
       params = { "account_id", "public_key", "secret_key", "created_at", "id" },
       query = [[ UPDATE applications SET account_id = ?, public_key = ?, secret_key = ?, created_at = ?
                   WHERE id = ?; ]]
     },
+    select = {
+      query = [[ SELECT * FROM applications %s; ]]
+    },
     select_one = {
       params = { "id" },
       query = [[ SELECT * FROM applications WHERE id = ?; ]]
-    },
-    select = {
-      query = [[ SELECT * FROM applications; ]]
     },
     delete = {
       params = { "id" },
@@ -58,15 +51,6 @@ function Applications:new(database, properties)
   }
 
   Applications.super.new(self, database)
-end
-
-function Applications:insert(t)
-  -- Determine which statement to use
-  if not t.public_key then
-    return Applications.super.insert(self, t, self._statements.insert.no_public_key)
-  else
-    return Applications.super.insert(self, t, self._statements.insert.all)
-  end
 end
 
 return Applications
