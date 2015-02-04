@@ -14,6 +14,7 @@ local Plugins = BaseDao:extend()
 
 function Plugins:new(database, properties)
   self._schema = SCHEMA
+  self._deserialize = true
   self._queries = {
     insert = {
       params = { "id", "api_id", "application_id", "name", "value", "created_at" },

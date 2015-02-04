@@ -306,13 +306,7 @@ function BaseDao:delete(id)
     return false, "Entity to delete not found"
   end
 
-  local _, err = self:execute_prepared_stmt(self._statements.delete, { id = id })
-
-  if err then
-    return false, err
-  else
-    return true
-  end
+  return self:execute_prepared_stmt(self._statements.delete, { id = id })
 end
 
 ---------------------
@@ -353,14 +347,38 @@ end
 --
 -- @param {table|statement} statement The prepared statement (cassandra or build by :prepare) to execute
 -- @param {table} values_to_bind Raw values to bind
--- @return {table} Results of :execute
+-- @return {table|boolean} Table if type of return is ROWS
+--                         Boolean if type of results is VOID
 -- @return {table|nil} Error if any
 function BaseDao:execute_prepared_stmt(statement, values_to_bind)
   if statement.params and values_to_bind then
     values_to_bind = self:encode_cassandra_values(values_to_bind, statement.params)
   end
 
-  return self._db:execute(statement.query, values_to_bind)
+  local results, err = self._db:execute(statement.query, values_to_bind)
+
+  if results and results.type == "ROWS" then
+    -- only return an ordered list
+    results.type = nil
+
+    -- return deserialized content for encoded values (plugins)
+    if self._deserialize then
+      for _, result in ipairs(results) do
+        for k,v in pairs(result) do
+          if self._schema[k].type == "table" then
+            result[k] = cjson.decode(v)
+          end
+        end
+      end
+    end
+
+    return results, err
+  elseif results and results.type == "VOID" then
+    -- return boolean
+    return err == nil, err
+  else
+    return results, err
+  end
 end
 
 return BaseDao
