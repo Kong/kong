@@ -35,6 +35,23 @@ describe("Cassandra DAO", function()
 
   describe("Cassandra DAO", function()
 
+    describe("Schemas", function()
+
+      describe_all_collections(function(type, collection)
+
+        it("should have statements for all unique and required schema fields", function()
+          for column, schema_field in pairs(dao_factory[collection]._schema) do
+            if schema_field.unique then
+              assert.truthy(dao_factory[collection]._queries.__unique[column])
+            elseif schema_field.exists then
+              assert.truthy(dao_factory[collection]._queries.__exists[column])
+            end
+          end
+        end)
+
+      end)
+    end)
+
     describe(":insert()", function()
 
       describe("APIs", function()
