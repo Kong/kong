@@ -3,8 +3,8 @@ local schemas = require "apenode.dao.schemas"
 
 local SCHEMA = {
   id = { type = "id" },
-  api_id = { type = "id", required = true, exists = true },
-  application_id = { type = "id", exists = true },
+  api_id = { type = "id", required = true, exists = true, queryable = true },
+  application_id = { type = "id", exists = true, queryable = true },
   name = { required = true },
   value = { type = "table", required = true },
   created_at = { type = "timestamp" }

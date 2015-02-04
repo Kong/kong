@@ -2,7 +2,7 @@ local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
   id = { type = "id" },
-  provider_id = { unique = true },
+  provider_id = { unique = true, queryable = true },
   created_at = { type = "timestamp" }
 }
 

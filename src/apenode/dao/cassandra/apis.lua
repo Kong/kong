@@ -2,9 +2,8 @@ local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
   id = { type = "id" },
-  name = { required = true, unique = true },
-  public_dns = { required = true,
-                 unique = true,
+  name = { required = true, unique = true, queryable = true },
+  public_dns = { required = true, unique = true, queryable = true,
                  regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { required = true },
   created_at = { type = "timestamp" }
@@ -21,9 +20,8 @@ function Apis:new(database)
                   VALUES(?, ?, ?, ?, ?); ]]
     },
     update = {
-      params = { "name", "public_dns", "target_url", "created_at", "id" },
-      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ?, created_at = ?
-                  WHERE id = ?; ]]
+      params = { "name", "public_dns", "target_url", "id" },
+      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM apis %s; ]]

@@ -26,9 +26,8 @@ local Migration = {
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS ON applications(public_key);
-      CREATE INDEX IF NOT EXISTS ON applications(secret_key);
       CREATE INDEX IF NOT EXISTS ON applications(account_id);
+      CREATE INDEX IF NOT EXISTS ON applications(public_key);
 
       CREATE TABLE IF NOT EXISTS apis(
         id uuid,
@@ -41,7 +40,6 @@ local Migration = {
 
       CREATE INDEX IF NOT EXISTS ON apis(name);
       CREATE INDEX IF NOT EXISTS ON apis(public_dns);
-      CREATE INDEX IF NOT EXISTS ON apis(target_url);
 
       CREATE TABLE IF NOT EXISTS plugins(
         id uuid,
