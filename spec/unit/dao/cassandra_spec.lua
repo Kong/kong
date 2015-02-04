@@ -1,5 +1,6 @@
 local configuration = require "spec.dao_configuration"
 local CassandraFactory = require "apenode.dao.cassandra.factory"
+local cjson = require "cjson"
 local uuid = require "uuid"
 
 local dao_factory = CassandraFactory(configuration.cassandra)
@@ -378,6 +379,24 @@ describe("Cassandra DAO", function()
         end)
 
       end)
+
+      describe("Plugins", function()
+
+        it("should deserialize the table property", function()
+          local plugins, err = dao_factory._db:execute("SELECT * FROM plugins")
+          assert.falsy(err)
+          assert.truthy(plugins)
+          assert.True(#plugins > 0)
+
+          local plugin_t = plugins[1]
+
+          local results, err = dao_factory.plugins:find_one(plugin_t.id)
+          assert.falsy(err)
+          assert.truthy(results)
+          assert.True(type(results[1].value) == "table")
+        end)
+
+      end)
     end)
 
     describe(":find_by_keys()", function()
@@ -415,6 +434,8 @@ describe("Cassandra DAO", function()
           for k,schema_field in pairs(dao_factory[collection]._schema) do
             if schema_field.queryable then
               q[k] = t[k]
+            elseif schema_field.type == "table" then
+              t[k] = cjson.decode(t[k])
             end
           end
 
