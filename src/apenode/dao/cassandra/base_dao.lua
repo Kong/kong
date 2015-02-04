@@ -36,7 +36,7 @@ function BaseDao:prepare(queries, statements)
       q = string.format(q, "")
       local prepared_stmt, err = self._db:prepare(q)
       if err then
-        error("Failed to prepare statement: "..err)
+        error("Failed to prepare statement: "..q..". Error: "..err)
       else
         statements[stmt_name] = {
           params = query.params,
@@ -261,16 +261,22 @@ end
 -- @param {table} t Table from which the WHERE will be built, and the values will be binded
 -- @return execute_prepared_stmt()
 function BaseDao:find_by_keys(t)
-  local where, keys = {}, {}
+  local where, keys, errors = {}, {}
   for k,v in pairs(t) do
-    table.insert(where, string.format("%s = ?", k))
-    table.insert(keys, k)
+    if self._schema[k].queryable or k == "id" then
+      table.insert(where, string.format("%s = ?", k))
+      table.insert(keys, k)
+    else
+      errors = schemas.add_error(errors, k, k.." is not queryable.")
+    end
+  end
+
+  if errors then
+    return nil, errors
   end
 
   local where_str = "WHERE "..table.concat(where, " AND ")
   local select_query = string.format(self._queries.select.query, where_str.." ALLOW FILTERING")
-
-  print(select_query)
 
   if not self._select_statements_cache[select_query] then
     local stmt, err = self._db:prepare(select_query)
@@ -283,9 +289,6 @@ function BaseDao:find_by_keys(t)
       params = keys
     }
   end
-
-  local inspect = require "inspect"
-  print(inspect(keys))
 
   return self:execute_prepared_stmt(self._select_statements_cache[select_query], t)
 end
@@ -350,7 +353,8 @@ end
 --
 -- @param {table|statement} statement The prepared statement (cassandra or build by :prepare) to execute
 -- @param {table} values_to_bind Raw values to bind
--- @return lua-resty-cassandra :execute()
+-- @return {table} Results of :execute
+-- @return {table|nil} Error if any
 function BaseDao:execute_prepared_stmt(statement, values_to_bind)
   if statement.params and values_to_bind then
     values_to_bind = self:encode_cassandra_values(values_to_bind, statement.params)

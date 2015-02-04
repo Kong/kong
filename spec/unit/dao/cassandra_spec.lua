@@ -205,7 +205,7 @@ describe("Cassandra DAO", function()
 
       describe_all_collections(function(type, collection)
 
-        it("should not update in DB if entity is not found", function()
+        it("should not update in DB if entity cannot be found", function()
           local t = dao_factory.faker.fake_entity(type)
           t.id = uuid()
 
@@ -270,7 +270,7 @@ describe("Cassandra DAO", function()
 
       describe("Accounts", function()
 
-        it("should update in DB", function()
+        it("should update in DB if entity can be found", function()
           local accounts, err = dao_factory._db:execute("SELECT * FROM accounts")
           assert.falsy(err)
           assert.True(#accounts > 0)
@@ -291,6 +291,22 @@ describe("Cassandra DAO", function()
         end)
 
       end)
+
+      describe("Applications", function()
+
+        it("should update in DB if entity can be found", function()
+          local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+          assert.falsy(err)
+          assert.True(#apps > 0)
+
+          local app_t = apps[1]
+          app_t.public_key = "updated public_key"
+          local app, err = dao_factory.applications:update(app_t)
+          assert.falsy(err)
+          assert.truthy(app)
+        end)
+
+      end)
     end)
 
     describe(":delete()", function()
@@ -307,7 +323,7 @@ describe("Cassandra DAO", function()
           assert.are.same("Entity to delete not found", err)
         end)
 
-        it("should delete an entity", function()
+        it("should delete an entity if it can be found", function()
           local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
           assert.falsy(err)
           assert.truthy(entities)
@@ -331,20 +347,44 @@ describe("Cassandra DAO", function()
       describe_all_collections(function(type, collection)
 
         it("should find entities", function()
-          local entities, err = dao_factory[collection]:find()
+          local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
           assert.falsy(err)
           assert.truthy(entities)
           assert.True(#entities > 0)
+
+          local results, err = dao_factory[collection]:find()
+          assert.falsy(err)
+          assert.truthy(results)
+          assert.True(#entities == #results)
         end)
 
       end)
     end)
---[[
+
+    describe(":find_one()", function()
+
+      describe_all_collections(function(type, collection)
+
+        it("should find one entity by id", function()
+          local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
+          assert.falsy(err)
+          assert.truthy(entities)
+          assert.True(#entities > 0)
+
+          local results, err = dao_factory[collection]:find_one(entities[1].id)
+          assert.falsy(err)
+          assert.truthy(results)
+          assert.True(#results == 1)
+        end)
+
+      end)
+    end)
+
     describe(":find_by_keys()", function()
 
       describe_all_collections(function(type, collection)
 
-        it("should find entities from a built query", function()
+        it("should refuse non queryable keys", function()
           local results, err = dao_factory._db:execute("SELECT * FROM "..collection)
           assert.falsy(err)
           assert.truthy(results)
@@ -353,13 +393,38 @@ describe("Cassandra DAO", function()
           local t = results[1]
 
           local results, err = dao_factory[collection]:find_by_keys(t)
+          assert.truthy(err)
+          assert.falsy(results)
+
+          -- All those fields are indeed non queryable
+          for k,v in pairs(err) do
+            assert.is_not_true(dao_factory[collection]._schema[k].queryable)
+          end
+        end)
+
+        it("should query an entity by its queryable fields", function()
+          local results, err = dao_factory._db:execute("SELECT * FROM "..collection)
           assert.falsy(err)
           assert.truthy(results)
-          assert.True(#results == 1)
+          assert.True(#results > 0)
+
+          local t = results[1]
+          local q = {}
+
+          -- Remove nonqueryable fields
+          for k,schema_field in pairs(dao_factory[collection]._schema) do
+            if schema_field.queryable then
+              q[k] = t[k]
+            end
+          end
+
+          local results, err = dao_factory[collection]:find_by_keys(q)
+          assert.falsy(err)
+          assert.truthy(results)
+          assert.are.same(t, results[1])
         end)
 
       end)
     end)
---]]
   end)
 end)

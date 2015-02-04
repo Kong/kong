@@ -66,8 +66,8 @@ function Faker.fake_entity(type, invalid)
     }
   elseif type == "application" then
     return {
-      public_key = "random"..r,
-      secret_key = "random"..r
+      public_key = "public_random"..r,
+      secret_key = "private_random"..r
     }
   elseif type == "metric" then
     return {
@@ -110,9 +110,9 @@ function Faker:seed(random, amount)
       { provider_id = "provider_123" }
     },
     application = {
-      { secret_key = "apikey122", __account = 1 },
+      { public_key = "user122", secret_key = "apikey122", __account = 1 },
       { public_key = "user123", secret_key = "apikey123", __account = 1 },
-      { secret_key = "apikey124", __account = 1 },
+      { public_key = "user124", secret_key = "apikey124", __account = 1 },
     },
     metric = {
       { name = "requests", value = 0, timestamp = 123, period = "second", __api = 1, __application = 1 },

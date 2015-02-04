@@ -2,9 +2,9 @@ local BaseDao = require "apenode.dao.cassandra.base_dao"
 
 local SCHEMA = {
   id = { type = "id" },
-  account_id = { type = "id", required = true, exists = true },
-  public_key = {},
-  secret_key = { required = true, unique = true },
+  account_id = { type = "id", required = true, exists = true, queryable = true },
+  public_key = { required = true, unique = true, queryable = true },
+  secret_key = { required = true },
   created_at = { type = "timestamp" }
 }
 
@@ -21,9 +21,8 @@ function Applications:new(database, properties)
       ]]
     },
     update = {
-      params = { "account_id", "public_key", "secret_key", "created_at", "id" },
-      query = [[ UPDATE applications SET account_id = ?, public_key = ?, secret_key = ?, created_at = ?
-                  WHERE id = ?; ]]
+      params = { "public_key", "secret_key", "created_at", "id" },
+      query = [[ UPDATE applications SET public_key = ?, secret_key = ?, created_at = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM applications %s; ]]
@@ -43,9 +42,9 @@ function Applications:new(database, properties)
       }
     },
     __unique = {
-      secret_key = {
-        params = { "secret_key" },
-        query = [[ SELECT id FROM applications WHERE secret_key = ?; ]]
+      public_key = {
+        params = { "public_key" },
+        query = [[ SELECT id FROM applications WHERE public_key = ?; ]]
       }
     }
   }
