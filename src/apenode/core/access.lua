@@ -19,7 +19,7 @@ function _M.execute(conf)
 
   -- Setting the backend URL for the proxy_pass directive
   local querystring = ngx.encode_args(ngx.req.get_uri_args());
-  ngx.var.backend_url = api.target_url .. ngx.var.uri
+  ngx.var.backend_url = api.target_url .. ngx.var.request_uri
   ngx.var.querystring = querystring
 
   -- TODO: Move this away from here
