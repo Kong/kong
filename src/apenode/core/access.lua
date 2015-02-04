@@ -5,6 +5,20 @@ local ApiModel = require "apenode.models.api"
 
 local _M = {}
 
+local function get_backend_url(api)
+  local result = api.target_url
+
+  -- Checking if the target url ends with a final slash
+  local len = string.len(result)
+  if string.sub(result, len, len) == "/" then
+    -- Remove one slash to avoid having a double slash
+    -- Because ngx.var.uri always starts with a slash
+    result = string.sub(result, 0, len - 1)
+  end
+
+  return result
+end
+
 function _M.execute(conf)
   -- Setting the version header
   ngx.header["X-Apenode-Version"] = configuration.version
@@ -18,8 +32,7 @@ function _M.execute(conf)
   end
 
   -- Setting the backend URL for the proxy_pass directive
-  local querystring = ngx.encode_args(ngx.req.get_uri_args());
-  ngx.var.backend_url = api.target_url .. ngx.var.request_uri
+  ngx.var.backend_url = get_backend_url(api) .. ngx.var.request_uri
 
   -- TODO: Move this away from here
   -- There are some requests whose authentication needs to be skipped
