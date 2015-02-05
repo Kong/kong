@@ -1,32 +1,71 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
+local cassandra = require "cassandra"
+
+local AVAILABLE_PERIODS = {
+  second = true,
+  minute = true,
+  hour = true,
+  day = true,
+  month = true,
+  year = true
+}
+
+local SCHEMA = {
+  api_id = { type = "id", required = true, },
+  identifier = { required = true },
+  periods = { required = true }
+}
 
 local Metrics = BaseDao:extend()
 
-function Metrics:new(database, properties)
-  Metrics.super.new(self, database, MetricModel._COLLECTION, MetricModel._SCHEMA, properties)
-end
-
--- @override
-function Metrics:insert_or_update()
-  error("Metrics:insert_or_update() not supported")
-end
-
-function Metrics:increment(api_id, application_id, origin_ip, name, timestamp, period, step)
-  local where_keys = {
-    api_id = api_id,
-    application_id = application_id,
-    origin_ip = origin_ip,
-    name = name,
-    period = period,
-    timestamp = timestamp
+function Metrics:new(database)
+  self._schema = SCHEMA
+  self._queries = {
+    increment = {
+      params = { "api_id", "identifier", "periods" },
+      query = [[ UPDATE metrics SET value = value + 1 WHERE api_id = ? AND
+                                                            identifier = ? AND
+                                                            period IN ?; ]]
+    },
+    select = {
+      params = { "api_id", "identifier", "periods" },
+      query = [[ SELECT * FROM metrics WHERE api_id = ? AND
+                                             identifier = ? AND
+                                             period IN ?; ]]
+    },
+    delete = {
+      params = { "api_id", "identifier", "periods" },
+      query = [[ DELETE FROM metrics WHERE api_id = ? AND
+                                           identifier = ? AND
+                                           period IN ?; ]]
+    }
   }
 
-  local _, _, where_values_to_bind = Metrics.super._build_query_args(self, where_keys)
-  local where = Metrics.super._build_where_fields(where_keys)
+  Metrics.super.new(self, database)
+end
 
-  local query = [[ UPDATE ]]..MetricModel._COLLECTION..[[ SET value = value + ]]..tostring(step)..where
+function Metrics:increment(api_id, identifier, periods)
+  return Metrics.super.execute_prepared_stmt(self, self._statements.increment, {
+    api_id = api_id,
+    identifier = identifier,
+    periods = cassandra.list(periods)
+  })
+end
 
-  return self:_exec_stmt(query, where_values_to_bind)
+function Metrics:find(api_id, identifier, periods)
+  return Metrics.super.execute_prepared_stmt(self, self._statements.select, {
+    api_id = api_id,
+    identifier = identifier,
+    periods = cassandra.list(periods)
+  })
+end
+
+function Metrics:delete(api_id, identifier, periods)
+  return Metrics.super.execute_prepared_stmt(self, self._statements.delete, {
+    api_id = api_id,
+    identifier = identifier,
+    periods = cassandra.list(periods)
+  })
 end
 
 return Metrics
