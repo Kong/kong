@@ -18,7 +18,7 @@ local BaseDao = Object:extend()
 function BaseDao:new(database)
   self._db = database
   self._statements = {} -- Mirror of _queries but with prepared statements instead of strings
-  self._select_statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
+  self._statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
 end
 
 -- Prepare all statements in self._queries and put them in self._statements.
@@ -255,7 +255,7 @@ end
 -- Execute a SELECT statement with special WHERE values
 -- Build a new prepared statement and cache it for later use
 --
--- @see _select_statements_cache
+-- @see _statements_cache
 -- @warning Generated statement will use ALLOW FILTERING
 --
 -- @param {table} t Table from which the WHERE will be built, and the values will be binded
@@ -278,19 +278,19 @@ function BaseDao:find_by_keys(t)
   local where_str = "WHERE "..table.concat(where, " AND ")
   local select_query = string.format(self._queries.select.query, where_str.." ALLOW FILTERING")
 
-  if not self._select_statements_cache[select_query] then
+  if not self._statements_cache[select_query] then
     local stmt, err = self._db:prepare(select_query)
     if err then
       return nil, err
     end
 
-    self._select_statements_cache[select_query] = {
+    self._statements_cache[select_query] = {
       query = stmt,
       params = keys
     }
   end
 
-  return self:execute_prepared_stmt(self._select_statements_cache[select_query], t)
+  return self:execute_prepared_stmt(self._statements_cache[select_query], t)
 end
 
 -- Execute the prepared DELETE statement
