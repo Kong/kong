@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local Metric = require "apenode.models.metric"
+local Metric = nil
 
 local kMetricName = "requests"
 
