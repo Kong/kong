@@ -58,13 +58,6 @@ build = {
     ["apenode.dao.cassandra.accounts"] = "src/apenode/dao/cassandra/accounts.lua",
     ["apenode.dao.cassandra.applications"] = "src/apenode/dao/cassandra/applications.lua",
 
-    ["apenode.models.base_model"] = "src/apenode/models/base_model.lua",
-    ["apenode.models.account"] = "src/apenode/models/account.lua",
-    ["apenode.models.api"] = "src/apenode/models/api.lua",
-    ["apenode.models.application"] = "src/apenode/models/application.lua",
-    ["apenode.models.metric"] = "src/apenode/models/metric.lua",
-    ["apenode.models.plugin"] = "src/apenode/models/plugin.lua",
-
     ["apenode.plugins.authentication.handler"] = "src/apenode/plugins/authentication/handler.lua",
     ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
 

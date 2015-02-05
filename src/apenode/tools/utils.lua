@@ -67,21 +67,16 @@ function _M.build_query(tab, key)
 end
 
 --
--- Apenode utils
+-- DAO utils
 --
-function _M.load_configuration_and_dao(configuration)
-  if type(configuration) == "string" then
-    local configuration_file = _M.read_file(configuration)
-
-    if not configuration_file then
-      error("No configuration file at: "..configuration)
-    end
-
-    configuration = yaml.load(configuration_file)
+function _M.load_configuration_and_dao(configuration_path)
+  local configuration_file = _M.read_file(configuration_path)
+  if not configuration_file then
+    error("No configuration file at: "..configuration)
   end
+  local configuration = yaml.load(configuration_file)
 
   local dao_config = configuration.databases_available[configuration.database]
-
   if dao_config == nil then
     error("No dao \""..configuration.database.."\" defined")
   end
