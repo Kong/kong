@@ -1,5 +1,5 @@
--- Copyright (C) Mashape, Inc.
-
+-- KONG
+--
 --     /\  ____
 --     <> ( oo )
 --     <>_| ^^ |_

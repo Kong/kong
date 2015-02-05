@@ -1,5 +1,4 @@
 local rex = require "rex_pcre" -- Why? Lua has built in pattern which should do the job too
-local cjson = require "cjson"
 
 --
 -- Schema
@@ -19,30 +18,6 @@ function _M.add_error(errors, k, v)
   end
 
   return errors
-end
-
-function _M.serialize(t, schema)
-  if t then
-    for k,v in pairs(schema) do
-      if t[k] and v.type == "table" then
-        t[k] = cjson.encode(t[k])
-      end
-    end
-  end
-  return t
-end
-
-function _M.deserialize(t, schema)
-  if t then
-    for k,v in pairs(schema) do
-      if t[k] and v.type == "table" then
-        t[k] = cjson.decode(t[k])
-      elseif t[k] and v.type == "string" then
-        t[k] = tostring(t[k])
-      end
-    end
-  end
-  return t
 end
 
 -- Validate a table against a given schema

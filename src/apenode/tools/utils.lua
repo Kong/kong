@@ -22,7 +22,7 @@ end
 
 function _M.reverse_table(arr)
   local reversed = {}
-  for _,i in ipairs(arr) do
+  for _, i in ipairs(arr) do
     table.insert(reversed, 1, i)
   end
   return reversed
@@ -94,14 +94,16 @@ function _M.get_utc()
   return os.time(os.date("!*t", os.time()))
 end
 
-local epoch = {year=1970, month=1, day=1, hour=0, min=0, sec=0, isdst=false }
+--[[
+local epoch = { year = 1970, month = 1, day = 1, hour = 0, min = 0, sec = 0, isdst = false }
 local function gmtime(t)
   t.isdst =  false
   return os.time(t) - os.time(epoch)
 end
 
 function _M.get_timestamps(now)
-  local _now = math.floor(now) -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
+  -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
+  local _now = math.floor(now)
   local date = os.date("!*t", _now) -- In milliseconds
 
   local second = _now
@@ -116,8 +118,16 @@ function _M.get_timestamps(now)
   date.month = 1
   local year = gmtime(date)
 
-  return {second=second * 1000, minute=minute * 1000, hour=hour * 1000,day=day * 1000, month=month * 1000, year=year * 1000}
+  return {
+          second = second * 1000,
+          minute = minute * 1000,
+          hour = hour * 1000,
+          day = day * 1000,
+          month = month * 1000,
+          year = year * 100
+        }
 end
+--]]
 
 --
 -- Lapis utils
@@ -179,8 +189,25 @@ function _M.write_to_file(path, value)
   file:close()
 end
 
+function _M.retrieve_files(path, pattern)
+  if not pattern then pattern = "" end
+  local files = {}
+
+  for file in lfs.dir(path) do
+    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
+      local f = path..'/'..file
+      local attr = lfs.attributes(f)
+      if attr.mode == "file" then
+        table.insert(files, f)
+      end
+    end
+  end
+
+  return files
+end
+
 --
--- Lua script utils
+-- Lua scripts utils
 --
 
 -- getopt, POSIX style command line argument parser
@@ -223,23 +250,6 @@ function _M.getopt( arg, options )
     end
   end
   return tab
-end
-
-function _M.retrieve_files(path, pattern)
-  if not pattern then pattern = "" end
-  local files = {}
-
-  for file in lfs.dir(path) do
-    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
-      local f = path..'/'..file
-      local attr = lfs.attributes(f)
-      if attr.mode == "file" then
-        table.insert(files, f)
-      end
-    end
-  end
-
-  return files
 end
 
 --
