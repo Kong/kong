@@ -1,7 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
 local stringy = require "stringy"
-local ApiModel = require "apenode.models.api"
 
 local _M = {}
 
@@ -19,15 +18,20 @@ local function get_backend_url(api)
   return result
 end
 
+local function skip_authentication(headers)
+  -- Skip upload request that expect a 100 Continue response
+  return headers["expect"] and _M.starts_with(headers["expect"], "100")
+end
+
 function _M.execute(conf)
   -- Setting the version header
   ngx.header["X-Apenode-Version"] = configuration.version
 
   -- Retrieving the API from the Host that has been requested
-  local api, err = ApiModel.find_one({
-    public_dns = stringy.split(ngx.var.http_host, ":")[1]
-  }, dao)
-  if not api then
+  local api, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
+  if err then
+    utils.show_error(500)
+  elseif not api then
     utils.not_found("API not found")
   end
 
@@ -42,11 +46,6 @@ function _M.execute(conf)
 
   -- Saving these properties for the other handlers, especially the log handler
   ngx.ctx.api = api
-end
-
-function skip_authentication(headers)
-  -- Skip upload request that expect a 100 Continue response
-  return headers["expect"] and _M.starts_with(headers["expect"], "100")
 end
 
 return _M

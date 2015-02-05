@@ -5,7 +5,7 @@ local SCHEMA = {
   id = { type = "id" },
   api_id = { type = "id", required = true, exists = true, queryable = true },
   application_id = { type = "id", exists = true, queryable = true },
-  name = { required = true },
+  name = { required = true, queryable = true },
   value = { type = "table", required = true },
   created_at = { type = "timestamp" }
 }

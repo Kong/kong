@@ -15,7 +15,7 @@ local function remove_private_properties(entity)
   return entity
 end
 
-local function render_list_response(req, data, total, page, size)
+local function render_list_response(req, data)
   if data then
     for i,v in ipairs(data) do
       data[i] = remove_private_properties(v)
@@ -24,17 +24,8 @@ local function render_list_response(req, data, total, page, size)
 
   local url = req.parsed_url.scheme .. "://" .. req.parsed_url.host .. ":" .. req.parsed_url.port .. req.parsed_url.path
   local result = {
-    data = data,
-    total = total
+    data = data
   }
-
-  if page > 1 then
-    result["previous"] = url .. "?" .. ngx.encode_args({page = page -1, size = size})
-  end
-
-  if page * size < total then
-     result["next"] = url .. "?" .. ngx.encode_args({page = page + 1, size = size})
-  end
 
   return result
 end
@@ -62,11 +53,10 @@ local function parse_params(model, params)
   return params
 end
 
-function BaseController:new(model)
+function BaseController:new(dao_collection)
   app:post("/" .. model._COLLECTION .. "/", function(self)
     local params = parse_params(model, self.params)
-
-    local data, err = model(params, dao):save()
+    local data, err = dao_collection:insert(params)
     if err then
       return utils.show_error(400, err)
     else
@@ -76,35 +66,18 @@ function BaseController:new(model)
 
   app:get("/" .. model._COLLECTION .. "/", function(self)
     local params = parse_params(model, self.params)
-
-    local page = 1
-    local size = 10
-    if params.page and tonumber(params.page) > 0 then
-      page = tonumber(params.page)
-    else
-      page = 1
-    end
-    if params.size and tonumber(params.size) > 0 then
-      size = tonumber(params.size)
-    else
-      size = 10
-    end
-    params.size = nil
-    params.page = nil
-
-    local data, total, err = model.find(params, page, size, dao)
+    local data, err = dao_collection:find_by_keys(params)
     if err then
       return utils.show_error(500, err)
     end
-    return utils.success(render_list_response(self.req, data, total, page, size))
+    return utils.success(render_list_response(self.req, data))
   end)
 
   app:get("/" .. model._COLLECTION .. "/:id", function(self)
-    local data, err = model.find_one({id = self.params.id}, dao)
+    local data, err = dao_collection:find_one(self.params.id)
     if err then
       return utils.show_error(500, err)
     end
-
     if data then
       return utils.success(remove_private_properties(data))
     else
@@ -113,36 +86,27 @@ function BaseController:new(model)
   end)
 
   app:delete("/" .. model._COLLECTION .. "/:id", function(self)
-    local data, err = model.find_one({ id = self.params.id}, dao)
+    local ok, err = dao_collection:delete(self.params.id)
     if err then
       return utils.show_error(500, err)
     end
-
-    if data then
-      data:delete()
-      return utils.success(remove_private_properties(data))
+    if ok then
+      return utils.success()
     else
       return utils.not_found()
     end
   end)
 
   app:put("/" .. model._COLLECTION .. "/:id", function(self)
-    local data, err = model.find_one({ id = self.params.id}, dao)
+    local params = parse_params(model, self.params)
+    params.id = self.params.id
+
+    local data, err = dao_collection:update(params)
     if err then
       return utils.show_error(500, err)
     end
-
     if data then
-      local params = parse_params(model, self.params)
-      for k,v in pairs(self.params) do
-        data[k] = v
-      end
-      local res, err = data:update()
-      if err then
-        return utils.show_error(400, err)
-      else
-        return utils.success(remove_private_properties(data))
-      end
+      return utils.success(remove_private_properties(data))
     else
       return utils.not_found()
     end

@@ -25,7 +25,6 @@
 -- ==========
 
 utils = require "apenode.tools.utils"
-local PluginModel = require "apenode.models.plugin"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -33,18 +32,22 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
-  local res, err = PluginModel.find_one({
+  local data, err = dao.plugins:find_by_keys({
     api_id = api_id,
     application_id = application_id,
     name = plugin_name
-  }, dao)
+  })
 
   if err then
     ngx.log(ngx.ERROR, err)
     return nil
   end
 
-  return res
+  if #data > 0 then
+    return table.remove(data, 1)
+  else
+    return nil
+  end
 end
 
 function _M.init(configuration_path)
