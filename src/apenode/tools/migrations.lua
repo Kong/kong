@@ -40,7 +40,7 @@ local Migration = {
 }
 
 return Migration
-  ]]
+    ]]
 
     if callback then
       callback(interface, file_path, file_name)

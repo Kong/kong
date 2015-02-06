@@ -10,12 +10,12 @@ local cjson = require "cjson"
 
 local validate = schemas.validate
 
--- This is important to seed the UUID generator
-uuid.seed()
-
 local BaseDao = Object:extend()
 
 function BaseDao:new(database)
+  -- This is important to seed the UUID generator
+  uuid.seed()
+
   self._db = database
   self._statements = {} -- Mirror of _queries but with prepared statements instead of strings
   self._statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
@@ -47,7 +47,7 @@ function BaseDao:prepare(queries, statements)
   end
 end
 
--- Runs a statement and check if the result exists
+-- Run a statement and check if the result exists
 --
 -- @param {table} t Arguments to bind to the statement
 -- @param {statement} statement Statement to execute
@@ -62,8 +62,7 @@ function BaseDao:check_unique(statement, t, is_updating)
     if not is_updating then
       return false
     else
-      -- If we are updating, we ignore UNIQUE values if
-      -- coming from the same entity
+      -- If we are updating, we ignore UNIQUE values if coming from the same entity
       local unique = true
       for k,v in ipairs(results) do
         if v.id ~= t.id then
@@ -78,7 +77,7 @@ function BaseDao:check_unique(statement, t, is_updating)
   end
 end
 
--- Runs a statement and check if the results exists
+-- Run a statement and check if the results exists
 --
 -- @param {statement} statement Statement to execute
 -- @param {table} t Arguments to bind to the statement
@@ -358,15 +357,15 @@ function BaseDao:execute_prepared_stmt(statement, values_to_bind)
   local results, err = self._db:execute(statement.query, values_to_bind)
 
   if results and results.type == "ROWS" then
-    -- only return an ordered list
+    -- erase this property to only return an ordered list
     results.type = nil
 
     -- return deserialized content for encoded values (plugins)
     if self._deserialize then
-      for _, result in ipairs(results) do
-        for k,v in pairs(result) do
+      for _,row in ipairs(results) do
+        for k,v in pairs(row) do
           if self._schema[k].type == "table" then
-            result[k] = cjson.decode(v)
+            row[k] = cjson.decode(v)
           end
         end
       end
