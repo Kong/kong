@@ -109,9 +109,9 @@ function BaseDao:check_all_exists(t)
     if t[k] then
       local exists, err = self:check_exists(statement, t)
       if err then
-        errors = schemas.add_error(errors, k, err)
+        errors = utils.add_error(errors, k, err)
       elseif not exists then
-        errors = schemas.add_error(errors, k, k.." "..t[k].." does not exist")
+        errors = utils.add_error(errors, k, k.." "..t[k].." does not exist")
       end
     end
   end
@@ -132,9 +132,9 @@ function BaseDao:check_all_unique(t, is_updating)
   for k, statement in pairs(self._statements.__unique) do
     local unique, err = self:check_unique(statement, t, is_updating)
     if err then
-      errors = schemas.add_error(errors, k, err)
+      errors = utils.add_error(errors, k, err)
     elseif not unique then
-      errors = schemas.add_error(errors, k, k.." already exists with value "..t[k])
+      errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
     end
   end
 
@@ -267,7 +267,7 @@ function BaseDao:find_by_keys(t)
       table.insert(where, string.format("%s = ?", k))
       table.insert(keys, k)
     else
-      errors = schemas.add_error(errors, k, k.." is not queryable.")
+      errors = utils.add_error(errors, k, k.." is not queryable.")
     end
   end
 

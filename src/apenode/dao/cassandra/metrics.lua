@@ -1,15 +1,6 @@
 local BaseDao = require "apenode.dao.cassandra.base_dao"
 local cassandra = require "cassandra"
 
-local AVAILABLE_PERIODS = {
-  second = true,
-  minute = true,
-  hour = true,
-  day = true,
-  month = true,
-  year = true
-}
-
 local SCHEMA = {
   api_id = { type = "id", required = true, },
   identifier = { required = true },

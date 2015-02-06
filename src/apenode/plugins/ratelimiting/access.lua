@@ -2,6 +2,16 @@
 
 local Metric = nil
 
+local AVAILABLE_PERIODS = {
+  second = true,
+  minute = true,
+  hour = true,
+  day = true,
+  month = true,
+  year = true
+}
+
+-- Not used anymore
 local kMetricName = "requests"
 
 local function set_header_limit_remaining(usage)

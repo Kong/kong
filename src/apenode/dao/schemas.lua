@@ -1,24 +1,10 @@
 local rex = require "rex_pcre" -- Why? Lua has built in pattern which should do the job too
+local utils = require "apenode.tools.utils"
 
 --
--- Schema
+-- Schemas
 --
 local _M = {}
-
-function _M.add_error(errors, k, v)
-  if not errors then errors = {} end
-
-  if errors and errors[k] then
-    local list = {}
-    table.insert(list, errors[k])
-    table.insert(list, v)
-    errors[k] = list
-  else
-    errors[k] = v
-  end
-
-  return errors
-end
 
 -- Validate a table against a given schema
 -- @param {table} t Table to validate
@@ -42,17 +28,17 @@ function _M.validate(t, schema)
 
     -- Check required fields are set
     elseif v.required and (t[column] == nil or t[column] == "") then
-      errors = _M.add_error(errors, column, column.." is required")
+      errors = utils.add_error(errors, column, column.." is required")
 
     -- Check type if table
     elseif v.type == "table" and t[column] and type(t[column]) ~= "table" then
-      errors = _M.add_error(errors, column, column.." is not a table")
+      errors = utils.add_error(errors, column, column.." is not a table")
     end
 
     -- Check field against a regex if specified
     if t[column] and v.regex then
       if not rex.match(t[column], v.regex) then
-        errors = _M.add_error(errors, column, column.." has an invalid value")
+        errors = utils.add_error(errors, column, column.." has an invalid value")
       end
     end
   end
@@ -60,7 +46,7 @@ function _M.validate(t, schema)
   -- Check for unexpected fields in the entity
   for k,v in pairs(t) do
     if not schema[k] then
-      errors = _M.add_error(errors, k, k.." is an unknown field")
+      errors = utils.add_error(errors, k, k.." is an unknown field")
     end
   end
 
