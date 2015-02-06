@@ -49,4 +49,21 @@ function Metrics:delete(api_id, identifier, periods)
   })
 end
 
+-- Unsuported
+function Metrics:insert()
+  error("metrics:insert() not supported")
+end
+
+function Metrics:update()
+  error("metrics:update() not supported")
+end
+
+function Metrics:find_by_keys()
+  error("metrics:find_by_keys() not supported")
+end
+
+function Metrics:find_one()
+  error("metrics:find_one() not supported")
+end
+
 return Metrics
