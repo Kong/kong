@@ -12,6 +12,7 @@ describe("Validation", function()
       table = { type = "table" },
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456 },
+      allowed = { enum = { "hello", "world" }},
       default = { default = function() return "default" end  }
     }
 
@@ -100,7 +101,6 @@ describe("Validation", function()
       local valid, err = validate(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
-      assert.are.same("unexpected is an unknown field", err.unexpected)
     end)
 
     it("should be able to return multiple errors at once", function()
@@ -111,6 +111,23 @@ describe("Validation", function()
       assert.truthy(err)
       assert.are.same("string is required", err.string)
       assert.are.same("unexpected is an unknown field", err.unexpected)
+    end)
+
+    it("should validate a field against an enum", function()
+      local values = { string = "somestring", allowed = "hello" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+    end)
+
+    it("should return an erorr when validating a field against an enum", function()
+      local values = { string = "somestring", allowed = "hello123" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
     end)
 
   end)

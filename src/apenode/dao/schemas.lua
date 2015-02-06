@@ -33,6 +33,20 @@ function _M.validate(t, schema)
     -- Check type if table
     elseif v.type == "table" and t[column] and type(t[column]) ~= "table" then
       errors = utils.add_error(errors, column, column.." is not a table")
+
+    -- Check type if value is allowed in the enum
+    elseif v.enum and t[column] then
+      local found = false
+      for _, c in ipairs(v.enum) do
+        if c == t[column] then
+          found = true
+          break
+        end
+      end
+      if not found then
+        errors = utils.add_error(errors, column, "\""..t[column].."\" is not allowed. Allowed values are: \""..table.concat(v.enum, "\", \"").."\"")
+      end
+
     end
 
     -- Check field against a regex if specified
@@ -41,6 +55,7 @@ function _M.validate(t, schema)
         errors = utils.add_error(errors, column, column.." has an invalid value")
       end
     end
+
   end
 
   -- Check for unexpected fields in the entity
