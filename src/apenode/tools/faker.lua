@@ -107,7 +107,8 @@ function Faker:seed(random, amount)
       { name = "test6", public_dns = "test6.com", target_url = "http://httpbin.org" }
     },
     account = {
-      { provider_id = "provider_123" }
+      { provider_id = "provider_123" },
+      { provider_id = "provider_124" }
     },
     application = {
       { public_key = "user122", secret_key = "apikey122", __account = 1 },

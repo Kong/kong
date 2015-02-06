@@ -1,4 +1,4 @@
--- KONG
+-- Kong, the biggest ape in town
 --
 --     /\  ____
 --     <> ( oo )
