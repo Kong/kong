@@ -28,12 +28,14 @@ function _M.execute(conf)
   ngx.header["X-Apenode-Version"] = configuration.version
 
   -- Retrieving the API from the Host that has been requested
-  local api, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
+  local apis, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
   if err then
     utils.show_error(500)
-  elseif not api then
+  elseif not apis or utils.table_size(apis) == 0 then
     utils.not_found("API not found")
   end
+
+  local api = apis[1]
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api) .. ngx.var.request_uri

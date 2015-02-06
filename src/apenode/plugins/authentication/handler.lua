@@ -35,13 +35,14 @@ end
 
 local AuthenticationHandler = BasePlugin:extend()
 
-AuthenticationHandler["_SCHEMA"] = {
-  authentication_type = { type = "string", required = true, func = check_authentication_type },
-  authentication_key_names = { type = "table", func = check_authentication_key_names },
+local SCHEMA = {
+  authentication_type = { type = "string", required = true, enum = {"query", "basic", "header"} },
+  authentication_key_names = { type = "table", required = true },
   hide_credentials = { type = "boolean", default = false }
 }
 
 function AuthenticationHandler:new()
+  self._schema = SCHEMA
   AuthenticationHandler.super.new(self, "authentication")
 end
 
