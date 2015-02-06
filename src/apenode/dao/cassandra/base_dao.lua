@@ -249,7 +249,7 @@ end
 -- @return execute_prepared_stmt()
 function BaseDao:find_one(id)
   local data, err = self:execute_prepared_stmt(self._statements.select_one, { id = id })
-  if data and utils.table_size(data) == 0 then
+  if not data or (data and utils.table_size(data) == 0) then
     return nil, err
   else
     return table.remove(data, 1), err

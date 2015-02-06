@@ -389,10 +389,9 @@ describe("Cassandra DAO", function()
         assert.truthy(entities)
         assert.True(#entities > 0)
 
-        local results, err = dao_factory[collection]:find_one(entities[1].id)
+        local result, err = dao_factory[collection]:find_one(entities[1].id)
         assert.falsy(err)
-        assert.truthy(results)
-        assert.True(#results == 1)
+        assert.truthy(result)
       end)
 
     end)
@@ -407,10 +406,10 @@ describe("Cassandra DAO", function()
 
         local plugin_t = plugins[1]
 
-        local results, err = dao_factory.plugins:find_one(plugin_t.id)
+        local result, err = dao_factory.plugins:find_one(plugin_t.id)
         assert.falsy(err)
-        assert.truthy(results)
-        assert.True(type(results[1].value) == "table")
+        assert.truthy(result)
+        assert.True(type(result.value) == "table")
       end)
 
     end)
