@@ -1,5 +1,5 @@
--- Copyright (C) Mashape, Inc.
-
+-- Kong, the biggest ape in town
+--
 --     /\  ____
 --     <> ( oo )
 --     <>_| ^^ |_

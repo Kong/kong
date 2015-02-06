@@ -22,48 +22,32 @@ end
 
 function _M.reverse_table(arr)
   local reversed = {}
-  for _,i in ipairs(arr) do
+  for _, i in ipairs(arr) do
     table.insert(reversed, 1, i)
   end
   return reversed
 end
 
--- Builds a querystring from a table, separated by `&`
--- @param tab The key/value parameters
--- @param key The parent key if the value is multi-dimensional (optional)
--- @return a string representing the built querystring
-function _M.build_query(tab, key)
-  if ngx then
-    return ngx.encode_args(tab)
+-- Add an error message to a key/value table
+-- Can accept a nil argument, and if is nil, will initialize the table
+--
+-- @param {table|nil} errors Table to attach the error to
+-- @param {string} k Key of the error
+-- @param v Value of the error
+-- @return {table} errors
+function _M.add_error(errors, k, v)
+  if not errors then errors = {} end
+
+  if errors and errors[k] then
+    local list = {}
+    table.insert(list, errors[k])
+    table.insert(list, v)
+    errors[k] = list
   else
-    local query = {}
-    local keys = {}
-
-    for k in pairs(tab) do
-      keys[#keys+1] = k
-    end
-
-    table.sort(keys)
-
-    for _,name in ipairs(keys) do
-      local value = tab[name]
-      if key then
-        name = string.format("%s[%s]", tostring(key), tostring(name))
-      end
-      if type(value) == "table" then
-        query[#query+1] = _M.build_query(value, name)
-      else
-        local value = tostring(value)
-        if value ~= "" then
-          query[#query+1] = string.format("%s=%s", name, value)
-        else
-          query[#query+1] = name
-        end
-      end
-    end
-
-    return table.concat(query, "&")
+    errors[k] = v
   end
+
+  return errors
 end
 
 --
@@ -90,18 +74,29 @@ end
 --
 -- Date utils
 --
+
+-- Returns a UNIX timestamp formatted in Coordinated Universal Time
+-- If ngx is available, will use ngx.now() stripping out the milliseconds
+-- Otherwise, will use os.time
+-- @return {number} Current UTC timestamp
 function _M.get_utc()
-  return os.time(os.date("!*t", os.time()))
+  if ngx then
+    return math.floor(ngx.now())
+  else
+    return os.time(os.date("!*t"))
+  end
 end
 
-local epoch = {year=1970, month=1, day=1, hour=0, min=0, sec=0, isdst=false }
+--[[
+local epoch = { year = 1970, month = 1, day = 1, hour = 0, min = 0, sec = 0, isdst = false }
 local function gmtime(t)
   t.isdst =  false
   return os.time(t) - os.time(epoch)
 end
 
 function _M.get_timestamps(now)
-  local _now = math.floor(now) -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
+  -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
+  local _now = math.floor(now)
   local date = os.date("!*t", _now) -- In milliseconds
 
   local second = _now
@@ -116,8 +111,16 @@ function _M.get_timestamps(now)
   date.month = 1
   local year = gmtime(date)
 
-  return {second=second * 1000, minute=minute * 1000, hour=hour * 1000,day=day * 1000, month=month * 1000, year=year * 1000}
+  return {
+          second = second * 1000,
+          minute = minute * 1000,
+          hour = hour * 1000,
+          day = day * 1000,
+          month = month * 1000,
+          year = year * 100
+        }
 end
+--]]
 
 --
 -- Lapis utils
@@ -183,8 +186,25 @@ function _M.write_to_file(path, value)
   file:close()
 end
 
+function _M.retrieve_files(path, pattern)
+  if not pattern then pattern = "" end
+  local files = {}
+
+  for file in lfs.dir(path) do
+    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
+      local f = path..'/'..file
+      local attr = lfs.attributes(f)
+      if attr.mode == "file" then
+        table.insert(files, f)
+      end
+    end
+  end
+
+  return files
+end
+
 --
--- Lua script utils
+-- Lua scripts utils
 --
 
 -- getopt, POSIX style command line argument parser
@@ -229,26 +249,48 @@ function _M.getopt( arg, options )
   return tab
 end
 
-function _M.retrieve_files(path, pattern)
-  if not pattern then pattern = "" end
-  local files = {}
-
-  for file in lfs.dir(path) do
-    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
-      local f = path..'/'..file
-      local attr = lfs.attributes(f)
-      if attr.mode == "file" then
-        table.insert(files, f)
-      end
-    end
-  end
-
-  return files
-end
-
 --
 -- HTTP calls utils
 --
+
+-- Builds a querystring from a table, separated by `&`
+-- @param tab The key/value parameters
+-- @param key The parent key if the value is multi-dimensional (optional)
+-- @return a string representing the built querystring
+function _M.build_query(tab, key)
+  if ngx then
+    return ngx.encode_args(tab)
+  else
+    local query = {}
+    local keys = {}
+
+    for k in pairs(tab) do
+      keys[#keys+1] = k
+    end
+
+    table.sort(keys)
+
+    for _,name in ipairs(keys) do
+      local value = tab[name]
+      if key then
+        name = string.format("%s[%s]", tostring(key), tostring(name))
+      end
+      if type(value) == "table" then
+        query[#query+1] = _M.build_query(value, name)
+      else
+        local value = tostring(value)
+        if value ~= "" then
+          query[#query+1] = string.format("%s=%s", name, value)
+        else
+          query[#query+1] = name
+        end
+      end
+    end
+
+    return table.concat(query, "&")
+  end
+end
+
 local function http_call(options)
   -- Set Host header accordingly
   if not options.headers["host"] then
@@ -268,6 +310,7 @@ local function http_call(options)
   return resp[1], code, headers
 end
 
+-- GET methpd
 function _M.get(url, querystring, headers)
   if not headers then headers = {} end
 
@@ -282,20 +325,7 @@ function _M.get(url, querystring, headers)
   }
 end
 
-function _M.delete(url, querystring, headers)
-  if not headers then headers = {} end
-
-  if querystring then
-    url = string.format("%s?%s", url, _M.build_query(querystring))
-  end
-
-  return http_call {
-    method = "DELETE",
-    url = url,
-    headers = headers
-  }
-end
-
+-- POST methpd
 function _M.post(url, form, headers)
   if not headers then headers = {} end
   if not form then form = {} end
@@ -309,6 +339,21 @@ function _M.post(url, form, headers)
     url = url,
     headers = headers,
     source = ltn12.source.string(body)
+  }
+end
+
+-- DELETE methpd
+function _M.delete(url, querystring, headers)
+  if not headers then headers = {} end
+
+  if querystring then
+    url = string.format("%s?%s", url, _M.build_query(querystring))
+  end
+
+  return http_call {
+    method = "DELETE",
+    url = url,
+    headers = headers
   }
 end
 

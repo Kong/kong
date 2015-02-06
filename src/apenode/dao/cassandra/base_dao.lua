@@ -10,15 +10,15 @@ local cjson = require "cjson"
 
 local validate = schemas.validate
 
--- This is important to seed the UUID generator
-uuid.seed()
-
 local BaseDao = Object:extend()
 
 function BaseDao:new(database)
+  -- This is important to seed the UUID generator
+  uuid.seed()
+
   self._db = database
   self._statements = {} -- Mirror of _queries but with prepared statements instead of strings
-  self._select_statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
+  self._statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
 end
 
 -- Prepare all statements in self._queries and put them in self._statements.
@@ -47,7 +47,7 @@ function BaseDao:prepare(queries, statements)
   end
 end
 
--- Runs a statement and check if the result exists
+-- Run a statement and check if the result exists
 --
 -- @param {table} t Arguments to bind to the statement
 -- @param {statement} statement Statement to execute
@@ -62,8 +62,7 @@ function BaseDao:check_unique(statement, t, is_updating)
     if not is_updating then
       return false
     else
-      -- If we are updating, we ignore UNIQUE values if
-      -- coming from the same entity
+      -- If we are updating, we ignore UNIQUE values if coming from the same entity
       local unique = true
       for k,v in ipairs(results) do
         if v.id ~= t.id then
@@ -78,7 +77,7 @@ function BaseDao:check_unique(statement, t, is_updating)
   end
 end
 
--- Runs a statement and check if the results exists
+-- Run a statement and check if the results exists
 --
 -- @param {statement} statement Statement to execute
 -- @param {table} t Arguments to bind to the statement
@@ -109,9 +108,9 @@ function BaseDao:check_all_exists(t)
     if t[k] then
       local exists, err = self:check_exists(statement, t)
       if err then
-        errors = schemas.add_error(errors, k, err)
+        errors = utils.add_error(errors, k, err)
       elseif not exists then
-        errors = schemas.add_error(errors, k, k.." "..t[k].." does not exist")
+        errors = utils.add_error(errors, k, k.." "..t[k].." does not exist")
       end
     end
   end
@@ -132,9 +131,9 @@ function BaseDao:check_all_unique(t, is_updating)
   for k, statement in pairs(self._statements.__unique) do
     local unique, err = self:check_unique(statement, t, is_updating)
     if err then
-      errors = schemas.add_error(errors, k, err)
+      errors = utils.add_error(errors, k, err)
     elseif not unique then
-      errors = schemas.add_error(errors, k, k.." already exists with value "..t[k])
+      errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
     end
   end
 
@@ -260,7 +259,7 @@ end
 -- Execute a SELECT statement with special WHERE values
 -- Build a new prepared statement and cache it for later use
 --
--- @see _select_statements_cache
+-- @see _statements_cache
 -- @warning Generated statement will use ALLOW FILTERING
 --
 -- @param {table} t Table from which the WHERE will be built, and the values will be binded
@@ -272,7 +271,7 @@ function BaseDao:find_by_keys(t)
       table.insert(where, string.format("%s = ?", k))
       table.insert(keys, k)
     else
-      errors = schemas.add_error(errors, k, k.." is not queryable.")
+      errors = utils.add_error(errors, k, k.." is not queryable.")
     end
   end
 
@@ -283,19 +282,19 @@ function BaseDao:find_by_keys(t)
   local where_str = "WHERE "..table.concat(where, " AND ")
   local select_query = string.format(self._queries.select.query, where_str.." ALLOW FILTERING")
 
-  if not self._select_statements_cache[select_query] then
+  if not self._statements_cache[select_query] then
     local stmt, err = self._db:prepare(select_query)
     if err then
       return nil, err
     end
 
-    self._select_statements_cache[select_query] = {
+    self._statements_cache[select_query] = {
       query = stmt,
       params = keys
     }
   end
 
-  return self:execute_prepared_stmt(self._select_statements_cache[select_query], t)
+  return self:execute_prepared_stmt(self._statements_cache[select_query], t)
 end
 
 -- Execute the prepared DELETE statement
@@ -363,15 +362,15 @@ function BaseDao:execute_prepared_stmt(statement, values_to_bind)
   local results, err = self._db:execute(statement.query, values_to_bind)
 
   if results and results.type == "ROWS" then
-    -- only return an ordered list
+    -- erase this property to only return an ordered list
     results.type = nil
 
     -- return deserialized content for encoded values (plugins)
     if self._deserialize then
-      for _, result in ipairs(results) do
-        for k,v in pairs(result) do
+      for _,row in ipairs(results) do
+        for k,v in pairs(row) do
           if self._schema[k].type == "table" then
-            result[k] = cjson.decode(v)
+            row[k] = cjson.decode(v)
           end
         end
       end
