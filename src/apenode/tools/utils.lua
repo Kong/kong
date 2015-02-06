@@ -143,6 +143,10 @@ function _M.success(message)
   _M.show_response(200, message)
 end
 
+function _M.no_content(message)
+  _M.show_response(204, message)
+end
+
 function _M.created(message)
   _M.show_response(201, message)
 end

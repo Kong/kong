@@ -249,7 +249,12 @@ end
 -- @param {string} id UUID of element to select
 -- @return execute_prepared_stmt()
 function BaseDao:find_one(id)
-  return self:execute_prepared_stmt(self._statements.select_one, { id = id })
+  local data, err = self:execute_prepared_stmt(self._statements.select_one, { id = id })
+  if data and utils.table_size(data) == 0 then
+    return nil, err
+  else
+    return table.remove(data, 1), err
+  end
 end
 
 -- Execute a SELECT statement with special WHERE values

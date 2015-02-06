@@ -19,9 +19,8 @@ dependencies = {
   "lua ~> 5.1",
 
   "lsqlite3 ~> 0.9.1-2",
-  "cassandra ~> 0.3-1",
   "uuid ~> 0.2-1",
-  "lapis ~> 1.0.6-1",
+  "lapis ~> 1.1.0-1",
   "luasec ~> 0.5-2",
   "yaml ~> 1.1.1-1",
   "luaxml ~> 101012-1",
@@ -37,6 +36,7 @@ build = {
   modules = {
     ["apenode"] = "src/main.lua",
     ["classic"] = "src/classic.lua",
+    ["cassandra"] = "src/cassandra.lua",
 
     ["apenode.tools.utils"] = "src/apenode/tools/utils.lua",
     ["apenode.tools.faker"] = "src/apenode/tools/faker.lua",
