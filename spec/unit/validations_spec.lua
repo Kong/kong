@@ -13,7 +13,14 @@ describe("Validation", function()
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456 },
       allowed = { enum = { "hello", "world" }},
-      default = { default = function() return "default" end  }
+      default = { default = function() return "default" end },
+      custom = { func = function(v, t)
+                          if v and t.default == "default" then
+                            return true
+                          else
+                            return false, "Nah"
+                          end
+                        end }
     }
 
     it("should confirm a valid entity is valid", function()
@@ -114,20 +121,37 @@ describe("Validation", function()
     end)
 
     it("should validate a field against an enum", function()
+      -- Success
       local values = { string = "somestring", allowed = "hello" }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
-    end)
 
-    it("should return an erorr when validating a field against an enum", function()
+      -- Failure
       local values = { string = "somestring", allowed = "hello123" }
 
       local valid, err = validate(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
+    end)
+
+    it("should validate against a custom function", function()
+      -- Success
+      local values = { string = "somestring", custom = true }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+
+      -- Failure
+      local values = { string = "somestring", custom = true, default = "not the default :O" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.same("Nah", err.custom)
     end)
 
   end)

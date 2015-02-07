@@ -37,20 +37,28 @@ function _M.validate(t, schema)
     -- Check type if value is allowed in the enum
     elseif v.enum and t[column] then
       local found = false
-      for _, c in ipairs(v.enum) do
-        if c == t[column] then
+      for _,allowed in ipairs(v.enum) do
+        if allowed == t[column] then
           found = true
           break
         end
       end
+
       if not found then
-        errors = utils.add_error(errors, column, "\""..t[column].."\" is not allowed. Allowed values are: \""..table.concat(v.enum, "\", \"").."\"")
+        errors = utils.add_error(errors, column, string.format("\"%s\" is not allowed. Allowed values are: \"%s\"", t[column], table.concat(v.enum, "\", \"")))
       end
 
     -- Check field against a regex if specified
     elseif t[column] and v.regex then
       if not rex.match(t[column], v.regex) then
         errors = utils.add_error(errors, column, column.." has an invalid value")
+      end
+
+    -- Check field against a custom function
+    elseif t[column] and v.func and type(v.func) == "function" then
+      local ok, err = v.func(t[column], t)
+      if not ok or err then
+        errors = utils.add_error(errors, column, err)
       end
     end
   end
