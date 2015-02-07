@@ -87,7 +87,7 @@ function Faker.fake_entity(type, invalid)
       value = value
     }
   else
-    throw("Model of type "..type.." cannot be genereated.")
+    throw("Entity of type "..type.." cannot be genereated.")
   end
 end
 
@@ -114,8 +114,8 @@ function Faker:seed(random, amount)
       { public_key = "user124", secret_key = "apikey124", __account = 1 },
     },
     metric = {
-      { name = "requests", value = 0, timestamp = 123, period = "second", __api = 1, __application = 1 },
-      { name = "requests", value = 0, timestamp = 123456, period = "second", __api = 1, __application = 1 }
+      { identifier = "127.0.0.1", periods = { "second", "minute", "hour" }, __api = 1 },
+      { identifier = "127.0.0.1", periods = { "second", "minute" }, __api = 1 },
     },
     plugin = {
       { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 1 },
@@ -169,7 +169,7 @@ function Faker:insert_from_table(entities_to_insert, random)
   -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
   for type, entities in pairs { applications = entities_to_insert.application,
                                 plugins = entities_to_insert.plugin,
-                                metrics = entities_to_insert.metrics } do
+                                metrics = entities_to_insert.metric } do
     for i, entity in ipairs(entities) do
       -- Hard-coded foreign relationships
       local api = entities_to_insert.api[entity.__api]
