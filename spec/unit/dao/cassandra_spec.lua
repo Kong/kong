@@ -484,7 +484,10 @@ describe("Cassandra DAO", function()
       -- First select
       local data, err = metrics:find(api_id, identifier, { 'second', 'minute' })
       assert.falsy(err)
-      assert.True(#data == 2)
+      assert.are.same(2, #data)
+
+      data.meta = nil
+
       assert.are.same({
         {
           api_id = api_id,
@@ -508,7 +511,10 @@ describe("Cassandra DAO", function()
       -- Second select
       local data, err = metrics:find(api_id, identifier, { 'second', 'minute', 'hour' })
       assert.falsy(err)
-      assert.True(#data == 3)
+      assert.are.same(3, #data)
+
+      data.meta = nil
+
       assert.are.same({
         {
           api_id = api_id,
@@ -543,7 +549,7 @@ describe("Cassandra DAO", function()
       -- First select
       local data, err = metrics:find(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
       assert.falsy(err)
-      assert.True(#data == 4)
+      assert.are.same(4, #data)
 
       -- Delete
       local ok, err = metrics:delete(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
@@ -553,7 +559,7 @@ describe("Cassandra DAO", function()
       -- Second select
       local data, err = metrics:find(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
       assert.falsy(err)
-      assert.True(#data == 0)
+      assert.are.same(0, #data)
     end)
 
   end)
