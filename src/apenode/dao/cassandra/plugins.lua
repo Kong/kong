@@ -61,12 +61,7 @@ function Plugins:new(database, properties)
   Plugins.super.new(self, database)
 end
 
-function Plugins:insert(t)
-  local valid_schema, errors = schemas.validate(t, self._schema)
-  if not valid_schema then
-    return nil, errors
-  end
-
+function Plugins:_check_unicity(t, is_updating)
   local unique_statement
 
   if not t.application_id then
@@ -75,14 +70,70 @@ function Plugins:insert(t)
     unique_statement = self._statements.__custom_checks.unique_application_id
   end
 
-  local unique, err = self:check_unique(unique_statement, t)
+  local unique, err = self:check_unique(unique_statement, t, is_updating)
   if err then
-    return nil, err
+    return false, err
   elseif not unique then
-    return nil, "Plugin already exists"
+    return false, "Plugin already exists"
+  else
+    return true
+  end
+end
+
+local function check_value_schema(t)
+  local status, plugin_schema = pcall(require, "apenode.plugins."..t.name..".schema")
+  if not status then
+    return false, "Plugin \""..object.name.."\" not found"
+  end
+
+  local ok, err = schemas.validate(t.value, plugin_schema)
+  if err or not ok then
+    return false, err
+  else
+    return true
+  end
+end
+
+function Plugins:insert(t)
+  local valid_schema, errors = schemas.validate(t, self._schema)
+  if not valid_schema then
+    return nil, errors
+  end
+
+  -- Checking plugin unicity
+  local ok, err = self:_check_unicity(t)
+  if not ok then
+    return nil, err
+  end
+
+  -- Checking value schema validation
+  local ok, err = check_value_schema(t)
+  if not ok then
+    return nil, err
   end
 
   return Plugins.super.insert(self, t)
+end
+
+function Plugins:update(t)
+  local valid_schema, errors = schemas.validate(t, self._schema)
+  if not valid_schema then
+    return nil, errors
+  end
+
+  -- Checking plugin unicity
+  local ok, err = self:_check_unicity(t, true)
+  if not ok then
+    return nil, err
+  end
+
+  -- Checking value schema validation
+  local ok, err = check_value_schema(t)
+  if not ok then
+    return nil, err
+  end
+
+  return Plugins.super.update(self, t)
 end
 
 return Plugins

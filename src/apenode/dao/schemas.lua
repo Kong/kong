@@ -47,15 +47,12 @@ function _M.validate(t, schema)
         errors = utils.add_error(errors, column, "\""..t[column].."\" is not allowed. Allowed values are: \""..table.concat(v.enum, "\", \"").."\"")
       end
 
-    end
-
     -- Check field against a regex if specified
-    if t[column] and v.regex then
+    elseif t[column] and v.regex then
       if not rex.match(t[column], v.regex) then
         errors = utils.add_error(errors, column, column.." has an invalid value")
       end
     end
-
   end
 
   -- Check for unexpected fields in the entity
