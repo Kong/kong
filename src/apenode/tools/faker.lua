@@ -71,10 +71,8 @@ function Faker.fake_entity(type, invalid)
     }
   elseif type == "metric" then
     return {
-      name = "requests",
-      value = r,
-      period = "second",
-      timestamp = r
+      identifier = "127.0.0.1",
+      periods = { "second", "minute", "hour" }
     }
   elseif type == "plugin" then
     local type = random_from_table({ "authentication", "ratelimiting" })
@@ -170,12 +168,18 @@ function Faker:insert_from_table(entities_to_insert, random)
 
   -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
   for type, entities in pairs { applications = entities_to_insert.application,
-                                plugins = entities_to_insert.plugin } do
+                                plugins = entities_to_insert.plugin,
+                                metrics = entities_to_insert.metrics } do
     for i, entity in ipairs(entities) do
-      local res, err
+      -- Hard-coded foreign relationships
       local api = entities_to_insert.api[entity.__api]
       local account = entities_to_insert.account[entity.__account]
       local application = entities_to_insert.application[entity.__application]
+      entity.__api = nil
+      entity.__account = nil
+      entity.__application = nil
+
+      -- Random foreign entities for random data
       if not api and random then
         api = random_from_table(entities_to_insert.api)
       end
@@ -186,10 +190,6 @@ function Faker:insert_from_table(entities_to_insert, random)
         account = random_from_table(entities_to_insert.account)
       end
 
-      entity.__api = nil
-      entity.__account = nil
-      entity.__application = nil
-
       if type == "applications" then
         if account then entity.account_id = account.id end
       elseif type == "plugins" then
@@ -197,11 +197,12 @@ function Faker:insert_from_table(entities_to_insert, random)
         if application then entity.application_id = application.id end
       elseif type == "metrics" then
         if api then entity.api_id = api.id end
-        if application then entity.application_id = application.id end
       end
 
+      local res, err
+
       if type == "metrics" then
-        res, err = model_instance:increment_self()
+        res, err = self.dao_factory[type]:increment(entity.api_id, entity.identifier, entity.periods)
       else
         res, err = self.dao_factory[type]:insert(entity)
       end
