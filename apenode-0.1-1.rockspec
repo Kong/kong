@@ -60,12 +60,15 @@ build = {
 
     ["apenode.plugins.authentication.handler"] = "src/apenode/plugins/authentication/handler.lua",
     ["apenode.plugins.authentication.access"] = "src/apenode/plugins/authentication/access.lua",
+    ["apenode.plugins.authentication.schema"] = "src/apenode/plugins/authentication/schema.lua",
 
     ["apenode.plugins.networklog.handler"] = "src/apenode/plugins/networklog/handler.lua",
     ["apenode.plugins.networklog.log"] = "src/apenode/plugins/networklog/log.lua",
+    ["apenode.plugins.networklog.schema"] = "src/apenode/plugins/networklog/schema.lua",
 
     ["apenode.plugins.ratelimiting.handler"] = "src/apenode/plugins/ratelimiting/handler.lua",
     ["apenode.plugins.ratelimiting.access"] = "src/apenode/plugins/ratelimiting/access.lua",
+    ["apenode.plugins.ratelimiting.schema"] = "src/apenode/plugins/ratelimiting/schema.lua",
 
     ["apenode.web.app"] = "src/apenode/web/app.lua",
     ["apenode.web.routes.accounts"] = "src/apenode/web/routes/accounts.lua",
