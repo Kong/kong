@@ -1,8 +1,10 @@
--- Implementation of CQL Binary protocol V2 available at https://git-wip-us.apache.org/repos/asf?p=cassandra.git;a=blob_plain;f=doc/native_protocol_v2.spec;hb=HEAD
+-- Implementation of CQL Binary protocol V2 available:
+-- https://git-wip-us.apache.org/repos/asf?p=cassandra.git;a=blob_plain;f=doc/native_protocol_v2.spec;hb=HEAD
 
 local _M = {}
 
 _M.version = "0.0.1"
+
 local CQL_VERSION = "3.0.0"
 
 local version_codes = {
@@ -43,7 +45,21 @@ local consistency = {
     LOCAL_SERIAL=0x0009,
     LOCAL_ONE=0x000A
 }
+
 _M.consistency = consistency
+
+local query_flags = {
+    VALUES=0x01,
+    PAGE_SIZE=0x04,
+    PAGING_STATE=0x08
+}
+
+local rows_flags = {
+    GLOBAL_TABLES_SPEC=0x01,
+    HAS_MORE_PAGES=0x02,
+    -- 0x03
+    NO_METADATA=0x04
+}
 
 local result_kinds = {
     VOID=0x01,
@@ -82,6 +98,7 @@ for key, value in pairs(types) do
         return {type=key, value=value}
     end
 end
+
 _M.null = {type="null", value=nil}
 
 local error_codes = {
@@ -106,15 +123,15 @@ local mt = { __index = _M }
 
 -- see: http://en.wikipedia.org/wiki/Fisher-Yates_shuffle
 local function shuffle(t)
-  local n = #t
-  while n >= 2 do
-    -- n is now the last pertinent index
-    local k = math.random(n) -- 1 <= k <= n
-    -- Quick swap
-    t[n], t[k] = t[k], t[n]
-    n = n - 1
-  end
-  return t
+    local n = #t
+    while n >= 2 do
+        -- n is now the last pertinent index
+        local k = math.random(n) -- 1 <= k <= n
+        -- Quick swap
+        t[n], t[k] = t[k], t[n]
+        n = n - 1
+    end
+    return t
 end
 
 ---
@@ -130,8 +147,8 @@ function _M.new(self)
         tcp = ngx.socket.tcp
     else
         -- fallback to luasocket
-        -- It's also a fallback for openresty in, the
-        -- "init" phase that doesn't support sockets
+        -- It's also a fallback for openresty in the
+        -- "init" phase that doesn't support Cosockets
         tcp = require("socket").tcp
     end
 
@@ -191,7 +208,6 @@ function _M.set_keepalive(self, ...)
     return nil, "luasocket does not support reusable sockets"
 end
 
-
 function _M.get_reused_times(self)
     local sock = self.sock
     if not sock then
@@ -202,7 +218,6 @@ function _M.get_reused_times(self)
     return nil, "luasocket does not support reusable sockets"
 end
 
-
 local function close(self)
     local sock = self.sock
     if not sock then
@@ -211,6 +226,7 @@ local function close(self)
 
     return sock:close()
 end
+
 _M.close = close
 
 ---
@@ -241,25 +257,21 @@ local function short_representation(num)
 end
 
 local function bigint_representation(n)
+    local first_byte
     if n >= 0 then
-        return string.char(0,         -- only 53 bits from double
-                           math.floor(n / 0x1000000000000) % 0x100,
-                           math.floor(n / 0x10000000000) % 0x100,
-                           math.floor(n / 0x100000000) % 0x100,
-                           math.floor(n / 0x1000000) % 0x100,
-                           math.floor(n / 0x10000) % 0x100,
-                           math.floor(n / 0x100) % 0x100,
-                           n % 0x100)
+        first_byte = 0
     else
-        return string.char(0xFF,      -- only 53 bits from double
-                           math.floor(n / 0x1000000000000) % 0x100,
-                           math.floor(n / 0x10000000000) % 0x100,
-                           math.floor(n / 0x100000000) % 0x100,
-                           math.floor(n / 0x1000000) % 0x100,
-                           math.floor(n / 0x10000) % 0x100,
-                           math.floor(n / 0x100) % 0x100,
-                           n % 0x100)
+        first_byte = 0xFF
     end
+
+    return string.char(first_byte, -- only 53 bits from double
+                       math.floor(n / 0x1000000000000) % 0x100,
+                       math.floor(n / 0x10000000000) % 0x100,
+                       math.floor(n / 0x100000000) % 0x100,
+                       math.floor(n / 0x1000000) % 0x100,
+                       math.floor(n / 0x10000) % 0x100,
+                       math.floor(n / 0x100) % 0x100,
+                       n % 0x100)
 end
 
 local function uuid_representation(value)
@@ -474,18 +486,19 @@ local function value_representation(value, short)
     end
     return bytes_representation(representation)
 end
+
 _M._value_representation = value_representation
 
 local function values_representation(args)
-  if not args then
-    return ""
-  end
-  local values = {}
-  values[#values + 1] = short_representation(#args)
-  for _, value in ipairs(args) do
-    values[#values + 1] = value_representation(value)
-  end
-  return table.concat(values)
+    if not args then
+        return ""
+    end
+    local values = {}
+    values[#values + 1] = short_representation(#args)
+    for _, value in ipairs(args) do
+        values[#values + 1] = value_representation(value)
+    end
+    return table.concat(values)
 end
 
 ---
@@ -703,7 +716,6 @@ local unpackers = {
     [types.set]=read_set
 }
 
-
 local function read_value(buffer, type, short)
     local bytes
     if short then
@@ -716,6 +728,7 @@ local function read_value(buffer, type, short)
     end
     return unpackers[type.id](bytes, type)
 end
+
 _M._read_value = read_value
 
 local function read_error(buffer)
@@ -769,19 +782,19 @@ end
 --- http://ricilake.blogspot.com.br/2007/10/iterating-bits-in-lua.html
 ---
 
-local function bit(p)
-  return 2 ^ (p - 1)
-end
-
 local function hasbit(x, p)
   return x % (p + p) >= p
+end
+
+local function setbit(x, p)
+  return hasbit(x, p) and x or x + p
 end
 
 ---
 --- CLIENT METHODS
 ---
 
-local function send_reply_and_get_response(self, op_code, body, tracing)
+local function send_frame_and_get_response(self, op_code, body, tracing)
     local version = string.char(version_codes.REQUEST)
     local flags = tracing and '\002' or '\000'
     local stream_id = '\000'
@@ -797,7 +810,7 @@ end
 
 function _M.startup(self)
     local body = string_map_representation({["CQL_VERSION"]=CQL_VERSION})
-    local response, err = send_reply_and_get_response(self, op_codes.STARTUP, body)
+    local response, err = send_frame_and_get_response(self, op_codes.STARTUP, body)
     if not response then
         return nil, err
     end
@@ -808,21 +821,26 @@ function _M.startup(self)
 end
 
 local function parse_metadata(buffer)
+    -- Flags parsing
     local flags = read_int(buffer)
-    local global_tables_spec = hasbit(flags, bit(1))
-    local has_more_pages = hasbit(flags, bit(2))
-    local no_metadata = hasbit(flags, bit(3))
+    local global_tables_spec = hasbit(flags, rows_flags.GLOBAL_TABLES_SPEC)
+    local has_more_pages = hasbit(flags, rows_flags.HAS_MORE_PAGES)
     local columns_count = read_int(buffer)
-    local paging_state = nil
+
+    -- Paging metadata
+    local paging_state
     if has_more_pages then
         paging_state = read_bytes(buffer)
     end
-    local global_keyspace_name = nil
-    local global_table_name = nil
+
+    -- global_tables_spec metadata
+    local global_keyspace_name, global_table_name
     if global_tables_spec then
         global_keyspace_name = read_string(buffer)
         global_table_name = read_string(buffer)
     end
+
+    -- Columns metadata
     local columns = {}
     for j = 1, columns_count do
         local ksname = global_keyspace_name
@@ -832,15 +850,20 @@ local function parse_metadata(buffer)
             tablename = read_string(buffer)
         end
         local column_name = read_string(buffer)
-        local type = read_option(buffer)
         columns[#columns + 1] = {
             keyspace = ksname,
             table = tablename,
             name = column_name,
-            type = type
+            type = read_option(buffer)
         }
     end
-    return {columns_count=columns_count, columns=columns}
+
+    return {
+        columns_count=columns_count,
+        columns=columns,
+        has_more_pages=has_more_pages,
+        paging_state=paging_state
+    }
 end
 
 local function parse_rows(buffer, metadata)
@@ -905,7 +928,7 @@ end
 function _M.prepare(self, query, options)
     if not options then options = {} end
     local body = long_string_representation(query)
-    local response, err = send_reply_and_get_response(self, op_codes.PREPARE, body, options.tracing)
+    local response, err = send_frame_and_get_response(self, op_codes.PREPARE, body, options.tracing)
     if not response then
         return nil, err
     end
@@ -920,7 +943,12 @@ function _M.prepare(self, query, options)
         local metadata = parse_metadata(buffer)
         local result_metadata = parse_metadata(buffer)
         assert(buffer.pos == #(buffer.str) + 1)
-        result = {type="PREPARED", id=id, metadata=metadata, result_metadata=result_metadata}
+        result = {
+            type="PREPARED",
+            id=id,
+            metadata=metadata,
+            result_metadata=result_metadata
+        }
     else
         error("Invalid result kind")
     end
@@ -930,10 +958,16 @@ end
 
 function _M.execute(self, query, args, options)
     if not options then options = {} end
+
+    -- Default options
     if not options.consistency_level then
         options.consistency_level = consistency.ONE
     end
+    if not options.page_size then
+        options.page_size = 100
+    end
 
+    -- Determine if query is a query, statement, or batch
     local op_code, query_repr
     if type(query) == "string" then
         op_code = op_codes.QUERY
@@ -946,49 +980,82 @@ function _M.execute(self, query, args, options)
         query_repr = short_bytes_representation(query.id)
     end
 
-    local values = {}
-    local flags
-    if not args then
-        flags = string.char(0)
-    else
-        flags = string.char(1)
+
+    -- Flags of the <query_parameters>
+    local flags_repr = 0
+
+    if args then
+        flags_repr = setbit(flags_repr, query_flags.VALUES)
     end
 
-    local query_parameters = short_representation(options.consistency_level) .. flags
-    local body = query_repr .. query_parameters .. values_representation(args)
-    local response, err = send_reply_and_get_response(self, op_code, body, options.tracing)
+    local result_page_size = ""
+    if options.page_size > 0 then
+        flags_repr = setbit(flags_repr, query_flags.PAGE_SIZE)
+        result_page_size = int_representation(options.page_size)
+    end
+
+    local paging_state = ""
+    if options.paging_state then
+        flags_repr = setbit(flags_repr, query_flags.PAGING_STATE)
+        paging_state = bytes_representation(options.paging_state)
+    end
+
+    -- <query_parameters>: <consistency><flags>[<value><...>][<result_page_size>][<paging_state>]
+    local query_parameters = short_representation(options.consistency_level) .. string.char(flags_repr) .. values_representation(args) .. result_page_size .. paging_state
+
+    -- frame body: <query><query_parameters>
+    local frame_body = query_repr .. query_parameters
+
+    -- Send frame
+    local response, err = send_frame_and_get_response(self, op_code, frame_body, options.tracing)
+
+    -- Check response errors
     if not response then
         return nil, err
-    end
-
-    if response.op_code ~= op_codes.RESULT then
+    elseif response.op_code ~= op_codes.RESULT then
         error("Result expected")
     end
+
+    -- Parse response
     local result
     local buffer = response.buffer
     local kind = read_int(buffer)
     if kind == result_kinds.VOID then
-        result = {type="VOID"}
+        result = {
+            type = "VOID"
+        }
     elseif kind == result_kinds.ROWS then
         local metadata = parse_metadata(buffer)
         result = parse_rows(buffer, metadata)
         result.type = "ROWS"
+        result.meta = {
+            has_more_pages = metadata.has_more_pages,
+            paging_state = metadata.paging_state
+        }
+        -- TODO: if auto_paging option is set, return an iterator which
+        -- keeps calling the next pages and return page by page to the user.
+        -- Similar to "Handling Paged Results" here:
+        -- https://datastax.github.io/python-driver/query_paging.html
     elseif kind == result_kinds.SET_KEYSPACE then
         result = {
-            type="SET_KEYSPACE",
-            keyspace= read_string(buffer)
+            type = "SET_KEYSPACE",
+            keyspace = read_string(buffer)
         }
     elseif kind == result_kinds.SCHEMA_CHANGE then
         result = {
-            type="SCHEMA_CHANGE",
-            change=read_string(buffer),
-            keyspace=read_string(buffer),
-            table=read_string(buffer)
+            type = "SCHEMA_CHANGE",
+            change = read_string(buffer),
+            keyspace = read_string(buffer),
+            table = read_string(buffer)
         }
     else
         error(string.format("Invalid result kind: %x", kind))
     end
-    if response.tracing_id then result.tracing_id = response.tracing_id end
+
+    if response.tracing_id then
+        result.tracing_id = response.tracing_id
+    end
+
     return result
 end
 
