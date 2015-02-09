@@ -24,6 +24,8 @@ end
 -- @param {table} t Array to get an element from
 -- @return A random element
 local function random_from_table(t)
+  if not t then return {} end
+
   return t[math.random(#t)]
 end
 
@@ -35,9 +37,11 @@ local Faker = Object:extend()
 
 function Faker:new(dao_factory)
   self.dao_factory = dao_factory
+
+  self.inserted_entities = {}
 end
 
-function Faker.fake_entity(type, invalid)
+function Faker:fake_entity(type, invalid)
   local r = math.random(1, 1000000000)
 
   if type == "api" then
@@ -66,11 +70,13 @@ function Faker.fake_entity(type, invalid)
     }
   elseif type == "application" then
     return {
+      account_id = random_from_table(self.inserted_entities.account).id,
       public_key = "public_random"..r,
       secret_key = "private_random"..r
     }
   elseif type == "metric" then
     return {
+      api_id = random_from_table(self.inserted_entities.api).id,
       identifier = "127.0.0.1",
       periods = { "second", "minute", "hour" }
     }
@@ -84,7 +90,9 @@ function Faker.fake_entity(type, invalid)
     end
     return {
       name = type,
-      value = value
+      value = value,
+      api_id = random_from_table(self.inserted_entities.api).id,
+      application_id = random_from_table(self.inserted_entities.application).id
     }
   else
     throw("Entity of type "..type.." cannot be genereated.")
@@ -149,69 +157,58 @@ end
 
 -- Insert entities in the DB using the DAO
 -- First accounts and APIs, then the rest which needs references to created accounts and APIs
--- @param table entities_to_insert A table with the same structure as the one defined in :seed
--- @param boolean random If true, will force applications, plugins and metrics to have relations by choosing
---                       a random entity.
+-- @param {table} entities_to_insert A table with the same structure as the one defined in :seed
+-- @param {boolean} random If true, will force applications, plugins and metrics to have relations by choosing
+--                         a random entity.
 function Faker:insert_from_table(entities_to_insert, random)
-  -- 1. Insert accounts and APIs
-  for type, entities in pairs({ apis = entities_to_insert.api,
-                                accounts = entities_to_insert.account }) do
-    for i, entity in ipairs(entities) do
-      local res, err = self.dao_factory[type]:insert(entity)
-      if err then
-        throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
+  -- Insert in order (for foreign relashionships)
+  -- 1. accounts and APIs
+  -- 2. applications, plugins and metrics which need refereces to inserted apis and accounts
+  for _, type in ipairs({ "api", "account", "application", "plugin", "metric" }) do
+    for i, entity in ipairs(entities_to_insert[type]) do
+      if not random then
+        local foreign_api = entities_to_insert.api[entity.__api]
+        local foreign_account = entities_to_insert.account[entity.__account]
+        local foreign_application = entities_to_insert.application[entity.__application]
+
+        -- Clean this up otherwise won't pass schema validation
+        entity.__api = nil
+        entity.__account = nil
+        entity.__application = nil
+
+        -- Hard-coded foreign relationships
+        if type == "application" then
+          if foreign_account then entity.account_id = foreign_account.id end
+        elseif type == "plugin" then
+          if foreign_api then entity.api_id = foreign_api.id end
+          if foreign_application then entity.application_id = foreign_application.id end
+        elseif type == "metric" then
+          if foreign_api then entity.api_id = foreign_api.id end
+        end
       end
 
-      entities[i] = res
-    end
-  end
-
-  -- 2. Insert applications, plugins and metrics which need refereces to inserted apis and accounts
-  for type, entities in pairs { applications = entities_to_insert.application,
-                                plugins = entities_to_insert.plugin,
-                                metrics = entities_to_insert.metric } do
-    for i, entity in ipairs(entities) do
-      -- Hard-coded foreign relationships
-      local api = entities_to_insert.api[entity.__api]
-      local account = entities_to_insert.account[entity.__account]
-      local application = entities_to_insert.application[entity.__application]
-      entity.__api = nil
-      entity.__account = nil
-      entity.__application = nil
-
-      -- Random foreign entities for random data
-      if not api and random then
-        api = random_from_table(entities_to_insert.api)
-      end
-      if not application and random then
-        application = random_from_table(entities_to_insert.application)
-      end
-      if not account and random then
-        account = random_from_table(entities_to_insert.account)
-      end
-
-      if type == "applications" then
-        if account then entity.account_id = account.id end
-      elseif type == "plugins" then
-        if api then entity.api_id = api.id end
-        if application then entity.application_id = application.id end
-      elseif type == "metrics" then
-        if api then entity.api_id = api.id end
-      end
-
+      -- Insert in DB
       local res, err
 
-      if type == "metrics" then
-        res, err = self.dao_factory[type]:increment(entity.api_id, entity.identifier, entity.periods)
+      if type == "metric" then
+        res, err = self.dao_factory[type.."s"]:increment(entity.api_id, entity.identifier, entity.periods)
       else
-        res, err = self.dao_factory[type]:insert(entity)
+        res, err = self.dao_factory[type.."s"]:insert(entity)
       end
 
       if err then
         throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
       end
 
-      entities[i] = res
+      -- For other hard-coded entities relashionships
+      entities_to_insert[type][i] = res
+
+      -- For generated fake_entities
+      if not self.inserted_entities[type] then
+        self.inserted_entities[type] = {}
+      end
+
+      table.insert(self.inserted_entities[type], res)
     end
   end
 end
