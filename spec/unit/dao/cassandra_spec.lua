@@ -57,7 +57,7 @@ describe("Cassandra DAO", function()
     describe("APIs", function()
 
       it("should insert in DB and add generated values", function()
-        local api_t = dao_factory.faker.fake_entity("api")
+        local api_t = dao_factory.faker:fake_entity("api")
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
         assert.truthy(api.id)
@@ -71,7 +71,7 @@ describe("Cassandra DAO", function()
         assert.are.same("Cannot insert a nil element", err)
 
         -- Invalid type
-        local api_t = dao_factory.faker.fake_entity("api", true)
+        local api_t = dao_factory.faker:fake_entity("api", true)
         local api, err = dao_factory.apis:insert(api_t)
         assert.truthy(err)
         assert.falsy(api)
@@ -81,7 +81,7 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.truthy(#apis > 0)
 
-        local api_t = dao_factory.faker.fake_entity("api")
+        local api_t = dao_factory.faker:fake_entity("api")
         api_t.name = apis[1].name
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(api)
@@ -94,7 +94,7 @@ describe("Cassandra DAO", function()
     describe("Accounts", function()
 
       it("should insert an account in DB and add generated values", function()
-        local account_t = dao_factory.faker.fake_entity("account")
+        local account_t = dao_factory.faker:fake_entity("account")
         local account, err = dao_factory.accounts:insert(account_t)
         assert.falsy(err)
         assert.truthy(account.id)
@@ -107,14 +107,15 @@ describe("Cassandra DAO", function()
 
       it("should not insert in DB if account does not exist", function()
         -- Without an account_id, it's a schema error
-        local app_t = dao_factory.faker.fake_entity("application")
+        local app_t = dao_factory.faker:fake_entity("application")
+        app_t.account_id = nil
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.are.same("account_id is required", err.account_id)
 
         -- With an invalid account_id, it's an EXISTS error
-        local app_t = dao_factory.faker.fake_entity("application")
+        local app_t = dao_factory.faker:fake_entity("application")
         app_t.account_id = uuid()
 
         local app, err = dao_factory.applications:insert(app_t)
@@ -128,7 +129,7 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.truthy(#accounts > 0)
 
-        local app_t = dao_factory.faker.fake_entity("application")
+        local app_t = dao_factory.faker:fake_entity("application")
         app_t.account_id = accounts[1].id
 
         local app, err = dao_factory.applications:insert(app_t)
@@ -143,7 +144,7 @@ describe("Cassandra DAO", function()
 
       it("should not insert in DB if invalid", function()
         -- Without an api_id, it's a schema error
-        local plugin_t = dao_factory.faker.fake_entity("plugin")
+        local plugin_t = dao_factory.faker:fake_entity("plugin")
         plugin_t.api_id = nil
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
@@ -151,7 +152,7 @@ describe("Cassandra DAO", function()
         assert.are.same("api_id is required", err.api_id)
 
         -- With an invalid api_id, it's an EXISTS error
-        local plugin_t = dao_factory.faker.fake_entity("plugin")
+        local plugin_t = dao_factory.faker:fake_entity("plugin")
         plugin_t.api_id = uuid()
 
         local plugin, err = dao_factory.plugins:insert(plugin_t)
@@ -159,8 +160,8 @@ describe("Cassandra DAO", function()
         assert.truthy(err)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.api_id)
 
-        -- With an invalid api_id application_id if specified, it's an EXISTS error
-        local plugin_t = dao_factory.faker.fake_entity("plugin")
+        -- With invalid api_id and application_id, it's an EXISTS error
+        local plugin_t = dao_factory.faker:fake_entity("plugin")
         plugin_t.api_id = uuid()
         plugin_t.application_id = uuid()
 
@@ -173,7 +174,7 @@ describe("Cassandra DAO", function()
 
       it("should insert a plugin in DB and add generated values", function()
         -- Create an API and get an Application for insert
-        local api_t = dao_factory.faker.fake_entity("api")
+        local api_t = dao_factory.faker:fake_entity("api")
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
 
@@ -181,7 +182,7 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.True(#apps > 0)
 
-        local plugin_t = dao_factory.faker.fake_entity("plugin")
+        local plugin_t = dao_factory.faker:fake_entity("plugin")
         plugin_t.api_id = api.id
         plugin_t.application_id = apps[1].id
 
@@ -192,7 +193,7 @@ describe("Cassandra DAO", function()
 
       it("should not insert twice a plugin with same api_id, application_id and name", function()
         -- Insert a new API for a fresh start
-        local api, err = dao_factory.apis:insert(dao_factory.faker.fake_entity("api"))
+        local api, err = dao_factory.apis:insert(dao_factory.faker:fake_entity("api"))
         assert.falsy(err)
         assert.truthy(api.id)
 
@@ -200,7 +201,7 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.True(#apps > 0)
 
-        local plugin_t = dao_factory.faker.fake_entity("plugin")
+        local plugin_t = dao_factory.faker:fake_entity("plugin")
         plugin_t.api_id = api.id
         plugin_t.application_id = apps[#apps].id
 
@@ -224,7 +225,7 @@ describe("Cassandra DAO", function()
     describe_all_collections(function(type, collection)
 
       it("should not update in DB if entity cannot be found", function()
-        local t = dao_factory.faker.fake_entity(type)
+        local t = dao_factory.faker:fake_entity(type)
         t.id = uuid()
 
         -- No entity to update
@@ -332,7 +333,7 @@ describe("Cassandra DAO", function()
     describe_all_collections(function(type, collection)
 
       it("should return an error if deleting an entity that cannot be found", function()
-        local t = dao_factory.faker.fake_entity(type)
+        local t = dao_factory.faker:fake_entity(type)
         t.id = uuid()
 
         local success, err = dao_factory[collection]:delete(t.id)

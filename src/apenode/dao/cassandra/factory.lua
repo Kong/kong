@@ -25,7 +25,11 @@ function CassandraFactory:new(properties)
   self._db:set_timeout(properties.timeout)
 
   -- Public
+
+  -- TODO: do not include on production
   self.faker = Faker(self)
+
+
   self.apis = Apis(self._db)
   self.metrics = Metrics(self._db)
   self.plugins = Plugins(self._db)
