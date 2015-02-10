@@ -146,11 +146,13 @@ function BaseDao:_check_all_unique(t, is_updating)
 
   local errors
   for k, statement in pairs(self._statements.__unique) do
-    local unique, err = self:_check_unique(statement, t, is_updating)
-    if err then
-      return false, err
-    elseif not unique then
-      errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
+    if t[k] then
+      local unique, err = self:_check_unique(statement, t, is_updating)
+      if err then
+        return false, err
+      elseif not unique then
+        errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
+      end
     end
   end
 
