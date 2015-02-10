@@ -236,13 +236,6 @@ function BaseDao:update(t)
   end
 end
 
--- Execute the prepared SELECT statement as it is
---
--- @return execute_prepared_stmt()
-function BaseDao:find()
-  return self:execute_prepared_stmt(self._statements.select)
-end
-
 -- Execute the prepared SELECT_ONE statement as it is
 --
 -- @param {string} id UUID of element to select
@@ -262,25 +255,35 @@ end
 -- @see _statements_cache
 -- @warning Generated statement will use ALLOW FILTERING
 --
--- @param {table} t Table from which the WHERE will be built, and the values will be binded
+-- @param {table} t Optional table from which the WHERE will be built, and the values will be binded
+-- @param {number} page_size
+-- @param {paging_state} paging_state
+--
 -- @return execute_prepared_stmt()
-function BaseDao:find_by_keys(t)
-  local where, keys, errors = {}, {}
-  for k,v in pairs(t) do
-    if self._schema[k].queryable or k == "id" then
-      table.insert(where, string.format("%s = ?", k))
-      table.insert(keys, k)
-    else
-      errors = utils.add_error(errors, k, k.." is not queryable.")
+function BaseDao:find_by_keys(t, page_size, paging_state)
+  local where, keys = {}, {}
+  local where_str = ""
+  local errors
+
+  -- if keys are passed, compute a WHERE statement
+  if t then
+    for k,v in pairs(t) do
+      if self._schema[k].queryable or k == "id" then
+        table.insert(where, string.format("%s = ?", k))
+        table.insert(keys, k)
+      else
+        errors = utils.add_error(errors, k, k.." is not queryable.")
+      end
     end
+
+    if errors then
+      return nil, errors
+    end
+
+    where_str = "WHERE "..table.concat(where, " AND ").." ALLOW FILTERING"
   end
 
-  if errors then
-    return nil, errors
-  end
-
-  local where_str = "WHERE "..table.concat(where, " AND ")
-  local select_query = string.format(self._queries.select.query, where_str.." ALLOW FILTERING")
+  local select_query = string.format(self._queries.select.query, where_str)
 
   if not self._statements_cache[select_query] then
     local stmt, err = self._db:prepare(select_query)
@@ -294,7 +297,19 @@ function BaseDao:find_by_keys(t)
     }
   end
 
-  return self:execute_prepared_stmt(self._statements_cache[select_query], t)
+  return self:execute_prepared_stmt(self._statements_cache[select_query], t, {
+    page_size = page_size,
+    paging_state = paging_state
+  })
+end
+
+-- Execute the prepared SELECT statement as it is
+--
+-- @param {number} page_size
+-- @param {paging_state} paging_state
+-- @return execute_prepared_stmt()
+function BaseDao:find(page_size, paging_state)
+  return self:find_by_keys(nil, page_size, paging_state)
 end
 
 -- Execute the prepared DELETE statement
@@ -351,15 +366,18 @@ end
 --
 -- @param {table|statement} statement The prepared statement (cassandra or build by :prepare) to execute
 -- @param {table} values_to_bind Raw values to bind
+-- @param {table} options Options to pass to lua-resty-cassandra :execute()
+--                        page_size
+--                        paging_state
 -- @return {table|boolean} Table if type of return is ROWS
 --                         Boolean if type of results is VOID
 -- @return {table|nil} Error if any
-function BaseDao:execute_prepared_stmt(statement, values_to_bind)
+function BaseDao:execute_prepared_stmt(statement, values_to_bind, options)
   if statement.params and values_to_bind then
     values_to_bind = self:encode_cassandra_values(values_to_bind, statement.params)
   end
 
-  local results, err = self._db:execute(statement.query, values_to_bind)
+  local results, err = self._db:execute(statement.query, values_to_bind, options)
 
   if results and results.type == "ROWS" then
     -- erase this property to only return an ordered list

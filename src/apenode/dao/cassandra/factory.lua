@@ -60,6 +60,7 @@ function CassandraFactory:seed(random, number)
 end
 
 function CassandraFactory:drop()
+  self.faker:clear()
   self:execute [[
     TRUNCATE apis;
     TRUNCATE metrics;

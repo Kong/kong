@@ -330,6 +330,16 @@ describe("Cassandra DAO", function()
 
   describe(":delete()", function()
 
+    setup(function()
+      dao_factory:drop()
+      dao_factory:seed()
+    end)
+
+    teardown(function()
+      dao_factory:drop()
+      dao_factory:seed()
+    end)
+
     describe_all_collections(function(type, collection)
 
       it("should return an error if deleting an entity that cannot be found", function()
@@ -363,6 +373,16 @@ describe("Cassandra DAO", function()
 
   describe(":find()", function()
 
+    setup(function()
+      dao_factory:drop()
+      dao_factory:seed(true, 100)
+    end)
+
+    teardown(function()
+      dao_factory:drop()
+      dao_factory:seed()
+    end)
+
     describe_all_collections(function(type, collection)
 
       it("should find entities", function()
@@ -375,6 +395,23 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.truthy(results)
         assert.True(#entities == #results)
+      end)
+
+      it("should allow pagination", function()
+        -- 1st page
+        local rows_1, err = dao_factory[collection]:find(2)
+        assert.falsy(err)
+        assert.truthy(rows_1)
+        assert.are.same(2, #rows_1)
+        -- meta from binary protocol
+        assert.are.same(true, rows_1.meta.has_more_pages)
+        assert.truthy(rows_1.meta.paging_state)
+
+        -- 2nd page
+        local rows_2, err = dao_factory[collection]:find(2, rows_1.meta.paging_state)
+        assert.falsy(err)
+        assert.truthy(rows_2)
+        assert.are.same(2, #rows_2)
       end)
 
     end)
