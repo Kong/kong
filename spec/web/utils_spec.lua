@@ -42,11 +42,4 @@ describe("Utils #utils", function()
     end)
   end)
 
-  describe("Generic tests", function()
-    it("get_timestamps", function()
-      local timestamps = utils.get_timestamps(os.time())
-      assert.truthy(timestamps)
-    end)
-  end)
-
 end)
