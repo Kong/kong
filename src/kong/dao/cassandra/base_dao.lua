@@ -381,9 +381,6 @@ function BaseDao:execute_prepared_stmt(statement, values_to_bind, options)
   local results, err = self._db:execute(statement.query, values_to_bind, options)
 
   if results and results.type == "ROWS" then
-    -- erase this property to only return an ordered list
-    results.type = nil
-
     -- return deserialized content for encoded values (plugins)
     if self._deserialize then
       for _,row in ipairs(results) do
@@ -393,6 +390,15 @@ function BaseDao:execute_prepared_stmt(statement, values_to_bind, options)
           end
         end
       end
+    end
+
+    -- erase this property to only return an ordered list
+    results.type = nil
+
+    -- do we have more pages to fetch?
+    if results.meta.has_more_pages then
+      results.next_page = results.meta.paging_state
+      results.meta = nil
     end
 
     return results, err
