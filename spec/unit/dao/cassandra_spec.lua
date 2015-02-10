@@ -260,7 +260,7 @@ describe("Cassandra DAO", function()
 
         local apis, err = dao_factory._db:execute("SELECT * FROM apis WHERE name = '"..api_t.name.."'")
         assert.falsy(err)
-        assert.truthy(#apis == 1)
+        assert.are.same(1, #apis)
         assert.truthy(apis[1].id)
         assert.truthy(apis[1].created_at)
         assert.truthy(apis[1].public_dns)
@@ -365,7 +365,7 @@ describe("Cassandra DAO", function()
         local entities, err = dao_factory._db:execute("SELECT * FROM "..collection.." WHERE id = "..entities[1].id )
         assert.falsy(err)
         assert.truthy(entities)
-        assert.True(#entities == 0)
+        assert.are.same(0, #entities)
       end)
 
     end)
@@ -394,7 +394,7 @@ describe("Cassandra DAO", function()
         local results, err = dao_factory[collection]:find()
         assert.falsy(err)
         assert.truthy(results)
-        assert.True(#entities == #results)
+        assert.are.same(#entities, #results)
       end)
 
       it("should allow pagination", function()
@@ -445,7 +445,7 @@ describe("Cassandra DAO", function()
         local result, err = dao_factory.plugins:find_one(plugin_t.id)
         assert.falsy(err)
         assert.truthy(result)
-        assert.True(type(result.value) == "table")
+        assert.are.same("table", type(result.value))
       end)
 
     end)
@@ -513,12 +513,12 @@ describe("Cassandra DAO", function()
       local identifier = uuid()
 
       -- First increment
-      local ok, err = metrics:increment(api_id, identifier, { 'second', 'minute' })
+      local ok, err = metrics:increment(api_id, identifier, { "second", "minute" })
       assert.falsy(err)
       assert.True(ok)
 
       -- First select
-      local data, err = metrics:find(api_id, identifier, { 'second', 'minute' })
+      local data, err = metrics:find(api_id, identifier, { "second", "minute" })
       assert.falsy(err)
       assert.are.same(2, #data)
 
@@ -540,12 +540,12 @@ describe("Cassandra DAO", function()
       }, data)
 
       -- Second increment
-      local ok, err = metrics:increment(api_id, identifier, { 'second', 'minute', 'hour' })
+      local ok, err = metrics:increment(api_id, identifier, { "second", "minute", "hour" })
       assert.falsy(err)
       assert.True(ok)
 
       -- Second select
-      local data, err = metrics:find(api_id, identifier, { 'second', 'minute', 'hour' })
+      local data, err = metrics:find(api_id, identifier, { "second", "minute", "hour" })
       assert.falsy(err)
       assert.are.same(3, #data)
 
@@ -578,22 +578,22 @@ describe("Cassandra DAO", function()
       local identifier = uuid()
 
       -- Increment
-      local ok, err = metrics:increment(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
+      local ok, err = metrics:increment(api_id, identifier, { "second", "minute", "hour", "day" })
       assert.falsy(err)
       assert.True(ok)
 
       -- First select
-      local data, err = metrics:find(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
+      local data, err = metrics:find(api_id, identifier, { "second", "minute", "hour", "day" })
       assert.falsy(err)
       assert.are.same(4, #data)
 
       -- Delete
-      local ok, err = metrics:delete(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
+      local ok, err = metrics:delete(api_id, identifier, { "second", "minute", "hour", "day" })
       assert.falsy(err)
       assert.True(ok)
 
       -- Second select
-      local data, err = metrics:find(api_id, identifier, { 'second', 'minute', 'hour', 'day' })
+      local data, err = metrics:find(api_id, identifier, { "second", "minute", "hour", "day" })
       assert.falsy(err)
       assert.are.same(0, #data)
     end)
