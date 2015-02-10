@@ -68,12 +68,20 @@ describe("Cassandra DAO", function()
         -- Nil
         local api, err = dao_factory.apis:insert()
         assert.falsy(api)
-        assert.are.same("Cannot insert a nil element", err)
+        assert.truthy(err)
+        assert.True(err.is_schema)
+        assert.are.same("Cannot insert a nil element", err.error)
 
-        -- Invalid type
-        local api_t = dao_factory.faker:fake_entity("api", true)
+        -- Invalid schema UNIQUE error (already existing API name)
+        local api_rows, err = dao_factory._db:execute("SELECT * FROM apis LIMIT 1;")
+        assert.falsy(err)
+        local api_t = dao_factory.faker:fake_entity("api")
+        api_t.name = api_rows[1].name
+
         local api, err = dao_factory.apis:insert(api_t)
         assert.truthy(err)
+        assert.True(err.is_schema)
+        assert.are.same("name already exists with value "..api_t.name, err.error.name)
         assert.falsy(api)
 
         -- Duplicated name
@@ -86,7 +94,8 @@ describe("Cassandra DAO", function()
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(api)
         assert.truthy(err)
-        assert.are.same("name already exists with value "..api_t.name, err.name)
+        assert.True(err.is_schema)
+        assert.are.same("name already exists with value "..api_t.name, err.error.name)
       end)
 
     end)
@@ -112,7 +121,8 @@ describe("Cassandra DAO", function()
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
-        assert.are.same("account_id is required", err.account_id)
+        assert.True(err.is_schema)
+        assert.are.same("account_id is required", err.error.account_id)
 
         -- With an invalid account_id, it's an EXISTS error
         local app_t = dao_factory.faker:fake_entity("application")
@@ -121,7 +131,8 @@ describe("Cassandra DAO", function()
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
-        assert.are.same("account_id "..app_t.account_id.." does not exist", err.account_id)
+        assert.True(err.is_schema)
+        assert.are.same("account_id "..app_t.account_id.." does not exist", err.error.account_id)
       end)
 
       it("should insert in DB and add generated values", function()
@@ -158,7 +169,8 @@ describe("Cassandra DAO", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
-        assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.api_id)
+        assert.True(err.is_schema)
+        assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.error.api_id)
 
         -- With invalid api_id and application_id, it's an EXISTS error
         local plugin_t = dao_factory.faker:fake_entity("plugin")
@@ -168,8 +180,9 @@ describe("Cassandra DAO", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
-        assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.api_id)
-        assert.are.same("application_id "..plugin_t.application_id.." does not exist", err.application_id)
+        assert.True(err.is_schema)
+        assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.error.api_id)
+        assert.are.same("application_id "..plugin_t.application_id.." does not exist", err.error.application_id)
       end)
 
       it("should insert a plugin in DB and add generated values", function()
@@ -232,7 +245,8 @@ describe("Cassandra DAO", function()
         local entity, err = dao_factory[collection]:update(t)
         assert.falsy(entity)
         assert.truthy(err)
-        assert.are.same("Entity to update not found", err)
+        assert.True(err.is_schema)
+        assert.are.same("Entity to update not found", err.error)
       end)
 
     end)
@@ -282,7 +296,8 @@ describe("Cassandra DAO", function()
         local api, err = dao_factory.apis:update(api_t)
         assert.falsy(api)
         assert.truthy(err)
-        assert.are.same("public_dns already exists with value "..api_t.public_dns, err.public_dns)
+        assert.True(err.is_schema)
+        assert.are.same("public_dns already exists with value "..api_t.public_dns, err.error.public_dns)
       end)
 
     end)
@@ -465,10 +480,11 @@ describe("Cassandra DAO", function()
 
         local results, err = dao_factory[collection]:find_by_keys(t)
         assert.truthy(err)
+        assert.True(err.is_schema)
         assert.falsy(results)
 
         -- All those fields are indeed non queryable
-        for k,v in pairs(err) do
+        for k,v in pairs(err.error) do
           assert.is_not_true(dao_factory[collection]._schema[k].queryable)
         end
       end)
