@@ -473,6 +473,20 @@ describe("Cassandra DAO", function()
         end
       end)
 
+      it("should handle empty search fields", function()
+        local results, err = dao_factory[collection]:find_by_keys({})
+        assert.falsy(err)
+        assert.truthy(results)
+        assert.True(#results > 0)
+      end)
+
+      it("should handle nil search fields", function()
+        local results, err = dao_factory[collection]:find_by_keys(nil)
+        assert.falsy(err)
+        assert.truthy(results)
+        assert.True(#results > 0)
+      end)
+
       it("should query an entity by its queryable fields", function()
         local results, err = dao_factory._db:execute("SELECT * FROM "..collection)
         assert.falsy(err)

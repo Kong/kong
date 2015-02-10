@@ -267,7 +267,7 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
   local errors
 
   -- if keys are passed, compute a WHERE statement
-  if t then
+  if t and utils.table_size(t) > 0 then
     for k,v in pairs(t) do
       if self._schema[k].queryable or k == "id" then
         table.insert(where, string.format("%s = ?", k))
@@ -312,6 +312,8 @@ end
 function BaseDao:find(page_size, paging_state)
   return self:find_by_keys(nil, page_size, paging_state)
 end
+
+
 
 -- Execute the prepared DELETE statement
 --
