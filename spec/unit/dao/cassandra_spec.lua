@@ -403,12 +403,10 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.truthy(rows_1)
         assert.are.same(2, #rows_1)
-        -- meta from binary protocol
-        assert.are.same(true, rows_1.meta.has_more_pages)
-        assert.truthy(rows_1.meta.paging_state)
+        assert.truthy(rows_1.next_page)
 
         -- 2nd page
-        local rows_2, err = dao_factory[collection]:find(2, rows_1.meta.paging_state)
+        local rows_2, err = dao_factory[collection]:find(2, rows_1.next_page)
         assert.falsy(err)
         assert.truthy(rows_2)
         assert.are.same(2, #rows_2)
