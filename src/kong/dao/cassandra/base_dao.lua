@@ -194,8 +194,9 @@ function BaseDao:_execute_prepared_stmt(statement, values_to_bind, options)
     -- do we have more pages to fetch?
     if results.meta.has_more_pages then
       results.next_page = results.meta.paging_state
-      results.meta = nil
     end
+
+    results.meta = nil
 
     return results, err
   elseif results and results.type == "VOID" then
