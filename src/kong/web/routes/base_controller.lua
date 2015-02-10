@@ -7,32 +7,23 @@ local json_params = require("lapis.application").json_params
 
 local BaseController = Object:extend()
 
-local function remove_private_properties(entity)
-  for k,_ in pairs(entity) do
-    if string.sub(k, 1, 1) == "_" then -- Remove private properties that start with "_"
-      entity[k] = nil
-    end
-  end
-  return entity
-end
+local function render_list_response(req, data, size)
+  local next_url
 
-local function render_list_response(req, data)
-  if data then
-    for i,v in ipairs(data) do
-      data[i] = remove_private_properties(v)
-    end
+  if data.next_page then
+    local url = req.parsed_url.scheme.."://"..req.parsed_url.host..":"..req.parsed_url.port..req.parsed_url.path
+    next_url = url.."?"..ngx.encode_args({offset = ngx.encode_base64(data.next_page), size = size})
+    data.next_page = nil
   end
 
-  local result = {
-    data = data
-  }
-
-  return result
+  return { data = data, ["next"] = next_url }
 end
 
 local function parse_params(dao_collection, params)
   for k,v in pairs(params) do
-    if dao_collection._schema[k] and dao_collection._schema[k].type == "table" then
+    if not dao_collection._schema[k] then
+      params[k] = nil
+    elseif dao_collection._schema[k].type == "table" then
       if not v or stringy.strip(v) == "" then
         params[k] = nil
       else
@@ -61,17 +52,24 @@ function BaseController:new(dao_collection, collection)
   end)
 
   app:get("/"..collection.."/", function(self)
-    local params = parse_params(dao_collection, self.params)
-    local data, err
-    if utils.table_size(params) == 0 then
-      data, err = dao_collection:find()
+    local size = self.params.size
+    if size then
+      size = tonumber(size)
     else
-      data, err = dao_collection:find_by_keys(params)
+      size = 100
     end
+
+    local offset = self.params.offset
+    if offset then
+      offset = ngx.decode_base64(offset)
+    end
+
+    local params = parse_params(dao_collection, self.params)
+    local data, err = dao_collection:find_by_keys(params, size, offset)
     if err then
       return utils.show_error(500, err)
     end
-    return utils.success(render_list_response(self.req, data))
+    return utils.success(render_list_response(self.req, data, size))
   end)
 
   app:get("/"..collection.."/:id", function(self)
@@ -80,7 +78,7 @@ function BaseController:new(dao_collection, collection)
       return utils.show_error(500, err)
     end
     if data then
-      return utils.success(remove_private_properties(data))
+      return utils.success(data)
     else
       return utils.not_found()
     end
@@ -99,15 +97,16 @@ function BaseController:new(dao_collection, collection)
   end)
 
   app:put("/"..collection.."/:id", json_params(function(self)
+    if not self.params.id then utils.not_found() end
+
     local params = parse_params(dao_collection, self.params)
     params.id = self.params.id
-
     local data, err = dao_collection:update(params)
     if err then
       return utils.show_error(500, err)
     end
     if data then
-      return utils.success(remove_private_properties(data))
+      return utils.success(data)
     else
       return utils.not_found()
     end

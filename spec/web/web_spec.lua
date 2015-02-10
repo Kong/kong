@@ -5,18 +5,32 @@ local kWebURL = "http://localhost:8001/"
 local ENDPOINTS = {
   apis = {
     total = 6,
+    entity = {
+      public_dns = "api.httpbin.com",
+      name = "httpbin",
+      target_url = "http://httpbin.org"
+    },
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
   accounts = {
     total = 1,
+    entity = {
+
+    },
     error_message = nil
   },
   applications = {
     total = 3,
+    entity = {
+
+    },
     error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required"}'
   },
   plugins = {
     total = 7,
+    entity = {
+
+    },
     error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}'
   }
 }
@@ -34,7 +48,19 @@ describe("Web API #web", function()
   end)
 
   for k,v in pairs(ENDPOINTS) do
-    describe(k, function()
+    describe("#"..k, function()
+      it("should create the entity", function()
+        local response, status, headers = utils.post(kWebURL.."/"..k.."/", v.entity)
+        local body = cjson.decode(response)
+
+        local inspect = require "inspect"
+        print(inspect(body))
+
+        assert.are.equal(201, status)
+        assert.truthy(body)
+        v.entity.id = body.id
+      end)
+      --[[
       it("should get all", function()
         local response, status, headers = utils.get(kWebURL.."/"..k.."/")
         local body = cjson.decode(response)
@@ -70,6 +96,7 @@ describe("Web API #web", function()
         assert.truthy(body)
         assert.are.equal(1, body.id)
       end)
+      --]]
     end)
   end
 
