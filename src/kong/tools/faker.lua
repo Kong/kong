@@ -37,45 +37,29 @@ local Faker = Object:extend()
 
 function Faker:new(dao_factory)
   self.dao_factory = dao_factory
-  self.inserted_entities = {}
+  self:clear()
 end
 
 function Faker:clear()
-  self.entities_to_insert = {}
   self.inserted_entities = {}
 end
 
 -- Generate a fake entity
 --
 -- @param {string} type Type of the entity to generate
--- @param {boolean} invalid If true, generated entity will have an invalid schema on purpose
 -- @return {table} An entity schema
-function Faker:fake_entity(type, invalid)
+function Faker:fake_entity(type)
   local r = math.random(1, 1000000000)
 
   if type == "api" then
-    local name
-    if invalid then
-      name = 123456
-    else
-      name = "random"..r
-    end
-
     return {
-      name = name,
+      name = "random"..r,
       public_dns = "random"..r..".com",
       target_url = "http://random"..r..".com"
     }
   elseif type == "account" then
-    local provider_id
-    if invalid then
-      provider_id = "provider_123"
-    else
-      provider_id = "random_provider_id_"..r
-    end
-
     return {
-      provider_id = provider_id
+      provider_id = "random_provider_id_"..r
     }
   elseif type == "application" then
     return {
