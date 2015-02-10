@@ -96,9 +96,8 @@ function CassandraFactory:execute(stmt, no_keyspace)
     session:set_keyspace(self._properties.keyspace)
   end
 
-  -- Cassandra client doesn't support batches,
-  -- we must split commands to execute them individually.
-  -- See: https://github.com/jbochi/lua-resty-cassandra/issues/26
+  -- Cassandra client only support BATCH on DML statements.
+  -- We must split commands to execute them individually for migrations and such
   local queries = stringy.split(stmt, ";")
   for _,query in ipairs(queries) do
     if stringy.strip(query) ~= "" then

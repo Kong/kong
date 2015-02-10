@@ -23,16 +23,11 @@ local function render_list_response(req, data)
     end
   end
 
-  local url = req.parsed_url.scheme .. "://" .. req.parsed_url.host .. ":" .. req.parsed_url.port .. req.parsed_url.path
   local result = {
     data = data
   }
 
   return result
-end
-
-local function decode_json(json, out)
-  out = cjson.decode(json)
 end
 
 local function parse_params(dao_collection, params)
