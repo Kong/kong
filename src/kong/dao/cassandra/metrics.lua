@@ -26,7 +26,7 @@ function Metrics:new(database)
 end
 
 function Metrics:increment(api_id, identifier, periods)
-  return Metrics.super.execute_prepared_stmt(self, self._statements.increment, {
+  return Metrics.super._execute_prepared_stmt(self, self._statements.increment, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.list(periods)
@@ -34,7 +34,7 @@ function Metrics:increment(api_id, identifier, periods)
 end
 
 function Metrics:find(api_id, identifier, periods)
-  return Metrics.super.execute_prepared_stmt(self, self._statements.select, {
+  return Metrics.super._execute_prepared_stmt(self, self._statements.select, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.list(periods)
@@ -42,7 +42,7 @@ function Metrics:find(api_id, identifier, periods)
 end
 
 function Metrics:delete(api_id, identifier, periods)
-  return Metrics.super.execute_prepared_stmt(self, self._statements.delete, {
+  return Metrics.super._execute_prepared_stmt(self, self._statements.delete, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.list(periods)
