@@ -37,10 +37,19 @@ local Faker = Object:extend()
 
 function Faker:new(dao_factory)
   self.dao_factory = dao_factory
-
   self.inserted_entities = {}
 end
 
+function Faker:clear()
+  self.entities_to_insert = {}
+  self.inserted_entities = {}
+end
+
+-- Generate a fake entity
+--
+-- @param {string} type Type of the entity to generate
+-- @param {boolean} invalid If true, generated entity will have an invalid schema on purpose
+-- @return {table} An entity schema
 function Faker:fake_entity(type, invalid)
   local r = math.random(1, 1000000000)
 
@@ -70,7 +79,7 @@ function Faker:fake_entity(type, invalid)
     }
   elseif type == "application" then
     return {
-      account_id = random_from_table(self.inserted_entities.account).id,
+      account_id =  random_from_table(self.inserted_entities.account).id,
       public_key = "public_random"..r,
       secret_key = "private_random"..r
     }
@@ -99,6 +108,10 @@ function Faker:fake_entity(type, invalid)
   end
 end
 
+-- Seed the database with a set of hard-coded entities, and optionally random data
+--
+-- @param {boolean} random If true, will generate random entities
+-- @param {number} amount The number of total entity to generate (hard-coded + random)
 function Faker:seed(random, amount)
   -- amount is optional
   if not amount then amount = 10000 end
@@ -146,8 +159,9 @@ function Faker:seed(random, amount)
     for type, entities in pairs(entities_to_insert) do
       number_to_insert = amount - #entities
       random_entities[type] = {}
+      assert(number_to_insert > 0, "Cannot insert a negative number of elements. Too low amount parameter.")
       for i = 1, number_to_insert do
-        table.insert(random_entities[type], Faker.fake_entity(type))
+        table.insert(random_entities[type], self:fake_entity(type))
       end
     end
 
@@ -166,6 +180,12 @@ function Faker:insert_from_table(entities_to_insert, random)
   -- 2. applications, plugins and metrics which need refereces to inserted apis and accounts
   for _, type in ipairs({ "api", "account", "application", "plugin", "metric" }) do
     for i, entity in ipairs(entities_to_insert[type]) do
+
+      -- Limit the chances of collision between plugins on random insertions
+      if random and type == "plugin" then
+        entity.api_id = entities_to_insert.api[i].id
+      end
+
       if not random then
         local foreign_api = entities_to_insert.api[entity.__api]
         local foreign_account = entities_to_insert.account[entity.__account]
@@ -196,19 +216,21 @@ function Faker:insert_from_table(entities_to_insert, random)
         res, err = self.dao_factory[type.."s"]:insert(entity)
       end
 
-      if err then
+      if err and type ~= "plugin" then
         throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
       end
 
-      -- For other hard-coded entities relashionships
-      entities_to_insert[type][i] = res
+      if type ~= "metric" then
+        -- For other hard-coded entities relashionships
+        entities_to_insert[type][i] = res
 
-      -- For generated fake_entities
-      if not self.inserted_entities[type] then
-        self.inserted_entities[type] = {}
+        -- For generated fake_entities
+        if not self.inserted_entities[type] then
+          self.inserted_entities[type] = {}
+        end
+
+        table.insert(self.inserted_entities[type], res)
       end
-
-      table.insert(self.inserted_entities[type], res)
     end
   end
 end
