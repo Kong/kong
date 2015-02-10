@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 
-local utils = require "apenode.tools.utils"
-local Migrations = require "apenode.tools.migrations"
+local utils = require "kong.tools.utils"
+local Migrations = require "kong.tools.migrations"
 
 local function print_usage()
   print("Usage:")

@@ -1,4 +1,4 @@
-local utils = require "apenode.tools.utils"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local os = require "os"
 

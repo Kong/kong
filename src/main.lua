@@ -24,7 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-utils = require "apenode.tools.utils"
+utils = require "kong.tools.utils"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -59,14 +59,14 @@ function _M.init(configuration_path)
   -- core is the first plugin
   table.insert(plugins, {
     name = "core",
-    handler = require("apenode.core.handler")()
+    handler = require("kong.core.handler")()
   })
 
   -- Loading defined plugins
   for _, plugin_name in ipairs(configuration.plugins_enabled) do
     table.insert(plugins, {
       name = plugin_name,
-      handler = require("apenode.plugins."..plugin_name..".handler")()
+      handler = require("kong.plugins."..plugin_name..".handler")()
     })
   end
 end

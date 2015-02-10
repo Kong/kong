@@ -4,16 +4,16 @@ PWD = `pwd`
 export DAEMON ?= off
 export LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
 export LUA_CODE_CACHE ?= off
-export APENODE_PORT ?= 8000
-export APENODE_WEB_PORT ?= 8001
+export KONG_PORT ?= 8000
+export KONG_WEB_PORT ?= 8001
 export DIR ?= $(PWD)/tmp
-export APENODE_CONF ?= $(DIR)/apenode.conf
+export KONG_CONF ?= $(DIR)/kong.conf
 export SILENT ?=
 
 .PHONY: build global test test-web test-all run migrate populate drop
 
 global:
-	@luarocks make apenode-*.rockspec
+	@luarocks make kong-*.rockspec
 
 test:
 	@busted spec/unit
@@ -47,16 +47,16 @@ test-all:
 	@$(MAKE) drop SILENT=-s
 
 migrate:
-	@scripts/migrate migrate $(SILENT) --conf=$(APENODE_CONF)
+	@scripts/migrate migrate $(SILENT) --conf=$(KONG_CONF)
 
 reset:
-	@scripts/migrate reset $(SILENT) --conf=$(APENODE_CONF)
+	@scripts/migrate reset $(SILENT) --conf=$(KONG_CONF)
 
 seed:
-	@scripts/seed seed $(SILENT) --conf=$(APENODE_CONF)
+	@scripts/seed seed $(SILENT) --conf=$(KONG_CONF)
 
 drop:
-	@scripts/seed drop $(SILENT) --conf=$(APENODE_CONF)
+	@scripts/seed drop $(SILENT) --conf=$(KONG_CONF)
 
 run:
 	@nginx -p $(DIR)/nginx -c nginx.conf
@@ -66,17 +66,17 @@ stop:
 
 build:
 	@mkdir -p $(DIR)/nginx/logs
-	@cp templates/apenode.conf $(APENODE_CONF)
+	@cp templates/kong.conf $(KONG_CONF)
 	@echo "" > $(DIR)/nginx/logs/error.log
 	@echo "" > $(DIR)/nginx/logs/access.log
 	@sed \
 		-e "s/{{DAEMON}}/$(DAEMON)/g" \
 		-e "s@{{LUA_LIB_PATH}}@$(LUA_LIB)@g" \
 		-e "s/{{LUA_CODE_CACHE}}/$(LUA_CODE_CACHE)/g" \
-		-e "s/{{PORT}}/$(APENODE_PORT)/g" \
-		-e "s/{{WEB_PORT}}/$(APENODE_WEB_PORT)/g" \
-		-e "s@{{APENODE_CONF}}@$(APENODE_CONF)@g" \
+		-e "s/{{PORT}}/$(KONG_PORT)/g" \
+		-e "s/{{WEB_PORT}}/$(KONG_WEB_PORT)/g" \
+		-e "s@{{KONG_CONF}}@$(KONG_CONF)@g" \
 		templates/nginx.conf > $(DIR)/nginx/nginx.conf;
 
-	@cp -R src/apenode/web/static $(DIR)/nginx
-	@cp -R src/apenode/web/admin $(DIR)/nginx
+	@cp -R src/kong/web/static $(DIR)/nginx
+	@cp -R src/kong/web/admin $(DIR)/nginx

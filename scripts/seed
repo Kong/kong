@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-local utils = require "apenode.tools.utils"
+local utils = require "kong.tools.utils"
 
 local function print_usage()
   print("Usage:")

@@ -1,4 +1,4 @@
-local utils = require "apenode.tools.utils"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local kWebURL = "http://localhost:8001/"
 
@@ -24,7 +24,7 @@ local ENDPOINTS = {
 describe("Web API #web", function()
 
   describe("/", function()
-    it("should return the apenode version and a welcome message", function()
+    it("should return Kong's version and a welcome message", function()
       local response, status, headers = utils.get(kWebURL)
       local body = cjson.decode(response)
       assert.are.equal(200, status)

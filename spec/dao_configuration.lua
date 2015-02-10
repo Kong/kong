@@ -4,6 +4,6 @@ return {
     port = 9042,
     timeout = 1000,
     keepalive = 60000,
-    keyspace = "apenode_tests"
+    keyspace = "kong_tests"
   }
 }

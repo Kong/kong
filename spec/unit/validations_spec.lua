@@ -1,4 +1,4 @@
-local schemas = require "apenode.dao.schemas"
+local schemas = require "kong.dao.schemas"
 local validate = schemas.validate
 
 describe("Validation", function()

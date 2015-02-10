@@ -5,7 +5,7 @@ local uuid = require "uuid"
 
 -- Kong
 local configuration = require "spec.dao_configuration"
-local CassandraFactory = require "apenode.dao.cassandra.factory"
+local CassandraFactory = require "kong.dao.cassandra.factory"
 local dao_factory = CassandraFactory(configuration.cassandra)
 
 -- An utility function to apply tests on each collection
