@@ -2,9 +2,12 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local kWebURL = "http://localhost:8001/"
 
+local IDS = {}
+
 local ENDPOINTS = {
-  apis = {
-    total = 6,
+  {
+    collection = "apis",
+    total = 7,
     entity = {
       public_dns = "api.httpbin.com",
       name = "httpbin",
@@ -12,24 +15,36 @@ local ENDPOINTS = {
     },
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
-  accounts = {
-    total = 1,
-    entity = {
-
-    },
+  {
+    collection = "accounts",
+    total = 3,
+    entity = {},
     error_message = nil
   },
-  applications = {
-    total = 3,
+  {
+    collection = "applications",
+    total = 4,
     entity = {
-
+      public_key = "PUB_key",
+      secret_key = "SEC_key",
+      account_id = function()
+        return IDS.accounts
+      end
     },
-    error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required"}'
+    error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required","public_key":"public_key is required"}'
   },
-  plugins = {
-    total = 7,
+  {
+    collection = "plugins",
+    total = 8,
     entity = {
-
+      name = "ratelimiting",
+      api_id = function()
+        return IDS.apis
+      end,
+      application_id = function()
+        return IDS.applications
+      end,
+      value = '{"period":"second", "limit": 10}'
     },
     error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}'
   }
@@ -47,38 +62,42 @@ describe("Web API #web", function()
     end)
   end)
 
-  for k,v in pairs(ENDPOINTS) do
-    describe("#"..k, function()
+  for i,v in ipairs(ENDPOINTS) do
+    describe("#"..v.collection, function()
       it("should create the entity", function()
-        local response, status, headers = utils.post(kWebURL.."/"..k.."/", v.entity)
+        -- Replace the IDs
+        for k,p in pairs(v.entity) do
+          if type(p) == "function" then
+            v.entity[k] = p()
+          end
+        end
+
+        local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", v.entity)
         local body = cjson.decode(response)
-
-        local inspect = require "inspect"
-        print(inspect(body))
-
         assert.are.equal(201, status)
         assert.truthy(body)
-        v.entity.id = body.id
+
+        -- Save the ID for later use
+        IDS[v.collection] = body.id
       end)
-      --[[
       it("should get all", function()
-        local response, status, headers = utils.get(kWebURL.."/"..k.."/")
+        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/")
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body.data)
-        assert.truthy(body.total)
-        assert.are.equal(v.total, body.total)
+        --assert.truthy(body.total)
+        --assert.are.equal(v.total, body.total)
         assert.are.equal(v.total, table.getn(body.data))
       end)
       it("should get one", function()
-        local response, status, headers = utils.get(kWebURL.."/"..k.."/1")
+        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..IDS[v.collection])
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body)
-        assert.are.equal(1, body.id)
+        assert.are.equal(IDS[v.collection], body.id)
       end)
       it("should create with invalid params", function()
-        local response, status, headers = utils.post(kWebURL.."/"..k.."/", {})
+        local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", {})
         local body = cjson.decode(response)
         if v.error_message then
           assert.are.equal(400, status)
@@ -86,17 +105,18 @@ describe("Web API #web", function()
         else
           assert.are.equal(201, status)
           assert.truthy(body)
-          assert.are.equal(2, body.id)
+          assert.are.equal(IDS[v.collection], body.id)
         end
       end)
+    end)
+  end
+
+  for i,v in ipairs(ENDPOINTS) do
+    describe("#"..v.collection, function()
       it("should delete one", function()
-        local response, status, headers = utils.delete(kWebURL.."/"..k.."/1")
-        local body = cjson.decode(response)
-        assert.are.equal(200, status)
-        assert.truthy(body)
-        assert.are.equal(1, body.id)
+        local response, status, headers = utils.delete(kWebURL.."/"..v.collection.."/"..IDS[v.collection])
+        assert.are.equal(204, status)
       end)
-      --]]
     end)
   end
 
