@@ -67,6 +67,7 @@ function BaseDao:check_unique(statement, t, is_updating)
       for k,v in ipairs(results) do
         if v.id ~= t.id then
           unique = false
+          break
         end
       end
 
