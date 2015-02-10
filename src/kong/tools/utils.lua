@@ -125,15 +125,18 @@ end
 --
 -- Lapis utils
 --
-function _M.show_response(status, message)
+function _M.show_response(status, message, raw)
   ngx.header["X-Kong-Version"] = configuration.version
   ngx.status = status
 
-  if (type(message) == "table") then
+  if raw then
+    ngx.print(message)
+  elseif (type(message) == "table") then
     ngx.print(cjson.encode(message))
   else
     ngx.print(cjson.encode({ message = message }))
   end
+
   ngx.exit(status)
 end
 

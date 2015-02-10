@@ -16,7 +16,13 @@ local function render_list_response(req, data, size)
     data.next_page = nil
   end
 
-  return { data = data, ["next"] = next_url }
+  -- This check is required otherwise the response is going to be a
+  -- JSON Object and not a JSON array.
+  if #data == 0 then
+    return "{\"data\":[]}"
+  else
+    return { data = data, ["next"] = next_url }
+  end
 end
 
 local function parse_params(dao_collection, params)
@@ -69,7 +75,9 @@ function BaseController:new(dao_collection, collection)
     if err then
       return utils.show_error(500, err)
     end
-    return utils.success(render_list_response(self.req, data, size))
+
+    local result = render_list_response(self.req, data, size)
+    return utils.show_response(200, result, type(result) ~= "table")
   end)
 
   app:get("/"..collection.."/:id", function(self)
