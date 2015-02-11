@@ -46,12 +46,30 @@ local function parse_params(dao_collection, params)
   return params
 end
 
+local function parse_dao_error(err)
+  local status
+  if err.database then
+    status = 500
+  elseif err.unique then
+    status = 409
+    err.message = "Entity already exists"
+  elseif err.exists then
+    status = 404
+    err.message = "Entity not found"
+  else
+    status = 400
+    err.message = "Invalid request"
+  end
+
+  return utils.show_error(status, err.message)
+end
+
 function BaseController:new(dao_collection, collection)
   app:post("/"..collection.."/", function(self)
     local params = parse_params(dao_collection, self.params)
     local data, err = dao_collection:insert(params)
     if err then
-      return utils.show_error(err.is_schema and 400 or 500, err.message)
+      return parse_dao_error(err)
     else
       return utils.created(data)
     end
@@ -73,7 +91,7 @@ function BaseController:new(dao_collection, collection)
     local params = parse_params(dao_collection, self.params)
     local data, err = dao_collection:find_by_keys(params, size, offset)
     if err then
-      return utils.show_error(err.is_schema and 400 or 500, err.message)
+      return parse_dao_error(err)
     end
 
     local result = render_list_response(self.req, data, size)
@@ -83,7 +101,7 @@ function BaseController:new(dao_collection, collection)
   app:get("/"..collection.."/:id", function(self)
     local data, err = dao_collection:find_one(self.params.id)
     if err then
-      return utils.show_error(err.is_schema and 400 or 500, err.message)
+      return parse_dao_error(err)
     end
     if data then
       return utils.success(data)
@@ -95,28 +113,25 @@ function BaseController:new(dao_collection, collection)
   app:delete("/"..collection.."/:id", function(self)
     local ok, err = dao_collection:delete(self.params.id)
     if err then
-      return utils.show_error(err.is_schema and 400 or 500, err.message)
-    end
-    if ok then
-      return utils.no_content()
+      return parse_dao_error(err)
     else
-      return utils.not_found()
+      return utils.no_content()
     end
   end)
 
   app:put("/"..collection.."/:id", json_params(function(self)
-    if not self.params.id then utils.not_found() end
-
     local params = parse_params(dao_collection, self.params)
-    params.id = self.params.id
+    if self.params.id then
+      params.id = self.params.id
+    else
+      utils.not_found()
+    end
+
     local data, err = dao_collection:update(params)
     if err then
-      return utils.show_error(err.is_schema and 400 or 500, err.message)
-    end
-    if data then
-      return utils.success(data)
+      return parse_dao_error(err)
     else
-      return utils.not_found()
+      return utils.success(data)
     end
   end))
 
