@@ -39,12 +39,12 @@ describe("Cassandra DAO", function()
 
     describe_all_collections(function(type, collection)
 
-      it("should have statements for all unique and required schema fields", function()
+      it("should have statements for all unique and foreign schema fields", function()
         for column, schema_field in pairs(dao_factory[collection]._schema) do
           if schema_field.unique then
             assert.truthy(dao_factory[collection]._queries.__unique[column])
-          elseif schema_field.exists then
-            assert.truthy(dao_factory[collection]._queries.__exists[column])
+          elseif schema_field.foreign then
+            assert.truthy(dao_factory[collection]._queries.__foreign[column])
           end
         end
       end)
@@ -124,14 +124,14 @@ describe("Cassandra DAO", function()
         assert.True(err.schema)
         assert.are.same("account_id is required", err.message.account_id)
 
-        -- With an invalid account_id, it's an EXISTS error
+        -- With an invalid account_id, it's a FOREIGN error
         local app_t = dao_factory.faker:fake_entity("application")
         app_t.account_id = uuid()
 
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
-        assert.True(err.exists)
+        assert.True(err.foreign)
         assert.are.same("account_id "..app_t.account_id.." does not exist", err.message.account_id)
       end)
 
@@ -162,14 +162,14 @@ describe("Cassandra DAO", function()
         assert.truthy(err)
         assert.are.same("api_id is required", err.api_id)
 
-        -- With an invalid api_id, it's an EXISTS error
+        -- With an invalid api_id, it's an FOREIGN error
         local plugin_t = dao_factory.faker:fake_entity("plugin")
         plugin_t.api_id = uuid()
 
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
-        assert.True(err.exists)
+        assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
 
         -- With invalid api_id and application_id, it's an EXISTS error
@@ -180,7 +180,7 @@ describe("Cassandra DAO", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
-        assert.True(err.exists)
+        assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
         assert.are.same("application_id "..plugin_t.application_id.." does not exist", err.message.application_id)
       end)
@@ -237,16 +237,14 @@ describe("Cassandra DAO", function()
 
     describe_all_collections(function(type, collection)
 
-      it("should not update in DB if entity cannot be found", function()
+      it("should return nil if no entity was found to update in DB", function()
         local t = dao_factory.faker:fake_entity(type)
         t.id = uuid()
 
         -- No entity to update
         local entity, err = dao_factory[collection]:update(t)
         assert.falsy(entity)
-        assert.truthy(err)
-        assert.True(err.exists)
-        assert.are.same("Entity to update not found", err.message)
+        assert.falsy(err)
       end)
 
     end)
@@ -357,14 +355,13 @@ describe("Cassandra DAO", function()
 
     describe_all_collections(function(type, collection)
 
-      it("should return an error if deleting an entity that cannot be found", function()
+      it("should return false if there was nothing to delete", function()
         local t = dao_factory.faker:fake_entity(type)
         t.id = uuid()
 
-        local success, err = dao_factory[collection]:delete(t.id)
-        assert.is_not_true(success)
-        assert.truthy(err)
-        assert.are.same("Entity to delete not found", err.message)
+        local ok, err = dao_factory[collection]:delete(t.id)
+        assert.is_not_true(ok)
+        assert.falsy(err)
       end)
 
       it("should delete an entity if it can be found", function()
@@ -443,6 +440,13 @@ describe("Cassandra DAO", function()
         local result, err = dao_factory[collection]:find_one(entities[1].id)
         assert.falsy(err)
         assert.truthy(result)
+      end)
+
+      it("should handle an invalid uuid value", function()
+        local result, err = dao_factory[collection]:find_one("abcd")
+        assert.falsy(result)
+        assert.True(err.invalid_type)
+        assert.are.same("abcd is an invalid uuid", err.message.id)
       end)
 
     end)

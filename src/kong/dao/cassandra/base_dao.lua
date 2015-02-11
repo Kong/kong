@@ -12,9 +12,10 @@ local validate = schemas.validate
 
 local error_types = {
   SCHEMA = "schema",
+  INVALID_TYPE = "invalid_type",
   CASSANDRA = "database",
   UNIQUE = "unique",
-  EXISTS = "exists"
+  FOREIGN = "foreign"
 }
 
 local BaseDao = Object:extend()
@@ -32,35 +33,12 @@ end
 -- PRIVATE --
 -------------
 
--- Build the list to pass to lua-resty-cassandra :execute method.
--- Since this method only accepts an ordered list, we build this list from
--- the `params` property of all prepared statement, taking into account special
--- cassandra values (uuid, timestamps, NULL)
---
--- @param {table} schema A schema with type proeprties to encode specific values
--- @param {table} t Values to bind to a statement
--- @param {table} parameters An ordered list of parameters
--- @return {table} An ordered list of values to be binded to lua-resty-cassandra :execute
-local function encode_cassandra_values(schema, t, parameters)
-  local values_to_bind = {}
-  for _, column in ipairs(parameters) do
-    local schema_field = schema[column]
-    local value = t[column]
+local function is_valid_uuid(uuid)
+  local x = "%x"
+  local t = { x:rep(8), x:rep(4), x:rep(4), x:rep(4), x:rep(12) }
+  local pattern = table.concat(t, '%-')
 
-    if schema_field.type == "id" and value then
-      value = cassandra.uuid(value)
-    elseif schema_field.type == "timestamp" and value then
-      value = cassandra.timestamp(value)
-    elseif schema_field.type == "table" and value then
-      value = cjson.encode(value)
-    elseif not value then
-      value = cassandra.null
-    end
-
-    table.insert(values_to_bind, value)
-  end
-
-  return values_to_bind
+  return string.match(uuid, pattern) ~= nil
 end
 
 local function build_error(type, err)
@@ -74,6 +52,43 @@ local function build_error(type, err)
   }
 end
 
+-- Build the list to pass to lua-resty-cassandra :execute method.
+-- Since this method only accepts an ordered list, we build this list from
+-- the `params` property of all prepared statement, taking into account special
+-- cassandra values (uuid, timestamps, NULL)
+--
+-- @param {table} schema A schema with type proeprties to encode specific values
+-- @param {table} t Values to bind to a statement
+-- @param {table} parameters An ordered list of parameters
+-- @return {table} An ordered list of values to be binded to lua-resty-cassandra :execute
+-- @return {table} Error Cassandra type valdiation errors
+local function encode_cassandra_values(schema, t, parameters)
+  local values_to_bind = {}
+  local errors
+  for _, column in ipairs(parameters) do
+    local schema_field = schema[column]
+    local value = t[column]
+
+    if schema_field.type == "id" and value then
+      if is_valid_uuid(value) then
+        value = cassandra.uuid(value)
+      else
+        errors = utils.add_error(errors, column, value.." is an invalid uuid")
+      end
+    elseif schema_field.type == "timestamp" and value then
+      value = cassandra.timestamp(value)
+    elseif schema_field.type == "table" and value then
+      value = cjson.encode(value)
+    elseif not value then
+      value = cassandra.null
+    end
+
+    table.insert(values_to_bind, value)
+  end
+
+  return values_to_bind, errors
+end
+
 -- Run a statement and check if the result exists
 --
 -- @param {table} t Arguments to bind to the statement
@@ -84,7 +99,7 @@ end
 function BaseDao:_check_unique(statement, t, is_updating)
   local results, err = self:_execute_prepared_stmt(statement, t)
   if err then
-    return false, "Error during UNIQUE check: "..err
+    return false, "Error during UNIQUE check: "..err.message
   elseif results and #results > 0 then
     if not is_updating then
       return false
@@ -109,13 +124,13 @@ end
 --
 -- @param {statement} statement Statement to execute
 -- @param {table} t Arguments to bind to the statement
--- @return {boolean} true if EXISTS, false otherwise
+-- @return {boolean} true if FOREIGN exists, false otherwise
 -- @return {string|nil} Error if any during execution
--- @return {table|nil} Results of the statement if EXISTS
-function BaseDao:_check_exists(statement, t)
+-- @return {table|nil} Results of the statement if FOREIGN
+function BaseDao:_check_foreign(statement, t)
   local results, err = self:_execute_prepared_stmt(statement, t)
   if err then
-    return false, "Error during EXISTS check: "..err
+    return false, "Error during FOREIGN check: "..err.message
   elseif not results or #results == 0 then
     return false
   else
@@ -123,19 +138,19 @@ function BaseDao:_check_exists(statement, t)
   end
 end
 
--- Run the EXISTS on all statements in __exists
+-- Run the FOREIGN exists check on all statements in __foreign
 --
--- @param {table} t Arguments to bind to the __exists statements
+-- @param {table} t Arguments to bind to the __foreign statements
 -- @return {boolean} true if all results EXIST, false otherwise
 -- @return {table|nil} Error if any during execution
 -- @return {table|nil} A table with the list of not existing foreign entities
-function BaseDao:_check_all_exists(t)
-  if not self._statements.__exists then return true end
+function BaseDao:_check_all_foreign(t)
+  if not self._statements.__foreign then return true end
 
   local errors
-  for k, statement in pairs(self._statements.__exists) do
+  for k, statement in pairs(self._statements.__foreign) do
     if t[k] then
-      local exists, err = self:_check_exists(statement, t)
+      local exists, err = self:_check_foreign(statement, t)
       if err then
         return false, err
       elseif not exists then
@@ -184,10 +199,17 @@ end
 -- @return {table|nil} Cassandra error if any
 function BaseDao:_execute_prepared_stmt(statement, values_to_bind, options)
   if statement.params and values_to_bind then
-    values_to_bind = encode_cassandra_values(self._schema, values_to_bind, statement.params)
+    local errors
+    values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, statement.params)
+    if errors then
+      return nil, build_error(error_types.INVALID_TYPE, errors)
+    end
   end
 
   local results, err = self._db:execute(statement.query, values_to_bind, options)
+  if err then
+    err = build_error(error_types.CASSANDRA, err)
+  end
 
   if results and results.type == "ROWS" then
     -- return deserialized content for encoded values (plugin value column)
@@ -279,16 +301,16 @@ function BaseDao:insert(t)
   end
 
   -- Check foreign entities EXIST
-  local exists, err, errors = self:_check_all_exists(t)
+  local exists, err, errors = self:_check_all_foreign(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return nil, build_error(error_types.EXISTS, errors)
+    return nil, build_error(error_types.FOREIGN, errors)
   end
 
   local _, err = self:_execute_prepared_stmt(self._statements.insert, t)
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, err
   else
     return t
   end
@@ -305,14 +327,12 @@ function BaseDao:update(t)
     return nil, build_error(error_types.SCHEMA, "Cannot update a nil element")
   end
 
-  -- Check if exists to prevent upsert
-  -- and set UNSET values
-  -- (pfffff...)
-  local exists, err, results = self:_check_exists(self._statements.select_one, t)
+  -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
+  local exists, err, results = self:_check_foreign(self._statements.select_one, t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return nil, build_error(error_types.EXISTS, "Entity to update not found")
+    return nil
   else
     -- Set UNSET values to prevent cassandra from setting to NULL
     -- @see Test case
@@ -338,18 +358,18 @@ function BaseDao:update(t)
     return nil, build_error(error_types.UNIQUE, errors)
   end
 
-  -- Check foreign entities EXIST
-  local exists, err, errors = self:_check_all_exists(t)
+  -- Check FOREIGN entities
+  local exists, err, errors = self:_check_all_foreign(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return nil, build_error(error_types.EXISTS, errors)
+    return nil, build_error(error_types.FOREIGN, errors)
   end
 
   local _, err = self:_execute_prepared_stmt(self._statements.update, t)
 
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, err
   else
     return t
   end
@@ -369,7 +389,7 @@ function BaseDao:find_one(id)
     data = nil
   end
 
-  return data, build_error(error_types.CASSANDRA, err)
+  return data, err
 end
 
 -- Execute a SELECT statement with special WHERE values
@@ -421,12 +441,10 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
     }
   end
 
-  local rows, err = self:_execute_prepared_stmt(self._statements_cache[select_query], t, {
+  return self:_execute_prepared_stmt(self._statements_cache[select_query], t, {
     page_size = page_size,
     paging_state = paging_state
   })
-
-  return rows, build_error(error_types.CASSANDRA, err)
 end
 
 -- Execute the prepared SELECT statement as it is
@@ -438,24 +456,20 @@ function BaseDao:find(page_size, paging_state)
   return self:find_by_keys(nil, page_size, paging_state)
 end
 
-
-
 -- Execute the prepared DELETE statement
 --
 -- @param {string} id UUID of entity to delete
 -- @return {boolean} True if deleted, false if otherwise or not found
 -- @return {table|nil} Error if any
 function BaseDao:delete(id)
-  local exists, err = self:_check_exists(self._statements.select_one, { id = id })
+  local exists, err = self:_check_foreign(self._statements.select_one, { id = id })
   if err then
     return false, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return false, build_error(error_types.EXISTS, "Entity to delete not found")
+    return false
   end
 
-  local ok, err = self:_execute_prepared_stmt(self._statements.delete, { id = id })
-
-  return ok, build_error(error_types.CASSANDRA, err)
+  return self:_execute_prepared_stmt(self._statements.delete, { id = id })
 end
 
 return BaseDao

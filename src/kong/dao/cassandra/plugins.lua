@@ -3,8 +3,8 @@ local schemas = require "kong.dao.schemas"
 
 local SCHEMA = {
   id = { type = "id" },
-  api_id = { type = "id", required = true, exists = true, queryable = true },
-  application_id = { type = "id", exists = true, queryable = true },
+  api_id = { type = "id", required = true, foreign = true, queryable = true },
+  application_id = { type = "id", foreign = true, queryable = true },
   name = { required = true, queryable = true },
   value = { type = "table", required = true },
   created_at = { type = "timestamp" }
@@ -46,7 +46,7 @@ function Plugins:new(database, properties)
         query = [[ SELECT id FROM plugins WHERE api_id = ? AND name = ? ALLOW FILTERING; ]]
       }
     },
-    __exists = {
+    __foreign = {
       api_id = {
         params = { "api_id" },
         query = [[ SELECT id FROM apis WHERE id = ?; ]]

@@ -6,7 +6,6 @@ local yaml = require "yaml"
 local http = require "socket.http"
 local url = require "socket.url"
 local lfs = require "lfs"
-local bcrypt = require "bcrypt"
 
 local _M = {}
 
