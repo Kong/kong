@@ -47,6 +47,7 @@ local Migration = {
         application_id uuid,
         name text,
         value text, -- We can't use a map because we don't know if the value is a text, int or a list
+        enabled boolean,
         created_at timestamp,
         PRIMARY KEY (id, api_id, name)
       );

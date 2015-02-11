@@ -13,12 +13,18 @@ local ENDPOINTS = {
       name = "httpbin",
       target_url = "http://httpbin.org"
     },
+    update_fields = {
+      public_dns = "newapi.httpbin.com"
+    },
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
   {
     collection = "accounts",
     total = 3,
     entity = {},
+    update_fields = {
+      provider_id = "ABC_provider_ID"
+    },
     error_message = nil
   },
   {
@@ -30,6 +36,10 @@ local ENDPOINTS = {
       account_id = function()
         return IDS.accounts
       end
+    },
+    update_fields = {
+      public_key = "newPUB",
+      secret_key = "newSEC"
     },
     error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required","public_key":"public_key is required"}'
   },

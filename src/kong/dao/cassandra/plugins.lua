@@ -10,6 +10,7 @@ local SCHEMA = {
   application_id = { type = "id", foreign = true, queryable = true },
   name = { required = true, queryable = true },
   value = { type = "table", required = true },
+  enabled = { type = "boolean", default = true },
   created_at = { type = "timestamp" }
 }
 
@@ -64,7 +65,7 @@ function Plugins:new(database, properties)
   Plugins.super.new(self, database)
 end
 
-local function check_value_schema(t)
+function Plugins:_check_value_schema(t)
   local status, plugin_schema = pcall(require, "kong.plugins."..t.name..".schema")
   if not status then
     return false, self:_build_error(error_types.SCHEMA, "Plugin \""..object.name.."\" not found")
@@ -72,7 +73,7 @@ local function check_value_schema(t)
 
   local valid, errors = schemas.validate(t.value, plugin_schema)
   if not valid then
-    return false, self:_build_error(error_types.SCHEMA, err)
+    return false, self:_build_error(error_types.SCHEMA, errors)
   else
     return true
   end
@@ -110,7 +111,7 @@ function Plugins:insert(t)
   end
 
   -- Checking value schema validation
-  local ok, err = check_value_schema(t)
+  local ok, err = self:_check_value_schema(t)
   if not ok then
     return nil, err
   end
@@ -131,7 +132,7 @@ function Plugins:update(t)
   end
 
   -- Checking value schema validation
-  local ok, err = check_value_schema(t)
+  local ok, err = self:_check_value_schema(t)
   if not ok then
     return nil, err
   end
