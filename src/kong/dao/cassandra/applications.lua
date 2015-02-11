@@ -2,7 +2,7 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local SCHEMA = {
   id = { type = "id" },
-  account_id = { type = "id", required = true, exists = true, queryable = true },
+  account_id = { type = "id", required = true, foreign = true, queryable = true },
   public_key = { required = true, unique = true, queryable = true },
   secret_key = { required = true },
   created_at = { type = "timestamp" }
@@ -35,7 +35,7 @@ function Applications:new(database, properties)
       params = { "id" },
       query = [[ DELETE FROM applications WHERE id = ?; ]]
     },
-    __exists = {
+    __foreign = {
       account_id = {
         params = { "account_id" },
         query = [[ SELECT id FROM accounts WHERE id = ?; ]]

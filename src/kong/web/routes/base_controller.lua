@@ -48,17 +48,17 @@ end
 
 local function parse_dao_error(err)
   local status
+
   if err.database then
     status = 500
   elseif err.unique then
     status = 409
-    err.message = "Entity already exists"
-  elseif err.exists then
+  elseif err.foreign then
     status = 404
-    err.message = "Entity not found"
+  elseif err.invalid_type and err.message.id then
+    status = 404
   else
     status = 400
-    err.message = "Invalid request"
   end
 
   return utils.show_error(status, err.message)
