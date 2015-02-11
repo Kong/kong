@@ -12,7 +12,9 @@ local validate = schemas.validate
 
 local error_types = {
   SCHEMA = "schema",
-  CASSANDRA = "database"
+  CASSANDRA = "database",
+  UNIQUE = "unique",
+  EXISTS = "exists"
 }
 
 local BaseDao = Object:extend()
@@ -67,8 +69,8 @@ local function build_error(type, err)
   end
 
   return {
-    is_schema = type == error_types.SCHEMA,
-    error = err
+    [type] = true,
+    message = err
   }
 end
 
@@ -273,7 +275,7 @@ function BaseDao:insert(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not unique then
-    return nil, build_error(error_types.SCHEMA, errors)
+    return nil, build_error(error_types.UNIQUE, errors)
   end
 
   -- Check foreign entities EXIST
@@ -281,7 +283,7 @@ function BaseDao:insert(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return nil, build_error(error_types.SCHEMA, errors)
+    return nil, build_error(error_types.EXISTS, errors)
   end
 
   local _, err = self:_execute_prepared_stmt(self._statements.insert, t)
@@ -310,7 +312,7 @@ function BaseDao:update(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return nil, build_error(error_types.SCHEMA, "Entity to update not found")
+    return nil, build_error(error_types.EXISTS, "Entity to update not found")
   else
     -- Set UNSET values to prevent cassandra from setting to NULL
     -- @see Test case
@@ -333,7 +335,7 @@ function BaseDao:update(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not unique then
-    return nil, build_error(error_types.SCHEMA, errors)
+    return nil, build_error(error_types.UNIQUE, errors)
   end
 
   -- Check foreign entities EXIST
@@ -341,7 +343,7 @@ function BaseDao:update(t)
   if err then
     return nil, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return nil, build_error(error_types.SCHEMA, errors)
+    return nil, build_error(error_types.EXISTS, errors)
   end
 
   local _, err = self:_execute_prepared_stmt(self._statements.update, t)
@@ -446,9 +448,9 @@ end
 function BaseDao:delete(id)
   local exists, err = self:_check_exists(self._statements.select_one, { id = id })
   if err then
-    return false, err
+    return false, build_error(error_types.CASSANDRA, err)
   elseif not exists then
-    return false, "Entity to delete not found"
+    return false, build_error(error_types.EXISTS, "Entity to delete not found")
   end
 
   local ok, err = self:_execute_prepared_stmt(self._statements.delete, { id = id })
