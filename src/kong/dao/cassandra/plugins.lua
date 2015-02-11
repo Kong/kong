@@ -1,5 +1,8 @@
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local constants = require "constants"
 local schemas = require "kong.dao.schemas"
+local BaseDao = require "kong.dao.cassandra.base_dao"
+
+local error_types = constants.DATABASE_ERROR_TYPES
 
 local SCHEMA = {
   id = { type = "id" },
@@ -64,12 +67,12 @@ end
 local function check_value_schema(t)
   local status, plugin_schema = pcall(require, "kong.plugins."..t.name..".schema")
   if not status then
-    return false, "Plugin \""..object.name.."\" not found"
+    return false, self:_build_error(error_types.SCHEMA, "Plugin \""..object.name.."\" not found")
   end
 
-  local ok, err = schemas.validate(t.value, plugin_schema)
-  if err or not ok then
-    return false, err
+  local valid, errors = schemas.validate(t.value, plugin_schema)
+  if not valid then
+    return false, self:_build_error(error_types.SCHEMA, err)
   else
     return true
   end
@@ -88,16 +91,16 @@ function Plugins:_check_unicity(t, is_updating)
   if err then
     return false, err
   elseif not unique then
-    return false, "Plugin already exists"
+    return false, self:_build_error(error_types.UNIQUE, "Plugin already exists")
   else
     return true
   end
 end
 
 function Plugins:insert(t)
-  local valid_schema, errors = schemas.validate(t, self._schema)
+  local valid_schema, err = schemas.validate(t, self._schema)
   if not valid_schema then
-    return nil, errors
+    return nil, self:_build_error(error_types.SCHEMA, err)
   end
 
   -- Checking plugin unicity
@@ -116,9 +119,9 @@ function Plugins:insert(t)
 end
 
 function Plugins:update(t)
-  local valid_schema, errors = schemas.validate(t, self._schema)
+  local valid_schema, err = schemas.validate(t, self._schema)
   if not valid_schema then
-    return nil, errors
+    return nil, self:_build_error(error_types.SCHEMA, err)
   end
 
   -- Checking plugin unicity

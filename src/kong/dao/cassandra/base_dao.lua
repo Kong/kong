@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local constants = require "constants"
 local cassandra = require "cassandra"
 local schemas = require "kong.dao.schemas"
 local stringy = require "stringy"
@@ -10,14 +11,7 @@ local cjson = require "cjson"
 local rex = require "rex_pcre"
 
 local validate = schemas.validate
-
-local error_types = {
-  SCHEMA = "schema",
-  INVALID_TYPE = "invalid_type",
-  CASSANDRA = "database",
-  UNIQUE = "unique",
-  FOREIGN = "foreign"
-}
+local error_types = constants.DATABASE_ERROR_TYPES
 
 local BaseDao = Object:extend()
 
@@ -37,17 +31,6 @@ end
 local function is_valid_uuid(uuid)
   local pattern = "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
   return rex.match(uuid, pattern) ~= nil
-end
-
-local function build_error(type, err)
-  if not err then
-    return nil
-  end
-
-  return {
-    [type] = true,
-    message = err
-  }
 end
 
 -- Build the list to pass to lua-resty-cassandra :execute method.
@@ -85,6 +68,17 @@ local function encode_cassandra_values(schema, t, parameters)
   end
 
   return values_to_bind, errors
+end
+
+function BaseDao:_build_error(type, err)
+  if not err then
+    return nil
+  end
+
+  return {
+    [type] = true,
+    message = err
+  }
 end
 
 -- Run a statement and check if the result exists
@@ -200,13 +194,13 @@ function BaseDao:_execute_prepared_stmt(statement, values_to_bind, options)
     local errors
     values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, statement.params)
     if errors then
-      return nil, build_error(error_types.INVALID_TYPE, errors)
+      return nil, self:_build_error(error_types.INVALID_TYPE, errors)
     end
   end
 
   local results, err = self._db:execute(statement.query, values_to_bind, options)
   if err then
-    err = build_error(error_types.CASSANDRA, err)
+    err = self:_build_error(error_types.DATABASE, err)
   end
 
   if results and results.type == "ROWS" then
@@ -277,7 +271,7 @@ end
 -- @return {table|nil} Error if any
 function BaseDao:insert(t)
   if not t then
-    return nil, build_error(error_types.SCHEMA, "Cannot insert a nil element")
+    return nil, self:_build_error(error_types.SCHEMA, "Cannot insert a nil element")
   end
 
   -- Override created_at and id by default value
@@ -287,23 +281,23 @@ function BaseDao:insert(t)
   -- Validate schema
   local valid_schema, errors = validate(t, self._schema)
   if not valid_schema then
-    return nil, build_error(error_types.SCHEMA, errors)
+    return nil, self:_build_error(error_types.SCHEMA, errors)
   end
 
   -- Check UNIQUE values
   local unique, err, errors = self:_check_all_unique(t)
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, self:_build_error(error_types.DATABASE, err)
   elseif not unique then
-    return nil, build_error(error_types.UNIQUE, errors)
+    return nil, self:_build_error(error_types.UNIQUE, errors)
   end
 
   -- Check foreign entities EXIST
   local exists, err, errors = self:_check_all_foreign(t)
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, self:_build_error(error_types.DATABASE, err)
   elseif not exists then
-    return nil, build_error(error_types.FOREIGN, errors)
+    return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
   local _, err = self:_execute_prepared_stmt(self._statements.insert, t)
@@ -322,19 +316,19 @@ end
 -- @return {table|nil} Error if any
 function BaseDao:update(t)
   if not t then
-    return nil, build_error(error_types.SCHEMA, "Cannot update a nil element")
+    return nil, self:_build_error(error_types.SCHEMA, "Cannot update a nil element")
   end
 
   -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
   local exists, err, results = self:_check_foreign(self._statements.select_one, t)
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, self:_build_error(error_types.DATABASE, err)
   elseif not exists then
     return nil
   else
     -- Set UNSET values to prevent cassandra from setting to NULL
     -- @see Test case
-    -- @see https://issues.apache.org/jira/browse/CASSANDRA-7304
+    -- @see https://issues.apache.org/jira/browse/DATABASE-7304
     for k,v in pairs(results[1]) do
       if not t[k] then
         t[k] = v
@@ -345,23 +339,23 @@ function BaseDao:update(t)
   -- Validate schema
   local valid_schema, errors = validate(t, self._schema)
   if not valid_schema then
-    return nil, build_error(error_types.SCHEMA, errors)
+    return nil, self:_build_error(error_types.SCHEMA, errors)
   end
 
   -- Check UNIQUE with update
   local unique, err, errors = self:_check_all_unique(t, true)
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, self:_build_error(error_types.DATABASE, err)
   elseif not unique then
-    return nil, build_error(error_types.UNIQUE, errors)
+    return nil, self:_build_error(error_types.UNIQUE, errors)
   end
 
   -- Check FOREIGN entities
   local exists, err, errors = self:_check_all_foreign(t)
   if err then
-    return nil, build_error(error_types.CASSANDRA, err)
+    return nil, self:_build_error(error_types.DATABASE, err)
   elseif not exists then
-    return nil, build_error(error_types.FOREIGN, errors)
+    return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
   local _, err = self:_execute_prepared_stmt(self._statements.update, t)
@@ -418,7 +412,7 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
     end
 
     if errors then
-      return nil, build_error(error_types.SCHEMA, errors)
+      return nil, self:_build_error(error_types.SCHEMA, errors)
     end
 
     where_str = "WHERE "..table.concat(where, " AND ").." ALLOW FILTERING"
@@ -430,7 +424,7 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
   if not self._statements_cache[select_query] then
     local stmt, err = self._db:prepare(select_query)
     if err then
-      return nil, build_error(error_types.CASSANDRA, err)
+      return nil, self:_build_error(error_types.DATABASE, err)
     end
 
     self._statements_cache[select_query] = {
@@ -462,7 +456,7 @@ end
 function BaseDao:delete(id)
   local exists, err = self:_check_foreign(self._statements.select_one, { id = id })
   if err then
-    return false, build_error(error_types.CASSANDRA, err)
+    return false, self:_build_error(error_types.DATABASE, err)
   elseif not exists then
     return false
   end
