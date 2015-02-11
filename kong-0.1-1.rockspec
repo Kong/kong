@@ -37,6 +37,7 @@ build = {
     ["kong"] = "src/main.lua",
     ["classic"] = "src/classic.lua",
     ["cassandra"] = "src/cassandra.lua",
+    ["constants"] = "src/constants.lua",
 
     ["kong.tools.utils"] = "src/kong/tools/utils.lua",
     ["kong.tools.faker"] = "src/kong/tools/faker.lua",
