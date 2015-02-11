@@ -7,6 +7,7 @@ local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "uuid"
 local cjson = require "cjson"
+local rex = require "rex_pcre"
 
 local validate = schemas.validate
 
@@ -34,11 +35,8 @@ end
 -------------
 
 local function is_valid_uuid(uuid)
-  local x = "%x"
-  local t = { x:rep(8), x:rep(4), x:rep(4), x:rep(4), x:rep(12) }
-  local pattern = table.concat(t, '%-')
-
-  return string.match(uuid, pattern) ~= nil
+  local pattern = "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+  return rex.match(uuid, pattern) ~= nil
 end
 
 local function build_error(type, err)
