@@ -15,9 +15,6 @@ local error_types = {
   CASSANDRA = "database"
 }
 
---
---
---
 local BaseDao = Object:extend()
 
 function BaseDao:new(database)

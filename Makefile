@@ -13,7 +13,7 @@ export SILENT ?=
 .PHONY: build global test test-web test-all run migrate populate drop
 
 global:
-	@luarocks make kong-*.rockspec
+	@luarocks make kong-*.rockspec --only-server=http://rocks.moonscript.org 
 
 test:
 	@busted spec/unit

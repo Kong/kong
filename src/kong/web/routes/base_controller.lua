@@ -51,7 +51,7 @@ function BaseController:new(dao_collection, collection)
     local params = parse_params(dao_collection, self.params)
     local data, err = dao_collection:insert(params)
     if err then
-      return utils.show_error(400, err)
+      return utils.show_error(err.is_schema and 400 or 500, err.message)
     else
       return utils.created(data)
     end
@@ -73,7 +73,7 @@ function BaseController:new(dao_collection, collection)
     local params = parse_params(dao_collection, self.params)
     local data, err = dao_collection:find_by_keys(params, size, offset)
     if err then
-      return utils.show_error(500, err)
+      return utils.show_error(err.is_schema and 400 or 500, err.message)
     end
 
     local result = render_list_response(self.req, data, size)
@@ -83,7 +83,7 @@ function BaseController:new(dao_collection, collection)
   app:get("/"..collection.."/:id", function(self)
     local data, err = dao_collection:find_one(self.params.id)
     if err then
-      return utils.show_error(500, err)
+      return utils.show_error(err.is_schema and 400 or 500, err.message)
     end
     if data then
       return utils.success(data)
@@ -95,7 +95,7 @@ function BaseController:new(dao_collection, collection)
   app:delete("/"..collection.."/:id", function(self)
     local ok, err = dao_collection:delete(self.params.id)
     if err then
-      return utils.show_error(500, err)
+      return utils.show_error(err.is_schema and 400 or 500, err.message)
     end
     if ok then
       return utils.no_content()
@@ -111,7 +111,7 @@ function BaseController:new(dao_collection, collection)
     params.id = self.params.id
     local data, err = dao_collection:update(params)
     if err then
-      return utils.show_error(500, err)
+      return utils.show_error(err.is_schema and 400 or 500, err.message)
     end
     if data then
       return utils.success(data)
