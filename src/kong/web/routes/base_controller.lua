@@ -29,8 +29,8 @@ local function parse_params(dao_collection, params)
   for k,v in pairs(params) do
     if not dao_collection._schema[k] then
       params[k] = nil
-    elseif dao_collection._schema[k].type == "table" then
-      if not v or stringy.strip(v) == "" then
+    elseif dao_collection._schema[k].type == "table" and type(v) ~= "table" then
+      if v == nil or stringy.strip(v) == "" then
         params[k] = nil
       else
         -- It can either be a JSON map or a string array separated by comma

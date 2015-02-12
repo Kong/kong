@@ -49,7 +49,7 @@ local Migration = {
         value text, -- We can't use a map because we don't know if the value is a text, int or a list
         enabled boolean,
         created_at timestamp,
-        PRIMARY KEY (id, api_id, name)
+        PRIMARY KEY (id, name)
       );
 
       CREATE INDEX IF NOT EXISTS ON plugins(api_id);

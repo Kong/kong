@@ -13,7 +13,7 @@ export SILENT ?=
 .PHONY: build global test test-web test-all run migrate populate drop
 
 global:
-	@luarocks make kong-*.rockspec --only-server=http://rocks.moonscript.org 
+	@luarocks make kong-*.rockspec --only-server=http://rocks.moonscript.org
 
 test:
 	@busted spec/unit
@@ -40,7 +40,7 @@ test-all:
 	@$(MAKE) build DAEMON=on
 	@$(MAKE) migrate SILENT=-s
 	@$(MAKE) run
-	@sleep 2 # Wait for the nginx process to start
+	@sleep 2 # Wait for the nginx process to start (this can be done better)
 	@$(MAKE) seed SILENT=-s
 	@busted spec/ || (make stop;make drop; exit 1)
 	@$(MAKE) stop

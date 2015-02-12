@@ -345,6 +345,23 @@ function _M.post(url, form, headers)
   }
 end
 
+-- PUT method
+function _M.put(url, table, headers)
+  if not headers then headers = {} end
+  if not table then table = {} end
+  local raw_json = cjson.encode(table)
+
+  headers["content-length"] = string.len(raw_json)
+  headers["content-type"] = "application/json"
+
+  return http_call {
+    method = "PUT",
+    url = url,
+    headers = headers,
+    source = ltn12.source.string(raw_json)
+  }
+end
+
 -- DELETE methpd
 function _M.delete(url, querystring, headers)
   if not headers then headers = {} end

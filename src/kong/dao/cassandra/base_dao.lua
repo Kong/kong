@@ -60,7 +60,7 @@ local function encode_cassandra_values(schema, t, parameters)
       value = cassandra.timestamp(value)
     elseif schema_field.type == "table" and value then
       value = cjson.encode(value)
-    elseif not value then
+    elseif value == nil then
       value = cassandra.null
     end
 
@@ -330,7 +330,7 @@ function BaseDao:update(t)
     -- @see Test case
     -- @see https://issues.apache.org/jira/browse/DATABASE-7304
     for k,v in pairs(results[1]) do
-      if not t[k] then
+      if t[k] == nil then
         t[k] = v
       end
     end
