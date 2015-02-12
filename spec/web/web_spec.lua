@@ -56,6 +56,9 @@ local ENDPOINTS = {
       end,
       value = '{"period":"second", "limit": 10}'
     },
+    update_fields = {
+      enabled = false
+    },
     error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}'
   }
 }
@@ -112,6 +115,25 @@ describe("Web API #web", function()
         assert.are.equal(404, status)
         assert.truthy(body)
         assert.are.equal('{"id":"'..IDS[v.collection]..'blah is an invalid uuid"}', response)
+      end)
+      it("should update", function()
+        local data = utils.get(kWebURL.."/"..v.collection.."/"..IDS[v.collection])
+        local body = cjson.decode(data)
+
+        -- Create new body
+        for k,v in pairs(v.update_fields) do
+          body[k] = v
+        end
+
+        local response, status, headers = utils.put(kWebURL.."/"..v.collection.."/"..IDS[v.collection], body)
+        body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.truthy(body)
+        assert.are.equal(IDS[v.collection], body.id)
+
+        for k,v in pairs(v.update_fields) do
+          assert.are.equal(v, body[k])
+        end
       end)
       it("should create with invalid params", function()
         local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", {})

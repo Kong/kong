@@ -19,7 +19,7 @@ function _M.validate(t, schema)
   for column, v in pairs(schema) do
 
     -- Set default value for the filed if given
-    if not t[column] and v.default ~= nil then
+    if t[column] == nil and v.default ~= nil then
       if type(v.default) == "function" then
         t[column] = v.default()
       else

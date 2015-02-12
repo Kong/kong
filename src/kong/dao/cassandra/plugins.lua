@@ -21,13 +21,13 @@ function Plugins:new(database, properties)
   self._deserialize = true
   self._queries = {
     insert = {
-      params = { "id", "api_id", "application_id", "name", "value", "created_at" },
-      query = [[ INSERT INTO plugins(id, api_id, application_id, name, value, created_at)
-                  VALUES(?, ?, ?, ?, ?, ?); ]]
+      params = { "id", "api_id", "application_id", "name", "value", "enabled", "created_at" },
+      query = [[ INSERT INTO plugins(id, api_id, application_id, name, value, enabled, created_at)
+                  VALUES(?, ?, ?, ?, ?, ?, ?); ]]
     },
     update = {
-      params = { "application_id", "value", "created_at", "id" },
-      query = [[ UPDATE plugins SET application_id = ?, value = ?, created_at = ? WHERE id = ?; ]]
+      params = { "api_id", "application_id", "value", "enabled", "created_at", "id", "name" },
+      query = [[ UPDATE plugins SET api_id = ?, application_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM plugins %s; ]]
