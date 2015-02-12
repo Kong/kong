@@ -44,10 +44,13 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
   end
 
   if #data > 0 then
-    return table.remove(data, 1)
-  else
-    return nil
+    local plugin = table.remove(data, 1)
+    if plugin.enabled then
+      return plugin
+    end
   end
+
+  return nil
 end
 
 function _M.init(configuration_path)
