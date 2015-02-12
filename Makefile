@@ -40,7 +40,6 @@ test-all:
 	@$(MAKE) build DAEMON=on
 	@$(MAKE) migrate SILENT=-s
 	@$(MAKE) run
-	@sleep 2 # Wait for the nginx process to start (this can be done better)
 	@$(MAKE) seed SILENT=-s
 	@busted spec/ || (make stop;make drop; exit 1)
 	@$(MAKE) stop
