@@ -198,8 +198,6 @@ function BaseDao:_execute_prepared_stmt(statement, values_to_bind, options)
     end
   end
 
-  local connected, err = self._db:
-
   local results, err = self._db:execute(statement.query, values_to_bind, options)
   if err then
     err = self:_build_error(error_types.DATABASE, err)

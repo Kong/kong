@@ -21,6 +21,7 @@ function CassandraFactory:new(properties)
   self._properties = properties
   self._migrations = migrations(self, { keyspace = properties.keyspace })
   self._db = cassandra.new()
+  self._db:connect(properties.host, properties.port)
   self._db:set_timeout(properties.timeout)
 
   -- Public
@@ -72,7 +73,6 @@ end
 -- Utilities
 --
 function CassandraFactory:prepare()
-  self._db:connect(properties.host, properties.port)
   self._db:set_keyspace(self._properties.keyspace)
 
   self.apis:prepare()
@@ -80,8 +80,6 @@ function CassandraFactory:prepare()
   self.plugins:prepare()
   self.accounts:prepare()
   self.applications:prepare()
-
-  self._db:setkeepalive()
 end
 
 function CassandraFactory:execute(stmt, no_keyspace)
