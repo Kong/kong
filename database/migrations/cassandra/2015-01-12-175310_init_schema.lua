@@ -46,7 +46,7 @@ local Migration = {
         api_id uuid,
         application_id uuid,
         name text,
-        value text, -- We can't use a map because we don't know if the value is a text, int or a list
+        value text, -- serialized plugin data
         enabled boolean,
         created_at timestamp,
         PRIMARY KEY (id, name)
