@@ -31,11 +31,11 @@ function _M.validate(t, schema)
       errors = utils.add_error(errors, column, column.." is required")
 
     -- Check type if table
-    elseif v.type == "table" and t[column] and type(t[column]) ~= "table" then
+    elseif v.type == "table" and t[column] ~= nil and type(t[column]) ~= "table" then
       errors = utils.add_error(errors, column, column.." is not a table")
 
     -- Check type if value is allowed in the enum
-    elseif v.enum and t[column] then
+    elseif v.enum and t[column] ~= nil then
       local found = false
       for _,allowed in ipairs(v.enum) do
         if allowed == t[column] then
@@ -49,13 +49,13 @@ function _M.validate(t, schema)
       end
 
     -- Check field against a regex if specified
-    elseif t[column] and v.regex then
+    elseif t[column] ~= nil and v.regex then
       if not rex.match(t[column], v.regex) then
         errors = utils.add_error(errors, column, column.." has an invalid value")
       end
 
     -- Check field against a custom function
-    elseif t[column] and v.func and type(v.func) == "function" then
+    elseif t[column] ~= nil and v.func and type(v.func) == "function" then
       local ok, err = v.func(t[column], t)
       if not ok or err then
         errors = utils.add_error(errors, column, err)
@@ -65,7 +65,7 @@ function _M.validate(t, schema)
 
   -- Check for unexpected fields in the entity
   for k,v in pairs(t) do
-    if not schema[k] then
+    if schema[k] == nil then
       errors = utils.add_error(errors, k, k.." is an unknown field")
     end
   end
