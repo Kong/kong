@@ -198,6 +198,8 @@ function BaseDao:_execute_prepared_stmt(statement, values_to_bind, options)
     end
   end
 
+  local connected, err = self._db:
+
   local results, err = self._db:execute(statement.query, values_to_bind, options)
   if err then
     err = self:_build_error(error_types.DATABASE, err)
@@ -337,7 +339,7 @@ function BaseDao:update(t)
   end
 
   -- Validate schema
-  local valid_schema, errors = validate(t, self._schema)
+  local valid_schema, errors = validate(t, self._schema, true)
   if not valid_schema then
     return nil, self:_build_error(error_types.SCHEMA, errors)
   end

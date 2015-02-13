@@ -9,10 +9,10 @@ local _M = {}
 -- Validate a table against a given schema
 -- @param {table} t Table to validate
 -- @param {table} schema Schema against which to validate the table
--- @param {table} dao
+-- @param {boolean} is_update For an entity update, we might want a slightly different behaviour
 -- @return {boolean} Success of validation
 -- @return {table} A list of encountered errors during the validation
-function _M.validate(t, schema)
+function _M.validate(t, schema, is_update)
   local errors
 
   -- Check the given table against a given schema
@@ -60,6 +60,10 @@ function _M.validate(t, schema)
       if not ok or err then
         errors = utils.add_error(errors, column, err)
       end
+
+    -- is_update check immutability of a field
+    elseif is_update and t[column] ~= nil and v.immutable then
+      errors = utils.add_error(errors, column, column.." cannot be updated")
     end
   end
 

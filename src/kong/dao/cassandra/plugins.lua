@@ -8,7 +8,7 @@ local SCHEMA = {
   id = { type = "id" },
   api_id = { type = "id", required = true, foreign = true, queryable = true },
   application_id = { type = "id", foreign = true, queryable = true },
-  name = { required = true, queryable = true },
+  name = { required = true, queryable = true, immutable = true },
   value = { type = "table", required = true },
   enabled = { type = "boolean", default = true },
   created_at = { type = "timestamp" }
@@ -120,7 +120,7 @@ function Plugins:insert(t)
 end
 
 function Plugins:update(t)
-  local valid_schema, err = schemas.validate(t, self._schema)
+  local valid_schema, err = schemas.validate(t, self._schema, true)
   if not valid_schema then
     return nil, self:_build_error(error_types.SCHEMA, err)
   end
