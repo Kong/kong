@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local kWebURL = "http://localhost:8001/"
 
-local IDS = {}
+local created_ids = {}
 
 local ENDPOINTS = {
   {
@@ -21,7 +21,9 @@ local ENDPOINTS = {
   {
     collection = "accounts",
     total = 3,
-    entity = {},
+    entity = {
+      provider_id = "123456789"
+    },
     update_fields = {
       provider_id = "ABC_provider_ID"
     },
@@ -34,7 +36,7 @@ local ENDPOINTS = {
       public_key = "PUB_key",
       secret_key = "SEC_key",
       account_id = function()
-        return IDS.accounts
+        return created_ids.accounts
       end
     },
     update_fields = {
@@ -49,10 +51,10 @@ local ENDPOINTS = {
     entity = {
       name = "ratelimiting",
       api_id = function()
-        return IDS.apis
+        return created_ids.apis
       end,
       application_id = function()
-        return IDS.applications
+        return created_ids.applications
       end,
       value = '{"period":"second", "limit": 10}'
     },
@@ -77,7 +79,14 @@ describe("Web API #web", function()
 
   for i,v in ipairs(ENDPOINTS) do
     describe("#"..v.collection, function()
-      it("should create the entity", function()
+      it("should not create on POST with invalid parameters", function()
+        if v.collection ~= "accounts" then
+          local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", {})
+          assert.are.equal(400, status)
+          assert.are.equal(v.error_message, response)
+        end
+      end)
+      it("should create an entity from valid paremeters", function()
         -- Replace the IDs
         for k,p in pairs(v.entity) do
           if type(p) == "function" then
@@ -91,9 +100,9 @@ describe("Web API #web", function()
         assert.truthy(body)
 
         -- Save the ID for later use
-        IDS[v.collection] = body.id
+        created_ids[v.collection] = body.id
       end)
-      it("should get all", function()
+      it("should GET all entities", function()
         local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/")
         local body = cjson.decode(response)
         assert.are.equal(200, status)
@@ -102,22 +111,22 @@ describe("Web API #web", function()
         --assert.are.equal(v.total, body.total)
         assert.are.equal(v.total, table.getn(body.data))
       end)
-      it("should get one", function()
-        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..IDS[v.collection])
+      it("should GET one entity", function()
+        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body)
-        assert.are.equal(IDS[v.collection], body.id)
+        assert.are.equal(created_ids[v.collection], body.id)
       end)
-      it("should return not found", function()
-        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..IDS[v.collection].."blah")
+      it("should return not found on GET", function()
+        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
         local body = cjson.decode(response)
         assert.are.equal(404, status)
         assert.truthy(body)
-        assert.are.equal('{"id":"'..IDS[v.collection]..'blah is an invalid uuid"}', response)
+        assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}', response)
       end)
-      it("should update", function()
-        local data = utils.get(kWebURL.."/"..v.collection.."/"..IDS[v.collection])
+      it("should update a created entity on PUT", function()
+        local data = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         local body = cjson.decode(data)
 
         -- Create new body
@@ -125,26 +134,14 @@ describe("Web API #web", function()
           body[k] = v
         end
 
-        local response, status, headers = utils.put(kWebURL.."/"..v.collection.."/"..IDS[v.collection], body)
+        local response, status, headers = utils.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
         body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body)
-        assert.are.equal(IDS[v.collection], body.id)
+        assert.are.equal(created_ids[v.collection], body.id)
 
         for k,v in pairs(v.update_fields) do
           assert.are.equal(v, body[k])
-        end
-      end)
-      it("should create with invalid params", function()
-        local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", {})
-        local body = cjson.decode(response)
-        if v.error_message then
-          assert.are.equal(400, status)
-          assert.are.equal(v.error_message, response)
-        else
-          assert.are.equal(201, status)
-          assert.truthy(body)
-          assert.are.equal(IDS[v.collection], body.id)
         end
       end)
     end)
@@ -152,8 +149,8 @@ describe("Web API #web", function()
 
   for i,v in ipairs(ENDPOINTS) do
     describe("#"..v.collection, function()
-      it("should delete one", function()
-        local response, status, headers = utils.delete(kWebURL.."/"..v.collection.."/"..IDS[v.collection])
+      it("should delete an entity on DELETE", function()
+        local response, status, headers = utils.delete(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         assert.are.equal(204, status)
       end)
     end)

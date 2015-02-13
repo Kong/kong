@@ -3,7 +3,7 @@ PWD = `pwd`
 # Dev environment variables
 export DAEMON ?= off
 export LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
-export LUA_CODE_CACHE ?= off
+export LUA_CODE_CACHE ?= on
 export KONG_PORT ?= 8000
 export KONG_WEB_PORT ?= 8001
 export DIR ?= $(PWD)/tmp
