@@ -11,7 +11,7 @@ describe("Validation", function()
       string = { required = true },
       table = { type = "table" },
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
-      date = { default = 123456 },
+      date = { default = 123456, immutable = true },
       allowed = { enum = { "hello", "world" }},
       default = { default = function() return "default" end },
       custom = { func = function(v, t)
@@ -152,6 +152,21 @@ describe("Validation", function()
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.same("Nah", err.custom)
+    end)
+
+    it("should prevent immutable properties to be changed if validating a schema that will be updated", function()
+      -- Success
+      local values = { string = "somestring", date = 1234 }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+
+      -- Failure
+      local valid, err = validate(values, schema, true)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.same("date cannot be updated", err.date)
     end)
 
   end)

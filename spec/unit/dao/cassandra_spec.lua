@@ -232,6 +232,44 @@ describe("Cassandra DAO", function()
         assert.are.same("Plugin already exists", err.message)
       end)
 
+      it("should validate a plugin value schema", function()
+        -- Success
+        -- Insert a new API for a fresh start
+        local api, err = dao_factory.apis:insert(dao_factory.faker:fake_entity("api"))
+        assert.falsy(err)
+        assert.truthy(api.id)
+
+        local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+        assert.falsy(err)
+        assert.True(#apps > 0)
+
+        local plugin_t =  {
+          api_id = api.id,
+          application_id = apps[#apps].id,
+          name = "authentication",
+          value = {
+            authentication_type = "query",
+            authentication_key_names = { "x-kong-key" }
+          }
+        }
+
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        assert.falsy(err)
+        assert.truthy(plugin)
+
+        local ok, err = dao_factory.plugins:delete(plugin.id)
+        assert.True(ok)
+        assert.falsy(err)
+
+        -- Failure
+        plugin_t.value.authentication_type = "hello"
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        assert.truthy(err)
+        assert.truthy(err.schema)
+        assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message.authentication_type)
+        assert.falsy(plugin)
+      end)
+
     end)
   end)
 
@@ -338,9 +376,35 @@ describe("Cassandra DAO", function()
         local app, err = dao_factory.applications:update(app_t)
         assert.falsy(err)
         assert.truthy(app)
+
+        local apps, err = dao_factory._db:execute("SELECT * FROM applications WHERE public_key = ?", { app_t.public_key })
+        assert.falsy(err)
+        assert.are.same(1, #apps)
       end)
 
     end)
+
+    describe("Plugins", function()
+
+      it("should update in DB if entity can be found", function()
+        local plugins, err = dao_factory._db:execute("SELECT * FROM plugins")
+        assert.falsy(err)
+        assert.True(#plugins > 0)
+
+        local plugin_t = plugins[1]
+        plugin_t.value = cjson.decode(plugin_t.value)
+        plugin_t.enabled = false
+        local plugin, err = dao_factory.plugins:update(plugin_t)
+        assert.falsy(err)
+        assert.truthy(plugin)
+
+        local plugins, err = dao_factory._db:execute("SELECT * FROM plugins WHERE id = ?", { cassandra.uuid(plugin_t.id) })
+        assert.falsy(err)
+        assert.are.same(1, #plugins)
+      end)
+
+    end)
+
   end)
 
   describe(":delete()", function()
@@ -358,10 +422,7 @@ describe("Cassandra DAO", function()
     describe_all_collections(function(type, collection)
 
       it("should return false if there was nothing to delete", function()
-        local t = dao_factory.faker:fake_entity(type)
-        t.id = uuid()
-
-        local ok, err = dao_factory[collection]:delete(t.id)
+        local ok, err = dao_factory[collection]:delete(uuid())
         assert.is_not_true(ok)
         assert.falsy(err)
       end)

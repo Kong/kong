@@ -16,7 +16,7 @@ local function check_authentication_key_names(names, plugin_value)
 end
 
 return {
-  authentication_type = { type = "string", required = true, enum = {"query", BASIC, "header"} },
+  authentication_type = { required = true, enum = { "query", BASIC, "header" }, immutable = true },
   authentication_key_names = { type = "table", func = check_authentication_key_names },
   hide_credentials = { type = "boolean", default = false }
 }
