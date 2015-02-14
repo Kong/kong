@@ -1,7 +1,7 @@
 local schemas = require "kong.dao.schemas"
 local validate = schemas.validate
 
-describe("Validation", function()
+describe("Validation #schema", function()
 
   describe("#validate()", function()
     -- Ok kids, today we're gonna test a custom validation schema,

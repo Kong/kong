@@ -5,7 +5,7 @@ local kProxyURL = "http://localhost:8000/"
 local kPostURL = kProxyURL.."/post"
 local kGetURL = kProxyURL.."/get"
 
-describe("Authentication Plugin", function()
+describe("Authentication Plugin #proxy", function()
 
   describe("Query Authentication", function()
 
