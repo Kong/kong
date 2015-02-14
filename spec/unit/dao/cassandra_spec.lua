@@ -281,6 +281,13 @@ describe("Cassandra DAO", function()
         local t = dao_factory.faker:fake_entity(type)
         t.id = uuid()
 
+        -- Remove immutable fields
+        for k,v in pairs(dao_factory[collection]._schema) do
+          if v.immutable and not v.required then
+            t[k] = nil
+          end
+        end
+
         -- No entity to update
         local entity, err = dao_factory[collection]:update(t)
         assert.falsy(entity)
@@ -595,6 +602,27 @@ describe("Cassandra DAO", function()
       end)
 
     end)
+
+    describe("Applications", function()
+
+      it("should find an application by public_key", function()
+        local app, err = dao_factory.applications:find_by_keys {
+          public_key = "user122"
+        }
+        assert.falsy(err)
+        assert.truthy(app)
+      end)
+
+      it("should handle empty strings", function()
+        local apps, err = dao_factory.applications:find_by_keys {
+          public_key = ""
+        }
+        assert.falsy(err)
+        assert.are.same({}, apps)
+      end)
+
+    end)
+
   end)
 
   describe("Metrics", function()

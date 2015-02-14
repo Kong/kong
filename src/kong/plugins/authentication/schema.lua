@@ -4,14 +4,18 @@ local utils = require "kong.tools.utils"
 local BASIC = "basic"
 
 local function check_authentication_key_names(names, plugin_value)
-  if names and type(names) ~= "table" then
-    return false, "You need to specify an array"
-  end
-
-  if plugin_value.authentication_type == BASIC or (names and utils.table_size(names) > 0) then
-    return true
-  else
+  if plugin_value.authentication_type == BASIC then
     return false, "This field is not available for \""..BASIC.."\" authentication"
+  elseif plugin_value.authentication_type ~= BASIC then
+    if names then
+      if type(names) == "table" then
+        return true
+      else
+        return false, "You need to specify an array"
+      end
+    else
+      return false, "This field is required for query and header authentication"
+    end
   end
 end
 
