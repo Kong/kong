@@ -3,7 +3,7 @@ local cjson = require "cjson"
 
 local kProxyURL = "http://localhost:8000/"
 
-describe("RateLimiting Plugin", function()
+describe("RateLimiting Plugin #proxy", function()
 
     describe("Without authentication", function()
       it("should get blocked if exceeding limit by IP address", function()

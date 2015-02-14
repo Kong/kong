@@ -18,7 +18,6 @@ description = {
 dependencies = {
   "lua ~> 5.1",
 
-  "lsqlite3 ~> 0.9.1-2",
   "uuid ~> 0.2-1",
   "lapis ~> 1.1.0-1",
   "luasec ~> 0.5-2",
@@ -28,7 +27,7 @@ dependencies = {
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",
 
-  "busted ~> 2.0.rc5-0",
+  "busted ~> 2.0.rc6-0",
   "luafilesystem ~> 1.6.2"
 }
 build = {

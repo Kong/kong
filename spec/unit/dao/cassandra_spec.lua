@@ -22,7 +22,7 @@ local function describe_all_collections(tests_cb)
 end
 
 -- Let's go
-describe("Cassandra DAO", function()
+describe("Cassandra DAO #dao #cassandra", function()
 
   setup(function()
     dao_factory:migrate()
