@@ -32,11 +32,11 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
-  local data, err = dao.plugins:find_by_keys({
+  local data, err = dao.plugins:find_by_keys {
     api_id = api_id,
     application_id = application_id,
     name = plugin_name
-  })
+  }
 
   if err then
     ngx.log(ngx.ERROR, err)
@@ -109,7 +109,7 @@ function _M.header_filter()
   ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
 
   if not ngx.ctx.error then
-    for _, plugin in ipairs(plugins) do -- Iterate over all the plugins
+    for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
         plugin.handler:header_filter(conf.value)
@@ -120,7 +120,7 @@ end
 
 function _M.body_filter()
   if not ngx.ctx.error then
-    for _, plugin in ipairs(plugins) do -- Iterate over all the plugins
+    for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
         plugin.handler:body_filter(conf.value)
@@ -153,7 +153,7 @@ function _M.log()
     }
 
     ngx.ctx.log_message = message
-    for _, plugin in ipairs(plugins) do -- Iterate over all the plugins
+    for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
         plugin.handler:log(conf.value)

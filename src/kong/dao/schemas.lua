@@ -62,7 +62,7 @@ function _M.validate(t, schema, is_update)
       end
 
     -- is_update check immutability of a field
-    elseif is_update and t[column] ~= nil and v.immutable then
+    elseif is_update and t[column] ~= nil and v.immutable and not v.required then
       errors = utils.add_error(errors, column, column.." cannot be updated")
     end
   end

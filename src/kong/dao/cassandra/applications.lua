@@ -4,7 +4,7 @@ local SCHEMA = {
   id = { type = "id" },
   account_id = { type = "id", required = true, foreign = true, queryable = true },
   public_key = { required = true, unique = true, queryable = true },
-  secret_key = { required = true },
+  secret_key = {},
   created_at = { type = "timestamp" }
 }
 

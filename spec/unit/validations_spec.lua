@@ -8,7 +8,7 @@ describe("Validation", function()
     -- grab a pair of glasses, this stuff can literally explode.
     local collection = "custom_object"
     local schema = {
-      string = { required = true },
+      string = { required = true, immutable = true },
       table = { type = "table" },
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456, immutable = true },
@@ -167,6 +167,14 @@ describe("Validation", function()
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.same("date cannot be updated", err.date)
+    end)
+
+    it("should ignore required properties if they are immutable and we are updating", function()
+      local values = { string = "somestring" }
+
+      local valid, err = validate(values, schema, true)
+      assert.falsy(err)
+      assert.truthy(valid)
     end)
 
   end)
