@@ -1,7 +1,5 @@
 -- Copyright (C) Mashape, Inc.
 
-local Metric = nil
-
 local AVAILABLE_PERIODS = {
   second = true,
   minute = true,
@@ -50,6 +48,7 @@ function _M.execute(conf)
   end
 
   ngx.header["X-RateLimit-Limit"] = limit
+
   if current_usage >= limit then
     set_header_limit_remaining(limit - current_usage)
     utils.show_error(429, "API rate limit exceeded")
