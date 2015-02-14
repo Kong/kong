@@ -1,4 +1,4 @@
--- Implementation of CQL Binary protocol V2 available:
+-- Implementation of CQL Binary protocol V2 available at:
 -- https://git-wip-us.apache.org/repos/asf?p=cassandra.git;a=blob_plain;f=doc/native_protocol_v2.spec;hb=HEAD
 
 local _M = {}
@@ -6,6 +6,10 @@ local _M = {}
 _M.version = "0.0.1"
 
 local CQL_VERSION = "3.0.0"
+
+--
+-- PROTOCOL BITMASKS AND TYPES
+--
 
 local version_codes = {
     REQUEST=0x02,
@@ -69,6 +73,24 @@ local result_kinds = {
     SCHEMA_CHANGE=0x05
 }
 
+local error_codes = {
+    [0x0000]= "Server error",
+    [0x000A]= "Protocol error",
+    [0x0100]= "Bad credentials",
+    [0x1000]= "Unavailable exception",
+    [0x1001]= "Overloaded",
+    [0x1002]= "Is_bootstrapping",
+    [0x1003]= "Truncate_error",
+    [0x1100]= "Write_timeout",
+    [0x1200]= "Read_timeout",
+    [0x2000]= "Syntax_error",
+    [0x2100]= "Unauthorized",
+    [0x2200]= "Invalid",
+    [0x2300]= "Config_error",
+    [0x2400]= "Already_exists",
+    [0x2500]= "Unprepared"
+}
+
 local types = {
     custom=0x00,
     ascii=0x01,
@@ -92,7 +114,7 @@ local types = {
     set=0x22
 }
 
--- create function for type annotation
+-- create functions for type annotations
 for key, value in pairs(types) do
     _M[key] = function(value)
         return {type=key, value=value}
@@ -100,26 +122,6 @@ for key, value in pairs(types) do
 end
 
 _M.null = {type="null", value=nil}
-
-local error_codes = {
-    [0x0000]= "Server error",
-    [0x000A]= "Protocol error",
-    [0x0100]= "Bad credentials",
-    [0x1000]= "Unavailable exception",
-    [0x1001]= "Overloaded",
-    [0x1002]= "Is_bootstrapping",
-    [0x1003]= "Truncate_error",
-    [0x1100]= "Write_timeout",
-    [0x1200]= "Read_timeout",
-    [0x2000]= "Syntax_error",
-    [0x2100]= "Unauthorized",
-    [0x2200]= "Invalid",
-    [0x2300]= "Config_error",
-    [0x2400]= "Already_exists",
-    [0x2500]= "Unprepared"
-}
-
-local mt = { __index = _M }
 
 -- see: http://en.wikipedia.org/wiki/Fisher-Yates_shuffle
 local function shuffle(t)
@@ -138,11 +140,13 @@ end
 --- SOCKET METHODS
 ---
 
+local mt = { __index = _M }
+
 function _M.new(self)
     math.randomseed(ngx and ngx.time() or os.time())
 
     local tcp
-    if ngx and ngx.get_phase() ~= "init" then
+    if ngx and ngx.get_phase ~= nil and ngx.get_phase() ~= "init" then
         -- openresty
         tcp = ngx.socket.tcp
     else
@@ -156,6 +160,7 @@ function _M.new(self)
     if not sock then
         return nil, err
     end
+
     return setmetatable({ sock = sock }, mt)
 end
 
@@ -956,15 +961,33 @@ function _M.prepare(self, query, options)
     return result
 end
 
+-- Default query options
+local default_options = {
+    consistency_level=consistency.ONE,
+    page_size=5000,
+    auto_paging=false
+}
+
 function _M.execute(self, query, args, options)
     if not options then options = {} end
 
     -- Default options
-    if not options.consistency_level then
-        options.consistency_level = consistency.ONE
+    for k,v in pairs(default_options) do
+        if options[k] == nil then
+            options[k] = v
+        end
     end
-    if not options.page_size then
-        options.page_size = 100
+
+    if options.auto_paging then
+        local page = 0
+        return function(query, paging_state)
+            local rows, err = self:execute(query, args, {
+                page_size=options.page_size,
+                paging_state=paging_state
+            })
+            page = page + 1
+            return rows.meta.paging_state, rows, page
+        end, query, nil
     end
 
     -- Determine if query is a query, statement, or batch
@@ -979,7 +1002,6 @@ function _M.execute(self, query, args, options)
         op_code = op_codes.EXECUTE
         query_repr = short_bytes_representation(query.id)
     end
-
 
     -- Flags of the <query_parameters>
     local flags_repr = 0
@@ -1022,31 +1044,27 @@ function _M.execute(self, query, args, options)
     local kind = read_int(buffer)
     if kind == result_kinds.VOID then
         result = {
-            type = "VOID"
+            type="VOID"
         }
     elseif kind == result_kinds.ROWS then
         local metadata = parse_metadata(buffer)
         result = parse_rows(buffer, metadata)
         result.type = "ROWS"
         result.meta = {
-            has_more_pages = metadata.has_more_pages,
-            paging_state = metadata.paging_state
+            has_more_pages=metadata.has_more_pages,
+            paging_state=metadata.paging_state
         }
-        -- TODO: if auto_paging option is set, return an iterator which
-        -- keeps calling the next pages and return page by page to the user.
-        -- Similar to "Handling Paged Results" here:
-        -- https://datastax.github.io/python-driver/query_paging.html
     elseif kind == result_kinds.SET_KEYSPACE then
         result = {
-            type = "SET_KEYSPACE",
-            keyspace = read_string(buffer)
+            type="SET_KEYSPACE",
+            keyspace=read_string(buffer)
         }
     elseif kind == result_kinds.SCHEMA_CHANGE then
         result = {
-            type = "SCHEMA_CHANGE",
-            change = read_string(buffer),
-            keyspace = read_string(buffer),
-            table = read_string(buffer)
+            type="SCHEMA_CHANGE",
+            change=read_string(buffer),
+            keyspace=read_string(buffer),
+            table=read_string(buffer)
         }
     else
         error(string.format("Invalid result kind: %x", kind))
