@@ -4,11 +4,7 @@ local cjson = require "cjson"
 
 local _M = {}
 
-function _M.execute(conf)
-  utils.create_timer(log, conf, ngx.ctx.log_message)
-end
-
-function log(premature, conf, message)
+local function log(premature, conf, message)
   local lower_type = string.lower(conf.type)
   if lower_type == "nginx_log" then
     ngx.log(ngx.INFO, cjson.encode(message))
@@ -41,6 +37,10 @@ function log(premature, conf, message)
       return
     end
   end
+end
+
+function _M.execute(conf)
+  utils.create_timer(log, conf, ngx.ctx.log_message)
 end
 
 return _M

@@ -43,7 +43,7 @@ local ENDPOINTS = {
       public_key = "newPUB",
       secret_key = "newSEC"
     },
-    error_message = '{"account_id":"account_id is required","secret_key":"secret_key is required","public_key":"public_key is required"}'
+    error_message = '{"account_id":"account_id is required","public_key":"public_key is required"}'
   },
   {
     collection = "plugins",

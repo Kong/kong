@@ -8,7 +8,6 @@ local Applications = require "kong.web.routes.applications"
 
 app = lapis.Application()
 
--- Handle index
 app:get("/", function(self)
   return utils.success({
     tagline = "Welcome to Kong",
@@ -16,7 +15,6 @@ app:get("/", function(self)
   })
 end)
 
--- Handle 404 page
 app.handle_404 = function(self)
   return utils.not_found()
 end
