@@ -1,0 +1,116 @@
+{
+  "Getting started": [
+    {
+      "text": "Overview",
+      "url": "/docs/overview"
+    },
+    {
+      "text": "Run it for the first time",
+      "url": "#"
+    }
+  ],
+  "Advanced": [
+    {
+      "text": "Configuration",
+      "url": "/docs/configuration"
+    },
+    {
+      "text": "Datastores",
+      "url": "#"
+    },
+    {
+      "text": "Plugins",
+      "url": "#"
+    },
+    {
+      "text": "Scalability",
+      "url": "#"
+    }
+  ],
+  "Support": [
+    {
+      "text": "Open Source",
+      "url": "#"
+    },
+    {
+      "text": "Enterprise",
+      "url": "#"
+    }
+  ],
+  "Internal API endpoints": [
+    {
+      "text": "API object",
+      "url": "#",
+      "items": [
+        {
+          "text": "Overview",
+          "url": "#"
+        },
+        {
+          "text": "Create API",
+          "url": "#"
+        },
+        {
+          "text": "Get API",
+          "url": "#"
+        },
+        {
+          "text": "List APIs",
+          "url": "#"
+        },
+        {
+          "text": "Delete API",
+          "url": "#"
+        }
+      ]
+    },
+    {
+      "text": "Account Object",
+      "url": "#",
+      "items": [
+        {
+          "text": "Overview",
+          "url": "#"
+        },
+        {
+          "text": "Create Account",
+          "url": "#"
+        },
+        {
+          "text": "List Accounts",
+          "url": "#"
+        },
+        {
+          "text": "Delete Account",
+          "url": "#"
+        }
+      ]
+    },
+    {
+      "text": "Application Object",
+      "url": "#",
+      "items": [
+        {
+          "text": "Overview",
+          "url": "#"
+        },
+        {
+          "text": "Create Application",
+          "url": "#"
+        },
+        {
+          "text": "Get Application",
+          "url": "#"
+        },
+        {
+          "text": "List Applications",
+          "url": "#"
+        },
+        {
+          "text": "Delete Application",
+          "url": "#"
+        }
+      ]
+    }
+  ]
+}

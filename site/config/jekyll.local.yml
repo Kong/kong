@@ -1,0 +1,21 @@
+source: app
+destination: .app
+layouts: _layouts
+exclude: ['node_modules', '.config']
+keep_files: ['assets']
+timezone: America/Toronto
+
+collections:
+  docs:
+    output: true
+    permalink: /docs/:path/
+
+lsi: true
+future: true
+highligter: rouge
+markdown: redcarpet
+
+name: Kong by Mashape
+twitter: mashape
+domain: localhost:3000
+url: http://localhost:9000

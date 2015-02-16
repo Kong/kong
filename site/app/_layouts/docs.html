@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" itemscope itemtype="http://schema.org/Article">
+{% include head.html %}
+<body id="{{ page.id }}">
+{% include nav.html %}
+
+<div class="page">
+  <header class="page-header">
+    <div class="container">
+      <div class="page-header-icon">
+        <img src="/assets/images/icons/01-icn-documentation.svg" alt=""/>
+      </div>
+      <div class="page-header-title">
+        <h2>Documentation</h2>
+        <p>Masterize Kong in one hour</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="page-navigation">
+      {% for groupItem in site.data.docs_menu_items %}
+        <nav>
+          <h5>{{  groupItem[0] }}</h5>
+          <ul>
+            {% for item in groupItem[1] %}
+              <li>
+                <a href="{{ item.url }}"{% if item.text == page.id %} class="active"{% endif %}>{{ item.text }}</a>
+
+                {% if item.items %}
+                <ul>
+                  {% for subitem in item.items %}
+                  <li><a href="{{ subitem.url }}">{{ subitem.text }}</a></li>
+                  {% endfor %}
+                </ul>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </nav>
+      {% endfor %}
+    </aside>
+
+    <div class="page-container">
+      <div class="page-content">
+        {{ content }}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include footer.html %}
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="/assets/app.js?v={{site.time}}"></script>
+</body>
+</html>

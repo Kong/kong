@@ -1,0 +1,114 @@
+// Skeleton overrides
+// -------------------------
+
+body {
+  font-family: @family-whitney-ss, @family-default;
+  color: @font-color;
+}
+
+.container {
+  max-width: 1020px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: 0;
+}
+
+.button.button-primary,
+button.button-primary,
+input[type="submit"].button-primary,
+input[type="reset"].button-primary,
+input[type="button"].button-primary {
+  border: 0 none;
+  padding: 1px 14px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .2);
+  border-radius: 3px;
+  background-color: @green;
+  background-image: linear-gradient(to bottom, #29af65, #20a659);
+  box-shadow: inset 0 -1px 0 #177942;
+
+  &:hover {
+    background-image: linear-gradient(to bottom, #16a257, #0c8d41);
+    box-shadow: inset 0 -1px 0 #096830;
+  }
+
+  &:active {
+    background-image: linear-gradient(to bottom, #0c803c, #149651);
+    box-shadow: inset 0 1px 0 #085e2c;
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, .2);
+  }
+}
+
+.button,
+button,
+input[type="submit"],
+input[type="reset"],
+input[type="button"] {
+  border-radius: 3px;
+  letter-spacing: 0;
+  font-weight: 600;
+  text-transform: none;
+  font-size: 13px;
+  color: @green;
+  border-color: #bae2cc;
+  height: 36px;
+  line-height: 35px;
+  padding: 0 13px;
+  margin: 0;
+
+  &:hover,
+  &:active,
+  &:focus {
+    color: @green;
+    border-color: #7bcd9f;
+  }
+
+  &:hover {
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, .15), rgba(189, 230, 207, .15));
+  }
+
+  &:active {
+    background: #e8f8ee;
+  }
+}
+
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+  border-radius: 3px;
+  &:focus {
+    border: 1px solid @green;
+    outline: 0;
+  }
+}
+
+.button-large {
+  font-size: 16px;
+  line-height: 42px;
+  height: 44px;
+}
+
+code {
+  padding: 2px 4px;
+  font-size: 90%;
+  color: #c7254e;
+  background-color: #f9f2f4;
+  border-radius: 0;
+  border: 0 none;
+  margin: 0;
+}
+
+a {
+  color: @green;
+  text-decoration: none;
+
+  &:hover {
+    color: @green - 30%;
+  }
+}

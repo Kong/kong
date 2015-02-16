@@ -1,0 +1,10 @@
+---
+---
+{% for page in site.docs %}
+{% if page.sitemap != null and page.sitemap != false %}
+{{site.url}}{{ page.url }}
+{% endif %}
+{% endfor %}
+{% for post in site.posts %}
+{{site.url}}{{ post.url }}
+{% endfor %}
