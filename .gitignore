@@ -3,6 +3,11 @@ tmp/
 .vagrant/
 .buildpath
 .project
+.idea
+npm-debug.log
+Gemfile.lock
+site/dist
+\.gh-pages
 
 # gh-pages
 node_modules/
