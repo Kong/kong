@@ -6,20 +6,15 @@ This is the source of the frontend code.
 
 - Bundler
 - NPM
-
+- Bower
 
 ## Install
 
-for linux systems:
-
-> ```bash
-sudo apt-get install ruby-dev
-> ```
+All bash commands must be executed in `./site` directory.
 
 >```bash
 npm install
 >```
-
 
 ## Running Locally
 
@@ -27,14 +22,7 @@ npm install
 gulp
 >```
 
-
 ## Building
-
-For staging:
-
->```bash
-gulp build:staging
->```
 
 For production:
 
