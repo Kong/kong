@@ -3,9 +3,17 @@
   border-bottom: 1px solid #ebebeb;
   padding: 50px 0;
 
+  @media (max-width: 800px) {
+    padding: 25px 0;
+  }
+
   h2 {
     font-size: 33px;
     font-weight: 300;
+
+    @media (max-width: 800px) {
+      font-size: 25px;
+    }
   }
 
   h2, p {
@@ -14,10 +22,24 @@
 
   .page-header-icon {
     float: left;
+    width: 64px;
+    
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    @media (max-width: 800px) {
+      width: 48px;
+    }
   }
 
   .page-header-title {
     padding-left: 90px;
+
+    @media (max-width: 800px) {
+      padding-left: 68px;
+    }
   }
 }
 
@@ -26,6 +48,19 @@
   width: 230px;
   padding: 60px 0;
   border-right: 1px solid #ebebeb;
+
+  @media (max-width: 800px) {
+    float: none;
+    padding: 25px 0;
+    border: 0 none;
+    width: auto;
+
+    nav {
+      h5, a {
+        font-size: 15px;
+      }
+    }
+  }
 
   h5 {
     font-family: @family-whitney-ss-sc;
@@ -66,6 +101,10 @@
 
 .page-container {
   padding: 60px 0 60px 230px;
+
+  @media (max-width: 800px) {
+    padding: 0;
+  }
 }
 
 .page-content {
@@ -73,6 +112,10 @@
   font-size: 18px;
   font-family: @family-whitney;
   line-height: 1.5;
+
+  @media (max-width: 800px) {
+    padding: 0;
+  }
 
   .big {
     font-size: 23px;
@@ -118,21 +161,21 @@
     border-top: 4px solid #ebebeb;
   }
 
-  figure {
-    img {
-      display: block;
-    }
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
 
-    figcaption {
-      border: 1px solid #efefef;
-      border-radius: 0 0 3px 3px;
-      background-color: #fcfcfc;
-      font-family: @family-whitney-ss;
-      font-size: 13px;
-      padding: 14px 13px;
-      line-height: 1;
-      color: #879199;
-    }
+  figcaption {
+    border: 1px solid #efefef;
+    border-radius: 0 0 3px 3px;
+    background-color: #fcfcfc;
+    font-family: @family-whitney-ss;
+    font-size: 13px;
+    padding: 14px 13px;
+    line-height: 1;
+    color: #879199;
   }
 
   pre {
