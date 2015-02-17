@@ -1,6 +1,6 @@
-## Apenode
+## Kong
 
-[![Build Status](https://magnum.travis-ci.com/Mashape/lua-resty-apenode.svg?token=ZqXY1Sn8ga8gv6vUrw3N&branch=master)](https://magnum.travis-ci.com/Mashape/lua-resty-apenode)
+[![Build Status](https://travis-ci.org/Mashape/kong.svg)](https://travis-ci.org/Mashape/kong)
 
 ```
  ______________________________________
