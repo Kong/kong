@@ -15,7 +15,7 @@
 ### Requirements
 - Lua `5.1`
 - Luarocks for Lua `5.1`
-- [Openrestify](http://openresty.com/#Download) `1.7.4.1`
+- [OpenResty](http://openresty.com/#Download) `1.7.7.2`
 
 ### Run Kong (development)
 
