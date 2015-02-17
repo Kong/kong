@@ -1,11 +1,3 @@
----
-title: Overview
-category: docs
-layout: docs
-id: Overview
-sitemap: true
----
-
 #Overview
 
 Welcome to the Kong official documentation, that will help you setting up Kong, configuring it and operating it. We reccomend reading every section of this document to have a full understanding of the project.
@@ -70,7 +62,7 @@ Running Kong is very easy and will take a couple of minutes. To get started quic
 
 The Docker, Vagrant and AWS deployment options will already start a local Apache Cassandra instance. This is great for testing Kong, but once you go to production we reccomend having dedicated servers/instances for your Cassandra cluster.
 
-# Configuration
+# <a name="configuration"></a> Configuration
 
 Configuration here
 

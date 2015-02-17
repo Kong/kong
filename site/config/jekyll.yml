@@ -5,17 +5,16 @@ exclude: ['node_modules', '.config']
 keep_files: ['assets']
 timezone: America/Toronto
 
-collections:
-  docs:
-    output: true
-    permalink: /docs/:path/
+defaults:
+  -
+    scope:
+      path: ''
+    values:
+      layout: 'default'
 
 lsi: true
 future: true
-highligter: rouge
-markdown: redcarpet
 
 name: Kong by Mashape
-twitter: mashape
 domain: getkong.org
 url: http://getkong.org

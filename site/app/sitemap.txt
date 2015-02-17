@@ -1,6 +1,7 @@
 ---
+layout:
 ---
-{% for page in site.docs %}
+{% for page in site.pages %}
 {% if page.sitemap != null and page.sitemap != false %}
 {{site.url}}{{ page.url }}
 {% endif %}
