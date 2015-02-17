@@ -4,6 +4,12 @@ SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 KONG_DIR="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 KONG_CONF=$KONG_DIR/nginx/kong.conf
 
+DAEMON="off"
+LUA_LIB=""
+LUA_CODE_CACHE="on"
+KONG_PORT="8000"
+KONG_ADMIN_PORT="8001"
+
 function show_help {
   echo $"Usage: $0 {start|stop|restart}"
   exit 1
@@ -11,10 +17,20 @@ function show_help {
 
 function start {
   echo "Starting Kong"
-  sed -i.bak -e "s@{{KONG_CONF}}@$KONG_CONF@g" $KONG_DIR/nginx/nginx.conf
-  if [ $? -eq 0 ]; then
-    rm $KONG_DIR/nginx/nginx.conf.bak
-  fi
+
+  mkdir -p $KONG_DIR/nginx/logs
+  touch $KONG_DIR/nginx/logs/error.log
+  touch $KONG_DIR/nginx/logs/access.log
+  cp -n $KONG_DIR/templates/kong.conf $KONG_DIR/nginx/kong.conf
+  sed \
+    -e "s/{{DAEMON}}/$DAEMON/g" \
+    -e "s@{{LUA_LIB_PATH}}@$LUA_LIB@g" \
+    -e "s/{{LUA_CODE_CACHE}}/$LUA_CODE_CACHE/g" \
+    -e "s/{{PORT}}/$KONG_PORT/g" \
+    -e "s/{{WEB_PORT}}/$KONG_ADMIN_PORT/g" \
+    -e "s@{{KONG_CONF}}@$KONG_CONF@g" \
+    $KONG_DIR/templates/nginx.conf > $KONG_DIR/nginx/nginx.conf;
+
   nginx -p $KONG_DIR/nginx -c $KONG_DIR/nginx/nginx.conf
 }
 
@@ -28,12 +44,9 @@ function restart {
   start
 }
 
-# A POSIX variable
 OPTIND=1 # Reset in case getopts has been used previously in the shell.
 
-# Initialize our own variables:
 cmd=""
-verbose=0
 
 while getopts "h?v:" opt; do
     case "$opt" in
