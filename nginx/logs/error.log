@@ -1,0 +1,114 @@
+2015/02/16 17:02:30 [alert] 28185#0: lua_code_cache is off; this will hurt performance in /Users/marco/git/kong/nginx/nginx.conf:11
+2015/02/16 17:02:30 [error] 28185#0: init_by_lua error: init_by_lua:1: module 'main' not found:
+	no field package.preload['main']
+	no file '/usr/local/openresty/lualib/main.lua'
+	no file '/usr/local/openresty/lualib/main/init.lua'
+	no file './main.lua'
+	no file '/usr/local/openresty/luajit/share/luajit-2.1.0-alpha/main.lua'
+	no file '/usr/local/share/lua/5.1/main.lua'
+	no file '/usr/local/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/lualib/main.so'
+	no file './main.so'
+	no file '/usr/local/lib/lua/5.1/main.so'
+	no file '/usr/local/openresty/luajit/lib/lua/5.1/main.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	[C]: in function 'require'
+	init_by_lua:1: in main chunk
+2015/02/16 17:20:29 [alert] 28762#0: lua_code_cache is off; this will hurt performance in /Users/marco/git/kong/nginx/nginx.conf:13
+2015/02/16 17:20:29 [error] 28762#0: init_by_lua error: init_by_lua:1: module 'main' not found:
+	no field package.preload['main']
+	no file '/usr/local/openresty/lualib/main.lua'
+	no file '/usr/local/openresty/lualib/main/init.lua'
+	no file './main.lua'
+	no file '/usr/local/openresty/luajit/share/luajit-2.1.0-alpha/main.lua'
+	no file '/usr/local/share/lua/5.1/main.lua'
+	no file '/usr/local/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/lualib/main.so'
+	no file './main.so'
+	no file '/usr/local/lib/lua/5.1/main.so'
+	no file '/usr/local/openresty/luajit/lib/lua/5.1/main.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	[C]: in function 'require'
+	init_by_lua:1: in main chunk
+2015/02/16 17:20:55 [emerg] 28782#0: open() "/Users/marco/git/kong/nginx.conf" failed (2: No such file or directory)
+2015/02/16 17:21:12 [alert] 28804#0: lua_code_cache is off; this will hurt performance in /Users/marco/git/kong/nginx/nginx.conf:13
+2015/02/16 17:21:12 [error] 28804#0: init_by_lua error: init_by_lua:1: module 'main' not found:
+	no field package.preload['main']
+	no file '/usr/local/openresty/lualib/main.lua'
+	no file '/usr/local/openresty/lualib/main/init.lua'
+	no file './main.lua'
+	no file '/usr/local/openresty/luajit/share/luajit-2.1.0-alpha/main.lua'
+	no file '/usr/local/share/lua/5.1/main.lua'
+	no file '/usr/local/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/lualib/main.so'
+	no file './main.so'
+	no file '/usr/local/lib/lua/5.1/main.so'
+	no file '/usr/local/openresty/luajit/lib/lua/5.1/main.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	[C]: in function 'require'
+	init_by_lua:1: in main chunk
+2015/02/16 17:21:21 [error] 28821#0: init_by_lua error: init_by_lua:1: module 'main' not found:
+	no field package.preload['main']
+	no file '/usr/local/openresty/lualib/main.lua'
+	no file '/usr/local/openresty/lualib/main/init.lua'
+	no file './main.lua'
+	no file '/usr/local/openresty/luajit/share/luajit-2.1.0-alpha/main.lua'
+	no file '/usr/local/share/lua/5.1/main.lua'
+	no file '/usr/local/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/lualib/main.so'
+	no file './main.so'
+	no file '/usr/local/lib/lua/5.1/main.so'
+	no file '/usr/local/openresty/luajit/lib/lua/5.1/main.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	[C]: in function 'require'
+	init_by_lua:1: in main chunk
+2015/02/16 17:21:28 [error] 28838#0: init_by_lua error: init_by_lua:1: module 'main' not found:
+	no field package.preload['main']
+	no file '/usr/local/openresty/lualib/main.lua'
+	no file '/usr/local/openresty/lualib/main/init.lua'
+	no file './main.lua'
+	no file '/usr/local/openresty/luajit/share/luajit-2.1.0-alpha/main.lua'
+	no file '/usr/local/share/lua/5.1/main.lua'
+	no file '/usr/local/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/lualib/main.so'
+	no file './main.so'
+	no file '/usr/local/lib/lua/5.1/main.so'
+	no file '/usr/local/openresty/luajit/lib/lua/5.1/main.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	[C]: in function 'require'
+	init_by_lua:1: in main chunk
+2015/02/16 17:23:44 [emerg] 28885#0: unexpected end of file, expecting ";" or "}" in /Users/marco/git/kong/nginx/nginx.conf:22
+2015/02/16 17:35:41 [emerg] 29501#0: directive "daemon" is not terminated by ";" in /Users/marco/git/kong/nginx/nginx.conf:4
+2015/02/16 17:36:07 [error] 29546#0: init_by_lua error: init_by_lua:1: module 'main' not found:
+	no field package.preload['main']
+	no file '/usr/local/openresty/lualib/main.lua'
+	no file '/usr/local/openresty/lualib/main/init.lua'
+	no file './main.lua'
+	no file '/usr/local/openresty/luajit/share/luajit-2.1.0-alpha/main.lua'
+	no file '/usr/local/share/lua/5.1/main.lua'
+	no file '/usr/local/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main.lua'
+	no file '/usr/local/openresty/luajit/share/lua/5.1/main/init.lua'
+	no file '/usr/local/openresty/lualib/main.so'
+	no file './main.so'
+	no file '/usr/local/lib/lua/5.1/main.so'
+	no file '/usr/local/openresty/luajit/lib/lua/5.1/main.so'
+	no file '/usr/local/lib/lua/5.1/loadall.so'
+stack traceback:
+	[C]: in function 'require'
+	init_by_lua:1: in main chunk
