@@ -1,6 +1,6 @@
-# Kong
+# Kong [![Build Status](https://travis-ci.org/Mashape/kong.svg)](https://travis-ci.org/Mashape/kong)
 
-[![Build Status](https://travis-ci.org/Mashape/kong.svg)](https://travis-ci.org/Mashape/kong)
+Kong is a scalable and customizable RESTful API Layer built on top of nginx. It's super fast and lightweight, and it can handle enormous loads.
 
 ```
  ______________________________________
