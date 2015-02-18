@@ -9,7 +9,7 @@ export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
 .PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
 install:
-	@luarocks make kong-*.rockspec
+	@luarocks make kong-*.rockspec PCRE_LIBDIR=$(dirname `find / -type f -name "libpcre.so*" -print -quit`) OPENSSL_LIBDIR=$(dirname `find / -type f -name "libssl.so*" -print -quit`)
 
 dev:
 	@mkdir -p $(DEV_DIR)

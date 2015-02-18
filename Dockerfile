@@ -15,7 +15,7 @@ RUN wget https://github.com/Mashape/kong/archive/$KONG_VERSION.tar.gz && tar xzf
 RUN cd kong-$KONG_VERSION && make install
 
 # run Kong
-CMD kong start
+CMD ["kong start"]
 
 EXPOSE 8000 8001
 
