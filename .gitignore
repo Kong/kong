@@ -1,5 +1,5 @@
-tmp/
-nginx/
+out/
+dev/
 .DS_Store
 .vagrant/
 .buildpath

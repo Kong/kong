@@ -1,42 +1,87 @@
 #!/bin/sh
 
+# Setting Kong Home
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
-KONG_DIR="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
-KONG_CONF=$KONG_DIR/nginx/kong.conf
+KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
-DAEMON="off"
-LUA_LIB=""
-LUA_CODE_CACHE="on"
-KONG_PORT="8000"
-KONG_ADMIN_PORT="8001"
+# Properties
+export KONG_CONF=$KONG_HOME/conf/kong.yaml
+NGINX_CONF=$KONG_HOME/conf/nginx.conf
+PID=$KONG_HOME/out/nginx.pid
+
+DEV_LUA_LIB="lua_package_path \"$KONG_HOME/src/?.lua\;\;\"\;"
+
+######################
+#  Utility function  #
+######################
+
+function check_file_exists {
+  if [ ! -f $1 ]; then
+    printf "Can't find configuration file at: $1\n"
+    exit 1
+  fi
+}
+
+######################
+#     Operations  #
+######################
 
 function show_help {
-  echo $"Usage: $0 {start|stop|restart}"
-  exit 1
+  printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
+\t-c    specify the path to a custom Kong configuration file
+\t      default is: '$KONG_HOME/conf/kong.yaml'
+\t-n    specify the path to a custom Nginx configuration file.
+\t      default is: '$KONG_HOME/conf/nginx.conf'
+\t-v    output version information and exit
+\t-h    show the help
+\nCommands available:\n
+\tstart      start Kong
+\tstop       stop a running Kong
+\trestart    restart Kong
+\t           it is equivalent to executing 'stop' and 'start' in succession
+\tmigrate    performs a database migration, execute this operation carefully
+\n"
+}
+
+function show_version {
+  printf "Kong Version 0.1\n"
 }
 
 function start {
-  echo "Starting Kong"
+  printf "Starting Kong"
 
-  mkdir -p $KONG_DIR/nginx/logs
-  touch $KONG_DIR/nginx/logs/error.log
-  touch $KONG_DIR/nginx/logs/access.log
-  cp -n $KONG_DIR/templates/kong.conf $KONG_DIR/nginx/kong.conf
-  sed \
-    -e "s/{{DAEMON}}/$DAEMON/g" \
-    -e "s@{{LUA_LIB_PATH}}@$LUA_LIB@g" \
-    -e "s/{{LUA_CODE_CACHE}}/$LUA_CODE_CACHE/g" \
-    -e "s/{{PORT}}/$KONG_PORT/g" \
-    -e "s/{{WEB_PORT}}/$KONG_ADMIN_PORT/g" \
-    -e "s@{{KONG_CONF}}@$KONG_CONF@g" \
-    $KONG_DIR/templates/nginx.conf > $KONG_DIR/nginx/nginx.conf;
+  mkdir -p $KONG_HOME/out/logs
+  touch $KONG_HOME/out/logs/error.log
+  touch $KONG_HOME/out/logs/access.log
+  nginx -p $KONG_HOME/out -c $NGINX_CONF
 
-  nginx -p $KONG_DIR/nginx -c $KONG_DIR/nginx/nginx.conf
+  if [ $? -eq 0 ]; then
+    printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
+  else
+    printf "$(tput setaf 1) [ERROR]\n$(tput sgr 0)"
+    exit 1
+  fi
+}
+
+function migrate {
+  $KONG_HOME/scripts/migrate migrate --conf=$KONG_CONF
+  if [ $? -eq 0 ]; then
+    exit 0
+  else
+    exit 1
+  fi
 }
 
 function stop {
-  echo "Stopping Kong"
-  kill $(cat /var/run/nginx.pid)
+  printf "Stopping Kong"
+
+  if [ ! -f $PID ]; then
+    printf "$(tput setaf 1) [NOT RUNNING]\n$(tput sgr 0)"
+    exit 1
+  else
+    kill $(cat $PID)
+    printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
+  fi
 }
 
 function restart {
@@ -44,29 +89,39 @@ function restart {
   start
 }
 
-OPTIND=1 # Reset in case getopts has been used previously in the shell.
+######################
+#  Argument parsing  #
+######################
 
+OPTIND=1 # Reset in case getopts has been used previously in the shell.
 cmd=""
 
-while getopts "h?v:" opt; do
-    case "$opt" in
+while getopts "h?vc:n:" opt; do
+  case "$opt" in
     h|\?)
         show_help
         exit 0
         ;;
-    v)  version=1
+
+    v)  show_version
+        exit 0
         ;;
-    esac
+
+    c)
+        KONG_CONF=`realpath "$OPTARG"`
+        ;;
+    n)
+        NGINX_CONF=`realpath "$OPTARG"`
+        ;;
+  esac
 done
 
 shift $((OPTIND-1))
 
 [ "$1" = "--" ] && shift
 
-if [ $version ]; then
-  echo "Kong Version 0.1"
-  exit 0;
-fi
+check_file_exists $KONG_CONF
+check_file_exists $NGINX_CONF
 
 case "$@" in
   start)
@@ -75,6 +130,10 @@ case "$@" in
 
   stop)
       stop
+      ;;
+
+  migrate)
+      migrate
       ;;
 
   restart)

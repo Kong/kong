@@ -53,9 +53,10 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
   return nil
 end
 
-function _M.init(configuration_path)
+function _M.init()
   -- Loading configuration
-  configuration, dao = utils.load_configuration_and_dao(configuration_path)
+  print(os.getenv("KONG_CONF"))
+  configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
   dao:prepare()
 

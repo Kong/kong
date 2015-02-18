@@ -1,81 +1,51 @@
-PWD = `pwd`
+KONG_HOME = `pwd`
 
 # Dev environment variables
-export DAEMON ?= off
-export LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
-export LUA_CODE_CACHE ?= on
-export KONG_PORT ?= 8000
-export KONG_WEB_PORT ?= 8001
-export DIR ?= $(PWD)/tmp
-export KONG_CONF ?= $(DIR)/kong.conf
-export SILENT ?=
+export DEV_DIR ?= $(KONG_HOME)/dev
+export TEST_DIR ?= $(KONG_HOME)/test
+export KONG_CONF ?= $(DEV_DIR)/kong-dev.yaml
+export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
 
-.PHONY: build global test test-web test-all run migrate populate drop
+.PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
-global:
+install:
 	@luarocks make kong-*.rockspec --only-server=http://rocks.moonscript.org
+
+dev:
+	@mkdir -p $(DEV_DIR)
+	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/conf/nginx.conf > $(DEV_DIR)/nginx-dev.conf
+	@cp $(KONG_HOME)/conf/kong.yaml $(DEV_DIR)/kong-dev.yaml
+
+clean:
+	@rm -rf $(DEV_DIR)
+
+reset:
+	@scripts/migrate reset --conf=$(KONG_CONF)
+
+seed:
+	@scripts/seed seed --conf=$(KONG_CONF)
+
+drop:
+	@scripts/seed drop --conf=$(KONG_CONF)
 
 test:
 	@busted spec/unit
 
+test-integration:
+	@$(MAKE) dev DEV_DIR=$(TEST_DIR)
+	@bin/kong -c $(TEST_DIR)/kong-dev.yaml -n $(TEST_DIR)/nginx-dev.conf start > /dev/null
+	@bin/kong migrate > /dev/null
+	@$(MAKE) seed > /dev/null
+	@busted $(FOLDER) || (bin/kong stop > /dev/null;make drop > /dev/null; exit 1)
+	@bin/kong stop > /dev/null
+	@$(MAKE) drop > /dev/null
+	@$(MAKE) clean DEV_DIR=$(TEST_DIR)
+
 test-web:
-	@$(MAKE) build DAEMON=on
-	@$(MAKE) migrate SILENT=-s
-	@$(MAKE) run
-	@$(MAKE) seed SILENT=-s
-	@busted spec/web/ || (make stop;make drop; exit 1)
-	@$(MAKE) stop
-	@$(MAKE) drop SILENT=-s
+	@$(MAKE) test-integration FOLDER=spec/web
 
 test-proxy:
-	@$(MAKE) build DAEMON=on
-	@$(MAKE) migrate SILENT=-s
-	@$(MAKE) run
-	@$(MAKE) seed SILENT=-s
-	@busted spec/proxy/ || (make stop;make drop; exit 1)
-	@$(MAKE) stop
-	@$(MAKE) drop SILENT=-s
+	@$(MAKE) test-integration FOLDER=spec/proxy
 
 test-all:
-	@$(MAKE) build DAEMON=on
-	@$(MAKE) migrate SILENT=-s
-	@$(MAKE) run
-	@$(MAKE) seed SILENT=-s
-	@busted spec/ || (make stop;make drop; exit 1)
-	@$(MAKE) stop
-	@$(MAKE) drop SILENT=-s
-
-migrate:
-	@scripts/migrate migrate $(SILENT) --conf=$(KONG_CONF)
-
-reset:
-	@scripts/migrate reset $(SILENT) --conf=$(KONG_CONF)
-
-seed:
-	@scripts/seed seed $(SILENT) --conf=$(KONG_CONF)
-
-drop:
-	@scripts/seed drop $(SILENT) --conf=$(KONG_CONF)
-
-run:
-	@nginx -p $(DIR)/nginx -c nginx.conf
-
-stop:
-	@nginx -p $(DIR)/nginx -c nginx.conf -s stop
-
-build:
-	@mkdir -p $(DIR)/nginx/logs
-	@cp templates/kong.conf $(KONG_CONF)
-	@echo "" > $(DIR)/nginx/logs/error.log
-	@echo "" > $(DIR)/nginx/logs/access.log
-	@sed \
-		-e "s/{{DAEMON}}/$(DAEMON)/g" \
-		-e "s@{{LUA_LIB_PATH}}@$(LUA_LIB)@g" \
-		-e "s/{{LUA_CODE_CACHE}}/$(LUA_CODE_CACHE)/g" \
-		-e "s/{{PORT}}/$(KONG_PORT)/g" \
-		-e "s/{{WEB_PORT}}/$(KONG_WEB_PORT)/g" \
-		-e "s@{{KONG_CONF}}@$(KONG_CONF)@g" \
-		templates/nginx.conf > $(DIR)/nginx/nginx.conf;
-
-	@cp -R src/kong/web/static $(DIR)/nginx
-	@cp -R src/kong/web/admin $(DIR)/nginx
+	@$(MAKE) test-integration FOLDER=spec/

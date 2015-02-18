@@ -1,7 +1,7 @@
 # Kong version
 version: 0.1
 
-# Specify the dao to use
+# Specify the DAO to use
 database: cassandra
 
 # Enabled plugins, in this order

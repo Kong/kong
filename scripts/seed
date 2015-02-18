@@ -8,15 +8,12 @@ local function print_usage()
   print("  drop --conf=[conf] [-s] # Drop the database")
   print("Options:")
   print("  --conf=[conf] Path to configuration")
-  print("  -s Silent output")
   print("  -s Random including random data (1000 entities by default)")
   os.exit(1)
 end
 
 local function log(str)
-  if not opts.silent then
-    print(str)
-  end
+  print(str)
 end
 
 -- Command
@@ -25,7 +22,6 @@ local command = arg[1]
 -- Arguments
 opts = {}
 opts.conf = utils.getopt(arg, "conf").conf
-opts.silent = utils.getopt(arg, "s").s
 opts.random = utils.getopt(arg, "r").r
 
 -- Load configuration
