@@ -17,47 +17,46 @@
 - Luarocks for Lua `5.1`
 - [OpenResty](http://openresty.com/#Download) `1.7.7.2`
 
-### Run Kong (development)
+### Installing Kong
 
-- `make global`
-- `make build`
-- `make migrate`
-- `make run`
-  - Proxy: `http://localhost:8000/`
-  - API: `http://localhost:8001/`
+There are two ways to install Kong.
 
-### Commands
+* Using LuaRocks: `sudo luarocks install kong`
+* From source: `sudo make install`
 
-Commands consist of Kong's scripts and Makefile:
+### Running Kong
+
+Execute `kong start`.
+
+To see all the available options, run `kong -h`.
+
+### Running Kong for development
+
+Running Kong for development requires two steps:
+
+* Execute `make dev`.
+* Execute `kong -c dev/kong-dev.conf -n dev/nginx-dev.conf`
+
+The `make dev` command will create a git-ignored `dev` folder with both a copy of Kong and the nginx configuration. This will prevent to accidentally push to master development configuration files.
+
+### Makefile for development
+
+When developing, use the `Makefile` for doing the following operations:
 
 #### Makefile
 
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
-| `global`     | Install the Kong luarock globally                                                                   |
-| `build`      | Generates a Kong environment (nginx + Kong configurations) in a given folder (see `DIR`)            |
-| `migrate`    | Migrate your database according to the given Kong config (see `KONG_CONF`)                          |
-| `reset`      | Reset your database schema according to the given Kong config (see `KONG_CONF`)                     |
-| `seed`       | Seed your database according to the given Kong config                                               |
-| `drop`       | Drop your database according to the given Kong config                                               |
-| `run`        | Runs the given Kong environment in a given folder (see `DIR`)                                       |
-| `stop`       | Stops the given Kong environment in a given folder (see `DIR`)                                      |
+| `install`    | Install the Kong luarock globally                                                                   |
+| `dev`        | Duplicates the default configuration in a git-ignored `dev` folder                                  |
+| `clean`      | Cleans the development environment                                                                  |
+| `reset`      | Reset your database schema according to the development Kong config inside the `dev` folder         |
+| `seed`       | Seed your database according to the development Kong config inside the `dev` folder                 |
+| `drop`       | Drop your database according to the development Kong config inside the `dev` folder                 |
 | `test`       | Runs the unit tests                                                                                 |
 | `test-proxy` | Runs the proxy integration tests                                                                    |
 | `test-web`   | Runs the web integration tests                                                                      |
 | `test-all`   | Runs all unit + integration tests at once                                                           |
-
-#### Makefile variables
-
-| Name                   | Default                   | Commands                  | Description                                                                    |
-| ---------------------- | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `DIR`                  | `tmp/`                    | `build|run|stop`          | Specify a folder where an Kong environment lives or should live if building    |
-| `KONG_CONF`            | `tmp/kong.conf`           | `build|migrate|seed|drop` | Points the command to the given Kong configuration file                        |
-| `DAEMON`               | `off`                     | `build`                   | Sets the nginx daemon property in the generated `nginx.conf`                   |
-| `KONG_PORT`            | `8000`                    | `build`                   | Sets Kong's proxy port in the generated `nginx.conf`                           |
-| `KONG_WEB_PORT`        | `8001`                    | `build`                   | Sets Kong's web port in the generated `nginx.conf`                             |
-| `LUA_CODE_CACHE`       | `off`                     | `build`                   | Sets the nginx `lua_code_cache` property in the generated `nginx.conf`         |
-| `LUA_LIB`              | `$(PWD)/src/?.lua;;`      | `build`                   | Sets the nginx `lua_package_path` property in the generated `nginx.conf`       |
 
 #### Scripts
 
