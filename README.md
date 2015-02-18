@@ -1,4 +1,4 @@
-## Kong
+# Kong
 
 [![Build Status](https://travis-ci.org/Mashape/kong.svg)](https://travis-ci.org/Mashape/kong)
 
@@ -11,6 +11,15 @@
            (__)    )\
               ||--|| *
 ```
+
+## Contents
+
+* [Requirements](#requirements)
+* [Installing Kong](#installing-kong)
+* [Running Kong](#running-kong)
+* [Development](#development)
+ * [Makefile](#makefile)
+ * [Scripts](#scripts)
 
 ### Requirements
 - Lua `5.1`
@@ -30,7 +39,7 @@ Execute `kong start`.
 
 To see all the available options, run `kong -h`.
 
-### Running Kong for development
+### Development
 
 Running Kong for development requires two steps:
 
@@ -39,11 +48,9 @@ Running Kong for development requires two steps:
 
 The `make dev` command will create a git-ignored `dev` folder with both a copy of Kong and the nginx configuration. This will prevent to accidentally push to master development configuration files.
 
-### Makefile for development
+#### Makefile
 
 When developing, use the `Makefile` for doing the following operations:
-
-#### Makefile
 
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
