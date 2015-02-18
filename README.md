@@ -1,45 +1,49 @@
-# Kong [![Build Status](https://travis-ci.org/Mashape/kong.svg)](https://travis-ci.org/Mashape/kong)
+# Kong
 
-Kong is a scalable and customizable RESTful API Layer built on top of nginx. It's super fast and lightweight, and it can handle enormous loads.
+[![Build Status][travis-image]][travis-url]
 
-```
- ______________________________________
-< ... I have read the INSTRUCTIONS ... >
- --------------------------------------
-       \   ,__,
-        \  (oo)____
-           (__)    )\
-              ||--|| *
-```
+Kong is a scalable and customizable API Management Layer built on top of nginx.
 
-## Contents
+* **[Requirements](#requirements)**
+* **[Installation](#installation)**
+* **[Usage](#usage)**
+* **[Development](#development)**
 
-* [Requirements](#requirements)
-* [Installing Kong](#installing-kong)
-* [Running Kong](#running-kong)
-* [Development](#development)
- * [Makefile](#makefile)
- * [Scripts](#scripts)
-
-### Requirements
+## Requirements
 - Lua `5.1`
 - Luarocks for Lua `5.1`
 - [OpenResty](http://openresty.com/#Download) `1.7.7.2`
+- Cassandra `2.1`
 
-### Installing Kong
+## Installation
 
-There are two ways to install Kong.
+#### Luarocks
 
-* Using LuaRocks: `sudo luarocks install kong`
-* From source: `sudo make install`
+Installation through [luarocks][luarocks-url] is recommended:
 
-### Running Kong
+```bash
+[sudo] luarocks install kong
+```
 
-Execute `kong start`.
+#### From source
 
-To see all the available options, run `kong -h`.
+```bash
+[sudo] make install
+```
 
-### Development
+## Usage
+
+Use Kong through the `bin/kong` executable.
+
+To start Kong:
+
+```bash
+kong start
+```
+
+Dee all the available options, with `kong -h`.
+
+## Development
 
 Running Kong for development requires two steps:
 
@@ -55,7 +59,7 @@ When developing, use the `Makefile` for doing the following operations:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `install`    | Install the Kong luarock globally                                                                   |
-| `dev`        | Duplicates the default configuration in a git-ignored `dev` folder                                  |
+| `dev`        | Duplicates the default configuration in a .gitignored `dev` folder                                  |
 | `clean`      | Cleans the development environment                                                                  |
 | `reset`      | Reset your database schema according to the development Kong config inside the `dev` folder         |
 | `seed`       | Seed your database according to the development Kong config inside the `dev` folder                 |
@@ -66,6 +70,8 @@ When developing, use the `Makefile` for doing the following operations:
 | `test-all`   | Runs all unit + integration tests at once                                                           |
 
 #### Scripts
+
+Those script provide handy feature while developing Kong:
 
 | Name       | Commands                 | Description                                                           | Arguments                                                   |
 | ---------- | ------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -78,3 +84,8 @@ When developing, use the `Makefile` for doing the following operations:
 |            | `seed --conf=[conf]`     | Seed the database configured in the given conf                        | `-s` (Optional) No output                                   |
 |            |                          |                                                                       | `-r` (Optional) Also populate random data (1000 by default) |
 |            | `drop --conf=[conf]`     | Drop the database configured in the given conf                        | `-s` (Optional) No output                                   |
+
+[travis-url]: https://travis-ci.org/Mashape/kong
+[travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
+
+[luarocks-url]: https://luarocks.org
