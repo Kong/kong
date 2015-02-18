@@ -9,7 +9,7 @@ export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
 .PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
 install:
-	@luarocks make kong-*.rockspec --only-server=http://rocks.moonscript.org
+	@luarocks make kong-*.rockspec
 
 dev:
 	@mkdir -p $(DEV_DIR)
