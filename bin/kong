@@ -1,0 +1,142 @@
+#!/bin/sh
+
+# Setting Kong Home
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
+
+# Properties
+export KONG_CONF=$KONG_HOME/config.default/kong.yaml
+NGINX_CONF=$KONG_HOME/config.default/nginx.conf
+PID=$KONG_HOME/out/nginx.pid
+
+DEV_LUA_LIB="lua_package_path \"$KONG_HOME/src/?.lua\;\;\"\;"
+
+######################
+#  Utility function  #
+######################
+
+function check_file_exists {
+  if [ ! -f $1 ]; then
+    printf "Can't find configuration file at: $1\n"
+    exit 1
+  fi
+}
+
+######################
+#     Operations  #
+######################
+
+function show_help {
+  printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
+\t-c    specify the path to a custom Kong configuration file
+\t      default is: '$KONG_HOME/config.default/kong.yaml'
+\t-n    specify the path to a custom Nginx configuration file.
+\t      default is: '$KONG_HOME/config.default/nginx.conf'
+\t-v    output version information and exit
+\t-h    show the help
+\nCommands available:\n
+\tstart      start Kong
+\tstop       stop a running Kong
+\trestart    restart Kong
+\t           it is equivalent to executing 'stop' and 'start' in succession
+\tmigrate    performs a database migration, execute this operation carefully
+\n"
+}
+
+function show_version {
+  printf "Kong Version 0.1\n"
+}
+
+function start {
+  printf "Starting Kong"
+
+  mkdir -p $KONG_HOME/out/logs
+  touch $KONG_HOME/out/logs/error.log
+  touch $KONG_HOME/out/logs/access.log
+  nginx -p $KONG_HOME/out -c $NGINX_CONF
+
+  if [ $? -eq 0 ]; then
+    printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
+  else
+    printf "$(tput setaf 1) [ERROR]\n$(tput sgr 0)"
+    exit 1
+  fi
+}
+
+function migrate {
+  $KONG_HOME/scripts/migrate migrate --conf=$KONG_CONF
+  if [ $? -eq 0 ]; then
+    exit 0
+  else
+    exit 1
+  fi
+}
+
+function stop {
+  printf "Stopping Kong"
+
+  if [ ! -f $PID ]; then
+    printf "$(tput setaf 1) [NOT RUNNING]\n$(tput sgr 0)"
+    exit 1
+  else
+    kill $(cat $PID)
+    printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
+  fi
+}
+
+function restart {
+  stop
+  start
+}
+
+######################
+#  Argument parsing  #
+######################
+
+OPTIND=1 # Reset in case getopts has been used previously in the shell.
+cmd=""
+
+while getopts "h?vc:n:" opt; do
+  case "$opt" in
+    h|\?)
+        show_help
+        exit 0
+        ;;
+    v)  show_version
+        exit 0
+        ;;
+    c)
+        KONG_CONF=`realpath "$OPTARG"`
+        ;;
+    n)
+        NGINX_CONF=`realpath "$OPTARG"`
+        ;;
+  esac
+done
+
+shift $((OPTIND-1))
+
+[ "$1" = "--" ] && shift
+
+check_file_exists $KONG_CONF
+check_file_exists $NGINX_CONF
+
+case "$@" in
+  start)
+      start
+      ;;
+  stop)
+      stop
+      ;;
+  migrate)
+      migrate
+      ;;
+  restart)
+      restart
+      ;;
+  *)
+      show_help
+
+esac
+
+# End of file

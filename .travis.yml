@@ -30,7 +30,6 @@ before_install:
   - cd ..
 
 install:
-  - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo luarocks install lrexlib-pcre PCRE_LIBDIR=$(dirname `sudo find / -type f -name "libpcre.so*" -print -quit`)
   - sudo luarocks install luasec OPENSSL_LIBDIR=$(dirname `sudo find / -type f -name "libssl.so*" -print -quit`)
   - sudo make global

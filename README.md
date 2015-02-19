@@ -1,64 +1,90 @@
-## Kong
+# Kong
 
-[![Build Status](https://travis-ci.org/Mashape/kong.svg)](https://travis-ci.org/Mashape/kong)
+[![Build Status][travis-image]][travis-url]
 
-```
- ______________________________________
-< ... I have read the INSTRUCTIONS ... >
- --------------------------------------
-       \   ,__,
-        \  (oo)____
-           (__)    )\
-              ||--|| *
-```
+Kong is a scalable and customizable API Management Layer built on top of nginx.
 
-### Requirements
+* **[Requirements](#requirements)**
+* **[Installation](#installation)**
+* **[Usage](#usage)**
+* **[Development](#development)**
+
+## Requirements
 - Lua `5.1`
 - Luarocks for Lua `5.1`
-- [Openrestify](http://openresty.com/#Download) `1.7.4.1`
+- [OpenResty](http://openresty.com/#Download) `1.7.7.2`
+- Cassandra `2.1`
 
-### Run apenode (development)
+## Installation
 
-- `make global`
-- `make build`
-- `make migrate`
-- `make run`
-  - Proxy: `http://localhost:8000/`
-  - API: `http://localhost:8001/`
+#### Luarocks
 
-### Commands
+Installation through [luarocks][luarocks-url] is recommended:
 
-Commands consist of apenode's scripts and Makefile:
+```bash
+[sudo] luarocks install kong
+```
+
+#### From source
+
+```bash
+[sudo] make install
+```
+
+## Usage
+
+Use Kong through the `bin/kong` executable.
+
+To start Kong:
+
+```bash
+kong start
+```
+
+Dee all the available options, with `kong -h`.
+
+## Development
+
+Running Kong for development requires you to run:
+
+```
+make dev
+```
+
+This will create your environment configuration files (`dev` and `tests`). Setup your database access for each of these enviroments (be careful about keyspaces, since Kong already uses `kong` and unit tests already use `kong_tests`).
+
+- Run the tests:
+
+```
+make test-all
+```
+
+- Run it:
+
+```
+kong -c config.dev/kong.yaml -n config.dev/nginx.conf
+```
 
 #### Makefile
 
+When developing, use the `Makefile` for doing the following operations:
+
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
-| `global`     | Install the apenode luarock globally                                                                |
-| `build`      | Generates an apenode environment (nginx + apenode configurations) in a given folder (see `ENV_DIR`) |
-| `migrate`    | Migrate your database according to the given apenode config (see `ENV_APENODE_CONF`)                |
-| `seed`       | Seed your database according to the given apenode config                                            |
-| `drop`       | Drop your database according to the given apenode config                                            |
-| `run`        | Runs the given apenode environment in a given folder (see `ENV_DIR`)                                |
-| `stop`       | Stops the given apenode environment in a given folder (see `ENV_DIR`)                               |
+| `install`    | Install the Kong luarock globally                                                                   |
+| `dev`        | Setup your development enviroment (creates `dev` and `tests` configurations)                        |
+| `clean`      | Cleans the development environment                                                                  |
+| `reset`      | Reset your database schema according to the development Kong config inside the `dev` folder         |
+| `seed`       | Seed your database according to the development Kong config inside the `dev` folder                 |
+| `drop`       | Drop your database according to the development Kong config inside the `dev` folder                 |
 | `test`       | Runs the unit tests                                                                                 |
 | `test-proxy` | Runs the proxy integration tests                                                                    |
 | `test-web`   | Runs the web integration tests                                                                      |
 | `test-all`   | Runs all unit + integration tests at once                                                           |
 
-#### Makefile variables
-
-| Name                   | Default                   | Commands                  | Description                                                                    |
-| ---------------------- | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `ENV_DIR`              | `tmp/`                    | `build|run|stop`          | Specify a folder where an apenode environment lives or should live if building |
-| `ENV_APENODE_CONF`     | `tmp/apenode.dev.yaml`    | `build|migrate|seed|drop` | Points the command to the given apenode configuration file                     |
-| `ENV_DAEMON`           | `off`                     | `build`                   | Sets the nginx daemon property in the generated `nginx.conf`                   |
-| `ENV_APENODE_PORT`     | `8000`                    | `build`                   | Sets the apenode proxy port in the generated `nginx.conf`                      |
-| `ENV_APENODE_WEB_PORT` | `8001`                    | `build`                   | Sets the apenode web port in the generated `nginx.conf`                        |
-| `ENV_LUA_CODE_CACHE`   | `off`                     | `build`                   | Sets the nginx `lua_code_cache` property in the generated `nginx.conf`         |
-| `ENV_LUA_LIB`          | `$(PWD)/src/?.lua;;`      | `build`                   | Sets the nginx `lua_package_path` property in the generated `nginx.conf`       |
-
 #### Scripts
+
+Those script provide handy features while developing Kong:
 
 | Name       | Commands                 | Description                                                           | Arguments                                                   |
 | ---------- | ------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -72,29 +98,7 @@ Commands consist of apenode's scripts and Makefile:
 |            |                          |                                                                       | `-r` (Optional) Also populate random data (1000 by default) |
 |            | `drop --conf=[conf]`     | Drop the database configured in the given conf                        | `-s` (Optional) No output                                   |
 
-### API
+[travis-url]: https://travis-ci.org/Mashape/kong
+[travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
 
-The Apenode provides APIs to interact with the underlying data model and create APIs, accounts and applications
-
-#### Create APIs
-
-`POST /apis/`
-
-* **required** `public_dns`: The public DNS of the API
-* **required** `target_url`: The target URL
-* **required** `authentication_type`: The authentication to enable on the API, can be `query`, `header`, `basic`.
-* **required** `authentication_key_names`: A *comma-separated* list of authentication parameter names, like `apikey` or `x-mashape-key`.
-
-#### Create Accounts
-
-`POST /accounts/`
-
-* `provider_id`: A custom id to be set in the account entity
-
-#### Create Applications
-
-`POST /applications/`
-
-* **required** `account_id`: The `account_id` that the application belongs to.
-* `public_key`: The public key, or username if Basic Authentication is enabled.
-* **required** `secret_key`: The secret key, or api key, or password if Basic authentication is enabled. Use only this fields for simple api keys.
+[luarocks-url]: https://luarocks.org
