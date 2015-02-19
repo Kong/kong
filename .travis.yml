@@ -20,7 +20,7 @@ before_install:
   - make
   - sudo make install
   - cd ..
-  - export PATH=$PATH:/usr/local/openresty/nginx/sbin/
+  - export PATH=$PATH:/usr/local/openresty/nginx/sbin
   - wget http://luarocks.org/releases/luarocks-2.2.0.tar.gz
   - tar xzf luarocks-2.2.0.tar.gz
   - cd luarocks-2.2.0
