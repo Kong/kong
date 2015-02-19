@@ -31,5 +31,6 @@ before_install:
 
 install:
   - sudo make install
+  - make dev
 
 script: "make test-all"
