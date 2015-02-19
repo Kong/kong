@@ -13,7 +13,7 @@ TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 .PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
 install:
-	@luarocks make kong-*.rockspec PCRE_LIBDIR=$(dirname `find / -type f -name "libpcre.so*" -print -quit`) OPENSSL_LIBDIR=$(dirname `find / -type f -name "libssl.so*" -print -quit`)
+	@luarocks make kong-*.rockspec PCRE_LIBDIR=`find / -type f -name "libpcre.so*" -print -quit | xargs dirname` OPENSSL_LIBDIR=`find / -type f -name "libssl.so*" -print -quit | xargs dirname`
 
 dev:
 	@mkdir -p $(DIR)
