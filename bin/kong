@@ -4,6 +4,8 @@
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
+NGINX_BIN=/usr/local/openresty/nginx/sbin/nginx
+
 # Properties
 export KONG_CONF=$KONG_HOME/conf/kong.yaml
 NGINX_CONF=$KONG_HOME/conf/nginx.conf
@@ -53,7 +55,7 @@ function start {
   mkdir -p $KONG_HOME/out/logs
   touch $KONG_HOME/out/logs/error.log
   touch $KONG_HOME/out/logs/access.log
-  nginx -p $KONG_HOME/out -c $NGINX_CONF
+  $NGINX_BIN -p $KONG_HOME/out -c $NGINX_CONF
 
   if [ $? -eq 0 ]; then
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
