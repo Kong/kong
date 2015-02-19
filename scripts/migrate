@@ -1,12 +1,12 @@
 #!/usr/bin/env lua
 
-local utils = require "apenode.tools.utils"
-local Migrations = require "apenode.tools.migrations"
+local utils = require "kong.tools.utils"
+local Migrations = require "kong.tools.migrations"
 
 local function print_usage()
   print("Usage:")
   print("  create   --conf=[conf] --name=[name] # Create a migration file for configured DAOs")
-  print("  migrate  --conf=[conf]               # Migrate to the latest migration available")
+  print("  migrate  --conf=[conf]               # Migrate to the latest migration available on configured keyspace")
   print("  rollback --conf=[conf]               # Rollback the latest executed migration")
   print("  reset    --conf=[conf]               # Rollback all migrations")
   os.exit(1)

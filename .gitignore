@@ -1,4 +1,3 @@
-tmp/
 .DS_Store
 .vagrant/
 .buildpath
@@ -10,5 +9,11 @@ site/dist
 \.gh-pages
 
 # gh-pages
+site/
 node_modules/
 bower_components/
+
+# kong
+out/
+config.*/
+!config.default/

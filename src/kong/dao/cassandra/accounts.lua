@@ -1,0 +1,44 @@
+local BaseDao = require "kong.dao.cassandra.base_dao"
+
+local SCHEMA = {
+  id = { type = "id" },
+  provider_id = { unique = true, queryable = true },
+  created_at = { type = "timestamp" }
+}
+
+local Accounts = BaseDao:extend()
+
+function Accounts:new(database)
+  self._schema = SCHEMA
+  self._queries = {
+    insert = {
+      params = { "id", "provider_id", "created_at" },
+      query = [[ INSERT INTO accounts(id, provider_id, created_at) VALUES(?, ?, ?); ]]
+    },
+    update = {
+      params = { "provider_id", "created_at", "id" },
+      query = [[ UPDATE accounts SET provider_id = ?, created_at = ? WHERE id = ?; ]]
+    },
+    select = {
+      query = [[ SELECT * FROM accounts %s; ]]
+    },
+    select_one = {
+      params = { "id" },
+      query = [[ SELECT * FROM accounts WHERE id = ?; ]]
+    },
+    delete = {
+      params = { "id" },
+      query = [[ DELETE FROM accounts WHERE id = ?; ]]
+    },
+    __unique = {
+      provider_id ={
+        params = { "provider_id" },
+        query = [[ SELECT id FROM accounts WHERE provider_id = ?; ]]
+      }
+    }
+  }
+
+  Accounts.super.new(self, database)
+end
+
+return Accounts

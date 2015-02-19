@@ -1,79 +1,57 @@
-PWD = `pwd`
+KONG_HOME = `pwd`
 
-# Dev environment variables
-export ENV_DAEMON ?= off
-export ENV_LUA_LIB ?= lua_package_path \"$(PWD)/src/?.lua\;\;\"\;
-export ENV_LUA_CODE_CACHE ?= off
-export ENV_APENODE_PORT ?= 8000
-export ENV_APENODE_WEB_PORT ?= 8001
-export ENV_DIR ?= $(PWD)/tmp
-export ENV_APENODE_CONF ?= $(ENV_DIR)/apenode.dev.yaml
-export ENV_SILENT ?=
+# Environment variables (default)
+export DIR ?= $(KONG_HOME)/config.dev
+export KONG_CONF ?= $(DIR)/kong.yaml
+export NGINX_CONF ?= $(DIR)/nginx.conf
+export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
+# Tests variables
+TESTS_DIR ?= $(KONG_HOME)/config.tests
+TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yaml
+TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 
-.PHONY: build global test test-web test-all run migrate populate drop
+.PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
-global:
-	@luarocks make apenode-*.rockspec
+install:
+	@luarocks make kong-*.rockspec PCRE_LIBDIR=$(dirname `find / -type f -name "libpcre.so*" -print -quit`) OPENSSL_LIBDIR=$(dirname `find / -type f -name "libssl.so*" -print -quit`)
+
+dev:
+	@mkdir -p $(DIR)
+	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(NGINX_CONF)
+	@cp $(KONG_HOME)/config.default/kong.yaml $(KONG_CONF)
+	@mkdir -p $(TESTS_DIR)
+	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(TESTS_NGINX_CONF)
+	@cp $(KONG_HOME)/config.default/kong.yaml $(TESTS_KONG_CONF)
+
+clean:
+	@rm -rf $(DIR)
+	@rm -rf $(TESTS_DIR)
+
+reset:
+	@scripts/migrate reset --conf=$(KONG_CONF)
+
+seed:
+	@scripts/seed seed --conf=$(KONG_CONF)
+
+drop:
+	@scripts/seed drop --conf=$(KONG_CONF)
 
 test:
 	@busted spec/unit
 
+run-integration-tests:
+	@bin/kong -c $(TESTS_KONG_CONF) migrate > /dev/null
+	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start > /dev/null
+	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
+	@busted $(FOLDER) || (bin/kong stop > /dev/null; make drop KONG_CONF=$(TESTS_KONG_CONF) > /dev/null; exit 1)
+	@bin/kong stop > /dev/null
+	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
+
 test-web:
-	@$(MAKE) build ENV_DAEMON=on
-	@$(MAKE) migrate ENV_SILENT=-s
-	@$(MAKE) run
-	@$(MAKE) seed ENV_SILENT=-s
-	@busted spec/web/ || (make stop;make drop; exit 1)
-	@$(MAKE) stop
-	@$(MAKE) drop ENV_SILENT=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/web
 
 test-proxy:
-	@$(MAKE) build ENV_DAEMON=on
-	@$(MAKE) migrate ENV_SILENT=-s
-	@$(MAKE) run
-	@$(MAKE) seed ENV_SILENT=-s
-	@busted spec/proxy/ || (make stop;make drop; exit 1)
-	@$(MAKE) stop
-	@$(MAKE) drop ENV_SILENT=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/proxy
 
 test-all:
-	@$(MAKE) build ENV_DAEMON=on
-	@$(MAKE) migrate ENV_SILENT=-s
-	@$(MAKE) run
-	@sleep 2 # Wait for the nginx process to start
-	@$(MAKE) seed ENV_SILENT=-s
-	@busted spec/ || (make stop;make drop; exit 1)
-	@$(MAKE) stop
-	@$(MAKE) drop ENV_SILENT=-s
-
-migrate:
-	@scripts/migrate migrate $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
-
-seed:
-	@scripts/seed seed $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
-
-drop:
-	@scripts/seed drop $(ENV_SILENT) --conf=$(ENV_APENODE_CONF)
-
-run:
-	@nginx -p $(ENV_DIR)/nginx -c nginx.conf
-
-stop:
-	@nginx -p $(ENV_DIR)/nginx -c nginx.conf -s stop
-
-build:
-	@mkdir -p $(ENV_DIR)/nginx/logs
-	@cp templates/apenode.yaml $(ENV_APENODE_CONF)
-	@echo "" > $(ENV_DIR)/nginx/logs/error.log
-	@echo "" > $(ENV_DIR)/nginx/logs/access.log
-	@sed \
-		-e "s/{{DAEMON}}/$(ENV_DAEMON)/g" \
-		-e "s@{{LUA_LIB_PATH}}@$(ENV_LUA_LIB)@g" \
-		-e "s/{{LUA_CODE_CACHE}}/$(ENV_LUA_CODE_CACHE)/g" \
-		-e "s/{{PORT}}/$(ENV_APENODE_PORT)/g" \
-		-e "s/{{WEB_PORT}}/$(ENV_APENODE_WEB_PORT)/g" \
-		-e "s@{{APENODE_CONF}}@$(ENV_APENODE_CONF)@g" \
-		templates/nginx.conf > $(ENV_DIR)/nginx/nginx.conf;
-
-	@cp -R src/apenode/web/static $(ENV_DIR)/nginx
-	@cp -R src/apenode/web/admin $(ENV_DIR)/nginx
+	@$(MAKE) run-integration-tests FOLDER=spec

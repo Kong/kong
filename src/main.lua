@@ -1,7 +1,30 @@
--- Copyright (C) Mashape, Inc.
+-- Kong, the biggest ape in town
+--
+--     /\  ____
+--     <> ( oo )
+--     <>_| ^^ |_
+--     <>   @    \
+--    /~~\ . . _ |
+--   /~~~~\    | |
+--  /~~~~~~\/ _| |
+--  |[][][]/ / [m]
+--  |[][][[m]
+--  |[][][]|
+--  |[][][]|
+--  |[][][]|
+--  |[][][]|
+--  |[][][]|
+--  |[][][]|
+--  |[][][]|
+--  |[][][]|
+--  |[|--|]|
+--  |[|  |]|
+--  ========
+-- ==========
+-- |[[    ]]|
+-- ==========
 
-utils = require "apenode.tools.utils"
-local PluginModel = require "apenode.models.plugin"
+utils = require "kong.tools.utils"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -9,37 +32,45 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
-  local res, err = PluginModel.find_one({
+  local data, err = dao.plugins:find_by_keys {
     api_id = api_id,
     application_id = application_id,
     name = plugin_name
-  }, dao)
+  }
 
   if err then
     ngx.log(ngx.ERROR, err)
     return nil
   end
 
-  return res
+  if #data > 0 then
+    local plugin = table.remove(data, 1)
+    if plugin.enabled then
+      return plugin
+    end
+  end
+
+  return nil
 end
 
-function _M.init(configuration_path)
+function _M.init()
   -- Loading configuration
-  configuration, dao = utils.load_configuration_and_dao(configuration_path)
+  print(os.getenv("KONG_CONF"))
+  configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
   dao:prepare()
 
   -- core is the first plugin
   table.insert(plugins, {
     name = "core",
-    handler = require("apenode.core.handler")()
+    handler = require("kong.core.handler")()
   })
 
   -- Loading defined plugins
   for _, plugin_name in ipairs(configuration.plugins_enabled) do
     table.insert(plugins, {
       name = plugin_name,
-      handler = require("apenode.plugins."..plugin_name..".handler")()
+      handler = require("kong.plugins."..plugin_name..".handler")()
     })
   end
 end
@@ -79,7 +110,7 @@ function _M.header_filter()
   ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
 
   if not ngx.ctx.error then
-    for _, plugin in ipairs(plugins) do -- Iterate over all the plugins
+    for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
         plugin.handler:header_filter(conf.value)
@@ -90,7 +121,7 @@ end
 
 function _M.body_filter()
   if not ngx.ctx.error then
-    for _, plugin in ipairs(plugins) do -- Iterate over all the plugins
+    for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
         plugin.handler:body_filter(conf.value)
@@ -123,7 +154,7 @@ function _M.log()
     }
 
     ngx.ctx.log_message = message
-    for _, plugin in ipairs(plugins) do -- Iterate over all the plugins
+    for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
         plugin.handler:log(conf.value)
