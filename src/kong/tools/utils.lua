@@ -1,5 +1,4 @@
--- Copyright (C) Mashape, Inc.
-
+local constants = require "kong.constants"
 local cjson = require "cjson"
 local ltn12 = require "ltn12"
 local yaml = require "yaml"
@@ -130,7 +129,7 @@ end
 -- Lapis utils
 --
 function _M.show_response(status, message, raw)
-  ngx.header["X-Kong-Version"] = configuration.version
+  ngx.header[constants.HEADERS.VERSION] = constants.VERSION
   ngx.status = status
 
   if raw then

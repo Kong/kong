@@ -1,4 +1,6 @@
+local constants = require "kong.constants"
+
 return {
   limit = { required = true },
-  period = { required = true, enum = { "second", "minute", "hour", "day", "month", "year" } }
+  period = { required = true, enum = constants.RATELIMIT.PERIODS }
 }

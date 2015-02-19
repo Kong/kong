@@ -1,4 +1,4 @@
-local constants = require "constants"
+local constants = require "kong.constants"
 local schemas = require "kong.dao.schemas"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 

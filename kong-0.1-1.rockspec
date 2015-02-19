@@ -42,7 +42,7 @@ build = {
     ["decoding"] = "src/cassandra/decoding.lua",
     ["cassandra.constants"] = "src/cassandra/constants.lua",
 
-    ["constants"] = "src/constants.lua",
+    ["kong.constants"] = "src/constants.lua",
 
     ["kong.tools.utils"] = "src/kong/tools/utils.lua",
     ["kong.tools.faker"] = "src/kong/tools/faker.lua",

@@ -1,14 +1,15 @@
 -- Copyright (C) Mashape, Inc.
 
-local constants = require "constants"
 local cassandra = require "cassandra"
-local schemas = require "kong.dao.schemas"
 local stringy = require "stringy"
 local Object = require "classic"
-local utils = require "kong.tools.utils"
 local uuid = require "uuid"
 local cjson = require "cjson"
 local rex = require "rex_pcre"
+
+local constants = require "kong.constants"
+local schemas = require "kong.dao.schemas"
+local utils = require "kong.tools.utils"
 
 local validate = schemas.validate
 local error_types = constants.DATABASE_ERROR_TYPES

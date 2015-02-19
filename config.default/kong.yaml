@@ -1,6 +1,3 @@
-# Kong version
-version: 0.1
-
 # Specify the DAO to use
 database: cassandra
 

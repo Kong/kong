@@ -1,5 +1,4 @@
--- Copyright (C) Mashape, Inc.
-
+local constants = require "kong.constants"
 local lapis = require "lapis"
 local Apis = require "kong.web.routes.apis"
 local Plugins = require "kong.web.routes.plugins"
@@ -11,7 +10,7 @@ app = lapis.Application()
 app:get("/", function(self)
   return utils.success({
     tagline = "Welcome to Kong",
-    version = configuration.version
+    version = constants.VERSION
   })
 end)
 

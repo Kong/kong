@@ -1,3 +1,5 @@
+local constants = require "kong.constants"
+
 local _M = {}
 
 function _M.execute(conf)
@@ -5,11 +7,6 @@ function _M.execute(conf)
 
   -- Compute is identifier is by ip address or application id
   local identifier
-
-  local inspect = require "inspect"
-  print(inspect(ngx.ctx.authenticated_entity))
-  print(inspect(conf))
-
   if ngx.ctx.authenticated_entity then
     identifier = ngx.ctx.authenticated_entity.id
   else
@@ -31,9 +28,8 @@ function _M.execute(conf)
   end
 
   local remaining = conf.limit - current_usage
-  print("remaining for entity: "..identifier.." : "..remaining)
-  ngx.header["X-RateLimit-Limit"] = conf.limit
-  ngx.header["X-RateLimit-Remaining"] = math.max(0, remaining - 1) -- -1 for this current request
+  ngx.header[constants.HEADERS.RATELIMIT_LIMIT] = conf.limit
+  ngx.header[constants.HEADERS.RATELIMIT_REMAINING] = math.max(0, remaining - 1) -- -1 for this current request
 
   if remaining == 0 then
     utils.show_error(429, "API rate limit exceeded")
