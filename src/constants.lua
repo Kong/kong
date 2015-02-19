@@ -15,6 +15,11 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining"
   },
+  AUTHENTICATION = {
+    QUERY = "query",
+    BASIC = "basic",
+    HEADER = "header"
+  },
   RATELIMIT = {
     PERIODS = {
       "second",

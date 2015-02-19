@@ -59,13 +59,13 @@ end
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
 -- All methods must respect:
-
+--
 -- @param request ngx request object
 -- @param {table} conf Plugin configuration (value property)
 -- @return {string} public_key
 -- @return {string} private_key
 local retrieve_credentials = {
-  header = function(request, conf)
+  [constants.AUTHENTICATION.HEADER] = function(request, conf)
     local public_key
     local headers = request.get_headers()
 
@@ -83,7 +83,7 @@ local retrieve_credentials = {
       end
     end
   end,
-  query = function(request, conf)
+  [constants.AUTHENTICATION.QUERY] = function(request, conf)
     local public_key
 
     if conf.authentication_key_names then
@@ -97,7 +97,7 @@ local retrieve_credentials = {
       end
     end
   end,
-  basic = function(request, conf)
+  [constants.AUTHENTICATION.BASIC] = function(request, conf)
     local username, password
     local authorization_header = request.get_headers()["authorization"]
 
@@ -133,19 +133,19 @@ local retrieve_credentials = {
 -- Fast lookup for credential validation depending on the type of the authentication
 --
 -- All methods must respect:
-
+--
 -- @param {table} application The retrieved application from the public_key passed in the request
 -- @param {string} public_key
 -- @param {string} private_key
 -- @return {boolean} Success of authentication
 local validate_credentials = {
-  header = function(application, public_key)
+  [constants.AUTHENTICATION.HEADER] = function(application, public_key)
     return application ~= nil
   end,
-  query = function(application, public_key)
+  [constants.AUTHENTICATION.QUERY] = function(application, public_key)
     return application ~= nil
   end,
-  basic = function(application, username, password)
+  [constants.AUTHENTICATION.BASIC] = function(application, username, password)
     if application then
       -- TODO: No encryption yet
       return application.secret_key == password
