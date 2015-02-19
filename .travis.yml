@@ -32,5 +32,6 @@ before_install:
 install:
   - sudo make install
   - make dev
+  - chmod +x bin/kong
 
 script: "make test-all"
