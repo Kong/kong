@@ -4,11 +4,9 @@
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
-NGINX_BIN=/usr/local/openresty/nginx/sbin/nginx
-
 # Properties
-export KONG_CONF=$KONG_HOME/conf/kong.yaml
-NGINX_CONF=$KONG_HOME/conf/nginx.conf
+export KONG_CONF=$KONG_HOME/config.default/kong.yaml
+NGINX_CONF=$KONG_HOME/config.default/nginx.conf
 PID=$KONG_HOME/out/nginx.pid
 
 DEV_LUA_LIB="lua_package_path \"$KONG_HOME/src/?.lua\;\;\"\;"
@@ -31,9 +29,9 @@ function check_file_exists {
 function show_help {
   printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
 \t-c    specify the path to a custom Kong configuration file
-\t      default is: '$KONG_HOME/conf/kong.yaml'
+\t      default is: '$KONG_HOME/config.default/kong.yaml'
 \t-n    specify the path to a custom Nginx configuration file.
-\t      default is: '$KONG_HOME/conf/nginx.conf'
+\t      default is: '$KONG_HOME/config.default/nginx.conf'
 \t-v    output version information and exit
 \t-h    show the help
 \nCommands available:\n
@@ -55,7 +53,7 @@ function start {
   mkdir -p $KONG_HOME/out/logs
   touch $KONG_HOME/out/logs/error.log
   touch $KONG_HOME/out/logs/access.log
-  $NGINX_BIN -p $KONG_HOME/out -c $NGINX_CONF
+  nginx -p $KONG_HOME/out -c $NGINX_CONF
 
   if [ $? -eq 0 ]; then
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
@@ -104,11 +102,9 @@ while getopts "h?vc:n:" opt; do
         show_help
         exit 0
         ;;
-
     v)  show_version
         exit 0
         ;;
-
     c)
         KONG_CONF=`realpath "$OPTARG"`
         ;;
@@ -129,19 +125,15 @@ case "$@" in
   start)
       start
       ;;
-
   stop)
       stop
       ;;
-
   migrate)
       migrate
       ;;
-
   restart)
       restart
       ;;
-
   *)
       show_help
 

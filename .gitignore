@@ -4,10 +4,11 @@
 .project
 
 # gh-pages
+site/
 node_modules/
 bower_components/
 
 # kong
 out/
-dev/
-test/
+config.*/
+!config.default/

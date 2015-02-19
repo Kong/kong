@@ -45,12 +45,25 @@ Dee all the available options, with `kong -h`.
 
 ## Development
 
-Running Kong for development requires two steps:
+Running Kong for development requires you to run:
 
-* Execute `make dev`.
-* Execute `kong -c dev/kong-dev.conf -n dev/nginx-dev.conf`
+```
+make dev
+```
 
-The `make dev` command will create a git-ignored `dev` folder with both a copy of Kong and the nginx configuration. This will prevent to accidentally push to master development configuration files.
+This will create your environment configuration files (`dev` and `tests`). Setup your database access for each of these enviroments (be careful about keyspaces, since Kong already uses `kong` and unit tests already use `kong_tests`).
+
+- Run the tests:
+
+```
+make test-all
+```
+
+- Run it:
+
+```
+kong -c config.dev/kong.yaml -n config.dev/nginx.conf
+```
 
 #### Makefile
 
@@ -59,7 +72,7 @@ When developing, use the `Makefile` for doing the following operations:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `install`    | Install the Kong luarock globally                                                                   |
-| `dev`        | Duplicates the default configuration in a .gitignored `dev` folder                                  |
+| `dev`        | Setup your development enviroment (creates `dev` and `tests` configurations)                        |
 | `clean`      | Cleans the development environment                                                                  |
 | `reset`      | Reset your database schema according to the development Kong config inside the `dev` folder         |
 | `seed`       | Seed your database according to the development Kong config inside the `dev` folder                 |
@@ -71,7 +84,7 @@ When developing, use the `Makefile` for doing the following operations:
 
 #### Scripts
 
-Those script provide handy feature while developing Kong:
+Those script provide handy features while developing Kong:
 
 | Name       | Commands                 | Description                                                           | Arguments                                                   |
 | ---------- | ------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------- |

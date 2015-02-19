@@ -1,10 +1,14 @@
 KONG_HOME = `pwd`
 
-# Dev environment variables
-export DEV_DIR ?= $(KONG_HOME)/dev
-export TEST_DIR ?= $(KONG_HOME)/test
-export KONG_CONF ?= $(DEV_DIR)/kong-dev.yaml
+# Environment variables (default)
+export DIR ?= $(KONG_HOME)/config.dev
+export KONG_CONF ?= $(DIR)/kong.yaml
+export NGINX_CONF ?= $(DIR)/nginx.conf
 export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
+# Tests variables
+TESTS_DIR ?= $(KONG_HOME)/config.tests
+TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yaml
+TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 
 .PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
@@ -12,12 +16,16 @@ install:
 	@luarocks make kong-*.rockspec PCRE_LIBDIR=$(dirname `find / -type f -name "libpcre.so*" -print -quit`) OPENSSL_LIBDIR=$(dirname `find / -type f -name "libssl.so*" -print -quit`)
 
 dev:
-	@mkdir -p $(DEV_DIR)
-	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/conf/nginx.conf > $(DEV_DIR)/nginx-dev.conf
-	@cp $(KONG_HOME)/conf/kong.yaml $(DEV_DIR)/kong-dev.yaml
+	@mkdir -p $(DIR)
+	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(NGINX_CONF)
+	@cp $(KONG_HOME)/config.default/kong.yaml $(KONG_CONF)
+	@mkdir -p $(TESTS_DIR)
+	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(TESTS_NGINX_CONF)
+	@cp $(KONG_HOME)/config.default/kong.yaml $(TESTS_KONG_CONF)
 
 clean:
-	@rm -rf $(DEV_DIR)
+	@rm -rf $(DIR)
+	@rm -rf $(TESTS_DIR)
 
 reset:
 	@scripts/migrate reset --conf=$(KONG_CONF)
@@ -31,21 +39,19 @@ drop:
 test:
 	@busted spec/unit
 
-test-integration:
-	@$(MAKE) dev DEV_DIR=$(TEST_DIR)
-	@bin/kong -c $(TEST_DIR)/kong-dev.yaml -n $(TEST_DIR)/nginx-dev.conf start > /dev/null
-	@bin/kong migrate > /dev/null
-	@$(MAKE) seed > /dev/null
-	@busted $(FOLDER) || (bin/kong stop > /dev/null;make drop > /dev/null;make clean DEV_DIR=$(TEST_DIR); exit 1)
+run-integration-tests:
+	@bin/kong -c $(TESTS_KONG_CONF) migrate > /dev/null
+	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start > /dev/null
+	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
+	@busted $(FOLDER) || (bin/kong stop > /dev/null; make drop KONG_CONF=$(TESTS_KONG_CONF) > /dev/null; exit 1)
 	@bin/kong stop > /dev/null
-	@$(MAKE) drop > /dev/null
-	@$(MAKE) clean DEV_DIR=$(TEST_DIR)
+	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
 
 test-web:
-	@$(MAKE) test-integration FOLDER=spec/web
+	@$(MAKE) run-integration-tests FOLDER=spec/web
 
 test-proxy:
-	@$(MAKE) test-integration FOLDER=spec/proxy
+	@$(MAKE) run-integration-tests FOLDER=spec/proxy
 
 test-all:
-	@$(MAKE) test-integration FOLDER=spec/
+	@$(MAKE) run-integration-tests FOLDER=spec
