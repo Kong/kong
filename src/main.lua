@@ -55,7 +55,6 @@ end
 
 function _M.init()
   -- Loading configuration
-  print(os.getenv("KONG_CONF"))
   configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
   dao:prepare()
