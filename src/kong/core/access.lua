@@ -1,5 +1,3 @@
--- Copyright (C) Mashape, Inc.
-
 local stringy = require "stringy"
 
 local _M = {}
@@ -25,13 +23,13 @@ end
 
 function _M.execute(conf)
   -- Setting the version header
-  ngx.header["Kong-Version"] = configuration.version
+  ngx.header["X-Kong-Version"] = configuration.version
 
   -- Retrieving the API from the Host that has been requested
   local apis, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
   if err then
     utils.show_error(500)
-  elseif not apis or utils.table_size(apis) == 0 then
+  elseif not apis or #apis == 0 then
     utils.not_found("API not found")
   end
 

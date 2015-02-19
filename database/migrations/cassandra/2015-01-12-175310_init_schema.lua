@@ -60,8 +60,9 @@ local Migration = {
         api_id uuid,
         identifier text,
         period text,
+        period_date timestamp,
         value counter,
-        PRIMARY KEY ((api_id, identifier, period))
+        PRIMARY KEY ((api_id, identifier, period_date, period))
       );
     ]]
   end,

@@ -1,52 +1,72 @@
-local BaseDao = require "kong.dao.cassandra.base_dao"
 local cassandra = require "cassandra"
+local BaseDao = require "kong.dao.cassandra.base_dao"
+local utils = require "kong.tools.utils"
 
 local Metrics = BaseDao:extend()
 
 function Metrics:new(database)
   self._queries = {
-    increment = {
+    increment_counter = {
       query = [[ UPDATE metrics SET value = value + 1 WHERE api_id = ? AND
                                                             identifier = ? AND
-                                                            period IN ?; ]]
+                                                            period_date = ? AND
+                                                            period = ?; ]]
     },
-    select = {
+    select_one = {
       query = [[ SELECT * FROM metrics WHERE api_id = ? AND
                                              identifier = ? AND
-                                             period IN ?; ]]
+                                             period_date = ? AND
+                                             period = ?; ]]
     },
     delete = {
       query = [[ DELETE FROM metrics WHERE api_id = ? AND
                                            identifier = ? AND
-                                           period IN ?; ]]
+                                           period_date = ? AND
+                                           period = ?; ]]
     }
   }
 
   Metrics.super.new(self, database)
 end
 
-function Metrics:increment(api_id, identifier, periods)
-  return Metrics.super._execute_prepared_stmt(self, self._statements.increment, {
-    cassandra.uuid(api_id),
-    identifier,
-    cassandra.list(periods)
-  })
+function Metrics:increment(api_id, identifier, current_timestamp)
+  local periods = utils.get_timestamps(current_timestamp)
+  local batch = cassandra.BatchStatement(cassandra.batch_types.COUNTER)
+
+  for period, period_date in pairs(periods) do
+    batch:add(self._statements.increment_counter.query, {
+      cassandra.uuid(api_id),
+      identifier,
+      cassandra.timestamp(period_date),
+      period
+    })
+  end
+
+  return Metrics.super._execute(self, batch)
 end
 
-function Metrics:find(api_id, identifier, periods)
-  return Metrics.super._execute_prepared_stmt(self, self._statements.select, {
+function Metrics:find_one(api_id, identifier, current_timestamp, period)
+  local periods = utils.get_timestamps(current_timestamp)
+
+  local metric, err = Metrics.super._execute(self, self._statements.select_one, {
     cassandra.uuid(api_id),
     identifier,
-    cassandra.list(periods)
+    cassandra.timestamp(periods[period]),
+    period
   })
+  if err then
+    return nil, err
+  elseif #metric > 0 then
+    metric = metric[1]
+  else
+    metric = nil
+  end
+
+  return metric
 end
 
 function Metrics:delete(api_id, identifier, periods)
-  return Metrics.super._execute_prepared_stmt(self, self._statements.delete, {
-    cassandra.uuid(api_id),
-    identifier,
-    cassandra.list(periods)
-  })
+  error("metrics:delete() not yet implemented")
 end
 
 -- Unsuported
@@ -58,12 +78,12 @@ function Metrics:update()
   error("metrics:update() not supported")
 end
 
-function Metrics:find_by_keys()
-  error("metrics:find_by_keys() not supported")
+function Metrics:find()
+  error("metrics:find() not supported")
 end
 
-function Metrics:find_one()
-  error("metrics:find_one() not supported")
+function Metrics:find_by_keys()
+  error("metrics:find_by_keys() not supported")
 end
 
 return Metrics

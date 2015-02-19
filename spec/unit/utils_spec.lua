@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
-local os = require "os"
 
 describe("Utils #utils", function()
 
@@ -54,4 +53,36 @@ describe("Utils #utils", function()
     end)
   end)
 
+  describe("tables", function()
+
+    describe("#is_empty()", function()
+
+      it("should return true for empty table, false otherwise", function()
+        assert.True(utils.is_empty({}))
+        assert.is_not_true(utils.is_empty({ foo = "bar" }))
+        assert.is_not_true(utils.is_empty({ "foo", "bar" }))
+      end)
+
+    end)
+
+    describe("#table_size()", function()
+
+      it("should return the size of a table", function()
+        assert.are.same(0, utils.table_size({}))
+        assert.are.same(1, utils.table_size({ foo = "bar" }))
+        assert.are.same(2, utils.table_size({ foo = "bar", bar = "baz" }))
+        assert.are.same(2, utils.table_size({ "foo", "bar" }))
+      end)
+
+    end)
+
+    describe("#reverse_table()", function()
+
+      it("should reverse an array", function()
+        local arr = { "a", "b", "c", "d" }
+        assert.are.same({ "d", "c", "b", "a" }, utils.reverse_table(arr))
+      end)
+
+    end)
+  end)
 end)

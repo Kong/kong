@@ -1,5 +1,3 @@
--- Copyright (C) Mashape, Inc.
-
 local stringy = require "stringy"
 local cjson = require "cjson"
 
@@ -175,7 +173,7 @@ function _M.execute(conf)
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
-  ngx.req.set_header("x-account-id", application.account_id)
+  ngx.req.set_header("X-Account-ID", application.account_id)
   ngx.ctx.authenticated_entity = application
 end
 

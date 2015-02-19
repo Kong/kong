@@ -1,63 +1,46 @@
--- Copyright (C) Mashape, Inc.
-
-local AVAILABLE_PERIODS = {
-  second = true,
-  minute = true,
-  hour = true,
-  day = true,
-  month = true,
-  year = true
-}
-
--- Not used anymore
-local kMetricName = "requests"
-
-local function set_header_limit_remaining(usage)
-  ngx.header["X-RateLimit-Remaining"] = usage
-end
-
 local _M = {}
 
 function _M.execute(conf)
-  local application_id
-  local ip_address
+  local current_timestamp = utils.get_utc()
+
+  -- Compute is identifier is by ip address or application id
+  local identifier
+
+  local inspect = require "inspect"
+  print(inspect(ngx.ctx.authenticated_entity))
+  print(inspect(conf))
 
   if ngx.ctx.authenticated_entity then
-    application_id = ngx.ctx.authenticated_entity.id
+    identifier = ngx.ctx.authenticated_entity.id
   else
-    ip_address = ngx.var.remote_addr
+    identifier = ngx.var.remote_addr
   end
 
-  local period = conf.period
-  local limit = conf.limit
-
-  local timestamps = utils.get_timestamps(ngx.now())
-  local usage_metric, err = Metric.find_one({ api_id = ngx.ctx.api.id,
-                                              application_id = application_id,
-                                              origin_ip = ip_address,
-                                              name = kMetricName,
-                                              period = period,
-                                              timestamp = timestamps[period] }, dao)
+  -- Load current metric for configured period
+  local current_metric, err = dao.metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, conf.period)
   if err then
     ngx.log(ngx.ERROR, err)
   end
 
-  local current_usage = 0
-  if usage_metric then
-    current_usage = usage_metric.value
-  end
-
-  ngx.header["X-RateLimit-Limit"] = limit
-
-  if current_usage >= limit then
-    set_header_limit_remaining(limit - current_usage)
-    utils.show_error(429, "API rate limit exceeded")
+  -- What is the current usage for the configured period?
+  local current_usage
+  if current_metric ~= nil then
+    current_usage = current_metric.value
   else
-    set_header_limit_remaining(limit - current_usage - 1)
+    current_usage = 0
   end
 
-  -- Increment metric
-  local _, err = Metric.increment(ngx.ctx.api.id, application_id, ip_address, kMetricName, 1, dao)
+  local remaining = conf.limit - current_usage
+  print("remaining for entity: "..identifier.." : "..remaining)
+  ngx.header["X-RateLimit-Limit"] = conf.limit
+  ngx.header["X-RateLimit-Remaining"] = math.max(0, remaining - 1) -- -1 for this current request
+
+  if remaining == 0 then
+    utils.show_error(429, "API rate limit exceeded")
+  end
+
+  -- Increment metrics for all periods if the request goes through
+  local _, err = dao.metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
   if err then
     ngx.log(ngx.ERROR, err)
   end

@@ -35,7 +35,13 @@ build = {
   modules = {
     ["kong"] = "src/main.lua",
     ["classic"] = "src/classic.lua",
-    ["cassandra"] = "src/cassandra.lua",
+
+    ["cassandra"] = "src/cassandra/cassandra.lua",
+    ["protocol"] = "src/cassandra/protocol.lua",
+    ["encoding"] = "src/cassandra/encoding.lua",
+    ["decoding"] = "src/cassandra/decoding.lua",
+    ["cassandra.constants"] = "src/cassandra/constants.lua",
+
     ["constants"] = "src/constants.lua",
 
     ["kong.tools.utils"] = "src/kong/tools/utils.lua",

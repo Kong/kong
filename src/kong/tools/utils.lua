@@ -20,7 +20,12 @@ function _M.table_size(t)
   return res
 end
 
+function _M.is_empty(t)
+  return next(t) == nil
+end
+
 function _M.reverse_table(arr)
+  -- this could be O(n/2)
   local reversed = {}
   for _, i in ipairs(arr) do
     table.insert(reversed, 1, i)
@@ -87,19 +92,19 @@ function _M.get_utc()
   end
 end
 
---[[
-local epoch = { year = 1970, month = 1, day = 1, hour = 0, min = 0, sec = 0, isdst = false }
-local function gmtime(t)
-  t.isdst =  false
-  return os.time(t) - os.time(epoch)
-end
-
 function _M.get_timestamps(now)
-  -- Convert milliseconds to seconds. Milliseconds in openresty are in decimal places
-  local _now = math.floor(now)
-  local date = os.date("!*t", _now) -- In milliseconds
+  if now == nil then
+    now = _M.get_utc()
+  end
 
-  local second = _now
+  local function gmtime(t)
+    t.isdst = false
+    return os.time(t) - os.time({ year = 1970, month = 1, day = 1, hour = 0, min = 0, sec = 0, isdst = false })
+  end
+
+  local date = os.date("!*t", now)
+
+  local second = now
   date.sec = 0
   local minute = gmtime(date)
   date.min = 0
@@ -120,7 +125,6 @@ function _M.get_timestamps(now)
           year = year * 100
         }
 end
---]]
 
 --
 -- Lapis utils

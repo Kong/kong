@@ -89,7 +89,7 @@ end
 -- @return {boolean} true if doesn't exist (UNIQUE), false otherwise
 -- @return {string|nil} Error if any during execution
 function BaseDao:_check_unique(statement, t, is_updating)
-  local results, err = self:_execute_prepared_stmt(statement, t)
+  local results, err = self:_execute(statement, t)
   if err then
     return false, "Error during UNIQUE check: "..err.message
   elseif results and #results > 0 then
@@ -120,7 +120,7 @@ end
 -- @return {string|nil} Error if any during execution
 -- @return {table|nil} Results of the statement if FOREIGN
 function BaseDao:_check_foreign(statement, t)
-  local results, err = self:_execute_prepared_stmt(statement, t)
+  local results, err = self:_execute(statement, t)
   if err then
     return false, "Error during FOREIGN check: "..err.message
   elseif not results or #results == 0 then
@@ -179,9 +179,14 @@ function BaseDao:_check_all_unique(t, is_updating)
   return errors == nil, nil, errors
 end
 
--- Execute a prepared statement
+-- Execute an operation statement.
 --
--- @param {table|statement} statement The prepared statement (cassandra or build by :prepare) to execute
+-- # The operation can be one of the following:
+--   * _statements (which contains .query and .param for ordered binding of parameters)
+--   * a lua-resty-cassandra BatchStatement (see metrics.lua)
+--   * a lua-resty-cassandra prepared statement
+--
+-- @param {table} statement The operation to execute
 -- @param {table} values_to_bind Raw values to bind
 -- @param {table} options Options to pass to lua-resty-cassandra :execute()
 --                        page_size
@@ -189,16 +194,28 @@ end
 -- @return {table|boolean} Table if type of return is ROWS
 --                         Boolean if type of results is VOID
 -- @return {table|nil} Cassandra error if any
-function BaseDao:_execute_prepared_stmt(statement, values_to_bind, options)
-  if statement.params and values_to_bind then
-    local errors
-    values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, statement.params)
-    if errors then
-      return nil, self:_build_error(error_types.INVALID_TYPE, errors)
+function BaseDao:_execute(operation, values_to_bind, options)
+  local statement
+
+  if operation.is_kong_statement then
+    statement = operation.query
+
+    if operation.params and values_to_bind then
+      local errors
+      values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, operation.params)
+      if errors then
+        return nil, self:_build_error(error_types.INVALID_TYPE, errors)
+      end
     end
+  elseif operation.is_batch_statement then
+    statement = operation
+    values_to_bind = nil
+    options = nil
+  else
+    statement = operation
   end
 
-  local results, err = self._db:execute(statement.query, values_to_bind, options)
+  local results, err = self._db:execute(statement, values_to_bind, options)
   if err then
     err = self:_build_error(error_types.DATABASE, err)
   end
@@ -254,6 +271,7 @@ function BaseDao:prepare(queries, statements)
         error("Failed to prepare statement: "..q..". Error: "..err)
       else
         statements[stmt_name] = {
+          is_kong_statement = true,
           params = query.params,
           query = prepared_stmt
         }
@@ -300,7 +318,7 @@ function BaseDao:insert(t)
     return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
-  local _, err = self:_execute_prepared_stmt(self._statements.insert, t)
+  local _, err = self:_execute(self._statements.insert, t)
   if err then
     return nil, err
   else
@@ -358,7 +376,7 @@ function BaseDao:update(t)
     return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
-  local _, err = self:_execute_prepared_stmt(self._statements.update, t)
+  local _, err = self:_execute(self._statements.update, t)
 
   if err then
     return nil, err
@@ -370,9 +388,9 @@ end
 -- Execute the prepared SELECT_ONE statement as it is
 --
 -- @param {string} id UUID of element to select
--- @return _execute_prepared_stmt()
+-- @return _execute()
 function BaseDao:find_one(id)
-  local data, err = self:_execute_prepared_stmt(self._statements.select_one, { id = id })
+  local data, err = self:_execute(self._statements.select_one, { id = id })
 
   -- Return the 1st and only element of the result set
   if data and utils.table_size(data) > 0 then
@@ -394,7 +412,7 @@ end
 -- @param {number} page_size
 -- @param {paging_state} paging_state
 --
--- @return _execute_prepared_stmt()
+-- @return _execute()
 function BaseDao:find_by_keys(t, page_size, paging_state)
   local where, keys = {}, {}
   local where_str = ""
@@ -428,12 +446,13 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
     end
 
     self._statements_cache[select_query] = {
+      is_kong_statement = true,
       query = stmt,
       params = keys
     }
   end
 
-  return self:_execute_prepared_stmt(self._statements_cache[select_query], t, {
+  return self:_execute(self._statements_cache[select_query], t, {
     page_size = page_size,
     paging_state = paging_state
   })
@@ -461,7 +480,7 @@ function BaseDao:delete(id)
     return false
   end
 
-  return self:_execute_prepared_stmt(self._statements.delete, { id = id })
+  return self:_execute(self._statements.delete, { id = id })
 end
 
 return BaseDao

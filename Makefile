@@ -36,7 +36,7 @@ test-integration:
 	@bin/kong -c $(TEST_DIR)/kong-dev.yaml -n $(TEST_DIR)/nginx-dev.conf start > /dev/null
 	@bin/kong migrate > /dev/null
 	@$(MAKE) seed > /dev/null
-	@busted $(FOLDER) || (bin/kong stop > /dev/null;make drop > /dev/null; exit 1)
+	@busted $(FOLDER) || (bin/kong stop > /dev/null;make drop > /dev/null;make clean DEV_DIR=$(TEST_DIR); exit 1)
 	@bin/kong stop > /dev/null
 	@$(MAKE) drop > /dev/null
 	@$(MAKE) clean DEV_DIR=$(TEST_DIR)

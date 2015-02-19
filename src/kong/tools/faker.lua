@@ -67,12 +67,6 @@ function Faker:fake_entity(type)
       public_key = "public_random"..r,
       secret_key = "private_random"..r
     }
-  elseif type == "metric" then
-    return {
-      api_id = random_from_table(self.inserted_entities.api).id,
-      identifier = "127.0.0.1",
-      periods = { "second", "minute", "hour" }
-    }
   elseif type == "plugin" then
     local type = random_from_table({ "authentication", "ratelimiting" })
     local value = {}
@@ -118,18 +112,14 @@ function Faker:seed(random, amount)
       { public_key = "apikey123", __account = 1 },
       { public_key = "username", secret_key = "password", __account = 1 },
     },
-    metric = {
-      { identifier = "127.0.0.1", periods = { "second", "minute", "hour" }, __api = 1 },
-      { identifier = "127.0.0.1", periods = { "second", "minute" }, __api = 1 },
-    },
     plugin = {
-      { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 1 },
-      { name = "authentication", value = { authentication_type = "query", authentication_key_names = { "apikey" }}, __api = 6 },
+      { name = "authentication", value = { authentication_type = "query",  authentication_key_names = { "apikey" }}, __api = 1 },
+      { name = "authentication", value = { authentication_type = "query",  authentication_key_names = { "apikey" }}, __api = 6 },
       { name = "authentication", value = { authentication_type = "header", authentication_key_names = { "apikey" }}, __api = 2 },
       { name = "authentication", value = { authentication_type = "basic" }, __api = 3 },
-      { name = "ratelimiting",   value = { period = "minute", limit = 2 },  __api = 5 },
-      { name = "ratelimiting",   value = { period = "minute", limit = 2 },  __api = 6 },
-      { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 3 }
+      { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 5 },
+      { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 6 },
+      { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 }
     }
   }
 
@@ -162,7 +152,7 @@ function Faker:insert_from_table(entities_to_insert, random)
   -- Insert in order (for foreign relashionships)
   -- 1. accounts and APIs
   -- 2. applications, plugins and metrics which need refereces to inserted apis and accounts
-  for _, type in ipairs({ "api", "account", "application", "plugin", "metric" }) do
+  for _, type in ipairs({ "api", "account", "application", "plugin" }) do
     for i, entity in ipairs(entities_to_insert[type]) do
 
       -- Limit the chances of collision between plugins on random insertions
@@ -186,35 +176,24 @@ function Faker:insert_from_table(entities_to_insert, random)
         elseif type == "plugin" then
           if foreign_api then entity.api_id = foreign_api.id end
           if foreign_application then entity.application_id = foreign_application.id end
-        elseif type == "metric" then
-          if foreign_api then entity.api_id = foreign_api.id end
         end
       end
 
       -- Insert in DB
-      local res, err
-
-      if type == "metric" then
-        res, err = self.dao_factory[type.."s"]:increment(entity.api_id, entity.identifier, entity.periods)
-      else
-        res, err = self.dao_factory[type.."s"]:insert(entity)
-      end
-
+      local res, err = self.dao_factory[type.."s"]:insert(entity)
       if err and type ~= "plugin" then
         throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
       end
 
-      if type ~= "metric" then
-        -- For other hard-coded entities relashionships
-        entities_to_insert[type][i] = res
+      -- For other hard-coded entities relashionships
+      entities_to_insert[type][i] = res
 
-        -- For generated fake_entities
-        if not self.inserted_entities[type] then
-          self.inserted_entities[type] = {}
-        end
-
-        table.insert(self.inserted_entities[type], res)
+      -- For generated fake_entities
+      if not self.inserted_entities[type] then
+        self.inserted_entities[type] = {}
       end
+
+      table.insert(self.inserted_entities[type], res)
     end
   end
 end

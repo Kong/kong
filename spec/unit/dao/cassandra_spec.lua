@@ -411,7 +411,6 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
     end)
-
   end)
 
   describe(":delete()", function()
@@ -626,102 +625,95 @@ describe("Cassandra DAO #dao #cassandra", function()
   end)
 
   describe("Metrics", function()
+    local utils = require "kong.tools.utils"
     local metrics = dao_factory.metrics
-    local session = dao_factory._db
+
+    local api_id = uuid()
+    local identifier = uuid()
 
     after_each(function()
       dao_factory:drop()
     end)
 
+    it("should return nil when metrics are not existing", function()
+      local current_timestamp = 1424217600
+      local periods = utils.get_timestamps(current_timestamp)
+      -- Very first select should return nil
+      for period, period_date in pairs(periods) do
+        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        assert.falsy(err)
+        assert.are.same(nil, metric)
+      end
+    end)
+
     it("should increment metrics with the given period", function()
-      local api_id = uuid()
-      local identifier = uuid()
+      local current_timestamp = 1424217600
+      local periods = utils.get_timestamps(current_timestamp)
 
       -- First increment
-      local ok, err = metrics:increment(api_id, identifier, { "second", "minute" })
+      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
       -- First select
-      local data, err = metrics:find(api_id, identifier, { "second", "minute" })
-      assert.falsy(err)
-      assert.are.same(2, #data)
-
-      data.meta = nil
-
-      assert.are.same({
-        {
+      for period, period_date in pairs(periods) do
+        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        assert.falsy(err)
+        assert.are.same({
           api_id = api_id,
           identifier = identifier,
-          period = "second",
-          value = 1
-        },
-        {
-          api_id =  api_id,
-          identifier = identifier,
-          period = "minute",
-          value = 1
-        }
-      }, data)
+          period = period,
+          period_date = period_date,
+          value = 1 -- The important part
+        }, metric)
+      end
 
       -- Second increment
-      local ok, err = metrics:increment(api_id, identifier, { "second", "minute", "hour" })
+      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
       -- Second select
-      local data, err = metrics:find(api_id, identifier, { "second", "minute", "hour" })
-      assert.falsy(err)
-      assert.are.same(3, #data)
-
-      data.meta = nil
-
-      assert.are.same({
-        {
+      for period, period_date in pairs(periods) do
+        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        assert.falsy(err)
+        assert.are.same({
           api_id = api_id,
           identifier = identifier,
-          period = "second",
-          value = 2
-        },
-        {
-          api_id =  api_id,
-          identifier = identifier,
-          period = "minute",
-          value = 2
-        },
-        {
-          api_id =  api_id,
-          identifier = identifier,
-          period = "hour",
-          value = 1
-        }
-      }, data)
-    end)
+          period = period,
+          period_date = period_date,
+          value = 2 -- The important part
+        }, metric)
+      end
 
-    it("should delete metrics with the given period", function()
-      local api_id = uuid()
-      local identifier = uuid()
+      -- 1 second delay
+      current_timestamp = 1424217601
+      periods = utils.get_timestamps(current_timestamp)
 
-      -- Increment
-      local ok, err = metrics:increment(api_id, identifier, { "second", "minute", "hour", "day" })
+       -- Third increment
+      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
-      -- First select
-      local data, err = metrics:find(api_id, identifier, { "second", "minute", "hour", "day" })
-      assert.falsy(err)
-      assert.are.same(4, #data)
+      -- Third select with 1 second delay
+      for period, period_date in pairs(periods) do
 
-      -- Delete
-      local ok, err = metrics:delete(api_id, identifier, { "second", "minute", "hour", "day" })
-      assert.falsy(err)
-      assert.True(ok)
+        local expected_value = 3
 
-      -- Second select
-      local data, err = metrics:find(api_id, identifier, { "second", "minute", "hour", "day" })
-      assert.falsy(err)
-      assert.are.same(0, #data)
+        if period == "second" then
+          expected_value = 1
+        end
+
+        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        assert.falsy(err)
+        assert.are.same({
+          api_id = api_id,
+          identifier = identifier,
+          period = period,
+          period_date = period_date,
+          value = expected_value -- The important part
+        }, metric)
+      end
     end)
-
   end)
 end)
