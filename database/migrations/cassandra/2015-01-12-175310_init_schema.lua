@@ -52,9 +52,9 @@ local Migration = {
         PRIMARY KEY (id, name)
       );
 
+      CREATE INDEX IF NOT EXISTS ON plugins(name);
       CREATE INDEX IF NOT EXISTS ON plugins(api_id);
       CREATE INDEX IF NOT EXISTS ON plugins(application_id);
-      CREATE INDEX IF NOT EXISTS ON plugins(name);
 
       CREATE TABLE IF NOT EXISTS metrics(
         api_id uuid,

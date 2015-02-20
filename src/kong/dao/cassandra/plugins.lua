@@ -43,11 +43,11 @@ function Plugins:new(database, properties)
     __custom_checks = {
       unique_application_id = {
         params = { "api_id", "application_id", "name" },
-        query = [[ SELECT id FROM plugins WHERE api_id = ? AND application_id = ? AND name = ? ALLOW FILTERING; ]]
+        query = [[ SELECT * FROM plugins WHERE api_id = ? AND application_id = ? AND name = ? ALLOW FILTERING; ]]
       },
       unique_no_application_id = {
         params = { "api_id", "name" },
-        query = [[ SELECT id FROM plugins WHERE api_id = ? AND name = ? ALLOW FILTERING; ]]
+        query = [[ SELECT * FROM plugins WHERE api_id = ? AND application_id = NULL AND name = ? ALLOW FILTERING; ]]
       }
     },
     __foreign = {
