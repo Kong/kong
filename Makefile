@@ -40,11 +40,11 @@ test:
 	@busted spec/unit
 
 run-integration-tests:
-	@$(KONG_HOME)/bin/kong -c $(TESTS_KONG_CONF) migrate > /dev/null
-	@$(KONG_HOME)/bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start > /dev/null
+	@bin/kong -c $(TESTS_KONG_CONF) migrate > /dev/null
+	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start > /dev/null
 	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
 	@busted $(FOLDER) || (bin/kong stop > /dev/null; make drop KONG_CONF=$(TESTS_KONG_CONF) > /dev/null; exit 1)
-	@$(KONG_HOME)/bin/kong stop > /dev/null
+	@bin/kong stop > /dev/null
 	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
 
 test-web:
