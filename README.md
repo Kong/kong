@@ -11,7 +11,7 @@ Kong is a scalable and customizable API Management Layer built on top of nginx.
 
 ## Requirements
 - Lua `5.1`
-- Luarocks for Lua `5.1`
+- Luarocks `2.2.0`
 - [OpenResty](http://openresty.com/#Download) `1.7.7.2`
 - Cassandra `2.1`
 
