@@ -27,6 +27,14 @@ function check_file_exists {
   fi
 }
 
+function real_path_func {
+  if ! hash realpath 2> /dev/null; then
+    echo `perl -MCwd -e 'print Cwd::realpath ($1), qq<\n>'`
+  else
+    echo `realpath $1`
+  fi
+}
+
 ######################
 #     Operations  #
 ######################
@@ -111,10 +119,10 @@ while getopts "h?vc:n:" opt; do
         exit 0
         ;;
     c)
-        KONG_CONF=`realpath "$OPTARG"`
+        KONG_CONF=$(real_path_func $OPTARG)
         ;;
     n)
-        NGINX_CONF=`realpath "$OPTARG"`
+        NGINX_CONF=$(real_path_func $OPTARG)
         ;;
   esac
 done
