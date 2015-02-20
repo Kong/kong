@@ -2,15 +2,15 @@
 
 Welcome to the Kong official documentation, that will help you setting up Kong, configuring it and operating it. We reccomend reading every section of this document to have a full understanding of the project.
 
-If you have more specific questions about Kong, please join our chat at #kong and the project maintainers will be happy to answer to your questions.
-
-Kong is trusted by more than 100,000 developers, processing billions of requests for more than 10,000 public and private APIs around the world.
+If you have more specific questions about Kong, please join our chat at <a href="irc://irc.freenode.net/kong">#kong</a> and the project maintainers will be happy to answer to your questions.
 
 ##What is Kong?
 
-Kong is an open-source enterprise API Layer (also called *API Gateway* or *API Middleware*) that runs in front of any RESTful API and provides additional functionalities like authentication, analytics, monitoring, rate limiting and billing without changing the source code of the API itself. It is a foundamental technology that any API provider should leverage to deliver better APIs without reinventing the wheel.
+Kong is a scalable, lightweight, open source API Layer (also called *API Gateway* or *API Middleware*) that runs in front of any RESTful API and provides additional functionalities to the underlying APIs like authentication, analytics, monitoring, rate limiting and billing. Kong plugins provide extra functionality and services beyond the core Kong platform.
 
-Every request being made to the API will hit Kong first, and then it will be proxied to the final API with an average processing latency that is usually lower than **8ms** per request. Because Kong can be easily scaled up and down there is no limit to the amount of requests it can serve, up to billions of HTTP requests.
+Built on top of reliable technologies like nginx and Cassandra, Kong is easy to setup and to scale - and by having an easy to use RESTful API, it's also easy to use.
+
+Once Kong is running, every request being made to the API will hit Kong first, and then it will be proxied to the final API Because Kong can be easily scaled up and down there is no limit to the amount of requests it can serve, up to billions of HTTP requests.
 
 ![](/assets/images/docs/kong-simple.png)
 
@@ -18,15 +18,7 @@ Kong has been built following three foundamental principles:
 
 * **Scalable**: it's easy to scale horizontally just by adding more machines. It can virtually handle any load.
 * **Customizable**: it can be expanded by adding new features, and it's configurable through an internal RESTful API.
-* **Runs on any infrastructure**: It can run in any cloud or on-premise environment, in a single or multi-datacenter setup, for any kind of API: public, private and partner APIs.
-
-##Plugins
-
-All the functionalities provided by Kong are served by easy to use **plugins**: authentication, rate-limiting, billing features are provided through an authentication plugin, a rate-limiting plugin, and a billing plugin among the others. You can decide which plugin to install and how to configure them through the Kong's RESTful internal API.
-
-A plugin is code that can hook into the life-cycle of both requests and responses, with the additional possibility of changing their content, thus allowing great customization. For example, a SOAP to REST converter plugin is totally possible with Kong.
-
-By having plugins, Kong can be extended to fit any custom need or integration challenge. For example, if you need to integrate the API user authentication with a third-party enterprise security system, that would be implemented in a dedicated plugin that will run on every API request. More advanced users can build their own plugins, to extend the functionality of Kong.
+* **Runs on any infrastructure**: It can run in any cloud or on-premise environment, in a single or multi-datacenter setup, for any kind of API: public, private or invite-only APIs.
 
 ##How does it work?
 
@@ -39,11 +31,18 @@ In order to work, Kong needs to have both these components set up and operationa
 
 ![](/assets/images/docs/kong-detailed.png)
 
+Don't worry if you are not experienced with these technologies, Kong works out of the box and you or your engineering team will be able to set it up quickly without issues.
+
 ### Api Proxy Server
 
-The API Proxy Server is the component that will actually process the API requests and execute the configured plugins to provide additional functionalities. It is also the component that will invoke the final API.
+The API Proxy Server, built on top of nginx, is the server that will actually process the API requests and execute the configured plugins to provide additional functionalities before finally proxying the request to the final API.
 
-The proxy server also offers an internal API that can be used to configure Kong, create new users, and a handful of other operations. This makes it extremely easy to integrate Kong with existing systems, and it also enables beautiful user experiences: for example when implementing an api key provisioning flow, a website can directly communicate with Kong for the credentials provisioning.
+The Proxy Server listens on two ports, that by default are:
+
+* Port `8000`, that will be used to process the API requests.
+* Port `8001` provides the administration API that you can use to operate Kong, and should be private and firewalled.
+
+The administration API is a RESTful service that can be used to configure Kong, create new users, and a handful of other operations. This makes it extremely easy to integrate Kong with existing systems, and it also enables beautiful user experiences: for example when implementing an api key provisioning flow, a website can directly communicate with Kong for the credentials provisioning.
 
 ### Datastore
 
@@ -57,18 +56,51 @@ Running Kong is very easy and will take a couple of minutes. To get started quic
 
 * [From source]()
 * [Docker]()
-* [Vagrant]()
-* [AWS Image]()
+* Vagrant: coming soon.
+* AWS: coming soon.
 
-The Docker, Vagrant and AWS deployment options will already start a local Apache Cassandra instance. This is great for testing Kong, but once you go to production we reccomend having dedicated servers/instances for your Cassandra cluster.
+##Plugins
+
+One of the most important concept to understand are Kong Plugins. All the functionalities provided by Kong are served by easy to use **plugins**: authentication, rate-limiting, billing features are provided through an authentication plugin, a rate-limiting plugin, and a billing plugin among the others. You can decide which plugin to install and how to configure them through the Kong's RESTful internal API.
+
+A plugin is code that can hook into the life-cycle of both requests and responses, with the additional possibility of changing their content, or interacting with third-party systems, thus allowing great customization. For example, a SOAP to REST converter plugin is totally possible with Kong.
+
+By having plugins, Kong can be extended to fit any custom need or integration challenge. For example, if you need to integrate the API user authentication with a third-party enterprise security system, that would be implemented in a dedicated plugin that will run on every API request. More advanced users can build their own plugins, to extend the functionalities of Kong.
+
+# Datastores
+
+Technically Kong can be expanded to support many different datastores. Although this is a possiblity, for the time being we'll provide support for Cassandra, which is also the best option for starting small and scaling big.
+
+In the future we may introduce support for SQL datastores like MySQL or Posgres, or for NoSQL databases like MongoDB.
 
 # <a name="configuration"></a> Configuration
 
-Configuration here
+Kong comes with two configuration files that you can find in the `config.default` folder:
+
+* `kong.yaml` stores Kong's configuration for communicating with the database, and for enabling/disabling plugins on the system.
+* `nginx.conf` is the typical nginx configuration file that stores all the properties for the HTTP server
+
+You will need to provide both files to run Kong.
+
+# Scalability
+
+When it comes down to scaling Kong, you need to keep in mind that you will need to scale both the API server and the underlying datastore.
+
+## API Server
+
+Scaling the API server up or down is very easy. Each server is stateless and you can just add or remove nodes under the load balancer. Under the hood the API server is built on top of nginx, and scaling is as simple as that.
+
+Be aware that terminating a node might kill the ongoing API requests on that server, so you want to make sure that before killing an API Server all the HTTP requests have been already processed.
+
+## Cassandra
+
+Scaling Cassandra won't be required often, and usually a 2 nodes setup per datacenter is going to be enough for most of the use cases, but of course if your load is going to be very high then you might consider configuring it properly and prepare the cluster to be scaled in order to handle more requests.
+
+The easy part is that Cassandra can be scaled up and down just by adding or removing nodes to the cluster, and the system will take care of re-balancing the data in the cluster.
 
 # Internal API Endpoints
 
-
+Kong offers a RESTful API that you can use to operate the system. You can run the API commands on any node in the cluster, and Kong will keep the configuration consistent across all the other servers. Below is the API documentation.
 
 ## API Object
 
