@@ -13,6 +13,8 @@ TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 .PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
 
 install:
+	@if [[ $EUID -ne 0 ]]; then echo "Please try running this command again as root/Administrator."; exit 1; fi
+	@echo "Please wait, this process could take some time.."
 	@luarocks make kong-*.rockspec PCRE_LIBDIR=`find / -type f -name "libpcre.so*" -print -quit | xargs dirname` OPENSSL_LIBDIR=`find / -type f -name "libssl.so*" -print -quit | xargs dirname`
 
 dev:
