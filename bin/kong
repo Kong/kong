@@ -23,10 +23,14 @@ function check_file_exists {
 }
 
 function real_path_func {
-  if ! hash realpath 2> /dev/null; then
-    echo `perl -MCwd -e 'print Cwd::realpath ($1), qq<\n>'`
+  if [ "$(uname)" == "Darwin" ]; then
+    if ! hash realpath 2> /dev/null; then
+      echo `perl -MCwd -e 'print Cwd::realpath ($1), qq<\n>'`
+    else
+      echo `realpath $1`
+    fi
   else
-    echo `realpath $1`
+    echo `readlink -f $1`
   fi
 }
 
