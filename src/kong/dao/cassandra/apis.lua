@@ -11,7 +11,7 @@ local SCHEMA = {
 
 local Apis = BaseDao:extend()
 
-function Apis:new(database)
+function Apis:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
@@ -46,7 +46,7 @@ function Apis:new(database)
     }
   }
 
-  Apis.super.new(self, database)
+  Apis.super.new(self, properties)
 end
 
 return Apis

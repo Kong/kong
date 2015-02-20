@@ -1,6 +1,7 @@
 -- Copyright (C) Mashape, Inc.
 local Object = require "classic"
 local cassandra = require "cassandra"
+local stringy = require "stringy"
 
 local Faker = require "kong.tools.faker"
 local migrations = require "kong.tools.migrations"
@@ -17,28 +18,23 @@ local CassandraFactory = Object:extend()
 -- @param properties Cassandra properties
 function CassandraFactory:new(properties)
   self.type = "cassandra"
-  -- Private
   self._properties = properties
-  self._migrations = migrations(self, { keyspace = properties.keyspace })
-  self._db = cassandra.new()
-  self._db:connect(properties.host, properties.port)
-  self._db:set_timeout(properties.timeout)
 
-  -- Public
-
-  -- TODO: do not include on production
+  -- TODO: do not include those on production
   self.faker = Faker(self)
+  self._migrations = migrations(self, { keyspace = properties.keyspace })
 
-  self.apis = Apis(self._db)
-  self.metrics = Metrics(self._db)
-  self.plugins = Plugins(self._db)
-  self.accounts = Accounts(self._db)
-  self.applications = Applications(self._db)
+  self.apis = Apis(properties)
+  self.metrics = Metrics(properties)
+  self.plugins = Plugins(properties)
+  self.accounts = Accounts(properties)
+  self.applications = Applications(properties)
 end
 
 --
 -- Migrations
 --
+
 function CassandraFactory:migrate(callback)
   self._migrations:migrate(callback)
 end
@@ -54,6 +50,7 @@ end
 --
 -- Seeding
 --
+
 function CassandraFactory:seed(random, number)
   self.faker:seed(random, number)
 end
@@ -72,32 +69,66 @@ end
 --
 -- Utilities
 --
-function CassandraFactory:prepare()
-  self._db:set_keyspace(self._properties.keyspace)
 
-  self.apis:prepare()
-  self.metrics:prepare()
-  self.plugins:prepare()
-  self.accounts:prepare()
-  self.applications:prepare()
+-- Prepare all statements in collection._queries and put them in collection._statements.
+-- Should be called with only a collection and will recursively call itself for nested statements.
+--
+-- @param collection A collection with a ._queries property
+local function prepare(collection, queries, statements)
+  if not queries then queries = collection._queries end
+  if not statements then statements = collection._statements end
+
+  for stmt_name, query in pairs(queries) do
+    if type(query) == "table" and query.query == nil then
+      collection._statements[stmt_name] = {}
+      prepare(collection, query, collection._statements[stmt_name])
+    else
+      local q = stringy.strip(query.query)
+      q = string.format(q, "")
+      local kong_stmt, err = collection:prepare_kong_statement(q, query.params)
+      if err then
+        error(err)
+      end
+      statements[stmt_name] = kong_stmt
+    end
+  end
 end
 
-function CassandraFactory:execute(stmt, no_keyspace)
+-- Prepare all statements of collections
+function CassandraFactory:prepare()
+  for _, collection in ipairs({ self.apis,
+                                self.metrics,
+                                self.plugins,
+                                self.accounts,
+                                self.applications }) do
+    prepare(collection)
+  end
+end
+
+-- Execute a string of queries separated by ;
+-- Useful for huge DDL operations such as migrations
+--
+-- @param {string} queries Semicolon separated string of queries
+-- @param {boolean} no_keyspace Won't set the keyspace if true
+function CassandraFactory:execute(queries, no_keyspace)
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
-  local connected, err = session:connect(self._properties.host, self._properties.port)
+  local connected, err = session:connect(self._properties.hosts, self._properties.port)
   if not connected then
     error(err)
   end
 
   if no_keyspace == nil then
-    session:set_keyspace(self._properties.keyspace)
+    local ok, err = session:set_keyspace(self._properties.keyspace)
+    if not ok then
+      error(err)
+    end
   end
 
   -- Cassandra client only support BATCH on DML statements.
   -- We must split commands to execute them individually for migrations and such
-  local queries = stringy.split(stmt, ";")
+  queries = stringy.split(queries, ";")
   for _,query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
       local result, err = session:execute(query)
@@ -108,13 +139,6 @@ function CassandraFactory:execute(stmt, no_keyspace)
   end
 
   session:close()
-end
-
-function CassandraFactory:close()
-  local ok, err = self._db:close()
-  if err then
-    error("Cannot close Cassandra session: "..err)
-  end
 end
 
 return CassandraFactory

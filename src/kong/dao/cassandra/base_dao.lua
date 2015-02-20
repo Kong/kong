@@ -1,26 +1,24 @@
 -- Copyright (C) Mashape, Inc.
 
 local cassandra = require "cassandra"
-local stringy = require "stringy"
 local Object = require "classic"
 local uuid = require "uuid"
 local cjson = require "cjson"
 local rex = require "rex_pcre"
 
 local constants = require "kong.constants"
-local schemas = require "kong.dao.schemas"
+local validate = require("kong.dao.schemas").validate
 local utils = require "kong.tools.utils"
 
-local validate = schemas.validate
 local error_types = constants.DATABASE_ERROR_TYPES
 
 local BaseDao = Object:extend()
 
-function BaseDao:new(database)
-  -- This is important to seed the UUID generator
-  uuid.seed()
+-- This is important to seed the UUID generator
+uuid.seed()
 
-  self._db = database
+function BaseDao:new(properties)
+  self._properties = properties
   self._statements = {} -- Mirror of _queries but with prepared statements instead of strings
   self._statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
 end
@@ -29,8 +27,8 @@ end
 -- PRIVATE --
 -------------
 
+local pattern = "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
 local function is_valid_uuid(uuid)
-  local pattern = "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
   return rex.match(uuid, pattern) ~= nil
 end
 
@@ -39,7 +37,7 @@ end
 -- the `params` property of all prepared statement, taking into account special
 -- cassandra values (uuid, timestamps, NULL)
 --
--- @param {table} schema A schema with type proeprties to encode specific values
+-- @param {table} schema A schema with type properties to encode specific values
 -- @param {table} t Values to bind to a statement
 -- @param {table} parameters An ordered list of parameters
 -- @return {table} An ordered list of values to be binded to lua-resty-cassandra :execute
@@ -191,7 +189,7 @@ end
 --   * a lua-resty-cassandra BatchStatement (see metrics.lua)
 --   * a lua-resty-cassandra prepared statement
 --
--- @param {table} statement The operation to execute
+-- @param {table} operation The operation to execute
 -- @param {table} values_to_bind Raw values to bind
 -- @param {table} options Options to pass to lua-resty-cassandra :execute()
 --                        page_size
@@ -202,6 +200,7 @@ end
 function BaseDao:_execute(operation, values_to_bind, options)
   local statement
 
+  -- Determine kind of operation
   if operation.is_kong_statement then
     statement = operation.query
 
@@ -220,11 +219,30 @@ function BaseDao:_execute(operation, values_to_bind, options)
     statement = operation
   end
 
-  local results, err = self._db:execute(statement, values_to_bind, options)
+  -- Start cassandra session
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+
+  local connected, err = session:connect(self._properties.hosts, self._properties.port)
+  if not connected then
+    return nil, self:_build_error(error_types.DATABASE, err)
+  end
+
+  local ok, err = session:set_keyspace(self._properties.keyspace)
+  if not ok then
+    return nil, self:_build_error(error_types.DATABASE, err)
+  end
+
+  -- Execute operation
+  local results, err = session:execute(statement, values_to_bind, options)
   if err then
     err = self:_build_error(error_types.DATABASE, err)
   end
 
+  -- close or pool
+  session:close()
+
+  -- Parse result
   if results and results.type == "ROWS" then
     -- do we have more pages to fetch?
     if results.meta.has_more_pages then
@@ -247,32 +265,46 @@ end
 -- PUBLIC INTERFACE --
 ----------------------
 
--- Prepare all statements in self._queries and put them in self._statements.
--- Should be called without parameters and will recursively call itself for nested statements.
-function BaseDao:prepare(queries, statements)
-  if not queries then queries = self._queries end
-  if not statements then statements = self._statements end
+-- Prepare a statement used by kong.
+-- Since lua-resty-cassandra doesn't support binding by name yet, we need
+-- to keep a record of properties to bind for each statement. Thus, a "kong statement"
+-- is an object made of a prepared statement and an array of columns to bind.
+-- See :_execute for the usage of this params array doing the binding.
+--
+-- @param {string} query A CQL query to prepare
+-- @param {table} params An array of parameters (ordered) matching the query placeholders order
+-- @return {table|nil} A "kong statement" to be used by _execute
+-- @return {table|nil} Error if any
+function BaseDao:prepare_kong_statement(query, params)
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
 
-  for stmt_name, query in pairs(queries) do
-    if type(query) == "table" and query.query == nil then
-      self._statements[stmt_name] = {}
-      self:prepare(query, self._statements[stmt_name])
-    else
-      local q = stringy.strip(query.query)
-      q = string.format(q, "")
-      local prepared_stmt, err = self._db:prepare(q)
-      if err then
-        error("Failed to prepare statement: "..q..". Error: "..err)
-      else
-        statements[stmt_name] = {
-          is_kong_statement = true,
-          params = query.params,
-          query = prepared_stmt
-        }
-      end
-    end
+  local connected, err = session:connect(self._properties.hosts, self._properties.port)
+  if not connected then
+    return nil, err
+  end
+
+  local ok, err = session:set_keyspace(self._properties.keyspace)
+  if not ok then
+    return nil, err
+  end
+
+  local prepared_stmt, err = session:prepare(query)
+
+  -- close or ppol
+  session:close()
+
+  if err then
+    return nil, "Failed to prepare statement: "..q..". Error: "..err
+  else
+    return {
+      is_kong_statement = true,
+      params = params,
+      query = prepared_stmt
+    }
   end
 end
+
 
 -- Execute the prepared INSERT statement
 -- Validate entity's schema + UNIQUE values + FOREIGN KEYS
@@ -434,16 +466,11 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
 
   -- prepare query in a statement cache
   if not self._statements_cache[select_query] then
-    local stmt, err = self._db:prepare(select_query)
+    local kong_stmt, err = self:prepare_kong_statement(select_query, keys)
     if err then
       return nil, self:_build_error(error_types.DATABASE, err)
     end
-
-    self._statements_cache[select_query] = {
-      is_kong_statement = true,
-      query = stmt,
-      params = keys
-    }
+    self._statements_cache[select_query] = kong_stmt
   end
 
   return self:_execute(self._statements_cache[select_query], t, {
