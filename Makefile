@@ -15,7 +15,13 @@ TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 install:
 	@if [[ $EUID -ne 0 ]]; then echo "Please try running this command again as root/Administrator."; exit 1; fi
 	@echo "Please wait, this process could take some time.."
-	@luarocks make kong-*.rockspec PCRE_LIBDIR=`find / -type f -name "libpcre.so*" -print -quit | xargs dirname` OPENSSL_LIBDIR=`find / -type f -name "libssl.so*" -print -quit | xargs dirname`
+	@if [ `uname` == "Darwin" ]; then \
+		luarocks make kong-*.rockspec; \
+	else \
+		luarocks make kong-*.rockspec \
+		PCRE_LIBDIR=`find / -type f -name "libpcre.so*" -print -quit | xargs dirname` \
+		OPENSSL_LIBDIR=`find / -type f -name "libssl.so*" -print -quit | xargs dirname`; \
+	fi
 
 dev:
 	@mkdir -p $(DIR)
@@ -44,6 +50,7 @@ test:
 run-integration-tests:
 	@bin/kong -c $(TESTS_KONG_CONF) migrate
 	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start
+	@while ! [ $(ps aux | grep -c nginx) -gt 1 ]; do sleep 1; done # Wait until nginx starts
 	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF)
 	@busted $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF); exit 1)
 	@bin/kong stop
