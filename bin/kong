@@ -11,11 +11,6 @@ PID=$KONG_HOME/out/nginx.pid
 
 DEV_LUA_LIB="lua_package_path \"$KONG_HOME/src/?.lua\;\;\"\;"
 
-# Alias to realpath using Perl for systems that don't have realpath
-if ! hash realpath 2> /dev/null; then
-  alias realpath="perl -MCwd -e 'print Cwd::realpath ($ARGV[0]), qq<\n>'"
-fi
-
 ######################
 #  Utility function  #
 ######################
