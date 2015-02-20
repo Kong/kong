@@ -404,7 +404,7 @@ HTTP 200 OK
 
 ### List Applications
 
-`GET /accounts/`
+`GET /applications/`
 
 **Querystring Parameters**
 
