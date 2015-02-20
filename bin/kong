@@ -2,7 +2,7 @@
 
 # Setting Kong Home
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
-KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
+export KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
 # Properties
 export KONG_CONF=$KONG_HOME/config.default/kong.yaml
