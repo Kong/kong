@@ -41,7 +41,7 @@ To start Kong:
 kong start
 ```
 
-Dee all the available options, with `kong -h`.
+See all the available options, with `kong -h`.
 
 ## Development
 
