@@ -12,7 +12,7 @@ local schemas = require "kong.dao.schemas"
 local utils = require "kong.tools.utils"
 
 local validate = schemas.validate
-local error_types = constants.DATABASE_ERROR_TYPES
+local error_types = constants.DATABASE.ERROR_TYPES
 
 local BaseDao = Object:extend()
 
@@ -61,7 +61,7 @@ local function encode_cassandra_values(schema, t, parameters)
       value = cassandra.timestamp(value)
     elseif schema_field.type == "table" and value then
       value = cjson.encode(value)
-    elseif value == nil then
+    elseif value == constants.DATABASE.NULL then
       value = cassandra.null
     end
 
