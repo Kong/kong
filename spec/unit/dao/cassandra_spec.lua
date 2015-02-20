@@ -43,7 +43,8 @@ describe("Cassandra DAO #dao #cassandra", function()
         for column, schema_field in pairs(dao_factory[collection]._schema) do
           if schema_field.unique then
             assert.truthy(dao_factory[collection]._queries.__unique[column])
-          elseif schema_field.foreign then
+          end
+          if schema_field.foreign then
             assert.truthy(dao_factory[collection]._queries.__foreign[column])
           end
         end
