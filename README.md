@@ -10,8 +10,8 @@ Kong is a scalable and customizable API Management Layer built on top of nginx.
 * **[Development](#development)**
 
 ## Requirements
-- Lua `5.1`
-- Luarocks `2.2.0`
+- [Lua][lua-install-url] `5.1`
+- [Luarocks][luarocks-url] `2.2.0`
 - [OpenResty](http://openresty.com/#Download) `1.7.7.2`
 - Cassandra `2.1`
 
@@ -98,5 +98,5 @@ Those script provide handy features while developing Kong:
 
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
-
+[lua-install-url]: http://www.lua.org/download.html
 [luarocks-url]: https://luarocks.org
