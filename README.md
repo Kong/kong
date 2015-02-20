@@ -17,14 +17,6 @@ Kong is a scalable and customizable API Management Layer built on top of nginx.
 
 ## Installation
 
-#### Luarocks
-
-Installation through [luarocks][luarocks-url] is recommended:
-
-```bash
-[sudo] luarocks install kong
-```
-
 #### From source
 
 ```bash
@@ -35,13 +27,19 @@ Installation through [luarocks][luarocks-url] is recommended:
 
 Use Kong through the `bin/kong` executable.
 
+The first time ever you're running Kong, you need to make sure to setup Cassandra by executing:
+
+```bash
+bin/kong migrate
+```
+
 To start Kong:
 
 ```bash
-kong start
+bin/kong start
 ```
 
-See all the available options, with `kong -h`.
+See all the available options, with `bin/kong -h`.
 
 ## Development
 
@@ -62,7 +60,7 @@ make test-all
 - Run it:
 
 ```
-kong -c config.dev/kong.yaml -n config.dev/nginx.conf
+bin/kong -c config.dev/kong.yaml -n config.dev/nginx.conf
 ```
 
 #### Makefile
