@@ -102,4 +102,6 @@ Those script provide handy features while developing Kong:
 [travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
 [lua-install-url]: http://www.lua.org/download.html
 [luarocks-url]: https://luarocks.org
+[pcre-url]: http://www.pcre.org/
+[openssl-url]: https://www.openssl.org/
 [cassandra-url]: http://cassandra.apache.org/
