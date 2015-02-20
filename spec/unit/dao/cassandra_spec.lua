@@ -170,6 +170,8 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
+        local inspect = require "inspect"
+        print(inspect(err))
         assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
 
