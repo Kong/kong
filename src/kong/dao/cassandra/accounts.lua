@@ -8,7 +8,7 @@ local SCHEMA = {
 
 local Accounts = BaseDao:extend()
 
-function Accounts:new(database)
+function Accounts:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
@@ -38,7 +38,7 @@ function Accounts:new(database)
     }
   }
 
-  Accounts.super.new(self, database)
+  Accounts.super.new(self, properties)
 end
 
 return Accounts
