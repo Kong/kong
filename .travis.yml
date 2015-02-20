@@ -3,9 +3,6 @@ language: erlang
 env:
   - LUA=""
 
-services:
-  - cassandra
-
 branches:
   only:
     - master
@@ -28,7 +25,6 @@ before_install:
   - make build
   - sudo make install
   - cd ..
-  - pkill -9 cassandra
   - sudo rm -rf /var/lib/cassandra/*
   - wget http://www.us.apache.org/dist/cassandra/2.1.2/apache-cassandra-2.1.2-bin.tar.gz && tar -xvzf apache-cassandra-2.1.2-bin.tar.gz && sudo sh apache-cassandra-2.1.2/bin/cassandra
 
