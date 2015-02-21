@@ -22,7 +22,7 @@ Kong is a scalable and customizable API Management Layer built on top of nginx.
 #### From source
 
 ```bash
-[sudo] make install
+sudo make install
 ```
 
 ## Usage
