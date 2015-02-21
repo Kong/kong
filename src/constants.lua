@@ -1,14 +1,11 @@
 return {
   VERSION = "0.1-preview",
-  DATABASE = {
-    NULL = "null",
-    ERROR_TYPES = {
-      SCHEMA = "schema",
-      INVALID_TYPE = "invalid_type",
-      DATABASE = "database",
-      UNIQUE = "unique",
-      FOREIGN = "foreign"
-    },
+  DATABASE_ERROR_TYPES = {
+    SCHEMA = "schema",
+    INVALID_TYPE = "invalid_type",
+    DATABASE = "database",
+    UNIQUE = "unique",
+    FOREIGN = "foreign"
   },
   HEADERS = {
     VERSION = "X-Kong-Version",
