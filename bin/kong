@@ -25,7 +25,7 @@ function check_file_exists {
 function real_path_func {
   if [ "$(uname)" == "Darwin" ]; then
     if ! hash realpath 2> /dev/null; then
-      echo `perl -MCwd -e 'print Cwd::realpath ($1), qq<\n>'`
+      echo `perl -MCwd -e 'use Cwd "abs_path";$realfilepath = abs_path("$ARGV[0]");print "$realfilepath\n";' $1`
     else
       echo `realpath $1`
     fi
