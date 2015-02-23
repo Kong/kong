@@ -1,5 +1,6 @@
 -- dependencies
 local cassandra = require "cassandra"
+local constants = require "kong.constants"
 local cjson = require "cjson"
 local uuid = require "uuid"
 
@@ -587,7 +588,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local q = {}
 
         -- Remove nonqueryable fields
-        for k,schema_field in pairs(dao_factory[collection]._schema) do
+        for k, schema_field in pairs(dao_factory[collection]._schema) do
           if schema_field.queryable then
             q[k] = t[k]
           elseif schema_field.type == "table" then
@@ -598,6 +599,12 @@ describe("Cassandra DAO #dao #cassandra", function()
         local results, err = dao_factory[collection]:find_by_keys(q)
         assert.falsy(err)
         assert.truthy(results)
+
+        -- in case of plugins
+        if t.application_id == constants.DATABASE_NULL_ID then
+          t.application_id = nil
+        end
+
         assert.are.same(t, results[1])
       end)
 
@@ -716,5 +723,48 @@ describe("Cassandra DAO #dao #cassandra", function()
         }, metric)
       end
     end)
+  end)
+
+  describe("Plugins", function()
+    local api_id
+    local inserted_plugin
+
+    it("should insert a plugin and set the application_id to a 'null' uuid if none is specifiied", function()
+      -- Since we want to specifically select plugins which have _no_ application_id sometimes, we cannot rely on using
+      -- NULL (and thus, not inserting the application_id column for the row). To fix this, we use a predefined, nullified
+      -- uuid...
+
+      -- Create an API
+      local api_t = dao_factory.faker:fake_entity("api")
+      local api, err = dao_factory.apis:insert(api_t)
+      assert.falsy(err)
+
+      local plugin_t = dao_factory.faker:fake_entity("plugin")
+      plugin_t.api_id = api.id
+      plugin_t.application_id = nil
+
+      local plugin, err = dao_factory.plugins:insert(plugin_t)
+      assert.falsy(err)
+      assert.truthy(plugin)
+      assert.are.same(constants.DATABASE_NULL_ID, plugin.application_id)
+
+      -- for next test
+      api_id = api.id
+      inserted_plugin = plugin
+      inserted_plugin.application_id = nil
+    end)
+
+    it("should select a plugin by 'null' uuid application_id and remove the column", function()
+      -- Now we should be able to select this plugin
+      local rows, err = dao_factory.plugins:find_by_keys {
+        api_id = api_id,
+        application_id = constants.DATABASE_NULL_ID
+      }
+      assert.falsy(err)
+      assert.truthy(rows[1])
+      assert.are.same(inserted_plugin, rows[1])
+      assert.falsy(rows[1].application_id)
+    end)
+
   end)
 end)

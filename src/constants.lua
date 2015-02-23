@@ -1,5 +1,6 @@
 return {
   VERSION = "0.1-preview",
+  DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
   DATABASE_ERROR_TYPES = {
     SCHEMA = "schema",
     INVALID_TYPE = "invalid_type",

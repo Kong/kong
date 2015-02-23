@@ -82,6 +82,10 @@ function BaseDao:_build_error(type, err)
   }
 end
 
+function BaseDao:_unmarshall(rows)
+  return rows
+end
+
 -- Run a statement and check if the result exists
 --
 -- @param {table} t Arguments to bind to the statement
@@ -142,7 +146,7 @@ function BaseDao:_check_all_foreign(t)
 
   local errors
   for k, statement in pairs(self._statements.__foreign) do
-    if t[k] then
+    if t[k] and t[k] ~= constants.DATABASE_NULL_ID then
       local exists, err = self:_check_foreign(statement, t)
       if err then
         return false, err
@@ -222,17 +226,6 @@ function BaseDao:_execute(operation, values_to_bind, options)
   end
 
   if results and results.type == "ROWS" then
-    -- return deserialized content for encoded values (plugin value column)
-    if self._deserialize then
-      for _,row in ipairs(results) do
-        for k,v in pairs(row) do
-          if self._schema[k].type == "table" then
-            row[k] = cjson.decode(v)
-          end
-        end
-      end
-    end
-
     -- do we have more pages to fetch?
     if results.meta.has_more_pages then
       results.next_page = results.meta.paging_state
@@ -241,7 +234,7 @@ function BaseDao:_execute(operation, values_to_bind, options)
     results.meta = nil
     results.type = nil
 
-    return results, err
+    return self:_unmarshall(results), err
   elseif results and results.type == "VOID" then
     -- return boolean
     return err == nil, err
