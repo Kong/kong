@@ -25,6 +25,7 @@
 -- ==========
 
 utils = require "kong.tools.utils"
+local constants = require "constants"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -34,7 +35,7 @@ local _M = {}
 local function load_plugin_conf(api_id, application_id, plugin_name)
   local data, err = dao.plugins:find_by_keys {
     api_id = api_id,
-    application_id = application_id,
+    application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
     name = plugin_name
   }
 

@@ -181,7 +181,7 @@ function Faker:insert_from_table(entities_to_insert, random)
 
       -- Insert in DB
       local res, err = self.dao_factory[type.."s"]:insert(entity)
-      if err and type ~= "plugin" then
+      if err then
         throw("Failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err))
       end
 
