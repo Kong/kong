@@ -16,6 +16,8 @@ local _M = {
   batch_types=constants.batch_types
 }
 
+math.randomseed(ngx and ngx.time() or os.time())
+
 -- create functions for type annotations
 for key, value in pairs(constants.types) do
   _M[key] = function(value)
@@ -32,8 +34,6 @@ _M.null = {type="null", value=nil}
 local mt = {__index=_M}
 
 function _M.new(self)
-  math.randomseed(ngx and ngx.time() or os.time())
-
   local tcp
   if ngx and ngx.get_phase ~= nil and ngx.get_phase() ~= "init" then
     -- openresty
@@ -87,6 +87,7 @@ function _M.connect(self, contact_points, port)
   else
     contact_points = {contact_points}
   end
+
   local sock = self.sock
   if not sock then
     return nil, "session does not have a socket, create a new session first."

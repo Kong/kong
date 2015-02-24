@@ -38,8 +38,5 @@ elseif command == "drop" then
   dao:drop()
   log(utils.green("✔").." Dropped")
 else
-  dao:close()
   print_usage()
 end
-
-dao:close()
