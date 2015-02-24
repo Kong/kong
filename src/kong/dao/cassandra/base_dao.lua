@@ -300,7 +300,6 @@ function BaseDao:prepare_kong_statement(query, params)
   -- Back to the pool or close if using luasocket
   local ok, socket_err = session:set_keepalive()
   if not ok and socket_err == "luasocket does not support reusable sockets" then
-    error("here")
     session:close()
   end
 
