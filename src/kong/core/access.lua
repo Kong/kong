@@ -25,6 +25,7 @@ function _M.execute(conf)
   -- Retrieving the API from the Host that has been requested
   local apis, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
   if err then
+    ngx.log(ngx.ERR, err.message)
     utils.show_error(500)
   elseif not apis or #apis == 0 then
     utils.not_found("API not found")
