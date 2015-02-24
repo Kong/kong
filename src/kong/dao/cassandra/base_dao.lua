@@ -239,8 +239,11 @@ function BaseDao:_execute(operation, values_to_bind, options)
     err = self:_build_error(error_types.DATABASE, err)
   end
 
-  -- close or pool
-  session:close()
+  -- Back to the pool or close if using luasocket
+  local ok, socket_err = session:set_keepalive()
+  if not ok and socket_err == "luasocket does not support reusable sockets" then
+    session:close()
+  end
 
   -- Parse result
   if results and results.type == "ROWS" then
@@ -291,11 +294,14 @@ function BaseDao:prepare_kong_statement(query, params)
 
   local prepared_stmt, err = session:prepare(query)
 
-  -- close or ppol
-  session:close()
+  -- Back to the pool or close if using luasocket
+  local ok, socket_err = session:set_keepalive()
+  if not ok and socket_err == "luasocket does not support reusable sockets" then
+    session:close()
+  end
 
   if err then
-    return nil, "Failed to prepare statement: "..q..". Error: "..err
+    return nil, "Failed to prepare statement: "..query..". Error: "..err
   else
     return {
       is_kong_statement = true,
