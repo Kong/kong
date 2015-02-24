@@ -58,7 +58,10 @@ function _M.init()
   -- Loading configuration
   configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
-  dao:prepare()
+  local err = dao:prepare()
+  if err then
+    ngx.log(ngx.ERROR, err)
+  end
 
   -- core is the first plugin
   table.insert(plugins, {

@@ -29,6 +29,7 @@ dependencies = {
   "luasocket ~> 2.0.2-5",
 
   "busted ~> 2.0.rc6-0",
+  "lua_cliargs ~> 2.3-3",
   "luafilesystem ~> 1.6.2"
 }
 build = {

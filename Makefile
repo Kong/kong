@@ -5,6 +5,7 @@ export DIR ?= $(KONG_HOME)/config.dev
 export KONG_CONF ?= $(DIR)/kong.yaml
 export NGINX_CONF ?= $(DIR)/nginx.conf
 export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
+export SILENT_FLAG ?=
 # Tests variables
 TESTS_DIR ?= $(KONG_HOME)/config.tests
 TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yaml
@@ -36,28 +37,28 @@ clean:
 	@rm -rf $(TESTS_DIR)
 
 migrate:
-	@scripts/migrate migrate --conf=$(KONG_CONF)
+	@scripts/db.lua $(SILENT_FLAG) migrate $(KONG_CONF)
 
 reset:
-	@scripts/migrate reset --conf=$(KONG_CONF)
+	@scripts/db.lua $(SILENT_FLAG) reset $(KONG_CONF)
 
 seed:
-	@scripts/seed seed --conf=$(KONG_CONF)
+	@scripts/db.lua $(SILENT_FLAG) seed $(KONG_CONF)
 
 drop:
-	@scripts/seed drop --conf=$(KONG_CONF)
+	@scripts/db.lua $(SILENT_FLAG) drop $(KONG_CONF)
 
 test:
 	@busted spec/unit
 
 run-integration-tests:
-	@bin/kong -c $(TESTS_KONG_CONF) migrate > /dev/null
-	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start > /dev/null
+	@$(MAKE) migrate KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s
+	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start
 	@while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done # Wait until nginx starts
-	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
-	@busted $(FOLDER) || (bin/kong stop > /dev/null; make drop KONG_CONF=$(TESTS_KONG_CONF) > /dev/null; exit 1)
-	@bin/kong stop > /dev/null
-	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF) > /dev/null
+	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s
+	@busted $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s; exit 1)
+	@bin/kong stop
+	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s
 
 test-web:
 	@$(MAKE) run-integration-tests FOLDER=spec/web
