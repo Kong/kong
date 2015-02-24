@@ -26,7 +26,9 @@ end
 describe("Cassandra DAO #dao #cassandra", function()
 
   setup(function()
-    dao_factory:migrate()
+    local ok, err = dao_factory:migrate()
+    assert.falsy(err)
+
     dao_factory:prepare()
     dao_factory:seed()
 
@@ -42,8 +44,9 @@ describe("Cassandra DAO #dao #cassandra", function()
   end)
 
   teardown(function()
-    dao_factory:reset()
     session:close()
+    local ok, err = dao_factory:reset()
+    assert.falsy(err)
   end)
 
   describe("Factory", function()
@@ -55,9 +58,9 @@ describe("Cassandra DAO #dao #cassandra", function()
                                              keyspace = configuration.cassandra.keyspace
       })
 
-      assert.has_error(function()
-        new_factory:prepare()
-      end, "connection refused")
+      local err = new_factory:prepare()
+      assert.truthy(err)
+      assert.are.same("connection refused", err)
     end)
 
   end)

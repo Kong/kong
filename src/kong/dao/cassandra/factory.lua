@@ -36,15 +36,15 @@ end
 --
 
 function CassandraFactory:migrate(callback)
-  self._migrations:migrate(callback)
+  return self._migrations:migrate(callback)
 end
 
 function CassandraFactory:rollback(callback)
-  self._migrations:rollback(callback)
+  return self._migrations:rollback(callback)
 end
 
 function CassandraFactory:reset(callback)
-  self._migrations:reset(callback)
+  return self._migrations:reset(callback)
 end
 
 --
@@ -57,7 +57,7 @@ end
 
 function CassandraFactory:drop()
   self.faker:clear()
-  self:execute [[
+  return self:execute [[
     TRUNCATE apis;
     TRUNCATE metrics;
     TRUNCATE plugins;
@@ -87,7 +87,7 @@ local function prepare(collection, queries, statements)
       q = string.format(q, "")
       local kong_stmt, err = collection:prepare_kong_statement(q, query.params)
       if err then
-        error(err)
+        return err
       end
       statements[stmt_name] = kong_stmt
     end
@@ -95,13 +95,17 @@ local function prepare(collection, queries, statements)
 end
 
 -- Prepare all statements of collections
+-- @return error if any
 function CassandraFactory:prepare()
   for _, collection in ipairs({ self.apis,
                                 self.metrics,
                                 self.plugins,
                                 self.accounts,
                                 self.applications }) do
-    prepare(collection)
+    local err = prepare(collection)
+    if err then
+      return err
+    end
   end
 end
 
@@ -110,30 +114,31 @@ end
 --
 -- @param {string} queries Semicolon separated string of queries
 -- @param {boolean} no_keyspace Won't set the keyspace if true
+-- @return {string} error if any
 function CassandraFactory:execute(queries, no_keyspace)
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
   local connected, err = session:connect(self._properties.hosts, self._properties.port)
   if not connected then
-    error(err)
+    return err
   end
 
   if no_keyspace == nil then
     local ok, err = session:set_keyspace(self._properties.keyspace)
     if not ok then
-      error(err)
+      return err
     end
   end
 
-  -- Cassandra client only support BATCH on DML statements.
+  -- Cassandra only supports BATCH on DML statements.
   -- We must split commands to execute them individually for migrations and such
   queries = stringy.split(queries, ";")
   for _,query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
       local result, err = session:execute(query)
       if err then
-        error("Cassandra execution error: "..err)
+        return err
       end
     end
   end

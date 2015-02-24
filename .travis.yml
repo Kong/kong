@@ -32,4 +32,4 @@ install:
   - sudo make install
   - make dev
 
-script: "make test-all"
+script: "make test-all SILENT_FLAG="

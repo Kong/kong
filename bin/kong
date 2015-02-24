@@ -76,7 +76,7 @@ function start {
 }
 
 function migrate {
-  $KONG_HOME/scripts/migrate migrate --conf=$KONG_CONF
+  $KONG_HOME/scripts/db.lua migrate $KONG_CONF
   if [ $? -eq 0 ]; then
     exit 0
   else
