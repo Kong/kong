@@ -5,7 +5,7 @@ SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 export KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
 # Properties
-export KONG_CONF=$KONG_HOME/config.default/kong.yaml
+export KONG_CONF=$KONG_HOME/config.default/kong.yml
 NGINX_CONF=$KONG_HOME/config.default/nginx.conf
 PID=$KONG_HOME/out/nginx.pid
 
@@ -41,7 +41,7 @@ function real_path_func {
 function show_help {
   printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
 \t-c    specify the path to a custom Kong configuration file
-\t      default is: '$KONG_HOME/config.default/kong.yaml'
+\t      default is: '$KONG_HOME/config.default/kong.yml'
 \t-n    specify the path to a custom Nginx configuration file.
 \t      default is: '$KONG_HOME/config.default/nginx.conf'
 \t-v    output version information and exit

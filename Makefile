@@ -2,13 +2,13 @@ KONG_HOME = `pwd`
 
 # Environment variables (default)
 export DIR ?= $(KONG_HOME)/config.dev
-export KONG_CONF ?= $(DIR)/kong.yaml
+export KONG_CONF ?= $(DIR)/kong.yml
 export NGINX_CONF ?= $(DIR)/nginx.conf
 export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
 export SILENT_FLAG ?=
 # Tests variables
 TESTS_DIR ?= $(KONG_HOME)/config.tests
-TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yaml
+TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yml
 TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 
 .PHONY: install dev clean migrate reset seed drop test test-integration test-web test-proxy test-all
@@ -27,10 +27,10 @@ install:
 dev:
 	@mkdir -p $(DIR)
 	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(NGINX_CONF)
-	@cp $(KONG_HOME)/config.default/kong.yaml $(KONG_CONF)
+	@cp $(KONG_HOME)/config.default/kong.yml $(KONG_CONF)
 	@mkdir -p $(TESTS_DIR)
 	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(TESTS_NGINX_CONF)
-	@cp $(KONG_HOME)/config.default/kong.yaml $(TESTS_KONG_CONF)
+	@cp $(KONG_HOME)/config.default/kong.yml $(TESTS_KONG_CONF)
 
 clean:
 	@rm -rf $(DIR)

@@ -9,7 +9,7 @@ cli:add_argument("COMMAND", "<create|migrate|rollback|reset|seed|drop>")
 cli:add_option("-n, --name=NAME", "If <create>, sets a name to the migration", "new_migration")
 cli:add_flag("-r, --random", "If seeding, also seed random entities (1000 for each collection by default)")
 cli:add_flag("-s, --silent", "No output")
-cli:optarg("CONFIGURATION", "configuration path", "config.dev/kong.yaml")
+cli:optarg("CONFIGURATION", "configuration path", "config.dev/kong.yml")
 
 local args = cli:parse(arg)
 if not args then

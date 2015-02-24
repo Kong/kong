@@ -77,7 +77,7 @@ In the future we may introduce support for SQL datastores like MySQL or Posgres,
 
 Kong comes with two configuration files that you can find in the `config.default` folder:
 
-* `kong.yaml` stores Kong's configuration for communicating with the database, and for enabling/disabling plugins on the system.
+* `kong.yml` stores Kong's configuration for communicating with the database, and for enabling/disabling plugins on the system.
 * `nginx.conf` is the typical nginx configuration file that stores all the properties for the HTTP server
 
 You will need to provide both files to run Kong.
