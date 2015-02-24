@@ -1,6 +1,7 @@
 local constants = require "kong.constants"
 local schemas = require "kong.dao.schemas"
 local BaseDao = require "kong.dao.cassandra.base_dao"
+local cjson = require "cjson"
 
 local error_types = constants.DATABASE_ERROR_TYPES
 
@@ -18,7 +19,6 @@ local Plugins = BaseDao:extend()
 
 function Plugins:new(database, properties)
   self._schema = SCHEMA
-  self._deserialize = true
   self._queries = {
     insert = {
       params = { "id", "api_id", "application_id", "name", "value", "enabled", "created_at" },
@@ -41,13 +41,9 @@ function Plugins:new(database, properties)
       query = [[ DELETE FROM plugins WHERE id = ?; ]]
     },
     __custom_checks = {
-      unique_application_id = {
+      unique = {
         params = { "api_id", "application_id", "name" },
         query = [[ SELECT * FROM plugins WHERE api_id = ? AND application_id = ? AND name = ? ALLOW FILTERING; ]]
-      },
-      unique_no_application_id = {
-        params = { "api_id", "name" },
-        query = [[ SELECT * FROM plugins WHERE api_id = ? AND application_id = NULL AND name = ? ALLOW FILTERING; ]]
       }
     },
     __foreign = {
@@ -80,15 +76,7 @@ function Plugins:_check_value_schema(t)
 end
 
 function Plugins:_check_unicity(t, is_updating)
-  local unique_statement
-
-  if not t.application_id then
-    unique_statement = self._statements.__custom_checks.unique_no_application_id
-  else
-    unique_statement = self._statements.__custom_checks.unique_application_id
-  end
-
-  local unique, err = self:_check_unique(unique_statement, t, is_updating)
+  local unique, err = self:_check_unique(self._statements.__custom_checks.unique, t, is_updating)
   if err then
     return false, err
   elseif not unique then
@@ -98,7 +86,30 @@ function Plugins:_check_unicity(t, is_updating)
   end
 end
 
+-- @override
+function Plugins:_unmarshall(rows)
+  for _, row in ipairs(rows) do
+    -- deserialize values (tables)
+    for k, v in pairs(row) do
+      if self._schema[k].type == "table" then
+        row[k] = cjson.decode(v)
+      end
+    end
+    -- remove application_id if null uuid
+    if row.application_id == constants.DATABASE_NULL_ID then
+      row.application_id = nil
+    end
+  end
+
+  return rows
+end
+
+-- @override
 function Plugins:insert(t)
+  if t.application_id == nil then
+    t.application_id = constants.DATABASE_NULL_ID
+  end
+
   local valid_schema, err = schemas.validate(t, self._schema)
   if not valid_schema then
     return nil, self:_build_error(error_types.SCHEMA, err)
@@ -119,7 +130,12 @@ function Plugins:insert(t)
   return Plugins.super.insert(self, t)
 end
 
+-- @override
 function Plugins:update(t)
+  if t.application_id == nil then
+    t.application_id = constants.DATABASE_NULL_ID
+  end
+
   local valid_schema, err = schemas.validate(t, self._schema, true)
   if not valid_schema then
     return nil, self:_build_error(error_types.SCHEMA, err)

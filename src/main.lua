@@ -25,6 +25,7 @@
 -- ==========
 
 utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -32,9 +33,9 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
-  local data, err = dao.plugins:find_by_keys {
+  local rows, err = dao.plugins:find_by_keys {
     api_id = api_id,
-    application_id = application_id,
+    application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
     name = plugin_name
   }
 
@@ -43,8 +44,8 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
     return nil
   end
 
-  if #data > 0 then
-    local plugin = table.remove(data, 1)
+  if #rows > 0 then
+    local plugin = table.remove(rows, 1)
     if plugin.enabled then
       return plugin
     end
@@ -61,6 +62,7 @@ function _M.init()
 
   -- core is the first plugin
   table.insert(plugins, {
+    core = true,
     name = "core",
     handler = require("kong.core.handler")()
   })
@@ -82,23 +84,19 @@ function _M.access()
   -- Iterate over all the plugins
   for _, plugin in ipairs(plugins) do
     if ngx.ctx.api then
-      ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name) -- Loading the "API-specific" configuration
-    end
-
-    if ngx.ctx.authenticated_entity then
-      local plugin_conf = load_plugin_conf(ngx.ctx.api.id, ngx.ctx.authenticated_entity.id, plugin.name)
-      if plugin_conf then -- Override only if not nil
-        ngx.ctx.plugin_conf[plugin.name] = plugin_conf
+      ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name)
+      local application_id = ngx.ctx.authenticated_entity and ngx.ctx.authenticated_entity.id or nil
+      if application_id then
+        local app_plugin_conf = load_plugin_conf(ngx.ctx.api.id, application_id, plugin.name)
+        if app_plugin_conf then
+          ngx.ctx.plugin_conf[plugin.name] = app_plugin_conf
+        end
       end
     end
 
-    if not ngx.ctx.error then
-      local conf = ngx.ctx.plugin_conf[plugin.name]
-      if not ngx.ctx.api then -- If not ngx.ctx.api then it's the core plugin
-        plugin.handler:access(nil)
-      elseif conf then
-        plugin.handler:access(conf.value)
-      end
+    local conf = ngx.ctx.plugin_conf[plugin.name]
+    if not ngx.ctx.error and (plugin.core or conf) then
+      plugin.handler:access(conf and conf.value or nil)
     end
   end
 

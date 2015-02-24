@@ -10,7 +10,7 @@ TESTS_DIR ?= $(KONG_HOME)/config.tests
 TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yaml
 TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 
-.PHONY: install dev clean reset seed drop test test-integration test-web test-proxy test-all
+.PHONY: install dev clean migrate reset seed drop test test-integration test-web test-proxy test-all
 
 install:
 	@if [[ $EUID -ne 0 ]]; then echo "Please try running this command again as root/Administrator."; exit 1; fi
@@ -34,6 +34,9 @@ dev:
 clean:
 	@rm -rf $(DIR)
 	@rm -rf $(TESTS_DIR)
+
+migrate:
+	@scripts/migrate migrate --conf=$(KONG_CONF)
 
 reset:
 	@scripts/migrate reset --conf=$(KONG_CONF)
