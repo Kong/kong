@@ -47,11 +47,10 @@ local function parse_params(dao_collection, params)
 end
 
 local function parse_dao_error(err)
-  ngx.log(ngx.ERR, err.message)
-
   local status
   if err.database then
     status = 500
+    ngx.log(ngx.ERR, err.message)
   elseif err.unique then
     status = 409
   elseif err.foreign then
