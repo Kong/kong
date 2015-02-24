@@ -1,8 +1,6 @@
 # Kong
 
-[![Join the chat at https://gitter.im/Mashape/kong](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-[![Build Status][travis-image]][travis-url]
+[![Build Status][travis-image]][travis-url] [![Gitter][gitter-image]][gitter-url]
 
 Kong is a scalable and customizable API Management Layer built on top of nginx.
 
@@ -86,22 +84,34 @@ When developing, use the `Makefile` for doing the following operations:
 
 #### Scripts
 
-Those script provide handy features while developing Kong:
+Those scripts provide handy features while developing Kong:
 
-| Name       | Commands                 | Description                                                           | Arguments                                                   |
-| ---------- | ------------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `migrate`  |                          |                                                                       |                                                             |
-|            | `create --conf=[conf]`   | Create a migration file for all available databases in the given conf | `--name=[name]` Name of the migration                       |
-|            | `migrate --conf=[conf]`  | Migrate the database set in the given conf                            |                                                             |
-|            | `rollback --conf=[conf]` | Rollback to the latest executed migration (TODO)                      |                                                             |
-|            | `reset --conf=[conf]`    | Rollback all migrations                                               |                                                             |
-| `seed`     |                          |                                                                       |                                                             |
-|            | `seed --conf=[conf]`     | Seed the database configured in the given conf                        | `-s` (Optional) No output                                   |
-|            |                          |                                                                       | `-r` (Optional) Also populate random data (1000 by default) |
-|            | `drop --conf=[conf]`     | Drop the database configured in the given conf                        | `-s` (Optional) No output                                   |
+##### db.lua
+
+```bash
+# Complete usage
+scripts/db.lua --help
+
+# Migrate up
+scripts/db.lua migrate [configuration_path] # for all commands, the default configuration_path is config.dev/kong.yaml
+
+# Migrate down (currently equivalent to reset)
+scripts/db.lua rollback
+
+# Reset DB (danger!)
+scripts/db.lua reset
+
+# Seed DB
+scripts/db.lua seed
+
+# Drop DB (danger!)
+scripts/db.lua drop
+```
 
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
+[gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+[gitter-image]: https://badges.gitter.im/Join%20Chat.svg
 [lua-install-url]: http://www.lua.org/download.html
 [luarocks-url]: https://luarocks.org
 [pcre-url]: http://www.pcre.org/
