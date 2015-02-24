@@ -234,6 +234,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
+        assert.truthy(plugin.application_id)
       end)
 
       it("should not insert twice a plugin with same api_id, application_id and name", function()
@@ -758,7 +759,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     local api_id
     local inserted_plugin
 
-    it("should insert a plugin and set the application_id to a 'null' uuid if none is specifiied", function()
+    it("should insert a plugin and set the application_id to a 'null' uuid if none is specified", function()
       -- Since we want to specifically select plugins which have _no_ application_id sometimes, we cannot rely on using
       -- NULL (and thus, not inserting the application_id column for the row). To fix this, we use a predefined, nullified
       -- uuid...
@@ -775,7 +776,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       local plugin, err = dao_factory.plugins:insert(plugin_t)
       assert.falsy(err)
       assert.truthy(plugin)
-      assert.are.same(constants.DATABASE_NULL_ID, plugin.application_id)
+      assert.falsy(plugin.application_id)
 
       -- for next test
       api_id = api.id

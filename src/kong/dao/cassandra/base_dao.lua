@@ -69,6 +69,7 @@ local function encode_cassandra_values(schema, t, parameters)
   return values_to_bind, errors
 end
 
+-- Create a DAO error with type as boolan for fast comparison
 function BaseDao:_build_error(type, err)
   if not err then
     return nil
@@ -80,8 +81,10 @@ function BaseDao:_build_error(type, err)
   }
 end
 
-function BaseDao:_unmarshall(rows)
-  return rows
+-- Unmarshall an entity. Does nothing by default,
+-- must be overriden for entities where marshalling applies.
+function BaseDao:_unmarshall(t)
+  return t
 end
 
 -- Run a statement and check if the result exists
@@ -255,7 +258,11 @@ function BaseDao:_execute(operation, values_to_bind, options)
     results.meta = nil
     results.type = nil
 
-    return self:_unmarshall(results), err
+    for _, row in ipairs(results) do
+      row = self:_unmarshall(row)
+    end
+
+    return results, err
   elseif results and results.type == "VOID" then
     -- return boolean
     return err == nil, err
@@ -354,7 +361,7 @@ function BaseDao:insert(t)
   if err then
     return nil, err
   else
-    return t
+    return self:_unmarshall(t)
   end
 end
 

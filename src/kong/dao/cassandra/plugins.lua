@@ -87,21 +87,17 @@ function Plugins:_check_unicity(t, is_updating)
 end
 
 -- @override
-function Plugins:_unmarshall(rows)
-  for _, row in ipairs(rows) do
-    -- deserialize values (tables)
-    for k, v in pairs(row) do
-      if self._schema[k].type == "table" then
-        row[k] = cjson.decode(v)
-      end
-    end
-    -- remove application_id if null uuid
-    if row.application_id == constants.DATABASE_NULL_ID then
-      row.application_id = nil
-    end
+function Plugins:_unmarshall(t)
+  -- deserialize values (tables) string to json
+  if type(t.value) == "string" then
+    t.value = cjson.decode(t.value)
+  end
+  -- remove application_id if null uuid
+  if t.application_id == constants.DATABASE_NULL_ID then
+    t.application_id = nil
   end
 
-  return rows
+  return t
 end
 
 -- @override

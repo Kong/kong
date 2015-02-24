@@ -4,12 +4,13 @@
 .project
 .idea
 npm-debug.log
+
+# jekyll
 Gemfile.lock
 site/dist
 \.gh-pages
 
 # gh-pages
-site/
 node_modules/
 bower_components/
 
