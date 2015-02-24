@@ -292,7 +292,6 @@ function BaseDao:prepare_kong_statement(query, params)
   if not ok then
     error(keyspace_err)
     return nil, keyspace_err
-
   end
 
   local prepared_stmt, prepare_err = session:prepare(query)
