@@ -284,12 +284,15 @@ function BaseDao:prepare_kong_statement(query, params)
 
   local connected, connection_err = session:connect(self._properties.hosts, self._properties.port)
   if not connected then
+    error(connection_err)
     return nil, connection_err
   end
 
   local ok, keyspace_err = session:set_keyspace(self._properties.keyspace)
   if not ok then
+    error(keyspace_err)
     return nil, keyspace_err
+
   end
 
   local prepared_stmt, prepare_err = session:prepare(query)
@@ -297,10 +300,12 @@ function BaseDao:prepare_kong_statement(query, params)
   -- Back to the pool or close if using luasocket
   local ok, socket_err = session:set_keepalive()
   if not ok and socket_err == "luasocket does not support reusable sockets" then
+    error("here")
     session:close()
   end
 
   if prepare_err then
+    error(prepare_err)
     return nil, "Failed to prepare statement: "..query..". Error: "..prepare_err
   else
     return {
