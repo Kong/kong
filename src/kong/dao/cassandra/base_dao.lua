@@ -12,7 +12,7 @@ local schemas = require "kong.dao.schemas"
 local utils = require "kong.tools.utils"
 
 local validate = schemas.validate
-local error_types = constants.DATABASE.ERROR_TYPES
+local error_types = constants.DATABASE_ERROR_TYPES
 
 local BaseDao = Object:extend()
 
@@ -61,7 +61,7 @@ local function encode_cassandra_values(schema, t, parameters)
       value = cassandra.timestamp(value)
     elseif schema_field.type == "table" and value then
       value = cjson.encode(value)
-    elseif value == constants.DATABASE.NULL then
+    elseif value == nil then
       value = cassandra.null
     end
 
@@ -80,6 +80,10 @@ function BaseDao:_build_error(type, err)
     [type] = true,
     message = err
   }
+end
+
+function BaseDao:_unmarshall(rows)
+  return rows
 end
 
 -- Run a statement and check if the result exists
@@ -142,7 +146,7 @@ function BaseDao:_check_all_foreign(t)
 
   local errors
   for k, statement in pairs(self._statements.__foreign) do
-    if t[k] then
+    if t[k] and t[k] ~= constants.DATABASE_NULL_ID then
       local exists, err = self:_check_foreign(statement, t)
       if err then
         return false, err
@@ -222,17 +226,6 @@ function BaseDao:_execute(operation, values_to_bind, options)
   end
 
   if results and results.type == "ROWS" then
-    -- return deserialized content for encoded values (plugin value column)
-    if self._deserialize then
-      for _,row in ipairs(results) do
-        for k,v in pairs(row) do
-          if self._schema[k].type == "table" then
-            row[k] = cjson.decode(v)
-          end
-        end
-      end
-    end
-
     -- do we have more pages to fetch?
     if results.meta.has_more_pages then
       results.next_page = results.meta.paging_state
@@ -241,7 +234,7 @@ function BaseDao:_execute(operation, values_to_bind, options)
     results.meta = nil
     results.type = nil
 
-    return results, err
+    return self:_unmarshall(results), err
   elseif results and results.type == "VOID" then
     -- return boolean
     return err == nil, err
