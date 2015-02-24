@@ -41,7 +41,7 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
 
   if err then
     ngx.log(ngx.ERROR, err)
-    return nil
+    utils.show_error(500)
   end
 
   if #rows > 0 then
