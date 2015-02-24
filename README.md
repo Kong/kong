@@ -62,7 +62,7 @@ make test-all
 - Run it:
 
 ```
-bin/kong -c config.dev/kong.yaml -n config.dev/nginx.conf
+bin/kong -c config.dev/kong.yml -n config.dev/nginx.conf
 ```
 
 #### Makefile
@@ -72,15 +72,16 @@ When developing, use the `Makefile` for doing the following operations:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `install`    | Install the Kong luarock globally                                                                   |
-| `dev`        | Setup your development enviroment (creates `dev` and `tests` configurations)                        |
-| `clean`      | Cleans the development environment                                                                  |
-| `reset`      | Reset your database schema according to the development Kong config inside the `dev` folder         |
-| `seed`       | Seed your database according to the development Kong config inside the `dev` folder                 |
-| `drop`       | Drop your database according to the development Kong config inside the `dev` folder                 |
-| `test`       | Runs the unit tests                                                                                 |
-| `test-proxy` | Runs the proxy integration tests                                                                    |
-| `test-web`   | Runs the web integration tests                                                                      |
-| `test-all`   | Runs all unit + integration tests at once                                                           |
+| `dev`        | Setup your development enviroment (creates `config.dev` and `config.tests` configurations)          |
+| `clean`      | Clean the development environment                                                                   |
+| `migrate`    | Migrate your database schema according to the development Kong config inside `config.dev`           |
+| `reset`      | Reset your database schema according to the development Kong config inside `config.dev`             |
+| `seed`       | Seed your database according to the development Kong config inside `config.dev`                     |
+| `drop`       | Drop your database according to the development Kong config inside `config.dev`                     |
+| `test`       | Run the unit tests                                                                                  |
+| `test-proxy` | Run the proxy integration tests                                                                     |
+| `test-web`   | Run the web integration tests                                                                       |
+| `test-all`   | Run all unit + integration tests at once                                                            |
 
 #### Scripts
 
@@ -93,7 +94,7 @@ Those scripts provide handy features while developing Kong:
 scripts/db.lua --help
 
 # Migrate up
-scripts/db.lua migrate [configuration_path] # for all commands, the default configuration_path is config.dev/kong.yaml
+scripts/db.lua migrate [configuration_path] # for all commands, the default configuration_path is config.dev/kong.yml
 
 # Migrate down (currently equivalent to reset)
 scripts/db.lua rollback
