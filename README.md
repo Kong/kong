@@ -1,5 +1,7 @@
 # Kong
 
+[![Join the chat at https://gitter.im/Mashape/kong](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status][travis-image]][travis-url]
 
 Kong is a scalable and customizable API Management Layer built on top of nginx.
