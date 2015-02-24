@@ -49,15 +49,15 @@ describe("Cassandra DAO #dao #cassandra", function()
   describe("Factory", function()
 
     it("should raise an error if cannot connect to Cassandra", function()
-      local new_factory = CassandraFactory({ hosts = "0.0.0.1",
-                                             port = 9999,
+      local new_factory = CassandraFactory({ hosts = "127.0.0.1",
+                                             port = 45678,
                                              timeout = 1000,
                                              keyspace = configuration.cassandra.keyspace
       })
 
       assert.has_error(function()
         new_factory:prepare()
-      end, "No route to host")
+      end, "connection refused")
     end)
 
   end)
