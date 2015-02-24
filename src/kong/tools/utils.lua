@@ -145,6 +145,9 @@ end
 
 function _M.show_error(status, message)
   ngx.ctx.error = true
+  if not message then
+    message = "An error occurred"
+  end
   _M.show_response(status, message)
 end
 
