@@ -4,6 +4,8 @@
 
 Kong is a scalable and customizable API Management Layer built on top of nginx.
 
+Documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
+
 * **[Requirements](#requirements)**
 * **[Installation](#installation)**
 * **[Usage](#usage)**
