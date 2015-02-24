@@ -282,17 +282,17 @@ function BaseDao:prepare_kong_statement(query, params)
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
-  local connected, err = session:connect(self._properties.hosts, self._properties.port)
+  local connected, connection_err = session:connect(self._properties.hosts, self._properties.port)
   if not connected then
-    return nil, err
+    return nil, connection_err
   end
 
-  local ok, err = session:set_keyspace(self._properties.keyspace)
+  local ok, keyspace_err = session:set_keyspace(self._properties.keyspace)
   if not ok then
-    return nil, err
+    return nil, keyspace_err
   end
 
-  local prepared_stmt, err = session:prepare(query)
+  local prepared_stmt, prepare_err = session:prepare(query)
 
   -- Back to the pool or close if using luasocket
   local ok, socket_err = session:set_keepalive()
@@ -300,8 +300,8 @@ function BaseDao:prepare_kong_statement(query, params)
     session:close()
   end
 
-  if err then
-    return nil, "Failed to prepare statement: "..query..". Error: "..err
+  if prepare_err then
+    return nil, "Failed to prepare statement: "..query..". Error: "..prepare_err
   else
     return {
       is_kong_statement = true,
