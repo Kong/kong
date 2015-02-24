@@ -4,7 +4,7 @@ local utils = require "kong.tools.utils"
 
 local Metrics = BaseDao:extend()
 
-function Metrics:new(database)
+function Metrics:new(properties)
   self._queries = {
     increment_counter = {
       query = [[ UPDATE metrics SET value = value + 1 WHERE api_id = ? AND
@@ -26,7 +26,7 @@ function Metrics:new(database)
     }
   }
 
-  Metrics.super.new(self, database)
+  Metrics.super.new(self, properties)
 end
 
 function Metrics:increment(api_id, identifier, current_timestamp)

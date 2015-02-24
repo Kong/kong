@@ -29,11 +29,37 @@ describe("Cassandra DAO #dao #cassandra", function()
     dao_factory:migrate()
     dao_factory:prepare()
     dao_factory:seed()
+
+    -- Create a session to verify the dao's behaviour
+    session = cassandra.new()
+    session:set_timeout(configuration.cassandra.timeout)
+
+    local connected, err = session:connect(configuration.cassandra.hosts, configuration.cassandra.port)
+    assert.falsy(err)
+
+    local ok, err = session:set_keyspace(configuration.cassandra.keyspace)
+    assert.falsy(err)
   end)
 
   teardown(function()
     dao_factory:reset()
-    dao_factory:close()
+    session:close()
+  end)
+
+  describe("Factory", function()
+
+    it("should raise an error if cannot connect to Cassandra", function()
+      local new_factory = CassandraFactory({ hosts = "0.0.0.1",
+                                             port = 9999,
+                                             timeout = 1000,
+                                             keyspace = configuration.cassandra.keyspace
+      })
+
+      assert.has_error(function()
+        new_factory:prepare()
+      end, "No route to host")
+    end)
+
   end)
 
   describe("Schemas", function()
@@ -75,7 +101,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("Cannot insert a nil element", err.message)
 
         -- Invalid schema UNIQUE error (already existing API name)
-        local api_rows, err = dao_factory._db:execute("SELECT * FROM apis LIMIT 1;")
+        local api_rows, err = session:execute("SELECT * FROM apis LIMIT 1;")
         assert.falsy(err)
         local api_t = dao_factory.faker:fake_entity("api")
         api_t.name = api_rows[1].name
@@ -87,7 +113,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(api)
 
         -- Duplicated name
-        local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+        local apis, err = session:execute("SELECT * FROM apis")
         assert.falsy(err)
         assert.truthy(#apis > 0)
 
@@ -138,7 +164,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should insert in DB and add generated values", function()
-        local accounts, err = dao_factory._db:execute("SELECT * FROM accounts")
+        local accounts, err = session:execute("SELECT * FROM accounts")
         assert.falsy(err)
         assert.truthy(#accounts > 0)
 
@@ -194,7 +220,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
 
-        local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+        local apps, err = session:execute("SELECT * FROM applications")
         assert.falsy(err)
         assert.True(#apps > 0)
 
@@ -213,7 +239,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(api.id)
 
-        local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+        local apps, err = session:execute("SELECT * FROM applications")
         assert.falsy(err)
         assert.True(#apps > 0)
 
@@ -241,7 +267,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(api.id)
 
-        local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+        local apps, err = session:execute("SELECT * FROM applications")
         assert.falsy(err)
         assert.True(#apps > 0)
 
@@ -303,7 +329,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       -- Cassandra sets to NULL unset fields specified in an UPDATE query
       -- https://issues.apache.org/jira/browse/CASSANDRA-7304
       it("should update in DB without setting to NULL unset fields", function()
-        local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+        local apis, err = session:execute("SELECT * FROM apis")
         assert.falsy(err)
         assert.True(#apis > 0)
 
@@ -319,7 +345,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(api)
 
-        local apis, err = dao_factory._db:execute("SELECT * FROM apis WHERE name = '"..api_t.name.."'")
+        local apis, err = session:execute("SELECT * FROM apis WHERE name = '"..api_t.name.."'")
         assert.falsy(err)
         assert.are.same(1, #apis)
         assert.truthy(apis[1].id)
@@ -330,7 +356,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should prevent the update if the UNIQUE check fails", function()
-        local apis, err = dao_factory._db:execute("SELECT * FROM apis")
+        local apis, err = session:execute("SELECT * FROM apis")
         assert.falsy(err)
         assert.True(#apis > 0)
 
@@ -352,7 +378,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe("Accounts", function()
 
       it("should update in DB if entity can be found", function()
-        local accounts, err = dao_factory._db:execute("SELECT * FROM accounts")
+        local accounts, err = session:execute("SELECT * FROM accounts")
         assert.falsy(err)
         assert.True(#accounts > 0)
 
@@ -365,7 +391,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(account)
 
-        local accounts, err = dao_factory._db:execute("SELECT * FROM accounts WHERE provider_id = '"..account_t.provider_id.."'")
+        local accounts, err = session:execute("SELECT * FROM accounts WHERE provider_id = '"..account_t.provider_id.."'")
         assert.falsy(err)
         assert.True(#accounts == 1)
         assert.are.same(account_t.name, accounts[1].name)
@@ -376,7 +402,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe("Applications", function()
 
       it("should update in DB if entity can be found", function()
-        local apps, err = dao_factory._db:execute("SELECT * FROM applications")
+        local apps, err = session:execute("SELECT * FROM applications")
         assert.falsy(err)
         assert.True(#apps > 0)
 
@@ -386,7 +412,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(app)
 
-        local apps, err = dao_factory._db:execute("SELECT * FROM applications WHERE public_key = ?", { app_t.public_key })
+        local apps, err = session:execute("SELECT * FROM applications WHERE public_key = ?", { app_t.public_key })
         assert.falsy(err)
         assert.are.same(1, #apps)
       end)
@@ -396,7 +422,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe("Plugins", function()
 
       it("should update in DB if entity can be found", function()
-        local plugins, err = dao_factory._db:execute("SELECT * FROM plugins")
+        local plugins, err = session:execute("SELECT * FROM plugins")
         assert.falsy(err)
         assert.True(#plugins > 0)
 
@@ -407,7 +433,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(plugin)
 
-        local plugins, err = dao_factory._db:execute("SELECT * FROM plugins WHERE id = ?", { cassandra.uuid(plugin_t.id) })
+        local plugins, err = session:execute("SELECT * FROM plugins WHERE id = ?", { cassandra.uuid(plugin_t.id) })
         assert.falsy(err)
         assert.are.same(1, #plugins)
       end)
@@ -436,7 +462,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should delete an entity if it can be found", function()
-        local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
+        local entities, err = session:execute("SELECT * FROM "..collection)
         assert.falsy(err)
         assert.truthy(entities)
         assert.True(#entities > 0)
@@ -445,7 +471,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.True(success)
 
-        local entities, err = dao_factory._db:execute("SELECT * FROM "..collection.." WHERE id = "..entities[1].id )
+        local entities, err = session:execute("SELECT * FROM "..collection.." WHERE id = "..entities[1].id )
         assert.falsy(err)
         assert.truthy(entities)
         assert.are.same(0, #entities)
@@ -469,7 +495,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe_all_collections(function(type, collection)
 
       it("should find entities", function()
-        local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
+        local entities, err = session:execute("SELECT * FROM "..collection)
         assert.falsy(err)
         assert.truthy(entities)
         assert.True(#entities > 0)
@@ -503,7 +529,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe_all_collections(function(type, collection)
 
       it("should find one entity by id", function()
-        local entities, err = dao_factory._db:execute("SELECT * FROM "..collection)
+        local entities, err = session:execute("SELECT * FROM "..collection)
         assert.falsy(err)
         assert.truthy(entities)
         assert.True(#entities > 0)
@@ -525,7 +551,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe("Plugins", function()
 
       it("should deserialize the table property", function()
-        local plugins, err = dao_factory._db:execute("SELECT * FROM plugins")
+        local plugins, err = session:execute("SELECT * FROM plugins")
         assert.falsy(err)
         assert.truthy(plugins)
         assert.True(#plugins > 0)
@@ -546,7 +572,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe_all_collections(function(type, collection)
 
       it("should refuse non queryable keys", function()
-        local results, err = dao_factory._db:execute("SELECT * FROM "..collection)
+        local results, err = session:execute("SELECT * FROM "..collection)
         assert.falsy(err)
         assert.truthy(results)
         assert.True(#results > 0)
@@ -579,7 +605,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should query an entity by its queryable fields", function()
-        local results, err = dao_factory._db:execute("SELECT * FROM "..collection)
+        local results, err = session:execute("SELECT * FROM "..collection)
         assert.falsy(err)
         assert.truthy(results)
         assert.True(#results > 0)

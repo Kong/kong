@@ -10,7 +10,7 @@ local SCHEMA = {
 
 local Applications = BaseDao:extend()
 
-function Applications:new(database, properties)
+function Applications:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
@@ -49,7 +49,7 @@ function Applications:new(database, properties)
     }
   }
 
-  Applications.super.new(self, database)
+  Applications.super.new(self, properties)
 end
 
 return Applications
