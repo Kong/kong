@@ -26,6 +26,7 @@ dependencies = {
   "lrexlib-pcre ~> 2.7.2-1",
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",
+  "luasocket ~> 2.0.2-5",
 
   "busted ~> 2.0.rc6-0",
   "luafilesystem ~> 1.6.2"
