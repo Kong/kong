@@ -122,11 +122,6 @@ gulp.task('build:prod', function () {
   sequence('build');
 });
 
-gulp.task('build:staging', function () {
-  jekyllConfig = 'config/jekyll.staging.yml';
-  sequence('build');
-});
-
 gulp.task('default', ['clean'], function () {
   gulp.start('build', 'connect', 'watch');
 });
@@ -140,5 +135,6 @@ gulp.task('gh-pages', function (next) {
 });
 
 gulp.task('deploy:prod', function () {
-  sequence('build:prod', 'gh-pages');
+  jekyllConfig = 'config/jekyll.yml';
+  sequence('build', 'gh-pages');
 });
