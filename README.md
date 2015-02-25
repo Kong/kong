@@ -11,7 +11,7 @@ Kong is a scalable and customizable API Management Layer built on top of nginx.
 
 ## Installation
 
-See [INSTALL.md] for installation instructions on your platform.
+See [INSTALL.md](INSTALL.md) for installation instructions on your platform.
 
 ## Documentation
 
