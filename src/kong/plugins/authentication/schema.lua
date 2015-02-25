@@ -6,16 +6,11 @@ local function check_authentication_key_names(names, plugin_value)
   if plugin_value.authentication_type == constants.AUTHENTICATION.BASIC and names then
     return false, "This field is not available for \""..constants.AUTHENTICATION.BASIC.."\" authentication"
   elseif plugin_value.authentication_type ~= constants.AUTHENTICATION.BASIC then
-    if names then
-      if type(names) == "table" and utils.table_size(names) > 0 then
-        return true
-      else
-        return false, "You need to specify an array"
-      end
-    else
-      return false, "This field is required for query and header authentication"
+    if not names or type(names) ~= "table" or utils.table_size(names) == 0 then
+      return false, "You need to specify an array with at least one value"
     end
   end
+  return true
 end
 
 return {
