@@ -20,7 +20,7 @@ sleep 5
 curl -d "name=HttpBin&public_dns=myapi.com&target_url=http://httpbin.org" 127.0.0.1:8001/apis/ > /dev/null 2>&1
 output=$(curl -s 127.0.0.1:8001/apis/)
 api_id=$(extract_id $output "id")
-curl -d "name=authentication&api_id=$api_id&value={\"authentication_type\":\"query\"}" 127.0.0.1:8001/plugins/ > /dev/null 2>&1
+curl -d "name=authentication&api_id=$api_id&value={\"authentication_type\":\"query\",\"authentication_key_names\":[\"apikey\"]}" 127.0.0.1:8001/plugins/ > /dev/null 2>&1
 
 # Actual screencast
 

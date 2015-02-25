@@ -20,4 +20,12 @@ The Authentication Plugin protects the API and requires the clients to send auth
 
 Here we'll cover the details of installing the Plugin, while in the next screencast you can learn how to provision credentials for the API users.
 
-<script type="text/javascript" src="https://asciinema.org/a/16965.js" id="asciicast-16965" async data-speed="2"></script>
+<script type="text/javascript" src="https://asciinema.org/a/16980.js" id="asciicast-16980" async data-speed="2"></script>
+
+# Creating an Account and an Application
+
+This screencast shows how to create Accounts and Applications to consume an API that has been protected with the Authentication Plugin.
+
+The Authentication Plugin in the example has been configured to support Query authentication (api-key authentication) looking for credentials in a field called `apikey`, that can be either sent in the querystring or as body parameter along with the request.
+
+<script type="text/javascript" src="https://asciinema.org/a/16981.js" id="asciicast-16981" async data-speed="2"></script>

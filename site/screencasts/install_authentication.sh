@@ -54,9 +54,11 @@ slow_echo ""
 slow_echo "# Each Plugin has it's own configuration."
 slow_echo "# So, let's add the authentication Plugin:"
 
-exec_cmd "curl -XPOST -d 'name=authentication&api_id=$api_id&value={\"authentication_type\":\"query\"}' 127.0.0.1:8001/plugins/"
+exec_cmd "curl -XPOST -d 'name=authentication&api_id=$api_id&value={\"authentication_type\":\"query\",\"authentication_key_names\":[\"apikey\"]}' 127.0.0.1:8001/plugins/"
 
-slow_echo "The authentication Plugin has now been installed on the API."
+slow_echo "The authentication Plugin has now been installed on the API with"
+slow_echo "a configuration that sets the \"authentication_type\" to \"query\""
+slow_echo "and the parameter name \"authentication_key_names\" to \"apikey\""
 slow_echo "Let's try to consume the API again:"
 
 exec_cmd "curl -H \"Host: myapi.com:\" 127.0.0.1:8000/get"
