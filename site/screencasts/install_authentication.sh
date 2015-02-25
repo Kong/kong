@@ -69,6 +69,4 @@ slow_echo "In Kong adding/configuring/removing Plugins is as easy as executing"
 slow_echo "one HTTP request using Kong's administration API"
 slow_echo ":)"
 
-echo $api_id
-
 slow_echo ""

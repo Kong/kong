@@ -15,10 +15,14 @@ describe("Validation #schema", function()
       allowed = { enum = { "hello", "world" }},
       default = { default = function() return "default" end },
       custom = { func = function(v, t)
-                          if v and t.default == "default" then
-                            return true
+                          if v then
+                            if t.default == "default" then
+                              return true
+                            else
+                              return false, "Nah"
+                            end
                           else
-                            return false, "Nah"
+                            return true
                           end
                         end },
       sub_schema = {
@@ -186,7 +190,6 @@ describe("Validation #schema", function()
     describe("Sub-schemas", function()
 
       it("should validate a property with a sub-schema", function()
-        pending("todo")
         -- Success
         local values = { string = "somestring", sub_schema = { sub_field_required = "sub value" }}
 
