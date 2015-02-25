@@ -2,11 +2,14 @@ local constants = require "kong.constants"
 local stringy = require "stringy"
 
 local function check_authentication_key_names(names, plugin_value)
+
+  print "HERE"
+
   if plugin_value.authentication_type == constants.AUTHENTICATION.BASIC then
     return false, "This field is not available for \""..BASIC.."\" authentication"
   elseif plugin_value.authentication_type ~= BASIC then
     if names then
-      if type(names) == "table" then
+      if type(names) == "table" and utils.table_size(names) > 0 then
         return true
       else
         return false, "You need to specify an array"
