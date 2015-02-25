@@ -8,6 +8,10 @@ In order to run, Kong needs the following:
 - [openssl][openssl-url]
 - [Cassandra][cassandra-url] `2.1`
 
+#### Docker
+
+Kong can run in [Docker][docker-url]. Image and instructions are on [mashape/docker-kong][docker-kong-url]
+
 #### Linux
 
 > To write
@@ -61,6 +65,8 @@ sudo make install
 
 > To write
 
+[docker-url]: https://www.docker.com/
+[docker-kong-url]: https://github.com/Mashape/docker-kong
 [lua-install-url]: http://www.lua.org/download.html
 [luarocks-url]: https://luarocks.org
 [cassandra-url]: http://cassandra.apache.org/
