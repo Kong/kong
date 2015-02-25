@@ -1,10 +1,8 @@
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 
 local function check_authentication_key_names(names, plugin_value)
-
-  print "HERE"
-
   if plugin_value.authentication_type == constants.AUTHENTICATION.BASIC then
     return false, "This field is not available for \""..BASIC.."\" authentication"
   elseif plugin_value.authentication_type ~= BASIC then
