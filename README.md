@@ -13,15 +13,55 @@ Documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
 
 ## Requirements
 - [Lua][lua-install-url] `5.1`
-- [Luarocks][luarocks-url] `2.2.0`
+- [Luarocks][luarocks-url] `2.2.0` **for lua 5.1**.
 - [OpenResty](http://openresty.com/#Download) `1.7.7.2`
-- [pcre-devel][pcre-url]
-- [openssl-devel][openssl-url]
+- [pcre][pcre-url]
+- [openssl][openssl-url]
 - [Cassandra][cassandra-url] `2.1`
 
 ## Installation
 
 #### From source
+
+##### OS X
+
+###### With Homebrew
+
+If you don't have Lua 5.1 installed:
+
+```bash
+brew install lua51
+```
+
+We'll need Luarocks for Lua 5.1. The official Luarocks recipe only supports 5.2 now, so we'll use a custom recipe:
+
+```bash
+brew tap naartjie/luajit
+brew install naartjie/luajit/luarocks-luajit --with-lua51
+```
+
+Now, let's intall openresty:
+
+```bash
+brew tap killercup/openresty
+brew install ngx_openresty
+ln /usr/local/bin/openresty /usr/local/bin/nginx # alias to openresty to call `nginx` from your PATH
+```
+
+If you wish to run Cassandra locally (you can also use our [Docker image](https://github.com/Mashape/docker-cassandra):
+
+```bash
+brew install cassandra
+# to start cassandra, just run `cassandra`
+```
+
+Other dependencies:
+
+```bash
+brew install pcre openssl
+```
+
+Finally, install Kong:
 
 ```bash
 sudo make install
@@ -29,7 +69,7 @@ sudo make install
 
 ## Usage
 
-Use Kong through the `bin/kong` executable.
+Use Kong through the `bin/kong` executable. Make sure your Cassandra instance is running.
 
 The first time ever you're running Kong, you need to make sure to setup Cassandra by executing:
 
