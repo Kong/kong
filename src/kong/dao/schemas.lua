@@ -55,7 +55,7 @@ function _M.validate(t, schema, is_update)
       end
 
     -- Check field against a custom function
-    elseif t[column] ~= nil and v.func and type(v.func) == "function" then
+    elseif v.func and type(v.func) == "function" then
       local ok, err = v.func(t[column], t)
       if not ok or err then
         errors = utils.add_error(errors, column, err)
@@ -67,7 +67,12 @@ function _M.validate(t, schema, is_update)
 
     -- validate a subschema
     elseif t[column] ~= nil and v.schema then
-
+      local s_ok, s_errors = _M.validate(t[column], v.schema, is_update)
+      if not s_ok then
+        for s_k, s_v in pairs(s_errors) do
+          errors = utils.add_error(errors, column.."."..s_k, s_v)
+        end
+      end
     end
   end
 
