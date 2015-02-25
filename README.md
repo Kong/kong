@@ -31,6 +31,7 @@ If you don't have Lua 5.1 installed:
 
 ```bash
 brew install lua51
+ln /usr/local/bin/lua-5.1 /usr/local/bin/lua # alias lua-5.1 to lua (required for kong scripts)
 ```
 
 We'll need Luarocks for Lua 5.1. The official Luarocks recipe only supports 5.2 now, so we'll use a custom recipe:
@@ -45,10 +46,10 @@ Now, let's intall openresty:
 ```bash
 brew tap killercup/openresty
 brew install ngx_openresty
-ln /usr/local/bin/openresty /usr/local/bin/nginx # alias to openresty to call `nginx` from your PATH
+ln /usr/local/bin/openresty /usr/local/bin/nginx # alias openresty to nginx (required for kong scripts)
 ```
 
-If you wish to run Cassandra locally (you can also use our [Docker image](https://github.com/Mashape/docker-cassandra):
+If you wish to run Cassandra locally (you can also use our [Docker image](https://github.com/Mashape/docker-cassandra)):
 
 ```bash
 brew install cassandra
