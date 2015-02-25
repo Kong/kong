@@ -64,7 +64,7 @@ make test-all
 - Run it:
 
 ```
-bin/kong -c config.dev/kong.yml -n config.dev/nginx.conf
+bin/kong -c config.dev/kong.yml -n config.dev/nginx.conf start
 ```
 
 #### Makefile
