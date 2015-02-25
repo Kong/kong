@@ -4,32 +4,22 @@
 
 Kong is a scalable and customizable API Management Layer built on top of nginx.
 
-Documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
-
-* **[Requirements](#requirements)**
 * **[Installation](#installation)**
+* **[Documentation](#documentation)**
 * **[Usage](#usage)**
 * **[Development](#development)**
 
-## Requirements
-- [Lua][lua-install-url] `5.1`
-- [Luarocks][luarocks-url] `2.2.0`
-- [OpenResty](http://openresty.com/#Download) `1.7.7.2`
-- [pcre-devel][pcre-url]
-- [openssl-devel][openssl-url]
-- [Cassandra][cassandra-url] `2.1`
-
 ## Installation
 
-#### From source
+See [INSTALL.md](INSTALL.md) for installation instructions on your platform.
 
-```bash
-sudo make install
-```
+## Documentation
+
+A complete documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
 
 ## Usage
 
-Use Kong through the `bin/kong` executable.
+Use Kong through the `bin/kong` executable. Make sure your Cassandra instance is running.
 
 The first time ever you're running Kong, you need to make sure to setup Cassandra by executing:
 
@@ -115,8 +105,3 @@ scripts/db.lua drop
 [travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
 [gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 [gitter-image]: https://badges.gitter.im/Join%20Chat.svg
-[lua-install-url]: http://www.lua.org/download.html
-[luarocks-url]: https://luarocks.org
-[pcre-url]: http://www.pcre.org/
-[openssl-url]: https://www.openssl.org/
-[cassandra-url]: http://cassandra.apache.org/
