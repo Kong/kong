@@ -40,7 +40,7 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
   }
 
   if err then
-    ngx.log(ngx.ERROR, err)
+    ngx.log(ngx.ERR, err.message)
     utils.show_error(500)
   end
 
@@ -60,7 +60,7 @@ function _M.init()
 
   local err = dao:prepare()
   if err then
-    ngx.log(ngx.ERROR, err)
+    error(err)
   end
 
   -- core is the first plugin

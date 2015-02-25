@@ -16,7 +16,7 @@ function _M.execute(conf)
   -- Load current metric for configured period
   local current_metric, err = dao.metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, conf.period)
   if err then
-    ngx.log(ngx.ERROR, err.message)
+    ngx.log(ngx.ERR, err.message)
     utils.show_error(500)
   end
 
@@ -39,7 +39,7 @@ function _M.execute(conf)
   -- Increment metrics for all periods if the request goes through
   local _, err = dao.metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
   if err then
-    ngx.log(ngx.ERROR, err.message)
+    ngx.log(ngx.ERR, err.message)
     utils.show_error(500)
   end
 end
