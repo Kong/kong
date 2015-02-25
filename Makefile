@@ -11,7 +11,7 @@ TESTS_DIR ?= $(KONG_HOME)/config.tests
 TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yml
 TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 
-.PHONY: install dev clean migrate reset seed drop test test-integration test-web test-proxy test-all
+.PHONY: install dev clean migrate reset seed drop test run-integration-tests test-web test-proxy test-all
 
 install:
 	@echo "Please wait, this process could take some time.."
@@ -51,19 +51,19 @@ test:
 	@busted spec/unit
 
 run-integration-tests:
-	@$(MAKE) migrate KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s
+	@$(MAKE) migrate KONG_CONF=$(TESTS_KONG_CONF)
 	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start
 	@while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done # Wait until nginx starts
-	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s
-	@busted $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s; exit 1)
+	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF)
+	@busted $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=$(SILENT_FLAG)); exit 1)
 	@bin/kong stop
-	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=-s
+	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF)
 
 test-web:
-	@$(MAKE) run-integration-tests FOLDER=spec/web
+	@$(MAKE) run-integration-tests FOLDER=spec/web SILENT_FLAG=-s
 
 test-proxy:
-	@$(MAKE) run-integration-tests FOLDER=spec/proxy
+	@$(MAKE) run-integration-tests FOLDER=spec/proxy SILENT_FLAG=-s
 
 test-all:
-	@$(MAKE) run-integration-tests FOLDER=spec
+	@$(MAKE) run-integration-tests FOLDER=spec SILENT_FLAG=-s
