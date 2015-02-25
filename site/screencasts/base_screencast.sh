@@ -1,5 +1,10 @@
 #!/bin/bash
 
+function extract_id {
+  name=$(echo $1 | pcregrep -o1 -i '.*"'$2'":"([\w\-]+).*')
+  echo $name
+}
+
 function slow_echo {
   delay=$2
   if [ -z "$delay" ]
