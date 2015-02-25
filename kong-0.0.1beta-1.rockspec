@@ -85,8 +85,5 @@ build = {
     ["kong.web.routes.plugins"] = "src/kong/web/routes/plugins.lua",
     ["kong.web.routes.base_controller"] = "src/kong/web/routes/base_controller.lua"
   },
-  copy_directories = { "src/kong/web/admin", "src/kong/web/static" },
-  install = {
-    bin = { "bin/kong" }
-  }
+  copy_directories = { "src/kong/web/admin", "src/kong/web/static" }
 }
