@@ -1,4 +1,4 @@
-#!/usr/bin/env lua-5.1
+#!/usr/bin/env lua
 
 local cli = require "cliargs"
 local utils = require "kong.tools.utils"
