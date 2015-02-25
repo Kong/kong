@@ -20,7 +20,13 @@ describe("Validation #schema", function()
                           else
                             return false, "Nah"
                           end
-                        end }
+                        end },
+      sub_schema = {
+        schema = {
+          sub_field_required = { required = true },
+          sub_field_default = { default = "abcd" }
+        }
+      }
     }
 
     it("should confirm a valid entity is valid", function()
@@ -175,6 +181,27 @@ describe("Validation #schema", function()
       local valid, err = validate(values, schema, true)
       assert.falsy(err)
       assert.truthy(valid)
+    end)
+
+    describe("Sub-schemas", function()
+
+      it("should validate a property with a sub-schema", function()
+        pending("todo")
+        -- Success
+        local values = { string = "somestring", sub_schema = { sub_field_required = "sub value" }}
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local values = { string = "somestring", sub_schema = { sub_field_default = "" }}
+
+        local valid, err = validate(values, schema)
+        assert.truthy(err)
+        assert.falsy(valid)
+      end)
+
     end)
 
   end)
