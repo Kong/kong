@@ -55,7 +55,7 @@ run-integration-tests:
 	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start
 	@while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done # Wait until nginx starts
 	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF)
-	@busted $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=$(SILENT_FLAG)); exit 1)
+	@busted $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=$(SILENT_FLAG); exit 1)
 	@bin/kong stop
 	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF)
 
