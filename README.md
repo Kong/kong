@@ -4,69 +4,18 @@
 
 Kong is a scalable and customizable API Management Layer built on top of nginx.
 
-Documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
-
-* **[Requirements](#requirements)**
 * **[Installation](#installation)**
+* **[Documentation](#documentation)**
 * **[Usage](#usage)**
 * **[Development](#development)**
 
-## Requirements
-- [Lua][lua-install-url] `5.1`
-- [Luarocks][luarocks-url] `2.2.0` **for lua 5.1**.
-- [OpenResty](http://openresty.com/#Download) `1.7.7.2`
-- [pcre][pcre-url]
-- [openssl][openssl-url]
-- [Cassandra][cassandra-url] `2.1`
-
 ## Installation
 
-#### From source
+See [INSTALL.md] for installation instructions on your platform.
 
-##### OS X
+## Documentation
 
-###### With Homebrew
-
-If you don't have Lua 5.1 installed:
-
-```bash
-brew install lua51
-ln /usr/local/bin/lua-5.1 /usr/local/bin/lua # alias lua-5.1 to lua (required for kong scripts)
-```
-
-We'll need Luarocks for Lua 5.1. The official Luarocks recipe only supports 5.2 now, so we'll use a custom recipe:
-
-```bash
-brew tap naartjie/luajit
-brew install naartjie/luajit/luarocks-luajit --with-lua51
-```
-
-Now, let's intall openresty:
-
-```bash
-brew tap killercup/openresty
-brew install ngx_openresty
-ln /usr/local/bin/openresty /usr/local/bin/nginx # alias openresty to nginx (required for kong scripts)
-```
-
-If you wish to run Cassandra locally (you can also use our [Docker image](https://github.com/Mashape/docker-cassandra)):
-
-```bash
-brew install cassandra
-# to start cassandra, just run `cassandra`
-```
-
-Other dependencies:
-
-```bash
-brew install pcre openssl
-```
-
-Finally, install Kong:
-
-```bash
-sudo make install
-```
+A complete documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
 
 ## Usage
 
@@ -156,8 +105,3 @@ scripts/db.lua drop
 [travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
 [gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 [gitter-image]: https://badges.gitter.im/Join%20Chat.svg
-[lua-install-url]: http://www.lua.org/download.html
-[luarocks-url]: https://luarocks.org
-[pcre-url]: http://www.pcre.org/
-[openssl-url]: https://www.openssl.org/
-[cassandra-url]: http://cassandra.apache.org/
