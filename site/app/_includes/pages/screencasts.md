@@ -20,4 +20,4 @@ The Authentication Plugin protects the API and requires the clients to send auth
 
 Here we'll cover the details of installing the Plugin, while in the next screencast you can learn how to provision credentials for the API users.
 
-<script type="text/javascript" src="https://asciinema.org/a/16965.js" id="asciicast-16965" async></script>
+<script type="text/javascript" src="https://asciinema.org/a/16965.js" id="asciicast-16965" async data-speed="2"></script>
