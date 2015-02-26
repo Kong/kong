@@ -28,7 +28,10 @@ describe("Validation #schema", function()
       sub_schema = {
         schema = {
           sub_field_required = { required = true },
-          sub_field_default = { default = "abcd" }
+          sub_field_default = { default = "abcd" },
+          sub_sub_schema = { schema = function()
+                                        return { sub_sub_field_required = { required = true } }
+                                      end }
         }
       }
     }
@@ -203,6 +206,27 @@ describe("Validation #schema", function()
         local valid, err = validate(values, schema)
         assert.truthy(err)
         assert.falsy(valid)
+        assert.are.same("sub_field_required is required", err["sub_schema.sub_field_required"])
+      end)
+
+      it("should validate a property with a sub-schema from a function", function()
+        -- Success
+        local values = { string = "somestring", sub_schema = {
+                                                  sub_field_required = "sub value",
+                                                  sub_sub_schema = { sub_sub_field_required = "test" }
+                                                }}
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local values = { string = "somestring", sub_schema = { sub_field_required = "sub value", sub_sub_schema = {} }}
+
+        local valid, err = validate(values, schema)
+        assert.truthy(err)
+        assert.falsy(valid)
+        assert.are.same("sub_sub_field_required is required", err["sub_schema.sub_sub_schema.sub_sub_field_required"])
       end)
 
     end)
