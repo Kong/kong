@@ -23,6 +23,7 @@ dependencies = {
   "luasec ~> 0.5-2",
   "yaml ~> 1.1.1-1",
   "luaxml ~> 101012-1",
+  "cassandra ~> 0.5-2",
   "lrexlib-pcre ~> 2.7.2-1",
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",
@@ -37,12 +38,6 @@ build = {
   modules = {
     ["kong"] = "src/main.lua",
     ["classic"] = "src/classic.lua",
-
-    ["cassandra"] = "src/cassandra/cassandra.lua",
-    ["protocol"] = "src/cassandra/protocol.lua",
-    ["encoding"] = "src/cassandra/encoding.lua",
-    ["decoding"] = "src/cassandra/decoding.lua",
-    ["cassandra.constants"] = "src/cassandra/constants.lua",
 
     ["kong.constants"] = "src/constants.lua",
 
