@@ -5,12 +5,21 @@ local cjson = require "cjson"
 
 local error_types = constants.DATABASE_ERROR_TYPES
 
+local function load_value_schema(plugin_t)
+  local status, plugin_schema = pcall(require, "kong.plugins."..plugin_t.name..".schema")
+  if not status then
+    return nil, "Plugin \""..plugin_t.name.."\" not found"
+  end
+
+  return plugin_schema
+end
+
 local SCHEMA = {
   id = { type = "id" },
   api_id = { type = "id", required = true, foreign = true, queryable = true },
   application_id = { type = "id", foreign = true, queryable = true },
   name = { required = true, queryable = true, immutable = true },
-  value = { type = "table", required = true },
+  value = { type = "table", required = true, schema = load_value_schema },
   enabled = { type = "boolean", default = true },
   created_at = { type = "timestamp" }
 }
@@ -61,20 +70,6 @@ function Plugins:new(properties)
   Plugins.super.new(self, properties)
 end
 
-function Plugins:_check_value_schema(t)
-  local status, plugin_schema = pcall(require, "kong.plugins."..t.name..".schema")
-  if not status then
-    return false, self:_build_error(error_types.SCHEMA, "Plugin \""..object.name.."\" not found")
-  end
-
-  local valid, errors = schemas.validate(t.value, plugin_schema)
-  if not valid then
-    return false, self:_build_error(error_types.SCHEMA, errors)
-  else
-    return true
-  end
-end
-
 function Plugins:_check_unicity(t, is_updating)
   local unique, err = self:_check_unique(self._statements.__custom_checks.unique, t, is_updating)
   if err then
@@ -117,12 +112,6 @@ function Plugins:insert(t)
     return nil, err
   end
 
-  -- Checking value schema validation
-  local ok, err = self:_check_value_schema(t)
-  if not ok then
-    return nil, err
-  end
-
   return Plugins.super.insert(self, t)
 end
 
@@ -139,12 +128,6 @@ function Plugins:update(t)
 
   -- Checking plugin unicity
   local ok, err = self:_check_unicity(t, true)
-  if not ok then
-    return nil, err
-  end
-
-  -- Checking value schema validation
-  local ok, err = self:_check_value_schema(t)
   if not ok then
     return nil, err
   end

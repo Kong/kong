@@ -24,16 +24,7 @@ describe("Validation #schema", function()
                           else
                             return true
                           end
-                        end },
-      sub_schema = {
-        schema = {
-          sub_field_required = { required = true },
-          sub_field_default = { default = "abcd" },
-          sub_sub_schema = { schema = function()
-                                        return { sub_sub_field_required = { required = true } }
-                                      end }
-        }
-      }
+                        end }
     }
 
     it("should confirm a valid entity is valid", function()
@@ -191,19 +182,45 @@ describe("Validation #schema", function()
     end)
 
     describe("Sub-schemas", function()
+      -- To check wether schema_from_function was called, we will simply use booleans because
+      -- busted's spy methods create tables and metatable magic, but the validate() function
+      -- only callse v.schema if the type is a function. Which is not the case with a busted spy.
+      local called, called_with
+      local schema_from_function = function(t)
+                                     called = true
+                                     called_with = t
+
+                                     if t.error_loading_sub_sub_schema then
+                                       return nil, "Error loading the sub-sub-schema"
+                                     end
+
+                                     return { sub_sub_field_required = { required = true } }
+                                   end
+      local nested_schema = {
+        some_required = { required = true },
+        sub_schema = {
+          schema = {
+            sub_field_required = { required = true },
+            sub_field_default = { default = "abcd" },
+            error_loading_sub_sub_schema = {},
+            sub_sub_schema = { schema = schema_from_function }
+          }
+        }
+      }
 
       it("should validate a property with a sub-schema", function()
         -- Success
-        local values = { string = "somestring", sub_schema = { sub_field_required = "sub value" }}
+        local values = { some_required = "somestring", sub_schema = { sub_field_required = "sub value" }}
 
-        local valid, err = validate(values, schema)
+        local valid, err = validate(values, nested_schema)
         assert.falsy(err)
         assert.truthy(valid)
+        assert.are.same("abcd", values.sub_schema.sub_field_default)
 
         -- Failure
-        local values = { string = "somestring", sub_schema = { sub_field_default = "" }}
+        local values = { some_required = "somestring", sub_schema = { sub_field_default = "" }}
 
-        local valid, err = validate(values, schema)
+        local valid, err = validate(values, nested_schema)
         assert.truthy(err)
         assert.falsy(valid)
         assert.are.same("sub_field_required is required", err["sub_schema.sub_field_required"])
@@ -211,25 +228,55 @@ describe("Validation #schema", function()
 
       it("should validate a property with a sub-schema from a function", function()
         -- Success
-        local values = { string = "somestring", sub_schema = {
-                                                  sub_field_required = "sub value",
-                                                  sub_sub_schema = { sub_sub_field_required = "test" }
-                                                }}
+        local values = { some_required = "somestring", sub_schema = {
+                                                        sub_field_required = "sub value",
+                                                        sub_sub_schema = { sub_sub_field_required = "test" }
+                                                       }}
 
-        local valid, err = validate(values, schema)
+        local valid, err = validate(values, nested_schema)
         assert.falsy(err)
         assert.truthy(valid)
 
         -- Failure
-        local values = { string = "somestring", sub_schema = { sub_field_required = "sub value", sub_sub_schema = {} }}
+        local values = { some_required = "somestring", sub_schema = {
+                                                        sub_field_required = "sub value",
+                                                        sub_sub_schema = {}
+                                                       }}
 
-        local valid, err = validate(values, schema)
+        local valid, err = validate(values, nested_schema)
         assert.truthy(err)
         assert.falsy(valid)
         assert.are.same("sub_sub_field_required is required", err["sub_schema.sub_sub_schema.sub_sub_field_required"])
       end)
 
-    end)
+      it("should call the schema function with the actual parent t table of the subschema", function()
+        local values = { some_required = "somestring", sub_schema = {
+                                                        sub_field_default = "abcd",
+                                                        sub_field_required = "sub value",
+                                                        sub_sub_schema = { sub_sub_field_required = "test" }
+                                                      }}
 
+        local valid, err = validate(values, nested_schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.True(called)
+        assert.are.same(values.sub_schema, called_with)
+      end)
+
+      it("should retrieve errors when cannot load schema from function", function()
+        local values = { some_required = "somestring", sub_schema = {
+                                                        sub_field_default = "abcd",
+                                                        sub_field_required = "sub value",
+                                                        error_loading_sub_sub_schema = true,
+                                                        sub_sub_schema = { sub_sub_field_required = "test" }
+                                                      }}
+
+        local valid, err = validate(values, nested_schema)
+        assert.truthy(err)
+        assert.falsy(valid)
+        assert.are.same("Error loading the sub-sub-schema", err["sub_schema.sub_sub_schema"])
+      end)
+
+    end)
   end)
 end)
