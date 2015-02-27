@@ -9,7 +9,7 @@ branches:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libssl-dev perl lua5.1 lua5.1-dev
+  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libssl-dev perl lua5.1-dev
   - wget http://openresty.org/download/ngx_openresty-1.7.7.2.tar.gz
   - tar xzf ngx_openresty-1.7.7.2.tar.gz
   - cd ngx_openresty-1.7.7.2/
