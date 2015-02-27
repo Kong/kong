@@ -207,10 +207,15 @@ end
 -- Cache utils
 --
 
-function _M.cache_save(key, value, exptime)
+function _M.cache_set(key, value, exptime)
   if exptime == nil then exptime = 0 end -- By default never expire
-
   local cache = ngx.shared.cache
+  if value then
+    value = cjson.encode(value)
+  end
+  if ngx then
+    ngx.log(ngx.DEBUG, " saving cache key \""..key.."\": "..value)
+  end
   local succ, err, forcible = cache:set(key, value, exptime)
   return succ, err, forcible
 end
@@ -218,12 +223,26 @@ end
 function _M.cache_get(key)
   local cache = ngx.shared.cache
   local value, flags = cache:get(key)
+  if value then
+    if ngx then
+      ngx.log(ngx.DEBUG, " Found value for key \""..key.."\": "..value)
+    end
+    value = cjson.decode(value)
+  end
   return value, flags
 end
 
 function _M.cache_delete(key)
   local cache = ngx.shared.cache
   cache:delete(key)
+end
+
+function _M.cache_api_key(host)
+  return constants.CACHE.APIS.."/"..host
+end
+
+function _M.cache_plugin_key(name, api_id, application_id)
+  return constants.CACHE.PLUGINS.."/"..name.."/"..api_id..(application_id and "/"..application_id or "")
 end
 
 --

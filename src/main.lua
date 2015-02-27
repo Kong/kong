@@ -33,6 +33,10 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
+
+
+
+
   local rows, err = dao.plugins:find_by_keys {
     api_id = api_id,
     application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
