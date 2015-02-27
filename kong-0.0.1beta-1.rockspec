@@ -28,8 +28,6 @@ dependencies = {
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",
   "luasocket ~> 2.0.2-5",
-
-  "busted ~> 2.0.rc6-0",
   "lua_cliargs ~> 2.3-3",
   "luafilesystem ~> 1.6.2"
 }
@@ -39,7 +37,7 @@ build = {
     ["kong"] = "src/main.lua",
     ["classic"] = "src/classic.lua",
 
-    ["kong.constants"] = "src/constants.lua",
+    ["kong.constants"] = "src/kong/constants.lua",
 
     ["kong.tools.utils"] = "src/kong/tools/utils.lua",
     ["kong.tools.faker"] = "src/kong/tools/faker.lua",
