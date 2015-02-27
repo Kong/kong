@@ -9,7 +9,8 @@ branches:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3 libpcre3-dev libssl-dev perl lua5.1-dev
+  - sudo apt-get install lua5.1 lua5.1-dev
+  - sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make luarocks
   - wget http://openresty.org/download/ngx_openresty-1.7.7.2.tar.gz
   - tar xzf ngx_openresty-1.7.7.2.tar.gz
   - cd ngx_openresty-1.7.7.2/
@@ -18,13 +19,6 @@ before_install:
   - sudo make install
   - cd ..
   - export PATH=$PATH:/usr/local/openresty/nginx/sbin
-  - wget http://luarocks.org/releases/luarocks-2.2.0.tar.gz
-  - tar xzf luarocks-2.2.0.tar.gz
-  - cd luarocks-2.2.0
-  - ./configure
-  - make build
-  - sudo make install
-  - cd ..
   - sudo rm -rf /var/lib/cassandra/*
   - wget http://www.us.apache.org/dist/cassandra/2.1.2/apache-cassandra-2.1.2-bin.tar.gz && tar -xvzf apache-cassandra-2.1.2-bin.tar.gz && sudo sh apache-cassandra-2.1.2/bin/cassandra
 
