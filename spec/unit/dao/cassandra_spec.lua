@@ -44,7 +44,9 @@ describe("Cassandra DAO #dao #cassandra", function()
   end)
 
   teardown(function()
-    session:close()
+    if session then
+      session:close()
+    end
     local ok, err = dao_factory:reset()
     assert.falsy(err)
   end)
@@ -264,6 +266,17 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("Plugin already exists", err.message)
       end)
 
+      it("should not insert a plugin if this plugin doesn't exist (not installed)", function()
+        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        plugin_t.name = "world domination plugin"
+
+        -- This should fail
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        assert.falsy(plugin)
+        assert.truthy(err)
+        assert.are.same("Plugin \"world domination plugin\" not found", err.message.value)
+      end)
+
       it("should validate a plugin value schema", function()
         -- Success
         -- Insert a new API for a fresh start
@@ -298,7 +311,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.truthy(err)
         assert.truthy(err.schema)
-        assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message.authentication_type)
+        assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message["value.authentication_type"])
         assert.falsy(plugin)
       end)
 
