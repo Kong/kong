@@ -34,6 +34,9 @@ before_install:
 
 install:
   - sudo make install
-  - make dev
+  - sudo make dev
 
-script: "make run-integration-tests FOLDER=spec"
+script: "make run-integration-tests COVERAGE_FLAG=--coverage FOLDER=spec"
+
+after_success:
+  - luacov-coveralls -i kong
