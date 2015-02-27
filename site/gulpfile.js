@@ -112,7 +112,7 @@ gulp.task('watch', function () {
   });
   gulp.watch('app/_assets/javascripts/**/*.js', ['javascripts']);
   gulp.watch('app/_assets/images/**/*', ['images']);
-  gulp.watch(sources.styles, ['styles']);
+  gulp.watch('app/_assets/stylesheets/**/*.{less,css}', ['styles']);
 });
 
 gulp.task('build', ['styles', 'javascripts', 'images', 'html']);
