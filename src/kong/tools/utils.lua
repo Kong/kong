@@ -204,6 +204,29 @@ function _M.create_timer(func, data)
 end
 
 --
+-- Cache utils
+--
+
+function _M.cache_save(key, value, exptime)
+  if exptime == nil then exptime = 0 end -- By default never expire
+
+  local cache = ngx.shared.cache
+  local succ, err, forcible = cache:set(key, value, exptime)
+  return succ, err, forcible
+end
+
+function _M.cache_get(key)
+  local cache = ngx.shared.cache
+  local value, flags = cache:get(key)
+  return value, flags
+end
+
+function _M.cache_delete(key)
+  local cache = ngx.shared.cache
+  cache:delete(key)
+end
+
+--
 -- Disk I/O utils
 --
 function _M.read_file(path)

@@ -23,7 +23,18 @@ end
 
 function _M.execute(conf)
   -- Retrieving the API from the Host that has been requested
-  local apis, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
+
+  local host = stringy.split(ngx.var.http_host, ":")[1]
+
+  local cache_value = utils.cache_get("wot")
+  if not cache_value then
+    print("No cache")
+    utils.cache_save("wot", "ciao", 10)
+  else
+    print("Cached: "..cache_value)
+  end
+
+  local apis, err = dao.apis:find_by_keys({public_dns = host})
   if err then
     ngx.log(ngx.ERR, err.message)
     utils.show_error(500)
