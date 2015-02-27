@@ -24,6 +24,14 @@
     float: left;
     width: 64px;
 
+    + .page-header-title {
+      padding-left: 90px;
+
+      @media (max-width: 800px) {
+        padding-left: 68px;
+      }
+    }
+
     img {
       max-width: 100%;
       height: auto;
@@ -35,11 +43,7 @@
   }
 
   .page-header-title {
-    padding-left: 90px;
 
-    @media (max-width: 800px) {
-      padding-left: 68px;
-    }
   }
 }
 
@@ -99,16 +103,20 @@
   }
 }
 
-.page-container {
-  padding: 60px 0 60px 230px;
+.page-content-container {
+  padding-left: 230px;
 
   @media (max-width: 800px) {
-    padding: 0;
+    padding-left: 0;
   }
 }
 
 .page-content {
-  padding: 0 50px;
+  padding: 0 50px
+}
+
+.content {
+  padding: 60px 0;
   font-size: 16px;
   font-family: @family-whitney;
   line-height: 1.5;
