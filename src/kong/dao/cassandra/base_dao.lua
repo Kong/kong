@@ -57,8 +57,6 @@ local function encode_cassandra_values(schema, t, parameters)
       end
     elseif schema_field.type == "timestamp" and value then
       value = cassandra.timestamp(value)
-    elseif schema_field.type == "table" and value then
-      value = cjson.encode(value)
     elseif value == nil then
       value = cassandra.null
     end
@@ -79,6 +77,12 @@ function BaseDao:_build_error(type, err)
     [type] = true,
     message = err
   }
+end
+
+-- Marshall an entity. Does nothing by default,
+-- must be overriden for entities where marshalling applies.
+function BaseDao:_marshall(t)
+  return t
 end
 
 -- Unmarshall an entity. Does nothing by default,
@@ -172,10 +176,12 @@ function BaseDao:_check_all_unique(t, is_updating)
 
   local errors
   for k, statement in pairs(self._statements.__unique) do
-    if t[k] then
+    if t[k] or k == "self" then
       local unique, err = self:_check_unique(statement, t, is_updating)
       if err then
         return false, err
+      elseif not unique and k == "self" then
+        return false, nil, self._entity.." already exists"
       elseif not unique then
         errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
       end
@@ -357,7 +363,7 @@ function BaseDao:insert(t)
     return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
-  local _, err = self:_execute(self._statements.insert, t)
+  local _, err = self:_execute(self._statements.insert, self:_marshall(t))
   if err then
     return nil, err
   else
@@ -415,7 +421,7 @@ function BaseDao:update(t)
     return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
-  local _, err = self:_execute(self._statements.update, t)
+  local _, err = self:_execute(self._statements.update, self:_marshall(t))
 
   if err then
     return nil, err

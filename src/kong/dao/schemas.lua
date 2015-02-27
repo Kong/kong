@@ -67,10 +67,23 @@ function _M.validate(t, schema, is_update)
 
     -- validate a subschema
     elseif t[column] ~= nil and v.schema then
-      local s_ok, s_errors = _M.validate(t[column], v.schema, is_update)
-      if not s_ok then
-        for s_k, s_v in pairs(s_errors) do
-          errors = utils.add_error(errors, column.."."..s_k, s_v)
+      local sub_schema
+      if type(v.schema) == "function" then
+        sub_schema, err = v.schema(t)
+      else
+        sub_schema = v.schema
+      end
+
+      if err then
+        -- could not retrieve sub schema
+        errors = utils.add_error(errors, column, err)
+      else
+        -- validating subschema
+        local s_ok, s_errors = _M.validate(t[column], sub_schema, is_update)
+        if not s_ok then
+          for s_k, s_v in pairs(s_errors) do
+            errors = utils.add_error(errors, column.."."..s_k, s_v)
+          end
         end
       end
     end

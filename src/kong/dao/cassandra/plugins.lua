@@ -5,12 +5,21 @@ local cjson = require "cjson"
 
 local error_types = constants.DATABASE_ERROR_TYPES
 
+local function load_value_schema(plugin_t)
+  local status, plugin_schema = pcall(require, "kong.plugins."..plugin_t.name..".schema")
+  if not status then
+    return nil, "Plugin \""..plugin_t.name.."\" not found"
+  end
+
+  return plugin_schema
+end
+
 local SCHEMA = {
   id = { type = "id" },
   api_id = { type = "id", required = true, foreign = true, queryable = true },
-  application_id = { type = "id", foreign = true, queryable = true },
+  application_id = { type = "id", foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
   name = { required = true, queryable = true, immutable = true },
-  value = { type = "table", required = true },
+  value = { type = "table", required = true, schema = load_value_schema },
   enabled = { type = "boolean", default = true },
   created_at = { type = "timestamp" }
 }
@@ -18,6 +27,7 @@ local SCHEMA = {
 local Plugins = BaseDao:extend()
 
 function Plugins:new(properties)
+  self._entity = "Plugin"
   self._schema = SCHEMA
   self._queries = {
     insert = {
@@ -40,8 +50,8 @@ function Plugins:new(properties)
       params = { "id" },
       query = [[ DELETE FROM plugins WHERE id = ?; ]]
     },
-    __custom_checks = {
-      unique = {
+    __unique = {
+      self = {
         params = { "api_id", "application_id", "name" },
         query = [[ SELECT * FROM plugins WHERE api_id = ? AND application_id = ? AND name = ? ALLOW FILTERING; ]]
       }
@@ -61,29 +71,13 @@ function Plugins:new(properties)
   Plugins.super.new(self, properties)
 end
 
-function Plugins:_check_value_schema(t)
-  local status, plugin_schema = pcall(require, "kong.plugins."..t.name..".schema")
-  if not status then
-    return false, self:_build_error(error_types.SCHEMA, "Plugin \""..object.name.."\" not found")
+-- @override
+function Plugins:_marshall(t)
+  if type(t.value) == "table" then
+    t.value = cjson.encode(t.value)
   end
 
-  local valid, errors = schemas.validate(t.value, plugin_schema)
-  if not valid then
-    return false, self:_build_error(error_types.SCHEMA, errors)
-  else
-    return true
-  end
-end
-
-function Plugins:_check_unicity(t, is_updating)
-  local unique, err = self:_check_unique(self._statements.__custom_checks.unique, t, is_updating)
-  if err then
-    return false, err
-  elseif not unique then
-    return false, self:_build_error(error_types.UNIQUE, "Plugin already exists")
-  else
-    return true
-  end
+  return t
 end
 
 -- @override
@@ -98,58 +92,6 @@ function Plugins:_unmarshall(t)
   end
 
   return t
-end
-
--- @override
-function Plugins:insert(t)
-  if t.application_id == nil then
-    t.application_id = constants.DATABASE_NULL_ID
-  end
-
-  local valid_schema, err = schemas.validate(t, self._schema)
-  if not valid_schema then
-    return nil, self:_build_error(error_types.SCHEMA, err)
-  end
-
-  -- Checking plugin unicity
-  local ok, err = self:_check_unicity(t)
-  if not ok then
-    return nil, err
-  end
-
-  -- Checking value schema validation
-  local ok, err = self:_check_value_schema(t)
-  if not ok then
-    return nil, err
-  end
-
-  return Plugins.super.insert(self, t)
-end
-
--- @override
-function Plugins:update(t)
-  if t.application_id == nil then
-    t.application_id = constants.DATABASE_NULL_ID
-  end
-
-  local valid_schema, err = schemas.validate(t, self._schema, true)
-  if not valid_schema then
-    return nil, self:_build_error(error_types.SCHEMA, err)
-  end
-
-  -- Checking plugin unicity
-  local ok, err = self:_check_unicity(t, true)
-  if not ok then
-    return nil, err
-  end
-
-  -- Checking value schema validation
-  local ok, err = self:_check_value_schema(t)
-  if not ok then
-    return nil, err
-  end
-
-  return Plugins.super.update(self, t)
 end
 
 return Plugins
