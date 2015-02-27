@@ -9,6 +9,8 @@ describe("Utils #utils", function()
     end)
     it("should return a valid PLUGIN cache key", function()
       assert.are.equal("plugins/authentication/api123/app123", utils.cache_plugin_key("authentication", "api123", "app123"))
+      assert.are.equal("plugins/authentication/api123", utils.cache_plugin_key("authentication", "api123"))
+      assert.are.equal("applications/username", utils.cache_application_key("username"))
     end)
   end)
 

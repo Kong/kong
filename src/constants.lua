@@ -18,7 +18,8 @@ return {
   },
   CACHE = {
     APIS = "apis",
-    PLUGINS = "plugins"
+    PLUGINS = "plugins",
+    APPLICATIONS = "applications"
   },
   AUTHENTICATION = {
     QUERY = "query",

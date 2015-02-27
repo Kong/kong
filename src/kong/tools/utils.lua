@@ -221,11 +221,15 @@ function _M.cache_set(key, value, exptime)
 end
 
 function _M.cache_get(key)
+  if ngx then
+    ngx.log(ngx.DEBUG, " Try to get cache key \""..key.."\"")
+  end
+
   local cache = ngx.shared.cache
   local value, flags = cache:get(key)
   if value then
     if ngx then
-      ngx.log(ngx.DEBUG, " Found value for key \""..key.."\": "..value)
+      ngx.log(ngx.DEBUG, " Found cache value for key \""..key.."\": "..value)
     end
     value = cjson.decode(value)
   end
@@ -243,6 +247,10 @@ end
 
 function _M.cache_plugin_key(name, api_id, application_id)
   return constants.CACHE.PLUGINS.."/"..name.."/"..api_id..(application_id and "/"..application_id or "")
+end
+
+function _M.cache_application_key(public_key)
+  return constants.CACHE.APPLICATIONS.."/"..public_key
 end
 
 --
