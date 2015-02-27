@@ -41,7 +41,7 @@ function _M.execute(conf)
   local api = utils.cache_get(cache_key)
   if not api then
     api = load_api(host)
-    local ok, err = utils.cache_set(cache_key, api, 5)
+    local ok, err = utils.cache_set(cache_key, api, configuration.cache.expiration)
     if not ok then
       ngx.log(ngx.ERR, err)
     end

@@ -161,12 +161,18 @@ function _M.execute(conf)
 
   -- Make sure we are not sending an empty table to find_by_keys
   if public_key then
-    local applications, err = dao.applications:find_by_keys { public_key = public_key }
-    if err then
-      ngx.log(ngx.ERR, err.message)
-      utils.show_error(500)
-    elseif #applications > 0 then
-      application = applications[1]
+
+    local cache_key = utils.cache_application_key(public_key)
+    application = utils.cache_get(cache_key)
+    if not application then
+      local applications, err = dao.applications:find_by_keys { public_key = public_key }
+      if err then
+        ngx.log(ngx.ERR, err.message)
+        utils.show_error(500)
+      elseif #applications > 0 then
+        application = applications[1]
+        utils.cache_set(cache_key, application)
+      end
     end
   end
 
