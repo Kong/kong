@@ -1,9 +1,5 @@
 language: erlang
 
-os:
-  - linux
-  - osx
-  
 env:
   - LUA=""
 
