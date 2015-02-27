@@ -96,6 +96,15 @@ function Plugins:_unmarshall(t)
 end
 
 -- @override
+function Plugins:_marshall(t)
+  if type(t.value) == "table" then
+    t.value = cjson.encode(t.value)
+  end
+
+  return t
+end
+
+-- @override
 function Plugins:insert(t)
   if t.application_id == nil then
     t.application_id = constants.DATABASE_NULL_ID
