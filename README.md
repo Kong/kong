@@ -43,7 +43,7 @@ Running Kong for development requires you to run:
 make dev
 ```
 
-This will create your environment configuration files (`dev` and `tests`). Setup your database access for each of these enviroments (be careful about keyspaces, since Kong already uses `kong` and unit tests already use `kong_tests`).
+This will install development dependencies and create your environment configuration files (`dev` and `tests`). Setup your database access for each of these enviroments (be careful about keyspaces, since Kong already uses `kong` and unit tests already use `kong_tests`).
 
 - Run the tests:
 
@@ -64,12 +64,14 @@ When developing, use the `Makefile` for doing the following operations:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `install`    | Install the Kong luarock globally                                                                   |
-| `dev`        | Setup your development enviroment (creates `config.dev` and `config.tests` configurations)          |
+| `dev`        | Setup your development enviroment (install dev deps and creates `config.dev` and `config.tests`)    |
 | `clean`      | Clean the development environment                                                                   |
 | `migrate`    | Migrate your database schema according to the development Kong config inside `config.dev`           |
 | `reset`      | Reset your database schema according to the development Kong config inside `config.dev`             |
 | `seed`       | Seed your database according to the development Kong config inside `config.dev`                     |
 | `drop`       | Drop your database according to the development Kong config inside `config.dev`                     |
+| `lint`       | Lint Lua in `src/`                                                                                  |
+| `coverage`   | Run unit tests + coverage report (only unit-tested modules)                                         |
 | `test`       | Run the unit tests                                                                                  |
 | `test-proxy` | Run the proxy integration tests                                                                     |
 | `test-web`   | Run the web integration tests                                                                       |
