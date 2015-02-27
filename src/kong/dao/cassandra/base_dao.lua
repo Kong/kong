@@ -176,10 +176,12 @@ function BaseDao:_check_all_unique(t, is_updating)
 
   local errors
   for k, statement in pairs(self._statements.__unique) do
-    if t[k] then
+    if t[k] or k == "self" then
       local unique, err = self:_check_unique(statement, t, is_updating)
       if err then
         return false, err
+      elseif not unique and k == "self" then
+        return false, nil, self._entity.." already exists"
       elseif not unique then
         errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
       end
