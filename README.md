@@ -1,6 +1,6 @@
 # Kong
 
-[![Build Status][travis-image]][travis-url] [![Gitter][gitter-image]][gitter-url]
+[![Build Status][travis-badge]][travis-url] [![Coverage Status][coveralls-badge]][coveralls-url] [![Gitter][gitter-badge]][gitter-url]
 
 Kong is a scalable and customizable API Management Layer built on top of nginx.
 
@@ -104,6 +104,8 @@ scripts/db.lua drop
 ```
 
 [travis-url]: https://travis-ci.org/Mashape/kong
-[travis-image]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
+[travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
+[coveralls-url]: https://coveralls.io/r/Mashape/kong?branch=master
+[coveralls-badge]: https://coveralls.io/repos/Mashape/kong/badge.svg?branch=master
 [gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-[gitter-image]: https://badges.gitter.im/Join%20Chat.svg
+[gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
