@@ -22,29 +22,12 @@ function CassandraFactory:new(properties)
 
   -- TODO: do not include those on production
   self.faker = Faker(self)
-  self._migrations = migrations(self, { keyspace = properties.keyspace })
 
   self.apis = Apis(properties)
   self.metrics = Metrics(properties)
   self.plugins = Plugins(properties)
   self.accounts = Accounts(properties)
   self.applications = Applications(properties)
-end
-
---
--- Migrations
---
-
-function CassandraFactory:migrate(callback)
-  return self._migrations:migrate(callback)
-end
-
-function CassandraFactory:rollback(callback)
-  return self._migrations:rollback(callback)
-end
-
-function CassandraFactory:reset(callback)
-  return self._migrations:reset(callback)
 end
 
 --

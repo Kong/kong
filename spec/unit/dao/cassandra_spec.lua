@@ -5,9 +5,11 @@ local cjson = require "cjson"
 local uuid = require "uuid"
 
 -- Kong
+local Migrations = require "kong.tools.migrations"
 local configuration = require "spec.dao_configuration"
 local CassandraFactory = require "kong.dao.cassandra.factory"
 local dao_factory = CassandraFactory(configuration.cassandra)
+local migrations = Migrations(dao_factory)
 
 -- An utility function to apply tests on each collection
 local function describe_all_collections(tests_cb)
@@ -26,8 +28,9 @@ end
 describe("Cassandra DAO #dao #cassandra", function()
 
   setup(function()
-    local ok, err = dao_factory:migrate()
-    assert.falsy(err)
+    migrations:migrate(function(_, err)
+      assert.falsy(err)
+    end)
 
     dao_factory:prepare()
     dao_factory:seed()
@@ -47,8 +50,9 @@ describe("Cassandra DAO #dao #cassandra", function()
     if session then
       session:close()
     end
-    local ok, err = dao_factory:reset()
-    assert.falsy(err)
+    migrations:reset(function(_, err)
+      assert.falsy(err)
+    end)
   end)
 
   describe("Factory", function()

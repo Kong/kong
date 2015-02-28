@@ -19,6 +19,8 @@ end
 local logger = utils.logger:new(args.silent)
 local configuration, dao = utils.load_configuration_and_dao(args.CONFIGURATION)
 
+local migrations = Migrations(dao)
+
 if args.COMMAND == "create" then
 
   Migrations.create(configuration, args.name, function(interface, file_path, file_name)
@@ -33,7 +35,7 @@ elseif args.COMMAND == "migrate" then
 
   logger:log("Migrating "..utils.yellow(dao.type))
 
-  dao:migrate(function(migration, err)
+  migrations:migrate(function(migration, err)
     if err then
       logger:error(err)
     else
@@ -45,7 +47,7 @@ elseif args.COMMAND == "rollback" then
 
   logger:log("Rolling back "..utils.yellow(dao.type))
 
-  dao:rollback(function(migration, err)
+  migrations:rollback(function(migration, err)
     if err then
       logger:error(err)
     else
@@ -57,7 +59,7 @@ elseif args.COMMAND == "reset" then
 
   logger:log("Resetting "..utils.yellow(dao.type))
 
-  dao:reset(function(migration, err)
+  migrations:reset(function(migration, err)
     if err then
       logger:error(err)
     else
