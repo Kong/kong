@@ -67,13 +67,15 @@ elseif args.COMMAND == "reset" then
 
 elseif args.COMMAND == "seed" then
 
+  local err
+
   -- Drop if exists
-  local err = dao:drop()
+  err = dao:drop()
   if err then
     logger:error(err)
   end
 
-  local err = dao:prepare()
+  err = dao:prepare()
   if err then
     logger:error(err)
   end
