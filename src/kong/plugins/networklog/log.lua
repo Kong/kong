@@ -9,6 +9,7 @@ local function log(premature, conf, message)
   if lower_type == "nginx_log" then
     ngx.log(ngx.INFO, cjson.encode(message))
   elseif lower_type == "tcp" then
+    local ok, err
     local host = conf.host
     local port = conf.port
     local timeout = conf.timeout
@@ -20,18 +21,18 @@ local function log(premature, conf, message)
     local sock = ngx.socket.tcp()
     sock:settimeout(timeout)
 
-    local ok, err = sock:connect(host, port)
+    ok, err = sock:connect(host, port)
     if not ok then
       ngx.log(ngx.ERR, "failed to connect to " .. host .. ":" .. tostring(port) .. ": ", err)
       return
     end
 
-    local bytes, err = sock:send(cjson.encode(message) .. "\r\n")
-    if not bytes then
+    ok, err = sock:send(cjson.encode(message) .. "\r\n")
+    if not ok then
       ngx.log(ngx.ERR, "failed to send data to " .. host .. ":" .. tostring(port) .. ": ", err)
     end
 
-    local ok, err = sock:setkeepalive(keepalive)
+    ok, err = sock:setkeepalive(keepalive)
     if not ok then
       ngx.log(ngx.ERR, "failed to keepalive to " .. host .. ":" .. tostring(port) .. ": ", err)
       return

@@ -68,16 +68,16 @@ function Faker:fake_entity(type)
       secret_key = "private_random"..r
     }
   elseif type == "plugin" then
-    local type = random_from_table({ "authentication", "ratelimiting" })
-    local value = {}
-    if type == "authentication" then
-      value = { authentication_type = "query", authentication_key_names = { "apikey"..r }}
+    local plugin_type = random_from_table({ "authentication", "ratelimiting" })
+    local plugin_value
+    if plugin_type == "authentication" then
+      plugin_value = { authentication_type = "query", authentication_key_names = { "apikey"..r }}
     else
-      value = { period = "minute", limit = r }
+      plugin_value = { period = "minute", limit = r }
     end
     return {
-      name = type,
-      value = value,
+      name = plugin_type,
+      value = plugin_value,
       api_id = random_from_table(self.inserted_entities.api).id,
       application_id = random_from_table(self.inserted_entities.application).id
     }
@@ -131,7 +131,7 @@ function Faker:seed(random, amount)
     -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
     local random_entities = {}
     for type, entities in pairs(entities_to_insert) do
-      number_to_insert = amount - #entities
+      local number_to_insert = amount - #entities
       random_entities[type] = {}
       assert(number_to_insert > 0, "Cannot insert a negative number of elements. Too low amount parameter.")
       for i = 1, number_to_insert do
