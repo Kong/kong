@@ -253,6 +253,20 @@ function _M.cache_application_key(public_key)
   return constants.CACHE.APPLICATIONS.."/"..public_key
 end
 
+function _M.cache_get_and_set(key, cb)
+  local val = _M.cache_get(key)
+  if not val then
+    val = cb()
+    if val then
+      local succ, err, forcible = _M.cache_set(key, val)
+      if not succ and ngx then
+        ngx.log(ngx.ERR, err)
+      end
+    end
+  end
+  return val
+end
+
 --
 -- Disk I/O utils
 --

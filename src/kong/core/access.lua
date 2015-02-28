@@ -22,30 +22,20 @@ local function skip_authentication(headers)
   return headers["expect"] and _M.starts_with(headers["expect"], "100")
 end
 
-local function load_api(host)
-  local apis, err = dao.apis:find_by_keys({public_dns = host})
-  if err then
-    ngx.log(ngx.ERR, err.message)
-    utils.show_error(500)
-  elseif not apis or #apis == 0 then
-    utils.not_found("API not found")
-  end
-  return apis[1]
-end
-
 function _M.execute(conf)
   -- Retrieving the API from the Host that has been requested
   local host = stringy.strip(stringy.split(ngx.var.http_host, ":")[1])
 
-  local cache_key = utils.cache_api_key(host)
-  local api = utils.cache_get(cache_key)
-  if not api then
-    api = load_api(host)
-    local ok, err = utils.cache_set(cache_key, api, configuration.cache.expiration)
-    if not ok then
-      ngx.log(ngx.ERR, err)
+  local api = utils.cache_get_and_set(utils.cache_api_key(host), function()
+    local apis, err = dao.apis:find_by_keys({public_dns = host})
+    if err then
+      ngx.log(ngx.ERR, err.message)
+      utils.show_error(500)
+    elseif not apis or #apis == 0 then
+      utils.not_found("API not found")
     end
-  end
+    return apis[1]
+  end)
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api) .. ngx.var.request_uri
