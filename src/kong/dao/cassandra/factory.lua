@@ -20,9 +20,6 @@ function CassandraFactory:new(properties)
   self.type = "cassandra"
   self._properties = properties
 
-  -- TODO: do not include those on production
-  self.faker = Faker(self)
-
   self.apis = Apis(properties)
   self.metrics = Metrics(properties)
   self.plugins = Plugins(properties)
@@ -30,16 +27,7 @@ function CassandraFactory:new(properties)
   self.applications = Applications(properties)
 end
 
---
--- Seeding
---
-
-function CassandraFactory:seed(random, number)
-  self.faker:seed(random, number)
-end
-
 function CassandraFactory:drop()
-  self.faker:clear()
   return self:execute [[
     TRUNCATE apis;
     TRUNCATE metrics;
@@ -48,10 +36,6 @@ function CassandraFactory:drop()
     TRUNCATE applications;
   ]]
 end
-
---
--- Utilities
---
 
 -- Prepare all statements in collection._queries and put them in collection._statements.
 -- Should be called with only a collection and will recursively call itself for nested statements.

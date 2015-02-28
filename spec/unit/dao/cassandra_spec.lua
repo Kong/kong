@@ -4,12 +4,16 @@ local constants = require "kong.constants"
 local cjson = require "cjson"
 local uuid = require "uuid"
 
--- Kong
+-- Kong modules
+local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local configuration = require "spec.dao_configuration"
 local CassandraFactory = require "kong.dao.cassandra.factory"
+
+-- Start instances
 local dao_factory = CassandraFactory(configuration.cassandra)
 local migrations = Migrations(dao_factory)
+local faker = Faker(dao_factory)
 
 -- An utility function to apply tests on each collection
 local function describe_all_collections(tests_cb)
@@ -28,12 +32,15 @@ end
 describe("Cassandra DAO #dao #cassandra", function()
 
   setup(function()
+    -- Migrate our schema
     migrations:migrate(function(_, err)
       assert.falsy(err)
     end)
 
+    -- Prepare dao statements
     dao_factory:prepare()
-    dao_factory:seed()
+    -- Seed DB with dummy entities
+    faker:seed()
 
     -- Create a session to verify the dao's behaviour
     session = cassandra.new()
@@ -94,7 +101,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe("APIs", function()
 
       it("should insert in DB and add generated values", function()
-        local api_t = dao_factory.faker:fake_entity("api")
+        local api_t = faker:fake_entity("api")
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
         assert.truthy(api.id)
@@ -112,7 +119,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         -- Invalid schema UNIQUE error (already existing API name)
         local api_rows, err = session:execute("SELECT * FROM apis LIMIT 1;")
         assert.falsy(err)
-        local api_t = dao_factory.faker:fake_entity("api")
+        local api_t = faker:fake_entity("api")
         api_t.name = api_rows[1].name
 
         local api, err = dao_factory.apis:insert(api_t)
@@ -126,7 +133,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(#apis > 0)
 
-        local api_t = dao_factory.faker:fake_entity("api")
+        local api_t = faker:fake_entity("api")
         api_t.name = apis[1].name
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(api)
@@ -140,7 +147,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe("Accounts", function()
 
       it("should insert an account in DB and add generated values", function()
-        local account_t = dao_factory.faker:fake_entity("account")
+        local account_t = faker:fake_entity("account")
         local account, err = dao_factory.accounts:insert(account_t)
         assert.falsy(err)
         assert.truthy(account.id)
@@ -153,7 +160,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       it("should not insert in DB if account does not exist", function()
         -- Without an account_id, it's a schema error
-        local app_t = dao_factory.faker:fake_entity("application")
+        local app_t = faker:fake_entity("application")
         app_t.account_id = nil
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
@@ -162,7 +169,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("account_id is required", err.message.account_id)
 
         -- With an invalid account_id, it's a FOREIGN error
-        local app_t = dao_factory.faker:fake_entity("application")
+        local app_t = faker:fake_entity("application")
         app_t.account_id = uuid()
 
         local app, err = dao_factory.applications:insert(app_t)
@@ -177,7 +184,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(#accounts > 0)
 
-        local app_t = dao_factory.faker:fake_entity("application")
+        local app_t = faker:fake_entity("application")
         app_t.account_id = accounts[1].id
 
         local app, err = dao_factory.applications:insert(app_t)
@@ -192,7 +199,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       it("should not insert in DB if invalid", function()
         -- Without an api_id, it's a schema error
-        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = nil
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
@@ -201,7 +208,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("api_id is required", err.message.api_id)
 
         -- With an invalid api_id, it's an FOREIGN error
-        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = uuid()
 
         local plugin, err = dao_factory.plugins:insert(plugin_t)
@@ -211,7 +218,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
 
         -- With invalid api_id and application_id, it's an EXISTS error
-        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = uuid()
         plugin_t.application_id = uuid()
 
@@ -225,7 +232,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       it("should insert a plugin in DB and add generated values", function()
         -- Create an API and get an Application for insert
-        local api_t = dao_factory.faker:fake_entity("api")
+        local api_t = faker:fake_entity("api")
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
 
@@ -233,7 +240,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.True(#apps > 0)
 
-        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = api.id
         plugin_t.application_id = apps[1].id
 
@@ -245,7 +252,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       it("should not insert twice a plugin with same api_id, application_id and name", function()
         -- Insert a new API for a fresh start
-        local api, err = dao_factory.apis:insert(dao_factory.faker:fake_entity("api"))
+        local api, err = dao_factory.apis:insert(faker:fake_entity("api"))
         assert.falsy(err)
         assert.truthy(api.id)
 
@@ -253,7 +260,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.True(#apps > 0)
 
-        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = api.id
         plugin_t.application_id = apps[#apps].id
 
@@ -271,7 +278,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should not insert a plugin if this plugin doesn't exist (not installed)", function()
-        local plugin_t = dao_factory.faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.name = "world domination plugin"
 
         -- This should fail
@@ -284,7 +291,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       it("should validate a plugin value schema", function()
         -- Success
         -- Insert a new API for a fresh start
-        local api, err = dao_factory.apis:insert(dao_factory.faker:fake_entity("api"))
+        local api, err = dao_factory.apis:insert(faker:fake_entity("api"))
         assert.falsy(err)
         assert.truthy(api.id)
 
@@ -327,7 +334,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     describe_all_collections(function(type, collection)
 
       it("should return nil if no entity was found to update in DB", function()
-        local t = dao_factory.faker:fake_entity(type)
+        local t = faker:fake_entity(type)
         t.id = uuid()
 
         -- Remove immutable fields
@@ -466,12 +473,12 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       dao_factory:drop()
-      dao_factory:seed()
+      faker:seed()
     end)
 
     teardown(function()
       dao_factory:drop()
-      dao_factory:seed()
+      faker:seed()
     end)
 
     describe_all_collections(function(type, collection)
@@ -505,12 +512,12 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       dao_factory:drop()
-      dao_factory:seed(true, 100)
+faker:seed(true, 100)
     end)
 
     teardown(function()
       dao_factory:drop()
-      dao_factory:seed()
+faker:seed()
     end)
 
     describe_all_collections(function(type, collection)
@@ -782,11 +789,11 @@ describe("Cassandra DAO #dao #cassandra", function()
       -- uuid...
 
       -- Create an API
-      local api_t = dao_factory.faker:fake_entity("api")
+      local api_t = faker:fake_entity("api")
       local api, err = dao_factory.apis:insert(api_t)
       assert.falsy(err)
 
-      local plugin_t = dao_factory.faker:fake_entity("plugin")
+      local plugin_t = faker:fake_entity("plugin")
       plugin_t.api_id = api.id
       plugin_t.application_id = nil
 
