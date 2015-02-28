@@ -14,9 +14,9 @@ local MIGRATION_PATH = KONG_HOME.."database/migrations"
 -- Migrations
 local Migrations = Object:extend()
 
-function Migrations:new(dao, options)
+function Migrations:new(dao)
   self.dao = dao
-  self.options = options
+  self.options = { keyspace = dao._properties.keyspace }
   self.migrations_files = utils.retrieve_files(MIGRATION_PATH.."/"..dao.type, '.lua')
 end
 
