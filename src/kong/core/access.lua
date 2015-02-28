@@ -1,5 +1,6 @@
 local stringy = require "stringy"
 local constants = require "kong.constants"
+local url = require("socket.url")
 
 local _M = {}
 
@@ -15,6 +16,19 @@ local function get_backend_url(api)
   end
 
   return result
+end
+
+function get_host_header(val)
+  local parsed_url = url.parse(val)
+
+  local port
+  if parsed_url.port then
+     port = parsed_url.port
+  elseif parsed_url.scheme == "https" then
+    port = 443
+  end
+
+  return parsed_url.host..(port and ":"..port or "")
 end
 
 local function skip_authentication(headers)
@@ -39,6 +53,8 @@ function _M.execute(conf)
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api) .. ngx.var.request_uri
+
+  ngx.req.set_header("host", get_host_header(ngx.var.backend_url))
 
   -- There are some requests whose authentication needs to be skipped
   if skip_authentication(ngx.req.get_headers()) then
