@@ -116,16 +116,18 @@ end
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {string} error if any
 function CassandraFactory:execute(queries, no_keyspace)
+  local ok, err
+
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
-  local connected, err = session:connect(self._properties.hosts, self._properties.port)
-  if not connected then
+  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  if not ok then
     return err
   end
 
   if no_keyspace == nil then
-    local ok, err = session:set_keyspace(self._properties.keyspace)
+    ok, err = session:set_keyspace(self._properties.keyspace)
     if not ok then
       return err
     end
@@ -134,11 +136,11 @@ function CassandraFactory:execute(queries, no_keyspace)
   -- Cassandra only supports BATCH on DML statements.
   -- We must split commands to execute them individually for migrations and such
   queries = stringy.split(queries, ";")
-  for _,query in ipairs(queries) do
+  for _, query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
-      local result, err = session:execute(query)
-      if err then
-        return err
+      local _, stmt_err = session:execute(query)
+      if stmt_err then
+        return stmt_err
       end
     end
   end

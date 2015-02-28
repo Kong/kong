@@ -59,7 +59,7 @@ coverage:
 	@luacov kong
 
 lint:
-	@luacheck kong*.rockspec --globals ngx dao utils
+	@luacheck kong*.rockspec
 
 run-integration-tests:
 	@$(MAKE) migrate KONG_CONF=$(TESTS_KONG_CONF)

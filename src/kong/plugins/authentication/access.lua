@@ -98,17 +98,18 @@ local retrieve_credentials = {
     end
   end,
   [constants.AUTHENTICATION.BASIC] = function(request, conf)
+    local m, err
     local username, password
     local authorization_header = request.get_headers()["authorization"]
 
     if authorization_header then
-      local iterator, err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+      local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
       if not iterator then
-        ngx.log(ngx.ERR, err)
+        ngx.log(ngx.ERR, iter_err)
         return
       end
 
-      local m, err = iterator()
+      m, err = iterator()
       if err then
         ngx.log(ngx.ERR, err)
         return
@@ -122,7 +123,7 @@ local retrieve_credentials = {
       end
     end
 
-    if hide_credentials then
+    if conf.hide_credentials then
       request.clear_header("authorization")
     end
 

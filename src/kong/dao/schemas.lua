@@ -67,7 +67,7 @@ function _M.validate(t, schema, is_update)
 
     -- validate a subschema
     elseif t[column] ~= nil and v.schema then
-      local sub_schema
+      local sub_schema, err
       if type(v.schema) == "function" then
         sub_schema, err = v.schema(t)
       else
