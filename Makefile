@@ -15,7 +15,6 @@ TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 .PHONY: install dev clean migrate reset seed drop test coverage run-integration-tests test-web test-proxy test-all
 
 install:
-	@echo "Please wait, this process could take some time.."
 	@if [ `uname` == "Darwin" ]; then \
 		luarocks make kong-*.rockspec; \
 	else \

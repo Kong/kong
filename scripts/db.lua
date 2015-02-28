@@ -2,6 +2,7 @@
 
 local cli = require "cliargs"
 local utils = require "kong.tools.utils"
+local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
 cli:set_name("db.lua")
@@ -82,7 +83,8 @@ elseif args.COMMAND == "seed" then
     logger:error(err)
   end
 
-  dao:seed(args.random)
+  local faker = Faker(dao)
+  faker:seed(args.random)
   logger:success("Populated")
 
 elseif args.COMMAND == "drop" then
