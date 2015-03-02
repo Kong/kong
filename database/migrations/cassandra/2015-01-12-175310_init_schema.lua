@@ -1,12 +1,19 @@
 local Migration = {
   name = "2015-01-12-175310_init_schema",
 
+  init = true,
+
   up = function(options)
     return [[
       CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
         WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
 
       USE ]]..options.keyspace..[[;
+
+      CREATE TABLE IF NOT EXISTS schema_migrations(
+        id text PRIMARY KEY,
+        migrations list<text>
+      );
 
       CREATE TABLE IF NOT EXISTS accounts(
         id uuid,
