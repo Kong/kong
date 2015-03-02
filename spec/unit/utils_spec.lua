@@ -3,6 +3,19 @@ local cjson = require "cjson"
 
 describe("Utils #utils", function()
 
+  describe("Cache", function()
+    it("should return a valid API cache key", function()
+      assert.are.equal("apis/httpbin.org", utils.cache_api_key("httpbin.org"))
+    end)
+    it("should return a valid PLUGIN cache key", function()
+      assert.are.equal("plugins/authentication/api123/app123", utils.cache_plugin_key("authentication", "api123", "app123"))
+      assert.are.equal("plugins/authentication/api123", utils.cache_plugin_key("authentication", "api123"))
+    end)
+    it("should return a valid Application cache key", function()
+      assert.are.equal("applications/username", utils.cache_application_key("username"))
+    end)
+  end)
+
   describe("HTTP", function()
     describe("GET", function()
       it("should return a valid GET response", function()

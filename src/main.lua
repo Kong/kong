@@ -33,25 +33,31 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
-  local rows, err = dao.plugins:find_by_keys {
-    api_id = api_id,
-    application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
-    name = plugin_name
-  }
+  local cache_key = utils.cache_plugin_key(plugin_name, api_id, application_id)
 
-  if err then
-    ngx.log(ngx.ERR, err.message)
-    utils.show_error(500)
+  local plugin = utils.cache_get_and_set(cache_key, function()
+    local rows, err = dao.plugins:find_by_keys {
+        api_id = api_id,
+        application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
+        name = plugin_name
+      }
+      if err then
+        ngx.log(ngx.ERR, err.message)
+        utils.show_error(500)
+      end
+
+      if #rows > 0 then
+        return table.remove(rows, 1)
+      else
+        return {null=true}
+      end
+  end)
+
+  if plugin and not plugin.null and plugin.enabled then
+    return plugin
+  else
+    return nil
   end
-
-  if #rows > 0 then
-    local plugin = table.remove(rows, 1)
-    if plugin.enabled then
-      return plugin
-    end
-  end
-
-  return nil
 end
 
 function _M.init()

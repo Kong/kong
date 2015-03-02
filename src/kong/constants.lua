@@ -16,6 +16,11 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining"
   },
+  CACHE = {
+    APIS = "apis",
+    PLUGINS = "plugins",
+    APPLICATIONS = "applications"
+  },
   AUTHENTICATION = {
     QUERY = "query",
     BASIC = "basic",

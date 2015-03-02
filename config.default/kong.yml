@@ -16,3 +16,7 @@ databases_available:
       timeout: 1000
       keyspace: kong
       keepalive: 60000
+
+# Cache configuration
+cache:
+  expiration: 5 # In seconds
