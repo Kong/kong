@@ -39,8 +39,10 @@ elseif args.COMMAND == "migrate" then
   migrations:migrate(function(migration, err)
     if err then
       logger:error(err)
-    else
+    elseif migration then
       logger:success("Migrated up to: "..utils.yellow(migration.name))
+    else
+      logger:success("Schema already up to date")
     end
   end)
 
@@ -51,8 +53,10 @@ elseif args.COMMAND == "rollback" then
   migrations:rollback(function(migration, err)
     if err then
       logger:error(err)
-    else
+    elseif migration then
       logger:success("Rollbacked to: "..utils.yellow(migration.name))
+    else
+      logger:success("No migration to rollback")
     end
   end)
 

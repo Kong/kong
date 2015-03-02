@@ -8,6 +8,11 @@ local Migration = {
 
       USE ]]..options.keyspace..[[;
 
+      CREATE TABLE IF NOT EXISTS schema_migrations(
+        id text PRIMARY KEY,
+        migrations list<text>
+      );
+
       CREATE TABLE IF NOT EXISTS accounts(
         id uuid,
         provider_id text,
