@@ -1,4 +1,6 @@
 local stringy = require "stringy"
+local constants = require "kong.constants"
+local url = require("socket.url")
 
 local _M = {}
 
@@ -16,6 +18,19 @@ local function get_backend_url(api)
   return result
 end
 
+function get_host_header(val)
+  local parsed_url = url.parse(val)
+
+  local port
+  if parsed_url.port then
+     port = parsed_url.port
+  elseif parsed_url.scheme == "https" then
+    port = 443
+  end
+
+  return parsed_url.host..(port and ":"..port or "")
+end
+
 local function skip_authentication(headers)
   -- Skip upload request that expect a 100 Continue response
   return headers["expect"] and _M.starts_with(headers["expect"], "100")
@@ -23,20 +38,24 @@ end
 
 function _M.execute(conf)
   -- Retrieving the API from the Host that has been requested
-  local apis, err = dao.apis:find_by_keys({public_dns = stringy.split(ngx.var.http_host, ":")[1]})
-  if err then
-    ngx.log(ngx.ERR, err.message)
-    utils.show_error(500)
-  elseif not apis or #apis == 0 then
-    utils.not_found("API not found")
-  end
+  local host = stringy.strip(stringy.split(ngx.var.http_host, ":")[1])
 
-  local api = apis[1]
+  local api = utils.cache_get_and_set(utils.cache_api_key(host), function()
+    local apis, err = dao.apis:find_by_keys({public_dns = host})
+    if err then
+      ngx.log(ngx.ERR, err.message)
+      utils.show_error(500)
+    elseif not apis or #apis == 0 then
+      utils.not_found("API not found")
+    end
+    return apis[1]
+  end)
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api) .. ngx.var.request_uri
 
-  -- TODO: Move this away from here
+  ngx.req.set_header("host", get_host_header(ngx.var.backend_url))
+
   -- There are some requests whose authentication needs to be skipped
   if skip_authentication(ngx.req.get_headers()) then
     return -- Returning and keeping the Lua code running to the next handler

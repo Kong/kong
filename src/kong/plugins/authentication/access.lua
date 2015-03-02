@@ -162,13 +162,17 @@ function _M.execute(conf)
 
   -- Make sure we are not sending an empty table to find_by_keys
   if public_key then
-    local applications, err = dao.applications:find_by_keys { public_key = public_key }
-    if err then
-      ngx.log(ngx.ERR, err.message)
-      utils.show_error(500)
-    elseif #applications > 0 then
-      application = applications[1]
-    end
+    application = utils.cache_get_and_set(utils.cache_application_key(public_key), function()
+      local applications, err = dao.applications:find_by_keys { public_key = public_key }
+      local result
+      if err then
+        ngx.log(ngx.ERR, err.message)
+        utils.show_error(500)
+      elseif #applications > 0 then
+        result = applications[1]
+      end
+      return result
+    end)
   end
 
   if not validate_credentials[conf.authentication_type](application, public_key, secret_key) then
