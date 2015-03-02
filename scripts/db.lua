@@ -67,7 +67,7 @@ elseif args.COMMAND == "reset" then
   migrations:reset(function(migration, err)
     if err then
       logger:error(err)
-    else
+    elseif migration then
       logger:success("Rollbacked: "..utils.yellow(migration.name))
     end
   end)
