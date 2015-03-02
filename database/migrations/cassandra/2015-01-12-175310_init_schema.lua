@@ -1,6 +1,8 @@
 local Migration = {
   name = "2015-01-12-175310_init_schema",
 
+  init = true,
+
   up = function(options)
     return [[
       CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
