@@ -73,8 +73,7 @@ function Migrations:migrate(callback)
         table.insert(diff_migrations, migration)
       end
     end
-
-    -- No new migration to run
+    -- If no diff, there is no new migration to run
     if #diff_migrations == 0 then
       callback(nil, nil)
       return
@@ -143,7 +142,15 @@ end
 -- Execute all migrations DOWN
 -- @param {function} callback A function to execute on each migration (ie: for logging)
 function Migrations:reset(callback)
-
+  local done = false
+  while not done do
+    self:rollback(function(migration, err)
+      if not migration and not err then
+        done = true
+      end
+      callback(migration, err)
+    end)
+  end
 end
 
 return Migrations
