@@ -1,9 +1,6 @@
--- Copyright (C) Mashape, Inc.
-
 local cassandra = require "cassandra"
 local Object = require "classic"
 local uuid = require "uuid"
-local cjson = require "cjson"
 local rex = require "rex_pcre"
 
 local constants = require "kong.constants"
@@ -208,6 +205,7 @@ end
 -- @return {table|nil} Cassandra error if any
 function BaseDao:_execute(operation, values_to_bind, options)
   local statement
+  local ok, err
 
   -- Determine kind of operation
   if operation.is_kong_statement then
@@ -232,24 +230,26 @@ function BaseDao:_execute(operation, values_to_bind, options)
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
-  local connected, err = session:connect(self._properties.hosts, self._properties.port)
-  if not connected then
+  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  if not ok then
     return nil, self:_build_error(error_types.DATABASE, err)
   end
 
-  local ok, err = session:set_keyspace(self._properties.keyspace)
+  ok, err = session:set_keyspace(self._properties.keyspace)
   if not ok then
     return nil, self:_build_error(error_types.DATABASE, err)
   end
 
   -- Execute operation
-  local results, err = session:execute(statement, values_to_bind, options)
+  local results
+  results, err = session:execute(statement, values_to_bind, options)
   if err then
     err = self:_build_error(error_types.DATABASE, err)
   end
 
   -- Back to the pool or close if using luasocket
-  local ok, socket_err = session:set_keepalive()
+  local socket_err
+  ok, socket_err = session:set_keepalive()
   if not ok and socket_err == "luasocket does not support reusable sockets" then
     session:close()
   end
@@ -264,8 +264,8 @@ function BaseDao:_execute(operation, values_to_bind, options)
     results.meta = nil
     results.type = nil
 
-    for _, row in ipairs(results) do
-      row = self:_unmarshall(row)
+    for i, row in ipairs(results) do
+      results[i] = self:_unmarshall(row)
     end
 
     return results, err
@@ -292,24 +292,25 @@ end
 -- @return {table|nil} A "kong statement" to be used by _execute
 -- @return {table|nil} Error if any
 function BaseDao:prepare_kong_statement(query, params)
+  local ok, err
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
-  local connected, connection_err = session:connect(self._properties.hosts, self._properties.port)
-  if not connected then
-    return nil, connection_err
+  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  if not ok then
+    return nil, err
   end
 
-  local ok, keyspace_err = session:set_keyspace(self._properties.keyspace)
+  ok, err = session:set_keyspace(self._properties.keyspace)
   if not ok then
-    return nil, keyspace_err
+    return nil, err
   end
 
   local prepared_stmt, prepare_err = session:prepare(query)
 
   -- Back to the pool or close if using luasocket
-  local ok, socket_err = session:set_keepalive()
-  if not ok and socket_err == "luasocket does not support reusable sockets" then
+  ok, err = session:set_keepalive()
+  if not ok and err == "luasocket does not support reusable sockets" then
     session:close()
   end
 
@@ -333,6 +334,7 @@ end
 -- @return {table|nil} Inserted entity or nil
 -- @return {table|nil} Error if any
 function BaseDao:insert(t)
+  local ok, err, errors
   if not t then
     return nil, self:_build_error(error_types.SCHEMA, "Cannot insert a nil element")
   end
@@ -342,30 +344,30 @@ function BaseDao:insert(t)
   t.id = uuid()
 
   -- Validate schema
-  local valid_schema, errors = validate(t, self._schema)
-  if not valid_schema then
+  ok, errors = validate(t, self._schema)
+  if not ok then
     return nil, self:_build_error(error_types.SCHEMA, errors)
   end
 
   -- Check UNIQUE values
-  local unique, err, errors = self:_check_all_unique(t)
+  ok, err, errors = self:_check_all_unique(t)
   if err then
     return nil, self:_build_error(error_types.DATABASE, err)
-  elseif not unique then
+  elseif not ok then
     return nil, self:_build_error(error_types.UNIQUE, errors)
   end
 
   -- Check foreign entities EXIST
-  local exists, err, errors = self:_check_all_foreign(t)
+  ok, err, errors = self:_check_all_foreign(t)
   if err then
     return nil, self:_build_error(error_types.DATABASE, err)
-  elseif not exists then
+  elseif not ok then
     return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
-  local _, err = self:_execute(self._statements.insert, self:_marshall(t))
-  if err then
-    return nil, err
+  local _, stmt_err = self:_execute(self._statements.insert, self:_marshall(t))
+  if stmt_err then
+    return nil, stmt_err
   else
     return self:_unmarshall(t)
   end
@@ -378,21 +380,23 @@ end
 -- @return {table|nil} Updated entity or nil
 -- @return {table|nil} Error if any
 function BaseDao:update(t)
+  local ok, err, errors
   if not t then
     return nil, self:_build_error(error_types.SCHEMA, "Cannot update a nil element")
   end
 
   -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
-  local exists, err, results = self:_check_foreign(self._statements.select_one, t)
+  local results
+  ok, err, results = self:_check_foreign(self._statements.select_one, t)
   if err then
     return nil, self:_build_error(error_types.DATABASE, err)
-  elseif not exists then
+  elseif not ok then
     return nil
   else
     -- Set UNSET values to prevent cassandra from setting to NULL
     -- @see Test case
     -- @see https://issues.apache.org/jira/browse/DATABASE-7304
-    for k,v in pairs(results[1]) do
+    for k, v in pairs(results[1]) do
       if t[k] == nil then
         t[k] = v
       end
@@ -400,31 +404,30 @@ function BaseDao:update(t)
   end
 
   -- Validate schema
-  local valid_schema, errors = validate(t, self._schema, true)
-  if not valid_schema then
+  ok, errors = validate(t, self._schema, true)
+  if not ok then
     return nil, self:_build_error(error_types.SCHEMA, errors)
   end
 
   -- Check UNIQUE with update
-  local unique, err, errors = self:_check_all_unique(t, true)
+  ok, err, errors = self:_check_all_unique(t, true)
   if err then
     return nil, self:_build_error(error_types.DATABASE, err)
-  elseif not unique then
+  elseif not ok then
     return nil, self:_build_error(error_types.UNIQUE, errors)
   end
 
   -- Check FOREIGN entities
-  local exists, err, errors = self:_check_all_foreign(t)
+  ok, err, errors = self:_check_all_foreign(t)
   if err then
     return nil, self:_build_error(error_types.DATABASE, err)
-  elseif not exists then
+  elseif not ok then
     return nil, self:_build_error(error_types.FOREIGN, errors)
   end
 
-  local _, err = self:_execute(self._statements.update, self:_marshall(t))
-
-  if err then
-    return nil, err
+  local _, stmt_err = self:_execute(self._statements.update, self:_marshall(t))
+  if stmt_err then
+    return nil, stmt_err
   else
     return t
   end

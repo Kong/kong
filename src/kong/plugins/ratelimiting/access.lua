@@ -37,9 +37,9 @@ function _M.execute(conf)
   end
 
   -- Increment metrics for all periods if the request goes through
-  local _, err = dao.metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
-  if err then
-    ngx.log(ngx.ERR, err.message)
+  local _, stmt_err = dao.metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
+  if stmt_err then
+    ngx.log(ngx.ERR, stmt_err.message)
     utils.show_error(500)
   end
 end

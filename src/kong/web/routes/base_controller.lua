@@ -111,7 +111,7 @@ function BaseController:new(dao_collection, collection)
 
   app:delete("/"..collection.."/:id", function(self)
     local ok, err = dao_collection:delete(self.params.id)
-    if err then
+    if not ok then
       return parse_dao_error(err)
     else
       return utils.no_content()
