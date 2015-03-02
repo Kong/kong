@@ -90,7 +90,7 @@ function Migrations:migrate(callback)
 
     -- Generate UP query from string + options
     local up_query = migration.up(self.options)
-    local err = self.dao:execute_queries(up_query, true)
+    local err = self.dao:execute_queries(up_query, migration.init)
     if err then
       callback(nil, err)
       return
@@ -125,7 +125,7 @@ function Migrations:rollback(callback)
 
   -- Generate DOWN query from string + options
   local down_query = migration_to_rollback.down(self.options)
-  local err = self.dao:execute_queries(down_query, true)
+  local err = self.dao:execute_queries(down_query, migration_to_rollback.init)
   if err then
     callback(nil, err)
     return
