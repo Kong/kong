@@ -186,6 +186,15 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     describe("Plugins", function()
 
+      it("should find dinstinct plugin names", function()
+        local plugins, err = dao_factory.plugins:find_distinct()
+        assert.falsy(err)
+        assert.truthy(plugins)
+
+        local inspect = require "inspect"
+        print(inspect(plugins))
+      end)
+
       it("should not insert in DB if invalid", function()
         -- Without an api_id, it's a schema error
         local plugin_t = dao_factory.faker:fake_entity("plugin")
