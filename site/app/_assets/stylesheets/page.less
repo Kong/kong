@@ -21,20 +21,19 @@
   }
 
   .page-header-icon {
-    float: left;
     width: 64px;
+    vertical-align: middle;
+    display: inline-block;
+    margin-right: 20px;
 
-    + .page-header-title {
-      padding-left: 90px;
-
-      @media (max-width: 800px) {
-        padding-left: 68px;
-      }
+    @media (max-width: 800px) {
+      margin-right: 20px;
     }
 
     img {
       max-width: 100%;
       height: auto;
+      display: block;
     }
 
     @media (max-width: 800px) {
@@ -43,6 +42,8 @@
   }
 
   .page-header-title {
+    display: inline-block;
+    vertical-align: middle;
 
   }
 }

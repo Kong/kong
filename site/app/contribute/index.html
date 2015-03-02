@@ -1,0 +1,52 @@
+---
+title: Contribute
+sitemap: true
+---
+
+<div class="page page-contribute">
+  <header class="page-header">
+    <div class="container">
+      <div class="page-header-icon">
+        <img src="/assets/images/icons/icn-contribute.svg" alt=""/>
+      </div>
+      <div class="page-header-title">
+        <h2>Contribute to Kong</h2>
+      </div>
+    </div>
+  </header>
+
+  <div class="content">
+    <section>
+      <div class="container">
+        {% markdown pages/contribute/send-bug-reports.md %}
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        {% markdown pages/contribute/feature-requests.md %}
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        {% markdown pages/contribute/contributing-changes.md %}
+        <hr/>
+        <h3>
+          <a href="#" class="toggle-page-section">Contributing To Documentation</a>
+        </h3>
+        <div class="page-section">
+          {% markdown pages/contribute/contributing-to-documentation.md %}
+        </div>
+        <hr/>
+        <h3>
+          <a href="#" class="toggle-page-section">Contributing To Kong Codebase</a>
+        </h3>
+        <div class="page-section">
+          {% markdown pages/contribute/contributing-to-codebase.md %}
+        </div>
+        <hr/>
+      </div>
+    </section>
+  </div>
+</div>
