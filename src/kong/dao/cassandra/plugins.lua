@@ -1,9 +1,6 @@
 local constants = require "kong.constants"
-local schemas = require "kong.dao.schemas"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
-
-local error_types = constants.DATABASE_ERROR_TYPES
 
 local function load_value_schema(plugin_t)
   local status, plugin_schema = pcall(require, "kong.plugins."..plugin_t.name..".schema")

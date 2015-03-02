@@ -268,7 +268,7 @@ function _M.build_query(tab, key)
       if type(value) == "table" then
         query[#query+1] = _M.build_query(value, name)
       else
-        local value = tostring(value)
+        value = tostring(value)
         if value ~= "" then
           query[#query+1] = string.format("%s=%s", name, value)
         else
@@ -296,7 +296,7 @@ local function http_call(options)
   local resp = {}
   options.sink = ltn12.sink.table(resp)
 
-  local r, code, headers = http.request(options)
+  local _, code, headers = http.request(options)
   return resp[1], code, headers
 end
 
