@@ -16,7 +16,6 @@ local function throw(err)
   else
     err_str = err
   end
-
   error(err_str)
 end
 
@@ -25,7 +24,6 @@ end
 -- @return A random element
 local function random_from_table(t)
   if not t then return {} end
-
   return t[math.random(#t)]
 end
 
@@ -37,10 +35,6 @@ local Faker = Object:extend()
 
 function Faker:new(dao_factory)
   self.dao_factory = dao_factory
-  self:clear()
-end
-
-function Faker:clear()
   self.inserted_entities = {}
 end
 
@@ -93,6 +87,9 @@ end
 function Faker:seed(random, amount)
   -- amount is optional
   if not amount then amount = 10000 end
+
+  -- reset previously inserted entities
+  self.inserted_entities = {}
 
   local entities_to_insert = {
     api = {
