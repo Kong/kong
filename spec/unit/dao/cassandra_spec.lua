@@ -38,7 +38,10 @@ describe("Cassandra DAO #dao #cassandra", function()
     end)
 
     -- Prepare dao statements
-    dao_factory:prepare()
+    local err = dao_factory:prepare()
+    if err then
+      error(err)
+    end
     -- Seed DB with dummy entities
     faker:seed()
 
