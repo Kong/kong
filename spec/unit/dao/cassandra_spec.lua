@@ -29,7 +29,10 @@ describe("Cassandra DAO #dao #cassandra", function()
     local ok, err = dao_factory:migrate()
     assert.falsy(err)
 
-    dao_factory:prepare()
+    local err = dao_factory:prepare()
+    if err then
+      error(err)
+    end
     dao_factory:seed()
 
     -- Create a session to verify the dao's behaviour

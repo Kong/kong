@@ -96,11 +96,7 @@ end
 
 function Plugins:find_distinct()
   local plugins, err = Plugins.super._execute(self, self._statements.select_distinct)
-  if err then
-    return nil, err
-  else
-    return plugins, err
-  end
+  return plugins, err
 end
 
 return Plugins
