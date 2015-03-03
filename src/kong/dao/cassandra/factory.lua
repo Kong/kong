@@ -1,10 +1,6 @@
--- Copyright (C) Mashape, Inc.
 local Object = require "classic"
 local cassandra = require "cassandra"
 local stringy = require "stringy"
-
-local Faker = require "kong.tools.faker"
-local migrations = require "kong.tools.migrations"
 
 local Apis = require "kong.dao.cassandra.apis"
 local Metrics = require "kong.dao.cassandra.metrics"
@@ -20,10 +16,6 @@ function CassandraFactory:new(properties)
   self.type = "cassandra"
   self._properties = properties
 
-  -- TODO: do not include those on production
-  self.faker = Faker(self)
-  self._migrations = migrations(self, { keyspace = properties.keyspace })
-
   self.apis = Apis(properties)
   self.metrics = Metrics(properties)
   self.plugins = Plugins(properties)
@@ -31,33 +23,8 @@ function CassandraFactory:new(properties)
   self.applications = Applications(properties)
 end
 
---
--- Migrations
---
-
-function CassandraFactory:migrate(callback)
-  return self._migrations:migrate(callback)
-end
-
-function CassandraFactory:rollback(callback)
-  return self._migrations:rollback(callback)
-end
-
-function CassandraFactory:reset(callback)
-  return self._migrations:reset(callback)
-end
-
---
--- Seeding
---
-
-function CassandraFactory:seed(random, number)
-  self.faker:seed(random, number)
-end
-
 function CassandraFactory:drop()
-  self.faker:clear()
-  return self:execute [[
+  return self:execute_queries [[
     TRUNCATE apis;
     TRUNCATE metrics;
     TRUNCATE plugins;
@@ -65,10 +32,6 @@ function CassandraFactory:drop()
     TRUNCATE applications;
   ]]
 end
-
---
--- Utilities
---
 
 -- Prepare all statements in collection._queries and put them in collection._statements.
 -- Should be called with only a collection and will recursively call itself for nested statements.
@@ -115,9 +78,8 @@ end
 -- @param {string} queries Semicolon separated string of queries
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {string} error if any
-function CassandraFactory:execute(queries, no_keyspace)
+function CassandraFactory:execute_queries(queries, no_keyspace)
   local ok, err
-
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
 
@@ -146,6 +108,77 @@ function CassandraFactory:execute(queries, no_keyspace)
   end
 
   session:close()
+end
+
+--
+-- Migrations
+--
+
+local MIGRATION_IDENTIFIER = "migrations"
+
+-- Create a cassandra session and execute a query on given keyspace or default one (from properties).
+-- @param query Query or prepared statement given to session:execute
+-- @param params List of parameters given to session:execute
+-- @param keyspace Optional: overrides properties keyspace if specified
+-- @return query result
+-- @return error if any
+function CassandraFactory:execute(query, params, keyspace)
+  local ok, err
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+
+  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  if not ok then
+    return err
+  end
+
+  ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
+  if not ok then
+    return err
+  end
+
+  ok, err = session:execute(query, params)
+
+  session:close()
+
+  return ok, err
+end
+
+-- Log (add) given migration to schema_migrations table.
+-- @param migration_name Name of the migration to log
+-- @return query result
+-- @return error if any
+function CassandraFactory:add_migration(migration_name)
+  return self:execute("UPDATE schema_migrations SET migrations = migrations + ? WHERE id = ?",
+                      { cassandra.list({ migration_name }), MIGRATION_IDENTIFIER })
+end
+
+-- Return all logged migrations if any. Check if keyspace exists before to avoid error during the first migration.
+-- @return A list of previously executed migration (as strings)
+-- @return error if any
+function CassandraFactory:get_migrations()
+  local keyspace, err = self:execute("SELECT * FROM schema_keyspaces WHERE keyspace_name = ?", { self._properties.keyspace }, "system")
+  if err then
+    return nil, err
+  elseif #keyspace == 0 then
+    -- keyspace is not yet created, this is the first migration
+    return nil
+  end
+
+  local rows, err = self:execute("SELECT migrations FROM schema_migrations WHERE id = ?", { MIGRATION_IDENTIFIER })
+  if err then
+    return nil, err
+  elseif #rows > 0 then
+    return rows[1].migrations
+  end
+end
+
+-- Unlog (delete) given migration from the schema_migrations table.
+-- @return query result
+-- @return error if any
+function CassandraFactory:delete_migration(migration_name)
+  return self:execute("UPDATE schema_migrations SET migrations = migrations - ? WHERE id = ?",
+                      { cassandra.list({ migration_name }), MIGRATION_IDENTIFIER })
 end
 
 return CassandraFactory

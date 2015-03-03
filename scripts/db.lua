@@ -2,6 +2,7 @@
 
 local cli = require "cliargs"
 local utils = require "kong.tools.utils"
+local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
 cli:set_name("db.lua")
@@ -19,6 +20,8 @@ end
 local logger = utils.logger:new(args.silent)
 local configuration, dao = utils.load_configuration_and_dao(args.CONFIGURATION)
 
+local migrations = Migrations(dao)
+
 if args.COMMAND == "create" then
 
   Migrations.create(configuration, args.name, function(interface, file_path, file_name)
@@ -33,11 +36,13 @@ elseif args.COMMAND == "migrate" then
 
   logger:log("Migrating "..utils.yellow(dao.type))
 
-  dao:migrate(function(migration, err)
+  migrations:migrate(function(migration, err)
     if err then
       logger:error(err)
-    else
+    elseif migration then
       logger:success("Migrated up to: "..utils.yellow(migration.name))
+    else
+      logger:success("Schema already up to date")
     end
   end)
 
@@ -45,11 +50,13 @@ elseif args.COMMAND == "rollback" then
 
   logger:log("Rolling back "..utils.yellow(dao.type))
 
-  dao:rollback(function(migration, err)
+  migrations:rollback(function(migration, err)
     if err then
       logger:error(err)
-    else
+    elseif migration then
       logger:success("Rollbacked to: "..utils.yellow(migration.name))
+    else
+      logger:success("No migration to rollback")
     end
   end)
 
@@ -57,10 +64,10 @@ elseif args.COMMAND == "reset" then
 
   logger:log("Resetting "..utils.yellow(dao.type))
 
-  dao:reset(function(migration, err)
+  migrations:reset(function(migration, err)
     if err then
       logger:error(err)
-    else
+    elseif migration then
       logger:success("Rollbacked: "..utils.yellow(migration.name))
     end
   end)
@@ -80,7 +87,8 @@ elseif args.COMMAND == "seed" then
     logger:error(err)
   end
 
-  dao:seed(args.random)
+  local faker = Faker(dao)
+  faker:seed(args.random)
   logger:success("Populated")
 
 elseif args.COMMAND == "drop" then
