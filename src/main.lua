@@ -69,6 +69,13 @@ function _M.init()
     error(err)
   end
 
+  local res, err = dao.plugins:find_distinct()
+  if err then
+    error(err)
+  end
+
+  installed_plugins = res
+
   -- core is the first plugin
   table.insert(plugins, {
     core = true,

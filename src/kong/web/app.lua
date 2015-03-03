@@ -10,7 +10,8 @@ app = lapis.Application()
 app:get("/", function(self)
   return utils.success({
     tagline = "Welcome to Kong",
-    version = constants.VERSION
+    version = constants.VERSION,
+    plugins = installed_plugins
   })
 end)
 
