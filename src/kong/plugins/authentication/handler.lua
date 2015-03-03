@@ -14,4 +14,6 @@ function AuthenticationHandler:access(conf)
   access.execute(conf)
 end
 
+AuthenticationHandler.PRIORITY = 1000
+
 return AuthenticationHandler

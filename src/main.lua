@@ -60,36 +60,72 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
   end
 end
 
-function _M.init()
-  -- Loading configuration
-  configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
-
-  local err = dao:prepare()
+local function init_plugins()
+  -- Initializing plugins
+  print("Discovering used plugins. Please wait..")
+  installed_plugins, err = dao.plugins:find_distinct()
   if err then
     error(err)
   end
 
-  local res, err = dao.plugins:find_distinct()
-  if err then
-    error(err)
+  local unsorted_plugins = {} -- It's a multivalue table: k1 = {v1, v2, v3}, k2 = {...}
+
+  for _,v in ipairs(installed_plugins) do
+    local status, res = pcall(require, "kong.plugins."..v..".handler")
+    if not status then
+      error("The following plugin is being used but it's not installed in the system: "..v)
+    else
+      print("Loading plugin: "..v)
+      local plugin_handler = res()
+      local priority = plugin_handler.PRIORITY and plugin_handler.PRIORITY or 0
+
+      -- Add plugin to the right priority
+      local list = unsorted_plugins[priority]
+      if not list then list = {} end -- The list is required in case more plugins share the same priority level
+      table.insert(list, {
+        name = v,
+        handler = plugin_handler
+      })
+      unsorted_plugins[priority] = list
+    end
   end
 
-  installed_plugins = res
+  local result = {}
 
-  -- core is the first plugin
-  table.insert(plugins, {
+  -- Now construct the final ordered plugin list, core is always the first plugin
+  table.insert(result, {
     core = true,
     name = "core",
     handler = require("kong.core.handler")()
   })
 
-  -- Loading defined plugins
-  for _, plugin_name in ipairs(configuration.plugins_enabled) do
-    table.insert(plugins, {
-      name = plugin_name,
-      handler = require("kong.plugins."..plugin_name..".handler")()
-    })
+  -- Add the plugins in a sorted order
+  for _, v in utils.sort_table(unsorted_plugins, utils.sort.descending) do -- In descending order
+    if v then
+      for _,p in ipairs(v) do
+        table.insert(result, p)
+      end
+    end
   end
+
+  return result
+end
+
+function _M.init()
+  -- Loading configuration
+  configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
+
+  -- Initializing DAO
+  local err = dao:prepare()
+  if err then
+    error(err)
+  end
+
+  -- Initializing plugins
+  plugins = init_plugins()
+
+  local inspect = require "inspect"
+  print(inspect(plugins))
 end
 
 function _M.access()

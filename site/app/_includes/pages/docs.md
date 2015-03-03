@@ -96,12 +96,6 @@ A typical `kong.yaml` file looks like:
 # Specify the DAO to use
 database: cassandra
 
-# Enabled plugins, in this order
-plugins_enabled:
-  - authentication
-  - ratelimiting
-  - networklog
-
 # Databases configuration
 databases_available:
   cassandra:
@@ -112,8 +106,6 @@ databases_available:
       keyspace: kong
       keepalive: 60000
 ```
-
-The `plugins_enabled` array describes the plugins that the server should support system-wide. Then you can configure which Plugin to install or to configure using the `/plugins/` API endpoint. Plugins that haven't been added to `plugins_enabled` won't be executed.
 
 # Scalability
 
