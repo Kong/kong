@@ -32,6 +32,15 @@ function _M.reverse_table(arr)
   return reversed
 end
 
+function _M.array_contains(arr, val)
+  for _,v in pairs(arr) do
+    if v == val then
+      return true
+    end
+  end
+  return false
+end
+
 -- Add an error message to a key/value table
 -- Can accept a nil argument, and if is nil, will initialize the table
 --

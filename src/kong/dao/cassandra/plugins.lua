@@ -111,7 +111,12 @@ function Plugins:find_distinct()
     return nil, socket_err
   end
 
-  return distinct_names, nil
+  local result = {}
+  for k,_ in pairs(distinct_names) do
+    table.insert(result, k)
+  end
+
+  return result, nil
 end
 
 return Plugins

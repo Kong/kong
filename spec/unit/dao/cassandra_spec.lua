@@ -9,6 +9,7 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local configuration = require "spec.dao_configuration"
 local CassandraFactory = require "kong.dao.cassandra.factory"
+local utils = require "kong.tools.utils"
 
 -- Start instances
 local dao_factory = CassandraFactory(configuration.cassandra)
@@ -796,6 +797,10 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       assert.falsy(err)
       assert.truthy(res)
+
+      assert.are.same(#res, 2)
+      assert.truthy(utils.array_contains(res, "authentication"))
+      assert.truthy(utils.array_contains(res, "ratelimiting"))
     end)
 
     it("should insert a plugin and set the application_id to a 'null' uuid if none is specified", function()
