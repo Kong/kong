@@ -43,9 +43,6 @@ function Plugins:new(properties)
       params = { "id" },
       query = [[ SELECT * FROM plugins WHERE id = ?; ]]
     },
-    select_distinct = {
-      query = [[ SELECT DISTINCT name FROM plugins; ]]
-    },
     delete = {
       params = { "id" },
       query = [[ DELETE FROM plugins WHERE id = ?; ]]
@@ -92,11 +89,6 @@ function Plugins:_unmarshall(t)
   end
 
   return t
-end
-
-function Plugins:find_distinct()
-  local plugins, err = Plugins.super._execute(self, self._statements.select_distinct)
-  return plugins, err
 end
 
 return Plugins
