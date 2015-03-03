@@ -73,7 +73,8 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       local err = new_factory:prepare()
       assert.truthy(err)
-      assert.are.same("connection refused", err)
+      assert.True(err.database)
+      assert.are.same("connection refused", err.message)
     end)
 
   end)
