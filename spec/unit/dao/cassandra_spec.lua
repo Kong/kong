@@ -516,12 +516,12 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       dao_factory:drop()
-faker:seed(true, 100)
+      faker:seed(true, 100)
     end)
 
     teardown(function()
       dao_factory:drop()
-faker:seed()
+      faker:seed()
     end)
 
     describe_all_collections(function(type, collection)
@@ -786,6 +786,17 @@ faker:seed()
   describe("Plugins", function()
     local api_id
     local inserted_plugin
+
+    setup(function()
+      faker:seed(true, 100)
+    end)
+
+    it("should find distinct plugins", function()
+      local res, err = dao_factory.plugins:find_distinct()
+
+      assert.falsy(err)
+      assert.truthy(res)
+    end)
 
     it("should insert a plugin and set the application_id to a 'null' uuid if none is specified", function()
       -- Since we want to specifically select plugins which have _no_ application_id sometimes, we cannot rely on using
