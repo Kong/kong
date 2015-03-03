@@ -90,16 +90,16 @@ scripts/db.lua --help
 # Migrate up
 scripts/db.lua migrate [configuration_path] # for all commands, the default configuration_path is config.dev/kong.yml
 
-# Migrate down (currently equivalent to reset)
+# Revert latest migration
 scripts/db.lua rollback
 
-# Reset DB (danger!)
+# Revert all migrations (danger! this will delete your data)
 scripts/db.lua reset
 
-# Seed DB
+# Seed DB (danger! this will delete your data)
 scripts/db.lua seed
 
-# Drop DB (danger!)
+# Drop DB (danger! this will delete your data)
 scripts/db.lua drop
 ```
 

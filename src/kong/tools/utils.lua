@@ -295,7 +295,7 @@ function _M.retrieve_files(path, pattern)
       local f = path..'/'..file
       local attr = lfs.attributes(f)
       if attr.mode == "file" then
-        table.insert(files, f)
+        table.insert(files, { file = f, name = file })
       end
     end
   end
