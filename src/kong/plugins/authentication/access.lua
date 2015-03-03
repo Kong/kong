@@ -98,7 +98,6 @@ local retrieve_credentials = {
     end
   end,
   [constants.AUTHENTICATION.BASIC] = function(request, conf)
-    local m, err
     local username, password
     local authorization_header = request.get_headers()["authorization"]
 
@@ -109,7 +108,7 @@ local retrieve_credentials = {
         return
       end
 
-      m, err = iterator()
+      local m, err = iterator()
       if err then
         ngx.log(ngx.ERR, err)
         return
