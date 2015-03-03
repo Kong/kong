@@ -91,4 +91,27 @@ function Plugins:_unmarshall(t)
   return t
 end
 
+function Plugins:find_distinct()
+  -- Open session
+  local session, err = Plugins.super._open_session(self)
+  if err then
+    return nil, err
+  end
+
+  -- TODO: Replace this with an Iterator
+  local distinct_names = {}
+  local res, err = session:execute(self._statements.select.query, nil)
+  for i, v in ipairs(res) do
+    distinct_names[v.name] = true
+  end
+
+  -- Close session
+  local socket_err = Plugins.super._close_session(self, session)
+  if socket_err then
+    return nil, socket_err
+  end
+
+  return distinct_names, nil
+end
+
 return Plugins
