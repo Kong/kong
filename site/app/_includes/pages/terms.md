@@ -2,7 +2,7 @@
 
 **Please Read Carefully Before Using The Website**
 
-The website www.getkong.org (“Website“) and its contents are the property of and managed by Mashape, Inc, (“Mashape”) based at 500 Montgomery St., San Francisco, CA 94111, USA. These terms and conditions of use (“Terms of Use“) apply to your visit to and your use of this Website, as well as to all Website Content (as defined below).  By accessing and using the Website and/or Website Content, you irrevocably agree that such use is subject to these Terms of Use.
+The website getkong.org (“Website“) and its contents are the property of and managed by Mashape, Inc, (“Mashape”) based at 500 Montgomery St., San Francisco, CA 94111, USA. These terms and conditions of use (“Terms of Use“) apply to your visit to and your use of this Website, as well as to all Website Content (as defined below).  By accessing and using the Website and/or Website Content, you irrevocably agree that such use is subject to these Terms of Use.
 
 Mashape expressly reserves the right to modify the Terms of Use at any time in its sole discretion, without notice to you.  Any continued use of the Website after the posting of such modified Terms of Use shall be deemed to indicate your irrevocable agreement to such modified Terms of Use.  You are therefore advised to regularly read these Terms of Use for possible changes.
 ###Location of Website and Your Use
