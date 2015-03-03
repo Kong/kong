@@ -16,6 +16,81 @@ describe("Utils #utils", function()
     end)
   end)
 
+  describe("Table utils", function()
+    it("should sort a table in ascending order by its keys without order set", function()
+      local t = {
+        [1] = "one",
+        [3] = "three",
+        [2] = "two"
+      }
+
+      local keyset = {}
+      for k,v in utils.sort_table(t) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({1, 2, 3}, keyset)
+    end)
+    it("should sort a table in ascending order by its keys with ascending order set", function()
+      local t = {
+        [1] = "one",
+        [3] = "three",
+        [2] = "two"
+      }
+
+      local keyset = {}
+      for k,v in utils.sort_table(t, utils.sort.ascending) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({1, 2, 3}, keyset)
+    end)
+    it("should sort a table in descending order by its keys with descending order set", function()
+      local t = {
+        [1] = "one",
+        [3] = "three",
+        [2] = "two"
+      }
+
+      local keyset = {}
+      for k,v in utils.sort_table(t, utils.sort.descending) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({3, 2, 1}, keyset)
+    end)
+    it("should sort an array in ascending order by its keys without order set", function()
+      local t = { 3, 1, 2 }
+
+      local keyset = {}
+      for k,v in utils.sort_table(t) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({1, 2, 3}, keyset)
+    end)
+    it("should sort an array in ascending order by its keys with ascending order set", function()
+      local t = { 3, 1, 2 }
+
+      local keyset = {}
+      for k,v in utils.sort_table(t, utils.sort.ascending) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({1, 2, 3}, keyset)
+    end)
+    it("should sort an array in descending order by its keys with descending order set", function()
+      local t = { 3, 1, 2 }
+
+      local keyset = {}
+      for k,v in utils.sort_table(t, utils.sort.descending) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({3, 2, 1}, keyset)
+    end)
+  end)
+
   describe("HTTP", function()
     describe("GET", function()
       it("should return a valid GET response", function()

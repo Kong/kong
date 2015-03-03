@@ -1,12 +1,6 @@
 # Specify the DAO to use
 database: cassandra
 
-# Enabled plugins, in this order
-plugins_enabled:
-  - authentication
-  - ratelimiting
-  - networklog
-
 # Databases configuration
 databases_available:
   cassandra:
