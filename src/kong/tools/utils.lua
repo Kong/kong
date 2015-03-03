@@ -258,7 +258,7 @@ function _M.cache_get_and_set(key, cb)
   if not val then
     val = cb()
     if val then
-      local succ, err, forcible = _M.cache_set(key, val)
+      local succ, err = _M.cache_set(key, val)
       if not succ and ngx then
         ngx.log(ngx.ERR, err)
       end
