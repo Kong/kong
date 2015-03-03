@@ -43,7 +43,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       error(err)
     end
     -- Seed DB with dummy entities
-    dao_factory:seed()
+    faker:seed()
 
     -- Create a session to verify the dao's behaviour
     session = cassandra.new()
