@@ -10,7 +10,7 @@ The process for contributing to any of the Kong repositories is similar. Details
 
 ### Fork and clone the repository
 
-You will need to fork the main Kong code or documentation repository and clone it to your local machine. See [https://help.github.com/articles/fork-a-repo](#) for help.
+You will need to fork the main Kong code or documentation repository and clone it to your local machine. See [https://help.github.com/articles/fork-a-repo](https://help.github.com/articles/fork-a-repo) for help.
 
 Further instructions for specific projects are given below.
 
@@ -26,7 +26,7 @@ Run the test suite to make sure that nothing is broken.
 
 #### 2. Sign the Contributor License Agreement
 
-Please make sure you have signed our [Contributor License Agreement](#). We are not asking you to assign copyright to us, but to give us the right to distribute your code without restriction. We ask this of all contributors in order to assure our users of the origin and continuing existence of the code. You only need to sign the CLA once.
+Please make sure you have signed our [Contributor License Agreement](https://www.clahub.com/agreements/Mashape/kong). We are not asking you to assign copyright to us, but to give us the right to distribute your code without restriction. We ask this of all contributors in order to assure our users of the origin and continuing existence of the code. You only need to sign the CLA once.
 
 #### 3. Rebase Your Changes
 

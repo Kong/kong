@@ -1,5 +1,4 @@
 local stringy = require "stringy"
-local constants = require "kong.constants"
 local url = require("socket.url")
 
 local _M = {}
@@ -18,7 +17,7 @@ local function get_backend_url(api)
   return result
 end
 
-function get_host_header(val)
+local function get_host_header(val)
   local parsed_url = url.parse(val)
 
   local port

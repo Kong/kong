@@ -10,6 +10,6 @@
 
     $link.parent().next('.page-section').stop().slideToggle(300, function () {
       $link.toggleClass('active');
-    })
+    });
   });
 }(jQuery));
