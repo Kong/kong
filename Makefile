@@ -39,6 +39,7 @@ test:
 coverage:
 	@rm -f luacov.*
 	@$(MAKE) test COVERAGE_FLAG=--coverage
+	@luacov -c spec/.luacov
 
 lint:
 	@luacheck kong*.rockspec
