@@ -352,7 +352,7 @@ HTTP 200 OK
 
 **Endpoint**
 
-`GET /accounts/`
+`GET /plugins/`
 
 **Request Querystring Parameters**
 
