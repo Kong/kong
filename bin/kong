@@ -39,9 +39,9 @@ function show_help {
   printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
 \t-c    specify the path to a custom Kong configuration file
 \t      default is: '$KONG_HOME/kong.yml'
-\t-v    output version information and exit
-\t-h    show the help
-\nCommands available:\n
+\t-v    output version informations and exit
+\t-h    show this message
+\nCommands:\n
 \tstart      start Kong
 \tstop       stop a running Kong
 \trestart    restart Kong
