@@ -3,7 +3,6 @@ KONG_HOME = `pwd`
 export SILENT_FLAG ?=
 export COVERAGE_FLAG ?=
 
-# Tests variables
 TESTS_CONF ?= kong_TEST.yml
 DEVELOPMENT_CONF ?= kong_DEVELOPMENT.yml
 
