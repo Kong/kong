@@ -6,11 +6,11 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
 cli:set_name("db.lua")
-cli:add_argument("COMMAND", "<create|migrate|rollback|reset|seed|drop>")
+cli:add_argument("COMMAND", "{create|migrate|rollback|reset|seed|drop}")
+cli:add_option("-c, --config=CONFIG", "configuration file", "kong.yml")
 cli:add_option("-n, --name=NAME", "If <create>, sets a name to the migration", "new_migration")
 cli:add_flag("-r, --random", "If seeding, also seed random entities (1000 for each collection by default)")
 cli:add_flag("-s, --silent", "No output")
-cli:optarg("CONFIGURATION", "configuration path", "config.dev/kong.yml")
 
 local args = cli:parse(arg)
 if not args then
@@ -18,7 +18,7 @@ if not args then
 end
 
 local logger = utils.logger:new(args.silent)
-local configuration, dao = utils.load_configuration_and_dao(args.CONFIGURATION)
+local configuration, dao = utils.load_configuration_and_dao(args.config)
 
 local migrations = Migrations(dao)
 
@@ -34,7 +34,7 @@ if args.COMMAND == "create" then
 
 elseif args.COMMAND == "migrate" then
 
-  logger:log("Migrating "..utils.yellow(dao.type))
+  logger:log("Migrating "..utils.yellow(dao.type).." keyspace: "..utils.yellow(dao._properties.keyspace))
 
   migrations:migrate(function(migration, err)
     if err then
@@ -48,7 +48,7 @@ elseif args.COMMAND == "migrate" then
 
 elseif args.COMMAND == "rollback" then
 
-  logger:log("Rolling back "..utils.yellow(dao.type))
+  logger:log("Rolling back "..utils.yellow(dao.type).." keyspace: "..utils.yellow(dao._properties.keyspace))
 
   migrations:rollback(function(migration, err)
     if err then
@@ -62,13 +62,15 @@ elseif args.COMMAND == "rollback" then
 
 elseif args.COMMAND == "reset" then
 
-  logger:log("Resetting "..utils.yellow(dao.type))
+  logger:log("Reseting "..utils.yellow(dao.type).." keyspace: "..utils.yellow(dao._properties.keyspace))
 
   migrations:reset(function(migration, err)
     if err then
       logger:error(err)
     elseif migration then
       logger:success("Rollbacked: "..utils.yellow(migration.name))
+    else
+      logger:success("Schema reseted")
     end
   end)
 
