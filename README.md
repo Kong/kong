@@ -43,7 +43,7 @@ Running Kong for development requires you to run:
 make dev
 ```
 
-This will install development dependencies and create your environment configuration files (`dev` and `tests`). Setup your database access for each of these enviroments (be careful about keyspaces, since Kong already uses `kong` and unit tests already use `kong_tests`).
+This will install development dependencies and create your environment configuration files (`kong_TESTS.yml` and `kong_DEVELOPMENT.yml`).
 
 - Run the tests:
 
@@ -54,7 +54,7 @@ make test-all
 - Run it:
 
 ```
-bin/kong -c config.dev/kong.yml -n config.dev/nginx.conf start
+bin/kong -c kong.yml
 ```
 
 #### Makefile
@@ -64,13 +64,11 @@ When developing, use the `Makefile` for doing the following operations:
 | Name         | Description                                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------- |
 | `install`    | Install the Kong luarock globally                                                                   |
-| `dev`        | Setup your development enviroment (install dev deps and creates `config.dev` and `config.tests`)    |
-| `clean`      | Clean the development environment                                                                   |
-| `migrate`    | Migrate your database schema according to the development Kong config inside `config.dev`           |
-| `reset`      | Reset your database schema according to the development Kong config inside `config.dev`             |
-| `seed`       | Seed your database according to the development Kong config inside `config.dev`                     |
-| `drop`       | Drop your database according to the development Kong config inside `config.dev`                     |
-| `lint`       | Lint Lua in `src/`                                                                                  |
+| `dev`        | Setup your development environment                                                                  |
+| `run`        | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                          |
+| `seed`       | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
+| `drop`       | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
+| `lint`       | Lint Lua files in `src/`                                                                            |
 | `coverage`   | Run unit tests + coverage report (only unit-tested modules)                                         |
 | `test`       | Run the unit tests                                                                                  |
 | `test-proxy` | Run the proxy integration tests                                                                     |
@@ -83,12 +81,14 @@ Those scripts provide handy features while developing Kong:
 
 ##### db.lua
 
+This script handles schema migrations, seeding and dropping of the database.
+
 ```bash
 # Complete usage
 scripts/db.lua --help
 
 # Migrate up
-scripts/db.lua migrate [configuration_path] # for all commands, the default configuration_path is config.dev/kong.yml
+scripts/db.lua [-c configuration_file] migrate # for all commands, the default configuration_file is kong.yml
 
 # Revert latest migration
 scripts/db.lua rollback
@@ -102,6 +102,10 @@ scripts/db.lua seed
 # Drop DB (danger! this will delete your data)
 scripts/db.lua drop
 ```
+
+##### config.lua
+
+This script handles Kong's configuration files. It is better not to directly use it, as it is mainly used through `bin/kong` and the Makefile.
 
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat

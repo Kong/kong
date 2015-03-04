@@ -16,8 +16,7 @@ bower_components/
 
 # kong
 out/
-config.*/
-!config.default/
+kong*.yml
 
 # luacov
 luacov.*

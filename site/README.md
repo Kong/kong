@@ -1,22 +1,22 @@
-# Mashape Kong Frontend
+# Kong Website
 
-This is the source of the frontend code.
+This folder is the source code for Kong's website. It is a [Jekyll](http://jekyllrb.com/) website hosted on GitHub pages.
 
 ## Requirements
 
-- Bundler
-- NPM
-- Bower
+- [npm](https://www.npmjs.com/)
+- [Bundler](http://bundler.io/)
+- [Bower](http://bower.io/)
+
+All specified commands must be executed in the current `./site` directory.
 
 ## Install
-
-All bash commands must be executed in `./site` directory.
 
 >```bash
 npm install
 >```
 
-## Running Locally
+## Running locally
 
 >```bash
 gulp
@@ -30,9 +30,9 @@ For production:
 gulp build:prod
 >```
 
-## Deploy
+## Deploying
 
-This will deploy to github pages.
+This will deploy to GitHub pages:
 
 >```bash
 gulp deploy:prod
