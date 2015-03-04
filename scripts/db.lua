@@ -6,7 +6,7 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
 cli:set_name("db.lua")
-cli:add_argument("COMMAND", "<create|migrate|rollback|reset|seed|drop>")
+cli:add_argument("COMMAND", "{create|migrate|rollback|reset|seed|drop}")
 cli:add_option("-c, --config=CONFIG", "configuration file", "kong.yml")
 cli:add_option("-n, --name=NAME", "If <create>, sets a name to the migration", "new_migration")
 cli:add_flag("-r, --random", "If seeding, also seed random entities (1000 for each collection by default)")
