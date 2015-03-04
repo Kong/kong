@@ -40,8 +40,6 @@ if args.COMMAND == "create" then
   }
 
   -- Create a new default kong config for given environment
-  local config_content = utils.read_file(args.config)
-
   if default_env_values[args.env:lower()] then
     -- Known environment with variables we can override
     for k, v in pairs(default_env_values[args.env:lower()]) do

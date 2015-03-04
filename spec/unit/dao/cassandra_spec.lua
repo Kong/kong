@@ -11,7 +11,7 @@ local Migrations = require "kong.tools.migrations"
 local CassandraFactory = require "kong.dao.cassandra.factory"
 
 -- Start instances
-local configuration, dao_factory = utils.load_configuration_and_dao("kong.yml")
+local configuration, dao_factory = utils.load_configuration_and_dao("kong_TEST.yml")
 configuration.cassandra = configuration.databases_available[configuration.database].properties
 
 local migrations = Migrations(dao_factory)
@@ -691,7 +691,6 @@ faker:seed()
   end)
 
   describe("Metrics", function()
-    local utils = require "kong.tools.utils"
     local metrics = dao_factory.metrics
 
     local api_id = uuid()
