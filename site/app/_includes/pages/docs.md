@@ -1,10 +1,10 @@
-#Overview
+# Overview
 
 Welcome to the Kong official documentation, that will help you setting up Kong, configuring it and operating it. We reccomend reading every section of this document to have a full understanding of the project.
 
-If you have more specific questions about Kong, please join our chat at <a href="irc://irc.freenode.net/kong">#kong</a> and the project maintainers will be happy to answer to your questions.
+If you have more specific questions about Kong, please join us on [Gitter][gitter-url] and the project maintainers will be happy to answer any of your questions.
 
-##What is Kong?
+## What is Kong?
 
 Kong is a scalable, lightweight, open source API Layer (also called *API Gateway* or *API Middleware*) that runs in front of any RESTful API and provides additional functionalities to the underlying APIs.
 
@@ -65,7 +65,7 @@ Running Kong is very easy and will take a couple of minutes. To get started quic
 * Vagrant: coming soon.
 * AWS: coming soon.
 
-##Plugins
+## Plugins
 
 One of the most important concept to understand are Kong Plugins. All the functionalities provided by Kong are served by easy to use **plugins**: authentication, rate-limiting, logging features are provided through an authentication plugin, a rate-limiting plugin, and a logging plugin among the others. You can decide which plugin to install and how to configure them through the Kong's RESTful internal API.
 
@@ -88,21 +88,19 @@ Kong comes with two configuration files that you can find in the `config.default
 
 You will need to provide both files to run Kong.
 
-## kong.yaml
+## kong.yml
 
-A typical `kong.yaml` file looks like:
+A typical `kong.yml` file looks like:
 
 ```yaml
 # Specify the DAO to use
 database: cassandra
 
-# Enabled plugins, in this order
 plugins_enabled:
   - authentication
   - ratelimiting
   - networklog
 
-# Databases configuration
 databases_available:
   cassandra:
     properties:
@@ -113,7 +111,7 @@ databases_available:
       keepalive: 60000
 ```
 
-The `plugins_enabled` array describes the plugins that the server should support system-wide. Then you can configure which Plugin to install or to configure using the `/plugins/` API endpoint. Plugins that haven't been added to `plugins_enabled` won't be executed.
+The `plugins_enabled` array describes the plugins that the server should support system-wide. Then you can configure which plugin to install or to configure using the `/plugins/` API endpoint. Plugins that haven't been added to `plugins_enabled` won't be executed.
 
 # Scalability
 
@@ -727,3 +725,5 @@ HTTP 200 OK
 ```
 HTTP 204 NO CONTENT
 ```
+
+[gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
