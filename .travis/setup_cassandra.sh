@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 CASSANDRA_BASE=apache-cassandra-$CASSANDRA
 

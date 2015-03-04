@@ -15,7 +15,7 @@ node_modules/
 bower_components/
 
 # kong
-out/
+nginx_tmp/
 kong*.yml
 
 # luacov
