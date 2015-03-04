@@ -71,11 +71,11 @@ function logger:log(str)
 end
 
 function logger:success(str)
-  self:log(_M.green("✔ ")..str)
+  self:log(_M.green("✔  ")..str)
 end
 
 function logger:error(str)
-  self:log(_M.red("✘ ")..str)
+  self:log(_M.red("✘  ")..str)
   os.exit(1)
 end
 
@@ -89,6 +89,7 @@ function _M.load_configuration_and_dao(configuration_path)
   if not configuration_file then
     error("No configuration file at: "..configuration_path)
   end
+
   local configuration = yaml.load(configuration_file)
 
   local dao_config = configuration.databases_available[configuration.database]
@@ -206,7 +207,6 @@ end
 --
 -- Cache utils
 --
-
 function _M.cache_set(key, value, exptime)
   if exptime == nil then exptime = 0 end -- By default never expire
   local cache = ngx.shared.cache
