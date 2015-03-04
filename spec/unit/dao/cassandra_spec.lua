@@ -1,18 +1,20 @@
 -- dependencies
 local cassandra = require "cassandra"
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local uuid = require "uuid"
 
 -- Kong modules
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
-local configuration = require "spec.dao_configuration"
 local CassandraFactory = require "kong.dao.cassandra.factory"
 local utils = require "kong.tools.utils"
 
 -- Start instances
-local dao_factory = CassandraFactory(configuration.cassandra)
+local configuration, dao_factory = utils.load_configuration_and_dao("kong.yml")
+configuration.cassandra = configuration.databases_available[configuration.database].properties
+
 local migrations = Migrations(dao_factory)
 local faker = Faker(dao_factory)
 
@@ -40,9 +42,8 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     -- Prepare dao statements
     local err = dao_factory:prepare()
-    if err then
-      error(err)
-    end
+    assert.falsy(err)
+
     -- Seed DB with dummy entities
     faker:seed()
 

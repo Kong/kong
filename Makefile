@@ -1,18 +1,12 @@
 KONG_HOME = `pwd`
 
-# Environment variables (default)
-export DIR ?= $(KONG_HOME)/config.dev
-export KONG_CONF ?= $(DIR)/kong.yml
-export NGINX_CONF ?= $(DIR)/nginx.conf
-export DEV_LUA_LIB ?= lua_package_path \"$(KONG_HOME)/src/?.lua\;\;\"\;
 export SILENT_FLAG ?=
 export COVERAGE_FLAG ?=
-# Tests variables
-TESTS_DIR ?= $(KONG_HOME)/config.tests
-TESTS_KONG_CONF ?= $(TESTS_DIR)/kong.yml
-TESTS_NGINX_CONF ?= $(TESTS_DIR)/nginx.conf
 
-.PHONY: install dev clean migrate reset seed drop test coverage run-integration-tests test-web test-proxy test-all
+TESTS_CONF ?= kong_TEST.yml
+DEVELOPMENT_CONF ?= kong_DEVELOPMENT.yml
+
+.PHONY: install dev seed drop test coverage run-integration-tests test-web test-proxy test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \
@@ -25,29 +19,18 @@ install:
 
 dev:
 	@scripts/dev_rocks.sh
-	@mkdir -p $(DIR)
-	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(NGINX_CONF)
-	@cp $(KONG_HOME)/config.default/kong.yml $(KONG_CONF)
-	@mkdir -p $(TESTS_DIR)
-	@sed -e "s@lua_package_path.*;@$(DEV_LUA_LIB)@g" $(KONG_HOME)/config.default/nginx.conf > $(TESTS_NGINX_CONF)
-	@cp $(KONG_HOME)/config.default/kong.yml $(TESTS_KONG_CONF)
+	@scripts/config.lua -k $(KONG_HOME) -e TEST create
+	@scripts/config.lua -k $(KONG_HOME) -e DEVELOPMENT create
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) migrate
 
-clean:
-	@rm -rf $(DIR)
-	@rm -rf $(TESTS_DIR)
-	@rm -f luacov.*
-
-migrate:
-	@scripts/db.lua $(SILENT_FLAG) migrate $(KONG_CONF)
-
-reset:
-	@scripts/db.lua $(SILENT_FLAG) reset $(KONG_CONF)
+run:
+	@bin/kong -c $(DEVELOPMENT_CONF) start
 
 seed:
-	@scripts/db.lua $(SILENT_FLAG) seed $(KONG_CONF)
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) seed
 
 drop:
-	@scripts/db.lua $(SILENT_FLAG) drop $(KONG_CONF)
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) drop
 
 test:
 	@busted $(COVERAGE_FLAG) spec/unit
@@ -55,18 +38,19 @@ test:
 coverage:
 	@rm -f luacov.*
 	@$(MAKE) test COVERAGE_FLAG=--coverage
+	@luacov -c spec/.luacov
 
 lint:
 	@luacheck kong*.rockspec
 
 run-integration-tests:
-	@$(MAKE) migrate KONG_CONF=$(TESTS_KONG_CONF)
-	@bin/kong -c $(TESTS_KONG_CONF) -n $(TESTS_NGINX_CONF) start
+	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) migrate
+	@bin/kong -c $(TESTS_CONF) start
 	@while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done # Wait until nginx starts
-	@$(MAKE) seed KONG_CONF=$(TESTS_KONG_CONF)
-	@busted $(COVERAGE_FLAG) $(FOLDER) || (bin/kong stop; make drop KONG_CONF=$(TESTS_KONG_CONF) SILENT_FLAG=$(SILENT_FLAG); exit 1)
+	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) seed
+	@busted $(COVERAGE_FLAG) $(FOLDER) || (bin/kong stop; scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset; exit 1)
 	@bin/kong stop
-	@$(MAKE) reset KONG_CONF=$(TESTS_KONG_CONF)
+	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset
 
 test-web:
 	@$(MAKE) run-integration-tests FOLDER=spec/web SILENT_FLAG=-s
