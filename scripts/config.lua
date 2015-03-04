@@ -6,31 +6,30 @@ local yaml = require "yaml"
 local utils = require "kong.tools.utils"
 
 cli:set_name("config.lua")
-cli:add_argument("COMMAND", "<create|nginx>")
-cli:add_option("-c, --config=CONFIG", "path to config", "kong.yml")
-cli:add_option("-o, --output=OUTPUT", "path to output file", ".")
-cli:add_option("-k, --kong=KONG_HOME", "", ".")
-cli:add_option("-e, --env=ENV", "environment", "")
+cli:add_argument("COMMAND", "{create|nginx}")
+cli:add_option("-c, --config=CONFIG", "config file", "kong.yml")
+cli:add_option("-o, --output=OUTPUT", "output file (for create)", ".")
+cli:add_option("-k, --kong=KONG_HOME", "KONG_HOME (where Kong is installed)", ".")
+cli:add_option("-e, --env=ENV", "environment name (for create)", "")
 
--- Args parsing and defaults
 local args = cli:parse(arg)
 if not args then
   os.exit(1)
 end
 
-local KONG_CONFIG_FILENAME = string.format("kong%s.yml", args.env ~= "" and "_"..args.env or "")
+local CONFIG_FILENAME = string.format("kong%s.yml", args.env ~= "" and "_"..args.env or "")
 local config_content = utils.read_file(args.config)
 local config = yaml.load(config_content)
 
 if args.COMMAND == "create" then
 
-  local default_env_values = {
-    test = {
+  local DEFAULT_ENV_VALUES = {
+    TEST = {
       ["keyspace: kong"] = "keyspace: kong_tests",
       ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
       ["error_log logs/error.log info"] = "error_log logs/error.log debug"
     },
-    development = {
+    DEVELOPMENT = {
       ["keyspace: kong"] = "keyspace: kong_development",
       ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
       ["error_log logs/error.log info"] = "error_log logs/error.log debug",
@@ -40,14 +39,14 @@ if args.COMMAND == "create" then
   }
 
   -- Create a new default kong config for given environment
-  if default_env_values[args.env:lower()] then
-    -- Known environment with variables we can override
-    for k, v in pairs(default_env_values[args.env:lower()]) do
+  if DEFAULT_ENV_VALUES[args.env:upper()] then
+    -- If we know the environment we can override some of the variables
+    for k, v in pairs(DEFAULT_ENV_VALUES[args.env:upper()]) do
       config_content = config_content:gsub(k, v)
     end
   end
 
-  utils.write_to_file(path:join(args.output, KONG_CONFIG_FILENAME), config_content)
+  utils.write_to_file(path:join(args.output, CONFIG_FILENAME), config_content)
 
 elseif args.COMMAND == "nginx" then
 
