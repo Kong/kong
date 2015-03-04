@@ -5,11 +5,8 @@ SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 export KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
 # Properties
-export KONG_CONF=$KONG_HOME/config.default/kong.yml
-NGINX_CONF=$KONG_HOME/config.default/nginx.conf
+export KONG_CONF=$KONG_HOME/kong.yml
 PID=$KONG_HOME/out/nginx.pid
-
-DEV_LUA_LIB="lua_package_path \"$KONG_HOME/src/?.lua\;\;\"\;"
 
 ######################
 #  Utility function  #
@@ -34,16 +31,14 @@ function real_path_func {
   fi
 }
 
-######################
-#     Operations  #
-######################
+##############
+# Operations #
+##############
 
 function show_help {
   printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
 \t-c    specify the path to a custom Kong configuration file
-\t      default is: '$KONG_HOME/config.default/kong.yml'
-\t-n    specify the path to a custom Nginx configuration file.
-\t      default is: '$KONG_HOME/config.default/nginx.conf'
+\t      default is: '$KONG_HOME/kong.yml'
 \t-v    output version information and exit
 \t-h    show the help
 \nCommands available:\n
@@ -65,7 +60,8 @@ function start {
   mkdir -p $KONG_HOME/out/logs
   touch $KONG_HOME/out/logs/error.log
   touch $KONG_HOME/out/logs/access.log
-  nginx -p $KONG_HOME/out -c $NGINX_CONF
+  $KONG_HOME/scripts/config.lua -c $KONG_CONF -o $KONG_HOME/out/ nginx
+  nginx -p $KONG_HOME/out -c $KONG_HOME/out/nginx.conf
 
   if [ $? -eq 0 ]; then
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
@@ -76,7 +72,7 @@ function start {
 }
 
 function migrate {
-  $KONG_HOME/scripts/db.lua migrate $KONG_CONF
+  $KONG_HOME/scripts/db.lua -c $KONG_CONF migrate
   if [ $? -eq 0 ]; then
     exit 0
   else
@@ -120,9 +116,6 @@ while getopts "h?vc:n:" opt; do
     c)
         KONG_CONF=$(real_path_func $OPTARG)
         ;;
-    n)
-        NGINX_CONF=$(real_path_func $OPTARG)
-        ;;
   esac
 done
 
@@ -131,7 +124,6 @@ shift $((OPTIND-1))
 [ "$1" = "--" ] && shift
 
 check_file_exists $KONG_CONF
-check_file_exists $NGINX_CONF
 
 case "$@" in
   start)
