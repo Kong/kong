@@ -62,10 +62,20 @@ end
 
 local function init_plugins()
   -- Initializing plugins
+
+  installed_plugins = configuration.plugins_enabled
+
   print("Discovering used plugins. Please wait..")
-  installed_plugins, err = dao.plugins:find_distinct()
+  local db_plugins, err = dao.plugins:find_distinct()
   if err then
     error(err)
+  end
+
+  -- Checking that the plugins in the DB are also enabled
+  for _,v in ipairs(db_plugins) do
+    if not utils.array_contains(installed_plugins, v) then
+      error("You are using a plugin that has not been enabled on this server. Check your configuration file.")
+    end
   end
 
   local unsorted_plugins = {} -- It's a multivalue table: k1 = {v1, v2, v3}, k2 = {...}
@@ -123,9 +133,6 @@ function _M.init()
 
   -- Initializing plugins
   plugins = init_plugins()
-
-  local inspect = require "inspect"
-  print(inspect(plugins))
 end
 
 function _M.access()
