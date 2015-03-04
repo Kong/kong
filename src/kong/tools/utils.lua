@@ -71,11 +71,11 @@ function logger:log(str)
 end
 
 function logger:success(str)
-  self:log(_M.green("✔ ")..str)
+  self:log(_M.green("✔  ")..str)
 end
 
 function logger:error(str)
-  self:log(_M.red("✘ ")..str)
+  self:log(_M.red("✘  ")..str)
   os.exit(1)
 end
 

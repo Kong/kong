@@ -63,7 +63,6 @@ function start {
   $KONG_HOME/scripts/config.lua -c $KONG_CONF -o $KONG_HOME/out/ nginx
   nginx -p $KONG_HOME/out -c $KONG_HOME/out/nginx.conf
 
-
   if [ $? -eq 0 ]; then
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
   else
@@ -73,7 +72,7 @@ function start {
 }
 
 function migrate {
-  $KONG_HOME/scripts/db.lua migrate $KONG_CONF
+  $KONG_HOME/scripts/db.lua -c $KONG_CONF migrate
   if [ $? -eq 0 ]; then
     exit 0
   else

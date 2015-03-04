@@ -1,6 +1,5 @@
 KONG_HOME = `pwd`
 
-export CONF ?= kong.yml
 export SILENT_FLAG ?=
 export COVERAGE_FLAG ?=
 
@@ -8,7 +7,7 @@ export COVERAGE_FLAG ?=
 TESTS_CONF ?= kong_TEST.yml
 DEVELOPMENT_CONF ?= kong_DEVELOPMENT.yml
 
-.PHONY: install dev clean migrate reset seed drop test coverage run-integration-tests test-web test-proxy test-all
+.PHONY: install dev seed drop test coverage run-integration-tests test-web test-proxy test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \
@@ -23,19 +22,16 @@ dev:
 	@scripts/dev_rocks.sh
 	@scripts/config.lua -k $(KONG_HOME) -e TEST create
 	@scripts/config.lua -k $(KONG_HOME) -e DEVELOPMENT create
-	@scripts/db.lua migrate $(DEVELOPMENT_CONF)
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) migrate
 
-migrate:
-	@scripts/db.lua $(SILENT_FLAG) migrate $(CONF)
-
-reset:
-	@scripts/db.lua $(SILENT_FLAG) reset $(CONF)
+run:
+	@bin/kong -c $(DEVELOPMENT_CONF) start
 
 seed:
-	@scripts/db.lua $(SILENT_FLAG) seed $(CONF)
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) seed
 
 drop:
-	@scripts/db.lua $(SILENT_FLAG) drop $(CONF)
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) drop
 
 test:
 	@busted $(COVERAGE_FLAG) spec/unit
@@ -44,20 +40,17 @@ coverage:
 	@rm -f luacov.*
 	@$(MAKE) test COVERAGE_FLAG=--coverage
 
-clean:
-	@rm -f luacov.*
-
 lint:
 	@luacheck kong*.rockspec
 
 run-integration-tests:
-	@$(MAKE) migrate CONF=$(TESTS_CONF)
+	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) migrate
 	@bin/kong -c $(TESTS_CONF) start
 	@while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done # Wait until nginx starts
-	@$(MAKE) seed CONF=$(TESTS_CONF)
-	@busted $(COVERAGE_FLAG) $(FOLDER) || (bin/kong stop; make drop CONF=$(TESTS_CONF) SILENT_FLAG=$(SILENT_FLAG); exit 1)
+	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) seed
+	@busted $(COVERAGE_FLAG) $(FOLDER) || (bin/kong stop; scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset; exit 1)
 	@bin/kong stop
-	@$(MAKE) reset CONF=$(TESTS_CONF)
+	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset
 
 test-web:
 	@$(MAKE) run-integration-tests FOLDER=spec/web SILENT_FLAG=-s
