@@ -128,7 +128,7 @@ function _M.init()
   -- Initializing DAO
   local err = dao:prepare()
   if err then
-    error(err)
+    error(err.message)
   end
 
   -- Initializing plugins

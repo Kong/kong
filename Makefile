@@ -58,5 +58,8 @@ test-web:
 test-proxy:
 	@$(MAKE) run-integration-tests FOLDER=spec/proxy SILENT_FLAG=-s
 
+test-server:
+	@busted $(COVERAGE_FLAG) spec/server
+
 test-all:
 	@$(MAKE) run-integration-tests FOLDER=spec SILENT_FLAG=-s

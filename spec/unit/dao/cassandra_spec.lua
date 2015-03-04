@@ -9,10 +9,9 @@ local uuid = require "uuid"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local CassandraFactory = require "kong.dao.cassandra.factory"
-local utils = require "kong.tools.utils"
 
 -- Start instances
-local configuration, dao_factory = utils.load_configuration_and_dao("kong.yml")
+local configuration, dao_factory = utils.load_configuration_and_dao("kong_TEST.yml")
 configuration.cassandra = configuration.databases_available[configuration.database].properties
 
 local migrations = Migrations(dao_factory)
