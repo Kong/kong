@@ -767,6 +767,15 @@ describe("Cassandra DAO #dao #cassandra", function()
         }, metric)
       end
     end)
+
+    it("should throw errors for non supported methods of the base_dao", function()
+      assert.has_error(metrics.find, "metrics:find() not supported")
+      assert.has_error(metrics.insert, "metrics:insert() not supported")
+      assert.has_error(metrics.update, "metrics:update() not supported")
+      assert.has_error(metrics.delete, "metrics:delete() not yet implemented")
+      assert.has_error(metrics.find_by_keys, "metrics:find_by_keys() not supported")
+    end)
+
   end)
 
   describe("Plugins", function()
