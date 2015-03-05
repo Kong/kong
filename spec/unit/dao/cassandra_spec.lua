@@ -692,7 +692,6 @@ describe("Cassandra DAO #dao #cassandra", function()
   end)
 
   describe("Metrics", function()
-    local utils = require "kong.tools.utils"
     local metrics = dao_factory.metrics
 
     local api_id = uuid()

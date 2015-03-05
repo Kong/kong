@@ -1,6 +1,7 @@
 local yaml = require "yaml"
 local stringy = require "stringy"
 
+local Faker = require "kong.tools.faker"
 local CassandraFactory = require "kong.dao.cassandra.factory"
 local utils = require "kong.tools.utils"
 
@@ -92,6 +93,22 @@ describe("Server #server", function()
     it("should not work when an unexisting plugin is being enabled along with an existing one", function()
       replace_conf_property("plugins_enabled", {"authentication", "wot-wat"})
       local result, exit_code = start_server()
+      if exit_code == 1 then
+        assert.truthy(result_contains(result, "The following plugin is being used but it's not installed in the system: wot-wat"))
+      else
+        -- The test should fail here
+        assert.truthy(false)
+      end
+    end)
+
+    it("should not work when an unexisting plugin is being enabled along with an existing one", function()
+      local faker = Faker(dao_factory)
+      faker:seed()
+      replace_conf_property("plugins_enabled", {"authentication"})
+      local result, exit_code = start_server()
+
+      print(result)
+
       if exit_code == 1 then
         assert.truthy(result_contains(result, "The following plugin is being used but it's not installed in the system: wot-wat"))
       else

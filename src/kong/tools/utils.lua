@@ -9,6 +9,23 @@ local lfs = require "lfs"
 local _M = {}
 
 --
+-- IP Utils
+--
+
+function _M.normalize_localhost(host)
+  if type(host) == "table" then
+    for i,v in ipairs(host) do
+      if v == "localhost" then
+        host[i] = "127.0.0.1"
+      end
+    end
+  elseif host == "localhost" then
+    host = "127.0.0.1"
+  end
+  return host
+end
+
+--
 -- General utils
 --
 function _M.table_size(t)

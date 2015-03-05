@@ -6,7 +6,8 @@ export KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
 # Properties
 export KONG_CONF=$KONG_HOME/kong.yml
-PID=$KONG_HOME/out/nginx.pid
+NGINX_TMP=$KONG_HOME/nginx_tmp
+PID=$NGINX_TMP/nginx.pid
 
 ######################
 #  Utility function  #
@@ -57,11 +58,11 @@ function show_version {
 function start {
   printf "Starting Kong"
 
-  mkdir -p $KONG_HOME/out/logs
-  touch $KONG_HOME/out/logs/error.log
-  touch $KONG_HOME/out/logs/access.log
-  $KONG_HOME/scripts/config.lua -c $KONG_CONF -o $KONG_HOME/out/ nginx
-  nginx -p $KONG_HOME/out -c $KONG_HOME/out/nginx.conf
+  mkdir -p $NGINX_TMP/logs
+  touch $NGINX_TMP/logs/error.log
+  touch $NGINX_TMP/logs/access.log
+  $KONG_HOME/scripts/config.lua -c $KONG_CONF -o $NGINX_TMP nginx
+  nginx -p $NGINX_TMP -c $NGINX_TMP/nginx.conf
 
   if [ $? -eq 0 ]; then
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
