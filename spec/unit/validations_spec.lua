@@ -6,7 +6,6 @@ describe("Validation #schema", function()
   describe("#validate()", function()
     -- Ok kids, today we're gonna test a custom validation schema,
     -- grab a pair of glasses, this stuff can literally explode.
-    local collection = "custom_object"
     local schema = {
       string = { required = true, immutable = true },
       table = { type = "table" },

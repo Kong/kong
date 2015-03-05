@@ -1,21 +1,18 @@
--- dependencies
+local CassandraFactory = require "kong.dao.cassandra.factory"
+local spec_helper = require "spec.spec_helpers"
 local cassandra = require "cassandra"
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local uuid = require "uuid"
 
--- Kong modules
-local Faker = require "kong.tools.faker"
-local Migrations = require "kong.tools.migrations"
-local CassandraFactory = require "kong.dao.cassandra.factory"
-
--- Start instances
-local configuration, dao_factory = utils.load_configuration_and_dao("kong_TEST.yml")
+-- Raw session for check purposes
+local session
+-- Load everything we need from the spec_helper
+local faker = spec_helper.faker
+local dao_factory = spec_helper.dao_factory
+local configuration = spec_helper.configuration
 configuration.cassandra = configuration.databases_available[configuration.database].properties
-
-local migrations = Migrations(dao_factory)
-local faker = Faker(dao_factory)
 
 -- An utility function to apply tests on each collection
 local function describe_all_collections(tests_cb)
@@ -34,36 +31,25 @@ end
 describe("Cassandra DAO #dao #cassandra", function()
 
   setup(function()
-    -- Migrate our schema
-    migrations:migrate(function(_, err)
-      assert.falsy(err)
-    end)
-
-    -- Prepare dao statements
-    local err = dao_factory:prepare()
-    assert.falsy(err)
-
-    -- Seed DB with dummy entities
-    faker:seed()
+    spec_helper.prepare_db()
 
     -- Create a session to verify the dao's behaviour
     session = cassandra.new()
     session:set_timeout(configuration.cassandra.timeout)
 
-    local connected, err = session:connect(configuration.cassandra.hosts, configuration.cassandra.port)
+    local _, err = session:connect(configuration.cassandra.hosts, configuration.cassandra.port)
     assert.falsy(err)
 
-    local ok, err = session:set_keyspace(configuration.cassandra.keyspace)
+    local _, err = session:set_keyspace(configuration.cassandra.keyspace)
     assert.falsy(err)
   end)
 
   teardown(function()
     if session then
-      session:close()
-    end
-    migrations:reset(function(_, err)
+      local _, err = session:close()
       assert.falsy(err)
-    end)
+    end
+    spec_helper.reset_db()
   end)
 
   describe("Factory", function()

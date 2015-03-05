@@ -44,23 +44,17 @@ lint:
 	@luacheck kong*.rockspec
 
 run-integration-tests:
-	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) migrate
-	@bin/kong -c $(TESTS_CONF) start
-	@while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done # Wait until nginx starts
-	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) seed
 	@busted $(COVERAGE_FLAG) $(FOLDER) || (bin/kong stop; scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset; exit 1)
-	@bin/kong stop
-	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset
 
 test-web:
-	@$(MAKE) run-integration-tests FOLDER=spec/other/web SILENT_FLAG=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/web SILENT_FLAG=-s
 
 test-proxy:
-	@$(MAKE) run-integration-tests FOLDER=spec/other/proxy SILENT_FLAG=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/proxy SILENT_FLAG=-s
 
 test-server:
 	@busted $(COVERAGE_FLAG) spec/server
 
 test-all:
-	@$(MAKE) run-integration-tests FOLDER=spec/other SILENT_FLAG=-s
+	@$(MAKE) run-integration-tests FOLDER=spec SILENT_FLAG=-s
 	@busted $(COVERAGE_FLAG) spec/server
