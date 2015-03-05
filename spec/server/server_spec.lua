@@ -1,4 +1,5 @@
 local yaml = require "yaml"
+local stringy = require "stringy"
 
 local CassandraFactory = require "kong.dao.cassandra.factory"
 local utils = require "kong.tools.utils"
@@ -11,25 +12,38 @@ local KONG_BIN = "bin/kong"
 local DB_BIN = "scripts/db.lua"
 
 local function execute(command)
-  -- returns success, error code, output.
-  local f = io.popen(command..' 2>&1 && echo " $?"')
-  local output = f:read"*a"
-  local begin, finish, code = output:find" (%d+)\n$"
-  output, code = output:sub(1, begin -1), tonumber(code)
-  return code == 0 and true or false, code, output
+  -- get a temporary file name
+  n = os.tmpname ()
+
+  -- execute a command
+  local exit_code = os.execute (command.." &> " .. n)
+
+  -- Read result
+  local result = utils.read_file(n)
+
+  -- remove temporary file
+  os.remove (n)
+
+  return result, exit_code / 256
 end
 
-local function restart_server()
-  return execute(KONG_BIN.." -c "..SERVER_CONF.." restart")
+local function start_server()
+  execute(KONG_BIN.." -c "..SERVER_CONF.." migrate")
+  return execute(KONG_BIN.." -c "..SERVER_CONF.." start")
+end
+
+local function stop_server()
+  return execute(KONG_BIN.." -c "..SERVER_CONF.." stop")
 end
 
 local function replace_conf_property(name, value)
+  local yaml_value = yaml.load(utils.read_file(TEST_CONF))
+  yaml_value[name] = value
+  utils.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
+end
 
-  local inspect = require "inspect"
-  print(inspect(configuration))
-
-  configuration[name] = value
-  utils.write_to_file(SERVER_CONF, yaml.dump(configuration))
+local function result_contains(result, val)
+  return result:find(val, 1, true)
 end
 
 describe("Server #server", function()
@@ -48,15 +62,42 @@ describe("Server #server", function()
       dao_factory:drop()
     end)
 
+    after_each(function()
+      stop_server()
+    end)
+
     it("should work when no plugins are enabled and the DB is empty", function()
+      replace_conf_property("plugins_enabled", {})
+      local result, exit_code = start_server()
+      assert.are.same(0, exit_code)
+    end)
+
+    it("should not work when an unexisting plugin is being enabled", function()
       replace_conf_property("plugins_enabled", {"wot-wat"})
-      local success, code, output = restart_server()
+      local result, exit_code = start_server()
+      if exit_code == 1 then
+        assert.truthy(result_contains(result, "The following plugin is being used but it's not installed in the system: wot-wat"))
+      else
+        -- The test should fail here
+        assert.truthy(false)
+      end
+    end)
 
-      local inspect = require "inspect"
-      print(inspect(success))
-      print(inspect(code))
-      print(inspect(output))
+    it("should not fail when an existing plugin is being enabled", function()
+      replace_conf_property("plugins_enabled", {"authentication"})
+      local result, exit_code = start_server()
+      assert.are.same(0, exit_code)
+    end)
 
+    it("should not work when an unexisting plugin is being enabled along with an existing one", function()
+      replace_conf_property("plugins_enabled", {"authentication", "wot-wat"})
+      local result, exit_code = start_server()
+      if exit_code == 1 then
+        assert.truthy(result_contains(result, "The following plugin is being used but it's not installed in the system: wot-wat"))
+      else
+        -- The test should fail here
+        assert.truthy(false)
+      end
     end)
 
   end)
