@@ -1,9 +1,10 @@
+local spec_helper = require "spec.spec_helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
-local kWebURL = "http://localhost:8001/"
 
 local created_ids = {}
 
+local kWebURL = "http://localhost:8001/"
 local ENDPOINTS = {
   {
     collection = "apis",
@@ -67,6 +68,16 @@ local ENDPOINTS = {
 
 describe("Web API #web", function()
 
+  setup(function()
+    spec_helper.prepare_db()
+    spec_helper.start_kong()
+  end)
+
+  teardown(function()
+    spec_helper.stop_kong()
+    spec_helper.reset_db()
+  end)
+
   describe("/", function()
     it("should return Kong's version and a welcome message", function()
       local response, status, headers = utils.get(kWebURL)
@@ -79,6 +90,7 @@ describe("Web API #web", function()
 
   for i,v in ipairs(ENDPOINTS) do
     describe("#"..v.collection, function()
+
       it("should not create on POST with invalid parameters", function()
         if v.collection ~= "accounts" then
           local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", {})
@@ -86,6 +98,7 @@ describe("Web API #web", function()
           assert.are.equal(v.error_message, response)
         end
       end)
+
       it("should create an entity from valid paremeters", function()
         -- Replace the IDs
         for k,p in pairs(v.entity) do
@@ -102,6 +115,7 @@ describe("Web API #web", function()
         -- Save the ID for later use
         created_ids[v.collection] = body.id
       end)
+
       it("should GET all entities", function()
         local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/")
         local body = cjson.decode(response)
@@ -111,6 +125,7 @@ describe("Web API #web", function()
         --assert.are.equal(v.total, body.total)
         assert.are.equal(v.total, table.getn(body.data))
       end)
+
       it("should GET one entity", function()
         local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         local body = cjson.decode(response)
@@ -118,6 +133,7 @@ describe("Web API #web", function()
         assert.truthy(body)
         assert.are.equal(created_ids[v.collection], body.id)
       end)
+
       it("should return not found on GET", function()
         local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
         local body = cjson.decode(response)
@@ -125,6 +141,7 @@ describe("Web API #web", function()
         assert.truthy(body)
         assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}', response)
       end)
+
       it("should update a created entity on PUT", function()
         local data = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         local body = cjson.decode(data)
@@ -144,15 +161,18 @@ describe("Web API #web", function()
           assert.are.equal(v, body[k])
         end
       end)
+
     end)
   end
 
   for i,v in ipairs(ENDPOINTS) do
     describe("#"..v.collection, function()
+
       it("should delete an entity on DELETE", function()
         local response, status, headers = utils.delete(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         assert.are.equal(204, status)
       end)
+
     end)
   end
 
