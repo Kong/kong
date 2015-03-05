@@ -63,7 +63,7 @@ end
 local function init_plugins()
   -- Initializing plugins
 
-  installed_plugins = configuration.plugins_enabled
+  installed_plugins = configuration.plugins_enabled and configuration.plugins_enabled or {}
 
   print("Discovering used plugins. Please wait..")
   local db_plugins, err = dao.plugins:find_distinct()
@@ -74,7 +74,7 @@ local function init_plugins()
   -- Checking that the plugins in the DB are also enabled
   for _,v in ipairs(db_plugins) do
     if not utils.array_contains(installed_plugins, v) then
-      error("You are using a plugin that has not been enabled on this server. Check your configuration file.")
+      error("You are using a plugin that has not been enabled in the configuration: "..v)
     end
   end
 
@@ -83,7 +83,7 @@ local function init_plugins()
   for _, v in ipairs(installed_plugins) do
     local status, res = pcall(require, "kong.plugins."..v..".handler")
     if not status then
-      error("The following plugin is being used but is not installed on the system: "..v)
+      error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)
     else
       print("Loading plugin: "..v)
       local plugin_handler = res()

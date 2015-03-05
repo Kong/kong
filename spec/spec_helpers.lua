@@ -31,20 +31,19 @@ function _M.os_execute(command)
   return result, exit_code / 256
 end
 
-function _M.start_kong()
-  local exit_code = os.execute(KONG_BIN.." -c "..TEST_CONF_FILE.." start > /dev/null")
-  if exit_code ~= 0 then
-    error("spec_helpers cannot start Kong")
+function _M.start_kong(conf_file, skip_wait)
+  local conf_file = conf_file and conf_file or TEST_CONF_FILE
+  local result, exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." start")
+  if not skip_wait then
+    _M.os_execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
   end
-  os.execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+  return result, exit_code
 end
 
-function _M.stop_kong()
-  local exit_code = os.execute(KONG_BIN.." -c "..TEST_CONF_FILE.." stop > /dev/null")
-  if exit_code ~= 0 then
-    error("spec_helpers cannot stop Kong")
-  end
-  os.execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+function _M.stop_kong(conf_file)
+  local conf_file = conf_file and conf_file or TEST_CONF_FILE
+  local exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." stop")
+  _M.os_execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
 function _M.prepare_db()
@@ -63,6 +62,13 @@ function _M.prepare_db()
 
   -- 3. Seed DB with our default data. This will throw any necessary error
   faker:seed()
+end
+
+function _M.drop_db()
+  local err = dao_factory:drop()
+  if err then
+    error(err)
+  end
 end
 
 function _M.reset_db()
