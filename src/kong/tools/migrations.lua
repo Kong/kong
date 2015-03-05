@@ -125,17 +125,21 @@ function Migrations:rollback(callback)
 
   -- Generate DOWN query from string + options
   local down_query = migration_to_rollback.down(self.options)
-  local err = self.dao:execute_queries(down_query, migration_to_rollback.init)
+  local err = self.dao:execute_queries(down_query)
   if err then
     callback(nil, err)
     return
   end
 
-  -- delete migration from schema changes records
-  local _, err = self.dao:delete_migration(migration_to_rollback.name)
-  if err then
-    err = "Cannot delete migration "..migration_to_rollback.name..": "..err
+  -- delete migration from schema changes records if it's not the first one
+  -- (otherwise the schema_migrations table doesn't exist anymore)
+  if not migration_to_rollback.init then
+    local _, err = self.dao:delete_migration(migration_to_rollback.name)
+    if err then
+      err = "Cannot delete migration "..migration_to_rollback.name..": "..err
+    end
   end
+
   callback(migration_to_rollback, err)
 end
 
