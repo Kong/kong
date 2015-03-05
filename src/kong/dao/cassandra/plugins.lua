@@ -101,6 +101,10 @@ function Plugins:find_distinct()
   -- TODO: Replace this with an Iterator
   local distinct_names = {}
   local res, err = session:execute(self._statements.select.query, nil)
+  if err then
+    return nil, err
+  end
+
   for i, v in ipairs(res) do
     distinct_names[v.name] = true
   end
