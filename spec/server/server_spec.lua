@@ -15,8 +15,6 @@ local function result_contains(result, val)
 end
 
 describe("#server-cli", function()
-  print("WAAAT")
-
   --[[
   describe("Plugins Check", function()
 
