@@ -67,7 +67,7 @@ nginx: |
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
 
-     # Cache
+    # Cache
     lua_shared_dict cache 512m;
 
     # Generic Settings
