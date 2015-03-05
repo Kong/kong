@@ -1,34 +1,8 @@
 local yaml = require "yaml"
-local stringy = require "stringy"
-
-local Faker = require "kong.tools.faker"
-local CassandraFactory = require "kong.dao.cassandra.factory"
 local utils = require "kong.tools.utils"
-
-local configuration, dao_factory = utils.load_configuration_and_dao("kong_TEST.yml")
 
 local TEST_CONF = "kong_TEST.yml"
 local SERVER_CONF = "kong_TEST_SERVER.yml"
-local KONG_BIN = "bin/kong"
-local DB_BIN = "scripts/db.lua"
-
-local function execute(command)
-  n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute (command.." &> " .. n)
-  local result = utils.read_file(n)
-  os.remove (n)
-
-  return result, exit_code / 256
-end
-
-local function start_server()
-  execute(KONG_BIN.." -c "..SERVER_CONF.." migrate")
-  return execute(KONG_BIN.." -c "..SERVER_CONF.." start")
-end
-
-local function stop_server()
-  return execute(KONG_BIN.." -c "..SERVER_CONF.." stop")
-end
 
 local function replace_conf_property(name, value)
   local yaml_value = yaml.load(utils.read_file(TEST_CONF))
