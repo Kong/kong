@@ -14,4 +14,6 @@ function RateLimitingHandler:access(conf)
   access.execute(conf)
 end
 
+RateLimitingHandler.PRIORITY = 900
+
 return RateLimitingHandler

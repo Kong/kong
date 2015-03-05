@@ -22,7 +22,6 @@ install:
   - sudo make install
   - sudo make dev
 
-script: "make run-integration-tests COVERAGE_FLAG=--coverage FOLDER=spec"
+script: "busted --coverage spec/"
 
-after_success:
-  - luacov-coveralls -i kong
+after_success: "luacov-coveralls -i kong"

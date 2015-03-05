@@ -188,6 +188,44 @@ function BaseDao:_check_all_unique(t, is_updating)
   return errors == nil, nil, errors
 end
 
+-- Open a Cassandra session on configured keyspace
+-- @return session
+-- @return Error if any
+function BaseDao:_open_session()
+  local ok, err
+
+  -- Start cassandra session
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+
+  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  if not ok then
+    return nil, self:_build_error(error_types.DATABASE, err)
+  end
+
+  ok, err = session:set_keyspace(self._properties.keyspace)
+  if not ok then
+    return nil, self:_build_error(error_types.DATABASE, err)
+  end
+
+  return session
+end
+
+-- Close the given opened session. Will try to put the session in the socket pool if supported
+-- @param session Cassandra session to close
+-- @return Error if any
+function BaseDao:_close_session(session)
+  -- Back to the pool or close if using luasocket
+  local ok, err = session:set_keepalive()
+  if not ok and err == "luasocket does not support reusable sockets" then
+    ok, err = session:close()
+  end
+
+  if not ok then
+    return self:_build_error(error_types.DATABASE, err)
+  end
+end
+
 -- Execute an operation statement.
 --
 -- # The operation can be one of the following:
@@ -205,7 +243,6 @@ end
 -- @return {table|nil} Cassandra error if any
 function BaseDao:_execute(operation, values_to_bind, options)
   local statement
-  local ok, err
 
   -- Determine kind of operation
   if operation.is_kong_statement then
@@ -226,32 +263,20 @@ function BaseDao:_execute(operation, values_to_bind, options)
     statement = operation
   end
 
-  -- Start cassandra session
-  local session = cassandra.new()
-  session:set_timeout(self._properties.timeout)
-
-  ok, err = session:connect(self._properties.hosts, self._properties.port)
-  if not ok then
-    return nil, self:_build_error(error_types.DATABASE, err)
-  end
-
-  ok, err = session:set_keyspace(self._properties.keyspace)
-  if not ok then
-    return nil, self:_build_error(error_types.DATABASE, err)
+  local session, err = self:_open_session()
+  if err then
+    return nil, err
   end
 
   -- Execute operation
-  local results
-  results, err = session:execute(statement, values_to_bind, options)
+  local results, err = session:execute(statement, values_to_bind, options)
   if err then
     err = self:_build_error(error_types.DATABASE, err)
   end
 
-  -- Back to the pool or close if using luasocket
-  local socket_err
-  ok, socket_err = session:set_keepalive()
-  if not ok and socket_err == "luasocket does not support reusable sockets" then
-    session:close()
+  local socket_err = self:_close_session(session)
+  if socket_err then
+    return nil, socket_err
   end
 
   -- Parse result
@@ -292,26 +317,16 @@ end
 -- @return {table|nil} A "kong statement" to be used by _execute
 -- @return {table|nil} Error if any
 function BaseDao:prepare_kong_statement(query, params)
-  local ok, err
-  local session = cassandra.new()
-  session:set_timeout(self._properties.timeout)
-
-  ok, err = session:connect(self._properties.hosts, self._properties.port)
-  if not ok then
-    return nil, err
-  end
-
-  ok, err = session:set_keyspace(self._properties.keyspace)
-  if not ok then
+  local session, err = self:_open_session()
+  if err then
     return nil, err
   end
 
   local prepared_stmt, prepare_err = session:prepare(query)
 
-  -- Back to the pool or close if using luasocket
-  ok, err = session:set_keepalive()
-  if not ok and err == "luasocket does not support reusable sockets" then
-    session:close()
+  local err = self:_close_session(session)
+  if err then
+    return nil, err
   end
 
   if prepare_err then

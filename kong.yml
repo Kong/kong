@@ -115,7 +115,7 @@ nginx: |
         internal;
         content_by_lua '
           local utils = require "kong.tools.utils"
-          utils.show_error(ngx.status, "Ops, an error occurred (╯°□°）╯")';
+          utils.show_error(ngx.status, "Ops, an unexpected error occurred!")';
       }
     }
 

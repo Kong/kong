@@ -9,6 +9,23 @@ local lfs = require "lfs"
 local _M = {}
 
 --
+-- IP Utils
+--
+
+function _M.normalize_localhost(host)
+  if type(host) == "table" then
+    for i,v in ipairs(host) do
+      if v == "localhost" then
+        host[i] = "127.0.0.1"
+      end
+    end
+  elseif host == "localhost" then
+    host = "127.0.0.1"
+  end
+  return host
+end
+
+--
 -- General utils
 --
 function _M.table_size(t)
@@ -23,6 +40,25 @@ function _M.is_empty(t)
   return next(t) == nil
 end
 
+_M.sort = {
+  descending = function(a, b) return a > b end,
+  ascending = function(a, b) return a < b end
+}
+
+function _M.sort_table(t, f)
+  local a = {}
+  for n in pairs(t) do table.insert(a, n) end
+  table.sort(a, f)
+  local i = 0      -- iterator variable
+  local iter = function ()   -- iterator function
+    i = i + 1
+    if a[i] == nil then return nil
+    else return a[i], t[a[i]]
+    end
+  end
+  return iter
+end
+
 function _M.reverse_table(arr)
   -- this could be O(n/2)
   local reversed = {}
@@ -30,6 +66,15 @@ function _M.reverse_table(arr)
     table.insert(reversed, 1, i)
   end
   return reversed
+end
+
+function _M.array_contains(arr, val)
+  for _,v in pairs(arr) do
+    if v == val then
+      return true
+    end
+  end
+  return false
 end
 
 -- Add an error message to a key/value table

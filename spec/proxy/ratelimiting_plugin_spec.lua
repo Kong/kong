@@ -1,10 +1,21 @@
+local spec_helper = require "spec.spec_helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
-local kProxyURL = "http://localhost:8000/"
+local kProxyURL = spec_helper.PROXY_URL
 local kGetURL = kProxyURL.."/get"
 
 describe("RateLimiting Plugin #proxy", function()
+
+  setup(function()
+    spec_helper.prepare_db()
+    spec_helper.start_kong()
+  end)
+
+  teardown(function()
+    spec_helper.stop_kong()
+    spec_helper.reset_db()
+  end)
 
   describe("Without authentication (IP address)", function()
 
