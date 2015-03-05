@@ -135,12 +135,12 @@ function CassandraFactory:execute(query, params, keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return err
+    return nil, err
   end
 
   ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
   if not ok then
-    return err
+    return nil, err
   end
 
   ok, err = session:execute(query, params)
@@ -174,7 +174,7 @@ function CassandraFactory:get_migrations()
   local rows, err = self:execute("SELECT migrations FROM schema_migrations WHERE id = ?", { MIGRATION_IDENTIFIER })
   if err then
     return nil, err
-  elseif #rows > 0 then
+  elseif rows and #rows > 0 then
     return rows[1].migrations
   end
 end
