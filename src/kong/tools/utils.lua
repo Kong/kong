@@ -157,7 +157,7 @@ end
 -- Lapis utils
 --
 function _M.show_response(status, message, raw)
-  ngx.header[constants.HEADERS.VERSION] = constants.VERSION
+  ngx.header[constants.HEADERS.SERVER] = "kong/"..constants.VERSION
   ngx.status = status
 
   if raw then
