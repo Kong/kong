@@ -24,7 +24,7 @@ _M.faker = faker
 
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute (command.." &> " .. n)
+  local exit_code = os.execute(command.." &> " .. n)
   local result = utils.read_file(n)
   os.remove(n)
 
@@ -32,18 +32,19 @@ function _M.os_execute(command)
 end
 
 function _M.start_kong()
-  local result, exit_code = _M.os_execute(KONG_BIN.." -c "..TEST_CONF_FILE.." start")
+  local exit_code = os.execute(KONG_BIN.." -c "..TEST_CONF_FILE.." start > /dev/null")
   if exit_code ~= 0 then
-    error("spec_helpers cannot start Kong: "..result)
+    error("spec_helpers cannot start Kong")
   end
   os.execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
 function _M.stop_kong()
-    local result, exit_code = _M.os_execute(KONG_BIN.." -c "..TEST_CONF_FILE.." stop")
-    if exit_code ~= 0 then
-      error("spec_helpers cannot stop Kong: "..result)
-    end
+  local exit_code = os.execute(KONG_BIN.." -c "..TEST_CONF_FILE.." stop > /dev/null")
+  if exit_code ~= 0 then
+    error("spec_helpers cannot stop Kong")
+  end
+  os.execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
 function _M.prepare_db()
