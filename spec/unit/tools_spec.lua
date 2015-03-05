@@ -4,9 +4,9 @@ local cjson = require "cjson"
 local stringy = require "stringy"
 require "lfs"
 
-describe("Version #version", function()
+describe("Constants", function()
 
-  it("should match the right version", function()
+  it("the version set in constants should match the one in the rockspec", function()
     local rockspec_path
     for filename in lfs.dir("./") do
       if stringy.endswith(filename, "rockspec") then
@@ -27,7 +27,9 @@ describe("Version #version", function()
 
 end)
 
-describe("Utils #utils", function()
+describe("Utils #tools", function()
+
+  local cjson = require "cjson"
 
   describe("Cache", function()
 
@@ -211,5 +213,46 @@ describe("Utils #utils", function()
       end)
 
     end)
+  end)
+end)
+
+describe("Faker #tools", function()
+
+  local Faker = require "kong.tools.faker"
+
+  local ENTITIES_TYPES = { "api", "account", "application", "plugin" }
+  local factory_mock = {}
+  local faker
+
+  setup(function()
+    for _, v in ipairs(ENTITIES_TYPES) do
+      factory_mock[v.."s"] = {
+        insert = function(self, t) return true end
+      }
+    end
+
+    faker = Faker(factory_mock)
+  end)
+
+  it("should have an 'insterted_entities' property for relations", function()
+    assert.truthy(faker.insterted_entities)
+    assert.are.same("table", type(faker.insterted_entities))
+  end)
+
+  describe("#fake_entity()", function()
+
+    it("should return a fake entity for each type", function()
+      for _, v in ipairs(ENTITIES_TYPES) do
+        local t = faker:fake_entity(v)
+        assert.truthy(t)
+        assert.are.same("table", type(t))
+      end
+    end)
+
+    it("should throw an error if the type doesn't exist", function()
+      local func_err = function() local t = faker:fake_entity("foo") end
+      assert.has_error(func_err, "Entity of type foo cannot be genereated.")
+    end)
+
   end)
 end)

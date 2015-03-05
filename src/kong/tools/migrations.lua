@@ -1,15 +1,9 @@
-local Object = require "classic"
+local path = require("path").new("/")
 local utils = require "kong.tools.utils"
+local Object = require "classic"
 
--- Constants
-local KONG_HOME = os.getenv("KONG_HOME")
-if KONG_HOME and KONG_HOME ~= "" then
-  KONG_HOME = KONG_HOME.."/"
-else
-  KONG_HOME = ""
-end
-
-local MIGRATION_PATH = KONG_HOME.."database/migrations"
+local KONG_HOME = os.getenv("KONG_HOME") and os.getenv("KONG_HOME") or "."
+local MIGRATION_PATH = path:join(KONG_HOME, "database/migrations")
 
 -- Migrations
 local Migrations = Object:extend()
