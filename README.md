@@ -61,19 +61,20 @@ bin/kong -c kong.yml
 
 When developing, use the `Makefile` for doing the following operations:
 
-| Name         | Description                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------------- |
-| `install`    | Install the Kong luarock globally                                                                   |
-| `dev`        | Setup your development environment                                                                  |
-| `run`        | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                          |
-| `seed`       | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
-| `drop`       | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
-| `lint`       | Lint Lua files in `src/`                                                                            |
-| `coverage`   | Run unit tests + coverage report (only unit-tested modules)                                         |
-| `test`       | Run the unit tests                                                                                  |
-| `test-proxy` | Run the proxy integration tests                                                                     |
-| `test-web`   | Run the web integration tests                                                                       |
-| `test-all`   | Run all unit + integration tests at once                                                            |
+| Name          | Description                                                                                         |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| `install`     | Install the Kong luarock globally                                                                   |
+| `dev`         | Setup your development environment                                                                  |
+| `run`         | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                          |
+| `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
+| `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
+| `lint`        | Lint Lua files in `src/`                                                                            |
+| `coverage`    | Run unit tests + coverage report (only unit-tested modules)                                         |
+| `test`        | Run the unit tests                                                                                  |
+| `test-proxy`  | Run the proxy integration tests                                                                     |
+| `test-server` | Run the server integration tests                                                                    |
+| `test-api`    | Run the api integration tests                                                                       |
+| `test-all`    | Run all unit + integration tests at once                                                            |
 
 #### Scripts
 

@@ -80,10 +80,10 @@ local function init_plugins()
 
   local unsorted_plugins = {} -- It's a multivalue table: k1 = {v1, v2, v3}, k2 = {...}
 
-  for _,v in ipairs(installed_plugins) do
+  for _, v in ipairs(installed_plugins) do
     local status, res = pcall(require, "kong.plugins."..v..".handler")
     if not status then
-      error("The following plugin is being used but it's not installed in the system: "..v)
+      error("The following plugin is being used but is not installed on the system: "..v)
     else
       print("Loading plugin: "..v)
       local plugin_handler = res()
@@ -112,7 +112,7 @@ local function init_plugins()
   -- Add the plugins in a sorted order
   for _, v in utils.sort_table(unsorted_plugins, utils.sort.descending) do -- In descending order
     if v then
-      for _,p in ipairs(v) do
+      for _, p in ipairs(v) do
         table.insert(result, p)
       end
     end
@@ -128,7 +128,7 @@ function _M.init()
   -- Initializing DAO
   local err = dao:prepare()
   if err then
-    error(err.message)
+    error("Cannot prepare Cassandra statements: "..err.message)
   end
 
   -- Initializing plugins

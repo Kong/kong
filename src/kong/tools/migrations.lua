@@ -136,11 +136,12 @@ function Migrations:rollback(callback)
   if not migration_to_rollback.init then
     local _, err = self.dao:delete_migration(migration_to_rollback.name)
     if err then
-      err = "Cannot delete migration "..migration_to_rollback.name..": "..err
+      callback(migration_to_rollback, "Cannot delete migration "..migration_to_rollback.name..": "..err) -- avoid a luacheck warning if calling cb directly here
+      return
     end
   end
 
-  callback(migration_to_rollback, err)
+  callback(migration_to_rollback)
 end
 
 -- Execute all migrations DOWN
