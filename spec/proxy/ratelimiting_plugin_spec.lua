@@ -2,7 +2,7 @@ local spec_helper = require "spec.spec_helpers"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
-local kProxyURL = "http://localhost:8000/"
+local kProxyURL = spec_helper.PROXY_URL
 local kGetURL = kProxyURL.."/get"
 
 describe("RateLimiting Plugin #proxy", function()

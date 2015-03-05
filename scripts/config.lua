@@ -27,7 +27,9 @@ if args.COMMAND == "create" then
     TEST = {
       ["keyspace: kong"] = "keyspace: kong_tests",
       ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
-      ["error_log logs/error.log info"] = "error_log logs/error.log debug"
+      ["error_log logs/error.log info"] = "error_log logs/error.log debug",
+      ["listen 8000"] = "listen 8100",
+      ["listen 8001"] = "listen 8101"
     },
     DEVELOPMENT = {
       ["keyspace: kong"] = "keyspace: kong_development",
