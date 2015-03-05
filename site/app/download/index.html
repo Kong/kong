@@ -3,21 +3,109 @@ title: Download
 sitemap: true
 ---
 
-<div class="page">
+<div class="page page-download">
   <header class="page-header">
     <div class="container">
       <div class="page-header-icon">
-        <img src="/assets/images/icons/01-icn-documentation.svg" alt=""/>
+        <img src="/assets/images/icons/06-icn-download.svg" alt=""/>
       </div>
       <div class="page-header-title">
-        <h2>Download</h2>
-        <p>Download and run Kong in a few seconds</p>
+        <h2>Download Kong</h2>
       </div>
     </div>
   </header>
 
-  <div class="container">
-    <br>
-    <p>This page is coming soon. In the meanwhile, to use Kong, follow the instructions at <a href="https://github.com/Mashape/kong">https://github.com/Mashape/kong</a></p>
-  </div>
+  <section class="content-section">
+    <div class="container">
+      <div class="select-download-method">
+        <h2>Select your preferred method:</h2>
+        <p>Current Version: 0.0.1 Beta (<a href="#">see log history</a>)</p>
+      </div>
+
+      <div class="tab-list-wrap">
+        <ul class="tab-list row">
+          <li class="active"><a href="#zip">.Zip / Tar.gz</a></li>
+          <li><a href="#centos">CentOS</a></li>
+          <li><a href="#debian">Debian</a></li>
+          <li><a href="#osx">Mac OS X</a></li>
+          <li><a href="#docker">Docker</a></li>
+        </ul>
+      </div>
+
+      <div class="content">
+        <div class="tab-content">
+          <div class="tab-pane active" id="zip">
+            {% markdown pages/download/zip.md %}
+          </div>
+          <div class="tab-pane" id="centos">
+            {% markdown pages/download/centos.md %}
+          </div>
+          <div class="tab-pane" id="debian">
+            {% markdown pages/download/debian.md %}
+          </div>
+          <div class="tab-pane" id="osx">
+            {% markdown pages/download/osx.md %}
+          </div>
+          <div class="tab-pane" id="docker">
+            {% markdown pages/download/docker.md %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq-section">
+    <div class="container">
+      <div class="row">
+        <div class="four columns">
+          <h4>Getting Started</h4>
+          <p>Here are some useful resources to help you to learn how to use kong and get the most of it:</p>
+          <ul>
+            <li><a href="#">Read the Documentation</a></li>
+            <li><a href="#">Watch the Screencasts</a></li>
+            <li><a href="#">Follow our Tutorials</a></li>
+          </ul>
+        </div>
+        <div class="four columns">
+          <h4>Going to Production</h4>
+          <p>Kong is easy to scale from development to production. Here are a few resources you might be interrested in:</p>
+          <ul>
+            <li><a href="#">Overvirew</a></li>
+            <li><a href="#">Scaling in AWS</a></li>
+            <li><a href="#">Multi-region and multi-datacenter</a></li>
+          </ul>
+        </div>
+        <div class="four columns">
+          <h4>Need Help?</h4>
+          <p>For support contact us:</p>
+          <ul>
+            <li><a href="#">Ping Us in IRC:Kong</a></li>
+            <li><a href="#">Open an Issue in Github</a></li>
+          </ul>
+          <br/>
+          <p>Enterprise support: <a href="mailto:enterprise@getkong.org">enterprise@getkong.org</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="subscribe-section">
+    <div class="container">
+      <h2>Get Kong Updates in your Inbox!</h2>
+
+      <form action="/">
+        <div class="row">
+          <div class="five columns">
+            <input type="text" name="full_name" placeholder="Full Name"/>
+          </div>
+          <div class="five columns">
+            <input type="email" name="email" placeholder="Email" required/>
+          </div>
+          <div class="two columns">
+            <button class="button button-large button-primary" type="submit">Sign Up</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
 </div>
