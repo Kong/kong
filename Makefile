@@ -53,13 +53,14 @@ run-integration-tests:
 	@scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset
 
 test-web:
-	@$(MAKE) run-integration-tests FOLDER=spec/web SILENT_FLAG=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/other/web SILENT_FLAG=-s
 
 test-proxy:
-	@$(MAKE) run-integration-tests FOLDER=spec/proxy SILENT_FLAG=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/other/proxy SILENT_FLAG=-s
 
 test-server:
 	@busted $(COVERAGE_FLAG) spec/server
 
 test-all:
-	@$(MAKE) run-integration-tests FOLDER=spec SILENT_FLAG=-s
+	@$(MAKE) run-integration-tests FOLDER=spec/other SILENT_FLAG=-s
+	@busted $(COVERAGE_FLAG) spec/server

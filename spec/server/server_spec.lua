@@ -13,16 +13,9 @@ local KONG_BIN = "bin/kong"
 local DB_BIN = "scripts/db.lua"
 
 local function execute(command)
-  -- get a temporary file name
-  n = os.tmpname ()
-
-  -- execute a command
+  n = os.tmpname() -- get a temporary file name to store output
   local exit_code = os.execute (command.." &> " .. n)
-
-  -- Read result
   local result = utils.read_file(n)
-
-  -- remove temporary file
   os.remove (n)
 
   return result, exit_code / 256
@@ -47,8 +40,10 @@ local function result_contains(result, val)
   return result:find(val, 1, true)
 end
 
-describe("Server #server", function()
+describe("#server-cli", function()
+  print("WAAAT")
 
+  --[[
   describe("Plugins Check", function()
 
     setup(function()
@@ -56,10 +51,11 @@ describe("Server #server", function()
     end)
 
     teardown(function()
-      --os.execute("rm "..SERVER_CONF)
+      os.execute("rm "..SERVER_CONF)
     end)
 
     before_each(function()
+      stop_server()
       dao_factory:drop()
     end)
 
@@ -118,5 +114,5 @@ describe("Server #server", function()
     end)
 
   end)
-
+  --]]
 end)
