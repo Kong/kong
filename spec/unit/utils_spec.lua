@@ -2,7 +2,6 @@ local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 local cjson = require "cjson"
 local stringy = require "stringy"
-local rex = require "rex_pcre"
 require "lfs"
 
 describe("Version #version", function()
@@ -21,11 +20,9 @@ describe("Version #version", function()
     end
 
     local file_content = utils.read_file(rockspec_path)
-
-    local iterator = rex.gmatch(file_content, "version\\s*=\\s*\"([A-Za-z0-9\\.\\-]+)\"")
-    local m = iterator()
-
-    assert.are.same(m, constants.VERSION)
+    local res = file_content:match("\"+[0-9.-]+[a-z]*[0-9-]*\"+")
+    local extracted_version = res:sub(2, res:len() - 1)
+    assert.are.same(constants.VERSION, extracted_version)
   end)
 
 end)
