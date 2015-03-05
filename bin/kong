@@ -68,6 +68,7 @@ function start {
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
   else
     printf "$(tput setaf 1) [ERROR]\n$(tput sgr 0)"
+    printf "\nYou can check what error has been returned by looking at the error log file"
     exit 1
   fi
 }
@@ -86,7 +87,9 @@ function stop {
 
   if [ ! -f $PID ]; then
     printf "$(tput setaf 1) [NOT RUNNING]\n$(tput sgr 0)"
-    exit 1
+    if [ "$1" = false ] ; then # $1 is true when it's part of a restart
+      exit 1
+    fi
   else
     kill $(cat $PID)
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
@@ -94,7 +97,7 @@ function stop {
 }
 
 function restart {
-  stop
+  stop true
   start
 }
 

@@ -8,19 +8,19 @@ function BasePlugin:new(name)
 end
 
 function BasePlugin:access()
-  ngx.log(ngx.DEBUG, " executing plugin " .. self._name .. ": access")
+  ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": access")
 end
 
 function BasePlugin:header_filter()
-  ngx.log(ngx.DEBUG, " executing plugin " .. self._name .. ": header_filter")
+  ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": header_filter")
 end
 
 function BasePlugin:body_filter()
-  ngx.log(ngx.DEBUG, " executing plugin " .. self._name .. ": body_filter")
+  ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": body_filter")
 end
 
 function BasePlugin:log()
-  ngx.log(ngx.DEBUG, " executing plugin " .. self._name .. ": log")
+  ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": log")
 end
 
 return BasePlugin
