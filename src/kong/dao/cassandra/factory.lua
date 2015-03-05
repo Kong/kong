@@ -1,6 +1,7 @@
 local Object = require "classic"
 local cassandra = require "cassandra"
 local stringy = require "stringy"
+local utils = require "kong.tools.utils"
 
 local Apis = require "kong.dao.cassandra.apis"
 local Metrics = require "kong.dao.cassandra.metrics"
@@ -15,6 +16,11 @@ local CassandraFactory = Object:extend()
 function CassandraFactory:new(properties)
   self.type = "cassandra"
   self._properties = properties
+
+  -- Convert localhost to 127.0.0.1
+  -- This is because nginx doesn't resolve the /etc/hosts file but /etc/resolv.conf
+  -- And it may cause errors like "host not found" for "localhost"
+  self._properties.hosts = utils.normalize_localhost(self._properties.hosts)
 
   self.apis = Apis(properties)
   self.metrics = Metrics(properties)

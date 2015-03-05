@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 OPENRESTY_BASE=ngx_openresty-$OPENRESTY
 
