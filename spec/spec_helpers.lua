@@ -36,6 +36,7 @@ function _M.start_kong()
   if exit_code ~= 0 then
     error("spec_helpers cannot start Kong: "..result)
   end
+  os.execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
 function _M.stop_kong()
