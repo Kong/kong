@@ -1,5 +1,5 @@
 return {
-  VERSION = "0.0.1-beta",
+  VERSION = "0.0.1beta-1",
   DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
   DATABASE_ERROR_TYPES = {
     SCHEMA = "schema",
@@ -9,7 +9,7 @@ return {
     FOREIGN = "foreign"
   },
   HEADERS = {
-    VERSION = "X-Kong-Version",
+    SERVER = "Server",
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
     ACCOUNT_ID = "X-Account-ID",

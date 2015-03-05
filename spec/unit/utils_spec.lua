@@ -1,5 +1,34 @@
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 local cjson = require "cjson"
+local stringy = require "stringy"
+local rex = require "rex_pcre"
+require "lfs"
+
+describe("Version #version", function()
+
+  it("should match the right version", function()
+    local rockspec_path
+    for filename in lfs.dir("./") do
+      if stringy.endswith(filename, "rockspec") then
+        rockspec_path  = "./"..filename
+        break
+      end
+    end
+
+    if not rockspec_path then
+      error("Can't find the rockspec file")
+    end
+
+    local file_content = utils.read_file(rockspec_path)
+
+    local iterator = rex.gmatch(file_content, "version\\s*=\\s*\"([A-Za-z0-9\\.\\-]+)\"")
+    local m = iterator()
+
+    assert.are.same(m, constants.VERSION)
+  end)
+
+end)
 
 describe("Utils #utils", function()
 
