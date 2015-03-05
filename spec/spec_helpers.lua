@@ -5,6 +5,8 @@ local Migrations = require "kong.tools.migrations"
 -- Constants
 local KONG_BIN = "bin/kong"
 local TEST_CONF_FILE = "kong_TEST.yml"
+local PROXY_URL = "http://localhost:8100"
+local API_URL = "http://localhost:8101"
 
 -- DB objects
 local configuration, dao_factory = utils.load_configuration_and_dao(TEST_CONF_FILE)
@@ -14,6 +16,8 @@ local faker = Faker(dao_factory)
 local _M = {}
 
 _M.CONF_FILE = TEST_CONF_FILE
+_M.PROXY_URL = PROXY_URL
+_M.API_URL = API_URL
 _M.configuration = configuration
 _M.dao_factory = dao_factory
 _M.faker = faker
@@ -28,11 +32,17 @@ function _M.os_execute(command)
 end
 
 function _M.start_kong()
-  return _M.os_execute(KONG_BIN.." -c "..TEST_CONF_FILE.." start")
+  local result, exit_code = _M.os_execute(KONG_BIN.." -c "..TEST_CONF_FILE.." start")
+  if exit_code ~= 0 then
+    error("spec_helpers cannot start Kong: "..result)
+  end
 end
 
 function _M.stop_kong()
-  return _M.os_execute(KONG_BIN.." -c "..TEST_CONF_FILE.." stop")
+    local result, exit_code = _M.os_execute(KONG_BIN.." -c "..TEST_CONF_FILE.." stop")
+    if exit_code ~= 0 then
+      error("spec_helpers cannot stop Kong: "..result)
+    end
 end
 
 function _M.prepare_db()

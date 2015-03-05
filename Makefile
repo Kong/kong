@@ -1,12 +1,7 @@
 KONG_HOME = `pwd`
-
-export SILENT_FLAG ?=
-export COVERAGE_FLAG ?=
-
-TESTS_CONF ?= kong_TEST.yml
 DEVELOPMENT_CONF ?= kong_DEVELOPMENT.yml
 
-.PHONY: install dev seed drop test coverage run-integration-tests test-web test-proxy test-all
+.PHONY: install dev seed drop test coverage test-api test-proxy test-server test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \
@@ -32,29 +27,25 @@ seed:
 drop:
 	@scripts/db.lua -c $(DEVELOPMENT_CONF) drop
 
-test:
-	@busted $(COVERAGE_FLAG) spec/unit
-
-coverage:
-	@rm -f luacov.*
-	@$(MAKE) test COVERAGE_FLAG=--coverage
-	@luacov -c spec/.luacov
-
 lint:
 	@luacheck kong*.rockspec
 
-run-integration-tests:
-	@busted $(COVERAGE_FLAG) $(FOLDER) || (bin/kong stop; scripts/db.lua -c $(TESTS_CONF) $(SILENT_FLAG) reset; exit 1)
+test:
+	@busted spec/unit
 
-test-web:
-	@$(MAKE) run-integration-tests FOLDER=spec/web SILENT_FLAG=-s
+coverage:
+	@rm -f luacov.*
+	@busted --coverage spec/unit
+	@luacov -c spec/.luacov
+
+test-api:
+	@busted spec/api
 
 test-proxy:
-	@$(MAKE) run-integration-tests FOLDER=spec/proxy SILENT_FLAG=-s
+	@busted spec/proxy
 
 test-server:
-	@busted $(COVERAGE_FLAG) spec/server
+	@busted spec/server
 
 test-all:
-	@$(MAKE) run-integration-tests FOLDER=spec SILENT_FLAG=-s
-	@busted $(COVERAGE_FLAG) spec/server
+	@busted spec/
