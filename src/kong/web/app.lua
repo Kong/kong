@@ -8,10 +8,18 @@ local Applications = require "kong.web.routes.applications"
 app = lapis.Application()
 
 app:get("/", function(self)
+
+  local db_plugins, err = dao.plugins:find_distinct()
+  if err then
+    ngx.log(ngx.ERR, err)
+    return utils.show_error(500, err)
+  end
+
   return utils.success({
     tagline = "Welcome to Kong",
     version = constants.VERSION,
-    plugins = installed_plugins
+    plugins_available = plugins_available,
+    plugins_used = db_plugins
   })
 end)
 
