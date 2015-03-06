@@ -1,4 +1,4 @@
-# Available plugins on this node
+# Available plugins on this server
 plugins_available:
   - authentication
   - ratelimiting

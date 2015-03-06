@@ -1,4 +1,5 @@
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local Apis = require "kong.web.routes.apis"
 local Plugins = require "kong.web.routes.plugins"
@@ -18,8 +19,11 @@ app:get("/", function(self)
   return utils.success({
     tagline = "Welcome to Kong",
     version = constants.VERSION,
-    plugins_available = plugins_available,
-    plugins_used = db_plugins
+    hostname = utils.get_hostname(),
+    plugins = {
+      available_on_server = plugins_available,
+      enabled_in_cluster = db_plugins
+    }
   })
 end)
 

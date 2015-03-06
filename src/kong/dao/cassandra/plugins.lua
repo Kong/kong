@@ -98,15 +98,18 @@ function Plugins:find_distinct()
     return nil, err
   end
 
-  -- TODO: Replace this with an Iterator
+  -- Execute query
   local distinct_names = {}
-  local res, err = session:execute(self._statements.select.query, nil)
-  if err then
-    return nil, err
-  end
-
-  for i, v in ipairs(res) do
-    distinct_names[v.name] = true
+  for _, rows, page, err in session:execute(self._statements.select.query, nil, {auto_paging=true}) do
+    if err then
+      return nil, err
+    end
+    for _,v in ipairs(rows) do
+      -- Rows also contains other properites, so making sure it's a plugin
+      if v.name then
+        distinct_names[v.name] = true
+      end
+    end
   end
 
   -- Close session

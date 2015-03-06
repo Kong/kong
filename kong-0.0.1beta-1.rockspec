@@ -23,7 +23,7 @@ dependencies = {
   "luasec ~> 0.5-2",
   "yaml ~> 1.1.1-1",
   "luaxml ~> 101012-1",
-  "cassandra ~> 0.5-3",
+  "cassandra ~> 0.5-4",
   "lrexlib-pcre ~> 2.7.2-1",
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",

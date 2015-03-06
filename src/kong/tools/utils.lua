@@ -12,6 +12,14 @@ local _M = {}
 -- IP Utils
 --
 
+function _M.get_hostname()
+    local f = io.popen ("/bin/hostname")
+    local hostname = f:read("*a") or ""
+    f:close()
+    hostname =string.gsub(hostname, "\n$", "")
+    return hostname
+end
+
 function _M.normalize_localhost(host)
   if type(host) == "table" then
     for i,v in ipairs(host) do
