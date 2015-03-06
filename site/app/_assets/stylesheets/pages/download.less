@@ -1,0 +1,220 @@
+.page-download {
+  .select-download-method {
+    text-align: center;
+    //    margin: 70px 0 60px 0;
+    margin-bottom: 60px;
+
+    h2 {
+      font-family: @family-whitney;
+      font-size: 32px;
+      color: #000;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    p {
+      margin: 8px 0 0;
+    }
+  }
+
+  .tab-list-wrap {
+    border-bottom: 1px solid #bde6cf;
+    padding-bottom: 40px;
+  }
+
+  .tab-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 -20px 0 -20px;
+
+    li {
+      float: left;
+      margin: 0;
+      width: 20%;
+      padding: 0 20px;
+      box-sizing: border-box;
+      position: relative;
+
+      @media (max-width: 900px) {
+        padding: 0 10px;
+      }
+
+      @media (max-width: 800px) {
+        float: none;
+        width: auto;
+        margin-bottom: 10px;
+      }
+
+      &:before,
+      &:after {
+        display: none;
+        content: "";
+        position: absolute;
+        bottom: -41px;
+        border: 0 none;
+        width: 0;
+        height: 0;
+        left: 50%;
+        margin-left: -8px;
+      }
+
+      &:before {
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 9px solid #bde6cf;
+      }
+
+      &:after {
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-bottom: 8px solid #fff;
+        margin-left: -7px;
+      }
+    }
+
+    a {
+      &:extend(button);
+      display: block;
+      text-align: center;
+      border: 1px solid #23ab5f;
+      background-image: linear-gradient(to top, rgba(189, 230, 207, .15) 0%, rgba(255, 255, 255, .15) 100%);
+      font-size: 15px;
+      height: 48px;
+      line-height: 48px;
+      white-space: nowrap;
+      padding: 0;
+    }
+
+    .active {
+      &:before,
+      &:after {
+        display: block;
+
+        @media (max-width: 800px) {
+          display: none;
+        }
+      }
+
+      a {
+        text-shadow: 0 -1px 0 rgba(0, 1, 1, 0.2);
+        padding: 1px;
+        border: 0 none;
+        cursor: default;
+        background-color: #23ab5f;
+        background-image: linear-gradient(to bottom, #0b803b, #149652);
+        color: #fff;
+        box-shadow: inset 0 1px rgba(0, 0, 0, .3);
+      }
+    }
+  }
+
+  .tab-content {
+    .tab-pane {
+      display: none;
+    }
+
+    .active {
+      display: block;
+    }
+  }
+
+  .content {
+    padding: 35px 0 0;
+
+    h3 {
+      font-size: 28px;
+      color: @font-color;
+      margin-bottom: .7em;
+    }
+
+    ol {
+      &:extend(.instructions-steps);
+      padding-left: 19px;
+
+      li {
+        &:extend(.instructions-steps .instructions-step-item all);
+        padding: 7px 0 30px 30px;
+
+        &:last-child {
+          padding-bottom: 15px;
+        }
+
+        &:before {
+          color: @font-color;
+          font-size: 13px;
+          width: 36px;
+          height: 36px;
+          line-height: 36px;
+          left: -19px;
+        }
+      }
+    }
+  }
+
+  section {
+    padding: 80px 0;
+  }
+
+  .faq-section {
+    background-color: #fdfdfd;
+    border-top: 2px solid #e1e4e5;
+    border-bottom: 2px solid #e1e4e5;
+
+    h4 {
+      font-size: 19px;
+      font-family: @family-whitney;
+      font-weight: 600;
+      margin-bottom: 0.5em;
+    }
+
+    p {
+      margin-bottom: 0.5em;
+    }
+
+    ul {
+      margin: 0;
+
+      li {
+        margin: 0;
+        list-style: none;
+
+        &:before {
+          content: "\203a";
+          display: inline-block;
+          width: 10px;
+          color: @green;
+        }
+      }
+    }
+  }
+
+  .subscribe-section {
+    min-height: 150px;
+
+    .form-message {
+      display: none;
+      font-size: 20px;
+      text-align: center;
+      line-height: 44px;
+    }
+
+    .success-message {
+      color: @green;
+    }
+
+    .error-message {
+      color: #bb2616;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 30px;
+    }
+
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+}
