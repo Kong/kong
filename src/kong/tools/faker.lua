@@ -4,20 +4,12 @@ local utils = require "kong.tools.utils"
 
 math.randomseed(os.time())
 
--- Select a random elements from an array, removes and return it
+-- Return a random elements from an array
 -- @param {table} t Array to get an element from
 -- @return A random element
 local function random_from_table(t, remove)
   if not t then return {} end
-
-  local random_index = math.random(#t)
-  local random_element = t[random_index]
-
-  if remove then
-    t[random_index] = nil
-  end
-
-  return random_element
+  return t[math.random(#t)]
 end
 
 --
@@ -30,7 +22,7 @@ function Faker:new(dao_factory)
   self.inserted_entities = {}
 end
 
-Faker.entities_to_insert = {
+Faker.FIXTURES = {
   api = {
     { name = "test",  public_dns = "test.com",  target_url = "http://httpbin.org" },
     { name = "test2", public_dns = "test2.com", target_url = "http://httpbin.org" },
@@ -60,7 +52,6 @@ Faker.entities_to_insert = {
 }
 
 -- Generate a fake entity
---
 -- @param {string} type Type of the entity to generate
 -- @return {table} An entity schema
 function Faker:fake_entity(type)
@@ -93,8 +84,8 @@ function Faker:fake_entity(type)
     return {
       name = plugin_type,
       value = plugin_value,
-      api_id = random_from_table(self.inserted_entities.api).id,
-      application_id = random_from_table(self.inserted_entities.application).id
+      api_id = nil,
+      application_id = nil
     }
   else
     error("Entity of type "..type.." cannot be generated.")
@@ -102,30 +93,26 @@ function Faker:fake_entity(type)
 end
 
 -- Seed the database with a set of hard-coded entities, and optionally random data
---
--- @param {boolean} random If true, will generate random entities
--- @param {number} amount The number of total entity to generate (hard-coded + random)
-function Faker:seed(random, amount)
-  if not amount then
-    amount = 1000
-  end
-
+-- @param {number} random_amount The number of random entities to add (apis, accounts, applications)
+function Faker:seed(random_amount)
   -- reset previously inserted entities
   self.inserted_entities = {}
 
-  self:insert_from_table(utils.deepcopy(Faker.entities_to_insert), true)
+  self:insert_from_table(utils.deepcopy(Faker.FIXTURES), true)
 
-  if random then
+  if random_amount then
     -- If we ask for random entities, add as many random entities to another table
     -- as the difference between total amount requested and hard-coded ones
     -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
+    --
+    -- We don't generate any random plugin
     local random_entities = {}
-    for type, entities in pairs(Faker.entities_to_insert) do
-      local number_to_insert = amount - #entities
+    for type, entities in pairs(Faker.FIXTURES) do
       random_entities[type] = {}
-      assert(number_to_insert > 0, "Cannot insert a negative number of elements. Too low amount parameter.")
-      for i = 1, number_to_insert do
-        table.insert(random_entities[type], self:fake_entity(type))
+      if type ~= "plugin" then
+        for i = 1, random_amount do
+          table.insert(random_entities[type], self:fake_entity(type))
+        end
       end
     end
 
@@ -140,7 +127,7 @@ end
 function Faker:insert_from_table(entities_to_insert, pick_relations)
   -- Insert in order (for foreign relashionships)
   -- 1. accounts and APIs
-  -- 2. applications, plugins and metrics which need refereces to inserted apis and accounts
+  -- 2. applications, which need refereces to inserted apis and accounts
   for _, type in ipairs({ "api", "account", "application", "plugin" }) do
     for i, entity in ipairs(entities_to_insert[type]) do
 
