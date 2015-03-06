@@ -1,5 +1,5 @@
-# Enabled plugins, in this order
-plugins_enabled:
+# Available plugins on this node
+plugins_available:
   - authentication
   - ratelimiting
   - networklog

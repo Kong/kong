@@ -96,8 +96,8 @@ A typical `kong.yml` file looks like:
 # Specify the DAO to use
 database: cassandra
 
-# Enabled plugins
-plugins_enabled:
+# Plugins available on the server
+plugins_available:
   - authentication
   - ratelimiting
   - networklog
@@ -112,7 +112,9 @@ databases_available:
       keepalive: 60000
 ```
 
-The `plugins_enabled` array describes the plugins that the server should support system-wide (the order is irrelevant). Then you can configure which Plugin to install to which API by using the `/plugins/` API endpoint. Plugins that haven't been added to `plugins_enabled` won't be executed.
+The `plugins_available` array describes the plugins available that can be used by the server. Then you can configure which Plugin to install to which API by using the `/plugins/` API endpoint. Plugins that haven't been added to `plugins_enabled` won't be executed.
+
+**Note**: Make sure that every node in the cluster has the same `plugins_available` property value.
 
 # Scalability
 
