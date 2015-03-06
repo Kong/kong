@@ -24,7 +24,7 @@ _M.faker = faker
 
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute(command.." &> " .. n)
+  local exit_code = os.execute(command.." > "..n.." 2>&1")
   local result = utils.read_file(n)
   os.remove(n)
 
@@ -35,7 +35,7 @@ function _M.start_kong(conf_file, skip_wait)
   local conf_file = conf_file and conf_file or TEST_CONF_FILE
   local result, exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." start")
   if not skip_wait then
-    _M.os_execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+    os.execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
   end
   return result, exit_code
 end
@@ -43,7 +43,7 @@ end
 function _M.stop_kong(conf_file)
   local conf_file = conf_file and conf_file or TEST_CONF_FILE
   local exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." stop")
-  _M.os_execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+  os.execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
 function _M.prepare_db()
