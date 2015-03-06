@@ -462,8 +462,8 @@ describe("Cassandra DAO #dao #cassandra", function()
   describe(":delete()", function()
 
     setup(function()
-      dao_factory:drop()
-      faker:seed()
+      spec_helper.drop_db()
+      spec_helper.seed_db(100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -496,8 +496,8 @@ describe("Cassandra DAO #dao #cassandra", function()
   describe(":find()", function()
 
     setup(function()
-      dao_factory:drop()
-      faker:seed(100)
+      spec_helper.drop_db()
+      spec_helper.seed_db(100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -673,7 +673,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     local identifier = uuid()
 
     after_each(function()
-      dao_factory:drop()
+      spec_helper.drop_db()
     end)
 
     it("should return nil when metrics are not existing", function()
@@ -772,8 +772,8 @@ describe("Cassandra DAO #dao #cassandra", function()
     local inserted_plugin
 
     setup(function()
-      dao_factory:drop()
-      faker:seed(100)
+      spec_helper.drop_db()
+      spec_helper.seed_db(100)
     end)
 
     it("should find distinct plugins", function()
