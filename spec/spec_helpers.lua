@@ -24,7 +24,7 @@ _M.faker = faker
 
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute(command.." &> " .. n)
+  local exit_code = os.execute(command.." > "..n.." 2>&1")
   local result = utils.read_file(n)
   os.remove(n)
 
