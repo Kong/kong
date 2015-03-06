@@ -14,6 +14,7 @@ function Migrations:new(dao)
   self.migrations_files = utils.retrieve_files(MIGRATION_PATH.."/"..dao.type, '.lua')
 end
 
+-- Createa migration interface for each database available
 function Migrations.create(configuration, name, callback)
   for k, _ in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
@@ -44,13 +45,13 @@ return Migration
     ]]
 
     if callback then
-      callback(interface, file_path, file_name)
+      callback(interface, file_path, file_name, k)
     end
   end
 end
 
 -- Execute all migrations UP
--- @param {function} callback A function to execute on each migration (ie: for logging)
+-- @param callback A function to execute on each migration (ie: for logging)
 function Migrations:migrate(callback)
   local old_migrations, err = self.dao:get_migrations()
   if err then
@@ -100,7 +101,7 @@ function Migrations:migrate(callback)
 end
 
 -- Take the latest executed migration and DOWN it
--- @param {function} callback A function to execute (for consistency with other functions of this module)
+-- @param callback A function to execute (for consistency with other functions of this module)
 function Migrations:rollback(callback)
   local old_migrations, err = self.dao:get_migrations()
   if err then
