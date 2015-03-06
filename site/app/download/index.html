@@ -93,13 +93,15 @@ sitemap: true
     <div class="container">
       <h2>Get Kong Updates in your Inbox!</h2>
 
-      <form action="/">
+      <div class="form-message success-message">Thank you!</div>
+      <div class="form-message error-message">Oops, something went wrong. Please try again later.</div>
+      <form action="/" class="subscribe-form">
         <div class="row">
           <div class="five columns">
-            <input type="text" name="full_name" placeholder="Full Name"/>
+            <input type="text" name="fullname" placeholder="Full Name" />
           </div>
           <div class="five columns">
-            <input type="email" name="email" placeholder="Email" required/>
+            <input type="email" name="email" placeholder="Email" required />
           </div>
           <div class="two columns">
             <button class="button button-large button-primary" type="submit">Sign Up</button>
