@@ -783,7 +783,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       assert.falsy(err)
       assert.truthy(res)
 
-      assert.are.same(#res, 2)
+      assert.are.same(2, #res)
       assert.truthy(utils.array_contains(res, "authentication"))
       assert.truthy(utils.array_contains(res, "ratelimiting"))
     end)
