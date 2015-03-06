@@ -191,7 +191,6 @@ describe("Cassandra DAO #dao #cassandra", function()
       it("should not insert in DB if invalid", function()
         -- Without an api_id, it's a schema error
         local plugin_t = faker:fake_entity("plugin")
-        plugin_t.api_id = nil
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
@@ -467,11 +466,6 @@ describe("Cassandra DAO #dao #cassandra", function()
       faker:seed()
     end)
 
-    teardown(function()
-      dao_factory:drop()
-      faker:seed()
-    end)
-
     describe_all_collections(function(type, collection)
 
       it("should return false if there was nothing to delete", function()
@@ -503,12 +497,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       dao_factory:drop()
-      faker:seed(true, 100)
-    end)
-
-    teardown(function()
-      dao_factory:drop()
-      faker:seed()
+      faker:seed(100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -783,7 +772,8 @@ describe("Cassandra DAO #dao #cassandra", function()
     local inserted_plugin
 
     setup(function()
-      faker:seed(true, 100)
+      dao_factory:drop()
+      faker:seed(100)
     end)
 
     it("should find distinct plugins", function()
@@ -809,7 +799,6 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       local plugin_t = faker:fake_entity("plugin")
       plugin_t.api_id = api.id
-      plugin_t.application_id = nil
 
       local plugin, err = dao_factory.plugins:insert(plugin_t)
       assert.falsy(err)

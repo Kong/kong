@@ -282,7 +282,6 @@ describe("Faker #tools", function()
     it("should call insert_from_table()", function()
       faker:seed()
       assert.spy(faker.insert_from_table).was.called(1)
-      --assert.spy(faker.insert_from_table).was_called_with(faker, Faker.entities_to_insert)
     end)
 
     it("should populate the inserted_entities table for relations", function()
@@ -294,28 +293,15 @@ describe("Faker #tools", function()
     end)
 
     it("should be possible to add some random entities complementing the default hard-coded ones", function()
-      faker:seed(true)
+      faker:seed(2000)
       assert.spy(faker.insert_from_table).was.called(2)
-      -- random entities default is 1000 for each collection type
-      assert.spy(insert_spy).was.called(4000)
-    end)
-
-    it("should be possible to override the amount of random entities", function()
-      faker:seed(true, 2000)
-      assert.spy(faker.insert_from_table).was.called(2)
-      assert.spy(insert_spy).was.called(8000)
-    end)
-
-    it("should throw an error if trying to pass an amount that would result in a negative amount of inserted entities", function()
-      assert.has_error(function()
-        faker:seed(true, 2)
-      end, "Cannot insert a negative number of elements. Too low amount parameter.")
+      assert.spy(insert_spy).was.called(6018) -- 3*2000 + 18 base entities
     end)
 
     it("should create relations between entities_to_insert and inserted entities", function()
       faker:seed()
 
-      for type, entities in pairs(Faker.entities_to_insert) do
+      for type, entities in pairs(Faker.FIXTURES) do
         for i, entity in ipairs(entities) do
           -- assert object has been inserted
           local inserted_entity = faker.inserted_entities[type][i]
@@ -341,7 +327,7 @@ describe("Faker #tools", function()
                                  end
       assert.has_error(function()
         faker:seed()
-      end, "Faker failed to insert api entity: "..inspect(Faker.entities_to_insert.api[1]).."\ncannot insert api error test")
+      end, "Faker failed to insert api entity: "..inspect(Faker.FIXTURES.api[1]).."\ncannot insert api error test")
     end)
 
   end)
