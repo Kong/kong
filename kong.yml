@@ -17,6 +17,9 @@ databases_available:
       keyspace: kong
       keepalive: 60000
 
+# Sends anonymous error reports
+send_anonymous_reports: true
+
 # Cache configuration
 cache:
   expiration: 5 # In seconds
