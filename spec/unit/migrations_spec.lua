@@ -1,12 +1,13 @@
 local spec_helper = require "spec.spec_helpers"
 local Migrations = require "kong.tools.migrations"
 local utils = require "kong.tools.utils"
+local path = require("path").new("/")
 
 describe("Migrations #tools", function()
 
   local migrations
 
-  setup(function()
+  before_each(function()
     migrations = Migrations(spec_helper.dao_factory)
   end)
 
@@ -37,39 +38,296 @@ describe("Migrations #tools", function()
 
   end)
 
-  describe("#migrate()", function()
+  for db_type, v in pairs(spec_helper.configuration.databases_available) do
 
-    it("should execute all created migrations in order", function()
+    local files = {}
+    local migration_path = path:join("./database/migrations", db_type)
+    local fixture_path = path:join(migration_path, "2015-12-12-000000_test_migration.lua")
+    local fixture_migration = [[
+      return {
+        name = "2015-12-12-000000_test_migration",
+        up = function(options) return "" end,
+        down = function(options) return "" end
+      }
+    ]]
+
+    setup(function()
+      utils.write_to_file(fixture_path, fixture_migration)
+      local mig_files = utils.retrieve_files(migration_path, '.lua')
+      for _, mig in ipairs(mig_files) do
+        table.insert(files, mig.name)
+      end
+    end)
+
+    teardown(function()
+      os.remove(fixture_path)
+    end)
+
+    before_each(function()
+      stub(spec_helper.dao_factory, "execute_queries")
+      stub(spec_helper.dao_factory, "delete_migration")
+      stub(spec_helper.dao_factory, "add_migration")
+    end)
+
+    describe(db_type.." #migrate()", function()
+
+      it("1st run should execute all created migrations in order for a given dao", function()
+        spec_helper.dao_factory.get_migrations = spy.new(function() return nil end)
+
+        local i = 0
+        migrations:migrate(function(migration, err)
+          assert.truthy(migration)
+          assert.are.same(files[i+1], migration.name..".lua")
+          assert.falsy(err)
+          i = i + 1
+        end)
+
+        assert.are.same(#files, i)
+
+        -- all migrations should be recorded in db
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+        assert.spy(spec_helper.dao_factory.execute_queries).was.called(#files)
+        assert.spy(spec_helper.dao_factory.add_migration).was.called(#files)
+      end)
+
+      describe("Partly already migrated", function()
+
+        it("if running with some migrations pending, it should only execute the non-recorded ones", function()
+          spec_helper.dao_factory.get_migrations = spy.new(function() return {files[1]} end)
+
+          local i = 0
+          migrations:migrate(function(migration, err)
+            assert.truthy(migration)
+            assert.are.same("2015-12-12-000000_test_migration", migration.name)
+            assert.falsy(err)
+            i = i + 1
+          end)
+
+          assert.are.same(1, i)
+          assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+          assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+          assert.spy(spec_helper.dao_factory.add_migration).was.called(1)
+        end)
+      end)
 
     end)
 
-    it("should record all executed migrations in DB", function()
+    describe("Already migrated", function()
+
+      it("if running again, should detect if migrations are already up to date", function()
+        spec_helper.dao_factory.get_migrations = spy.new(function() return files end)
+
+        local i = 0
+        migrations:migrate(function(migration, err)
+          assert.falsy(migration)
+          assert.falsy(err)
+          i = i + 1
+        end)
+
+        assert.are.same(1, i)
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+        assert.spy(spec_helper.dao_factory.execute_queries).was_not_called()
+        assert.spy(spec_helper.dao_factory.add_migration).was_not_called()
+      end)
+    end)
+
+    it("should report get_migrations errors", function()
+      spec_helper.dao_factory.get_migrations = spy.new(function()
+                                                return nil, "get err"
+                                              end)
+      local i = 0
+      migrations:migrate(function(migration, err)
+        assert.falsy(migration)
+        assert.truthy(err)
+        assert.are.same("get err", err)
+        i = i + 1
+      end)
+
+      assert.are.same(1, i)
+      assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+      assert.spy(spec_helper.dao_factory.execute_queries).was_not_called()
+      assert.spy(spec_helper.dao_factory.add_migration).was_not_called()
+    end)
+
+    it("should report execute_queries errors", function()
+      spec_helper.dao_factory.get_migrations = spy.new(function() return {} end)
+      spec_helper.dao_factory.execute_queries = spy.new(function()
+                                                return "execute error"
+                                              end)
+      local i = 0
+      migrations:migrate(function(migration, err)
+        assert.falsy(migration)
+        assert.truthy(err)
+        assert.are.same("execute error", err)
+        i = i + 1
+      end)
+
+      assert.are.same(1, i)
+      assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+      assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+      assert.spy(spec_helper.dao_factory.add_migration).was_not_called()
+    end)
+
+    it("should report add_migrations errors", function()
+      spec_helper.dao_factory.get_migrations = spy.new(function() return {} end)
+      spec_helper.dao_factory.add_migration = spy.new(function()
+                                                return nil, "add error"
+                                              end)
+      local i = 0
+      migrations:migrate(function(migration, err)
+        assert.truthy(migration)
+        assert.truthy(err)
+        assert.are.same("Cannot record migration "..migration.name..": add error", err)
+        i = i + 1
+      end)
+
+      assert.are.same(1, i)
+      assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+      assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+      assert.spy(spec_helper.dao_factory.add_migration).was.called(1)
+    end)
+
+    describe(db_type.." #rollback()", function()
+
+      local old_migrations = {}
+
+      setup(function()
+        for _, f_name in ipairs(files) do
+          table.insert(old_migrations, f_name:sub(0, -5))
+        end
+      end)
+
+      describe("rollback latest migration", function()
+
+        it("should only rollback the latest executed migration", function()
+          spec_helper.dao_factory.get_migrations = spy.new(function() return old_migrations end)
+
+          local i = 0
+          migrations:rollback(function(migration, err)
+            assert.truthy(migration)
+            assert.are.same(old_migrations[#old_migrations], migration.name)
+            assert.falsy(err)
+            i = i + 1
+          end)
+
+          assert.are.same(1, i)
+          assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+          assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+          assert.spy(spec_helper.dao_factory.delete_migration).was.called(1)
+        end)
+
+      end)
+
+      it("should not call delete_migration if init migration is rollbacked", function()
+        spec_helper.dao_factory.get_migrations = spy.new(function() return {old_migrations[1]} end)
+
+        local i = 0
+        migrations:rollback(function(migration, err)
+          assert.truthy(migration)
+          assert.are.same(old_migrations[1], migration.name)
+          assert.falsy(err)
+          i = i + 1
+        end)
+
+        assert.are.same(1, i)
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+        assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+        assert.spy(spec_helper.dao_factory.delete_migration).was_not_called()
+      end)
+
+      it("should report get_migrations errors", function()
+        spec_helper.dao_factory.get_migrations = spy.new(function()
+                                                  return nil, "get err"
+                                                end)
+        local i = 0
+        migrations:rollback(function(migration, err)
+          assert.falsy(migration)
+          assert.truthy(err)
+          assert.are.same("get err", err)
+          i = i + 1
+        end)
+
+        assert.are.same(1, i)
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+        assert.spy(spec_helper.dao_factory.execute_queries).was_not_called()
+        assert.spy(spec_helper.dao_factory.delete_migration).was_not_called()
+      end)
+
+      it("should report execute_queries errors", function()
+        spec_helper.dao_factory.get_migrations = spy.new(function() return old_migrations end)
+        spec_helper.dao_factory.execute_queries = spy.new(function()
+                                                  return "execute error"
+                                                end)
+        local i = 0
+        migrations:rollback(function(migration, err)
+          assert.falsy(migration)
+          assert.truthy(err)
+          assert.are.same("execute error", err)
+          i = i + 1
+        end)
+
+        assert.are.same(1, i)
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+        assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+        assert.spy(spec_helper.dao_factory.delete_migration).was_not_called()
+      end)
+
+      it("should report delete_migrations errors", function()
+        spec_helper.dao_factory.get_migrations = spy.new(function() return old_migrations end)
+        spec_helper.dao_factory.delete_migration = spy.new(function()
+                                                    return nil, "delete error"
+                                                  end)
+        local i = 0
+        migrations:rollback(function(migration, err)
+          assert.truthy(migration)
+          assert.truthy(err)
+          assert.are.same("Cannot delete migration "..migration.name..": delete error", err)
+          i = i + 1
+        end)
+
+        assert.are.same(1, i)
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
+        assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
+        assert.spy(spec_helper.dao_factory.delete_migration).was.called(1)
+      end)
 
     end)
 
-    it("if running again, should detect if migrations are already up to date", function()
+    describe(db_type.." #reset()", function()
+
+      local old_migrations = {}
+
+      setup(function()
+        for _, f_name in ipairs(files) do
+          table.insert(old_migrations, f_name:sub(0, -5))
+        end
+      end)
+
+      it("should rollback all migrations at once", function()
+        local i = 0
+        local expected_rollbacks = #old_migrations
+        spec_helper.dao_factory.get_migrations = spy.new(function()
+                                                          return old_migrations
+                                                        end)
+        migrations:reset(function(migration, err)
+          assert.falsy(err)
+          if i < expected_rollbacks then
+            assert.are.same(old_migrations[#old_migrations], migration.name)
+            table.remove(old_migrations, #old_migrations)
+          else
+            -- Last call to cb when all migrations are done
+            assert.falsy(migration)
+            assert.falsy(err)
+          end
+          i = i + 1
+        end)
+
+        assert.are.same(expected_rollbacks + 1, i)
+        assert.spy(spec_helper.dao_factory.get_migrations).was.called(expected_rollbacks + 1) -- becaue also run one last time to check if any more migrations
+        assert.spy(spec_helper.dao_factory.execute_queries).was.called(expected_rollbacks)
+        assert.spy(spec_helper.dao_factory.delete_migration).was.called(expected_rollbacks - 1) -- because doesn't run for ini migration
+      end)
 
     end)
-
-  end)
-
-  describe("#rollback()", function()
-
-    it("should rollback the latest executed migration", function()
-
-    end)
-
-    it("if running again, should detect if migrations are already all reverted", function()
-
-    end)
-
-  end)
-
-  describe("#reset()", function()
-
-    it("should rollback all migrations at once", function()
-
-    end)
-
-  end)
+  end
 end)
