@@ -8,6 +8,14 @@ local Applications = require "kong.web.routes.applications"
 
 app = lapis.Application()
 
+local function get_hostname()
+    local f = io.popen ("/bin/hostname")
+    local hostname = f:read("*a") or ""
+    f:close()
+    hostname =string.gsub(hostname, "\n$", "")
+    return hostname
+end
+
 app:get("/", function(self)
   local db_plugins, err = dao.plugins:find_distinct()
   if err then
@@ -18,7 +26,7 @@ app:get("/", function(self)
   return utils.success({
     tagline = "Welcome to Kong",
     version = constants.VERSION,
-    hostname = utils.get_hostname(),
+    hostname = get_hostname(),
     plugins = {
       available_on_server = plugins_available,
       enabled_in_cluster = db_plugins
