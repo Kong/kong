@@ -3,7 +3,7 @@ This file will guide you through the process of installing Kong and its dependen
 In order to run, Kong needs the following:
 - [Lua][lua-install-url] `5.1`
 - [Luarocks][luarocks-url] `2.2.0` **for lua 5.1**.
-- [OpenResty](http://openresty.com/#Download) `1.7.7.2`
+- [OpenResty](http://openresty.com/#Download) `1.7.10.1`
 - [pcre][pcre-url]
 - [openssl][openssl-url]
 - [Cassandra][cassandra-url] `2.1`
@@ -42,9 +42,9 @@ apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl mak
 Install openresty:
 
 ```
-wget http://openresty.org/download/ngx_openresty-1.7.7.2.tar.gz
-tar xzf ngx_openresty-1.7.7.2.tar.gz
-cd ngx_openresty-1.7.7.2/
+wget http://openresty.org/download/ngx_openresty-1.7.10.1.tar.gz
+tar xzf ngx_openresty-1.7.10.1.tar.gz
+cd ngx_openresty-1.7.10.1/
 ./configure
 make
 sudo make install
