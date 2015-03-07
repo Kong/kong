@@ -11,7 +11,7 @@ local Migrations = Object:extend()
 function Migrations:new(dao)
   self.dao = dao
   self.options = { keyspace = dao._properties.keyspace }
-  self.migrations_files = utils.retrieve_files(MIGRATION_PATH.."/"..dao.type, '.lua')
+  self.migrations_files = utils.retrieve_files(path:join(MIGRATION_PATH, dao.type), '.lua')
 end
 
 -- Createa migration interface for each database available
@@ -97,6 +97,9 @@ function Migrations:migrate(callback)
       err = "Cannot record migration "..migration.name..": "..err
     end
     callback(migration, err)
+    if err then
+      break
+    end
   end
 end
 
@@ -111,7 +114,7 @@ function Migrations:rollback(callback)
 
   local migration_to_rollback
   if old_migrations and #old_migrations > 0 then
-    migration_to_rollback = loadfile(MIGRATION_PATH.."/"..self.dao.type.."/"..old_migrations[#old_migrations]..".lua")()
+    migration_to_rollback = loadfile(path:join(MIGRATION_PATH, self.dao.type, old_migrations[#old_migrations])..".lua")()
   else
     -- No more migration to rollback
     callback(nil, nil)
