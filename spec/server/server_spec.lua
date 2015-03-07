@@ -28,7 +28,7 @@ describe("#server-cli", function()
     end)
 
     teardown(function()
-      os.execute("rm "..SERVER_CONF)
+      os.remove(SERVER_CONF)
       spec_helper.reset_db()
     end)
 
@@ -49,42 +49,32 @@ describe("#server-cli", function()
 
     it("should not work when an unexisting plugin is being enabled", function()
       replace_conf_property("plugins_available", {"wot-wat"})
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
-      if exit_code == 1 then
-        assert.truthy(result_contains(result, "The following plugin has been enabled in the configuration but is not installed on the system: wot-wat"))
-      else
-        -- The test should fail here
-        assert.truthy(false)
-      end
+
+      assert.has_error(function()
+        spec_helper.start_kong(SERVER_CONF, true)
+      end, "The following plugin has been enabled in the configuration but is not installed on the system: wot-wat")
     end)
 
     it("should not fail when an existing plugin is being enabled", function()
       replace_conf_property("plugins_available", {"authentication"})
+
       local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
     it("should not work when an unexisting plugin is being enabled along with an existing one", function()
       replace_conf_property("plugins_available", {"authentication", "wot-wat"})
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
-      if exit_code == 1 then
-        assert.truthy(result_contains(result, "The following plugin has been enabled in the configuration but is not installed on the system: wot-wat"))
-      else
-        -- The test should fail here
-        assert.truthy(false)
-      end
+      assert.has_error(function()
+        spec_helper.start_kong(SERVER_CONF, true)
+      end, "The following plugin has been enabled in the configuration but is not installed on the system: wot-wat")
     end)
 
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
       replace_conf_property("plugins_available", {"authentication"})
       spec_helper.prepare_db(true)
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
-      if exit_code == 1 then
-        assert.truthy(result_contains(result, "You are using a plugin that has not been enabled in the configuration: ratelimiting"))
-      else
-        -- The test should fail here
-        assert.truthy(false)
-      end
+      assert.has_error(function()
+        spec_helper.start_kong(SERVER_CONF, true)
+      end, "You are using a plugin that has not been enabled in the configuration: ratelimiting")
     end)
 
     it("should work the used plugins are enabled", function()
@@ -95,5 +85,4 @@ describe("#server-cli", function()
     end)
 
   end)
-
 end)

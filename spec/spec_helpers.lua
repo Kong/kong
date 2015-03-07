@@ -34,15 +34,26 @@ end
 function _M.start_kong(conf_file, skip_wait)
   local conf_file = conf_file and conf_file or TEST_CONF_FILE
   local result, exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." start")
+
+  if exit_code ~= 0 then
+    error("spec_helper cannot start kong: "..result)
+  end
+
   if not skip_wait then
     os.execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
   end
+
   return result, exit_code
 end
 
 function _M.stop_kong(conf_file)
   local conf_file = conf_file and conf_file or TEST_CONF_FILE
-  local exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." stop")
+  local result, exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." stop")
+
+  if exit_code ~= 0 then
+    error("spec_helper cannot stop kong: "..result)
+  end
+
   os.execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
