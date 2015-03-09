@@ -11,10 +11,6 @@ describe("Migrations #tools", function()
     migrations = Migrations(spec_helper.dao_factory)
   end)
 
-  it("first migration should have an init boolean property", function()
-    -- `init` says to the migrations not to record changes in db for this migration
-  end)
-
   describe("#create()", function()
 
     it("should create an empty migration interface for each available dao", function()
@@ -67,6 +63,12 @@ describe("Migrations #tools", function()
       stub(spec_helper.dao_factory, "execute_queries")
       stub(spec_helper.dao_factory, "delete_migration")
       stub(spec_helper.dao_factory, "add_migration")
+    end)
+
+    it("first migration should have an init boolean property", function()
+      -- `init` says to the migrations not to record changes in db for this migration
+      local migration_module = loadfile(path:join(migration_path, files[1]))()
+      assert.True(migration_module.init)
     end)
 
     describe(db_type.." #migrate()", function()
