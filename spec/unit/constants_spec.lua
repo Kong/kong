@@ -1,15 +1,15 @@
 local constants = require "kong.constants"
 local stringy = require "stringy"
 local utils = require "kong.tools.utils"
-local lfs = require "lfs"
+local fs = require "luarocks.fs"
 
 describe("Constants", function()
 
   it("the version set in constants should match the one in the rockspec", function()
     local rockspec_path
-    for filename in lfs.dir("./") do
+    for _, filename in ipairs(fs.list_dir(".")) do
       if stringy.endswith(filename, "rockspec") then
-        rockspec_path  = "./"..filename
+        rockspec_path = filename
         break
       end
     end

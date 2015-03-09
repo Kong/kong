@@ -29,8 +29,7 @@ dependencies = {
   "inspect ~> 3.0-1",
   "luasocket ~> 2.0.2-5",
   "lua_cliargs ~> 2.3-3",
-  "lua-path ~> 0.2.3-1",
-  "luafilesystem ~> 1.6.2"
+  "lua-path ~> 0.2.3-1"
 }
 build = {
   type = "builtin",

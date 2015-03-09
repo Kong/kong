@@ -36,9 +36,9 @@ describe("Migrations #tools", function()
 
   for db_type, v in pairs(spec_helper.configuration.databases_available) do
 
-    local files = {}
-    local migration_path = path:join("./database/migrations", db_type)
-    local fixture_path = path:join(migration_path, "2015-12-12-000000_test_migration.lua")
+    local migrations_names = {} -- used to mock dao's get_migrations for already executed migrations
+    local migrations_path = path:join("./database/migrations", db_type)
+    local fixtures_path = path:join(migrations_path, "2015-12-12-000000_test_migration.lua")
     local fixture_migration = [[
       return {
         name = "2015-12-12-000000_test_migration",
@@ -48,15 +48,17 @@ describe("Migrations #tools", function()
     ]]
 
     setup(function()
-      utils.write_to_file(fixture_path, fixture_migration)
-      local mig_files = utils.retrieve_files(migration_path, '.lua')
+      utils.write_to_file(fixtures_path, fixture_migration)
+      local mig_files = utils.retrieve_files(migrations_path, '.lua')
       for _, mig in ipairs(mig_files) do
-        table.insert(files, mig.name)
+        table.insert(migrations_names, mig:match("[^/]*$"))
       end
+
+      table.sort(migrations_names)
     end)
 
     teardown(function()
-      os.remove(fixture_path)
+      os.remove(fixtures_path)
     end)
 
     before_each(function()
@@ -67,7 +69,7 @@ describe("Migrations #tools", function()
 
     it("first migration should have an init boolean property", function()
       -- `init` says to the migrations not to record changes in db for this migration
-      local migration_module = loadfile(path:join(migration_path, files[1]))()
+      local migration_module = loadfile(path:join(migrations_path, migrations_names[1]))()
       assert.True(migration_module.init)
     end)
 
@@ -79,23 +81,23 @@ describe("Migrations #tools", function()
         local i = 0
         migrations:migrate(function(migration, err)
           assert.truthy(migration)
-          assert.are.same(files[i+1], migration.name..".lua")
+          assert.are.same(migrations_names[i+1], migration.name..".lua")
           assert.falsy(err)
           i = i + 1
         end)
 
-        assert.are.same(#files, i)
+        assert.are.same(#migrations_names, i)
 
         -- all migrations should be recorded in db
         assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was.called(#files)
-        assert.spy(spec_helper.dao_factory.add_migration).was.called(#files)
+        assert.spy(spec_helper.dao_factory.execute_queries).was.called(#migrations_names)
+        assert.spy(spec_helper.dao_factory.add_migration).was.called(#migrations_names)
       end)
 
       describe("Partly already migrated", function()
 
         it("if running with some migrations pending, it should only execute the non-recorded ones", function()
-          spec_helper.dao_factory.get_migrations = spy.new(function() return {files[1]} end)
+          spec_helper.dao_factory.get_migrations = spy.new(function() return {migrations_names[1]} end)
 
           local i = 0
           migrations:migrate(function(migration, err)
@@ -117,7 +119,7 @@ describe("Migrations #tools", function()
     describe("Already migrated", function()
 
       it("if running again, should detect if migrations are already up to date", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function() return files end)
+        spec_helper.dao_factory.get_migrations = spy.new(function() return migrations_names end)
 
         local i = 0
         migrations:migrate(function(migration, err)
@@ -194,7 +196,7 @@ describe("Migrations #tools", function()
       local old_migrations = {}
 
       setup(function()
-        for _, f_name in ipairs(files) do
+        for _, f_name in ipairs(migrations_names) do
           table.insert(old_migrations, f_name:sub(0, -5))
         end
       end)
@@ -300,7 +302,7 @@ describe("Migrations #tools", function()
       local old_migrations = {}
 
       setup(function()
-        for _, f_name in ipairs(files) do
+        for _, f_name in ipairs(migrations_names) do
           table.insert(old_migrations, f_name:sub(0, -5))
         end
       end)
