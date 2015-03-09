@@ -334,15 +334,22 @@ function _M.retrieve_files(path, pattern)
   if not pattern then pattern = "" end
   local files = {}
 
-  for file in lfs.dir(path) do
-    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
-      local f = path..'/'..file
-      local attr = lfs.attributes(f)
-      if attr.mode == "file" then
-        table.insert(files, { file = f, name = file })
+  local function tree(path)
+    for file in lfs.dir(path) do
+      if file ~= "." and file ~= ".." then
+        local f = path..'/'..file
+        local attr = lfs.attributes(f)
+
+        if attr.mode == "directory" then
+          tree(f)
+        elseif attr.mode == "file" and string.match(file, pattern) ~= nil then
+          table.insert(files, { file = f, name = file })
+        end
       end
     end
   end
+
+  tree(path)
 
   return files
 end
