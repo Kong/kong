@@ -9,6 +9,5 @@ _G.dao = {}
 local lua_sources = utils.retrieve_files('./src', '.lua')
 
 for _, source_link in ipairs(lua_sources) do
-  local source_file = assert(loadfile(source_link.file))
-  source_file()
+  local source_file = dofile(source_link)
 end

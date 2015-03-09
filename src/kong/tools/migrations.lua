@@ -12,13 +12,14 @@ function Migrations:new(dao)
   self.dao = dao
   self.options = { keyspace = dao._properties.keyspace }
   self.migrations_files = utils.retrieve_files(path:join(MIGRATION_PATH, dao.type), '.lua')
+  table.sort(self.migrations_files)
 end
 
 -- Createa migration interface for each database available
 function Migrations.create(configuration, name, callback)
   for k, _ in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
-    local file_path = MIGRATION_PATH.."/"..k
+    local file_path = path:join(MIGRATION_PATH, k)
     local file_name = date_str.."_"..name
     local interface = [[
 local Migration = {
@@ -79,9 +80,9 @@ function Migrations:migrate(callback)
   end
 
   -- Execute all new migrations, in order
-  for _, v in ipairs(diff_migrations) do
+  for _, file_path in ipairs(diff_migrations) do
     -- Load our migration script
-    local migration = loadfile(v.file)()
+    local migration = loadfile(file_path)()
 
     -- Generate UP query from string + options
     local up_query = migration.up(self.options)
@@ -96,6 +97,7 @@ function Migrations:migrate(callback)
     if err then
       err = "Cannot record migration "..migration.name..": "..err
     end
+
     callback(migration, err)
     if err then
       break

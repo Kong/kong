@@ -4,7 +4,7 @@ local ltn12 = require "ltn12"
 local yaml = require "yaml"
 local http = require "socket.http"
 local url = require "socket.url"
-local lfs = require "lfs"
+local fs = require "luarocks.fs"
 
 local _M = {}
 
@@ -22,7 +22,6 @@ end
 function _M.is_empty(t)
   return next(t) == nil
 end
-
 
 function _M.deepcopy(orig)
   local orig_type = type(orig)
@@ -44,7 +43,7 @@ _M.sort = {
   ascending = function(a, b) return a < b end
 }
 
-function _M.sort_table(t, f)
+function _M.sort_table_iter(t, f)
   local a = {}
   for n in pairs(t) do table.insert(a, n) end
   table.sort(a, f)
@@ -335,16 +334,12 @@ function _M.retrieve_files(path, pattern)
   local files = {}
 
   local function tree(path)
-    for file in lfs.dir(path) do
-      if file ~= "." and file ~= ".." then
-        local f = path..'/'..file
-        local attr = lfs.attributes(f)
-
-        if attr.mode == "directory" then
-          tree(f)
-        elseif attr.mode == "file" and string.match(file, pattern) ~= nil then
-          table.insert(files, { file = f, name = file })
-        end
+    for _, file in ipairs(fs.list_dir(path)) do
+      local f = path..'/'..file
+      if fs.is_dir(f) then
+        tree(f)
+      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
+        table.insert(files, f)
       end
     end
   end
