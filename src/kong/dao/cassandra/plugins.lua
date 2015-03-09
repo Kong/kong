@@ -104,7 +104,7 @@ function Plugins:find_distinct()
     if err then
       return nil, err
     end
-    for _,v in ipairs(rows) do
+    for _, v in ipairs(rows) do
       -- Rows also contains other properites, so making sure it's a plugin
       if v.name then
         distinct_names[v.name] = true

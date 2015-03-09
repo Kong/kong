@@ -74,9 +74,7 @@ gulp.task('html', ['jekyll'], function () {
       collapseWhitespace: true,
       conservativeCollapse: true,
       removeEmptyAttributes: true,
-      removeAttributeQuotes: true,
       collapseBooleanAttributes: true,
-      removeRedundantAttributes: true,
       removeScriptTypeAttributes: true,
       removeStyleLinkTypeAttributes: true
     }))
