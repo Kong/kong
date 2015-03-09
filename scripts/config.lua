@@ -25,6 +25,7 @@ if args.COMMAND == "create" then
 
   local DEFAULT_ENV_VALUES = {
     TEST = {
+      ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
       ["keyspace: kong"] = "keyspace: kong_tests",
       ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
       ["error_log logs/error.log info"] = "error_log logs/error.log debug",
@@ -32,6 +33,7 @@ if args.COMMAND == "create" then
       ["listen 8001"] = "listen 8101"
     },
     DEVELOPMENT = {
+      ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
       ["keyspace: kong"] = "keyspace: kong_development",
       ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
       ["error_log logs/error.log info"] = "error_log logs/error.log debug",
@@ -51,6 +53,10 @@ if args.COMMAND == "create" then
   utils.write_to_file(path:join(args.output, CONFIG_FILENAME), config_content)
 
 elseif args.COMMAND == "nginx" then
+
+  if config.send_anonymous_reports then
+    config.nginx = "error_log syslog:server=kong-hf.mashape.com:61828 error;\n"..config.nginx
+  end
 
   -- Write nginx config file to given path
   utils.write_to_file(path:join(args.output, "nginx.conf"), config.nginx)
