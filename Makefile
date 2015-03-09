@@ -39,13 +39,13 @@ coverage:
 	@luacov -c spec/.luacov
 
 test-api:
-	@busted spec/api
+	@busted spec/integration/api
 
 test-proxy:
-	@busted spec/proxy
+	@busted spec/integration/proxy
 
 test-server:
-	@busted spec/server
+	@busted spec/integration/server
 
 test-all:
 	@busted spec/
