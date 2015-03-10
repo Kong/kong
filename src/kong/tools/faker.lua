@@ -24,12 +24,12 @@ end
 
 Faker.FIXTURES = {
   api = {
-    { name = "test",  public_dns = "test.com",  target_url = "http://httpbin.org" },
-    { name = "test2", public_dns = "test2.com", target_url = "http://httpbin.org" },
-    { name = "test3", public_dns = "test3.com", target_url = "http://httpbin.org" },
-    { name = "test4", public_dns = "test4.com", target_url = "http://httpbin.org" },
-    { name = "test5", public_dns = "test5.com", target_url = "http://httpbin.org" },
-    { name = "test6", public_dns = "test6.com", target_url = "http://httpbin.org" }
+    { name = "test",  public_dns = "test.com",  target_url = "http://mockbin.com" },
+    { name = "test2", public_dns = "test2.com", target_url = "http://mockbin.com" },
+    { name = "test3", public_dns = "test3.com", target_url = "http://mockbin.com" },
+    { name = "test4", public_dns = "test4.com", target_url = "http://mockbin.com" },
+    { name = "test5", public_dns = "test5.com", target_url = "http://mockbin.com" },
+    { name = "test6", public_dns = "test6.com", target_url = "http://mockbin.com" }
   },
   account = {
     { provider_id = "provider_123" },
