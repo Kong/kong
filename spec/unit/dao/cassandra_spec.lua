@@ -191,7 +191,6 @@ describe("Cassandra DAO #dao #cassandra", function()
       it("should not insert in DB if invalid", function()
         -- Without an api_id, it's a schema error
         local plugin_t = faker:fake_entity("plugin")
-        plugin_t.api_id = nil
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
@@ -463,13 +462,8 @@ describe("Cassandra DAO #dao #cassandra", function()
   describe(":delete()", function()
 
     setup(function()
-      dao_factory:drop()
-      faker:seed()
-    end)
-
-    teardown(function()
-      dao_factory:drop()
-      faker:seed()
+      spec_helper.drop_db()
+      spec_helper.seed_db(100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -502,13 +496,8 @@ describe("Cassandra DAO #dao #cassandra", function()
   describe(":find()", function()
 
     setup(function()
-      dao_factory:drop()
-      faker:seed(true, 100)
-    end)
-
-    teardown(function()
-      dao_factory:drop()
-      faker:seed()
+      spec_helper.drop_db()
+      spec_helper.seed_db(100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -684,7 +673,7 @@ describe("Cassandra DAO #dao #cassandra", function()
     local identifier = uuid()
 
     after_each(function()
-      dao_factory:drop()
+      spec_helper.drop_db()
     end)
 
     it("should return nil when metrics are not existing", function()
@@ -767,6 +756,15 @@ describe("Cassandra DAO #dao #cassandra", function()
         }, metric)
       end
     end)
+
+    it("should throw errors for non supported methods of the base_dao", function()
+      assert.has_error(metrics.find, "metrics:find() not supported")
+      assert.has_error(metrics.insert, "metrics:insert() not supported")
+      assert.has_error(metrics.update, "metrics:update() not supported")
+      assert.has_error(metrics.delete, "metrics:delete() not yet implemented")
+      assert.has_error(metrics.find_by_keys, "metrics:find_by_keys() not supported")
+    end)
+
   end)
 
   describe("Plugins", function()
@@ -774,7 +772,8 @@ describe("Cassandra DAO #dao #cassandra", function()
     local inserted_plugin
 
     setup(function()
-      faker:seed(true, 100)
+      spec_helper.drop_db()
+      spec_helper.seed_db(100)
     end)
 
     it("should find distinct plugins", function()
@@ -800,7 +799,6 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       local plugin_t = faker:fake_entity("plugin")
       plugin_t.api_id = api.id
-      plugin_t.application_id = nil
 
       local plugin, err = dao_factory.plugins:insert(plugin_t)
       assert.falsy(err)

@@ -82,6 +82,10 @@ function _M.drop_db()
   end
 end
 
+function _M.seed_db(random_amount)
+  faker:seed(random_amount)
+end
+
 function _M.reset_db()
   migrations:reset(function(_, err)
     if err then

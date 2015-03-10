@@ -1,7 +1,8 @@
 KONG_HOME = `pwd`
-DEVELOPMENT_CONF ?= kong_DEVELOPMENT.yml
+TESTING_CONF = kong_TEST.yml
+DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
 
-.PHONY: install dev seed drop test coverage test-api test-proxy test-server test-all
+.PHONY: install dev clean seed drop test coverage test-api test-proxy test-server test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \
@@ -17,6 +18,12 @@ dev:
 	@scripts/config.lua -k $(KONG_HOME) -e TEST create
 	@scripts/config.lua -k $(KONG_HOME) -e DEVELOPMENT create
 	@scripts/db.lua -c $(DEVELOPMENT_CONF) migrate
+
+clean:
+	@rm -f luacov.*
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) reset
+	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
+	@rm -rf nginx_tmp
 
 run:
 	@bin/kong -c $(DEVELOPMENT_CONF) start
@@ -39,13 +46,13 @@ coverage:
 	@luacov -c spec/.luacov
 
 test-api:
-	@busted spec/api
+	@busted spec/integration/api
 
 test-proxy:
-	@busted spec/proxy
+	@busted spec/integration/proxy
 
 test-server:
-	@busted spec/server
+	@busted spec/integration/server
 
 test-all:
 	@busted spec/
