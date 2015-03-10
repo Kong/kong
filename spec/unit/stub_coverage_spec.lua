@@ -6,7 +6,7 @@ local utils = require "kong.tools.utils"
 -- Stub DAO for lapis controllers
 _G.dao = {}
 
-local lua_sources = utils.retrieve_files('./src', '.lua')
+local lua_sources = utils.retrieve_files('.//src', '.lua')
 
 for _, source_link in ipairs(lua_sources) do
   local source_file = dofile(source_link)
