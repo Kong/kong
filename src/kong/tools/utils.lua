@@ -98,33 +98,6 @@ function _M.add_error(errors, k, v)
 end
 
 --
--- Scripts utils
---
-local logger = {}
-local logger_mt = {__index=logger}
-
-function logger:new(silent)
-  return setmetatable({ silent = silent }, logger_mt)
-end
-
-function logger:log(str)
-  if not self.silent then
-    print(str)
-  end
-end
-
-function logger:success(str)
-  self:log(_M.green("✔  ")..str)
-end
-
-function logger:error(str)
-  self:log(_M.red("✘  ")..str)
-  os.exit(1)
-end
-
-_M.logger = logger
-
---
 -- DAO utils
 --
 function _M.load_configuration_and_dao(configuration_path)
@@ -350,9 +323,12 @@ function _M.retrieve_files(path, pattern)
 end
 
 --
--- HTTP calls utils
+-- Scripts utils
 --
 
+--
+-- HTTP calls utils
+--
 -- Builds a querystring from a table, separated by `&`
 -- @param tab The key/value parameters
 -- @param key The parent key if the value is multi-dimensional (optional)
@@ -473,6 +449,33 @@ function _M.delete(url, querystring, headers)
     headers = headers
   }
 end
+
+--
+-- Logger
+--
+local logger = {}
+local logger_mt = {__index=logger}
+
+function logger:new(silent)
+  return setmetatable({ silent = silent }, logger_mt)
+end
+
+function logger:log(str)
+  if not self.silent then
+    print(str)
+  end
+end
+
+function logger:success(str)
+  self:log(_M.green("✔  ")..str)
+end
+
+function logger:error(str)
+  self:log(_M.red("✘  ")..str)
+  os.exit(1)
+end
+
+_M.logger = logger
 
 --
 -- Printable
