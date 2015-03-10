@@ -4,7 +4,7 @@ local ltn12 = require "ltn12"
 local yaml = require "yaml"
 local http = require "socket.http"
 local url = require "socket.url"
-local lfs = require "lfs"
+local fs = require "luarocks.fs"
 
 local _M = {}
 
@@ -23,17 +23,32 @@ function _M.is_empty(t)
   return next(t) == nil
 end
 
+function _M.deepcopy(orig)
+  local orig_type = type(orig)
+  local copy
+  if orig_type == 'table' then
+    copy = {}
+    for orig_key, orig_value in next, orig, nil do
+      copy[_M.deepcopy(orig_key)] = _M.deepcopy(orig_value)
+    end
+    setmetatable(copy, _M.deepcopy(getmetatable(orig)))
+  else -- number, string, boolean, etc
+    copy = orig
+  end
+  return copy
+end
+
 _M.sort = {
   descending = function(a, b) return a > b end,
   ascending = function(a, b) return a < b end
 }
 
-function _M.sort_table(t, f)
+function _M.sort_table_iter(t, f)
   local a = {}
   for n in pairs(t) do table.insert(a, n) end
   table.sort(a, f)
-  local i = 0      -- iterator variable
-  local iter = function ()   -- iterator function
+  local i = 0
+  local iter = function ()
     i = i + 1
     if a[i] == nil then return nil
     else return a[i], t[a[i]]
@@ -318,15 +333,18 @@ function _M.retrieve_files(path, pattern)
   if not pattern then pattern = "" end
   local files = {}
 
-  for file in lfs.dir(path) do
-    if file ~= "." and file ~= ".." and string.match(file, pattern) ~= nil then
+  local function tree(path)
+    for _, file in ipairs(fs.list_dir(path)) do
       local f = path..'/'..file
-      local attr = lfs.attributes(f)
-      if attr.mode == "file" then
-        table.insert(files, { file = f, name = file })
+      if fs.is_dir(f) then
+        tree(f)
+      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
+        table.insert(files, f)
       end
     end
   end
+
+  tree(path)
 
   return files
 end

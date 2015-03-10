@@ -1,5 +1,3 @@
--- Copyright (C) Mashape, Inc.
-
 local BaseController = require "kong.web.routes.base_controller"
 
 local Apis = BaseController:extend()

@@ -8,20 +8,20 @@ local kWebURL = spec_helper.API_URL
 local ENDPOINTS = {
   {
     collection = "apis",
-    total = 7,
+    total = table.getn(spec_helper.faker.FIXTURES.api) + 1,
     entity = {
-      public_dns = "api.httpbin.com",
-      name = "httpbin",
-      target_url = "http://httpbin.org"
+      public_dns = "api.mockbin.com",
+      name = "mockbin",
+      target_url = "http://mockbin.com"
     },
     update_fields = {
-      public_dns = "newapi.httpbin.com"
+      public_dns = "newapi.mockbin.com"
     },
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
   {
     collection = "accounts",
-    total = 3,
+    total = table.getn(spec_helper.faker.FIXTURES.account) + 1,
     entity = {
       provider_id = "123456789"
     },
@@ -32,7 +32,7 @@ local ENDPOINTS = {
   },
   {
     collection = "applications",
-    total = 4,
+    total = table.getn(spec_helper.faker.FIXTURES.application) + 1,
     entity = {
       public_key = "PUB_key",
       secret_key = "SEC_key",
@@ -48,7 +48,7 @@ local ENDPOINTS = {
   },
   {
     collection = "plugins",
-    total = 8,
+    total = table.getn(spec_helper.faker.FIXTURES.plugin) + 1,
     entity = {
       name = "ratelimiting",
       api_id = function()
