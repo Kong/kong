@@ -1,5 +1,6 @@
 local stringy = require "stringy"
 local url = require("socket.url")
+local cache = require "kong.tools.cache"
 
 local _M = {}
 
