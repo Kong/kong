@@ -41,7 +41,10 @@ local function log(premature, conf, message)
 end
 
 function _M.execute(conf)
-  utils.create_timer(log, conf, ngx.ctx.log_message)
+  local ok, err = ngx.timer.at(0, log, conf, ngx.ctx.log_message)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to create timer: ", err)
+  end
 end
 
 return _M
