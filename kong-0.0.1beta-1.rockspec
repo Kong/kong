@@ -29,7 +29,8 @@ dependencies = {
   "inspect ~> 3.0-1",
   "luasocket ~> 2.0.2-5",
   "lua_cliargs ~> 2.3-3",
-  "lua-path ~> 0.2.3-1"
+  "lua-path ~> 0.2.3-1",
+  "luatz ~> 0.3-1"
 }
 build = {
   type = "builtin",
@@ -40,6 +41,9 @@ build = {
     ["kong.constants"] = "src/kong/constants.lua",
 
     ["kong.tools.utils"] = "src/kong/tools/utils.lua",
+    ["kong.tools.timestamp"] = "src/kong/tools/timestamp.lua",
+    ["kong.tools.cache"] = "src/kong/tools/cache.lua",
+    ["kong.tools.http_client"] = "src/kong/tools/http_client.lua",
     ["kong.tools.faker"] = "src/kong/tools/faker.lua",
     ["kong.tools.migrations"] = "src/kong/tools/migrations.lua",
 

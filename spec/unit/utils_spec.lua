@@ -3,80 +3,78 @@ local cjson = require "cjson"
 
 describe("Utils #tools", function()
 
-  describe("Cache", function()
+  describe("Table utils", function()
+    it("should sort a table in ascending order by its keys without order set", function()
+      local t = {
+        [1] = "one",
+        [3] = "three",
+        [2] = "two"
+      }
 
-    it("should return a valid API cache key", function()
-      assert.are.equal("apis/mockbin.com", utils.cache_api_key("mockbin.com"))
+      local keyset = {}
+      for k,v in utils.sort_table_iter(t) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({1, 2, 3}, keyset)
     end)
+    it("should sort a table in ascending order by its keys with ascending order set", function()
+      local t = {
+        [1] = "one",
+        [3] = "three",
+        [2] = "two"
+      }
 
-    it("should return a valid PLUGIN cache key", function()
-      assert.are.equal("plugins/authentication/api123/app123", utils.cache_plugin_key("authentication", "api123", "app123"))
-      assert.are.equal("plugins/authentication/api123", utils.cache_plugin_key("authentication", "api123"))
+      local keyset = {}
+      for k,v in utils.sort_table_iter(t, utils.sort.ascending) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({1, 2, 3}, keyset)
     end)
+    it("should sort a table in descending order by its keys with descending order set", function()
+      local t = {
+        [1] = "one",
+        [3] = "three",
+        [2] = "two"
+      }
 
-    it("should return a valid Application cache key", function()
-      assert.are.equal("applications/username", utils.cache_application_key("username"))
+      local keyset = {}
+      for k,v in utils.sort_table_iter(t, utils.sort.descending) do
+        table.insert(keyset, k)
+      end
+
+      assert.are.same({3, 2, 1}, keyset)
     end)
+    it("should sort an array in ascending order by its keys without order set", function()
+      local t = { 3, 1, 2 }
 
-  end)
+      local keyset = {}
+      for k,v in utils.sort_table_iter(t) do
+        table.insert(keyset, k)
+      end
 
-  describe("HTTP", function()
-
-    describe("GET", function()
-
-      it("should return a valid GET response", function()
-        local response, status, headers = utils.get("http://mockbin.com/request", {name = "Mark"}, {Custom = "pippo"})
-        assert.are.equal(200, status)
-        assert.truthy(headers)
-        assert.truthy(response)
-        local parsed_response = cjson.decode(response)
-        assert.are.equal("Mark", parsed_response.queryString.name)
-        assert.are.equal("pippo", parsed_response.headers.custom)
-      end)
-
+      assert.are.same({1, 2, 3}, keyset)
     end)
+    it("should sort an array in ascending order by its keys with ascending order set", function()
+      local t = { 3, 1, 2 }
 
-    describe("POST", function()
+      local keyset = {}
+      for k,v in utils.sort_table_iter(t, utils.sort.ascending) do
+        table.insert(keyset, k)
+      end
 
-      it("should return a valid POST response", function()
-        local response, status, headers = utils.post("http://mockbin.com/request", {name = "Mark"}, {Custom = "pippo"})
-        assert.are.equal(200, status)
-        assert.truthy(headers)
-        assert.truthy(response)
-        local parsed_response = cjson.decode(response)
-        assert.are.equal("Mark", parsed_response.postData.params.name)
-        assert.are.equal("pippo", parsed_response.headers.custom)
-      end)
-
+      assert.are.same({1, 2, 3}, keyset)
     end)
+    it("should sort an array in descending order by its keys with descending order set", function()
+      local t = { 3, 1, 2 }
 
-    describe("PUT", function()
+      local keyset = {}
+      for k,v in utils.sort_table_iter(t, utils.sort.descending) do
+        table.insert(keyset, k)
+      end
 
-      it("should return a valid PUT response", function()
-        local response, status, headers = utils.put("http://mockbin.com/request", {name="Mark"}, {Custom = "pippo"})
-        assert.are.equal(200, status)
-        assert.truthy(headers)
-        assert.truthy(response)
-        local parsed_response = cjson.decode(response)
-        local json_params = cjson.decode(parsed_response.postData.text)
-        assert.are.equal("Mark", json_params.name)
-        assert.are.equal("pippo", parsed_response.headers.custom)
-      end)
-
-    end)
-
-    describe("DELETE", function()
-
-      it("should return a valid DELETE response", function()
-        local response, status, headers = utils.delete("http://mockbin.com/request", {name = "Mark"}, {Custom = "pippo"})
-        assert.are.equal(200, status)
-        assert.truthy(headers)
-        assert.truthy(response)
-        local parsed_response = cjson.decode(response)
-        assert.are.equal("Mark", parsed_response.queryString.name)
-        assert.are.equal("pippo", parsed_response.headers.custom)
-      end)
-
+      assert.are.same({3, 2, 1}, keyset)
     end)
   end)
 

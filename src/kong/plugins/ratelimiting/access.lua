@@ -1,9 +1,10 @@
 local constants = require "kong.constants"
+local timestamp = require "kong.tools.timestamp"
 
 local _M = {}
 
 function _M.execute(conf)
-  local current_timestamp = utils.get_utc()
+  local current_timestamp = timestamp.get_utc()
 
   -- Compute is identifier is by ip address or application id
   local identifier

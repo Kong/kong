@@ -1,5 +1,5 @@
 local spec_helper = require "spec.spec_helpers"
-local utils = require "kong.tools.utils"
+local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
 
 local created_ids = {}
@@ -81,7 +81,7 @@ describe("Web API #web", function()
   describe("/", function()
 
     it("should return Kong's version and a welcome message", function()
-      local response, status, headers = utils.get(kWebURL)
+      local response, status, headers = http_client.get(kWebURL)
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.truthy(body.version)
@@ -95,7 +95,7 @@ describe("Web API #web", function()
 
       it("should not create on POST with invalid parameters", function()
         if v.collection ~= "accounts" then
-          local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", {})
+          local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", {})
           assert.are.equal(400, status)
           assert.are.equal(v.error_message, response)
         end
@@ -109,7 +109,7 @@ describe("Web API #web", function()
           end
         end
 
-        local response, status, headers = utils.post(kWebURL.."/"..v.collection.."/", v.entity)
+        local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity)
         local body = cjson.decode(response)
         assert.are.equal(201, status)
         assert.truthy(body)
@@ -119,7 +119,7 @@ describe("Web API #web", function()
       end)
 
       it("should GET all entities", function()
-        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/")
+        local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/")
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body.data)
@@ -129,7 +129,7 @@ describe("Web API #web", function()
       end)
 
       it("should GET one entity", function()
-        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
+        local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body)
@@ -137,7 +137,7 @@ describe("Web API #web", function()
       end)
 
       it("should return not found on GET", function()
-        local response, status, headers = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
+        local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
         local body = cjson.decode(response)
         assert.are.equal(404, status)
         assert.truthy(body)
@@ -145,7 +145,7 @@ describe("Web API #web", function()
       end)
 
       it("should update a created entity on PUT", function()
-        local data = utils.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
+        local data = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         local body = cjson.decode(data)
 
         -- Create new body
@@ -153,7 +153,7 @@ describe("Web API #web", function()
           body[k] = v
         end
 
-        local response, status, headers = utils.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
+        local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
         body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.truthy(body)
@@ -171,7 +171,7 @@ describe("Web API #web", function()
     describe("#"..v.collection, function()
 
       it("should delete an entity on DELETE", function()
-        local response, status, headers = utils.delete(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
+        local response, status, headers = http_client.delete(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
         assert.are.equal(204, status)
       end)
 
