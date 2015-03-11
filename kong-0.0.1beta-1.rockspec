@@ -43,6 +43,7 @@ build = {
 
     ["kong.tools.utils"] = "src/kong/tools/utils.lua",
     ["kong.tools.timestamp"] = "src/kong/tools/timestamp.lua",
+    ["kong.tools.cache"] = "src/kong/tools/cache.lua",
     ["kong.tools.faker"] = "src/kong/tools/faker.lua",
     ["kong.tools.migrations"] = "src/kong/tools/migrations.lua",
 

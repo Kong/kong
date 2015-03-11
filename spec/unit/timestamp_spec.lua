@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 local luatz = require "luatz"
 
-describe("Version #version", function()
+describe("Timestamp", function()
 
   it("should get UTC time", function()
     assert.truthy(timestamp.get_utc())
