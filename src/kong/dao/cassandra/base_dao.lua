@@ -6,6 +6,7 @@ local rex = require "rex_pcre"
 local constants = require "kong.constants"
 local validate = require("kong.dao.schemas").validate
 local utils = require "kong.tools.utils"
+local timestamp = require "kong.tools.timestamp"
 
 local error_types = constants.DATABASE_ERROR_TYPES
 
@@ -355,7 +356,7 @@ function BaseDao:insert(t)
   end
 
   -- Override created_at and id by default value
-  t.created_at = utils.get_utc() * 1000
+  t.created_at = timestamp.get_utc()
   t.id = uuid()
 
   -- Validate schema
