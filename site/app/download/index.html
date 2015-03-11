@@ -1,30 +1,24 @@
 ---
 title: Download
 sitemap: true
+header_title: Download Kong
+header_icon: /assets/images/icons/icn-download.svg
 ---
 
 <div class="page page-download">
-  <header class="page-header">
-    <div class="container">
-      <div class="page-header-icon">
-        <img src="/assets/images/icons/06-icn-download.svg" alt=""/>
-      </div>
-      <div class="page-header-title">
-        <h2>Download Kong</h2>
-      </div>
-    </div>
-  </header>
+
+  {% include header.html %}
 
   <section class="content-section">
     <div class="container">
       <div class="select-download-method">
         <h2>Select your preferred method:</h2>
-        <p>Current Version: 0.0.1 Beta (<a href="#">see log history</a>)</p>
+        <p>Latest Version: 0.0.1 Beta (<a href="{{site.repo}}/blob/master/CHANGELOG.md">see log history</a>)</p>
       </div>
 
       <div class="tab-list-wrap">
         <ul class="tab-list row">
-          <li class="active"><a href="#zip">.Zip / Tar.gz</a></li>
+          <li class="active"><a href="#zip">.zip / tar.gz</a></li>
           <li><a href="#centos">CentOS</a></li>
           <li><a href="#debian">Debian</a></li>
           <li><a href="#osx">Mac OS X</a></li>
@@ -49,6 +43,7 @@ sitemap: true
           <div class="tab-pane" id="docker">
             {% markdown pages/download/docker.md %}
           </div>
+          Something went wrong? <a href="/docs">Check out the Docs</a>
         </div>
       </div>
     </div>
