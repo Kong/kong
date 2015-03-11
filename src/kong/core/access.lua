@@ -40,7 +40,7 @@ function _M.execute(conf)
   -- Retrieving the API from the Host that has been requested
   local host = stringy.strip(stringy.split(ngx.var.http_host, ":")[1])
 
-  local api = utils.cache_get_and_set(utils.cache_api_key(host), function()
+  local api = cache.get_and_set(cache.api_key(host), function()
     local apis, err = dao.apis:find_by_keys({public_dns = host})
     if err then
       ngx.log(ngx.ERR, err.message)
