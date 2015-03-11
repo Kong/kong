@@ -3,7 +3,7 @@ destination: .app
 layouts: _layouts
 exclude: ['node_modules', '.config']
 keep_files: ['assets']
-timezone: America/Toronto
+timezone: America/San_Francisco
 
 defaults:
   -
@@ -18,3 +18,4 @@ future: true
 name: Kong by Mashape
 domain: getkong.org
 url: http://getkong.org
+repo: https://github.com/Mashape/kong

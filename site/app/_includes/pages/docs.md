@@ -1,10 +1,8 @@
-# Overview
+## What is Kong?
 
 Welcome to the Kong official documentation, that will help you setting up Kong, configuring it and operating it. We reccomend reading every section of this document to have a full understanding of the project.
 
 If you have more specific questions about Kong, please join us on [Gitter][gitter-url] and the project maintainers will be happy to answer any of your questions.
-
-## What is Kong?
 
 Kong is a scalable, lightweight, open source API Layer (also called *API Gateway* or *API Middleware*) that runs in front of any RESTful API and provides additional functionalities to the underlying APIs.
 
@@ -56,7 +54,7 @@ Kong Server requires Apache Cassandra running alongside the Proxy Server. It is 
 
 Cassandra has been chosen because is easy to scale up and down just by adding or removing nodes, and because it can be deployed in lots of different environments, from a single machine to a multi-datacenter cluster.
 
-#Run it for the first time
+# Run it for the first time
 
 Running Kong is very easy and will take a couple of minutes. To get started quickly choose between one of the following deployment options:
 

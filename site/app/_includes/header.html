@@ -1,0 +1,15 @@
+<header class="page-header">
+  <div class="container">
+    {% if page.header_icon %}
+    <div class="page-header-icon">
+      <img src="{{ page.header_icon }}" alt="" />
+    </div>
+    {% endif %}
+    <div class="page-header-title">
+      <h2>{{ page.header_title }}</h2>
+      {% if page.header_caption %}
+      <p>{{ page.header_caption }}</p>
+      {% endif %}
+    </div>
+  </div>
+</header>
