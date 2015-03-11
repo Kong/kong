@@ -3,6 +3,7 @@ local spec_helper = require "spec.spec_helpers"
 local cassandra = require "cassandra"
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
+local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
 local uuid = require "uuid"
 
@@ -689,7 +690,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     it("should return nil when metrics are not existing", function()
       local current_timestamp = 1424217600
-      local periods = utils.get_timestamps(current_timestamp)
+      local periods = timestamp.get_timestamps(current_timestamp)
       -- Very first select should return nil
       for period, period_date in pairs(periods) do
         local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
@@ -700,7 +701,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     it("should increment metrics with the given period", function()
       local current_timestamp = 1424217600
-      local periods = utils.get_timestamps(current_timestamp)
+      local periods = timestamp.get_timestamps(current_timestamp)
 
       -- First increment
       local ok, err = metrics:increment(api_id, identifier, current_timestamp)
@@ -740,7 +741,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       -- 1 second delay
       current_timestamp = 1424217601
-      periods = utils.get_timestamps(current_timestamp)
+      periods = timestamp.get_timestamps(current_timestamp)
 
        -- Third increment
       local ok, err = metrics:increment(api_id, identifier, current_timestamp)
