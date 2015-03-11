@@ -1,15 +1,9 @@
-local Object = require "classic"
+local path = require("path").new("/")
 local utils = require "kong.tools.utils"
+local Object = require "classic"
 
--- Constants
-local KONG_HOME = os.getenv("KONG_HOME")
-if KONG_HOME and KONG_HOME ~= "" then
-  KONG_HOME = KONG_HOME.."/"
-else
-  KONG_HOME = ""
-end
-
-local MIGRATION_PATH = KONG_HOME.."database/migrations"
+local KONG_HOME = os.getenv("KONG_HOME") and os.getenv("KONG_HOME") or "."
+local MIGRATION_PATH = path:join(KONG_HOME, "database/migrations")
 
 -- Migrations
 local Migrations = Object:extend()
@@ -17,13 +11,15 @@ local Migrations = Object:extend()
 function Migrations:new(dao)
   self.dao = dao
   self.options = { keyspace = dao._properties.keyspace }
-  self.migrations_files = utils.retrieve_files(MIGRATION_PATH.."/"..dao.type, '.lua')
+  self.migrations_files = utils.retrieve_files(path:join(MIGRATION_PATH, dao.type), '.lua')
+  table.sort(self.migrations_files)
 end
 
+-- Createa migration interface for each database available
 function Migrations.create(configuration, name, callback)
   for k, _ in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
-    local file_path = MIGRATION_PATH.."/"..k
+    local file_path = path:join(MIGRATION_PATH, k)
     local file_name = date_str.."_"..name
     local interface = [[
 local Migration = {
@@ -50,13 +46,13 @@ return Migration
     ]]
 
     if callback then
-      callback(interface, file_path, file_name)
+      callback(interface, file_path, file_name, k)
     end
   end
 end
 
 -- Execute all migrations UP
--- @param {function} callback A function to execute on each migration (ie: for logging)
+-- @param callback A function to execute on each migration (ie: for logging)
 function Migrations:migrate(callback)
   local old_migrations, err = self.dao:get_migrations()
   if err then
@@ -84,9 +80,9 @@ function Migrations:migrate(callback)
   end
 
   -- Execute all new migrations, in order
-  for _, v in ipairs(diff_migrations) do
+  for _, file_path in ipairs(diff_migrations) do
     -- Load our migration script
-    local migration = loadfile(v.file)()
+    local migration = loadfile(file_path)()
 
     -- Generate UP query from string + options
     local up_query = migration.up(self.options)
@@ -101,12 +97,16 @@ function Migrations:migrate(callback)
     if err then
       err = "Cannot record migration "..migration.name..": "..err
     end
+
     callback(migration, err)
+    if err then
+      break
+    end
   end
 end
 
 -- Take the latest executed migration and DOWN it
--- @param {function} callback A function to execute (for consistency with other functions of this module)
+-- @param callback A function to execute (for consistency with other functions of this module)
 function Migrations:rollback(callback)
   local old_migrations, err = self.dao:get_migrations()
   if err then
@@ -116,7 +116,7 @@ function Migrations:rollback(callback)
 
   local migration_to_rollback
   if old_migrations and #old_migrations > 0 then
-    migration_to_rollback = loadfile(MIGRATION_PATH.."/"..self.dao.type.."/"..old_migrations[#old_migrations]..".lua")()
+    migration_to_rollback = loadfile(path:join(MIGRATION_PATH, self.dao.type, old_migrations[#old_migrations])..".lua")()
   else
     -- No more migration to rollback
     callback(nil, nil)

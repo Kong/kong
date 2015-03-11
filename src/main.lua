@@ -111,7 +111,7 @@ local function init_plugins()
   })
 
   -- Add the plugins in a sorted order
-  for _, v in utils.sort_table(unsorted_plugins, utils.sort.descending) do -- In descending order
+  for _, v in utils.sort_table_iter(unsorted_plugins, utils.sort.descending) do -- In descending order
     if v then
       for _, p in ipairs(v) do
         table.insert(result, p)
