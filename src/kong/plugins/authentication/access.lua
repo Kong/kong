@@ -1,6 +1,7 @@
 local constants = require "kong.constants"
 local stringy = require "stringy"
 local cjson = require "cjson"
+local cache = require "kong.tools.cache"
 
 local _M = {}
 
@@ -161,7 +162,7 @@ function _M.execute(conf)
 
   -- Make sure we are not sending an empty table to find_by_keys
   if public_key then
-    application = utils.cache_get_and_set(utils.cache_application_key(public_key), function()
+    application = cache.get_and_set(cache.application_key(public_key), function()
       local applications, err = dao.applications:find_by_keys { public_key = public_key }
       local result
       if err then

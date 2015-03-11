@@ -1,6 +1,6 @@
 local cassandra = require "cassandra"
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local utils = require "kong.tools.utils"
+local timestamp = require "kong.tools.timestamp"
 
 local Metrics = BaseDao:extend()
 
@@ -30,7 +30,7 @@ function Metrics:new(properties)
 end
 
 function Metrics:increment(api_id, identifier, current_timestamp)
-  local periods = utils.get_timestamps(current_timestamp)
+  local periods = timestamp.get_timestamps(current_timestamp)
   local batch = cassandra.BatchStatement(cassandra.batch_types.COUNTER)
 
   for period, period_date in pairs(periods) do
@@ -46,7 +46,7 @@ function Metrics:increment(api_id, identifier, current_timestamp)
 end
 
 function Metrics:find_one(api_id, identifier, current_timestamp, period)
-  local periods = utils.get_timestamps(current_timestamp)
+  local periods = timestamp.get_timestamps(current_timestamp)
 
   local metric, err = Metrics.super._execute(self, self._statements.select_one, {
     cassandra.uuid(api_id),
