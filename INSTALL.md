@@ -19,7 +19,7 @@ Kong can run in [Docker][docker-url]. Image and instructions are on [mashape/doc
 We need Lua 5.1 and luarocks (it's 2.0.0 but it'll do it):
 
 ```
-apt-get install lua5.1
+apt-get install lua5.1 lua5.1-dev
 ```
 
 Install luarocks:

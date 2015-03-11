@@ -3,7 +3,7 @@ language: erlang
 env:
   global:
     - LUAROCKS=2.2.0
-    - OPENRESTY=1.7.7.2
+    - OPENRESTY=1.7.10.1
     - CASSANDRA=2.1.2
   matrix:
     - LUA=lua5.1

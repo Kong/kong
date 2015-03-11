@@ -54,7 +54,7 @@ make test-all
 - Run it:
 
 ```
-bin/kong -c kong.yml
+bin/kong -c kong.yml start
 ```
 
 #### Makefile
