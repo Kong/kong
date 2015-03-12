@@ -4,7 +4,7 @@
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 export KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
-# Properties
+# Setting configuration path
 if [ -f /etc/kong.yml ]; then
   export KONG_CONF=/etc/kong.yml
   printf "Giving priority to configuration stored at "$KONG_CONF" - To override use -c option\n"
@@ -12,6 +12,7 @@ else
   export KONG_CONF=$KONG_HOME/kong.yml
 fi
 
+# Setting nginx output path
 nginx_output=$(lua -e "print(require('yaml').load(require('kong.tools.utils').read_file('$KONG_CONF')).output)")
 if [ "$nginx_output" == "nil" ]; then
   export NGINX_TMP=$KONG_HOME/nginx_tmp
@@ -44,6 +45,11 @@ function real_path_func {
   fi
 }
 
+function print_start_error {
+  printf "Starting Kong"
+  printf "$(tput setaf 1) [$1]\n$(tput sgr 0)"
+}
+
 ##############
 # Operations #
 ##############
@@ -66,11 +72,6 @@ function show_help {
 
 function show_version {
   printf "Kong version: 0.0.1beta-1\n"
-}
-
-function print_start_error {
-  printf "Starting Kong"
-  printf "$(tput setaf 1) [$1]\n$(tput sgr 0)"
 }
 
 function start {
