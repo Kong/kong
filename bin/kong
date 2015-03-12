@@ -37,7 +37,7 @@ function real_path_func {
 ##############
 
 function show_help {
-  printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
+  printf "Usage: kong [OPTION]... {start|stop|restart}\n
 \t-c    specify the path to a custom Kong configuration file
 \t      default is: '$KONG_HOME/kong.yml'
 \t-v    output version informations and exit
@@ -47,7 +47,6 @@ function show_help {
 \tstop       stop a running Kong
 \trestart    restart Kong
 \t           it is equivalent to executing 'stop' and 'start' in succession
-\tmigrate    performs a database migration, execute this operation carefully
 \n"
 }
 
@@ -56,7 +55,7 @@ function show_version {
 }
 
 function start {
-  printf "Starting Kong"
+  printf "Starting Kong..."
 
   mkdir -p $NGINX_TMP/logs
   touch $NGINX_TMP/logs/error.log
@@ -69,15 +68,6 @@ function start {
   else
     printf "$(tput setaf 1) [ERROR]\n$(tput sgr 0)"
     printf "\nYou can check what error has been returned by looking at the error log file"
-    exit 1
-  fi
-}
-
-function migrate {
-  $KONG_HOME/scripts/db.lua -c $KONG_CONF migrate
-  if [ $? -eq 0 ]; then
-    exit 0
-  else
     exit 1
   fi
 }
@@ -135,9 +125,6 @@ case "$@" in
       ;;
   stop)
       stop
-      ;;
-  migrate)
-      migrate
       ;;
   restart)
       restart
