@@ -44,7 +44,7 @@ function _M.start_kong(conf_file, skip_wait)
   end
 
   if not skip_wait then
-    os.execute("while ! [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+    os.execute("while ! [ `pgrep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
   end
 
   return result, exit_code
@@ -58,7 +58,7 @@ function _M.stop_kong(conf_file)
     error("spec_helper cannot stop kong: "..result)
   end
 
-  os.execute("while [ `ps aux | grep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+  os.execute("while [ `pgrep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
 end
 
 function _M.prepare_db()
