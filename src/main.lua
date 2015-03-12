@@ -43,7 +43,7 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
         name = plugin_name
       }
       if err then
-        ngx.log(ngx.ERR, err.message)
+        ngx.log(ngx.ERR, err)
         utils.show_error(500)
       end
 
@@ -142,7 +142,7 @@ function _M.init()
   -- Initializing DAO
   local err = dao:prepare()
   if err then
-    error("Cannot prepare statements: "..err.message)
+    error("Cannot prepare statements: "..err)
   end
 
   -- Initializing plugins
