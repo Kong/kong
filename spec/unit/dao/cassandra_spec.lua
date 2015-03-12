@@ -1,13 +1,14 @@
 local CassandraFactory = require "kong.dao.cassandra.factory"
 local spec_helper = require "spec.spec_helpers"
+local timestamp = require "kong.tools.timestamp"
 local cassandra = require "cassandra"
 local constants = require "kong.constants"
+local DaoError = require "kong.dao.error"
 local utils = require "kong.tools.utils"
-local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
 local uuid = require "uuid"
 
--- Raw session for check purposes
+-- Raw session for double-check purposes
 local session
 -- Load everything we need from the spec_helper
 local faker = spec_helper.faker
@@ -27,6 +28,16 @@ local function describe_all_collections(tests_cb)
     end)
   end
 end
+
+local function daoError(state, arguments)
+  local stub_err = DaoError("", "")
+  return getmetatable(stub_err) == getmetatable(arguments[1])
+end
+
+local say = require("say")
+say:set("assertion.daoError.positive", "Expected %s\nto be a DaoError")
+say:set("assertion.daoError.negative", "Expected %s\nto not be a DaoError")
+assert:register("assertion", "daoError", daoError, "assertion.daoError.positive", "assertion.daoError.negative")
 
 -- Let's go
 describe("Cassandra DAO #dao #cassandra", function()
@@ -64,6 +75,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
       local err = new_factory:prepare()
       assert.truthy(err)
+      assert.is_daoError(err)
       assert.True(err.database)
       assert.are.same("connection refused", err.message)
     end)
@@ -116,6 +128,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
         local api, err = dao_factory.apis:insert(api_t)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.unique)
         assert.are.same("name already exists with value "..api_t.name, err.message.name)
         assert.falsy(api)
@@ -130,6 +143,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(api)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.unique)
         assert.are.same("name already exists with value "..api_t.name, err.message.name)
       end)
@@ -157,6 +171,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.schema)
         assert.are.same("account_id is required", err.message.account_id)
 
@@ -167,6 +182,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.foreign)
         assert.are.same("account_id "..app_t.account_id.." does not exist", err.message.account_id)
       end)
@@ -195,6 +211,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.schema)
         assert.are.same("api_id is required", err.message.api_id)
 
@@ -205,6 +222,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
 
@@ -216,6 +234,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
         assert.are.same("application_id "..plugin_t.application_id.." does not exist", err.message.application_id)
@@ -264,6 +283,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.unique)
         assert.are.same("Plugin already exists", err.message)
       end)
@@ -276,6 +296,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.are.same("Plugin \"world domination plugin\" not found", err.message.value)
       end)
 
@@ -312,6 +333,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         plugin_t.value.authentication_type = "hello"
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.truthy(err.schema)
         assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message["value.authentication_type"])
         assert.falsy(plugin)
@@ -388,6 +410,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local api, err = dao_factory.apis:update(api_t)
         assert.falsy(api)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.unique)
         assert.are.same("public_dns already exists with value "..api_t.public_dns, err.message.public_dns)
       end)
@@ -590,6 +613,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
         local results, err = dao_factory[collection]:find_by_keys(t)
         assert.truthy(err)
+        assert.is_daoError(err)
         assert.True(err.schema)
         assert.falsy(results)
 
