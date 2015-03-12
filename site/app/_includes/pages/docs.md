@@ -246,6 +246,7 @@ nginx: |
 Here is a detailed description for each entry:
 
 * `plugins_available` describes an array of plugins that are available and can be used by the server. You can use only the plugins that are being specified here.
+* `output` optionally sets the output directory of the Kong working dir and its logs. If not set the Kong installation directory will be used instead.
 * `database` is the database Kong is going to use. It's `cassandra` by default and it's the only one supported at the moment.
 * `databases_available` describes the configuration to use when connecting to the database.
 * `send_anonymous_reports` tells if the system is allowed to send anonymous error logs to a remote logging server in order to allow the maintainers of Kong to fix potential bugs and errors.
