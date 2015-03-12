@@ -4,9 +4,22 @@
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 export KONG_HOME="$(echo $SCRIPT_DIR | sed -e 's/\/[^\/]*$//')"
 
-# Properties
-export KONG_CONF=$KONG_HOME/kong.yml
-NGINX_TMP=$KONG_HOME/nginx_tmp
+# Setting configuration path
+if [ -f /etc/kong.yml ]; then
+  export KONG_CONF=/etc/kong.yml
+  printf "Giving priority to configuration stored at "$KONG_CONF" - To override use -c option\n"
+else
+  export KONG_CONF=$KONG_HOME/kong.yml
+fi
+
+# Setting nginx output path
+nginx_output=$(lua -e "print(require('yaml').load(require('kong.tools.utils').read_file('$KONG_CONF')).output)")
+if [ "$nginx_output" == "nil" ]; then
+  export NGINX_TMP=$KONG_HOME/nginx_tmp
+else
+  export NGINX_TMP=$nginx_output
+fi
+
 PID=$NGINX_TMP/nginx.pid
 
 ######################
@@ -32,6 +45,11 @@ function real_path_func {
   fi
 }
 
+function print_start_error {
+  printf "Starting Kong"
+  printf "$(tput setaf 1) [$1]\n$(tput sgr 0)"
+}
+
 ##############
 # Operations #
 ##############
@@ -48,27 +66,43 @@ function show_help {
 \trestart    restart Kong
 \t           it is equivalent to executing 'stop' and 'start' in succession
 \tmigrate    performs a database migration, execute this operation carefully
+\tversion    output version informations and exit
 \n"
 }
 
 function show_version {
-  printf "Kong Version 0.1\n"
+  printf "Kong version: 0.0.1beta-1\n"
 }
 
 function start {
-  printf "Starting Kong"
+  if [ -f $PID ]; then
+    if ps -p $(cat $PID) > /dev/null
+    then
+      print_start_error "ALREADY RUNNING"
+      exit 1
+    fi
+  fi
 
-  mkdir -p $NGINX_TMP/logs
+  printf "Kong (configuration at "$KONG_CONF" output at "$NGINX_TMP")\n"
+
+  mkdir -p $NGINX_TMP/logs &> /dev/null
+  if [ $? -ne 0 ]; then
+    printf "Cannot operate on $NGINX_TMP - Make sure you have the right permissions.\n\n"
+    print_start_error "ERROR"
+    exit 1
+  fi
+
   touch $NGINX_TMP/logs/error.log
   touch $NGINX_TMP/logs/access.log
   $KONG_HOME/scripts/config.lua -c $KONG_CONF -o $NGINX_TMP nginx
   nginx -p $NGINX_TMP -c $NGINX_TMP/nginx.conf
 
   if [ $? -eq 0 ]; then
+    printf "Starting Kong"
     printf "$(tput setaf 2) [OK]\n$(tput sgr 0)"
   else
-    printf "$(tput setaf 1) [ERROR]\n$(tput sgr 0)"
-    printf "\nYou can check what error has been returned by looking at the error log file"
+    printf "\nYou can get more information about this error by checking the error log file.\n\n"
+    print_start_error "ERROR"
     exit 1
   fi
 }
@@ -136,11 +170,14 @@ case "$@" in
   stop)
       stop
       ;;
+  restart)
+      restart
+      ;;
   migrate)
       migrate
       ;;
-  restart)
-      restart
+  version)
+      show_version
       ;;
   *)
       show_help
