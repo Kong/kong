@@ -3,6 +3,7 @@
 local stringy = require "stringy"
 local Object = require "classic"
 local cjson = require "cjson"
+local utils = require "kong.tools.utils"
 local json_params = require("lapis.application").json_params
 
 local BaseController = Object:extend()
@@ -25,27 +26,6 @@ local function render_list_response(req, data, size)
   end
 end
 
-local function parse_params(dao_collection, params)
-  for k,v in pairs(params) do
-    if not dao_collection._schema[k] then
-      params[k] = nil
-    elseif dao_collection._schema[k].type == "table" and type(v) ~= "table" then
-      if v == nil or stringy.strip(v) == "" then
-        params[k] = nil
-      else
-        -- It can either be a JSON map or a string array separated by comma
-        local status, res = pcall(cjson.decode, v)
-        if status then
-          params[k] = res
-        else
-          params[k] = stringy.split(v, ",")
-        end
-      end
-    end
-  end
-  return params
-end
-
 local function parse_dao_error(err)
   local status
   if err.database then
@@ -63,9 +43,41 @@ local function parse_dao_error(err)
   return utils.show_error(status, err.message)
 end
 
+function BaseController.parse_params(schema, params)
+  local result = {}
+  if schema and params then
+    local sub_schemas = {} -- Subschemas need to be resolved later after everything else has been parsed
+    for k,v in pairs(schema) do
+      if v.type == "table" then
+        if v.schema then
+          -- Save for later
+          table.insert(sub_schemas, {
+            k = k,
+            schema = v.schema
+          })
+        elseif params[k] then
+          -- Split the string
+          result[k] = stringy.split(params[k], ",")
+        end
+      else
+        result[k] = params[k]
+      end
+    end
+
+    for _,v in pairs(sub_schemas) do
+      local sub_values = BaseController.parse_params(v.schema(result), params)
+      if utils.table_size(sub_values) > 0 then
+        result[v.k] = BaseController.parse_params(v.schema(result), params)
+      end
+    end
+  end
+
+  return result
+end
+
 function BaseController:new(dao_collection, collection)
   app:post("/"..collection.."/", function(self)
-    local params = parse_params(dao_collection, self.params)
+    local params = BaseController.parse_params(dao_collection._schema, self.params)
     local data, err = dao_collection:insert(params)
     if err then
       return parse_dao_error(err)
@@ -87,7 +99,7 @@ function BaseController:new(dao_collection, collection)
       offset = ngx.decode_base64(offset)
     end
 
-    local params = parse_params(dao_collection, self.params)
+    local params = BaseController.parse_params(dao_collection._schema, self.params)
     local data, err = dao_collection:find_by_keys(params, size, offset)
     if err then
       return parse_dao_error(err)
@@ -119,7 +131,7 @@ function BaseController:new(dao_collection, collection)
   end)
 
   app:put("/"..collection.."/:id", json_params(function(self)
-    local params = parse_params(dao_collection, self.params)
+    local params = BaseController.parse_params(dao_collection._schema, self.params)
     if self.params.id then
       params.id = self.params.id
     else
