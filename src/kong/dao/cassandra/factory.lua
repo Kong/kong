@@ -1,6 +1,8 @@
-local Object = require "classic"
+local constants = require "kong.constants"
 local cassandra = require "cassandra"
+local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
+local Object = require "classic"
 
 local Apis = require "kong.dao.cassandra.apis"
 local Metrics = require "kong.dao.cassandra.metrics"
@@ -106,13 +108,13 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return err
+    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   if no_keyspace == nil then
     ok, err = session:set_keyspace(self._properties.keyspace)
     if not ok then
-      return err
+      return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
     end
   end
 
@@ -123,7 +125,7 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
     if stringy.strip(query) ~= "" then
       local _, stmt_err = session:execute(query)
       if stmt_err then
-        return stmt_err
+        return DaoError(stmt_err, constants.DATABASE_ERROR_TYPES.DATABASE)
       end
     end
   end
@@ -150,19 +152,19 @@ function CassandraFactory:execute(query, params, keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return nil, err
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
   if not ok then
-    return nil, err
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:execute(query, params)
 
   session:close()
 
-  return ok, err
+  return ok, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
 end
 
 -- Log (add) given migration to schema_migrations table.
