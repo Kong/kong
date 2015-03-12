@@ -55,7 +55,7 @@ function print_start_error {
 ##############
 
 function show_help {
-  printf "Usage: kong [OPTION]... {start|stop|restart|migrate}\n
+  printf "Usage: kong [OPTION]... {start|stop|restart}\n
 \t-c    specify the path to a custom Kong configuration file
 \t      default is: '$KONG_HOME/kong.yml'
 \t-v    output version informations and exit
@@ -65,7 +65,6 @@ function show_help {
 \tstop       stop a running Kong
 \trestart    restart Kong
 \t           it is equivalent to executing 'stop' and 'start' in succession
-\tmigrate    performs a database migration, execute this operation carefully
 \tversion    output version informations and exit
 \n"
 }
@@ -103,15 +102,6 @@ function start {
   else
     printf "\nYou can get more information about this error by checking the error log file.\n\n"
     print_start_error "ERROR"
-    exit 1
-  fi
-}
-
-function migrate {
-  $KONG_HOME/scripts/db.lua -c $KONG_CONF migrate
-  if [ $? -eq 0 ]; then
-    exit 0
-  else
     exit 1
   fi
 }
@@ -172,9 +162,6 @@ case "$@" in
       ;;
   restart)
       restart
-      ;;
-  migrate)
-      migrate
       ;;
   version)
       show_version
