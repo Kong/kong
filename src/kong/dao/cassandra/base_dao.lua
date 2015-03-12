@@ -34,7 +34,6 @@ end
 -- Since this method only accepts an ordered list, we build this list from
 -- the `params` property of all prepared statement, taking into account special
 -- cassandra values (uuid, timestamps, NULL)
---
 -- @param {table} schema A schema with type properties to encode specific values
 -- @param {table} t Values to bind to a statement
 -- @param {table} parameters An ordered list of parameters
