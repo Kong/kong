@@ -1,6 +1,8 @@
 local yaml = require "yaml"
 local utils = require "kong.tools.utils"
 local spec_helper = require "spec.spec_helpers"
+local constants = require "kong.constants"
+local stringy = require "stringy"
 
 local TEST_CONF = "kong_TEST.yml"
 local SERVER_CONF = "kong_TEST_SERVER.yml"
@@ -19,6 +21,13 @@ local function result_contains(result, val)
 end
 
 describe("#server-cli", function()
+
+  describe("CLI", function()
+    it("should return the right version", function()
+      local result, exit_code = spec_helper.os_execute(spec_helper.KONG_BIN.." -v")
+      assert.are.same("Kong version: "..constants.VERSION, stringy.strip(result))
+    end)
+  end)
 
   describe("Plugins Check", function()
 

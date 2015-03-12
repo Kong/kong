@@ -13,7 +13,9 @@ local configuration, dao_factory = utils.load_configuration_and_dao(TEST_CONF_FI
 local migrations = Migrations(dao_factory)
 local faker = Faker(dao_factory)
 
-local _M = {}
+local _M = {
+  KONG_BIN = KONG_BIN
+}
 
 _M.CONF_FILE = TEST_CONF_FILE
 _M.PROXY_URL = PROXY_URL
