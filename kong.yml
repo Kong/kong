@@ -5,7 +5,7 @@ plugins_available:
   - networklog
 
 # Uncomment the following line to setup a custom output directory
-output: /var/log/kong2
+# output: /var/log/kong
 
 # Specify the DAO to use
 database: cassandra
