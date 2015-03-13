@@ -82,7 +82,7 @@ function _M.validate(t, schema, is_update)
         local s_ok, s_errors = _M.validate(t[column], sub_schema, is_update)
         if not s_ok then
           for s_k, s_v in pairs(s_errors) do
-            errors = utils.add_error(errors, column.."."..s_k, s_v)
+            errors = utils.add_error(errors, s_k, s_v)
           end
         end
       end
