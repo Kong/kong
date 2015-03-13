@@ -156,6 +156,10 @@ describe("Web API #web", function()
 
         local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
         body = cjson.decode(response)
+        if status == 400 then
+          local inspect = require "inspect"
+          print(inspect(body))
+        end
         assert.are.equal(200, status)
         assert.truthy(body)
         assert.are.equal(created_ids[v.collection], body.id)

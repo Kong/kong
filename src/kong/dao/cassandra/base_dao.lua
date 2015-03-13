@@ -525,7 +525,7 @@ function BaseDao:delete(id)
   if err then
     return false, DaoError(err, error_types.DATABASE)
   elseif not exists then
-    return false, DaoError("Entity does not exist", error_types.DATABASE)
+    return false
   end
 
   return self:_execute(self._statements.delete, { id = id })

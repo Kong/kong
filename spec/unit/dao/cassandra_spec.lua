@@ -335,7 +335,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.truthy(err)
         assert.is_daoError(err)
         assert.truthy(err.schema)
-        assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message["value.authentication_type"])
+        assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message["authentication_type"])
         assert.falsy(plugin)
       end)
 
