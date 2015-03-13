@@ -43,7 +43,7 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
         name = plugin_name
       }
       if err then
-        ngx.log(ngx.ERR, err.message)
+        ngx.log(ngx.ERR, err)
         utils.show_error(500)
       end
 
@@ -62,8 +62,6 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
 end
 
 local function init_plugins()
-  -- Initializing plugins
-
   plugins_available = configuration.plugins_available and configuration.plugins_available or {}
 
   print("Discovering used plugins. Please wait..")
@@ -126,10 +124,25 @@ function _M.init()
   -- Loading configuration
   configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
+  -- Detect if keyspace is set
+  local keyspace, err = dao:get_migrations()
+  if err then
+    error(err)
+  elseif keyspace == nil then
+    -- No previous migrations, it should be safe to run them
+    print("Database not initialized. Running migrations...")
+    local migrations = require("kong.tools.migrations")(dao)
+    migrations:migrate(function(migration, err)
+      if err then
+        error(err)
+      end
+    end)
+  end
+
   -- Initializing DAO
   local err = dao:prepare()
   if err then
-    error("Cannot prepare Cassandra statements: "..err.message)
+    error("Cannot prepare statements: "..err)
   end
 
   -- Initializing plugins

@@ -30,7 +30,7 @@ local function parse_dao_error(err)
   local status
   if err.database then
     status = 500
-    ngx.log(ngx.ERR, err.message)
+    ngx.log(ngx.ERR, err)
   elseif err.unique then
     status = 409
   elseif err.foreign then
@@ -45,7 +45,7 @@ end
 
 function BaseController.parse_params(schema, params)
   local result = {}
-  if schema and params then
+  if schema and params and utils.table_size(params) > 0 then
     local sub_schemas = {} -- Subschemas need to be resolved later after everything else has been parsed
     for k,v in pairs(schema) do
       if v.type == "table" then

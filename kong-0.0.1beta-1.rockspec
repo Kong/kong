@@ -55,6 +55,7 @@ build = {
 
     ["kong.dao.schemas"] = "src/kong/dao/schemas.lua",
 
+    ["kong.dao.error"] = "src/kong/dao/error.lua",
     ["kong.dao.cassandra.factory"] = "src/kong/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "src/kong/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "src/kong/dao/cassandra/apis.lua",

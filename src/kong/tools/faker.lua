@@ -155,7 +155,7 @@ function Faker:insert_from_table(entities_to_insert, pick_relations)
       -- Insert in DB
       local res, err = self.dao_factory[type.."s"]:insert(entity)
       if err then
-        error("Faker failed to insert "..type.." entity: "..inspect(entity).."\n"..inspect(err.message))
+        error("Faker failed to insert "..type.." entity: "..inspect(entity).."\n"..err)
       end
 
       -- For other hard-coded entities relashionships
