@@ -43,25 +43,48 @@ local function parse_dao_error(err)
   return utils.show_error(status, err.message)
 end
 
+-- Apparently stringy.startwith doesn't work and always returns true(!)
+local function starts_with(full_str, val)
+  return string.sub(full_str, 0, string.len(val)) == val
+end
+
 function BaseController.parse_params(schema, params)
-  for k,v in pairs(params) do
-    if not schema[k] then
-      params[k] = nil
-    elseif schema[k].type == "table" and type(v) ~= "table" then
-      if v == nil or stringy.strip(v) == "" then
-        params[k] = nil
-      else
-        -- It can either be a JSON map or a string array separated by comma
-        local status, res = pcall(cjson.decode, v)
-        if status then
-          params[k] = res
-        else
-          params[k] = stringy.split(v, ",")
+  local result = {}
+  if schema and params and utils.table_size(params) > 0 then
+
+    local subschemas = {} -- To process later
+
+    for k,v in pairs(schema) do
+      if v.type == "table" then
+        if v.schema then
+          local subschema_params = {}
+          for param_key, param_value in pairs(params) do
+            if starts_with(param_key, k..".") then
+              subschema_params[string.sub(param_key, string.len(k..".") + 1)] = param_value
+            end
+          end
+          subschemas[k] = {
+            schema = v.schema,
+            params = subschema_params
+          }
+        elseif params[k] then
+          result[k] = stringy.split(params[k], ",")
         end
+      else
+        result[k] = params[k]
       end
     end
+
+    -- Process subschemas
+    for k,v in pairs(subschemas) do
+      local subschema_value = BaseController.parse_params(v.schema(result), v.params)
+      if utils.table_size(subschema_value) > 0 then -- Set subschemas to nil if nothing exists
+        result[k] = subschema_value
+      end 
+    end
+
   end
-  return params
+  return result
 end
 
 function BaseController:new(dao_collection, collection)
