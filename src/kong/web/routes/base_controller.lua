@@ -30,7 +30,7 @@ local function parse_dao_error(err)
   local status
   if err.database then
     status = 500
-    ngx.log(ngx.ERR, err)
+    ngx.log(ngx.ERR, tostring(err))
   elseif err.unique then
     status = 409
   elseif err.foreign then
@@ -55,6 +55,10 @@ function BaseController.parse_params(schema, params)
             k = k,
             schema = v.schema
           })
+          -- We are setting the field to an empty table, so that
+          -- * we avoid having the "is required" error if the field is required
+          -- * it will still trigger the validation of the fields
+          result[k] = {}
         elseif params[k] then
           -- Split the string
           result[k] = stringy.split(params[k], ",")
