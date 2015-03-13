@@ -44,21 +44,20 @@ describe("Base Controller", function()
       provider_id = 123
     }, result)
   end)
-
+  
   it("should parse tables without invalid sub-schema values", function()
-    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "wot", authentication_type = "query" })
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "wot", ["value.authentication_type"] = "query" })
     assert.are.same({
       name = "wot"
     }, result)
-
+    
     result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", wot = "query" })
     assert.are.same({
       name = "authentication"
     }, result)
   end)
-
   it("should parse tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", authentication_type = "query" })
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["value.authentication_type"] = "query" })
     assert.are.same({
       name = "authentication",
       value = {
@@ -66,9 +65,20 @@ describe("Base Controller", function()
       }
     }, result)
   end)
+  it("should not parse tables with invalid subschema prefix", function()
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["asd.authentication_type"] = "query" })
+    assert.are.same({
+      name = "authentication"
+    }, result)
 
+    result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["authentication_type"] = "query" })
+    assert.are.same({
+      name = "authentication"
+    }, result)
+  end)
+  
   it("should parse tables with skippig invalid values", function()
-    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", authentication_type = "query", wot = "ciao" })
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["value.authentication_type"] = "query", ["value.wot"] = "ciao" })
     assert.are.same({
       name = "authentication",
       value = {
@@ -78,7 +88,7 @@ describe("Base Controller", function()
   end)
 
   it("should parse reversed-order tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {authentication_type = "query", name = "authentication" })
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {["value.authentication_type"] = "query", name = "authentication" })
     assert.are.same({
       name = "authentication",
       value = {
@@ -88,7 +98,7 @@ describe("Base Controller", function()
   end)
 
   it("should parse arrays with a correct delimitator", function()
-    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {authentication_type = "query", name = "authentication", authentication_key_names = "wot,wat" })
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {["value.authentication_type"] = "query", name = "authentication", ["value.authentication_key_names"] = "wot,wat" })
     assert.are.same({
       name = "authentication",
       value = {
@@ -99,7 +109,7 @@ describe("Base Controller", function()
   end)
 
   it("should parse arrays with a incorrect delimitator", function()
-    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {authentication_type = "query", name = "authentication", authentication_key_names = "wot;wat" })
+    local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {["value.authentication_type"] = "query", name = "authentication", ["value.authentication_key_names"] = "wot;wat" })
     assert.are.same({
       name = "authentication",
       value = {
