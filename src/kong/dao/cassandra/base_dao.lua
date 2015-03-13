@@ -1,12 +1,12 @@
+local constants = require "kong.constants"
 local cassandra = require "cassandra"
+local timestamp = require "kong.tools.timestamp"
+local validate = require("kong.dao.schemas").validate
+local DaoError = require "kong.dao.error"
 local Object = require "classic"
+local utils = require "kong.tools.utils"
 local uuid = require "uuid"
 local rex = require "rex_pcre"
-
-local constants = require "kong.constants"
-local validate = require("kong.dao.schemas").validate
-local utils = require "kong.tools.utils"
-local timestamp = require "kong.tools.timestamp"
 
 local error_types = constants.DATABASE_ERROR_TYPES
 
@@ -65,18 +65,6 @@ local function encode_cassandra_values(schema, t, parameters)
   return values_to_bind, errors
 end
 
--- Create a DAO error with type as boolan for fast comparison
-function BaseDao:_build_error(type, err)
-  if not err then
-    return nil
-  end
-
-  return {
-    [type] = true,
-    message = err
-  }
-end
-
 -- Marshall an entity. Does nothing by default,
 -- must be overriden for entities where marshalling applies.
 function BaseDao:_marshall(t)
@@ -99,7 +87,7 @@ end
 function BaseDao:_check_unique(statement, t, is_updating)
   local results, err = self:_execute(statement, t)
   if err then
-    return false, "Error during UNIQUE check: "..err.message
+    return false, "Error during UNIQUE check: "..err
   elseif results and #results > 0 then
     if not is_updating then
       return false
@@ -130,7 +118,7 @@ end
 function BaseDao:_check_foreign(statement, t)
   local results, err = self:_execute(statement, t)
   if err then
-    return false, "Error during FOREIGN check: "..err.message
+    return false, "Error during FOREIGN check: "..err
   elseif not results or #results == 0 then
     return false
   else
@@ -190,6 +178,7 @@ function BaseDao:_check_all_unique(t, is_updating)
 end
 
 -- Open a Cassandra session on configured keyspace
+--
 -- @return session
 -- @return Error if any
 function BaseDao:_open_session()
@@ -201,18 +190,19 @@ function BaseDao:_open_session()
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   end
 
   ok, err = session:set_keyspace(self._properties.keyspace)
   if not ok then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   end
 
   return session
 end
 
 -- Close the given opened session. Will try to put the session in the socket pool if supported
+--
 -- @param session Cassandra session to close
 -- @return Error if any
 function BaseDao:_close_session(session)
@@ -223,13 +213,12 @@ function BaseDao:_close_session(session)
   end
 
   if not ok then
-    return self:_build_error(error_types.DATABASE, err)
+    return DaoError(err, error_types.DATABASE)
   end
 end
 
 -- Execute an operation statement.
---
--- # The operation can be one of the following:
+-- The operation can be one of the following:
 --   * _statements (which contains .query and .param for ordered binding of parameters)
 --   * a lua-resty-cassandra BatchStatement (see metrics.lua)
 --   * a lua-resty-cassandra prepared statement
@@ -253,7 +242,7 @@ function BaseDao:_execute(operation, values_to_bind, options)
       local errors
       values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, operation.params)
       if errors then
-        return nil, self:_build_error(error_types.INVALID_TYPE, errors)
+        return nil, DaoError(errors, error_types.INVALID_TYPE)
       end
     end
   elseif operation.is_batch_statement then
@@ -272,7 +261,7 @@ function BaseDao:_execute(operation, values_to_bind, options)
   -- Execute operation
   local results, err = session:execute(statement, values_to_bind, options)
   if err then
-    err = self:_build_error(error_types.DATABASE, err)
+    err = DaoError(err, error_types.DATABASE)
   end
 
   local socket_err = self:_close_session(session)
@@ -331,7 +320,7 @@ function BaseDao:prepare_kong_statement(query, params)
   end
 
   if prepare_err then
-    return nil, "Failed to prepare statement: "..query..". Error: "..prepare_err
+    return nil, DaoError("Failed to prepare statement: "..query..". Error: "..prepare_err, error_types.DATABASE)
   else
     return {
       is_kong_statement = true,
@@ -352,7 +341,7 @@ end
 function BaseDao:insert(t)
   local ok, err, errors
   if not t then
-    return nil, self:_build_error(error_types.SCHEMA, "Cannot insert a nil element")
+    return nil, DaoError("Cannot insert a nil element", error_types.SCHEMA)
   end
 
   -- Override created_at and id by default value
@@ -362,23 +351,23 @@ function BaseDao:insert(t)
   -- Validate schema
   ok, errors = validate(t, self._schema)
   if not ok then
-    return nil, self:_build_error(error_types.SCHEMA, errors)
+    return nil, DaoError(errors, error_types.SCHEMA)
   end
 
   -- Check UNIQUE values
   ok, err, errors = self:_check_all_unique(t)
   if err then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
-    return nil, self:_build_error(error_types.UNIQUE, errors)
+    return nil, DaoError(errors, error_types.UNIQUE)
   end
 
   -- Check foreign entities EXIST
   ok, err, errors = self:_check_all_foreign(t)
   if err then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
-    return nil, self:_build_error(error_types.FOREIGN, errors)
+    return nil, DaoError(errors, error_types.FOREIGN)
   end
 
   local _, stmt_err = self:_execute(self._statements.insert, self:_marshall(t))
@@ -398,14 +387,14 @@ end
 function BaseDao:update(t)
   local ok, err, errors
   if not t then
-    return nil, self:_build_error(error_types.SCHEMA, "Cannot update a nil element")
+    return nil, DaoError("Cannot update a nil element", error_types.SCHEMA)
   end
 
   -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
   local results
   ok, err, results = self:_check_foreign(self._statements.select_one, t)
   if err then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
     return nil
   else
@@ -422,23 +411,23 @@ function BaseDao:update(t)
   -- Validate schema
   ok, errors = validate(t, self._schema, true)
   if not ok then
-    return nil, self:_build_error(error_types.SCHEMA, errors)
+    return nil, DaoError(errors, error_types.SCHEMA)
   end
 
   -- Check UNIQUE with update
   ok, err, errors = self:_check_all_unique(t, true)
   if err then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
-    return nil, self:_build_error(error_types.UNIQUE, errors)
+    return nil, DaoError(errors, error_types.UNIQUE)
   end
 
   -- Check FOREIGN entities
   ok, err, errors = self:_check_all_foreign(t)
   if err then
-    return nil, self:_build_error(error_types.DATABASE, err)
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
-    return nil, self:_build_error(error_types.FOREIGN, errors)
+    return nil, DaoError(errors, error_types.FOREIGN)
   end
 
   local _, stmt_err = self:_execute(self._statements.update, self:_marshall(t))
@@ -494,7 +483,7 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
     end
 
     if errors then
-      return nil, self:_build_error(error_types.SCHEMA, errors)
+      return nil, DaoError(errors, error_types.SCHEMA)
     end
 
     where_str = "WHERE "..table.concat(where, " AND ").." ALLOW FILTERING"
@@ -506,7 +495,7 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
   if not self._statements_cache[select_query] then
     local kong_stmt, err = self:prepare_kong_statement(select_query, keys)
     if err then
-      return nil, self:_build_error(error_types.DATABASE, err)
+      return nil, DaoError(err, error_types.DATABASE)
     end
     self._statements_cache[select_query] = kong_stmt
   end
@@ -534,7 +523,7 @@ end
 function BaseDao:delete(id)
   local exists, err = self:_check_foreign(self._statements.select_one, { id = id })
   if err then
-    return false, self:_build_error(error_types.DATABASE, err)
+    return false, DaoError(err, error_types.DATABASE)
   elseif not exists then
     return false
   end

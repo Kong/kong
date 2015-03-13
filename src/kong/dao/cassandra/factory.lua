@@ -1,6 +1,8 @@
-local Object = require "classic"
+local constants = require "kong.constants"
 local cassandra = require "cassandra"
+local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
+local Object = require "classic"
 
 local Apis = require "kong.dao.cassandra.apis"
 local Metrics = require "kong.dao.cassandra.metrics"
@@ -58,16 +60,15 @@ end
 
 -- Prepare all statements in collection._queries and put them in collection._statements.
 -- Should be called with only a collection and will recursively call itself for nested statements.
---
 -- @param collection A collection with a ._queries property
-local function prepare(collection, queries, statements)
+local function prepare_collection(collection, queries, statements)
   if not queries then queries = collection._queries end
   if not statements then statements = collection._statements end
 
   for stmt_name, query in pairs(queries) do
     if type(query) == "table" and query.query == nil then
       collection._statements[stmt_name] = {}
-      prepare(collection, query, collection._statements[stmt_name])
+      prepare_collection(collection, query, collection._statements[stmt_name])
     else
       local q = stringy.strip(query.query)
       q = string.format(q, "")
@@ -88,7 +89,7 @@ function CassandraFactory:prepare()
                                 self.plugins,
                                 self.accounts,
                                 self.applications }) do
-    local err = prepare(collection)
+    local err = prepare_collection(collection)
     if err then
       return err
     end
@@ -97,7 +98,6 @@ end
 
 -- Execute a string of queries separated by ;
 -- Useful for huge DDL operations such as migrations
---
 -- @param {string} queries Semicolon separated string of queries
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {string} error if any
@@ -108,13 +108,13 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return err
+    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   if no_keyspace == nil then
     ok, err = session:set_keyspace(self._properties.keyspace)
     if not ok then
-      return err
+      return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
     end
   end
 
@@ -125,7 +125,7 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
     if stringy.strip(query) ~= "" then
       local _, stmt_err = session:execute(query)
       if stmt_err then
-        return stmt_err
+        return DaoError(stmt_err, constants.DATABASE_ERROR_TYPES.DATABASE)
       end
     end
   end
@@ -152,19 +152,19 @@ function CassandraFactory:execute(query, params, keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return nil, err
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
   if not ok then
-    return nil, err
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:execute(query, params)
 
   session:close()
 
-  return ok, err
+  return ok, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
 end
 
 -- Log (add) given migration to schema_migrations table.
@@ -180,15 +180,17 @@ end
 -- @return A list of previously executed migration (as strings)
 -- @return error if any
 function CassandraFactory:get_migrations()
-  local keyspace, err = self:execute("SELECT * FROM schema_keyspaces WHERE keyspace_name = ?", { self._properties.keyspace }, "system")
+  local rows, err
+
+  rows, err = self:execute("SELECT * FROM schema_keyspaces WHERE keyspace_name = ?", { self._properties.keyspace }, "system")
   if err then
     return nil, err
-  elseif #keyspace == 0 then
+  elseif #rows == 0 then
     -- keyspace is not yet created, this is the first migration
     return nil
   end
 
-  local rows, err = self:execute("SELECT migrations FROM schema_migrations WHERE id = ?", { MIGRATION_IDENTIFIER })
+  rows, err = self:execute("SELECT migrations FROM schema_migrations WHERE id = ?", { MIGRATION_IDENTIFIER })
   if err then
     return nil, err
   elseif rows and #rows > 0 then

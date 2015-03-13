@@ -1,5 +1,6 @@
 local uuid = require "uuid"
 local Faker = require "kong.tools.faker"
+local DaoError = require "kong.dao.error"
 
 describe("Faker #tools", function()
 
@@ -105,7 +106,7 @@ describe("Faker #tools", function()
       local inspect = require "inspect"
 
       factory_mock.apis.insert = function(self, t)
-                                   return nil, { database = true, message = "cannot insert api error test" }
+                                   return nil, DaoError("cannot insert api error test", "database")
                                  end
       assert.has_error(function()
         faker:seed()
