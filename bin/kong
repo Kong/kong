@@ -71,7 +71,7 @@ function show_help {
 }
 
 function show_version {
-  printf "Kong version: 0.0.1beta-1\n"
+  printf "Version: 0.0.1beta-1\n"
 }
 
 function start {
