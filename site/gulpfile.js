@@ -20,7 +20,7 @@ var jekyllConfig = jekyllConfigs.LOCAL;
 
 // Sources
 var sources = {
-  styles: 'app/_assets/stylesheets/styles.less',
+  styles: 'app/_assets/stylesheets/index.less',
   js: 'app/_assets/javascripts/**/*.js',
   images: 'app/_assets/images/**/*'
 };
@@ -48,7 +48,8 @@ gulp.task('styles', function () {
     .pipe($.autoprefixer())
     .pipe($.minifyCss())
     .pipe($.sourcemaps.write('maps'))
-    .pipe(gulp.dest('dist/assets'))
+    .pipe($.rename('styles.css'))
+    .pipe(gulp.dest('dist/assets/'))
     .pipe($.size())
     .pipe(connect.reload());
 });
