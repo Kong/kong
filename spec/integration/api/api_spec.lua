@@ -57,8 +57,8 @@ local ENDPOINTS = {
       application_id = function()
         return created_ids.applications
       end,
-      period = "second",
-      limit = 10
+      ["value.period"] = "second",
+      ["value.limit"] = 10
     },
     update_fields = {
       enabled = false
