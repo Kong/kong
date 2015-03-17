@@ -11,9 +11,10 @@ local uuid = require "uuid"
 -- Raw session for double-check purposes
 local session
 -- Load everything we need from the spec_helper
-local faker = spec_helper.faker
-local dao_factory = spec_helper.dao_factory
-local configuration = spec_helper.configuration
+local env = spec_helper.get_env()
+local faker = env.faker
+local dao_factory = env.dao_factory
+local configuration = env.configuration
 configuration.cassandra = configuration.databases_available[configuration.database].properties
 
 -- An utility function to apply tests on each collection

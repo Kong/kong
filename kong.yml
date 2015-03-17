@@ -42,7 +42,7 @@ nginx: |
   }
 
   http {
-    lua_package_path ";;";
+    lua_package_path ';;';
     lua_code_cache on;
 
     access_log logs/access.log;
@@ -80,13 +80,20 @@ nginx: |
     resolver 8.8.8.8;
     charset UTF-8;
 
-    init_by_lua "kong = require 'kong'; kong.init()";
+    init_by_lua '
+      kong = require "kong"
+      local status, err = pcall(kong.init)
+      if not status then
+        ngx.log(ngx.ERR, "Startup error: "..err)
+        os.exit(1)
+      end
+    ';
 
     server {
       listen 8000;
 
       location /robots.txt {
-        return 200 "User-agent: *\nDisallow: /";
+        return 200 'User-agent: *\nDisallow: /';
       }
 
       location / {
@@ -99,7 +106,7 @@ nginx: |
         set $querystring nil;
 
         # Authenticate the user and load the API info
-        access_by_lua "kong.access()";
+        access_by_lua 'kong.exec_plugins_access()';
 
         # Proxy the request
         proxy_set_header X-Real-IP $remote_addr;
@@ -107,13 +114,13 @@ nginx: |
         proxy_pass $backend_url;
 
         # Add additional response headers
-        header_filter_by_lua "kong.header_filter()";
+        header_filter_by_lua 'kong.exec_plugins_header_filter()';
 
         # Change the response body
-        body_filter_by_lua "kong.body_filter()";
+        body_filter_by_lua 'kong.exec_plugins_body_filter()';
 
         # Log the request
-        log_by_lua "kong.log()";
+        log_by_lua 'kong.exec_plugins_log()';
       }
 
       error_page 500 /500.html;
@@ -121,7 +128,8 @@ nginx: |
         internal;
         content_by_lua '
           local utils = require "kong.tools.utils"
-          utils.show_error(ngx.status, "Ops, an unexpected error occurred!")';
+          utils.show_error(ngx.status, "Oops, an unexpected error occurred!")
+        ';
       }
     }
 

@@ -35,53 +35,53 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong"] = "src/main.lua",
+    ["kong"] = "src/kong.lua",
     ["classic"] = "src/classic.lua",
 
-    ["kong.constants"] = "src/kong/constants.lua",
+    ["kong.constants"] = "src/constants.lua",
 
-    ["kong.tools.utils"] = "src/kong/tools/utils.lua",
-    ["kong.tools.timestamp"] = "src/kong/tools/timestamp.lua",
-    ["kong.tools.cache"] = "src/kong/tools/cache.lua",
-    ["kong.tools.http_client"] = "src/kong/tools/http_client.lua",
-    ["kong.tools.faker"] = "src/kong/tools/faker.lua",
-    ["kong.tools.migrations"] = "src/kong/tools/migrations.lua",
+    ["kong.tools.utils"] = "src/tools/utils.lua",
+    ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
+    ["kong.tools.cache"] = "src/tools/cache.lua",
+    ["kong.tools.http_client"] = "src/tools/http_client.lua",
+    ["kong.tools.faker"] = "src/tools/faker.lua",
+    ["kong.tools.migrations"] = "src/tools/migrations.lua",
 
-    ["kong.base_plugin"] = "src/kong/base_plugin.lua",
+    ["kong.plugins.base_plugin"] = "src/plugins/base_plugin.lua",
 
-    ["kong.core.handler"] = "src/kong/core/handler.lua",
-    ["kong.core.access"] = "src/kong/core/access.lua",
-    ["kong.core.header_filter"] = "src/kong/core/header_filter.lua",
+    ["kong.resolver.handler"] = "src/resolver/handler.lua",
+    ["kong.resolver.access"] = "src/resolver/access.lua",
+    ["kong.resolver.header_filter"] = "src/resolver/header_filter.lua",
 
-    ["kong.dao.schemas"] = "src/kong/dao/schemas.lua",
+    ["kong.dao.schemas"] = "src/dao/schemas.lua",
 
-    ["kong.dao.error"] = "src/kong/dao/error.lua",
-    ["kong.dao.cassandra.factory"] = "src/kong/dao/cassandra/factory.lua",
-    ["kong.dao.cassandra.base_dao"] = "src/kong/dao/cassandra/base_dao.lua",
-    ["kong.dao.cassandra.apis"] = "src/kong/dao/cassandra/apis.lua",
-    ["kong.dao.cassandra.metrics"] = "src/kong/dao/cassandra/metrics.lua",
-    ["kong.dao.cassandra.plugins"] = "src/kong/dao/cassandra/plugins.lua",
-    ["kong.dao.cassandra.accounts"] = "src/kong/dao/cassandra/accounts.lua",
-    ["kong.dao.cassandra.applications"] = "src/kong/dao/cassandra/applications.lua",
+    ["kong.dao.error"] = "src/dao/error.lua",
+    ["kong.dao.cassandra.factory"] = "src/dao/cassandra/factory.lua",
+    ["kong.dao.cassandra.base_dao"] = "src/dao/cassandra/base_dao.lua",
+    ["kong.dao.cassandra.apis"] = "src/dao/cassandra/apis.lua",
+    ["kong.dao.cassandra.metrics"] = "src/dao/cassandra/metrics.lua",
+    ["kong.dao.cassandra.plugins"] = "src/dao/cassandra/plugins.lua",
+    ["kong.dao.cassandra.accounts"] = "src/dao/cassandra/accounts.lua",
+    ["kong.dao.cassandra.applications"] = "src/dao/cassandra/applications.lua",
 
-    ["kong.plugins.authentication.handler"] = "src/kong/plugins/authentication/handler.lua",
-    ["kong.plugins.authentication.access"] = "src/kong/plugins/authentication/access.lua",
-    ["kong.plugins.authentication.schema"] = "src/kong/plugins/authentication/schema.lua",
+    ["kong.plugins.authentication.handler"] = "src/plugins/authentication/handler.lua",
+    ["kong.plugins.authentication.access"] = "src/plugins/authentication/access.lua",
+    ["kong.plugins.authentication.schema"] = "src/plugins/authentication/schema.lua",
 
-    ["kong.plugins.networklog.handler"] = "src/kong/plugins/networklog/handler.lua",
-    ["kong.plugins.networklog.log"] = "src/kong/plugins/networklog/log.lua",
-    ["kong.plugins.networklog.schema"] = "src/kong/plugins/networklog/schema.lua",
+    ["kong.plugins.networklog.handler"] = "src/plugins/networklog/handler.lua",
+    ["kong.plugins.networklog.log"] = "src/plugins/networklog/log.lua",
+    ["kong.plugins.networklog.schema"] = "src/plugins/networklog/schema.lua",
 
-    ["kong.plugins.ratelimiting.handler"] = "src/kong/plugins/ratelimiting/handler.lua",
-    ["kong.plugins.ratelimiting.access"] = "src/kong/plugins/ratelimiting/access.lua",
-    ["kong.plugins.ratelimiting.schema"] = "src/kong/plugins/ratelimiting/schema.lua",
+    ["kong.plugins.ratelimiting.handler"] = "src/plugins/ratelimiting/handler.lua",
+    ["kong.plugins.ratelimiting.access"] = "src/plugins/ratelimiting/access.lua",
+    ["kong.plugins.ratelimiting.schema"] = "src/plugins/ratelimiting/schema.lua",
 
-    ["kong.web.app"] = "src/kong/web/app.lua",
-    ["kong.web.routes.accounts"] = "src/kong/web/routes/accounts.lua",
-    ["kong.web.routes.apis"] = "src/kong/web/routes/apis.lua",
-    ["kong.web.routes.applications"] = "src/kong/web/routes/applications.lua",
-    ["kong.web.routes.plugins"] = "src/kong/web/routes/plugins.lua",
-    ["kong.web.routes.base_controller"] = "src/kong/web/routes/base_controller.lua"
+    ["kong.web.app"] = "src/web/app.lua",
+    ["kong.web.routes.accounts"] = "src/web/routes/accounts.lua",
+    ["kong.web.routes.apis"] = "src/web/routes/apis.lua",
+    ["kong.web.routes.applications"] = "src/web/routes/applications.lua",
+    ["kong.web.routes.plugins"] = "src/web/routes/plugins.lua",
+    ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
   },
-  copy_directories = { "src/kong/web/admin", "src/kong/web/static" }
+  copy_directories = { "src/web/admin", "src/web/static" }
 }
