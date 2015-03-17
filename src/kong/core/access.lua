@@ -43,7 +43,7 @@ function _M.execute(conf)
   local api = cache.get_and_set(cache.api_key(host), function()
     local apis, err = dao.apis:find_by_keys({public_dns = host})
     if err then
-      ngx.log(ngx.ERR, err.message)
+      ngx.log(ngx.ERR, err)
       utils.show_error(500)
     elseif not apis or #apis == 0 then
       utils.not_found("API not found")

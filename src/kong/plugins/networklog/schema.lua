@@ -1,5 +1,5 @@
 local function check_tcp(v, t)
-  if t and t == "tcp" and not v then
+  if t and t.type == "tcp" and v == nil then
     return false, "This property is required for the \"tcp\" type"
   end
   return true

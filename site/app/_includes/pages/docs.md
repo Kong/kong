@@ -441,7 +441,7 @@ For example let's say that the Rate Limiting Plugin for an API is set to 20 requ
 
 * `name` - The name of the Plugin that's going to be added. The Plugin should have already been installed in every Kong server separately.
 * `api_id` - The API ID that the Plugin will target
-* `value` *optional* - The JSON configuration required for the Plugin. Each Plugin will have different configuration fields, so check the relative Plugin documentation to know which fields you can set.
+* `value.{property}` *optional* - The JSON configuration required for the Plugin. Each Plugin will have different configuration properties, so check the relative Plugin documentation to know which properties you can set.
 * `application_id` *optional* - An optional Application ID to customize the Plugin behavior when an incoming request is being sent by the specified Application. This configuration takes precedence over the global API configuration.
 
 **Response**:
@@ -456,7 +456,10 @@ HTTP 201 Created
     "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
     "application_id": "a3dX2dh2-1adb-40a5-c042-63b19dbx83hF4",
     "name": "ratelimiting",
-    "value": "{\"limit\": 20, \"period\":\"minute\"}",
+    "value": {
+        "limit": 20,
+        "period": "minute"
+    },
     "created_at": 1422386534
 }
 ```
@@ -481,7 +484,10 @@ HTTP 200 OK
     "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
     "application_id": "a3dX2dh2-1adb-40a5-c042-63b19dbx83hF4",
     "name": "ratelimiting",
-    "value": "{\"limit\": 20, \"period\":\"minute\"}",
+    "value": {
+        "limit": 20,
+        "period": "minute"
+    },
     "created_at": 1422386534
 }
 ```
@@ -509,21 +515,27 @@ HTTP 200 OK
 {
     "total": 2,
     "data": [
-        {
-            "id": "4d924084-1adb-40a5-c042-63b19db421d1",
-            "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
-            "name": "ratelimiting",
-            "value": "{\"limit\": 20, \"period\":\"minute\"}",
-            "created_at": 1422386534
-        },
-        {
-            "id": "3f924084-1adb-40a5-c042-63b19db421a2",
-            "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
-            "application_id": "a3dX2dh2-1adb-40a5-c042-63b19dbx83hF4",
-            "name": "ratelimiting",
-            "value": "{\"limit\": 300, \"period\":\"hour\"}",
-            "created_at": 1422386585
-        }
+      {
+          "id": "4d924084-1adb-40a5-c042-63b19db421d1",
+          "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
+          "name": "ratelimiting",
+          "value": {
+              "limit": 20,
+              "period": "minute"
+          },
+          "created_at": 1422386534
+      },
+      {
+          "id": "3f924084-1adb-40a5-c042-63b19db421a2",
+          "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
+          "application_id": "a3dX2dh2-1adb-40a5-c042-63b19dbx83hF4",
+          "name": "ratelimiting",
+          "value": {
+              "limit": 300,
+              "period": "hour"
+          },
+          "created_at": 1422386585
+      }
     ],
     "next": "http://localhost:8001/plugins/?limit=10&offset=4d924084-1adb-40a5-c042-63b19db421d1",
     "previous": "http://localhost:8001/plugins/?limit=10&offset=4d924084-1adb-40a5-c042-63b19db421d1"
@@ -546,7 +558,10 @@ HTTP 200 OK
     "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
     "application_id": "a3dX2dh2-1adb-40a5-c042-63b19dbx83hF4",
     "name": "ratelimiting",
-    "value": "{\"limit\": 50, \"period\":\"second\"}",
+    "value": {
+        "limit": 50,
+        "period": "second"
+    },
     "created_at": 1422386534
 }
 ```
@@ -563,7 +578,10 @@ HTTP 200 OK
     "api_id": "5fd1z584-1adb-40a5-c042-63b19db49x21",
     "application_id": "a3dX2dh2-1adb-40a5-c042-63b19dbx83hF4",
     "name": "ratelimiting",
-    "value": "{\"limit\": 50, \"period\":\"second\"}",
+    "value": {
+        "limit": 50,
+        "period": "second"
+    },
     "created_at": 1422386534
 }
 ```
