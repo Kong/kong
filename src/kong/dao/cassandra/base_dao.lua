@@ -434,7 +434,7 @@ function BaseDao:update(t)
   if stmt_err then
     return nil, stmt_err
   else
-    return t
+    return self:_unmarshall(t)
   end
 end
 

@@ -84,7 +84,9 @@ function _M.post(url, form, headers)
 
   local body = build_query(form)
   headers["content-length"] = string.len(body)
-  headers["content-type"] = "application/x-www-form-urlencoded"
+  if not headers["content-type"] then
+    headers["content-type"] = "application/x-www-form-urlencoded"
+  end
 
   return http_call {
     method = "POST",
@@ -101,7 +103,9 @@ function _M.put(url, table, headers)
   local raw_json = cjson.encode(table)
 
   headers["content-length"] = string.len(raw_json)
-  headers["content-type"] = "application/json"
+  if not headers["content-type"] then
+    headers["content-type"] = "application/json"
+  end
 
   return http_call {
     method = "PUT",

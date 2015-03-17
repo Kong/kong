@@ -155,18 +155,28 @@ describe("Web API #web", function()
         end
 
         local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
-        body = cjson.decode(response)
-        if status == 400 then
-          local inspect = require "inspect"
-          print(inspect(body))
-        end
+        local new_body = cjson.decode(response)
         assert.are.equal(200, status)
-        assert.truthy(body)
-        assert.are.equal(created_ids[v.collection], body.id)
+        assert.truthy(new_body)
+        assert.are.equal(created_ids[v.collection], new_body.id)
 
         for k,v in pairs(v.update_fields) do
-          assert.are.equal(v, body[k])
+          assert.are.equal(v, new_body[k])
         end
+
+        assert.are.same(body, new_body)
+      end)
+
+      it("should not update when the content-type is wrong", function()
+        local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
+        assert.are.equal(415, status)
+        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\\/json\\\"\"}", response)
+      end)
+
+      it("should not save when the content-type is wrong", function()
+        local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
+        assert.are.equal(415, status)
+        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\\/x-www-form-urlencoded\\\"\"}", response)
       end)
 
     end)

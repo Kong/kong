@@ -44,13 +44,13 @@ describe("Base Controller", function()
       provider_id = 123
     }, result)
   end)
-  
+
   it("should parse tables without invalid sub-schema values", function()
     local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "wot", ["value.authentication_type"] = "query" })
     assert.are.same({
       name = "wot"
     }, result)
-    
+
     result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", wot = "query" })
     assert.are.same({
       name = "authentication"
@@ -76,7 +76,7 @@ describe("Base Controller", function()
       name = "authentication"
     }, result)
   end)
-  
+
   it("should parse tables with skippig invalid values", function()
     local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["value.authentication_type"] = "query", ["value.wot"] = "ciao" })
     assert.are.same({
