@@ -8,6 +8,13 @@ local json_params = require("lapis.application").json_params
 
 local BaseController = Object:extend()
 
+local APPLICATION_JSON_TYPE = "application/json"
+local FORM_URLENCODED_TYPE = "application/x-www-form-urlencoded"
+
+local function check_content_type(req, type)
+  return req.headers["content-type"] and string.lower(stringy.strip(req.headers["content-type"])) == type
+end
+
 local function render_list_response(req, data, size)
   local next_url
 
@@ -80,7 +87,10 @@ function BaseController.parse_params(schema, params)
       local subschema_value = BaseController.parse_params(v.schema(result), v.params)
       if utils.table_size(subschema_value) > 0 then -- Set subschemas to nil if nothing exists
         result[k] = subschema_value
-      end 
+      else
+
+        result[k] = {}
+      end
     end
 
   end
@@ -89,6 +99,10 @@ end
 
 function BaseController:new(dao_collection, collection)
   app:post("/"..collection.."/", function(self)
+    if not check_content_type(self.req, FORM_URLENCODED_TYPE) then
+      return utils.unsupported_media_type(FORM_URLENCODED_TYPE)
+    end
+
     local params = BaseController.parse_params(dao_collection._schema, self.params)
     local data, err = dao_collection:insert(params)
     if err then
@@ -147,7 +161,14 @@ function BaseController:new(dao_collection, collection)
   end)
 
   app:put("/"..collection.."/:id", json_params(function(self)
-    local params = BaseController.parse_params(dao_collection._schema, self.params)
+    if not check_content_type(self.req, APPLICATION_JSON_TYPE) then
+      return utils.unsupported_media_type(APPLICATION_JSON_TYPE)
+    end
+
+    local inspect = require "inspect"
+    print(inspect(self.req))
+
+    local params = self.params
     if self.params.id then
       params.id = self.params.id
     else

@@ -150,12 +150,16 @@ function _M.no_content(message)
   _M.show_response(204, message)
 end
 
+function _M.unsupported_media_type(required_type)
+  _M.show_response(415, "Unsupported Content-Type. Use \""..required_type.."\"")
+end
+
 function _M.created(message)
   _M.show_response(201, message)
 end
 
 function _M.not_found(message)
-  message = message or "Not found"
+  message = message and message or "Not found"
   _M.show_error(404, message)
 end
 
