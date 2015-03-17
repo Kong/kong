@@ -88,7 +88,6 @@ function BaseController.parse_params(schema, params)
       if utils.table_size(subschema_value) > 0 then -- Set subschemas to nil if nothing exists
         result[k] = subschema_value
       else
-
         result[k] = {}
       end
     end

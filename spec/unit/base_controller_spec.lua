@@ -48,12 +48,14 @@ describe("Base Controller", function()
   it("should parse tables without invalid sub-schema values", function()
     local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "wot", ["value.authentication_type"] = "query" })
     assert.are.same({
-      name = "wot"
+      name = "wot",
+      value = {}
     }, result)
 
     result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", wot = "query" })
     assert.are.same({
-      name = "authentication"
+      name = "authentication",
+      value = {}
     }, result)
   end)
   it("should parse tables with valid sub-schema values", function()
@@ -68,12 +70,14 @@ describe("Base Controller", function()
   it("should not parse tables with invalid subschema prefix", function()
     local result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["asd.authentication_type"] = "query" })
     assert.are.same({
-      name = "authentication"
+      name = "authentication",
+      value = {}
     }, result)
 
     result = base_controller.parse_params(spec_helper.dao_factory.plugins._schema, {name = "authentication", ["authentication_type"] = "query" })
     assert.are.same({
-      name = "authentication"
+      name = "authentication",
+      value = {}
     }, result)
   end)
 
