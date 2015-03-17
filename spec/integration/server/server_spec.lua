@@ -26,7 +26,7 @@ describe("#server-cli", function()
 
     it("should return the right version", function()
       local result, exit_code = spec_helper.os_execute(spec_helper.KONG_BIN.." -v")
-      assert.are.same("Kong version: "..constants.VERSION, stringy.strip(result))
+      assert.are.same("Version: "..constants.VERSION, stringy.strip(result))
     end)
 
   end)
