@@ -166,7 +166,7 @@ function _M.execute(conf)
       local applications, err = dao.applications:find_by_keys { public_key = public_key }
       local result
       if err then
-        ngx.log(ngx.ERR, err.message)
+        ngx.log(ngx.ERR, err)
         utils.show_error(500)
       elseif #applications > 0 then
         result = applications[1]
