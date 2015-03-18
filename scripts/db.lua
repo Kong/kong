@@ -9,7 +9,7 @@ cli:set_name("db.lua")
 cli:add_argument("COMMAND", "{create|migrate|rollback|reset|seed|drop}")
 cli:add_option("-c, --config=CONFIG", "configuration file", "kong.yml")
 cli:add_option("-n, --name=NAME", "If <create>, sets a name to the migration", "new_migration")
-cli:add_option("-r, --random=RANDOM_AMOUNT", "If seeding, specify number of random entities to add")
+cli:add_option("-r, --random=RANDOM_AMOUNT", "If seeding, specify number of random entities to add", "")
 cli:add_flag("-s, --silent", "No output")
 
 local args = cli:parse(arg)
@@ -90,7 +90,7 @@ elseif args.COMMAND == "seed" then
   end
 
   local faker = Faker(dao)
-  faker:seed(args.random)
+  faker:seed(args.random ~= "" and args.random or nil)
   logger:success("Populated")
 
 elseif args.COMMAND == "drop" then
