@@ -114,13 +114,13 @@ nginx: |
         proxy_pass $backend_url;
 
         # Add additional response headers
-        header_filter_by_lua "kong.header_filter()";
+        header_filter_by_lua 'kong.exec_plugins_header_filter()';
 
         # Change the response body
-        body_filter_by_lua "kong.body_filter()";
+        body_filter_by_lua 'kong.exec_plugins_body_filter()';
 
         # Log the request
-        log_by_lua "kong.log()";
+        log_by_lua 'kong.exec_plugins_log()';
       }
 
       error_page 500 /500.html;

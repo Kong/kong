@@ -1,13 +1,11 @@
--- Copyright (C) Mashape, Inc.
-
-local access = require "kong.core.access"
-local header_filter = require "kong.core.header_filter"
-local BasePlugin = require "kong.base_plugin"
+local access = require "kong.resolver.access"
+local header_filter = require "kong.resolver.header_filter"
+local BasePlugin = require "kong.plugins.base_plugin"
 
 local CoreHandler = BasePlugin:extend()
 
 function CoreHandler:new()
-  CoreHandler.super.new(self, "core")
+  CoreHandler.super.new(self, "resolver")
 end
 
 function CoreHandler:access(conf)
