@@ -2,13 +2,14 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
 
+local env = spec_helper.get_env()
 local created_ids = {}
 
 local kWebURL = spec_helper.API_URL
 local ENDPOINTS = {
   {
     collection = "apis",
-    total = table.getn(spec_helper.faker.FIXTURES.api) + 1,
+    total = table.getn(env.faker.FIXTURES.api) + 1,
     entity = {
       public_dns = "api.mockbin.com",
       name = "mockbin",
@@ -21,7 +22,7 @@ local ENDPOINTS = {
   },
   {
     collection = "accounts",
-    total = table.getn(spec_helper.faker.FIXTURES.account) + 1,
+    total = table.getn(env.faker.FIXTURES.account) + 1,
     entity = {
       provider_id = "123456789"
     },
@@ -32,7 +33,7 @@ local ENDPOINTS = {
   },
   {
     collection = "applications",
-    total = table.getn(spec_helper.faker.FIXTURES.application) + 1,
+    total = table.getn(env.faker.FIXTURES.application) + 1,
     entity = {
       public_key = "PUB_key",
       secret_key = "SEC_key",
@@ -48,7 +49,7 @@ local ENDPOINTS = {
   },
   {
     collection = "plugins",
-    total = table.getn(spec_helper.faker.FIXTURES.plugin) + 1,
+    total = table.getn(env.faker.FIXTURES.plugin) + 1,
     entity = {
       name = "ratelimiting",
       api_id = function()
