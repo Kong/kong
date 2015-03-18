@@ -164,19 +164,18 @@ function BaseController:new(dao_collection, collection)
       return utils.unsupported_media_type(APPLICATION_JSON_TYPE)
     end
 
-    local inspect = require "inspect"
-    print(inspect(self.req))
-
     local params = self.params
     if self.params.id then
       params.id = self.params.id
     else
-      utils.not_found()
+      return utils.not_found()
     end
 
     local data, err = dao_collection:update(params)
     if err then
       return parse_dao_error(err)
+    elseif not data then
+      return utils.not_found()
     else
       return utils.success(data)
     end
