@@ -5,16 +5,17 @@ local path = require("path").new("/")
 
 describe("Migrations #tools", function()
 
+  local env = spec_helper.get_env()
   local migrations
 
   before_each(function()
-    migrations = Migrations(spec_helper.dao_factory)
+    migrations = Migrations(env.dao_factory)
   end)
 
   describe("#create()", function()
 
     it("should create an empty migration interface for each available dao", function()
-      local n_databases_available = utils.table_size(spec_helper.configuration.databases_available)
+      local n_databases_available = utils.table_size(env.configuration.databases_available)
 
       local s_cb = spy.new(function(interface, f_path, f_name, dao_type)
         assert.are.same("string", type(interface))
@@ -27,14 +28,14 @@ describe("Migrations #tools", function()
         assert.are.same(f_name, mig_module.name)
       end)
 
-      migrations.create(spec_helper.configuration, "test_migration", s_cb)
+      migrations.create(env.configuration, "test_migration", s_cb)
 
       assert.spy(s_cb).was.called(n_databases_available)
     end)
 
   end)
 
-  for db_type, v in pairs(spec_helper.configuration.databases_available) do
+  for db_type, v in pairs(env.configuration.databases_available) do
 
     local migrations_names = {} -- used to mock dao's get_migrations for already executed migrations
     local migrations_path = path:join("./database/migrations", db_type)
@@ -62,9 +63,9 @@ describe("Migrations #tools", function()
     end)
 
     before_each(function()
-      stub(spec_helper.dao_factory, "execute_queries")
-      stub(spec_helper.dao_factory, "delete_migration")
-      stub(spec_helper.dao_factory, "add_migration")
+      stub(env.dao_factory, "execute_queries")
+      stub(env.dao_factory, "delete_migration")
+      stub(env.dao_factory, "add_migration")
     end)
 
     it("first migration should have an init boolean property", function()
@@ -76,7 +77,7 @@ describe("Migrations #tools", function()
     describe(db_type.." #migrate()", function()
 
       it("1st run should execute all created migrations in order for a given dao", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function() return nil end)
+        env.dao_factory.get_migrations = spy.new(function() return nil end)
 
         local i = 0
         migrations:migrate(function(migration, err)
@@ -89,15 +90,15 @@ describe("Migrations #tools", function()
         assert.are.same(#migrations_names, i)
 
         -- all migrations should be recorded in db
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was.called(#migrations_names)
-        assert.spy(spec_helper.dao_factory.add_migration).was.called(#migrations_names)
+        assert.spy(env.dao_factory.get_migrations).was.called(1)
+        assert.spy(env.dao_factory.execute_queries).was.called(#migrations_names)
+        assert.spy(env.dao_factory.add_migration).was.called(#migrations_names)
       end)
 
       describe("Partly already migrated", function()
 
         it("if running with some migrations pending, it should only execute the non-recorded ones", function()
-          spec_helper.dao_factory.get_migrations = spy.new(function() return {migrations_names[1]} end)
+          env.dao_factory.get_migrations = spy.new(function() return {migrations_names[1]} end)
 
           local i = 0
           migrations:migrate(function(migration, err)
@@ -108,9 +109,9 @@ describe("Migrations #tools", function()
           end)
 
           assert.are.same(1, i)
-          assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-          assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-          assert.spy(spec_helper.dao_factory.add_migration).was.called(1)
+          assert.spy(env.dao_factory.get_migrations).was.called(1)
+          assert.spy(env.dao_factory.execute_queries).was.called(1)
+          assert.spy(env.dao_factory.add_migration).was.called(1)
         end)
       end)
 
@@ -119,7 +120,7 @@ describe("Migrations #tools", function()
     describe("Already migrated", function()
 
       it("if running again, should detect if migrations are already up to date", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function() return migrations_names end)
+        env.dao_factory.get_migrations = spy.new(function() return migrations_names end)
 
         local i = 0
         migrations:migrate(function(migration, err)
@@ -129,14 +130,14 @@ describe("Migrations #tools", function()
         end)
 
         assert.are.same(1, i)
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was_not_called()
-        assert.spy(spec_helper.dao_factory.add_migration).was_not_called()
+        assert.spy(env.dao_factory.get_migrations).was.called(1)
+        assert.spy(env.dao_factory.execute_queries).was_not_called()
+        assert.spy(env.dao_factory.add_migration).was_not_called()
       end)
     end)
 
     it("should report get_migrations errors", function()
-      spec_helper.dao_factory.get_migrations = spy.new(function()
+      env.dao_factory.get_migrations = spy.new(function()
                                                 return nil, "get err"
                                               end)
       local i = 0
@@ -148,14 +149,14 @@ describe("Migrations #tools", function()
       end)
 
       assert.are.same(1, i)
-      assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-      assert.spy(spec_helper.dao_factory.execute_queries).was_not_called()
-      assert.spy(spec_helper.dao_factory.add_migration).was_not_called()
+      assert.spy(env.dao_factory.get_migrations).was.called(1)
+      assert.spy(env.dao_factory.execute_queries).was_not_called()
+      assert.spy(env.dao_factory.add_migration).was_not_called()
     end)
 
     it("should report execute_queries errors", function()
-      spec_helper.dao_factory.get_migrations = spy.new(function() return {} end)
-      spec_helper.dao_factory.execute_queries = spy.new(function()
+      env.dao_factory.get_migrations = spy.new(function() return {} end)
+      env.dao_factory.execute_queries = spy.new(function()
                                                 return "execute error"
                                               end)
       local i = 0
@@ -167,14 +168,14 @@ describe("Migrations #tools", function()
       end)
 
       assert.are.same(1, i)
-      assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-      assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-      assert.spy(spec_helper.dao_factory.add_migration).was_not_called()
+      assert.spy(env.dao_factory.get_migrations).was.called(1)
+      assert.spy(env.dao_factory.execute_queries).was.called(1)
+      assert.spy(env.dao_factory.add_migration).was_not_called()
     end)
 
     it("should report add_migrations errors", function()
-      spec_helper.dao_factory.get_migrations = spy.new(function() return {} end)
-      spec_helper.dao_factory.add_migration = spy.new(function()
+      env.dao_factory.get_migrations = spy.new(function() return {} end)
+      env.dao_factory.add_migration = spy.new(function()
                                                 return nil, "add error"
                                               end)
       local i = 0
@@ -186,9 +187,9 @@ describe("Migrations #tools", function()
       end)
 
       assert.are.same(1, i)
-      assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-      assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-      assert.spy(spec_helper.dao_factory.add_migration).was.called(1)
+      assert.spy(env.dao_factory.get_migrations).was.called(1)
+      assert.spy(env.dao_factory.execute_queries).was.called(1)
+      assert.spy(env.dao_factory.add_migration).was.called(1)
     end)
 
     describe(db_type.." #rollback()", function()
@@ -204,7 +205,7 @@ describe("Migrations #tools", function()
       describe("rollback latest migration", function()
 
         it("should only rollback the latest executed migration", function()
-          spec_helper.dao_factory.get_migrations = spy.new(function() return old_migrations end)
+          env.dao_factory.get_migrations = spy.new(function() return old_migrations end)
 
           local i = 0
           migrations:rollback(function(migration, err)
@@ -215,15 +216,15 @@ describe("Migrations #tools", function()
           end)
 
           assert.are.same(1, i)
-          assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-          assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-          assert.spy(spec_helper.dao_factory.delete_migration).was.called(1)
+          assert.spy(env.dao_factory.get_migrations).was.called(1)
+          assert.spy(env.dao_factory.execute_queries).was.called(1)
+          assert.spy(env.dao_factory.delete_migration).was.called(1)
         end)
 
       end)
 
       it("should not call delete_migration if init migration is rollbacked", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function() return {old_migrations[1]} end)
+        env.dao_factory.get_migrations = spy.new(function() return {old_migrations[1]} end)
 
         local i = 0
         migrations:rollback(function(migration, err)
@@ -234,13 +235,13 @@ describe("Migrations #tools", function()
         end)
 
         assert.are.same(1, i)
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-        assert.spy(spec_helper.dao_factory.delete_migration).was_not_called()
+        assert.spy(env.dao_factory.get_migrations).was.called(1)
+        assert.spy(env.dao_factory.execute_queries).was.called(1)
+        assert.spy(env.dao_factory.delete_migration).was_not_called()
       end)
 
       it("should report get_migrations errors", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function()
+        env.dao_factory.get_migrations = spy.new(function()
                                                   return nil, "get err"
                                                 end)
         local i = 0
@@ -252,14 +253,14 @@ describe("Migrations #tools", function()
         end)
 
         assert.are.same(1, i)
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was_not_called()
-        assert.spy(spec_helper.dao_factory.delete_migration).was_not_called()
+        assert.spy(env.dao_factory.get_migrations).was.called(1)
+        assert.spy(env.dao_factory.execute_queries).was_not_called()
+        assert.spy(env.dao_factory.delete_migration).was_not_called()
       end)
 
       it("should report execute_queries errors", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function() return old_migrations end)
-        spec_helper.dao_factory.execute_queries = spy.new(function()
+        env.dao_factory.get_migrations = spy.new(function() return old_migrations end)
+        env.dao_factory.execute_queries = spy.new(function()
                                                   return "execute error"
                                                 end)
         local i = 0
@@ -271,14 +272,14 @@ describe("Migrations #tools", function()
         end)
 
         assert.are.same(1, i)
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-        assert.spy(spec_helper.dao_factory.delete_migration).was_not_called()
+        assert.spy(env.dao_factory.get_migrations).was.called(1)
+        assert.spy(env.dao_factory.execute_queries).was.called(1)
+        assert.spy(env.dao_factory.delete_migration).was_not_called()
       end)
 
       it("should report delete_migrations errors", function()
-        spec_helper.dao_factory.get_migrations = spy.new(function() return old_migrations end)
-        spec_helper.dao_factory.delete_migration = spy.new(function()
+        env.dao_factory.get_migrations = spy.new(function() return old_migrations end)
+        env.dao_factory.delete_migration = spy.new(function()
                                                     return nil, "delete error"
                                                   end)
         local i = 0
@@ -290,9 +291,9 @@ describe("Migrations #tools", function()
         end)
 
         assert.are.same(1, i)
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(1)
-        assert.spy(spec_helper.dao_factory.execute_queries).was.called(1)
-        assert.spy(spec_helper.dao_factory.delete_migration).was.called(1)
+        assert.spy(env.dao_factory.get_migrations).was.called(1)
+        assert.spy(env.dao_factory.execute_queries).was.called(1)
+        assert.spy(env.dao_factory.delete_migration).was.called(1)
       end)
 
     end)
@@ -310,7 +311,7 @@ describe("Migrations #tools", function()
       it("should rollback all migrations at once", function()
         local i = 0
         local expected_rollbacks = #old_migrations
-        spec_helper.dao_factory.get_migrations = spy.new(function()
+        env.dao_factory.get_migrations = spy.new(function()
                                                           return old_migrations
                                                         end)
         migrations:reset(function(migration, err)
@@ -327,9 +328,9 @@ describe("Migrations #tools", function()
         end)
 
         assert.are.same(expected_rollbacks + 1, i)
-        assert.spy(spec_helper.dao_factory.get_migrations).was.called(expected_rollbacks + 1) -- becaue also run one last time to check if any more migrations
-        assert.spy(spec_helper.dao_factory.execute_queries).was.called(expected_rollbacks)
-        assert.spy(spec_helper.dao_factory.delete_migration).was.called(expected_rollbacks - 1) -- because doesn't run for ini migration
+        assert.spy(env.dao_factory.get_migrations).was.called(expected_rollbacks + 1) -- becaue also run one last time to check if any more migrations
+        assert.spy(env.dao_factory.execute_queries).was.called(expected_rollbacks)
+        assert.spy(env.dao_factory.delete_migration).was.called(expected_rollbacks - 1) -- because doesn't run for ini migration
       end)
 
     end)

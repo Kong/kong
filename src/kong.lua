@@ -50,7 +50,7 @@ local function load_plugin_conf(api_id, application_id, plugin_name)
       if #rows > 0 then
         return table.remove(rows, 1)
       else
-        return {null=true}
+        return { null = true }
       end
   end)
 
@@ -71,7 +71,7 @@ local function init_plugins()
   end
 
   -- Checking that the plugins in the DB are also enabled
-  for _,v in ipairs(db_plugins) do
+  for _, v in ipairs(db_plugins) do
     if not utils.array_contains(plugins_available, v) then
       error("You are using a plugin that has not been enabled in the configuration: "..v)
     end
@@ -101,11 +101,12 @@ local function init_plugins()
 
   local result = {}
 
-  -- Now construct the final ordered plugin list, core is always the first plugin
+  -- Now construct the final ordered plugin list
+  -- resolver is always the first plugin as it is the one retrieving any needed information
   table.insert(result, {
-    core = true,
-    name = "core",
-    handler = require("kong.core.handler")()
+    resolver = true,
+    name = "resolver",
+    handler = require("kong.resolver.handler")()
   })
 
   -- Add the plugins in a sorted order
@@ -120,6 +121,19 @@ local function init_plugins()
   return result
 end
 
+-- To be called by nginx's init_by_lua directive.
+-- Execution:
+--   - load the configuration
+--   - instanciate the DAO
+--     - if the keyspace is empty run the migrations
+--     - prepare the statements
+--   - load the used plugins
+--     - load all plugins if used and installed
+--     - load the resolver
+--     - sort the plugins by priority
+--
+-- If any error during the initialization of the DAO or plugins, it will be thrown and needs to be catched in init_by_lua.
+-- @return nil
 function _M.init()
   -- Loading configuration
   configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
@@ -142,14 +156,16 @@ function _M.init()
   -- Initializing DAO
   local err = dao:prepare()
   if err then
-    error("Cannot prepare statements: "..err)
+    error("cannot prepare statements: "..err)
   end
 
   -- Initializing plugins
   plugins = init_plugins()
 end
 
-function _M.access()
+-- Calls plugins_access() on every loaded plugin
+-- @return nil
+function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
   ngx.ctx.start = ngx.now()
   ngx.ctx.plugin_conf = {}
@@ -168,7 +184,7 @@ function _M.access()
     end
 
     local conf = ngx.ctx.plugin_conf[plugin.name]
-    if not ngx.ctx.error and (plugin.core or conf) then
+    if not ngx.ctx.error and (plugin.resolver or conf) then
       plugin.handler:access(conf and conf.value or nil)
     end
   end
@@ -176,7 +192,9 @@ function _M.access()
   ngx.ctx.proxy_start = ngx.now() -- Setting a property that will be available for every plugin
 end
 
-function _M.header_filter()
+-- Calls header_filter() on every loaded plugin
+-- @return nil
+function _M.exec_plugins_header_filter()
   ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
 
   if not ngx.ctx.error then
@@ -189,7 +207,9 @@ function _M.header_filter()
   end
 end
 
-function _M.body_filter()
+-- Calls body_filter() on every loaded plugin
+-- @return nil
+function _M.exec_plugins_body_filter()
   if not ngx.ctx.error then
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
@@ -200,7 +220,9 @@ function _M.body_filter()
   end
 end
 
-function _M.log()
+-- Calls log() on every loaded plugin
+-- @return nil
+function _M.exec_plugins_log()
   if not ngx.ctx.error then
 
     local now = ngx.now()
