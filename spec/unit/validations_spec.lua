@@ -7,7 +7,7 @@ describe("Validation #schema", function()
     -- Ok kids, today we're gonna test a custom validation schema,
     -- grab a pair of glasses, this stuff can literally explode.
     local schema = {
-      string = { required = true, immutable = true },
+      string = { type = "string", required = true, immutable = true },
       table = { type = "table" },
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456, immutable = true },
@@ -43,8 +43,8 @@ describe("Validation #schema", function()
       assert.are.same("string is required", err.string)
     end)
 
-    it("should ensure that a table property is a type table", function()
-      -- Failure
+    it("should validate the type of a property if it has a type field", function()
+       -- Failure
       local values = { string = "foo", table = "bar" }
 
       local valid, err = validate(values, schema)
@@ -58,6 +58,14 @@ describe("Validation #schema", function()
       local valid, err = validate(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
+
+      -- Failure
+      local values = { string = 1, table = { foo = "bar" }}
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.same("string is not a string", err.string)
     end)
 
     it("should set default values if those are variables or functions specified in the validator", function()
