@@ -68,6 +68,16 @@ describe("Validation #schema", function()
       assert.are.same("string is not a string", err.string)
     end)
 
+    it("should consider id and timestampd as valid types", function()
+      local s = { id = { type = "id" } }
+
+      local values = { id = 123 }
+
+      local valid, err = validate(values, s)
+      assert.falsy(err)
+      assert.truthy(valid)
+    end)
+
     it("should set default values if those are variables or functions specified in the validator", function()
       -- Variables
       local values = { string = "mockbin entity", url = "mockbin.com" }
