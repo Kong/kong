@@ -30,7 +30,6 @@ function error_mt.__concat(a, b)
 end
 
 local mt = {
-  __index = DaoError,
   __call = function (self, err, type)
     if err == nil then
       return nil
