@@ -64,9 +64,17 @@ build = {
     ["kong.dao.cassandra.accounts"] = "src/kong/dao/cassandra/accounts.lua",
     ["kong.dao.cassandra.applications"] = "src/kong/dao/cassandra/applications.lua",
 
-    ["kong.plugins.authentication.handler"] = "src/kong/plugins/authentication/handler.lua",
-    ["kong.plugins.authentication.access"] = "src/kong/plugins/authentication/access.lua",
-    ["kong.plugins.authentication.schema"] = "src/kong/plugins/authentication/schema.lua",
+    ["kong.plugins.basicauth.handler"] = "src/kong/plugins/basicauth/handler.lua",
+    ["kong.plugins.basicauth.access"] = "src/kong/plugins/basicauth/access.lua",
+    ["kong.plugins.basicauth.schema"] = "src/kong/plugins/basicauth/schema.lua",
+
+    ["kong.plugins.queryauth.handler"] = "src/kong/plugins/queryauth/handler.lua",
+    ["kong.plugins.queryauth.access"] = "src/kong/plugins/queryauth/access.lua",
+    ["kong.plugins.queryauth.schema"] = "src/kong/plugins/queryauth/schema.lua",
+
+    ["kong.plugins.headerauth.handler"] = "src/kong/plugins/headerauth/handler.lua",
+    ["kong.plugins.headerauth.access"] = "src/kong/plugins/headerauth/access.lua",
+    ["kong.plugins.headerauth.schema"] = "src/kong/plugins/headerauth/schema.lua",
 
     ["kong.plugins.networklog.handler"] = "src/kong/plugins/networklog/handler.lua",
     ["kong.plugins.networklog.log"] = "src/kong/plugins/networklog/log.lua",
