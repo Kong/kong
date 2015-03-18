@@ -105,7 +105,7 @@ describe("Web API #web", function()
 
       it("should create an entity from valid paremeters", function()
         -- Replace the IDs
-        for k,p in pairs(v.entity) do
+        for k, p in pairs(v.entity) do
           if type(p) == "function" then
             v.entity[k] = p()
           end
