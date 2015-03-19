@@ -65,22 +65,20 @@ end
 -- @param {table} conf Plugin configuration (value property)
 -- @return {string} public_key
 -- @return {string} private_key
-local retrieve_credentials = {
-  [constants.AUTHENTICATION.QUERY] = function(request, conf)
-    local public_key
+local function retrieve_credentials(request, conf)
+  local public_key
 
-    if conf.key_names then
-      for _,key_name in ipairs(conf.key_names) do
-        public_key = get_key_from_query(key_name, request, conf)
+  if conf.key_names then
+    for _,key_name in ipairs(conf.key_names) do
+      public_key = get_key_from_query(key_name, request, conf)
 
-        if public_key then
-          return public_key
-        end
-
+      if public_key then
+        return public_key
       end
+
     end
   end
-}
+end
 
 -- Fast lookup for credential validation depending on the type of the authentication
 --
@@ -90,16 +88,14 @@ local retrieve_credentials = {
 -- @param {string} public_key
 -- @param {string} private_key
 -- @return {boolean} Success of authentication
-local validate_credentials = {
-  [constants.AUTHENTICATION.QUERY] = function(application, public_key)
-    return application ~= nil
-  end
-}
+local function validate_credentials(application, public_key)
+  return application ~= nil
+end
 
 function _M.execute(conf)
   if not conf then return end
 
-  local public_key, secret_key = retrieve_credentials[constants.AUTHENTICATION.QUERY](ngx.req, conf)
+  local public_key, secret_key = retrieve_credentials(ngx.req, conf)
   local application
 
   -- Make sure we are not sending an empty table to find_by_keys
@@ -117,7 +113,7 @@ function _M.execute(conf)
     end)
   end
 
-  if not validate_credentials[constants.AUTHENTICATION.QUERY](application, public_key, secret_key) then
+  if not validate_credentials(application, public_key, secret_key) then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
