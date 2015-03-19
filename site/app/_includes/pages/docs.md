@@ -1,20 +1,16 @@
 ## What is Kong?
 
-Welcome to the Kong official documentation, that will help you setting up Kong, configuring it and operating it. We reccomend reading every section of this document to have a full understanding of the project.
+Kong is a scalable, lightweight open source API Layer. Also called an API Gateway or API Middleware, Kong runs in front of any RESTful API and provides additional functionalities to it. Kong is built on top of reliable technologies like Nginx and Cassandra, and provides you with an easy to use RESTful API to operate and configure the system. This page will help you set up, configure and operate Kong.
 
-If you have more specific questions about Kong, please join us on [Gitter][gitter-url] and the project maintainers will be happy to answer any of your questions.
+APIs running behind Kong can be empowered with [plugins](#plugins) that provide extra functionalities and services beyond the core platform. Some of the most popular plugins include: authentication, rate limiting, logging, and more. You can also build custom plugins that other people use on top of their Kong installation.
 
-Kong is a scalable, lightweight, open source API Layer (also called *API Gateway* or *API Middleware*) that runs in front of any RESTful API and provides additional functionalities to the underlying APIs.
+Kong was built following three fundamental principles:
 
-APIs running behind Kong can be empowered with [Kong plugins](#plugins) that provide extra functionality and services beyond the core Kong platform. Some of the most popular plugins are: authentication, rate limiting, logging, and more. You can also build your own plugins that other people can use on top of their Kong installation.
+* **Scalable**: Kong is easy to scale horizontally, simply add more machines.  The platform can virtually handle any load while keeping latency low.
 
-Built on top of reliable technologies like nginx and Cassandra, Kong itself provides an easy to use RESTful API that you will use to operate and configure the system.
+* **Expandable**: Kong can be expanded by adding new plugins, which are easily configured through an internal RESTful API.
 
-Kong has been built following three foundamental principles:
-
-* **Scalable**: it's easy to scale horizontally just by adding more machines. It can virtually handle any load for any kind of API while keeping the latency low.
-* **Expandable**: it can be expanded by adding new plugins that can be easily configured through an internal RESTful API.
-* **Runs on any infrastructure**: It can run in any cloud or on-premise environment, in a single or multi-datacenter setup, for any kind of API: public, private or invite-only APIs.
+* **Runs on any infrastructure**: Kong runs on cloud or on-premise environments, including single or multi-datacenter setups and for public, private or invite-only APIs.
 
 ### Request Workflow
 
