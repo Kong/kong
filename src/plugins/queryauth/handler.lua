@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local BasePlugin = require "kong.base_plugin"
+local BasePlugin = require "kong.plugins.base_plugin"
 local access = require "kong.plugins.queryauth.access"
 
 local QueryAuthHandler = BasePlugin:extend()

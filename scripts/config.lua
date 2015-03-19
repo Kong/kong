@@ -27,7 +27,7 @@ if args.COMMAND == "create" then
     TEST = {
       ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
       ["keyspace: kong"] = "keyspace: kong_tests",
-      ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
+      ["lua_package_path ';;'"] = "lua_package_path '"..args.kong.."/src/?.lua;;'",
       ["error_log logs/error.log info"] = "error_log logs/error.log debug",
       ["listen 8000"] = "listen 8100",
       ["listen 8001"] = "listen 8101"
@@ -35,7 +35,7 @@ if args.COMMAND == "create" then
     DEVELOPMENT = {
       ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
       ["keyspace: kong"] = "keyspace: kong_development",
-      ["lua_package_path \";;\""] = "lua_package_path \""..args.kong.."/src/?.lua;;\"",
+      ["lua_package_path ';;'"] = "lua_package_path '"..args.kong.."/src/?.lua;;'",
       ["error_log logs/error.log info"] = "error_log logs/error.log debug",
       ["lua_code_cache on"] = "lua_code_cache off",
       ["daemon on"] = "daemon off"

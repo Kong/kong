@@ -2,7 +2,6 @@
 
 local stringy = require "stringy"
 local Object = require "classic"
-local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local json_params = require("lapis.application").json_params
 
@@ -61,7 +60,7 @@ function BaseController.parse_params(schema, params)
 
     local subschemas = {} -- To process later
 
-    for k,v in pairs(schema) do
+    for k, v in pairs(schema) do
       if v.type == "table" then
         if v.schema then
           local subschema_params = {}
@@ -77,13 +76,15 @@ function BaseController.parse_params(schema, params)
         elseif params[k] then
           result[k] = stringy.split(params[k], ",")
         end
+      elseif v.type == "number" then
+        result[k] = tonumber(params[k])
       else
         result[k] = params[k]
       end
     end
 
     -- Process subschemas
-    for k,v in pairs(subschemas) do
+    for k, v in pairs(subschemas) do
       local subschema_value = BaseController.parse_params(v.schema(result), v.params)
       if utils.table_size(subschema_value) > 0 then -- Set subschemas to nil if nothing exists
         result[k] = subschema_value
@@ -91,8 +92,8 @@ function BaseController.parse_params(schema, params)
         result[k] = {}
       end
     end
-
   end
+
   return result
 end
 

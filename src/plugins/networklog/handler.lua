@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local BasePlugin = require "kong.base_plugin"
+local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.networklog.log"
 
 local NetworkLogHandler = BasePlugin:extend()

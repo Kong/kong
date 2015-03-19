@@ -74,7 +74,7 @@ local function prepare_collection(collection, queries, statements)
       q = string.format(q, "")
       local kong_stmt, err = collection:prepare_kong_statement(q, query.params)
       if err then
-        return err
+        error(err)
       end
       statements[stmt_name] = kong_stmt
     end
@@ -89,8 +89,8 @@ function CassandraFactory:prepare()
                                 self.plugins,
                                 self.accounts,
                                 self.applications }) do
-    local err = prepare_collection(collection)
-    if err then
+    local status, err = pcall(function() prepare_collection(collection) end)
+    if not status then
       return err
     end
   end
