@@ -3,7 +3,7 @@
 #### Added
 - Required Openresty is now `1.7.10.1`.
 - Anonymous error reporting on Proxy and API. #64
-- Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine. Order of `enabled_plugins` doesn't matter anymore.
+- Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine. Order of `plugins_available` doesn't matter anymore.
 - **Proxy**: APIs/Accounts caching with expiration for faster authentication.
 - **API**: Plugins now use plain form parameters for configuration. #70
 - Easier configuration file (unified in `kong.yml`).
