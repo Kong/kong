@@ -32,7 +32,6 @@ local function retrieve_credentials(request, conf)
   end
 end
 
-
 -- Fast lookup for credential validation depending on the type of the authentication
 --
 -- All methods must respect:
@@ -44,7 +43,6 @@ end
 local function validate_credentials(application, public_key)
   return application ~= nil
 end
-
 
 function _M.execute(conf)
   if not conf then return end

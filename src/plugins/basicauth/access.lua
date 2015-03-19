@@ -45,7 +45,6 @@ local function retrieve_credentials(request, conf)
   return username, password
 end
 
-
 -- Fast lookup for credential validation depending on the type of the authentication
 --
 -- All methods must respect:
@@ -60,7 +59,6 @@ local function validate_credentials(application, username, password)
     return application.secret_key == password
   end
 end
-
 
 function _M.execute(conf)
   if not conf then return end

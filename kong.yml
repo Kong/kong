@@ -4,7 +4,9 @@ plugins_available:
   - headerauth
   - basicauth
   - ratelimiting
-  - networklog
+  - tcplog
+  - udplog
+  - filelog
 
 # Uncomment the following line to setup a custom output directory
 # output: /var/log/kong
