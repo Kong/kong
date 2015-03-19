@@ -1,31 +1,35 @@
 ## [Unreleased][unreleased]
 
+## [0.1.0-beta] - 2015/03/19
+
+New beta with caching, easier usability and the usual fixes.
+
 #### Added
 - Required Openresty is now `1.7.10.1`.
-- Anonymous error reporting on Proxy and API. #64
-- Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine. Order of `plugins_available` doesn't matter anymore.
+- Anonymous error reporting on Proxy and API. [#64](https://github.com/Mashape/kong/issues/64)
+- Configuration:
+  - Simplified configuration file (unified in `kong.yml`).
+  - In configuration, `plugins_installed` was renamed to `plugins_available`. [#59](https://github.com/Mashape/kong/issues/59)
+  - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Mashape/kong/issues/17)
+  - Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine.
+  - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Mashape/kong/issues/71)
 - **Proxy**: APIs/Accounts caching with expiration for faster authentication.
-- **API**: Plugins now use plain form parameters for configuration. #70
-- Easier configuration file (unified in `kong.yml`).
-- `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. #71
-- Embed migrations execution in the first `kong start`. `migrate` is not a CLI command anymore, one need to use `db.lua`. #68
-- Keep track of already executed migrations. `rollback` now behaves as expected.
-- In configuration, `plugins_installed` was renamed to `plugins_available` #59.
+- **API**: Plugins now use plain form parameters for configuration. [#70](https://github.com/Mashape/kong/issues/70)
+- Embed migrations execution in the first `kong start`. `migrate` is not a CLI command anymore, one need to use `db.lua`. [#68](https://github.com/Mashape/kong/issues/68)
+- Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Mashape/kong/issues/8)
 
 #### Fixed
-- `Server` header now sends Kong.
+- `Server` header now sends Kong. [#57](https://github.com/Mashape/kong/issues/57)
 - migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now we only have 1 migration file.
-- **API**: Errors responses are now sent as JSON.
+- **API**: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
 
 **Nerds stuff**
-- We now have code linting and coverage (496c1e6).
-- Code is linted (517e7fb).
-- Sub-schema validation (1b5064e).
+- We now have code linting and coverage.
 - Faker and Migrations instances don't live in the DAO Factory anymore, they are only used in scripts and tests.
-- `scripts/config.lua` allows environment based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces, ports...
-- `spec_helpers.lua` allows tests to not rely on the `Makefile` anymore. Integration tests can run 100% from busted.
-- Switch from httpbin.org to mockbin.com
-- Renamed `core` plugin to `resolver`.
+- `scripts/config.lua` allows environment based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces and ports.
+- `spec_helpers.lua` allows tests to not rely on the `Makefile` anymore. Integration tests can run 100% from `busted`.
+- Switch integration testing from [httpbin.org] to [mockbin.com].
+- `core` plugin was renamed to `resolver`.
 
 ## [0.0.1-beta] - 2015/02/25
 
@@ -40,5 +44,6 @@ First beta version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.0.1-beta...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.1.0-beta...HEAD
+[0.1.0-beta]: https://github.com/mashape/kong/compare/0.0.1-beta...0.1.0-beta
 [0.0.1-beta]: https://github.com/mashape/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...0.0.1-beta
