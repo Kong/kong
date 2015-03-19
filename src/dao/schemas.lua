@@ -1,6 +1,13 @@
 local rex = require "rex_pcre" -- Why? Lua has built in pattern which should do the job too
 local utils = require "kong.tools.utils"
 
+local LUA_TYPES = {
+  boolean = true,
+  string = true,
+  number = true,
+  table = true
+}
+
 --
 -- Schemas
 --
@@ -30,9 +37,9 @@ function _M.validate(t, schema, is_update)
     elseif v.required and (t[column] == nil or t[column] == "") then
       errors = utils.add_error(errors, column, column.." is required")
 
-    -- Check type if table
-    elseif v.type == "table" and t[column] ~= nil and type(t[column]) ~= "table" then
-      errors = utils.add_error(errors, column, column.." is not a table")
+    -- Check type if valid
+    elseif v.type ~= nil and t[column] ~= nil and type(t[column]) ~= v.type and LUA_TYPES[v.type] then
+      errors = utils.add_error(errors, column, column.." is not a "..v.type)
 
     -- Check type if value is allowed in the enum
     elseif v.enum and t[column] ~= nil then
