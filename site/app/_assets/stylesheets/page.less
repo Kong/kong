@@ -287,3 +287,37 @@
   border-color: #eac0c0;;
   background-color: #fff4f4;
 }
+
+.faq-section {
+  padding: 80px 0;
+  background-color: #fdfdfd;
+  border-top: 2px solid #e1e4e5;
+  border-bottom: 2px solid #e1e4e5;
+
+  h4 {
+    font-size: 19px;
+    font-family: @family-whitney;
+    font-weight: 600;
+    margin-bottom: 0.5em;
+  }
+
+  p {
+    margin-bottom: 0.5em;
+  }
+
+  ul {
+    margin: 0;
+
+    li {
+      margin: 0;
+      list-style: none;
+
+      &:before {
+        content: "\203a";
+        display: inline-block;
+        width: 10px;
+        color: @green;
+      }
+    }
+  }
+}
