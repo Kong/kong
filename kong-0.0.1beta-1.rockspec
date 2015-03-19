@@ -76,9 +76,17 @@ build = {
     ["kong.plugins.headerauth.access"] = "src/plugins/headerauth/access.lua",
     ["kong.plugins.headerauth.schema"] = "src/plugins/headerauth/schema.lua",
 
-    ["kong.plugins.networklog.handler"] = "src/plugins/networklog/handler.lua",
-    ["kong.plugins.networklog.log"] = "src/plugins/networklog/log.lua",
-    ["kong.plugins.networklog.schema"] = "src/plugins/networklog/schema.lua",
+    ["kong.plugins.tcplog.handler"] = "src/plugins/tcplog/handler.lua",
+    ["kong.plugins.tcplog.log"] = "src/plugins/tcplog/log.lua",
+    ["kong.plugins.tcplog.schema"] = "src/plugins/tcplog/schema.lua",
+
+    ["kong.plugins.udplog.handler"] = "src/plugins/udplog/handler.lua",
+    ["kong.plugins.udplog.log"] = "src/plugins/udplog/log.lua",
+    ["kong.plugins.udplog.schema"] = "src/plugins/udplog/schema.lua",
+
+    ["kong.plugins.filelog.handler"] = "src/plugins/filelog/handler.lua",
+    ["kong.plugins.filelog.log"] = "src/plugins/filelog/log.lua",
+    ["kong.plugins.filelog.schema"] = "src/plugins/filelog/schema.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "src/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "src/plugins/ratelimiting/access.lua",
