@@ -23,13 +23,13 @@ New beta with caching, easier usability and the usual fixes.
 - migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now we only have 1 migration file.
 - **API**: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
 
-**Nerds stuff**
-- We now have code linting and coverage.
-- Faker and Migrations instances don't live in the DAO Factory anymore, they are only used in scripts and tests.
-- `scripts/config.lua` allows environment based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces and ports.
-- `spec_helpers.lua` allows tests to not rely on the `Makefile` anymore. Integration tests can run 100% from `busted`.
-- Switch integration testing from [httpbin.org] to [mockbin.com].
-- `core` plugin was renamed to `resolver`.
+> **Nerds stuff**
+> - We now have code linting and coverage.
+> - Faker and Migrations instances don't live in the DAO Factory anymore, they are only used in scripts and tests.
+> - `scripts/config.lua` allows environment based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces and ports.
+> - `spec_helpers.lua` allows tests to not rely on the `Makefile` anymore. Integration tests can run 100% from `busted`.
+> - Switch integration testing from [httpbin.org] to [mockbin.com].
+> - `core` plugin was renamed to `resolver`.
 
 ## [0.0.1-beta] - 2015/02/25
 
