@@ -13,39 +13,38 @@ local _M = {}
 -- @param {table} conf Plugin configuration (value property)
 -- @return {string} public_key
 -- @return {string} private_key
-local retrieve_credentials = {
-  [constants.AUTHENTICATION.BASIC] = function(request, conf)
-    local username, password
-    local authorization_header = request.get_headers()["authorization"]
+local function retrieve_credentials(request, conf)
+  local username, password
+  local authorization_header = request.get_headers()["authorization"]
 
-    if authorization_header then
-      local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
-      if not iterator then
-        ngx.log(ngx.ERR, iter_err)
-        return
-      end
-
-      local m, err = iterator()
-      if err then
-        ngx.log(ngx.ERR, err)
-        return
-      end
-
-      if m and table.getn(m) > 0 then
-        local decoded_basic = ngx.decode_base64(m[1])
-        local basic_parts = stringy.split(decoded_basic, ":")
-        username = basic_parts[1]
-        password = basic_parts[2]
-      end
+  if authorization_header then
+    local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+    if not iterator then
+      ngx.log(ngx.ERR, iter_err)
+      return
     end
 
-    if conf.hide_credentials then
-      request.clear_header("authorization")
+    local m, err = iterator()
+    if err then
+      ngx.log(ngx.ERR, err)
+      return
     end
 
-    return username, password
+    if m and table.getn(m) > 0 then
+      local decoded_basic = ngx.decode_base64(m[1])
+      local basic_parts = stringy.split(decoded_basic, ":")
+      username = basic_parts[1]
+      password = basic_parts[2]
+    end
   end
-}
+
+  if conf.hide_credentials then
+    request.clear_header("authorization")
+  end
+
+  return username, password
+end
+
 
 -- Fast lookup for credential validation depending on the type of the authentication
 --
@@ -55,19 +54,18 @@ local retrieve_credentials = {
 -- @param {string} public_key
 -- @param {string} private_key
 -- @return {boolean} Success of authentication
-local validate_credentials = {
-  [constants.AUTHENTICATION.BASIC] = function(application, username, password)
-    if application then
-      -- TODO: No encryption yet
-      return application.secret_key == password
-    end
+local function validate_credentials(application, username, password)
+  if application then
+    -- TODO: No encryption yet
+    return application.secret_key == password
   end
-}
+end
+
 
 function _M.execute(conf)
   if not conf then return end
 
-  local public_key, secret_key = retrieve_credentials[constants.AUTHENTICATION.BASIC](ngx.req, conf)
+  local public_key, secret_key = retrieve_credentials(ngx.req, conf)
   local application
 
   -- Make sure we are not sending an empty table to find_by_keys
@@ -85,7 +83,7 @@ function _M.execute(conf)
     end)
   end
 
-  if not validate_credentials[constants.AUTHENTICATION.BASIC](application, public_key, secret_key) then
+  if not validate_credentials(application, public_key, secret_key) then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
