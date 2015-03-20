@@ -1,0 +1,27 @@
+---
+layout: default
+---
+
+<div class="page {{ page.id }}">
+  {% if page.breadcrumbs %}
+    <div class="container">
+      <ul class="bredcrumbs">
+        {% for breadcrumb in page.breadcrumbs %}
+          <li class="breadcrumb-item{% if page.url == breadcrumb[1] %} active{% endif %}"><a href="{{ breadcrumb[1] }}">{{ breadcrumb[0] }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% include header.html %}
+
+  <div class="container">
+    <div class="content">
+      {{ content }}
+    </div>
+  </div>
+</div>
+
+{% if show_faq %}
+  {% include faq.html %}
+{% endif %}

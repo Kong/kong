@@ -321,3 +321,28 @@
     }
   }
 }
+
+.bredcrumbs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+
+  .breadcrumb-item {
+    display: inline-block;
+    margin: 0;
+    
+    &:after {
+      content: ' \203a';
+    }
+
+    &:last-child:after {
+      display: none;
+    }
+  }
+  
+  .active a {
+    color: @font-color;
+    cursor: default;
+  }
+}
