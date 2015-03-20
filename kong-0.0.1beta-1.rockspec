@@ -37,9 +37,14 @@ build = {
   type = "builtin",
   modules = {
     ["kong"] = "src/kong.lua",
-    ["classic"] = "src/classic.lua",
+
+    ["classic"] = "src/vendor/classic.lua",
+    ["lapp"] = "src/vendor/lapp.lua",
 
     ["kong.constants"] = "src/constants.lua",
+
+    ["kong.cmd.start"] = "src/cmd/start.lua",
+    ["kong.cmd.stop"] = "src/cmd/stop.lua",
 
     ["kong.tools.utils"] = "src/tools/utils.lua",
     ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
@@ -48,15 +53,12 @@ build = {
     ["kong.tools.faker"] = "src/tools/faker.lua",
     ["kong.tools.migrations"] = "src/tools/migrations.lua",
 
-    ["kong.plugins.base_plugin"] = "src/plugins/base_plugin.lua",
-
     ["kong.resolver.handler"] = "src/resolver/handler.lua",
     ["kong.resolver.access"] = "src/resolver/access.lua",
     ["kong.resolver.header_filter"] = "src/resolver/header_filter.lua",
 
-    ["kong.dao.schemas"] = "src/dao/schemas.lua",
-
     ["kong.dao.error"] = "src/dao/error.lua",
+    ["kong.dao.schemas"] = "src/dao/schemas.lua",
     ["kong.dao.cassandra.factory"] = "src/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "src/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "src/dao/cassandra/apis.lua",
@@ -99,6 +101,9 @@ build = {
     ["kong.web.routes.applications"] = "src/web/routes/applications.lua",
     ["kong.web.routes.plugins"] = "src/web/routes/plugins.lua",
     ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
+  },
+  install = {
+    bin = { "bin/kong" }
   },
   copy_directories = { "src/web/admin", "src/web/static" }
 }
