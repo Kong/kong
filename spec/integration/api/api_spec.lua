@@ -113,6 +113,11 @@ describe("Web API #web", function()
 
         local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity)
         local body = cjson.decode(response)
+        if status == 400 then
+          print(response)
+          local inspect= require "inspect"
+          print(inspect(v.entity))
+        end
         assert.are.equal(201, status)
         assert.truthy(body)
 

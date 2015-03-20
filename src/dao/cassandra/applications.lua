@@ -1,11 +1,12 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
+local constants = require "kong.constants"
 
 local SCHEMA = {
-  id = { type = "id" },
-  account_id = { type = "id", required = true, foreign = true, queryable = true },
-  public_key = { required = true, unique = true, queryable = true },
-  secret_key = {},
-  created_at = { type = "timestamp" }
+  id = { type = "string", represents = constants.DATABASE_TYPES.ID },
+  account_id = { type = "string", represents = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
+  public_key = { type = "string", required = true, unique = true, queryable = true },
+  secret_key = { type = "string" },
+  created_at = { type = "number", represents = constants.DATABASE_TYPES.TIMESTAMP }
 }
 
 local Applications = BaseDao:extend()
