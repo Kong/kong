@@ -48,79 +48,77 @@ describe("Base Controller", function()
   end)
 
   it("should parse tables without invalid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "wot", ["value.authentication_type"] = "query" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "wot", ["value.key_names"] = "apikey" })
     assert.are.same({
       name = "wot",
       value = {}
     }, result)
 
-    result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "authentication", wot = "query" })
+    result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", wot = "query" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {}
     }, result)
   end)
   it("should parse tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "authentication", ["value.authentication_type"] = "query" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["value.key_names"] = "apikey" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {
-        authentication_type = "query"
+        key_names = { "apikey" }
       }
     }, result)
   end)
   it("should not parse tables with invalid subschema prefix", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "authentication", ["asd.authentication_type"] = "query" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["asd.key_names"] = "apikey" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {}
     }, result)
 
-    result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "authentication", ["authentication_type"] = "query" })
+    result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["key_names"] = "apikey" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {}
     }, result)
   end)
 
   it("should parse tables with skippig invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "authentication", ["value.authentication_type"] = "query", ["value.wot"] = "ciao" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["value.key_names"] = "apikey", ["value.wot"] = "ciao" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {
-        authentication_type = "query"
+        key_names = { "apikey" }
       }
     }, result)
   end)
 
   it("should parse reversed-order tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.authentication_type"] = "query", name = "authentication" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.key_names"] = "query", name = "queryauth" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {
-        authentication_type = "query"
+        key_names = { "query" }
       }
     }, result)
   end)
 
   it("should parse arrays with a correct delimitator", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.authentication_type"] = "query", name = "authentication", ["value.authentication_key_names"] = "wot,wat" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.key_names"] = "wot,wat", name = "queryauth" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {
-        authentication_type = "query",
-        authentication_key_names = { "wot", "wat" }
+        key_names = { "wot", "wat" }
       }
     }, result)
   end)
 
   it("should parse arrays with a incorrect delimitator", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.authentication_type"] = "query", name = "authentication", ["value.authentication_key_names"] = "wot;wat" })
+    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.key_names"] = "wot;wat", name = "queryauth" })
     assert.are.same({
-      name = "authentication",
+      name = "queryauth",
       value = {
-        authentication_type = "query",
-        authentication_key_names = { "wot;wat" }
+        key_names = { "wot;wat" }
       }
     }, result)
   end)

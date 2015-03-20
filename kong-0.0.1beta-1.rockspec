@@ -28,6 +28,7 @@ dependencies = {
   "stringy ~> 0.2-1",
   "inspect ~> 3.0-1",
   "luasocket ~> 2.0.2-5",
+  "lua-llthreads2 ~> 0.1.3-1",
   "lua_cliargs ~> 2.3-3",
   "lua-path ~> 0.2.3-1",
   "luatz ~> 0.3-1"
@@ -64,13 +65,29 @@ build = {
     ["kong.dao.cassandra.accounts"] = "src/dao/cassandra/accounts.lua",
     ["kong.dao.cassandra.applications"] = "src/dao/cassandra/applications.lua",
 
-    ["kong.plugins.authentication.handler"] = "src/plugins/authentication/handler.lua",
-    ["kong.plugins.authentication.access"] = "src/plugins/authentication/access.lua",
-    ["kong.plugins.authentication.schema"] = "src/plugins/authentication/schema.lua",
+    ["kong.plugins.basicauth.handler"] = "src/plugins/basicauth/handler.lua",
+    ["kong.plugins.basicauth.access"] = "src/plugins/basicauth/access.lua",
+    ["kong.plugins.basicauth.schema"] = "src/plugins/basicauth/schema.lua",
 
-    ["kong.plugins.networklog.handler"] = "src/plugins/networklog/handler.lua",
-    ["kong.plugins.networklog.log"] = "src/plugins/networklog/log.lua",
-    ["kong.plugins.networklog.schema"] = "src/plugins/networklog/schema.lua",
+    ["kong.plugins.queryauth.handler"] = "src/plugins/queryauth/handler.lua",
+    ["kong.plugins.queryauth.access"] = "src/plugins/queryauth/access.lua",
+    ["kong.plugins.queryauth.schema"] = "src/plugins/queryauth/schema.lua",
+
+    ["kong.plugins.headerauth.handler"] = "src/plugins/headerauth/handler.lua",
+    ["kong.plugins.headerauth.access"] = "src/plugins/headerauth/access.lua",
+    ["kong.plugins.headerauth.schema"] = "src/plugins/headerauth/schema.lua",
+
+    ["kong.plugins.tcplog.handler"] = "src/plugins/tcplog/handler.lua",
+    ["kong.plugins.tcplog.log"] = "src/plugins/tcplog/log.lua",
+    ["kong.plugins.tcplog.schema"] = "src/plugins/tcplog/schema.lua",
+
+    ["kong.plugins.udplog.handler"] = "src/plugins/udplog/handler.lua",
+    ["kong.plugins.udplog.log"] = "src/plugins/udplog/log.lua",
+    ["kong.plugins.udplog.schema"] = "src/plugins/udplog/schema.lua",
+
+    ["kong.plugins.filelog.handler"] = "src/plugins/filelog/handler.lua",
+    ["kong.plugins.filelog.log"] = "src/plugins/filelog/log.lua",
+    ["kong.plugins.filelog.schema"] = "src/plugins/filelog/schema.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "src/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "src/plugins/ratelimiting/access.lua",
