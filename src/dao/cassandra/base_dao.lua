@@ -47,13 +47,13 @@ local function encode_cassandra_values(schema, t, parameters)
     local schema_field = schema[column]
     local value = t[column]
 
-    if schema_field.type == "id" and value then
+    if schema_field.represents == constants.DATABASE_TYPES.ID and value then
       if is_valid_uuid(value) then
         value = cassandra.uuid(value)
       else
         errors = utils.add_error(errors, column, value.." is an invalid uuid")
       end
-    elseif schema_field.type == "timestamp" and value then
+    elseif schema_field.represents == constants.DATABASE_TYPES.TIMESTAMP and value then
       value = cassandra.timestamp(value)
     elseif value == nil then
       value = cassandra.null
