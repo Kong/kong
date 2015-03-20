@@ -47,7 +47,10 @@ Faker.FIXTURES = {
     { name = "basicauth", value = {}, __api = 3 },
     { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 5 },
     { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 6 },
-    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 }
+    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 },
+    { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
+    { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
+    { name = "filelog", value = { }, __api = 1 }
   }
 }
 
