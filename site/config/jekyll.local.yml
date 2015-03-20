@@ -1,6 +1,6 @@
-source: app
-destination: .app
-layouts: _layouts
+source: ./app
+destination: ./dist
+plugins: ./app/_jekyll_plugins
 exclude: ['node_modules', '.config']
 keep_files: ['assets']
 timezone: America/San_Francisco
