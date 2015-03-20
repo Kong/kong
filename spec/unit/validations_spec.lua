@@ -1,7 +1,17 @@
 local schemas = require "kong.dao.schemas"
+local constants = require "kong.constants"
 local validate = schemas.validate
 
 describe("Validation #schema", function()
+
+  it("should return the right alias", function()
+    assert.are.same("number", schemas.get_type("number"))
+    assert.are.same("string", schemas.get_type("string"))
+    assert.are.same("boolean", schemas.get_type("boolean"))
+    assert.are.same("table", schemas.get_type("table"))
+    assert.are.same("string", schemas.get_type(constants.DATABASE_TYPES.ID))
+    assert.are.same("number", schemas.get_type(constants.DATABASE_TYPES.TIMESTAMP))
+  end)
 
   describe("#validate()", function()
     -- Ok kids, today we're gonna test a custom validation schema,
