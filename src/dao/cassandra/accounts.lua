@@ -2,9 +2,9 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 local constants = require "kong.constants"
 
 local SCHEMA = {
-  id = { type = "string", represents = constants.DATABASE_TYPES.ID },
+  id = { type = constants.DATABASE_TYPES.ID },
   provider_id = { type = "string", unique = true, queryable = true },
-  created_at = { type = "number", represents = constants.DATABASE_TYPES.TIMESTAMP }
+  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
 }
 
 local Accounts = BaseDao:extend()
