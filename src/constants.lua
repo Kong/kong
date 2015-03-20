@@ -8,6 +8,10 @@ return {
     UNIQUE = "unique",
     FOREIGN = "foreign"
   },
+  DATABASE_TYPES = {
+    ID = "id",
+    TIMESTAMP = "timestamp"
+  },
   HEADERS = {
     SERVER = "Server",
     PROXY_TIME = "X-Kong-Proxy-Time",

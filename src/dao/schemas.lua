@@ -1,5 +1,6 @@
 local rex = require "rex_pcre" -- Why? Lua has built in pattern which should do the job too
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 
 local LUA_TYPES = {
   boolean = true,
@@ -8,10 +9,25 @@ local LUA_TYPES = {
   table = true
 }
 
+local LUA_TYPE_ALIASES = {
+  [constants.DATABASE_TYPES.ID] = "string",
+  [constants.DATABASE_TYPES.TIMESTAMP] = "number"
+}
+
 --
 -- Schemas
 --
 local _M = {}
+
+
+-- Returns the proper Lua type from a schema type, handling aliases
+-- @param {string} type_val The type of the schema property
+-- @return {string} A valid Lua type
+function _M.get_type(type_val)
+  local alias = LUA_TYPE_ALIASES[type_val]
+  return alias and alias or type_val
+end
+
 
 -- Validate a table against a given schema
 -- @param {table} t Table to validate
@@ -38,7 +54,7 @@ function _M.validate(t, schema, is_update)
       errors = utils.add_error(errors, column, column.." is required")
 
     -- Check type if valid
-    elseif v.type ~= nil and t[column] ~= nil and type(t[column]) ~= v.type and LUA_TYPES[v.type] then
+    elseif v.type ~= nil and t[column] ~= nil and type(t[column]) ~= _M.get_type(v.type) and LUA_TYPES[v.type] then
       errors = utils.add_error(errors, column, column.." is not a "..v.type)
 
     -- Check type if value is allowed in the enum
