@@ -27,6 +27,7 @@
 utils = require "kong.tools.utils"
 local cache = require "kong.tools.cache"
 local constants = require "kong.constants"
+local timestamp = require "kong.tools.timestamp"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -167,7 +168,7 @@ end
 -- @return nil
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
-  ngx.ctx.start = ngx.now()
+  ngx.ctx.started_at = timestamp.get_utc()
   ngx.ctx.plugin_conf = {}
 
   -- Iterate over all the plugins
@@ -189,13 +190,13 @@ function _M.exec_plugins_access()
     end
   end
 
-  ngx.ctx.proxy_start = ngx.now() -- Setting a property that will be available for every plugin
+  ngx.ctx.proxy_started_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 end
 
 -- Calls header_filter() on every loaded plugin
 -- @return nil
 function _M.exec_plugins_header_filter()
-  ngx.ctx.proxy_end = ngx.now() -- Setting a property that will be available for every plugin
+  ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 
   if not ngx.ctx.error then
     for _, plugin in ipairs(plugins) do
@@ -225,8 +226,6 @@ end
 function _M.exec_plugins_log()
   if not ngx.ctx.error then
 
-    local now = ngx.now()
-
     -- Creating the log variable that will be serialized
     local message = {
       request = {
@@ -242,7 +241,7 @@ function _M.exec_plugins_log()
       ip = ngx.var.remote_addr,
       status = ngx.status,
       url = ngx.var.uri,
-      created_at = now
+      started_at = ngx.ctx.started_at
     }
 
     ngx.ctx.log_message = message
