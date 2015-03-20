@@ -2,12 +2,12 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 local constants = require "kong.constants"
 
 local SCHEMA = {
-  id = { type = "string", represents = constants.DATABASE_TYPES.ID },
+  id = { type = constants.DATABASE_TYPES.ID },
   name = { type = "string", required = true, unique = true, queryable = true },
   public_dns = { type = "string", required = true, unique = true, queryable = true,
                  regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
-  created_at = { type = "number", represents = constants.DATABASE_TYPES.TIMESTAMP }
+  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
 }
 
 local Apis = BaseDao:extend()

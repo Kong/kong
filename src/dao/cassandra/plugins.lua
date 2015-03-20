@@ -12,13 +12,13 @@ local function load_value_schema(plugin_t)
 end
 
 local SCHEMA = {
-  id = { type = "string", represents = constants.DATABASE_TYPES.ID },
-  api_id = { type = "string", represents = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
-  application_id = { type = "string", represents = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
+  id = { type = constants.DATABASE_TYPES.ID },
+  api_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
+  application_id = { type = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
   name = { type = "string", required = true, queryable = true, immutable = true },
   value = { type = "table", required = true, schema = load_value_schema },
   enabled = { type = "boolean", default = true },
-  created_at = { type = "number", represents = constants.DATABASE_TYPES.TIMESTAMP }
+  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
 }
 
 local Plugins = BaseDao:extend()
