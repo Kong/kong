@@ -315,10 +315,9 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin_t =  {
           api_id = api.id,
           application_id = apps[#apps].id,
-          name = "authentication",
+          name = "queryauth",
           value = {
-            authentication_type = "query",
-            authentication_key_names = { "x-kong-key" }
+            key_names = { "x-kong-key" }
           }
         }
 
@@ -331,12 +330,13 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
 
         -- Failure
-        plugin_t.value.authentication_type = "hello"
+        plugin_t.name = "ratelimiting"
+        plugin_t.value = { period = "hello" }
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.truthy(err.schema)
-        assert.are.same("\"hello\" is not allowed. Allowed values are: \"query\", \"basic\", \"header\"", err.message["value.authentication_type"])
+        assert.are.same("\"hello\" is not allowed. Allowed values are: \"second\", \"minute\", \"hour\", \"day\", \"month\", \"year\"", err.message["value.period"])
         assert.falsy(plugin)
       end)
 
@@ -808,9 +808,14 @@ describe("Cassandra DAO #dao #cassandra", function()
       assert.falsy(err)
       assert.truthy(res)
 
-      assert.are.same(2, #res)
-      assert.truthy(utils.array_contains(res, "authentication"))
+      assert.are.same(7, #res)
+      assert.truthy(utils.array_contains(res, "queryauth"))
+      assert.truthy(utils.array_contains(res, "headerauth"))
+      assert.truthy(utils.array_contains(res, "basicauth"))
       assert.truthy(utils.array_contains(res, "ratelimiting"))
+      assert.truthy(utils.array_contains(res, "tcplog"))
+      assert.truthy(utils.array_contains(res, "udplog"))
+      assert.truthy(utils.array_contains(res, "filelog"))
     end)
 
     it("should insert a plugin and set the application_id to a 'null' uuid if none is specified", function()

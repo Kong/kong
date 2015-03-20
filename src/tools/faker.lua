@@ -41,13 +41,16 @@ Faker.FIXTURES = {
     { public_key = "username", secret_key = "password", __account = 1 },
   },
   plugin = {
-    { name = "authentication", value = { authentication_type = "query",  authentication_key_names = { "apikey" }}, __api = 1 },
-    { name = "authentication", value = { authentication_type = "query",  authentication_key_names = { "apikey" }}, __api = 6 },
-    { name = "authentication", value = { authentication_type = "header", authentication_key_names = { "apikey" }}, __api = 2 },
-    { name = "authentication", value = { authentication_type = "basic" }, __api = 3 },
+    { name = "queryauth", value = { key_names = { "apikey" }}, __api = 1 },
+    { name = "queryauth", value = { key_names = { "apikey" }}, __api = 6 },
+    { name = "headerauth", value = { header_names = { "apikey" }}, __api = 2 },
+    { name = "basicauth", value = {}, __api = 3 },
     { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 5 },
     { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 6 },
-    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 }
+    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 },
+    { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
+    { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
+    { name = "filelog", value = { }, __api = 1 }
   }
 }
 
@@ -74,10 +77,10 @@ function Faker:fake_entity(type)
       secret_key = "private_random"..r
     }
   elseif type == "plugin" then
-    local plugin_type = random_from_table({ "authentication", "ratelimiting" })
+    local plugin_type = random_from_table({ "queryauth", "ratelimiting" })
     local plugin_value
-    if plugin_type == "authentication" then
-      plugin_value = { authentication_type = "query", authentication_key_names = { "apikey"..r }}
+    if plugin_type == "queryauth" then
+      plugin_value = { key_names = { "apikey"..r }}
     else
       plugin_value = { period = "minute", limit = r }
     end
