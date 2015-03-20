@@ -23,29 +23,29 @@ header_caption: Add powerful functionalities to your APIs
         </div>
         <div class="plugin-plate-content">
           <p>When I orbited the Earth in a spaceship, I saw for the first time how beautiful...</p>
-          <p><a href="#">Learn More &rsaquo;</a></p>
+          <p><a href="/plugins/basic-authentication">Learn More &rsaquo;</a></p>
         </div>
       </div>
 
       <div class="plugin-plate">
         <div class="plugin-plate-header">
-          <h3>Basic Authentication</h3>
+          <h3>Header Authentication</h3>
           <img class="plugin-icon" src="/assets/images/icons/plugins/header-authentication.png" width="60" height="60" alt="Basic Authentication"/>
         </div>
         <div class="plugin-plate-content">
           <p>When I orbited the Earth in a spaceship, I saw for the first time how beautiful...</p>
-          <p><a href="#">Learn More &rsaquo;</a></p>
+          <p><a href="/plugins/header-authentication">Learn More &rsaquo;</a></p>
         </div>
       </div>
 
       <div class="plugin-plate">
         <div class="plugin-plate-header">
-          <h3>Basic Authentication</h3>
+          <h3>Query Authentication</h3>
           <img class="plugin-icon" src="/assets/images/icons/plugins/query-authentication.png" width="60" height="60" alt="Basic Authentication"/>
         </div>
         <div class="plugin-plate-content">
           <p>When I orbited the Earth in a spaceship, I saw for the first time how beautiful...</p>
-          <p><a href="#">Learn More &rsaquo;</a></p>
+          <p><a href="/plugins/query-authentication">Learn More &rsaquo;</a></p>
         </div>
       </div>
     </div>
@@ -135,5 +135,7 @@ header_caption: Add powerful functionalities to your APIs
     </div>
   </div>
 
-  {% include faq.html %}
+  {% if show_faq %}
+    {% include faq.html %}
+  {% endif %}
 </div>
