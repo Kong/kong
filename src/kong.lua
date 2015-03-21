@@ -82,6 +82,8 @@ local function init_plugins()
 
   for _, v in ipairs(plugins_available) do
     local status, res = pcall(require, "kong.plugins."..v..".handler")
+    local inspect = require "inspect"
+    print(inspect(res))
     if not status then
       error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)
     else

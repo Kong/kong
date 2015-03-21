@@ -29,6 +29,7 @@ dependencies = {
   "inspect ~> 3.0-1",
   "luasocket ~> 2.0.2-5",
   "lua-llthreads2 ~> 0.1.3-1",
+  "ansicolors ~> 1.0.2-3",
   "lua_cliargs ~> 2.3-3",
   "lua-path ~> 0.2.3-1",
   "luatz ~> 0.3-1"
@@ -43,8 +44,11 @@ build = {
 
     ["kong.constants"] = "src/constants.lua",
 
+    ["kong.cmd.utils"] = "src/cmd/utils.lua",
     ["kong.cmd.start"] = "src/cmd/start.lua",
     ["kong.cmd.stop"] = "src/cmd/stop.lua",
+    ["kong.cmd.config"] = "src/cmd/config.lua",
+    ["kong.cmd.version"] = "src/cmd/version.lua",
 
     ["kong.tools.utils"] = "src/tools/utils.lua",
     ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
@@ -66,6 +70,8 @@ build = {
     ["kong.dao.cassandra.plugins"] = "src/dao/cassandra/plugins.lua",
     ["kong.dao.cassandra.accounts"] = "src/dao/cassandra/accounts.lua",
     ["kong.dao.cassandra.applications"] = "src/dao/cassandra/applications.lua",
+
+    ["kong.plugins.base_plugin"] = "src/plugins/base_plugin.lua",
 
     ["kong.plugins.basicauth.handler"] = "src/plugins/basicauth/handler.lua",
     ["kong.plugins.basicauth.access"] = "src/plugins/basicauth/access.lua",
@@ -96,13 +102,14 @@ build = {
     ["kong.plugins.ratelimiting.schema"] = "src/plugins/ratelimiting/schema.lua",
 
     ["kong.web.app"] = "src/web/app.lua",
-    ["kong.web.routes.accounts"] = "src/web/routes/accounts.lua",
     ["kong.web.routes.apis"] = "src/web/routes/apis.lua",
+    ["kong.web.routes.accounts"] = "src/web/routes/accounts.lua",
     ["kong.web.routes.applications"] = "src/web/routes/applications.lua",
     ["kong.web.routes.plugins"] = "src/web/routes/plugins.lua",
     ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
   },
   install = {
+    conf = { "kong.yml" },
     bin = { "bin/kong" }
   },
   copy_directories = { "src/web/admin", "src/web/static" }

@@ -1,25 +1,33 @@
 #!/usr/bin/env lua
 
-local utils = require "kong.cmd.utils"
-local args = require "lapp" [[
+local cutils = require "kong.cmd.utils"
+local args = require("lapp")(string.format([[
 
 Usage: kong start [options]
 
 Options:
-  -c,--config (default kong.yml)  configuration file
-  -o,--output (default nginx_tmp) nginx output
-]]
+  -c,--config (default %s) configuration file
+]], cutils.CONSTANTS.GLOBAL_KONG_CONF))
 
-local nginx_path = utils.find_nginx()
+-- Make sure nginx is there and is openresty
+local nginx_path = cutils.find_nginx()
 if not nginx_path then
-  utils.logger:error_exit("can't find nginx")
+  cutils.logger:error_exit("can't find nginx")
 end
 
-local nginx_config = utils.prepare_nginx_output(args.config, args.output)
+-- Get configuration from default or given path
+local config_path, config = cutils.get_kong_config(args.config)
 
-local cmd = "KONG_CONF="..args.config.." "..nginx_path.." -p "..args.output.." -c '"..nginx_config.."'"
-if args.daemon then
-  cmd = cmd.." > /dev/null 2>&1 &"
+local nginx_working_dir = cutils.prepare_nginx_working_dir(config)
+local cmd = string.format("KONG_CONF=%s %s -p %s -c %s -g 'pid %s;'",
+                          config_path,
+                          nginx_path,
+                          nginx_working_dir,
+                          cutils.CONSTANTS.NGINX_CONFIG,
+                          cutils.CONSTANTS.NGINX_PID)
+
+if os.execute(cmd) == 0 then
+  cutils.logger:success("Started")
+else
+  cutils.logger:error("Could not start Kong")
 end
-
-return os.execute(cmd)

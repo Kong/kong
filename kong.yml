@@ -8,8 +8,8 @@ plugins_available:
   - udplog
   - filelog
 
-# Uncomment the following line to setup a custom output directory
-# output: /var/log/kong
+# Nginx prefix path directory
+nginx_working_dir: /usr/local/kong/
 
 # Specify the DAO to use
 database: cassandra
@@ -29,14 +29,13 @@ send_anonymous_reports: true
 
 # Cache configuration
 cache:
-  expiration: 5 # In seconds
+  expiration: 5 # in seconds
 
 nginx: |
   worker_processes auto;
   error_log logs/error.log info;
   worker_rlimit_nofile 84280;
   daemon on;
-  pid nginx.pid;
 
   env KONG_CONF;
   env KONG_HOME;
