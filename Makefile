@@ -1,4 +1,3 @@
-KONG_HOME = `pwd`
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
 
@@ -15,15 +14,15 @@ install:
 
 dev:
 	@scripts/dev_rocks.sh
-	@scripts/config.lua -k $(KONG_HOME) -e TEST create
-	@scripts/config.lua -k $(KONG_HOME) -e DEVELOPMENT create
+	@bin/kong config -e TEST
+	@bin/kong config -e DEVELOPMENT
 	@scripts/db.lua -c $(DEVELOPMENT_CONF) migrate
 
 clean:
 	@rm -f luacov.*
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) reset
 	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
+	@scripts/db.lua -c $(DEVELOPMENT_CONF) reset
 
 run:
 	@bin/kong -c $(DEVELOPMENT_CONF) start

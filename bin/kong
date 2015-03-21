@@ -1,16 +1,18 @@
 #!/usr/bin/env lua
 
-local help_message = [[
+local utils = require "kong.cmd.utils"
+local infos = utils.get_infos()
+local help_message = string.format([[
 
 Usage: kong <command>
 
 where <command> is one of:
-  start, stop, version
+  start, stop, config, db, version
 
 kong --help            print this message
 kong <command> --help  print the help message of a command
 
-kong@0.0.1-beta]]
+%s@%s]], infos.name, infos.version)
 
 local cmd = arg[1]
 
@@ -19,4 +21,5 @@ if not cmd or cmd == "-h" or cmd == "--help" then
   os.exit(0)
 end
 
+-- TODO: test if command exists
 require("kong.cmd."..cmd)
