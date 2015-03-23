@@ -1,7 +1,6 @@
 local constants = require "kong.constants"
 local cjson = require "cjson"
 local yaml = require "yaml"
-local fs = require "luarocks.fs"
 
 local _M = {}
 
@@ -161,45 +160,6 @@ end
 function _M.not_found(message)
   message = message and message or "Not found"
   _M.show_error(404, message)
-end
-
---
--- Disk I/O utils
---
-function _M.read_file(path)
-  local contents = nil
-  local file = io.open(path, "rb")
-  if file then
-    contents = file:read("*all")
-    file:close()
-  end
-  return contents
-end
-
-function _M.write_to_file(path, value)
-  local file = io.open(path, "w")
-  file:write(value)
-  file:close()
-end
-
-function _M.retrieve_files(path, pattern)
-  if not pattern then pattern = "" end
-  local files = {}
-
-  local function tree(path)
-    for _, file in ipairs(fs.list_dir(path)) do
-      local f = path..'/'..file
-      if fs.is_dir(f) then
-        tree(f)
-      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
-        table.insert(files, f)
-      end
-    end
-  end
-
-  tree(path)
-
-  return files
 end
 
 return _M

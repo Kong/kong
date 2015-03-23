@@ -1,6 +1,5 @@
 #!/usr/bin/env lua
 
-local utils = require "kong.tools.utils"
 local cutils = require "kong.cmd.utils"
 local args = require "lapp" [[
 Duplicate an existing configuration for given environment.
@@ -14,7 +13,7 @@ Options:
 ]]
 
 local CONFIG_FILENAME = string.format("kong%s.yml", args.env ~= "" and "_"..args.env or "")
-local config_content = utils.read_file(args.config)
+local config_content = cutils.read_file(args.config)
 
 local DEFAULT_ENV_VALUES = {
   TEST = {
@@ -43,4 +42,4 @@ if DEFAULT_ENV_VALUES[args.env:upper()] then
   end
 end
 
-utils.write_to_file(cutils.path:join(args.output, CONFIG_FILENAME), config_content)
+cutils.write_to_file(cutils.path:join(args.output, CONFIG_FILENAME), config_content)
