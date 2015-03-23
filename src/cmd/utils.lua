@@ -93,6 +93,22 @@ local function prepare_nginx_working_dir(kong_config)
   return kong_config.nginx_working_dir
 end
 
+local function read_file(path)
+  local contents = nil
+  local file = io.open(path, "rb")
+  if file then
+    contents = file:read("*all")
+    file:close()
+  end
+  return contents
+end
+
+local function write_to_file(path, value)
+  local file = io.open(path, "w")
+  file:write(value)
+  file:close()
+end
+
 local function file_exists(name)
    local f = io.open(name, "r")
    if f ~= nil then
@@ -101,6 +117,28 @@ local function file_exists(name)
   else
     return false
   end
+end
+
+local function retrieve_files(dir, pattern)
+  local fs = require "luarocks.fs"
+
+  if not pattern then pattern = "" end
+  local files = {}
+
+  local function tree(dir)
+    for _, file in ipairs(fs.list_dir(dir)) do
+      local f = path:join(dir, file)
+      if fs.is_dir(f) then
+        tree(f)
+      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
+        table.insert(files, f)
+      end
+    end
+  end
+
+  tree(dir)
+
+  return files
 end
 
 local function get_luarocks_config_dir()
@@ -147,7 +185,7 @@ local function get_kong_config(args_config)
   end
 
   -- Load and parse config
-  local config_content = utils.read_file(args_config)
+  local config_content = read_file(args_config)
   local config = yaml.load(config_content)
 
   logger:log("Using config: "..args_config)
@@ -164,10 +202,16 @@ return {
   colors = colors,
   logger = Logger(),
 
-  get_infos = get_infos,
-  find_nginx = find_nginx,
   file_exists = file_exists,
+  read_file = read_file,
+  write_to_file = write_to_file,
+  retrieve_files = retrieve_files,
+
+  get_infos = get_infos,
+
+  find_nginx = find_nginx,
   is_openresty = is_openresty,
+
   get_kong_config = get_kong_config,
   prepare_nginx_working_dir = prepare_nginx_working_dir
 }

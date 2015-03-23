@@ -44,17 +44,18 @@ build = {
     ["kong.constants"] = "src/constants.lua",
 
     ["kong.cmd.utils"] = "src/cmd/utils.lua",
+    ["kong.cmd.db"] = "src/cmd/db.lua",
     ["kong.cmd.start"] = "src/cmd/start.lua",
     ["kong.cmd.stop"] = "src/cmd/stop.lua",
     ["kong.cmd.config"] = "src/cmd/config.lua",
     ["kong.cmd.version"] = "src/cmd/version.lua",
 
     ["kong.tools.utils"] = "src/tools/utils.lua",
-    ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
-    ["kong.tools.cache"] = "src/tools/cache.lua",
-    ["kong.tools.http_client"] = "src/tools/http_client.lua",
-    ["kong.tools.faker"] = "src/tools/faker.lua",
     ["kong.tools.migrations"] = "src/tools/migrations.lua",
+    ["kong.tools.faker"] = "src/tools/faker.lua",
+    ["kong.tools.cache"] = "src/tools/cache.lua",
+    ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
+    ["kong.tools.http_client"] = "src/tools/http_client.lua",
 
     ["kong.resolver.handler"] = "src/resolver/handler.lua",
     ["kong.resolver.access"] = "src/resolver/access.lua",
