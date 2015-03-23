@@ -2,7 +2,6 @@
 
 local cutils = require "kong.cmd.utils"
 local args = require("lapp")(string.format([[
-
 Usage: kong stop [options]
 
 Options:

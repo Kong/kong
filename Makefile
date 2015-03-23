@@ -16,22 +16,22 @@ dev:
 	@scripts/dev_rocks.sh
 	@bin/kong config -e TEST
 	@bin/kong config -e DEVELOPMENT
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) migrate
+	@bin/kong db -c $(DEVELOPMENT_CONF) migrate:up
 
 clean:
 	@rm -f luacov.*
 	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) reset
+	@bin/kong db -c $(DEVELOPMENT_CONF) migrate:reset
 
 run:
-	@bin/kong -c $(DEVELOPMENT_CONF) start
+	@bin/kong start -c $(DEVELOPMENT_CONF)
 
 seed:
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) seed
+	@bin/kong db -c $(DEVELOPMENT_CONF) seed
 
 drop:
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) drop
+	@bin/kong db -c $(DEVELOPMENT_CONF) drop
 
 lint:
 	@luacheck kong*.rockspec

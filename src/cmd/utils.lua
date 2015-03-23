@@ -1,3 +1,11 @@
+--[[
+Kong CLI utilities
+ - Logging
+ - Colorization
+ - Disk I/O utils
+ - nginx path/initialization
+]]
+
 local path = require("path").new("/")
 local utils = require "kong.tools.utils"
 local Object = require "classic"
@@ -153,6 +161,7 @@ return {
   CONSTANTS = CLI_CONSTANTS,
 
   path = path,
+  colors = colors,
   logger = Logger(),
 
   get_infos = get_infos,
