@@ -24,13 +24,13 @@ dev:
 	done;
 	@bin/kong config -e TEST
 	@bin/kong config -e DEVELOPMENT
-	@bin/kong db -c $(DEVELOPMENT_CONF) migrate:up
+	@bin/kong db -c $(DEVELOPMENT_CONF) migrations:up
 
 clean:
 	@rm -f luacov.*
 	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
-	@bin/kong db -c $(DEVELOPMENT_CONF) migrate:reset
+	@bin/kong db -c $(DEVELOPMENT_CONF) migrations:reset
 
 run:
 	@bin/kong start -c $(DEVELOPMENT_CONF)
