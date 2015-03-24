@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-local cutils = require "kong.cmd.utils"
+local cutils = require "kong.cli.utils"
 local args = require "lapp" [[
 Duplicate an existing configuration for given environment.
 

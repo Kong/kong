@@ -1,7 +1,7 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
 
-.PHONY: install dev clean seed drop test coverage test-api test-proxy test-server test-all
+.PHONY: install dev clean run seed drop lint test coverage test-api test-proxy test-server test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \

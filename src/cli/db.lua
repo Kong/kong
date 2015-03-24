@@ -3,15 +3,16 @@
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
-local cutils = require "kong.cmd.utils"
-local utils = require "kong.tools.utils"
+local cutils = require "kong.cli.utils"
 local lapp = require("lapp")
 local args = lapp(string.format([[
+Migrations, seeding of the DB.
+
 Usage: kong db <command> [options]
 
 Commands:
   <command> (string) where <command> is one of:
-                       migrate:up, migrate:down, migrate:reset, seed, drop
+                       migrations, migrations:up, migrations:down, migrations:reset, seed, drop
 
 Options:
   -c,--config (default %s) configuration file
@@ -21,72 +22,76 @@ Options:
 
 -- $ kong db
 if args.command == "db" then
-  lapp.quit("Missing command.")
+  lapp.quit("Missing required <command>.")
 end
 
-local config_path, config = cutils.get_kong_config(args.config)
--- TODO: move to config validation
-local status, res = pcall(require, "kong.dao."..config.database..".factory")
-if not status then
-  cutils.logger:error("Wrong config")
-  os.exit(1)
-end
-
-local dao_factory = res(config.databases_available[config.database].properties)
+local config_path = cutils.get_kong_config_path(args.config)
+local _, dao_factory = cutils.load_configuration_and_dao(config_path)
 local migrations = Migrations(dao_factory)
 
-if args.command == "migrate:up" then
+if args.command == "migrations" then
+
+  local migrations, err = dao_factory:get_migrations()
+  if err then
+    cutils.logger:error_exit(err)
+  end
 
   cutils.logger:log(string.format(
-    cutils.colors("Migrating %{yellow}%s%{reset} keyspace: %{yellow}%s%{reset}"),
-    dao_factory.type,
-    dao_factory._properties.keyspace)
+    "Executed migrations for %s on keyspace: %s:\n%s",
+    cutils.colors.yellow(dao_factory.type),
+    cutils.colors.yellow(dao_factory._properties.keyspace),
+    table.concat(migrations, ", ")
+  ))
+
+elseif args.command == "migrations:up" then
+
+  cutils.logger:log(string.format(
+    "Migrating %s keyspace: %s",
+    cutils.colors.yellow(dao_factory.type),
+    cutils.colors.yellow(dao_factory._properties.keyspace))
   )
 
   migrations:migrate(function(migration, err)
     if err then
-      cutils.logger:error(err)
-      os.exit(1)
+      cutils.logger:error_exit(err)
     elseif migration then
-      cutils.logger:success("Migrated up to: "..cutils.colors("%{yellow}"..migration.name.."%{reset}"))
+      cutils.logger:success("Migrated up to: "..cutils.colors.yellow(migration.name))
     else
       cutils.logger:success("Schema already up to date")
     end
   end)
 
-elseif args.command == "migrate:down" then
+elseif args.command == "migrations:down" then
 
   cutils.logger:log(string.format(
-    cutils.colors("Rolling back %{yellow}%s%{reset} keyspace: %{yellow}%s%{reset}"),
-    dao_factory.type,
-    dao_factory._properties.keyspace)
-  )
+    "Rolling back %s keyspace: %s",
+    cutils.colors.yellow(dao_factory.type),
+    cutils.colors.yellow(dao_factory._properties.keyspace)
+  ))
 
   migrations:rollback(function(migration, err)
     if err then
-      cutils.logger:error(err)
-      os.exit(1)
+      cutils.logger:error_exit(err)
     elseif migration then
-      cutils.logger:success("Rollbacked to: "..cutils.colors("%{yellow}"..migration.name.."%{reset}"))
+      cutils.logger:success("Rollbacked to: "..cutils.colors.yellow(migration.name))
     else
       cutils.logger:success("No migration to rollback")
     end
   end)
 
-elseif args.command == "migrate:reset" then
+elseif args.command == "migrations:reset" then
 
   cutils.logger:log(string.format(
-    cutils.colors("Reseting %{yellow}%s%{reset} keyspace: %{yellow}%s%{reset}"),
-    dao_factory.type,
-    dao_factory._properties.keyspace)
+    "Reseting %s keyspace: %s",
+    cutils.colors.yellow(dao_factory.type),
+    cutils.colors.yellow(dao_factory._properties.keyspace))
   )
 
   migrations:reset(function(migration, err)
     if err then
-      cutils.logger:error(err)
-      os.exit(1)
+      cutils.logger:error_exit(err)
     elseif migration then
-      cutils.logger:success("Rollbacked: "..cutils.colors("%{yellow}"..migration.name.."%{reset}"))
+      cutils.logger:success("Rollbacked: "..cutils.colors.yellow(migration.name))
     else
       cutils.logger:success("Schema reseted")
     end
@@ -97,8 +102,7 @@ elseif args.command == "seed" then
   -- Drop if exists
   local err = dao_factory:drop()
   if err then
-    cutils.logger:error(err)
-    os.exit(1)
+    cutils.logger:error_exit(err)
   end
 
   local err = dao_factory:prepare()
@@ -114,8 +118,7 @@ elseif args.command == "drop" then
 
   local err = dao_factory:drop()
   if err then
-    cutils.logger:error(err)
-    os.exit(1)
+    cutils.logger:error_exit(err)
   end
 
   cutils.logger:success("Dropped")

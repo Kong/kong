@@ -1,7 +1,7 @@
 --[[
 Kong CLI utilities
- - Logging
  - Colorization
+ - Logging
  - Disk I/O utils
  - nginx path/initialization
 ]]
@@ -9,7 +9,7 @@ Kong CLI utilities
 local path = require("path").new("/")
 local utils = require "kong.tools.utils"
 local Object = require "classic"
-local colors = require "ansicolors"
+local ansicolors = require "ansicolors"
 
 local CLI_CONSTANTS = {
   GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
@@ -17,6 +17,17 @@ local CLI_CONSTANTS = {
   NGINX_PID = "kong.pid"
 }
 
+--
+-- Colors
+--
+local colors = {}
+for _, v in ipairs({"red", "green", "yellow"}) do
+  colors[v] = function(str) return ansicolors("%{"..v.."}"..str.."%{reset}") end
+end
+
+--
+-- Logging
+--
 local Logger = Object:extend()
 
 function Logger:new(silent)
@@ -30,15 +41,20 @@ function Logger:log(str)
 end
 
 function Logger:success(str)
-  self:log(colors("%{green}[SUCCESS]%{reset} ")..str)
+  self:log(colors.green("[SUCCESS] ")..str)
 end
 
 function Logger:warn(str)
-  self:log(colors("%{yellow}[WARNING]%{reset} ")..str)
+  self:log(colors.yellow("[WARNING] ")..str)
 end
 
 function Logger:error(str)
-  self:log(colors("%{red}[ERROR]%{reset} ")..str)
+  self:log(colors.red("[ERROR] ")..str)
+end
+
+function Logger:error_exit(str)
+  self:error(str)
+  os.exit(1)
 end
 
 local function get_infos()
@@ -46,6 +62,33 @@ local function get_infos()
   return { name = constants.NAME, version = constants.VERSION }
 end
 
+local logger = Logger()
+
+local function retrieve_files(dir, pattern)
+  local fs = require "luarocks.fs"
+
+  if not pattern then pattern = "" end
+  local files = {}
+
+  local function tree(dir)
+    for _, file in ipairs(fs.list_dir(dir)) do
+      local f = path:join(dir, file)
+      if fs.is_dir(f) then
+        tree(f)
+      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
+        table.insert(files, f)
+      end
+    end
+  end
+
+  tree(dir)
+
+  return files
+end
+
+--
+-- NGINX
+--
 local function is_openresty(path_to_check)
   local cmd = tostring(path_to_check).." -v 2>&1"
   local handle = io.popen(cmd)
@@ -71,8 +114,7 @@ local function find_nginx()
     local prefix = nginx_search_paths[i]
     local to_check = tostring(prefix)..tostring(nginx_bin)
     if is_openresty(to_check) then
-      nginx_path = to_check
-      return nginx_path
+      return to_check
     end
   end
 end
@@ -93,61 +135,12 @@ local function prepare_nginx_working_dir(kong_config)
   return kong_config.nginx_working_dir
 end
 
-local function read_file(path)
-  local contents = nil
-  local file = io.open(path, "rb")
-  if file then
-    contents = file:read("*all")
-    file:close()
-  end
-  return contents
-end
-
-local function write_to_file(path, value)
-  local file = io.open(path, "w")
-  file:write(value)
-  file:close()
-end
-
-local function file_exists(name)
-   local f = io.open(name, "r")
-   if f ~= nil then
-    io.close(f)
-    return true
-  else
-    return false
-  end
-end
-
-local function retrieve_files(dir, pattern)
-  local fs = require "luarocks.fs"
-
-  if not pattern then pattern = "" end
-  local files = {}
-
-  local function tree(dir)
-    for _, file in ipairs(fs.list_dir(dir)) do
-      local f = path:join(dir, file)
-      if fs.is_dir(f) then
-        tree(f)
-      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
-        table.insert(files, f)
-      end
-    end
-  end
-
-  tree(dir)
-
-  return files
-end
-
 local function get_luarocks_config_dir()
   local cfg = require "luarocks.cfg"
   local lpath = require "luarocks.path"
   local search = require "luarocks.search"
   local infos = get_infos()
 
-  local conf_dir
   local tree_map = {}
   local results = {}
 
@@ -166,52 +159,46 @@ local function get_luarocks_config_dir()
   return lpath.conf_dir(infos.name:lower(), infos.version, repo)
 end
 
-local function get_kong_config(args_config)
-  local yaml = require "yaml"
-  local logger = Logger()
-
+local function get_kong_config_path(args_config)
   -- Use the rock's config if no config at default location
-  if not file_exists(args_config) then
+  if not utils.file_exists(args_config) then
     local kong_rocks_conf = path:join(get_luarocks_config_dir(), "kong.yml")
     logger:warn("No config at: "..args_config.." using default config instead.")
     args_config = kong_rocks_conf
   end
 
   -- Make sure the configuration file really exists
-  if not file_exists(args_config) then
+  if not utils.file_exists(args_config) then
     logger:warn("No config at: "..args_config)
-    logger:error("Could not find a configuration file.")
-    os.exit(1)
+    logger:error_exit("Could not find a configuration file.")
   end
 
-  -- Load and parse config
-  local config_content = read_file(args_config)
-  local config = yaml.load(config_content)
-
-  logger:log("Using config: "..args_config)
+  logger:log("Using config: "..args_config.."\n")
 
   -- TODO: validate configuration
+  --[[local status, res = pcall(require, "kong.dao."..config.database..".factory")
+    if not status then
+      cutils.logger:error("Wrong config")
+      os.exit(1)
+    end]]
 
-  return args_config, config
+  return args_config
 end
 
 return {
   CONSTANTS = CLI_CONSTANTS,
-
   path = path,
   colors = colors,
-  logger = Logger(),
-
-  file_exists = file_exists,
-  read_file = read_file,
-  write_to_file = write_to_file,
-  retrieve_files = retrieve_files,
+  logger = logger,
 
   get_infos = get_infos,
-
   find_nginx = find_nginx,
   is_openresty = is_openresty,
-
-  get_kong_config = get_kong_config,
-  prepare_nginx_working_dir = prepare_nginx_working_dir
+  read_file = utils.read_file,
+  retrieve_files = retrieve_files,
+  file_exists = utils.file_exists,
+  write_to_file = utils.write_to_file,
+  get_kong_config_path = get_kong_config_path,
+  prepare_nginx_working_dir = prepare_nginx_working_dir,
+  load_configuration_and_dao = utils.load_configuration_and_dao
 }

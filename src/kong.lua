@@ -82,8 +82,6 @@ local function init_plugins()
 
   for _, v in ipairs(plugins_available) do
     local status, res = pcall(require, "kong.plugins."..v..".handler")
-    local inspect = require "inspect"
-    print(inspect(res))
     if not status then
       error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)
     else
@@ -126,9 +124,8 @@ end
 
 -- To be called by nginx's init_by_lua directive.
 -- Execution:
---   - load the configuration
+--   - load the configuration from the apth computed by the CLI
 --   - instanciate the DAO
---     - if the keyspace is empty run the migrations
 --     - prepare the statements
 --   - load the used plugins
 --     - load all plugins if used and installed
@@ -140,21 +137,6 @@ end
 function _M.init()
   -- Loading configuration
   configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
-
-  -- Detect if keyspace is set
-  local keyspace, err = dao:get_migrations()
-  if err then
-    error(err)
-  elseif keyspace == nil then
-    -- No previous migrations, it should be safe to run them
-    print("Database not initialized. Running migrations...")
-    local migrations = require("kong.tools.migrations")(dao)
-    migrations:migrate(function(migration, err)
-      if err then
-        error(err)
-      end
-    end)
-  end
 
   -- Initializing DAO
   local err = dao:prepare()

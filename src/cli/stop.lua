@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-local cutils = require "kong.cmd.utils"
+local cutils = require "kong.cli.utils"
 local args = require("lapp")(string.format([[
 Usage: kong stop [options]
 
@@ -9,13 +9,13 @@ Options:
 ]], cutils.CONSTANTS.GLOBAL_KONG_CONF))
 
 -- Get configuration from default or given path
-local config_path, config = cutils.get_kong_config(args.config)
+local config_path = cutils.get_kong_config_path(args.config)
+local config = cutils.load_configuration_and_dao(config_path)
 
 local pid = cutils.path:join(config.nginx_working_dir, cutils.CONSTANTS.NGINX_PID)
 
 if not cutils.file_exists(pid) then
- cutils.logger:error("Not running. Could not find pid at: "..pid)
- os.exit(1)
+ cutils.logger:error_exit("Not running. Could not find pid at: "..pid)
 end
 
 local cmd = "kill -QUIT $(cat "..pid..")"
