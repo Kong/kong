@@ -14,7 +14,9 @@ Options:
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
 local CONFIG_FILENAME = string.format("kong%s.yml", args.env ~= "" and "_"..args.env or "")
-local config_content = cutils.read_file(args.config)
+
+local config_path = cutils.get_kong_config_path(args.config)
+local config_content = cutils.read_file(config_path)
 
 local DEFAULT_ENV_VALUES = {
   TEST = {
