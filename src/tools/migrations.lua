@@ -1,8 +1,8 @@
-local cutils = require "kong.cli.utils"
+local utils = require "kong.tools.utils"
 local Object = require "classic"
 
 local KONG_HOME = os.getenv("KONG_HOME") and os.getenv("KONG_HOME") or "."
-local MIGRATION_PATH = cutils.path:join(KONG_HOME, "database/migrations")
+local MIGRATION_PATH = utils.path:join(KONG_HOME, "database", "migrations")
 
 -- Migrations
 local Migrations = Object:extend()
@@ -10,7 +10,7 @@ local Migrations = Object:extend()
 function Migrations:new(dao)
   self.dao = dao
   self.options = { keyspace = dao._properties.keyspace }
-  self.migrations_files = cutils.retrieve_files(cutils.path:join(MIGRATION_PATH, dao.type), '.lua')
+  self.migrations_files = utils.retrieve_files(utils.path:join(MIGRATION_PATH, dao.type), { file_pattern = ".lua" })
   table.sort(self.migrations_files)
 end
 
@@ -18,7 +18,7 @@ end
 function Migrations.create(configuration, name, callback)
   for k, _ in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
-    local file_path = cutils.path:join(MIGRATION_PATH, k)
+    local file_path = utils.path:join(MIGRATION_PATH, k)
     local file_name = date_str.."_"..name
     local interface = [[
 local Migration = {
@@ -115,7 +115,7 @@ function Migrations:rollback(callback)
 
   local migration_to_rollback
   if old_migrations and #old_migrations > 0 then
-    migration_to_rollback = loadfile(cutils.path:join(MIGRATION_PATH, self.dao.type, old_migrations[#old_migrations])..".lua")()
+    migration_to_rollback = loadfile(utils.path:join(MIGRATION_PATH, self.dao.type, old_migrations[#old_migrations])..".lua")()
   else
     -- No more migration to rollback
     callback(nil, nil)

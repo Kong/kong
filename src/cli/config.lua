@@ -1,16 +1,17 @@
 #!/usr/bin/env lua
 
 local cutils = require "kong.cli.utils"
-local args = require "lapp" [[
+local constants = require "kong.constants"
+local args = require("lapp")(string.format([[
 Duplicate an existing configuration for given environment.
 
 Usage: kong config [options]
 
 Options:
-  -c,--config (default kong.yml)  configuration file
-  -o,--output (default .)         ouput
-  -e,--env    (string)            environment name
-]]
+  -c,--config (default %s) configuration file
+  -o,--output (default .)                  ouput
+  -e,--env    (string)                     environment name
+]], constants.CLI.GLOBAL_KONG_CONF))
 
 local CONFIG_FILENAME = string.format("kong%s.yml", args.env ~= "" and "_"..args.env or "")
 local config_content = cutils.read_file(args.config)

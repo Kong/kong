@@ -1,5 +1,6 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
+DEV_ROCKS=busted luacov luacov-coveralls luacheck
 
 .PHONY: install dev clean run seed drop lint test coverage test-api test-proxy test-server test-all
 
@@ -13,18 +14,17 @@ install:
 	fi
 
 dev:
-	@NEEDED_ROCKS="busted luacov luacov-coveralls luacheck"
-	@for rock in ${NEEDED_ROCKS} ; do \
-    if ! command -v ${rock} &> /dev/null ; then \
-	    echo ${rock} not found, installing via luarocks... ; \
-	    luarocks install ${rock} ; \
-	  else \
-	    @echo "${rock} already installed, skipping" ; \
-	  fi \
+	@for rock in $(DEV_ROCKS) ; do \
+		if ! command -v $$rock &> /dev/null ; then \
+      echo $$rock not found, installing via luarocks... ; \
+      luarocks install $$rock ; \
+    else \
+      echo "$$rock already installed, skipping" ; \
+    fi \
 	done;
-	@bin/kong config -e TEST
-	@bin/kong config -e DEVELOPMENT
-	@bin/kong db -c $(DEVELOPMENT_CONF) migrations:up
+	bin/kong config -e TEST
+	bin/kong config -e DEVELOPMENT
+	bin/kong db -c $(DEVELOPMENT_CONF) migrations:up
 
 clean:
 	@rm -f luacov.*

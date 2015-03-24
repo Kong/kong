@@ -488,7 +488,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       spec_helper.drop_db()
-      spec_helper.seed_db(100)
+      spec_helper.seed_db(nil, 100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -522,7 +522,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       spec_helper.drop_db()
-      spec_helper.seed_db(100)
+      spec_helper.seed_db(nil, 100)
     end)
 
     describe_all_collections(function(type, collection)
@@ -799,7 +799,7 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     setup(function()
       spec_helper.drop_db()
-      spec_helper.seed_db(100)
+      spec_helper.seed_db(nil, 100)
     end)
 
     it("should find distinct plugins", function()
