@@ -168,7 +168,6 @@ return {
   find_nginx = find_nginx,
   is_openresty = is_openresty,
   read_file = utils.read_file,
-  retrieve_files = retrieve_files,
   file_exists = utils.file_exists,
   write_to_file = utils.write_to_file,
   get_kong_config_path = get_kong_config_path,
