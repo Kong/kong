@@ -1,9 +1,11 @@
 local constants = require "kong.constants"
 local cjson = require "cjson"
 local yaml = require "yaml"
-local fs = require "luarocks.fs"
+local path = require("path").new("/")
 
-local _M = {}
+local _M = {
+  path = path
+}
 
 --
 -- General utils
@@ -95,6 +97,60 @@ function _M.add_error(errors, k, v)
 end
 
 --
+-- Disk I/O
+--
+function _M.read_file(path)
+  local contents = nil
+  local file = io.open(path, "rb")
+  if file then
+    contents = file:read("*all")
+    file:close()
+  end
+  return contents
+end
+
+function _M.write_to_file(path, value)
+  local file = io.open(path, "w")
+  file:write(value)
+  file:close()
+end
+
+function _M.file_exists(name)
+   local f = io.open(name, "r")
+   if f ~= nil then
+    io.close(f)
+    return true
+  else
+    return false
+  end
+end
+
+function _M.retrieve_files(dir, options)
+  local fs = require "luarocks.fs"
+  local pattern = options.file_pattern
+  local exclude_dir_pattern = options.exclude_dir_pattern
+
+  if not pattern then pattern = "" end
+  if not exclude_dir_pattern then exclude_dir_pattern = "" end
+  local files = {}
+
+  local function tree(dir)
+    for _, file in ipairs(fs.list_dir(dir)) do
+      local f = path:join(dir, file)
+      if fs.is_dir(f) and string.match(f, exclude_dir_pattern) == nil then
+        tree(f)
+      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
+        table.insert(files, f)
+      end
+    end
+  end
+
+  tree(dir)
+
+  return files
+end
+
+--
 -- DAO utils
 --
 function _M.load_configuration_and_dao(configuration_path)
@@ -103,6 +159,7 @@ function _M.load_configuration_and_dao(configuration_path)
     error("No configuration file at: "..configuration_path)
   end
 
+  -- Configuraiton should already be validated by the CLI at this point
   local configuration = yaml.load(configuration_file)
 
   local dao_config = configuration.databases_available[configuration.database]
@@ -110,10 +167,14 @@ function _M.load_configuration_and_dao(configuration_path)
     error("No dao \""..configuration.database.."\" defined")
   end
 
-  local dao_factory = require("kong.dao."..configuration.database..".factory")
-  local dao = dao_factory(dao_config.properties)
+  -- Adding computed properties to the configuration
+  configuration.pid_file = path:join(configuration.nginx_working_dir, constants.CLI.NGINX_PID)
 
-  return configuration, dao
+  -- Instanciate the DAO Factory along with the configuration
+  local DaoFactory = require("kong.dao."..configuration.database..".factory")
+  local dao_factory = DaoFactory(dao_config.properties)
+
+  return configuration, dao_factory
 end
 
 --
@@ -161,128 +222,6 @@ end
 function _M.not_found(message)
   message = message and message or "Not found"
   _M.show_error(404, message)
-end
-
---
--- Disk I/O utils
---
-function _M.read_file(path)
-  local contents = nil
-  local file = io.open(path, "rb")
-  if file then
-    contents = file:read("*all")
-    file:close()
-  end
-  return contents
-end
-
-function _M.write_to_file(path, value)
-  local file = io.open(path, "w")
-  file:write(value)
-  file:close()
-end
-
-function _M.retrieve_files(path, pattern)
-  if not pattern then pattern = "" end
-  local files = {}
-
-  local function tree(path)
-    for _, file in ipairs(fs.list_dir(path)) do
-      local f = path..'/'..file
-      if fs.is_dir(f) then
-        tree(f)
-      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
-        table.insert(files, f)
-      end
-    end
-  end
-
-  tree(path)
-
-  return files
-end
-
---
--- Logger
---
-local logger = {}
-local logger_mt = {__index=logger}
-
-function logger:new(silent)
-  return setmetatable({ silent = silent }, logger_mt)
-end
-
-function logger:log(str)
-  if not self.silent then
-    print(str)
-  end
-end
-
-function logger:success(str)
-  self:log(_M.green("✔  ")..str)
-end
-
-function logger:error(str)
-  self:log(_M.red("✘  ")..str)
-  os.exit(1)
-end
-
-_M.logger = logger
-
---
--- Printable
---
-local colors = {
-  -- attributes
-  reset = 0,
-  clear = 0,
-  bright = 1,
-  dim = 2,
-  underscore = 4,
-  blink = 5,
-  reverse = 7,
-  hidden = 8,
-  -- foreground
-  black = 30,
-  red = 31,
-  green = 32,
-  yellow = 33,
-  blue = 34,
-  magenta = 35,
-  cyan = 36,
-  white = 37,
-  -- background
-  onblack = 40,
-  onred = 41,
-  ongreen = 42,
-  onyellow = 43,
-  onblue = 44,
-  onmagenta = 45,
-  oncyan = 46,
-  onwhite = 47
-}
-
-local colormt = {}
-colormt.__metatable = {}
-
-function colormt:__tostring()
-  return self.value
-end
-
-function colormt:__concat(other)
-  return tostring(self) .. tostring(other)
-end
-
-function colormt:__call(s)
-  return self .. s .. _M.reset
-end
-
-local function makecolor(value)
-  return setmetatable({ value = string.char(27) .. '[' .. tostring(value) .. 'm' }, colormt)
-end
-
-for c, v in pairs(colors) do
-  _M[c] = makecolor(v)
 end
 
 return _M

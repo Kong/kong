@@ -1,6 +1,4 @@
 local constants = require "kong.constants"
-local stringy = require "stringy"
-local cjson = require "cjson"
 local cache = require "kong.tools.cache"
 
 local _M = {}

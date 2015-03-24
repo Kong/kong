@@ -1,5 +1,11 @@
 return {
+  NAME = "kong",
   VERSION = "0.0.1beta-1",
+  CLI = {
+    GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
+    NGINX_CONFIG = "nginx.conf",
+    NGINX_PID = "kong.pid"
+  },
   DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
   DATABASE_ERROR_TYPES = {
     SCHEMA = "schema",
