@@ -20,6 +20,7 @@ local config_content = cutils.read_file(config_path)
 
 local DEFAULT_ENV_VALUES = {
   TEST = {
+    ["nginx_working_dir: /usr/local/kong/"] = "nginx_working_dir: nginx_tmp",
     ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
     ["keyspace: kong"] = "keyspace: kong_tests",
     ["lua_package_path ';;'"] = "lua_package_path './src/?.lua;;'",
@@ -28,6 +29,7 @@ local DEFAULT_ENV_VALUES = {
     ["listen 8001"] = "listen 8101"
   },
   DEVELOPMENT = {
+    ["nginx_working_dir: /usr/local/kong/"] = "nginx_working_dir: nginx_tmp",
     ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
     ["keyspace: kong"] = "keyspace: kong_development",
     ["lua_package_path ';;'"] = "lua_package_path './src/?.lua;;'",
