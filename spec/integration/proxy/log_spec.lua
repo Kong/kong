@@ -1,7 +1,7 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
-local cjson = require "cjson"
 local Threads = require "llthreads2.ex"
+local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
