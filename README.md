@@ -1,4 +1,4 @@
-# KONG - The API Management Layer
+# KONG - The API Layer
 
 [![Build Status][travis-badge]][travis-url] [![Coverage Status][coveralls-badge]][coveralls-url] [![Gitter][gitter-badge]][gitter-url]
 
