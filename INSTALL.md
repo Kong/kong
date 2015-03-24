@@ -61,7 +61,7 @@ If you whish to run Cassandra locally, install it following the [Datastax instru
 Finally, install Kong. Download [the latest release][kong-latest-url] and execute:
 
 ```
-sudo make install
+[sudo] make install
 ```
 
 Now follow the "Usage" section of the README to start Kong.
@@ -108,7 +108,7 @@ brew install cassandra
 Finally, install Kong. Download [the latest release][kong-latest-url] and execute:
 
 ```
-sudo make install
+[sudo] make install
 ```
 
 Now follow the "Usage" section of the README to start Kong.

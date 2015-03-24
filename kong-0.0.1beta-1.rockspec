@@ -19,44 +19,50 @@ dependencies = {
   "lua ~> 5.1",
 
   "uuid ~> 0.2-1",
-  "lapis ~> 1.1.0-1",
-  "luasec ~> 0.5-2",
+  "luatz ~> 0.3-1",
   "yaml ~> 1.1.1-1",
-  "luaxml ~> 101012-1",
-  "cassandra ~> 0.5-4",
-  "lrexlib-pcre ~> 2.7.2-1",
-  "stringy ~> 0.2-1",
+  "luasec ~> 0.5-2",
+  "lapis ~> 1.1.0-1",
   "inspect ~> 3.0-1",
-  "luasocket ~> 2.0.2-5",
-  "lua-llthreads2 ~> 0.1.3-1",
-  "lua_cliargs ~> 2.3-3",
+  "stringy ~> 0.2-1",
+  "cassandra ~> 0.5-4",
   "lua-path ~> 0.2.3-1",
-  "luatz ~> 0.3-1"
+  "lua-cjson ~> 2.1.0-1",
+  "luasocket ~> 2.0.2-5",
+  "ansicolors ~> 1.0.2-3",
+  "lrexlib-pcre ~> 2.7.2-1",
+  "lua-llthreads2 ~> 0.1.3-1"
 }
 build = {
   type = "builtin",
   modules = {
     ["kong"] = "src/kong.lua",
-    ["classic"] = "src/classic.lua",
+
+    ["classic"] = "src/vendor/classic.lua",
+    ["lapp"] = "src/vendor/lapp.lua",
 
     ["kong.constants"] = "src/constants.lua",
 
-    ["kong.tools.utils"] = "src/tools/utils.lua",
-    ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
-    ["kong.tools.cache"] = "src/tools/cache.lua",
-    ["kong.tools.http_client"] = "src/tools/http_client.lua",
-    ["kong.tools.faker"] = "src/tools/faker.lua",
-    ["kong.tools.migrations"] = "src/tools/migrations.lua",
+    ["kong.cli.utils"] = "src/cli/utils.lua",
+    ["kong.cli.db"] = "src/cli/db.lua",
+    ["kong.cli.start"] = "src/cli/start.lua",
+    ["kong.cli.stop"] = "src/cli/stop.lua",
+    ["kong.cli.config"] = "src/cli/config.lua",
+    ["kong.cli.version"] = "src/cli/version.lua",
 
-    ["kong.plugins.base_plugin"] = "src/plugins/base_plugin.lua",
+    ["kong.tools.utils"] = "src/tools/utils.lua",
+    ["kong.tools.migrations"] = "src/tools/migrations.lua",
+    ["kong.tools.faker"] = "src/tools/faker.lua",
+    ["kong.tools.cache"] = "src/tools/cache.lua",
+    ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
+    ["kong.tools.http_client"] = "src/tools/http_client.lua",
 
     ["kong.resolver.handler"] = "src/resolver/handler.lua",
     ["kong.resolver.access"] = "src/resolver/access.lua",
     ["kong.resolver.header_filter"] = "src/resolver/header_filter.lua",
 
-    ["kong.dao.schemas"] = "src/dao/schemas.lua",
-
     ["kong.dao.error"] = "src/dao/error.lua",
+    ["kong.dao.schemas"] = "src/dao/schemas.lua",
     ["kong.dao.cassandra.factory"] = "src/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "src/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "src/dao/cassandra/apis.lua",
@@ -64,6 +70,8 @@ build = {
     ["kong.dao.cassandra.plugins"] = "src/dao/cassandra/plugins.lua",
     ["kong.dao.cassandra.accounts"] = "src/dao/cassandra/accounts.lua",
     ["kong.dao.cassandra.applications"] = "src/dao/cassandra/applications.lua",
+
+    ["kong.plugins.base_plugin"] = "src/plugins/base_plugin.lua",
 
     ["kong.plugins.basicauth.handler"] = "src/plugins/basicauth/handler.lua",
     ["kong.plugins.basicauth.access"] = "src/plugins/basicauth/access.lua",
@@ -94,11 +102,15 @@ build = {
     ["kong.plugins.ratelimiting.schema"] = "src/plugins/ratelimiting/schema.lua",
 
     ["kong.web.app"] = "src/web/app.lua",
-    ["kong.web.routes.accounts"] = "src/web/routes/accounts.lua",
     ["kong.web.routes.apis"] = "src/web/routes/apis.lua",
+    ["kong.web.routes.accounts"] = "src/web/routes/accounts.lua",
     ["kong.web.routes.applications"] = "src/web/routes/applications.lua",
     ["kong.web.routes.plugins"] = "src/web/routes/plugins.lua",
     ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
+  },
+  install = {
+    conf = { "kong.yml" },
+    bin = { "bin/kong" }
   },
   copy_directories = { "src/web/admin", "src/web/static" }
 }

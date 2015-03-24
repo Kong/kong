@@ -1,8 +1,8 @@
-KONG_HOME = `pwd`
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
+DEV_ROCKS=busted luacov luacov-coveralls luacheck
 
-.PHONY: install dev clean seed drop test coverage test-api test-proxy test-server test-all
+.PHONY: install dev clean run seed drop lint test coverage test-api test-proxy test-server test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \
@@ -14,25 +14,32 @@ install:
 	fi
 
 dev:
-	@scripts/dev_rocks.sh
-	@scripts/config.lua -k $(KONG_HOME) -e TEST create
-	@scripts/config.lua -k $(KONG_HOME) -e DEVELOPMENT create
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) migrate
+	@for rock in $(DEV_ROCKS) ; do \
+		if ! command -v $$rock &> /dev/null ; then \
+      echo $$rock not found, installing via luarocks... ; \
+      luarocks install $$rock ; \
+    else \
+      echo "$$rock already installed, skipping" ; \
+    fi \
+	done;
+	bin/kong config -e TEST
+	bin/kong config -e DEVELOPMENT
+	bin/kong db -c $(DEVELOPMENT_CONF) migrations:up
 
 clean:
 	@rm -f luacov.*
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) reset
 	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
+	@bin/kong db -c $(DEVELOPMENT_CONF) migrations:reset
 
 run:
-	@bin/kong -c $(DEVELOPMENT_CONF) start
+	@bin/kong start -c $(DEVELOPMENT_CONF)
 
 seed:
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) seed
+	@bin/kong db -c $(DEVELOPMENT_CONF) seed
 
 drop:
-	@scripts/db.lua -c $(DEVELOPMENT_CONF) drop
+	@bin/kong db -c $(DEVELOPMENT_CONF) drop
 
 lint:
 	@luacheck kong*.rockspec
