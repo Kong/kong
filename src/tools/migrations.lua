@@ -1,4 +1,4 @@
-local cutils = require "kong.cmd.utils"
+local cutils = require "kong.cli.utils"
 local Object = require "classic"
 
 local KONG_HOME = os.getenv("KONG_HOME") and os.getenv("KONG_HOME") or "."

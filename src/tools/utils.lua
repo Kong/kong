@@ -94,6 +94,35 @@ function _M.add_error(errors, k, v)
 end
 
 --
+-- Disk I/O
+--
+function _M.read_file(path)
+  local contents = nil
+  local file = io.open(path, "rb")
+  if file then
+    contents = file:read("*all")
+    file:close()
+  end
+  return contents
+end
+
+function _M.write_to_file(path, value)
+  local file = io.open(path, "w")
+  file:write(value)
+  file:close()
+end
+
+function _M.file_exists(name)
+   local f = io.open(name, "r")
+   if f ~= nil then
+    io.close(f)
+    return true
+  else
+    return false
+  end
+end
+
+--
 -- DAO utils
 --
 function _M.load_configuration_and_dao(configuration_path)
@@ -109,10 +138,11 @@ function _M.load_configuration_and_dao(configuration_path)
     error("No dao \""..configuration.database.."\" defined")
   end
 
-  local dao_factory = require("kong.dao."..configuration.database..".factory")
-  local dao = dao_factory(dao_config.properties)
+  -- Configuraiton should already be validated by the CLI at this point
+  local DaoFactory = require("kong.dao."..configuration.database..".factory")
+  local dao_factory = DaoFactory(dao_config.properties)
 
-  return configuration, dao
+  return configuration, dao_factory
 end
 
 --
