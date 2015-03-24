@@ -1,8 +1,12 @@
 # KONG - The API layer
 
-[![Build Status][travis-badge]][travis-url] [![Coverage Status][coveralls-badge]][coveralls-url] [![Gitter][gitter-badge]][gitter-url]
+[![Build Status][travis-badge]][travis-url]
+[![Coverage Status][coveralls-badge]][coveralls-url]
+[![Gitter][gitter-badge]][gitter-url]
 
-Kong is a scalable and customizable API Management Layer built on top of nginx.
+Kong is a scalable and customizable API Management Layer built on top of Nginx.
+
+> **Note**: getkong.org is still a work in progress, in the meanwhile, please follow instructions in this README instead.
 
 * **[Installation](#installation)**
 * **[Documentation](#documentation)**
@@ -11,36 +15,33 @@ Kong is a scalable and customizable API Management Layer built on top of nginx.
 
 ## Installation
 
+Follow instructions at [getkong.org/download](http://getkong.org/download) for a production installation. **(coming soon)**
+
 See [INSTALL.md](INSTALL.md) for installation instructions on your platform.
 
 ## Documentation
 
-A complete documentation can be found at: [getkong.org/docs](http://getkong.org/docs)
+A complete documentation on how to configure and use Kong can be found at: [getkong.org/docs](http://getkong.org/docs). **(coming soon)**
 
 ## Usage
 
-Use Kong through the `bin/kong` executable. Make sure your Cassandra instance is running.
-
-The first time ever you're running Kong, you need to make sure to setup Cassandra by executing:
-
-```bash
-bin/kong migrate
+Use Kong through the `kong` executable. If you installed Kong via luarocks (as previously instructed) then `kong` should be in your `$PATH`.
+```
+$ kong --help
 ```
 
-To start Kong:
+To start Kong (make sure your Cassandra instance is running):
 
-```bash
-bin/kong start
 ```
-
-See all the available options, with `bin/kong -h`.
+$ kong start
+```
 
 ## Development
 
-Running Kong for development requires you to run:
+To develop for Kong, simply run `[sudo] make install` in a clone of this repo. Then run:
 
 ```
-make dev
+$ make dev
 ```
 
 This will install development dependencies and create your environment configuration files (`kong_TESTS.yml` and `kong_DEVELOPMENT.yml`).
@@ -48,13 +49,13 @@ This will install development dependencies and create your environment configura
 - Run the tests:
 
 ```
-make test-all
+$ make test-all
 ```
 
-- Run it:
+- Run Kong with the development configuration:
 
 ```
-bin/kong -c kong.yml start
+$ kong start -c kong_DEVELOPMENT.yml
 ```
 
 #### Makefile
@@ -75,38 +76,6 @@ When developing, use the `Makefile` for doing the following operations:
 | `test-server` | Run the server integration tests                                                                    |
 | `test-api`    | Run the api integration tests                                                                       |
 | `test-all`    | Run all unit + integration tests at once                                                            |
-
-#### Scripts
-
-Those scripts provide handy features while developing Kong:
-
-##### db.lua
-
-This script handles schema migrations, seeding and dropping of the database.
-
-```bash
-# Complete usage
-scripts/db.lua --help
-
-# Migrate up
-scripts/db.lua [-c configuration_file] migrate # for all commands, the default configuration_file is kong.yml
-
-# Revert latest migration
-scripts/db.lua rollback
-
-# Revert all migrations (danger! this will delete your data)
-scripts/db.lua reset
-
-# Seed DB (danger! this will delete your data)
-scripts/db.lua seed
-
-# Drop DB (danger! this will delete your data)
-scripts/db.lua drop
-```
-
-##### config.lua
-
-This script handles Kong's configuration files. It is better not to directly use it, as it is mainly used through `bin/kong` and the Makefile.
 
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat

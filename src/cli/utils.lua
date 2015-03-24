@@ -6,16 +6,10 @@ Kong CLI utilities
  - nginx path/initialization
 ]]
 
-local path = require("path").new("/")
 local utils = require "kong.tools.utils"
 local Object = require "classic"
 local ansicolors = require "ansicolors"
-
-local CLI_CONSTANTS = {
-  GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
-  NGINX_CONFIG = "nginx.conf",
-  NGINX_PID = "kong.pid"
-}
+local constants = require "kong.constants"
 
 --
 -- Colors
@@ -57,33 +51,10 @@ function Logger:error_exit(str)
   os.exit(1)
 end
 
-local function get_infos()
-  local constants = require "kong.constants"
-  return { name = constants.NAME, version = constants.VERSION }
-end
-
 local logger = Logger()
 
-local function retrieve_files(dir, pattern)
-  local fs = require "luarocks.fs"
-
-  if not pattern then pattern = "" end
-  local files = {}
-
-  local function tree(dir)
-    for _, file in ipairs(fs.list_dir(dir)) do
-      local f = path:join(dir, file)
-      if fs.is_dir(f) then
-        tree(f)
-      elseif fs.is_file(f) and string.match(file, pattern) ~= nil then
-        table.insert(files, f)
-      end
-    end
-  end
-
-  tree(dir)
-
-  return files
+local function get_infos()
+  return { name = constants.NAME, version = constants.VERSION }
 end
 
 --
@@ -125,15 +96,15 @@ local function prepare_nginx_working_dir(kong_config)
   end
 
   -- Create nginx folder if needed
-  local _, err = path:mkdir(path:join(kong_config.nginx_working_dir, "logs"))
+  local _, err = utils.path:mkdir(utils.path:join(kong_config.nginx_working_dir, "logs"))
   if err then
     logger:error_exit(err)
   end
-  os.execute("touch "..path:join(kong_config.nginx_working_dir, "logs", "error.log"))
-  os.execute("touch "..path:join(kong_config.nginx_working_dir, "logs", "access.log"))
+  os.execute("touch "..utils.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
+  os.execute("touch "..utils.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
   -- Extract nginx config to nginx folder
-  utils.write_to_file(path:join(kong_config.nginx_working_dir, CLI_CONSTANTS.NGINX_CONFIG), kong_config.nginx)
+  utils.write_to_file(utils.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), kong_config.nginx)
 
   return kong_config.nginx_working_dir
 end
@@ -165,7 +136,7 @@ end
 local function get_kong_config_path(args_config)
   -- Use the rock's config if no config at default location
   if not utils.file_exists(args_config) then
-    local kong_rocks_conf = path:join(get_luarocks_config_dir(), "kong.yml")
+    local kong_rocks_conf = utils.path:join(get_luarocks_config_dir(), "kong.yml")
     logger:warn("No config at: "..args_config.." using default config instead.")
     args_config = kong_rocks_conf
   end
@@ -189,8 +160,7 @@ local function get_kong_config_path(args_config)
 end
 
 return {
-  CONSTANTS = CLI_CONSTANTS,
-  path = path,
+  path = utils.path,
   colors = colors,
   logger = logger,
 

@@ -26,12 +26,12 @@ local cmd = arg[1]
 if not cmd then
   print("Missing <command>\n\n"..help_message)
   os.exit(1)
-elseif not commands[cmd] then
-  print("Invalid <command>: "..cmd.."\n\n"..help_message)
-  os.exit(1)
 elseif cmd == "-h" or cmd == "--help" then
   print(help_message)
   os.exit(0)
+elseif not commands[cmd] then
+  print("Invalid <command>: "..cmd.."\n\n"..help_message)
+  os.exit(1)
 end
 
 require(commands[cmd])

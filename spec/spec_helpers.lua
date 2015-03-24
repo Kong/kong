@@ -26,6 +26,7 @@ _M.envs = {}
 function _M.add_env(conf_file)
   local env_configuration, env_factory = utils.load_configuration_and_dao(conf_file)
   _M.envs[conf_file] = {
+    conf_file = conf_file,
     configuration = env_configuration,
     migrations = Migrations(env_factory),
     faker = Faker(env_factory),
@@ -56,29 +57,31 @@ function _M.os_execute(command)
 end
 
 function _M.start_kong(conf_file, skip_wait)
-  local conf_file = conf_file and conf_file or TEST_CONF_FILE
-  local result, exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." start")
+  local env = _M.get_env(conf_file)
+  local result, exit_code = _M.os_execute(KONG_BIN.." start -c "..env.conf_file)
 
   if exit_code ~= 0 then
     error("spec_helper cannot start kong: "..result)
   end
 
   if not skip_wait then
-    os.execute("while ! [ `pgrep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+    os.execute("while ! [ -f "..env.configuration.pid_file.." ]; do sleep 1; done")
   end
 
   return result, exit_code
 end
 
 function _M.stop_kong(conf_file)
-  local conf_file = conf_file and conf_file or TEST_CONF_FILE
-  local result, exit_code = _M.os_execute(KONG_BIN.." -c "..conf_file.." stop")
+  local env = _M.get_env(conf_file)
+  local result, exit_code = _M.os_execute(KONG_BIN.." stop -c "..env.conf_file)
 
   if exit_code ~= 0 then
     error("spec_helper cannot stop kong: "..result)
   end
 
-  os.execute("while [ `pgrep nginx | grep -c -v grep` -gt 0 ]; do sleep 1; done")
+  os.execute("while [ -f "..env.configuration.pid_file.." ]; do sleep 1; done")
+
+  return result, exit_code
 end
 
 --
@@ -104,7 +107,7 @@ function _M.prepare_db(conf_file)
   env.faker:seed()
 end
 
-function _M.drop_db()
+function _M.drop_db(conf_file)
   local env = _M.get_env(conf_file)
   local err = env.dao_factory:drop()
   if err then
@@ -112,12 +115,12 @@ function _M.drop_db()
   end
 end
 
-function _M.seed_db(random_amount)
+function _M.seed_db(conf_file, random_amount)
   local env = _M.get_env(conf_file)
   env.faker:seed(random_amount)
 end
 
-function _M.reset_db()
+function _M.reset_db(conf_file)
   local env = _M.get_env(conf_file)
   env.migrations:reset(function(_, err)
     if err then

@@ -4,6 +4,7 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
 local cutils = require "kong.cli.utils"
+local constants = require "kong.constants"
 local lapp = require("lapp")
 local args = lapp(string.format([[
 Migrations, seeding of the DB.
@@ -18,7 +19,7 @@ Options:
   -c,--config (default %s) configuration file
   -r,--random                              <seed>: flag to also insert random entities
   -n,--number (default 1000)               <seed>: number of random entities to insert if --random
-]], cutils.CONSTANTS.GLOBAL_KONG_CONF))
+]], constants.CLI.GLOBAL_KONG_CONF))
 
 -- $ kong db
 if args.command == "db" then

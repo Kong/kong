@@ -1,12 +1,13 @@
 #!/usr/bin/env lua
 
 local cutils = require "kong.cli.utils"
+local constants = require "kong.constants"
 local args = require("lapp")(string.format([[
 Usage: kong start [options]
 
 Options:
   -c,--config (default %s) configuration file
-]], cutils.CONSTANTS.GLOBAL_KONG_CONF))
+]], constants.CLI.GLOBAL_KONG_CONF))
 
 -- Make sure nginx is there and is openresty
 local nginx_path = cutils.find_nginx()
@@ -41,11 +42,11 @@ local cmd = string.format("KONG_CONF=%s %s -p %s -c %s -g 'pid %s;'",
                           config_path,
                           nginx_path,
                           nginx_working_dir,
-                          cutils.CONSTANTS.NGINX_CONFIG,
-                          cutils.CONSTANTS.NGINX_PID)
+                          constants.CLI.NGINX_CONFIG,
+                          constants.CLI.NGINX_PID)
 
 if os.execute(cmd) == 0 then
   cutils.logger:success("Started")
 else
-  cutils.logger:error_exit(err)("Could not start Kong")
+  cutils.logger:error_exit("Could not start Kong")
 end
