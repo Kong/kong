@@ -125,7 +125,10 @@ local function prepare_nginx_working_dir(kong_config)
   end
 
   -- Create nginx folder if needed
-  path:mkdir(path:join(kong_config.nginx_working_dir, "logs"))
+  local _, err = path:mkdir(path:join(kong_config.nginx_working_dir, "logs"))
+  if err then
+    logger:error_exit(err)
+  end
   os.execute("touch "..path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
