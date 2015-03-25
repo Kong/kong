@@ -1,19 +1,20 @@
-local yaml = require "yaml"
-local utils = require "kong.tools.utils"
 local spec_helper = require "spec.spec_helpers"
 local constants = require "kong.constants"
 local stringy = require "stringy"
+local utils = require "kong.tools.utils"
+local yaml = require "yaml"
+local IO = require "kong.tools.io"
 
 local TEST_CONF = "kong_TEST.yml"
 local SERVER_CONF = "kong_TEST_SERVER.yml"
 
 local function replace_conf_property(key, value)
-  local yaml_value = yaml.load(utils.read_file(TEST_CONF))
+  local yaml_value = yaml.load(IO.read_file(TEST_CONF))
   if type(value) == "table" and utils.table_size(value) == 0 then
     value = nil
   end
   yaml_value[key] = value
-  utils.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
+  IO.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
 end
 
 describe("Server", function()
