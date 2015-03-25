@@ -4,7 +4,10 @@ local constants = require "kong.constants"
 local _M = {}
 
 function _M.set(key, value, exptime)
-  if exptime == nil then exptime = 0 end -- By default never expire
+  if exptime == nil then
+    exptime = configuration and configuration.cache.expiration or 0
+  end
+
   local cache = ngx.shared.cache
   if value then
     value = cjson.encode(value)
