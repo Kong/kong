@@ -7,14 +7,15 @@ local commands = {
   stop = "kong.cli.stop",
   start = "kong.cli.start",
   config = "kong.cli.config",
-  version = "kong.cli.version"
+  version = "kong.cli.version",
+  restart = "kong.cli.restart"
 }
 
 local help_message = string.format([[
 Usage: kong <command>
 
 where <command> is one of:
-  start, stop, config, db, version
+  start, stop, restart, config, db, version
 
 kong --help            print this message
 kong <command> --help  print the help message of a command
