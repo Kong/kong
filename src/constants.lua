@@ -1,6 +1,6 @@
 return {
   NAME = "kong",
-  VERSION = "0.0.1beta-1",
+  VERSION = "0.1.0beta-1",
   CLI = {
     GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
     NGINX_CONFIG = "nginx.conf",
