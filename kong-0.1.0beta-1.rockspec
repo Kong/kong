@@ -38,14 +38,18 @@ build = {
 
     ["kong.constants"] = "src/constants.lua",
 
-    ["kong.cli.utils"] = "src/cli/utils.lua",
+    ["kong.cli.utils"] = "src/cli/utils/utils.lua",
+    ["kong.cli.utils.start"] = "src/cli/utils/start.lua",
+    ["kong.cli.utils.stop"] = "src/cli/utils/stop.lua",
     ["kong.cli.db"] = "src/cli/db.lua",
     ["kong.cli.config"] = "src/cli/config.lua",
     ["kong.cli.stop"] = "src/cli/stop.lua",
     ["kong.cli.start"] = "src/cli/start.lua",
+    ["kong.cli.restart"] = "src/cli/restart.lua",
     ["kong.cli.version"] = "src/cli/version.lua",
 
     ["kong.tools.utils"] = "src/tools/utils.lua",
+    ["kong.tools.io"] = "src/tools/io.lua",
     ["kong.tools.migrations"] = "src/tools/migrations.lua",
     ["kong.tools.faker"] = "src/tools/faker.lua",
     ["kong.tools.cache"] = "src/tools/cache.lua",

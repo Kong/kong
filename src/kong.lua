@@ -25,6 +25,7 @@
 -- ==========
 
 utils = require "kong.tools.utils"
+local IO = require "kong.tools.io"
 local cache = require "kong.tools.cache"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
@@ -136,7 +137,7 @@ end
 -- @return nil
 function _M.init()
   -- Loading configuration
-  configuration, dao = utils.load_configuration_and_dao(os.getenv("KONG_CONF"))
+  configuration, dao = IO.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
   -- Initializing DAO
   local err = dao:prepare()
