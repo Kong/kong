@@ -1,4 +1,4 @@
-local rex = require "rex_pcre" -- Why? Lua has built in pattern which should do the job too
+local rex = require "rex_pcre"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 
@@ -18,7 +18,6 @@ local LUA_TYPE_ALIASES = {
 -- Schemas
 --
 local _M = {}
-
 
 -- Returns the proper Lua type from a schema type, handling aliases
 -- @param {string} type_val The type of the schema property

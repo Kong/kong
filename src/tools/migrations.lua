@@ -1,24 +1,24 @@
 local utils = require "kong.tools.utils"
 local Object = require "classic"
 
-local KONG_HOME = os.getenv("KONG_HOME") and os.getenv("KONG_HOME") or "."
-local MIGRATION_PATH = utils.path:join(KONG_HOME, "database", "migrations")
-
 -- Migrations
 local Migrations = Object:extend()
 
-function Migrations:new(dao)
+function Migrations:new(dao, migrations_path)
+  local path = migrations_path and migrations_path or "."
+
   self.dao = dao
   self.options = { keyspace = dao._properties.keyspace }
-  self.migrations_files = utils.retrieve_files(utils.path:join(MIGRATION_PATH, dao.type), { file_pattern = ".lua" })
+  self.migrations_path = utils.path:join(path, "database", "migrations")
+  self.migrations_files = utils.retrieve_files(utils.path:join(self.migrations_path, dao.type), { file_pattern = ".lua" })
   table.sort(self.migrations_files)
 end
 
 -- Createa migration interface for each database available
-function Migrations.create(configuration, name, callback)
+function Migrations:create(configuration, name, callback)
   for k, _ in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
-    local file_path = utils.path:join(MIGRATION_PATH, k)
+    local file_path = utils.path:join(self.migrations_path, k)
     local file_name = date_str.."_"..name
     local interface = [[
 local Migration = {
@@ -115,7 +115,7 @@ function Migrations:rollback(callback)
 
   local migration_to_rollback
   if old_migrations and #old_migrations > 0 then
-    migration_to_rollback = loadfile(utils.path:join(MIGRATION_PATH, self.dao.type, old_migrations[#old_migrations])..".lua")()
+    migration_to_rollback = loadfile(utils.path:join(self.migrations_path, self.dao.type, old_migrations[#old_migrations])..".lua")()
   else
     -- No more migration to rollback
     callback(nil, nil)

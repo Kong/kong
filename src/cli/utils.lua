@@ -6,10 +6,11 @@ Kong CLI utilities
  - nginx path/initialization
 ]]
 
+local lpath = require "luarocks.path"
 local utils = require "kong.tools.utils"
 local Object = require "classic"
-local ansicolors = require "ansicolors"
 local constants = require "kong.constants"
+local ansicolors = require "ansicolors"
 
 --
 -- Colors
@@ -109,9 +110,8 @@ local function prepare_nginx_working_dir(kong_config)
   return kong_config.nginx_working_dir
 end
 
-local function get_luarocks_config_dir()
+local function get_luarocks_dir()
   local cfg = require "luarocks.cfg"
-  local lpath = require "luarocks.path"
   local search = require "luarocks.search"
   local infos = get_infos()
 
@@ -129,16 +129,26 @@ local function get_luarocks_config_dir()
     version = k
   end
 
-  local repo = tree_map[results.kong[version][1].repo]
+  return tree_map[results.kong[version][1].repo]
+end
+
+local function get_luarocks_config_dir()
+  local repo = get_luarocks_dir()
+  local infos = get_infos()
   return lpath.conf_dir(infos.name:lower(), infos.version, repo)
+end
+
+local function get_luarocks_install_dir()
+  local repo = get_luarocks_dir()
+  local infos = get_infos()
+  return lpath.install_dir(infos.name:lower(), infos.version, repo)
 end
 
 local function get_kong_config_path(args_config)
   -- Use the rock's config if no config at default location
   if not utils.file_exists(args_config) then
-    local kong_rocks_conf = utils.path:join(get_luarocks_config_dir(), "kong.yml")
     logger:warn("No config at: "..args_config.." using default config instead.")
-    args_config = kong_rocks_conf
+    args_config = utils.path:join(get_luarocks_config_dir(), "kong.yml")
   end
 
   -- Make sure the configuration file really exists
@@ -171,6 +181,7 @@ return {
   file_exists = utils.file_exists,
   write_to_file = utils.write_to_file,
   get_kong_config_path = get_kong_config_path,
+  get_luarocks_install_dir = get_luarocks_install_dir,
   prepare_nginx_working_dir = prepare_nginx_working_dir,
   load_configuration_and_dao = utils.load_configuration_and_dao
 }

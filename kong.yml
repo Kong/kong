@@ -40,7 +40,6 @@ nginx: |
   # worker_rlimit_nofile 65536;
 
   env KONG_CONF;
-  env KONG_HOME;
 
   events {
     # Set "worker_connections" to a high value

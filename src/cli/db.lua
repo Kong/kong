@@ -3,8 +3,8 @@
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
-local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
+local cutils = require "kong.cli.utils"
 local lapp = require("lapp")
 local args = lapp(string.format([[
 Migrations, seeding of the DB.
@@ -28,7 +28,7 @@ end
 
 local config_path = cutils.get_kong_config_path(args.config)
 local _, dao_factory = cutils.load_configuration_and_dao(config_path)
-local migrations = Migrations(dao_factory)
+local migrations = Migrations(dao_factory, cutils.get_luarocks_install_dir())
 
 if args.command == "migrations" then
 
