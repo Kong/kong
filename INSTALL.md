@@ -1,4 +1,4 @@
-This file will guide you through the process of installing Kong and its dependencies.
+This file will guide you through the complete process of installing Kong and its dependencies.
 
 In order to run, Kong needs the following:
 - [Lua][lua-install-url] `5.1`
