@@ -6,8 +6,6 @@
 
 Kong is a scalable and customizable API Management Layer built on top of Nginx.
 
-> **Note**: getkong.org is still a work in progress, in the meanwhile, please follow instructions in this README instead.
-
 * **[Installation](#installation)**
 * **[Documentation](#documentation)**
 * **[Usage](#usage)**
@@ -17,28 +15,117 @@ Kong is a scalable and customizable API Management Layer built on top of Nginx.
 
 See [INSTALL.md](INSTALL.md) for installation instructions on your platform.
 
-## Documentation
-
-A complete documentation on how to configure and use Kong can be found at: [getkong.org/docs](http://getkong.org/docs). **(coming soon)**
-
 ## Usage
 
-Use Kong through the `kong` executable. If you installed Kong via luarocks (as previously instructed) then `kong` should be in your `$PATH`.
-```
+Use Kong through the `kong` executable. If you installed Kong via luarocks, then `kong` should be in your `$PATH`.
+
+```bash
 $ kong --help
 ```
 
-To start Kong (make sure your Cassandra instance is running):
+## Getting started
 
-```
+Kong will look by default for a configuration file at `/etc/kong/kong.yml`. Make sure to copy the provided `kong.yml` there and edit it to let Kong access your Cassandra cluster.
+
+Let's start Kong:
+
+```bash
 $ kong start
 ```
+
+This should have run the migrations to prepare your Cassandra keyspace, and you should see a success message if Kong has started.
+
+Kong listens on these ports:
+- `:8000`: requests proxying
+- `:8001`: Kong's configuration API by which you can add APIs and accounts
+
+#### Hello World: Proxying your first API
+
+Let's add [mockbin](http://mockbin.com/) as an API:
+
+```bash
+$ curl -i -X POST \
+  --url http://localhost:8001/apis/ \
+  --data 'name=mockbin&target_url=http://mockbin.com/&public_dns=mockbin.com'
+HTTP/1.1 201 Created
+...
+```
+
+And query it through Kong:
+
+```bash
+$ curl -i -X GET \
+  --url http://localhost:8000/ \
+  --header 'Host: mockbin.com'
+HTTP/1.1 200 OK
+...
+```
+
+#### Accounts and plugins
+
+One of Kong's core principle is its extensibility through [plugins](http://getkong.org/plugins/), which allow you to add features to your APIs.
+
+Let's configure the **headerauth** plugin to add authentication to your API. Make sure it is in the `plugins_available` property of your configuration.
+
+```bash
+# Make sure the api_id parameter matches the one of mockbin created earlier
+$ curl -i -X POST \
+  --url http://localhost:8001/plugins/ \
+  --data 'name=headerauth&api_id=<api_id>&value.header_names=apikey'
+HTTP/1.1 201 Created
+...
+```
+
+If we make the same request again:
+
+```bash
+$ curl -i -X GET \
+  --url http://localhost:8000/ \
+  --header 'Host: mockbin.com'
+HTTP/1.1 403 Forbidden
+...
+{"message":"Your authentication credentials are invalid"}
+```
+
+To authenticate against your API, you now need to create an account associated with an application. An application links an account and an API.
+
+```bash
+$ curl -i -X POST \ 
+  --url http://localhost:8001/accounts/
+  --data ''
+HTTP/1.1 201 Created
+...
+
+# Make sure the given account_id matches the freshly created account
+$ curl -i -X POST \
+  --url http://localhost:8001/applications/
+  --data 'public_key=123456&account_id=<account_id>'
+HTTP/1.1 201 Created
+...
+```
+
+That application (which has "123456" as an API key) can now consume authenticated APIs such as the previously configured mockbin:
+
+```bash
+$ curl -i -X GET \
+  --url http://localhost:8000/ \
+  --header 'Host: mockbin.com' \
+  --header 'apikey: 123456'
+HTTP/1.1 200 OK
+...
+```
+
+To go further into mastering Kong, refer to the complete [documentation](#documentation).
+
+## Documentation
+
+A complete documentation on how to configure and use Kong can be found at: [getkong.org/docs](http://getkong.org/docs). **(coming soon)**
 
 ## Development
 
 To develop for Kong, simply run `[sudo] make install` in a clone of this repo. Then run:
 
-```
+```bash
 $ make dev
 ```
 
@@ -46,13 +133,13 @@ This will install development dependencies and create your environment configura
 
 - Run the tests:
 
-```
+```bash
 $ make test-all
 ```
 
 - Run Kong with the development configuration:
 
-```
+```bash
 $ kong start -c kong_DEVELOPMENT.yml
 ```
 
