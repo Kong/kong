@@ -1,12 +1,12 @@
 ## [Unreleased][unreleased]
 
-## [0.1.0-beta] - 2015/03/19
+## [0.1.0beta-1] - 2015/03/25
 
-New beta with caching, easier usability and the usual fixes.
+First public beta. Includes caching and better usability.
 
 #### Added
 - Required Openresty is now `1.7.10.1`.
-- New CLI, rewritten in Lua
+- Freshly built CLI, rewritten in Lua
 - `kong start` using a new DB keyspace will automatically migrate the schema. [#68](https://github.com/Mashape/kong/issues/68)
 - Anonymous error reporting on Proxy and API. [#64](https://github.com/Mashape/kong/issues/64)
 - Configuration:
@@ -32,9 +32,9 @@ New beta with caching, easier usability and the usual fixes.
 > - Switch integration testing from [httpbin.org] to [mockbin.com].
 > - `core` plugin was renamed to `resolver`.
 
-## [0.0.1-beta] - 2015/02/25
+## [0.0.1alpha-1] - 2015/02/25
 
-First beta version running with Cassandra.
+First version running with Cassandra.
 
 #### Added
 - Basic proxying.
@@ -45,6 +45,6 @@ First beta version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.1.0-beta...HEAD
-[0.1.0-beta]: https://github.com/mashape/kong/compare/0.0.1-beta...0.1.0-beta
-[0.0.1-beta]: https://github.com/mashape/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...0.0.1-beta
+[unreleased]: https://github.com/mashape/kong/compare/0.1.0beta-1...HEAD
+[0.1.0beta-1]: https://github.com/mashape/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-1
+[0.0.1alpha-1]: https://github.com/mashape/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...2236374d5624ad98ea21340ca685f7584ec35744
