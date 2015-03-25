@@ -6,6 +6,8 @@ New beta with caching, easier usability and the usual fixes.
 
 #### Added
 - Required Openresty is now `1.7.10.1`.
+- New CLI, rewritten in Lua
+- `kong start` using a new DB keyspace will automatically migrate the schema. [#68](https://github.com/Mashape/kong/issues/68)
 - Anonymous error reporting on Proxy and API. [#64](https://github.com/Mashape/kong/issues/64)
 - Configuration:
   - Simplified configuration file (unified in `kong.yml`).
@@ -15,7 +17,6 @@ New beta with caching, easier usability and the usual fixes.
   - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Mashape/kong/issues/71)
 - **Proxy**: APIs/Accounts caching with expiration for faster authentication.
 - **API**: Plugins now use plain form parameters for configuration. [#70](https://github.com/Mashape/kong/issues/70)
-- Embed migrations execution in the first `kong start`. `migrate` is not a CLI command anymore, one need to use `db.lua`. [#68](https://github.com/Mashape/kong/issues/68)
 - Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Mashape/kong/issues/8)
 
 #### Fixed
