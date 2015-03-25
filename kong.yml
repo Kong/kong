@@ -34,54 +34,58 @@ cache:
 nginx: |
   worker_processes auto;
   error_log logs/error.log info;
-  worker_rlimit_nofile 84280;
   daemon on;
+
+  # Set "worker_rlimit_nofile" to a high value
+  # worker_rlimit_nofile 65536;
 
   env KONG_CONF;
   env KONG_HOME;
 
   events {
-    worker_connections 20480;
+    # Set "worker_connections" to a high value
+    worker_connections 1024;
   }
 
   http {
-    lua_package_path ';;';
-    lua_code_cache on;
 
+    # Generic Settings
+    resolver 8.8.8.8;
+    charset UTF-8;
+
+    # Logs
     access_log logs/access.log;
-
-    underscores_in_headers on;
     access_log on;
-    tcp_nopush on;
 
     # Timeouts
     keepalive_timeout 60s;
     client_header_timeout 60s;
     client_body_timeout 60s;
     send_timeout 60s;
-    reset_timedout_connection on;
 
-    # Max Client request size
-    client_max_body_size 50m;
-
-    # Proxy buffers
+    # Proxy Settings
     proxy_buffer_size 128k;
     proxy_buffers 4 256k;
     proxy_busy_buffers_size 256k;
-
-    # Proxy SSL
     proxy_ssl_server_name on;
 
-    # Timer properties
+    # Other Settings
+    client_max_body_size 128m;
+    underscores_in_headers on;
+    reset_timedout_connection on;
+    tcp_nopush on;
+
+    ################################################
+    #  The following code is required to run Kong  #
+    # Please be careful if you'd like to change it #
+    ################################################
+
+    # Lua Settings
+    lua_package_path ';;';
+    lua_code_cache on;
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
-
-    # Cache
     lua_shared_dict cache 512m;
-
-    # Generic Settings
-    resolver 8.8.8.8;
-    charset UTF-8;
 
     init_by_lua '
       kong = require "kong"
@@ -94,10 +98,6 @@ nginx: |
 
     server {
       listen 8000;
-
-      location /robots.txt {
-        return 200 'User-agent: *\nDisallow: /';
-      }
 
       location / {
         # Assigns the default MIME-type to be used for files where the
@@ -124,6 +124,10 @@ nginx: |
 
         # Log the request
         log_by_lua 'kong.exec_plugins_log()';
+      }
+
+      location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
       }
 
       error_page 500 /500.html;
@@ -156,6 +160,10 @@ nginx: |
 
       location /favicon.ico {
         alias static/favicon.ico;
+      }
+
+      location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
       }
     }
   }
