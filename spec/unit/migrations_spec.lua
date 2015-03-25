@@ -19,7 +19,7 @@ describe("Migrations #tools", function()
 
       local s_cb = spy.new(function(interface, f_path, f_name, dao_type)
         assert.are.same("string", type(interface))
-        assert.are.same("./database/migrations/"..dao_type, f_path)
+        assert.are.same(utils.path:join(migrations.migrations_path, dao_type), f_path)
         assert.are.same(os.date("%Y-%m-%d-%H%M%S").."_".."test_migration", f_name)
 
         local mig_module = loadstring(interface)()
@@ -28,7 +28,7 @@ describe("Migrations #tools", function()
         assert.are.same(f_name, mig_module.name)
       end)
 
-      migrations.create(env.configuration, "test_migration", s_cb)
+      migrations:create(env.configuration, "test_migration", s_cb)
 
       assert.spy(s_cb).was.called(n_databases_available)
     end)

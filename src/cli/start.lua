@@ -29,8 +29,9 @@ elseif keyspace == nil then
   migrations:migrate(function(migration, err)
     if err then
       cutils.logger:error_exit(err)
+    elseif migration then
+      cutils.logger:success("Migrated up to: "..cutils.colors.yellow(migration.name))
     end
-    cutils.logger:success("Migrated")
   end)
 end
 

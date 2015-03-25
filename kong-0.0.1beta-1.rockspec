@@ -6,12 +6,7 @@ source = {
   branch = "master"
 }
 description = {
-  summary = "Kong, the fastest and most installed API layer in the universe",
-  detailed = [[
-    Kong is the most popular API layer in the world
-    that provides API management and analytics for any kind
-    of API.
-  ]],
+  summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
   homepage = "http://getkong.org",
   license = "MIT"
 }
@@ -45,9 +40,9 @@ build = {
 
     ["kong.cli.utils"] = "src/cli/utils.lua",
     ["kong.cli.db"] = "src/cli/db.lua",
-    ["kong.cli.start"] = "src/cli/start.lua",
-    ["kong.cli.stop"] = "src/cli/stop.lua",
     ["kong.cli.config"] = "src/cli/config.lua",
+    ["kong.cli.stop"] = "src/cli/stop.lua",
+    ["kong.cli.start"] = "src/cli/start.lua",
     ["kong.cli.version"] = "src/cli/version.lua",
 
     ["kong.tools.utils"] = "src/tools/utils.lua",
@@ -112,5 +107,5 @@ build = {
     conf = { "kong.yml" },
     bin = { "bin/kong" }
   },
-  copy_directories = { "src/web/admin", "src/web/static" }
+  copy_directories = { "src/web/admin/", "src/web/static/", "database/migrations/" }
 }
