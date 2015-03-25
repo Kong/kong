@@ -1,6 +1,6 @@
 local constants = require "kong.constants"
 local stringy = require "stringy"
-local utils = require "kong.tools.utils"
+local IO = require "kong.tools.io"
 local fs = require "luarocks.fs"
 
 describe("Constants", function()
@@ -18,7 +18,7 @@ describe("Constants", function()
       error("Can't find the rockspec file")
     end
 
-    local file_content = utils.read_file(rockspec_path)
+    local file_content = IO.read_file(rockspec_path)
     local res = file_content:match("\"+[0-9.-]+[a-z]*[0-9-]*\"+")
     local extracted_version = res:sub(2, res:len() - 1)
     assert.are.same(constants.VERSION, extracted_version)

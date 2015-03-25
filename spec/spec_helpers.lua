@@ -2,7 +2,7 @@
 -- It is built so that it only needs to be required at the beginning of any spec file.
 -- It supports other environments by passing a configuration file.
 
-local utils = require "kong.tools.utils"
+local IO = require "kong.tools.io"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 
@@ -24,7 +24,7 @@ _M.envs = {}
 -- When dealing with another configuration file for a few tests, this allows to add
 -- a factory/migrations/faker that are environment-specific to this new config.
 function _M.add_env(conf_file)
-  local env_configuration, env_factory = utils.load_configuration_and_dao(conf_file)
+  local env_configuration, env_factory = IO.load_configuration_and_dao(conf_file)
   _M.envs[conf_file] = {
     conf_file = conf_file,
     configuration = env_configuration,
@@ -50,7 +50,7 @@ end
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
   local exit_code = os.execute(command.." > "..n.." 2>&1")
-  local result = utils.read_file(n)
+  local result = IO.read_file(n)
   os.remove(n)
 
   return result, exit_code / 256
