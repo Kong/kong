@@ -32,7 +32,7 @@ end
 
 -- Build the list to pass to lua-resty-cassandra :execute method.
 -- Since this method only accepts an ordered list, we build this list from
--- the `params` property of all prepared statement, taking into account special
+-- the `params` property of all prepared statement, taking into consumer special
 -- cassandra values (uuid, timestamps, NULL)
 --
 -- @param {table} schema A schema with type properties to encode specific values

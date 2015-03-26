@@ -84,7 +84,7 @@ function _M.execute(conf)
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
-  ngx.req.set_header(constants.HEADERS.ACCOUNT_ID, application.account_id)
+  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, application.consumer_id)
   ngx.ctx.authenticated_entity = application
 end
 

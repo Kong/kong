@@ -1,5 +1,8 @@
 ## [Unreleased][unreleased]
 
+#### Fixed
+- Rename `accounts` to `consumers`.
+
 ## [0.1.0beta-2] - 2015/03/25
 
 First public beta. Includes caching and better usability.
