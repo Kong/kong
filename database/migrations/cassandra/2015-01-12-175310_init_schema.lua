@@ -24,18 +24,6 @@ local Migration = {
 
       CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
 
-      CREATE TABLE IF NOT EXISTS applications(
-        id uuid,
-        consumer_id uuid,
-        public_key text, -- This is the public
-        secret_key text, -- This is the secret key, it could be an apikey or basic password
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-
-      CREATE INDEX IF NOT EXISTS ON applications(consumer_id);
-      CREATE INDEX IF NOT EXISTS ON applications(public_key);
-
       CREATE TABLE IF NOT EXISTS apis(
         id uuid,
         name text,
@@ -48,6 +36,10 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON apis(name);
       CREATE INDEX IF NOT EXISTS ON apis(public_dns);
 
+      --
+      -- NEEDS TO BE RENAMED to avoid confusion
+      -- plugins_entries or plugins_configurations
+      --
       CREATE TABLE IF NOT EXISTS plugins(
         id uuid,
         api_id uuid,
@@ -63,6 +55,59 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON plugins(api_id);
       CREATE INDEX IF NOT EXISTS ON plugins(application_id);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      --
+      -- TEMPORARY UNTIL MOVED TO EACH PLUGIN
+      -- keyauth_credentials, metrics
+      --
+      CREATE TABLE IF NOT EXISTS keyauth_credentials(
+        consumer_id uuid,
+        key text,
+        created_at timestamp,
+        PRIMARY KEY (key, consumer_id)
+      );
+
       CREATE TABLE IF NOT EXISTS metrics(
         api_id uuid,
         identifier text,
@@ -71,12 +116,53 @@ local Migration = {
         value counter,
         PRIMARY KEY ((api_id, identifier, period_date, period))
       );
+
+
+
+
+
+
+
+
+
+
+
+
+      --
+      -- WILL DISAPEAR, No more applications
+      --
+      CREATE TABLE IF NOT EXISTS applications(
+        id uuid,
+        consumer_id uuid,
+        public_key text, -- This is the public
+        secret_key text, -- This is the secret key, it could be an apikey or basic password
+        created_at timestamp,
+        PRIMARY KEY (id)
+      );
+      CREATE INDEX IF NOT EXISTS ON applications(consumer_id);
+      CREATE INDEX IF NOT EXISTS ON applications(public_key);
+
+
+
+
+
+
+
+
+
+
+
+
+
     ]]
   end,
 
   down = function(options)
     return [[
       DROP KEYSPACE ]]..options.keyspace..[[;
+
+      -- TEMPORARY UNTIL MVOED TO EACH PLUGIN
+      DROP TABLE keyauth_credentials;
     ]]
   end
 }
