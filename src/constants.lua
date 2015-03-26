@@ -22,7 +22,7 @@ return {
     SERVER = "Server",
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
-    ACCOUNT_ID = "X-Account-ID",
+    CONSUMER_ID = "X-Consumer-ID",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining"
   },

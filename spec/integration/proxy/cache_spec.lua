@@ -51,13 +51,13 @@ describe("Cache #cache", function()
     local response, status, headers = http_client.get(kProxyURL.."/get", {}, {host = "cache.test"})
     assert.are.equal(403, status)
 
-    -- Create an account and an application will make it work again
-    local response, status, headers = http_client.post(kWebURL.."/accounts/", {})
+    -- Create an consumer and an application will make it work again
+    local response, status, headers = http_client.post(kWebURL.."/consumers/", {})
     assert.are.equal(201, status)
-    local account_id = cjson.decode(response).id
+    local consumer_id = cjson.decode(response).id
 
     local response, status, headers = http_client.post(kWebURL.."/applications/", {
-      account_id = account_id,
+      consumer_id = consumer_id,
       public_key = "secret_key_123"
     })
     assert.are.equal(201, status)
