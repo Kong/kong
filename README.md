@@ -25,7 +25,13 @@ $ kong --help
 
 ## Getting started
 
-Kong will look by default for a configuration file at `/etc/kong/kong.yml`. Make sure to copy the provided `kong.yml` there and edit it to let Kong access your Cassandra cluster.
+Kong will look by default for a configuration file at `/etc/kong/kong.yml`. If you installed Kong from luarocks, you can copy the default configuration from the luarocks tree (`luarocks --help` to print it). Usually:
+
+```bash
+cp /usr/local/lib/luarocks/rocks/kong/<kong_version>/conf/kong.yml /etc/kong/kong.yml
+```
+
+Edit the configuration to let Kong access your Cassandra cluster.
 
 Let's start Kong:
 
@@ -48,35 +54,70 @@ $ curl -i -X POST \
   --url http://localhost:8001/apis/ \
   --data 'name=mockbin&target_url=http://mockbin.com/&public_dns=mockbin.com'
 HTTP/1.1 201 Created
-...
 ```
 
-And query it through Kong:
+We used the `8001` port, the one of the configuration API.
+
+And query it through Kong, by using the `8000` port, the one actually proxying requests:
 
 ```bash
 $ curl -i -X GET \
   --url http://localhost:8000/ \
   --header 'Host: mockbin.com'
 HTTP/1.1 200 OK
-...
 ```
+
+Kong just forwareded our request to `target_url` of mockbin and sent us the response.
 
 #### Accounts and plugins
 
 One of Kong's core principle is its extensibility through [plugins](http://getkong.org/plugins/), which allow you to add features to your APIs.
 
-Let's configure the **headerauth** plugin to add authentication to your API. Make sure it is in the `plugins_available` property of your configuration.
+Let's configure the [headerauth](http://getkong.org/plugins/header-authentication/) plugin to add authentication to your API.
+
+###### 1. Enable the plugin
+
+Make sure it is in the `plugins_available` property of your node's configuration:
+
+```yaml
+plugins_available:
+  - headerauth
+```
+
+This will make Kong load the plugin. If the plugin was not previously marked as available, restart Kong:
 
 ```bash
-# Make sure the api_id parameter matches the one of mockbin created earlier
+$ kong restart
+```
+
+Repeat this step for every node in your cluster.
+
+###### 2. Configure the plugin for an API
+
+To enable this plugin on an API, retrieve the API `id` (as the one of the freshly created mockbin API) and perform a `POST` request with the following parameters:
+
+> **name**: name of the plugin to create a configuration for.
+> **api_id**: `id` of the API this plugin will be added to.
+> **value.header_names**: `value` is a property of every plugin, representing their configuration. `header_names` will here be a list of headers in which users can pass their API key.
+
+```bash
 $ curl -i -X POST \
   --url http://localhost:8001/plugins/ \
   --data 'name=headerauth&api_id=<api_id>&value.header_names=apikey'
 HTTP/1.1 201 Created
 ...
+{
+  "api_id": "<api_id>",
+  "value": { "header_names":["apikey"], "hide_credentials":false },
+  "id": "<id>",
+  "enabled": true,
+  "name": "headerauth"
+}
 ```
 
-If we make the same request again:
+Here, the plugin has been successfully created and enabled. 
+
+If you make the same request against the mockbin API again:
 
 ```bash
 $ curl -i -X GET \
@@ -84,27 +125,27 @@ $ curl -i -X GET \
   --header 'Host: mockbin.com'
 HTTP/1.1 403 Forbidden
 ...
-{"message":"Your authentication credentials are invalid"}
+{ "message": "Your authentication credentials are invalid" }
 ```
 
-To authenticate against your API, you now need to create an account associated with an application. An application links an account and an API.
+This request did not provide a header named `apikey` (as specified by our plugin configuration) and is thus Forbidden. Kong does not proxy the request to the final API.
+
+To authenticate against your API, you now need to create an account associated with an application. An application links an account and a plugin, this way, an account can consume different APIs with different applications (and different keys).
 
 ```bash
 $ curl -i -X POST \ 
   --url http://localhost:8001/accounts/
   --data ''
 HTTP/1.1 201 Created
-...
 
 # Make sure the given account_id matches the freshly created account
 $ curl -i -X POST \
   --url http://localhost:8001/applications/
   --data 'public_key=123456&account_id=<account_id>'
 HTTP/1.1 201 Created
-...
 ```
 
-That application (which has "123456" as an API key) can now consume authenticated APIs such as the previously configured mockbin:
+That application (which has `123456` as an API key) can now consume APIs having an authentication requirement such as our example. If we make the same query again, but with an `apikey` header:
 
 ```bash
 $ curl -i -X GET \
@@ -112,10 +153,11 @@ $ curl -i -X GET \
   --header 'Host: mockbin.com' \
   --header 'apikey: 123456'
 HTTP/1.1 200 OK
-...
 ```
 
-To go further into mastering Kong, refer to the complete [documentation](#documentation).
+Your user can now consume this API.
+
+To go further into mastering Kong and its plugins, refer to the complete [documentation](#documentation).
 
 ## Documentation
 
