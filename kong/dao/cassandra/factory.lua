@@ -32,7 +32,7 @@ end
 
 -- Instanciate a Cassandra DAO.
 -- @param properties Cassandra properties
-function CassandraFactory:new(properties)
+function CassandraFactory:new(properties, plugins_available)
   self.type = "cassandra"
   self._properties = properties
 
@@ -41,11 +41,24 @@ function CassandraFactory:new(properties)
   -- And it may cause errors like "host not found" for "localhost"
   self._properties.hosts = normalize_localhost(self._properties.hosts)
 
-  self.apis = Apis(properties)
-  self.metrics = Metrics(properties)
-  self.plugins = Plugins(properties)
-  self.consumers = Consumers(properties)
-  self.applications = Applications(properties)
+  -- TODO: a metatable to this could prepare all statements as soon as an entry is added
+  self.daos = {
+    apis = Apis(properties),
+    metrics = Metrics(properties),
+    plugins = Plugins(properties),
+    consumers = Consumers(properties),
+    applications = Applications(properties)
+  }
+
+  for _, plugin_name in ipairs(plugins_available) do
+    local status, res = pcall(require, string.format("kong.plugins.%s.dao.%s", plugin_name, self.type))
+    if not status then
+      print("No DAO for plugin: "..plugin_name..". "..res)
+    else
+      local plugin_dao = res()
+      table.insert(self.daos, plugin_dao(properties))
+    end
+  end
 end
 
 function CassandraFactory:drop()
@@ -84,12 +97,8 @@ end
 -- Prepare all statements of collections
 -- @return error if any
 function CassandraFactory:prepare()
-  for _, collection in ipairs({ self.apis,
-                                self.metrics,
-                                self.plugins,
-                                self.consumers,
-                                self.applications }) do
-    local status, err = pcall(function() prepare_collection(collection) end)
+  for _, dao in pairs(self.daos) do
+    local status, err = pcall(prepare_collection, dao)
     if not status then
       return err
     end

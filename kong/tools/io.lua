@@ -66,8 +66,8 @@ function _M.load_configuration_and_dao(configuration_path)
   -- Configuraiton should already be validated by the CLI at this point
   local configuration = yaml.load(configuration_file)
 
-  local dao_config = configuration.databases_available[configuration.database]
-  if dao_config == nil then
+  local dao_properties = configuration.databases_available[configuration.database]
+  if dao_properties == nil then
     error("No dao \""..configuration.database.."\" defined")
   end
 
@@ -76,7 +76,7 @@ function _M.load_configuration_and_dao(configuration_path)
 
   -- Instanciate the DAO Factory along with the configuration
   local DaoFactory = require("kong.dao."..configuration.database..".factory")
-  local dao_factory = DaoFactory(dao_config.properties)
+  local dao_factory = DaoFactory(dao_properties.properties, configuration.plugins_available)
 
   return configuration, dao_factory
 end
