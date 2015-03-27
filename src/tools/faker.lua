@@ -40,7 +40,7 @@ Faker.FIXTURES = {
     { public_key = "apikey123", __consumer = 1 },
     { public_key = "username", secret_key = "password", __consumer = 1 },
   },
-  plugin = {
+  plugin_configuration = {
     { name = "queryauth", value = { key_names = { "apikey" }}, __api = 1 },
     { name = "queryauth", value = { key_names = { "apikey" }}, __api = 6 },
     { name = "headerauth", value = { header_names = { "apikey" }}, __api = 2 },
@@ -76,7 +76,7 @@ function Faker:fake_entity(type)
       public_key = "public_random"..r,
       secret_key = "private_random"..r
     }
-  elseif type == "plugin" then
+  elseif type == "plugin_configuration" then
     local plugin_type = random_from_table({ "queryauth", "ratelimiting" })
     local plugin_value
     if plugin_type == "queryauth" then
@@ -108,11 +108,11 @@ function Faker:seed(random_amount)
     -- as the difference between total amount requested and hard-coded ones
     -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
     --
-    -- We don't generate any random plugin
+    -- We don't generate any random plugin configuration
     local random_entities = {}
     for type, entities in pairs(Faker.FIXTURES) do
       random_entities[type] = {}
-      if type ~= "plugin" then
+      if type ~= "plugin_configuration" then
         for i = 1, random_amount do
           table.insert(random_entities[type], self:fake_entity(type))
         end
@@ -131,7 +131,7 @@ function Faker:insert_from_table(entities_to_insert, pick_relations)
   -- Insert in order (for foreign relashionships)
   -- 1. consumers and APIs
   -- 2. applications, which need refereces to inserted apis and consumers
-  for _, type in ipairs({ "api", "consumer", "application", "plugin" }) do
+  for _, type in ipairs({ "api", "consumer", "application", "plugin_configuration" }) do
     for i, entity in ipairs(entities_to_insert[type]) do
 
       if pick_relations then
@@ -149,14 +149,15 @@ function Faker:insert_from_table(entities_to_insert, pick_relations)
           if foreign_consumer then
             entity.consumer_id = foreign_consumer.id
           end
-        elseif type == "plugin" then
+        elseif type == "plugin_configuration" then
           if foreign_api then entity.api_id = foreign_api.id end
           if foreign_application then entity.application_id = foreign_application.id end
         end
       end
 
       -- Insert in DB
-      local res, err = self.dao_factory[type.."s"]:insert(entity)
+      local dao_type = type=="plugin_configuration" and "plugins_configurations" or type.."s"
+      local res, err = self.dao_factory[dao_type]:insert(entity)
       if err then
         error("Faker failed to insert "..type.." entity: "..inspect(entity).."\n"..err)
       end

@@ -36,10 +36,10 @@ local plugins = {}
 local _M = {}
 
 local function load_plugin_conf(api_id, application_id, plugin_name)
-  local cache_key = cache.plugin_key(plugin_name, api_id, application_id)
+  local cache_key = cache.plugin_configuration_key(plugin_name, api_id, application_id)
 
   local plugin = cache.get_and_set(cache_key, function()
-    local rows, err = dao.plugins:find_by_keys {
+    local rows, err = dao.plugins_configurations:find_by_keys {
         api_id = api_id,
         application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
         name = plugin_name
@@ -67,7 +67,7 @@ local function init_plugins()
   plugins_available = configuration.plugins_available and configuration.plugins_available or {}
 
   print("Discovering used plugins. Please wait..")
-  local db_plugins, err = dao.plugins:find_distinct()
+  local db_plugins, err = dao.plugins_configurations:find_distinct()
   if err then
     error(err)
   end

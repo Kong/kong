@@ -28,7 +28,7 @@ return {
   },
   CACHE = {
     APIS = "apis",
-    PLUGINS = "plugins",
+    PLUGINS_CONFIGURATIONS = "plugins_configurations",
     APPLICATIONS = "applications"
   },
   AUTHENTICATION = {
