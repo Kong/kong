@@ -44,12 +44,16 @@ function _M.api_key(host)
   return constants.CACHE.APIS.."/"..host
 end
 
-function _M.plugin_key(name, api_id, application_id)
-  return constants.CACHE.PLUGINS.."/"..name.."/"..api_id..(application_id and "/"..application_id or "")
+function _M.plugin_configuration_key(name, api_id, consumer_id)
+  return constants.CACHE.PLUGINS_CONFIGURATIONS.."/"..name.."/"..api_id..(consumer_id and "/"..consumer_id or "")
 end
 
-function _M.application_key(public_key)
-  return constants.CACHE.APPLICATIONS.."/"..public_key
+function _M.basicauth_credential_key(username)
+  return constants.CACHE.BASICAUTH_CREDENTIAL.."/"..username
+end
+
+function _M.keyauth_credential_key(key)
+  return constants.CACHE.KEYAUTH_CREDENTIAL.."/"..key
 end
 
 function _M.get_and_set(key, cb)

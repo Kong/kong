@@ -7,12 +7,16 @@ describe("Cache", function()
   end)
 
   it("should return a valid PLUGIN cache key", function()
-    assert.are.equal("plugins/authentication/api123/app123", cache.plugin_key("authentication", "api123", "app123"))
-    assert.are.equal("plugins/authentication/api123", cache.plugin_key("authentication", "api123"))
+    assert.are.equal("plugins_configurations/authentication/api123/app123", cache.plugin_configuration_key("authentication", "api123", "app123"))
+    assert.are.equal("plugins_configurations/authentication/api123", cache.plugin_configuration_key("authentication", "api123"))
   end)
 
-  it("should return a valid Application cache key", function()
-    assert.are.equal("applications/username", cache.application_key("username"))
+  it("should return a valid KeyAuthCredential cache key", function()
+    assert.are.equal("keyauth_credentials/username", cache.keyauth_credential_key("username"))
+  end)
+
+  it("should return a valid BasicAuthCredential cache key", function()
+    assert.are.equal("basicauth_credentials/username", cache.basicauth_credential_key("username"))
   end)
 
 end)

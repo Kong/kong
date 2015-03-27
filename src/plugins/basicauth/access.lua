@@ -48,44 +48,44 @@ end
 --
 -- All methods must respect:
 --
--- @param {table} application The retrieved application from the public_key passed in the request
--- @param {string} public_key
--- @param {string} private_key
+-- @param {table} credential The retrieved credential from the username passed in the request
+-- @param {string} username
+-- @param {string} password
 -- @return {boolean} Success of authentication
-local function validate_credentials(application, username, password)
-  if application then
+local function validate_credentials(credential, username, password)
+  if credential then
     -- TODO: No encryption yet
-    return application.secret_key == password
+    return credential.password == password
   end
 end
 
 function _M.execute(conf)
   if not conf then return end
 
-  local public_key, secret_key = retrieve_credentials(ngx.req, conf)
-  local application
+  local username, password = retrieve_credentials(ngx.req, conf)
+  local credential
 
   -- Make sure we are not sending an empty table to find_by_keys
-  if public_key then
-    application = cache.get_and_set(cache.application_key(public_key), function()
-      local applications, err = dao.applications:find_by_keys { public_key = public_key }
+  if username then
+    credential = cache.get_and_set(cache.basicauth_credential_key(username), function()
+      local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result
       if err then
         ngx.log(ngx.ERR, err)
         utils.show_error(500)
-      elseif #applications > 0 then
-        result = applications[1]
+      elseif #credentials > 0 then
+        result = credentials[1]
       end
       return result
     end)
   end
 
-  if not validate_credentials(application, public_key, secret_key) then
+  if not validate_credentials(credential, username, password) then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
-  ngx.req.set_header(constants.HEADERS.ACCOUNT_ID, application.account_id)
-  ngx.ctx.authenticated_entity = application
+  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, credential.consumer_id)
+  ngx.ctx.authenticated_entity = credential
 end
 
 return _M

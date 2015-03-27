@@ -31,23 +31,25 @@ Faker.FIXTURES = {
     { name = "test5", public_dns = "test5.com", target_url = "http://mockbin.com" },
     { name = "test6", public_dns = "test6.com", target_url = "http://mockbin.com" }
   },
-  account = {
-    { provider_id = "provider_123" },
-    { provider_id = "provider_124" }
+  consumer = {
+    { custom_id = "provider_123" },
+    { custom_id = "provider_124" }
   },
-  application = {
-    { public_key = "apikey122", __account = 1 },
-    { public_key = "apikey123", __account = 1 },
-    { public_key = "username", secret_key = "password", __account = 1 },
+  keyauth_credential = {
+    { key = "apikey122", __consumer = 1 },
+    { key = "apikey123", __consumer = 2 }
   },
-  plugin = {
-    { name = "queryauth", value = { key_names = { "apikey" }}, __api = 1 },
-    { name = "queryauth", value = { key_names = { "apikey" }}, __api = 6 },
-    { name = "headerauth", value = { header_names = { "apikey" }}, __api = 2 },
+  basicauth_credential = {
+    { username = "username", password = "password", __consumer = 1 },
+  },
+  plugin_configuration = {
+    { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
+    { name = "keyauth", value = { key_names = { "apikey" }}, __api = 6 },
+    { name = "keyauth", value = { key_names = { "apikey" }}, __api = 2 },
     { name = "basicauth", value = {}, __api = 3 },
-    { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 5 },
-    { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 6 },
-    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 },
+    { name = "ratelimiting", value = { period = "minute", limit = 2 }, __api = 5 },
+    { name = "ratelimiting", value = { period = "minute", limit = 2 }, __api = 6 },
+    { name = "ratelimiting", value = { period = "minute", limit = 4 }, __api = 6, __consumer = 1 },
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
     { name = "filelog", value = { }, __api = 1 }
@@ -66,20 +68,25 @@ function Faker:fake_entity(type)
       public_dns = "random"..r..".com",
       target_url = "http://random"..r..".com"
     }
-  elseif type == "account" then
+  elseif type == "consumer" then
     return {
-      provider_id = "random_provider_id_"..r
+      custom_id = "random_custom_id_"..r
     }
-  elseif type == "application" then
+  elseif type == "basicauth_credential" then
     return {
-      account_id = random_from_table(self.inserted_entities.account).id,
-      public_key = "public_random"..r,
-      secret_key = "private_random"..r
+      consumer_id = random_from_table(self.inserted_entities.consumer).id,
+      username = "username_random"..r,
+      password = "password_random"..r
     }
-  elseif type == "plugin" then
-    local plugin_type = random_from_table({ "queryauth", "ratelimiting" })
+  elseif type == "keyauth_credential" then
+    return {
+      consumer_id = random_from_table(self.inserted_entities.consumer).id,
+      key = "key_random"..r
+    }
+  elseif type == "plugin_configuration" then
+    local plugin_type = random_from_table({ "keyauth", "ratelimiting" })
     local plugin_value
-    if plugin_type == "queryauth" then
+    if plugin_type == "keyauth" then
       plugin_value = { key_names = { "apikey"..r }}
     else
       plugin_value = { period = "minute", limit = r }
@@ -88,7 +95,7 @@ function Faker:fake_entity(type)
       name = plugin_type,
       value = plugin_value,
       api_id = nil,
-      application_id = nil
+      consumer_id = nil
     }
   else
     error("Entity of type "..type.." cannot be generated.")
@@ -96,7 +103,7 @@ function Faker:fake_entity(type)
 end
 
 -- Seed the database with a set of hard-coded entities, and optionally random data
--- @param {number} random_amount The number of random entities to add (apis, accounts, applications)
+-- @param {number} random_amount The number of random entities to add (apis, consumers, applications)
 function Faker:seed(random_amount)
   -- reset previously inserted entities
   self.inserted_entities = {}
@@ -108,11 +115,11 @@ function Faker:seed(random_amount)
     -- as the difference between total amount requested and hard-coded ones
     -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
     --
-    -- We don't generate any random plugin
+    -- We don't generate any random plugin configuration
     local random_entities = {}
     for type, entities in pairs(Faker.FIXTURES) do
       random_entities[type] = {}
-      if type ~= "plugin" then
+      if type ~= "plugin_configuration" then
         for i = 1, random_amount do
           table.insert(random_entities[type], self:fake_entity(type))
         end
@@ -124,39 +131,42 @@ function Faker:seed(random_amount)
 end
 
 -- Insert entities in the DB using the DAO
--- First accounts and APIs, then the rest which needs references to created accounts and APIs
+-- First consumers and APIs, then the rest which needs references to created consumers and APIs
 -- @param {table} entities_to_insert A table with the same structure as the one defined in :seed
 -- @param {boolean} pick_relations If true, will pick relations from the __ property
 function Faker:insert_from_table(entities_to_insert, pick_relations)
   -- Insert in order (for foreign relashionships)
-  -- 1. accounts and APIs
-  -- 2. applications, which need refereces to inserted apis and accounts
-  for _, type in ipairs({ "api", "account", "application", "plugin" }) do
+  -- 1. consumers and APIs
+  -- 2. credentials, which need refereces to inserted apis and consumers
+  for _, type in ipairs({ "api", "consumer", "basicauth_credential", "keyauth_credential", "plugin_configuration" }) do
     for i, entity in ipairs(entities_to_insert[type]) do
 
       if pick_relations then
         local foreign_api = entities_to_insert.api[entity.__api]
-        local foreign_account = entities_to_insert.account[entity.__account]
-        local foreign_application = entities_to_insert.application[entity.__application]
+        local foreign_consumer = entities_to_insert.consumer[entity.__consumer]
 
         -- Clean this up otherwise won't pass schema validation
         entity.__api = nil
-        entity.__account = nil
-        entity.__application = nil
+        entity.__consumer = nil
 
         -- Hard-coded foreign relationships
-        if type == "application" then
-          if foreign_account then
-            entity.account_id = foreign_account.id
+        if type == "basicauth_credential" then
+          if foreign_consumer then
+            entity.consumer_id = foreign_consumer.id
           end
-        elseif type == "plugin" then
+        elseif type == "keyauth_credential" then
+          if foreign_consumer then
+            entity.consumer_id = foreign_consumer.id
+          end
+        elseif type == "plugin_configuration" then
           if foreign_api then entity.api_id = foreign_api.id end
-          if foreign_application then entity.application_id = foreign_application.id end
+          if foreign_consumer then entity.consumer_id = foreign_consumer.id end
         end
       end
 
       -- Insert in DB
-      local res, err = self.dao_factory[type.."s"]:insert(entity)
+      local dao_type = type=="plugin_configuration" and "plugins_configurations" or type.."s"
+      local res, err = self.dao_factory[dao_type]:insert(entity)
       if err then
         error("Faker failed to insert "..type.." entity: "..inspect(entity).."\n"..err)
       end

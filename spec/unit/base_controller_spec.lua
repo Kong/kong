@@ -6,17 +6,17 @@ local env = spec_helper.get_env()
 describe("Base Controller", function()
 
   it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, nil)
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, nil)
     assert.are.same({}, result)
   end)
 
   it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {})
     assert.are.same({}, result)
   end)
 
   it("should not parse params with invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {hello = true})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true})
     assert.are.same({}, result)
   end)
 
@@ -31,62 +31,62 @@ describe("Base Controller", function()
   end)
 
   it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {})
     assert.are.same({}, result)
   end)
 
   it("should not parse params with invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {hello = true, wot = 123})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true, wot = 123})
     assert.are.same({}, result)
   end)
 
   it("should parse only existing params", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {hello = true, provider_id = 123})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true, custom_id = 123})
     assert.are.same({
-      provider_id = 123
+      custom_id = 123
     }, result)
   end)
 
   it("should parse tables without invalid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "wot", ["value.key_names"] = "apikey" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "wot", ["value.key_names"] = "apikey" })
     assert.are.same({
       name = "wot",
       value = {}
     }, result)
 
-    result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", wot = "query" })
+    result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", wot = "query" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {}
     }, result)
   end)
   it("should parse tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["value.key_names"] = "apikey" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["value.key_names"] = "apikey" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {
         key_names = { "apikey" }
       }
     }, result)
   end)
   it("should not parse tables with invalid subschema prefix", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["asd.key_names"] = "apikey" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["asd.key_names"] = "apikey" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {}
     }, result)
 
-    result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["key_names"] = "apikey" })
+    result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["key_names"] = "apikey" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {}
     }, result)
   end)
 
   it("should parse tables with skippig invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {name = "queryauth", ["value.key_names"] = "apikey", ["value.wot"] = "ciao" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["value.key_names"] = "apikey", ["value.wot"] = "ciao" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {
         key_names = { "apikey" }
       }
@@ -94,9 +94,9 @@ describe("Base Controller", function()
   end)
 
   it("should parse reversed-order tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.key_names"] = "query", name = "queryauth" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {["value.key_names"] = "query", name = "keyauth" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {
         key_names = { "query" }
       }
@@ -104,9 +104,9 @@ describe("Base Controller", function()
   end)
 
   it("should parse arrays with a correct delimitator", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.key_names"] = "wot,wat", name = "queryauth" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {["value.key_names"] = "wot,wat", name = "keyauth" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {
         key_names = { "wot", "wat" }
       }
@@ -114,9 +114,9 @@ describe("Base Controller", function()
   end)
 
   it("should parse arrays with a incorrect delimitator", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins._schema, {["value.key_names"] = "wot;wat", name = "queryauth" })
+    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {["value.key_names"] = "wot;wat", name = "keyauth" })
     assert.are.same({
-      name = "queryauth",
+      name = "keyauth",
       value = {
         key_names = { "wot;wat" }
       }
