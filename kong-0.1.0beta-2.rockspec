@@ -66,7 +66,7 @@ build = {
     ["kong.dao.cassandra.base_dao"] = "src/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "src/dao/cassandra/apis.lua",
     ["kong.dao.cassandra.metrics"] = "src/dao/cassandra/metrics.lua",
-    ["kong.dao.cassandra.plugins"] = "src/dao/cassandra/plugins.lua",
+    ["kong.dao.cassandra.plugins_configurations"] = "src/dao/cassandra/plugins_configurations.lua",
     ["kong.dao.cassandra.consumers"] = "src/dao/cassandra/consumers.lua",
     ["kong.dao.cassandra.applications"] = "src/dao/cassandra/applications.lua",
 
@@ -104,7 +104,7 @@ build = {
     ["kong.web.routes.apis"] = "src/web/routes/apis.lua",
     ["kong.web.routes.consumers"] = "src/web/routes/consumers.lua",
     ["kong.web.routes.applications"] = "src/web/routes/applications.lua",
-    ["kong.web.routes.plugins"] = "src/web/routes/plugins.lua",
+    ["kong.web.routes.plugins_configurations"] = "src/web/routes/plugins_configurations.lua",
     ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
   },
   install = {

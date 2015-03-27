@@ -44,8 +44,8 @@ function _M.api_key(host)
   return constants.CACHE.APIS.."/"..host
 end
 
-function _M.plugin_key(name, api_id, application_id)
-  return constants.CACHE.PLUGINS.."/"..name.."/"..api_id..(application_id and "/"..application_id or "")
+function _M.plugin_configuration_key(name, api_id, application_id)
+  return constants.CACHE.PLUGINS_CONFIGURATIONS.."/"..name.."/"..api_id..(application_id and "/"..application_id or "")
 end
 
 function _M.application_key(public_key)

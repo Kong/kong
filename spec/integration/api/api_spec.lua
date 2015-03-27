@@ -48,8 +48,8 @@ local ENDPOINTS = {
     error_message = '{"public_key":"public_key is required","consumer_id":"consumer_id is required"}'
   },
   {
-    collection = "plugins",
-    total = table.getn(env.faker.FIXTURES.plugin) + 1,
+    collection = "plugins_configurations",
+    total = table.getn(env.faker.FIXTURES.plugin_configuration) + 1,
     entity = {
       name = "ratelimiting",
       api_id = function()

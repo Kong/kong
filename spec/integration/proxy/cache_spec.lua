@@ -33,8 +33,8 @@ describe("Cache #cache", function()
     local response, status, headers = http_client.get(kProxyURL.."/get", {}, {host = "cache.test"})
     assert.are.equal(200, status)
 
-    -- Let's add the authentication plugin
-    local response, status, headers = http_client.post(kWebURL.."/plugins/", {
+    -- Let's add the authentication plugin configuration
+    local response, status, headers = http_client.post(kWebURL.."/plugins_configurations/", {
       name = "headerauth",
       api_id = api_id,
       ["value.header_names"] = "x-key"
