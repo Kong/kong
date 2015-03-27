@@ -1,7 +1,6 @@
 # Available plugins on this server
 plugins_available:
-  - queryauth
-  - headerauth
+  - keyauth
   - basicauth
   - ratelimiting
   - tcplog

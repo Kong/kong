@@ -29,7 +29,8 @@ return {
   CACHE = {
     APIS = "apis",
     PLUGINS_CONFIGURATIONS = "plugins_configurations",
-    APPLICATIONS = "applications"
+    BASICAUTH_CREDENTIAL = "basicauth_credentials",
+    KEYAUTH_CREDENTIAL = "keyauth_credentials"
   },
   AUTHENTICATION = {
     QUERY = "query",

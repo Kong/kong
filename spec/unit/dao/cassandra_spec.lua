@@ -21,7 +21,8 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 local function describe_all_collections(tests_cb)
   for type, dao in pairs({ api = dao_factory.apis,
                            consumer = dao_factory.consumers,
-                           application = dao_factory.applications,
+                           keyauth_credential = dao_factory.keyauth_credentials,
+                           basicauth_credential = dao_factory.basicauth_credentials,
                            plugin_configuration = dao_factory.plugins_configurations }) do
 
     local collection = type=="plugin_configuration" and "plugins_configurations" or type.."s"
@@ -164,13 +165,13 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Applications", function()
+    describe("KeyAuthCredentials", function()
 
       it("should not insert in DB if consumer does not exist", function()
         -- Without an consumer_id, it's a schema error
-        local app_t = faker:fake_entity("application")
+        local app_t = faker:fake_entity("keyauth_credential")
         app_t.consumer_id = nil
-        local app, err = dao_factory.applications:insert(app_t)
+        local app, err = dao_factory.keyauth_credentials:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -178,10 +179,10 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("consumer_id is required", err.message.consumer_id)
 
         -- With an invalid consumer_id, it's a FOREIGN error
-        local app_t = faker:fake_entity("application")
+        local app_t = faker:fake_entity("keyauth_credential")
         app_t.consumer_id = uuid()
 
-        local app, err = dao_factory.applications:insert(app_t)
+        local app, err = dao_factory.keyauth_credentials:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -194,10 +195,10 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(#consumers > 0)
 
-        local app_t = faker:fake_entity("application")
+        local app_t = faker:fake_entity("keyauth_credential")
         app_t.consumer_id = consumers[1].id
 
-        local app, err = dao_factory.applications:insert(app_t)
+        local app, err = dao_factory.keyauth_credentials:insert(app_t)
         assert.falsy(err)
         assert.truthy(app.id)
         assert.truthy(app.created_at)
@@ -243,7 +244,6 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should insert a plugin configuration in DB and add generated values", function()
-        -- Create an API and get an Application for insert
         local api_t = faker:fake_entity("api")
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
@@ -316,7 +316,7 @@ describe("Cassandra DAO #dao #cassandra", function()
         local plugin_t =  {
           api_id = api.id,
           consumer_id = consumers[#consumers].id,
-          name = "queryauth",
+          name = "keyauth",
           value = {
             key_names = { "x-kong-key" }
           }
@@ -439,26 +439,6 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.True(#consumers == 1)
         assert.are.same(consumer_t.name, consumers[1].name)
-      end)
-
-    end)
-
-    describe("Applications", function()
-
-      it("should update in DB if entity can be found", function()
-        local apps, err = session:execute("SELECT * FROM applications")
-        assert.falsy(err)
-        assert.True(#apps > 0)
-
-        local app_t = apps[1]
-        app_t.public_key = "updated public_key"
-        local app, err = dao_factory.applications:update(app_t)
-        assert.falsy(err)
-        assert.truthy(app)
-
-        local apps, err = session:execute("SELECT * FROM applications WHERE public_key = ?", { app_t.public_key })
-        assert.falsy(err)
-        assert.are.same(1, #apps)
       end)
 
     end)
@@ -671,19 +651,19 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Applications", function()
+    describe("KeyAuthCredentials", function()
 
-      it("should find an application by public_key", function()
-        local app, err = dao_factory.applications:find_by_keys {
-          public_key = "user122"
+      it("should find an KeyAuth Credential by public_key", function()
+        local app, err = dao_factory.keyauth_credentials:find_by_keys {
+          key = "user122"
         }
         assert.falsy(err)
         assert.truthy(app)
       end)
 
       it("should handle empty strings", function()
-        local apps, err = dao_factory.applications:find_by_keys {
-          public_key = ""
+        local apps, err = dao_factory.keyauth_credentials:find_by_keys {
+          key = ""
         }
         assert.falsy(err)
         assert.are.same({}, apps)
@@ -693,8 +673,8 @@ describe("Cassandra DAO #dao #cassandra", function()
 
   end)
 
-  describe("Metrics", function()
-    local metrics = dao_factory.metrics
+  describe("Rate Limiting Metrics", function()
+    local ratelimiting_metrics = dao_factory.ratelimiting_metrics
 
     local api_id = uuid()
     local identifier = uuid()
@@ -703,29 +683,29 @@ describe("Cassandra DAO #dao #cassandra", function()
       spec_helper.drop_db()
     end)
 
-    it("should return nil when metrics are not existing", function()
+    it("should return nil when ratelimiting metrics are not existing", function()
       local current_timestamp = 1424217600
       local periods = timestamp.get_timestamps(current_timestamp)
       -- Very first select should return nil
       for period, period_date in pairs(periods) do
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same(nil, metric)
       end
     end)
 
-    it("should increment metrics with the given period", function()
+    it("should increment ratelimiting metrics with the given period", function()
       local current_timestamp = 1424217600
       local periods = timestamp.get_timestamps(current_timestamp)
 
       -- First increment
-      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
+      local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
       -- First select
       for period, period_date in pairs(periods) do
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same({
           api_id = api_id,
@@ -737,13 +717,13 @@ describe("Cassandra DAO #dao #cassandra", function()
       end
 
       -- Second increment
-      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
+      local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
       -- Second select
       for period, period_date in pairs(periods) do
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same({
           api_id = api_id,
@@ -759,7 +739,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       periods = timestamp.get_timestamps(current_timestamp)
 
        -- Third increment
-      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
+      local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
@@ -772,7 +752,7 @@ describe("Cassandra DAO #dao #cassandra", function()
           expected_value = 1
         end
 
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same({
           api_id = api_id,
@@ -785,11 +765,11 @@ describe("Cassandra DAO #dao #cassandra", function()
     end)
 
     it("should throw errors for non supported methods of the base_dao", function()
-      assert.has_error(metrics.find, "metrics:find() not supported")
-      assert.has_error(metrics.insert, "metrics:insert() not supported")
-      assert.has_error(metrics.update, "metrics:update() not supported")
-      assert.has_error(metrics.delete, "metrics:delete() not yet implemented")
-      assert.has_error(metrics.find_by_keys, "metrics:find_by_keys() not supported")
+      assert.has_error(ratelimiting_metrics.find, "ratelimiting_metrics:find() not supported")
+      assert.has_error(ratelimiting_metrics.insert, "ratelimiting_metrics:insert() not supported")
+      assert.has_error(ratelimiting_metrics.update, "ratelimiting_metrics:update() not supported")
+      assert.has_error(ratelimiting_metrics.delete, "ratelimiting_metrics:delete() not yet implemented")
+      assert.has_error(ratelimiting_metrics.find_by_keys, "ratelimiting_metrics:find_by_keys() not supported")
     end)
 
   end)
@@ -809,9 +789,8 @@ describe("Cassandra DAO #dao #cassandra", function()
       assert.falsy(err)
       assert.truthy(res)
 
-      assert.are.same(7, #res)
-      assert.truthy(utils.array_contains(res, "queryauth"))
-      assert.truthy(utils.array_contains(res, "headerauth"))
+      assert.are.same(6, #res)
+      assert.truthy(utils.array_contains(res, "keyauth"))
       assert.truthy(utils.array_contains(res, "basicauth"))
       assert.truthy(utils.array_contains(res, "ratelimiting"))
       assert.truthy(utils.array_contains(res, "tcplog"))

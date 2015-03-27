@@ -6,7 +6,7 @@ local cache = require "kong.tools.cache"
 local _M = {}
 
 local function get_key_from_query(key_name, request, conf)
-  local public_key, parameters
+  local key, parameters
   local found_in = {}
 
   -- First, try with querystring
@@ -36,7 +36,7 @@ local function get_key_from_query(key_name, request, conf)
   end
 
   -- At this point, we know where the key is supposed to be
-  public_key = parameters[key_name]
+  key = parameters[key_name]
 
   if conf.hide_credentials then
     if found_in.querystring then
@@ -54,7 +54,7 @@ local function get_key_from_query(key_name, request, conf)
     end
   end
 
-  return public_key
+  return key
 end
 
 -- Fast lookup for credential retrieval depending on the type of the authentication
@@ -65,60 +65,72 @@ end
 -- @param {table} conf Plugin configuration (value property)
 -- @return {string} public_key
 -- @return {string} private_key
-local function retrieve_credentials(request, conf)
-  local public_key
+local retrieve_credentials = {
+  [constants.AUTHENTICATION.HEADER] = function(request, conf)
+    local key
+    local headers = request.get_headers()
 
-  if conf.key_names then
-    for _,key_name in ipairs(conf.key_names) do
-      public_key = get_key_from_query(key_name, request, conf)
+    if conf.key_names then
+      for _,key_name in ipairs(conf.key_names) do
+        if headers[key_name] ~= nil then
+          key = headers[key_name]
 
-      if public_key then
-        return public_key
+          if conf.hide_credentials then
+            request.clear_header(key_name)
+          end
+
+          return key
+        end
       end
+    end
+  end,
+  [constants.AUTHENTICATION.QUERY] = function(request, conf)
+    local key
 
+    if conf.key_names then
+      for _,key_name in ipairs(conf.key_names) do
+        key = get_key_from_query(key_name, request, conf)
+
+        if key then
+          return key
+        end
+
+      end
     end
   end
-end
-
--- Fast lookup for credential validation depending on the type of the authentication
---
--- All methods must respect:
---
--- @param {table} application The retrieved application from the public_key passed in the request
--- @param {string} public_key
--- @param {string} private_key
--- @return {boolean} Success of authentication
-local function validate_credentials(application, public_key)
-  return application ~= nil
-end
+}
 
 function _M.execute(conf)
   if not conf then return end
 
-  local public_key, secret_key = retrieve_credentials(ngx.req, conf)
-  local application
+  local credential
+  for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do
+    local key = retrieve_credentials[v](ngx.req, conf)
 
-  -- Make sure we are not sending an empty table to find_by_keys
-  if public_key then
-    application = cache.get_and_set(cache.application_key(public_key), function()
-      local applications, err = dao.applications:find_by_keys { public_key = public_key }
-      local result
-      if err then
-        ngx.log(ngx.ERR, err)
-        utils.show_error(500)
-      elseif #applications > 0 then
-        result = applications[1]
-      end
-      return result
-    end)
+    -- Make sure we are not sending an empty table to find_by_keys
+    if key then
+      credential = cache.get_and_set(cache.keyauth_credential_key(key), function()
+        local credentials, err = dao.keyauth_credentials:find_by_keys { key = key }
+        local result
+        if err then
+          ngx.log(ngx.ERR, err)
+          utils.show_error(500)
+        elseif #credentials > 0 then
+          result = credentials[1]
+        end
+        return result
+      end)
+    end
+
+    if credential then break end
   end
 
-  if not validate_credentials(application, public_key, secret_key) then
+  if not credential then
     utils.show_error(403, "Your authentication credentials are invalid")
   end
 
-  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, application.consumer_id)
-  ngx.ctx.authenticated_entity = application
+  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, credential.consumer_id)
+  ngx.ctx.authenticated_entity = credential
 end
 
 return _M

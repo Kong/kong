@@ -35,9 +35,9 @@ describe("Cache #cache", function()
 
     -- Let's add the authentication plugin configuration
     local response, status, headers = http_client.post(kWebURL.."/plugins_configurations/", {
-      name = "headerauth",
+      name = "keyauth",
       api_id = api_id,
-      ["value.header_names"] = "x-key"
+      ["value.key_names"] = "x-key"
     })
     assert.are.equal(201, status)
 
@@ -51,14 +51,14 @@ describe("Cache #cache", function()
     local response, status, headers = http_client.get(kProxyURL.."/get", {}, {host = "cache.test"})
     assert.are.equal(403, status)
 
-    -- Create a consumer and an application will make it work again
+    -- Create a consumer and a key will make it work again
     local response, status, headers = http_client.post(kWebURL.."/consumers/", {})
     assert.are.equal(201, status)
     local consumer_id = cjson.decode(response).id
 
-    local response, status, headers = http_client.post(kWebURL.."/applications/", {
+    local response, status, headers = http_client.post(kWebURL.."/keyauth_credentials/", {
       consumer_id = consumer_id,
-      public_key = "secret_key_123"
+      key = "secret_key_123"
     })
     assert.are.equal(201, status)
 

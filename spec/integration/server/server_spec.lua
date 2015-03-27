@@ -73,14 +73,14 @@ describe("Server", function()
     end)
 
     it("should not fail when an existing plugin is being enabled", function()
-      replace_conf_property("plugins_available", {"queryauth"})
+      replace_conf_property("plugins_available", {"keyauth"})
 
       local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
     it("should not work when an unexisting plugin is being enabled along with an existing one", function()
-      replace_conf_property("plugins_available", {"queryauth", "wot-wat"})
+      replace_conf_property("plugins_available", {"keyauth", "wot-wat"})
 
       assert.has_error(function()
         spec_helper.start_kong(SERVER_CONF, true)
@@ -88,7 +88,7 @@ describe("Server", function()
     end)
 
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
-      replace_conf_property("plugins_available", {"queryauth", "basicauth", "headerauth", "tcplog", "udplog", "filelog"})
+      replace_conf_property("plugins_available", {"keyauth", "basicauth", "tcplog", "udplog", "filelog"})
 
       spec_helper.prepare_db(SERVER_CONF)
 
@@ -98,7 +98,7 @@ describe("Server", function()
     end)
 
     it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ratelimiting", "queryauth", "headerauth", "basicauth", "tcplog", "udplog", "filelog"})
+      replace_conf_property("plugins_available", {"ratelimiting", "keyauth", "basicauth", "tcplog", "udplog", "filelog"})
 
       spec_helper.prepare_db(SERVER_CONF)
 

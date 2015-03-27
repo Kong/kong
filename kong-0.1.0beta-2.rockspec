@@ -65,10 +65,11 @@ build = {
     ["kong.dao.cassandra.factory"] = "src/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "src/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "src/dao/cassandra/apis.lua",
-    ["kong.dao.cassandra.metrics"] = "src/dao/cassandra/metrics.lua",
+    ["kong.dao.cassandra.ratelimiting_metrics"] = "src/dao/cassandra/ratelimiting_metrics.lua",
+    ["kong.dao.cassandra.basicauth_credentials"] = "src/dao/cassandra/basicauth_credentials.lua",
+    ["kong.dao.cassandra.keyauth_credentials"] = "src/dao/cassandra/keyauth_credentials.lua",
     ["kong.dao.cassandra.plugins_configurations"] = "src/dao/cassandra/plugins_configurations.lua",
     ["kong.dao.cassandra.consumers"] = "src/dao/cassandra/consumers.lua",
-    ["kong.dao.cassandra.applications"] = "src/dao/cassandra/applications.lua",
 
     ["kong.plugins.base_plugin"] = "src/plugins/base_plugin.lua",
 
@@ -76,13 +77,9 @@ build = {
     ["kong.plugins.basicauth.access"] = "src/plugins/basicauth/access.lua",
     ["kong.plugins.basicauth.schema"] = "src/plugins/basicauth/schema.lua",
 
-    ["kong.plugins.queryauth.handler"] = "src/plugins/queryauth/handler.lua",
-    ["kong.plugins.queryauth.access"] = "src/plugins/queryauth/access.lua",
-    ["kong.plugins.queryauth.schema"] = "src/plugins/queryauth/schema.lua",
-
-    ["kong.plugins.headerauth.handler"] = "src/plugins/headerauth/handler.lua",
-    ["kong.plugins.headerauth.access"] = "src/plugins/headerauth/access.lua",
-    ["kong.plugins.headerauth.schema"] = "src/plugins/headerauth/schema.lua",
+    ["kong.plugins.keyauth.handler"] = "src/plugins/keyauth/handler.lua",
+    ["kong.plugins.keyauth.access"] = "src/plugins/keyauth/access.lua",
+    ["kong.plugins.keyauth.schema"] = "src/plugins/keyauth/schema.lua",
 
     ["kong.plugins.tcplog.handler"] = "src/plugins/tcplog/handler.lua",
     ["kong.plugins.tcplog.log"] = "src/plugins/tcplog/log.lua",
@@ -103,7 +100,8 @@ build = {
     ["kong.web.app"] = "src/web/app.lua",
     ["kong.web.routes.apis"] = "src/web/routes/apis.lua",
     ["kong.web.routes.consumers"] = "src/web/routes/consumers.lua",
-    ["kong.web.routes.applications"] = "src/web/routes/applications.lua",
+    ["kong.web.routes.basicauth_credentials"] = "src/web/routes/basicauth_credentials.lua",
+    ["kong.web.routes.keyauth_credentials"] = "src/web/routes/keyauth_credentials.lua",
     ["kong.web.routes.plugins_configurations"] = "src/web/routes/plugins_configurations.lua",
     ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
   },

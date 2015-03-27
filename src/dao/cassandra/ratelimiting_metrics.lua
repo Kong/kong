@@ -2,34 +2,34 @@ local cassandra = require "cassandra"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local timestamp = require "kong.tools.timestamp"
 
-local Metrics = BaseDao:extend()
+local RateLimitingMetrics = BaseDao:extend()
 
-function Metrics:new(properties)
+function RateLimitingMetrics:new(properties)
   self._queries = {
     increment_counter = {
-      query = [[ UPDATE metrics SET value = value + 1 WHERE api_id = ? AND
+      query = [[ UPDATE ratelimiting_metrics SET value = value + 1 WHERE api_id = ? AND
                                                             identifier = ? AND
                                                             period_date = ? AND
                                                             period = ?; ]]
     },
     select_one = {
-      query = [[ SELECT * FROM metrics WHERE api_id = ? AND
+      query = [[ SELECT * FROM ratelimiting_metrics WHERE api_id = ? AND
                                              identifier = ? AND
                                              period_date = ? AND
                                              period = ?; ]]
     },
     delete = {
-      query = [[ DELETE FROM metrics WHERE api_id = ? AND
+      query = [[ DELETE FROM ratelimiting_metrics WHERE api_id = ? AND
                                            identifier = ? AND
                                            period_date = ? AND
                                            period = ?; ]]
     }
   }
 
-  Metrics.super.new(self, properties)
+  RateLimitingMetrics.super.new(self, properties)
 end
 
-function Metrics:increment(api_id, identifier, current_timestamp)
+function RateLimitingMetrics:increment(api_id, identifier, current_timestamp)
   local periods = timestamp.get_timestamps(current_timestamp)
   local batch = cassandra.BatchStatement(cassandra.batch_types.COUNTER)
 
@@ -42,13 +42,13 @@ function Metrics:increment(api_id, identifier, current_timestamp)
     })
   end
 
-  return Metrics.super._execute(self, batch)
+  return RateLimitingMetrics.super._execute(self, batch)
 end
 
-function Metrics:find_one(api_id, identifier, current_timestamp, period)
+function RateLimitingMetrics:find_one(api_id, identifier, current_timestamp, period)
   local periods = timestamp.get_timestamps(current_timestamp)
 
-  local metric, err = Metrics.super._execute(self, self._statements.select_one, {
+  local metric, err = RateLimitingMetrics.super._execute(self, self._statements.select_one, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.timestamp(periods[period]),
@@ -65,25 +65,25 @@ function Metrics:find_one(api_id, identifier, current_timestamp, period)
   return metric
 end
 
-function Metrics:delete(api_id, identifier, periods)
-  error("metrics:delete() not yet implemented")
+function RateLimitingMetrics:delete(api_id, identifier, periods)
+  error("ratelimiting_metrics:delete() not yet implemented")
 end
 
 -- Unsuported
-function Metrics:insert()
-  error("metrics:insert() not supported")
+function RateLimitingMetrics:insert()
+  error("ratelimiting_metrics:insert() not supported")
 end
 
-function Metrics:update()
-  error("metrics:update() not supported")
+function RateLimitingMetrics:update()
+  error("ratelimiting_metrics:update() not supported")
 end
 
-function Metrics:find()
-  error("metrics:find() not supported")
+function RateLimitingMetrics:find()
+  error("ratelimiting_metrics:find() not supported")
 end
 
-function Metrics:find_by_keys()
-  error("metrics:find_by_keys() not supported")
+function RateLimitingMetrics:find_by_keys()
+  error("ratelimiting_metrics:find_by_keys() not supported")
 end
 
-return Metrics
+return RateLimitingMetrics

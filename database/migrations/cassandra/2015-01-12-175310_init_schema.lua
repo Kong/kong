@@ -24,18 +24,6 @@ local Migration = {
 
       CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
 
-      CREATE TABLE IF NOT EXISTS applications(
-        id uuid,
-        consumer_id uuid,
-        public_key text, -- This is the public
-        secret_key text, -- This is the secret key, it could be an apikey or basic password
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-
-      CREATE INDEX IF NOT EXISTS ON applications(consumer_id);
-      CREATE INDEX IF NOT EXISTS ON applications(public_key);
-
       CREATE TABLE IF NOT EXISTS apis(
         id uuid,
         name text,
@@ -63,7 +51,28 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(api_id);
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(consumer_id);
 
-      CREATE TABLE IF NOT EXISTS metrics(
+      CREATE TABLE IF NOT EXISTS basicauth_credentials(
+        id uuid,
+        consumer_id uuid,
+        username text,
+        password text,
+        created_at timestamp,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON basicauth_credentials(username);
+
+      CREATE TABLE IF NOT EXISTS keyauth_credentials(
+        id uuid,
+        consumer_id uuid,
+        key text,
+        created_at timestamp,
+        PRIMARY KEY (id)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON keyauth_credentials(key);
+
+      CREATE TABLE IF NOT EXISTS ratelimiting_metrics(
         api_id uuid,
         identifier text,
         period text,
