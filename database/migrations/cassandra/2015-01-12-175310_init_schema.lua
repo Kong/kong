@@ -18,11 +18,13 @@ local Migration = {
       CREATE TABLE IF NOT EXISTS consumers(
         id uuid,
         custom_id text,
+        username text,
         created_at timestamp,
         PRIMARY KEY (id)
       );
 
       CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(username);
 
       CREATE TABLE IF NOT EXISTS apis(
         id uuid,
