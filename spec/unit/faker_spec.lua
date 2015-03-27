@@ -4,7 +4,7 @@ local DaoError = require "kong.dao.error"
 
 describe("Faker #tools", function()
 
-  local ENTITIES_TYPES = { "api", "account", "application", "plugin" }
+  local ENTITIES_TYPES = { "api", "consumer", "application", "plugin" }
 
   local factory_mock = {}
   local insert_spy

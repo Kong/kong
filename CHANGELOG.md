@@ -15,7 +15,7 @@ First public beta. Includes caching and better usability.
   - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Mashape/kong/issues/17)
   - Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine.
   - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Mashape/kong/issues/71)
-- **Proxy**: APIs/Accounts caching with expiration for faster authentication.
+- **Proxy**: APIs/Consumers caching with expiration for faster authentication.
 - **API**: Plugins now use plain form parameters for configuration. [#70](https://github.com/Mashape/kong/issues/70)
 - Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Mashape/kong/issues/8)
 
@@ -41,7 +41,7 @@ First version running with Cassandra.
 - Built-in authentication plugin (api key, HTTP basic).
 - Built-in ratelimiting plugin.
 - Built-in TCP logging plugin.
-- Configuration API (for accounts, apis, plugins).
+- Configuration API (for consumers, apis, plugins).
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 

@@ -7,7 +7,7 @@ local Object = require "classic"
 local Apis = require "kong.dao.cassandra.apis"
 local Metrics = require "kong.dao.cassandra.metrics"
 local Plugins = require "kong.dao.cassandra.plugins"
-local Accounts = require "kong.dao.cassandra.accounts"
+local Consumers = require "kong.dao.cassandra.consumers"
 local Applications = require "kong.dao.cassandra.applications"
 
 local CassandraFactory = Object:extend()
@@ -44,7 +44,7 @@ function CassandraFactory:new(properties)
   self.apis = Apis(properties)
   self.metrics = Metrics(properties)
   self.plugins = Plugins(properties)
-  self.accounts = Accounts(properties)
+  self.consumers = Consumers(properties)
   self.applications = Applications(properties)
 end
 
@@ -53,7 +53,7 @@ function CassandraFactory:drop()
     TRUNCATE apis;
     TRUNCATE metrics;
     TRUNCATE plugins;
-    TRUNCATE accounts;
+    TRUNCATE consumers;
     TRUNCATE applications;
   ]]
 end
@@ -87,7 +87,7 @@ function CassandraFactory:prepare()
   for _, collection in ipairs({ self.apis,
                                 self.metrics,
                                 self.plugins,
-                                self.accounts,
+                                self.consumers,
                                 self.applications }) do
     local status, err = pcall(function() prepare_collection(collection) end)
     if not status then

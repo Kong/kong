@@ -3,7 +3,7 @@ local constants = require "kong.constants"
 
 local SCHEMA = {
   id = { type = constants.DATABASE_TYPES.ID },
-  account_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
+  consumer_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
   public_key = { type = "string", required = true, unique = true, queryable = true },
   secret_key = { type = "string" },
   created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
@@ -15,9 +15,9 @@ function Applications:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "account_id", "public_key", "secret_key", "created_at" },
+      params = { "id", "consumer_id", "public_key", "secret_key", "created_at" },
       query = [[
-        INSERT INTO applications(id, account_id, public_key, secret_key, created_at)
+        INSERT INTO applications(id, consumer_id, public_key, secret_key, created_at)
           VALUES(?, ?, ?, ?, ?);
       ]]
     },
@@ -37,9 +37,9 @@ function Applications:new(properties)
       query = [[ DELETE FROM applications WHERE id = ?; ]]
     },
     __foreign = {
-      account_id = {
-        params = { "account_id" },
-        query = [[ SELECT id FROM accounts WHERE id = ?; ]]
+      consumer_id = {
+        params = { "consumer_id" },
+        query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
     },
     __unique = {

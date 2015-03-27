@@ -15,25 +15,25 @@ local Migration = {
         migrations list<text>
       );
 
-      CREATE TABLE IF NOT EXISTS accounts(
+      CREATE TABLE IF NOT EXISTS consumers(
         id uuid,
-        provider_id text,
+        custom_id text,
         created_at timestamp,
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS ON accounts(provider_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
 
       CREATE TABLE IF NOT EXISTS applications(
         id uuid,
-        account_id uuid,
+        consumer_id uuid,
         public_key text, -- This is the public
         secret_key text, -- This is the secret key, it could be an apikey or basic password
         created_at timestamp,
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS ON applications(account_id);
+      CREATE INDEX IF NOT EXISTS ON applications(consumer_id);
       CREATE INDEX IF NOT EXISTS ON applications(public_key);
 
       CREATE TABLE IF NOT EXISTS apis(

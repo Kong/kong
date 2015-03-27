@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local Apis = require "kong.web.routes.apis"
 local Plugins = require "kong.web.routes.plugins"
-local Accounts = require "kong.web.routes.accounts"
+local Consumers = require "kong.web.routes.consumers"
 local Applications = require "kong.web.routes.applications"
 
 app = lapis.Application()
@@ -60,7 +60,7 @@ end
 
 -- Load controllers
 Apis()
-Accounts()
+Consumers()
 Applications()
 Plugins()
 

@@ -31,14 +31,14 @@ Faker.FIXTURES = {
     { name = "test5", public_dns = "test5.com", target_url = "http://mockbin.com" },
     { name = "test6", public_dns = "test6.com", target_url = "http://mockbin.com" }
   },
-  account = {
-    { provider_id = "provider_123" },
-    { provider_id = "provider_124" }
+  consumer = {
+    { custom_id = "provider_123" },
+    { custom_id = "provider_124" }
   },
   application = {
-    { public_key = "apikey122", __account = 1 },
-    { public_key = "apikey123", __account = 1 },
-    { public_key = "username", secret_key = "password", __account = 1 },
+    { public_key = "apikey122", __consumer = 1 },
+    { public_key = "apikey123", __consumer = 1 },
+    { public_key = "username", secret_key = "password", __consumer = 1 },
   },
   plugin = {
     { name = "queryauth", value = { key_names = { "apikey" }}, __api = 1 },
@@ -66,13 +66,13 @@ function Faker:fake_entity(type)
       public_dns = "random"..r..".com",
       target_url = "http://random"..r..".com"
     }
-  elseif type == "account" then
+  elseif type == "consumer" then
     return {
-      provider_id = "random_provider_id_"..r
+      custom_id = "random_custom_id_"..r
     }
   elseif type == "application" then
     return {
-      account_id = random_from_table(self.inserted_entities.account).id,
+      consumer_id = random_from_table(self.inserted_entities.consumer).id,
       public_key = "public_random"..r,
       secret_key = "private_random"..r
     }
@@ -96,7 +96,7 @@ function Faker:fake_entity(type)
 end
 
 -- Seed the database with a set of hard-coded entities, and optionally random data
--- @param {number} random_amount The number of random entities to add (apis, accounts, applications)
+-- @param {number} random_amount The number of random entities to add (apis, consumers, applications)
 function Faker:seed(random_amount)
   -- reset previously inserted entities
   self.inserted_entities = {}
@@ -124,30 +124,30 @@ function Faker:seed(random_amount)
 end
 
 -- Insert entities in the DB using the DAO
--- First accounts and APIs, then the rest which needs references to created accounts and APIs
+-- First consumers and APIs, then the rest which needs references to created consumers and APIs
 -- @param {table} entities_to_insert A table with the same structure as the one defined in :seed
 -- @param {boolean} pick_relations If true, will pick relations from the __ property
 function Faker:insert_from_table(entities_to_insert, pick_relations)
   -- Insert in order (for foreign relashionships)
-  -- 1. accounts and APIs
-  -- 2. applications, which need refereces to inserted apis and accounts
-  for _, type in ipairs({ "api", "account", "application", "plugin" }) do
+  -- 1. consumers and APIs
+  -- 2. applications, which need refereces to inserted apis and consumers
+  for _, type in ipairs({ "api", "consumer", "application", "plugin" }) do
     for i, entity in ipairs(entities_to_insert[type]) do
 
       if pick_relations then
         local foreign_api = entities_to_insert.api[entity.__api]
-        local foreign_account = entities_to_insert.account[entity.__account]
+        local foreign_consumer = entities_to_insert.consumer[entity.__consumer]
         local foreign_application = entities_to_insert.application[entity.__application]
 
         -- Clean this up otherwise won't pass schema validation
         entity.__api = nil
-        entity.__account = nil
+        entity.__consumer = nil
         entity.__application = nil
 
         -- Hard-coded foreign relationships
         if type == "application" then
-          if foreign_account then
-            entity.account_id = foreign_account.id
+          if foreign_consumer then
+            entity.consumer_id = foreign_consumer.id
           end
         elseif type == "plugin" then
           if foreign_api then entity.api_id = foreign_api.id end

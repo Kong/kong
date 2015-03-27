@@ -20,7 +20,7 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 -- An utility function to apply tests on each collection
 local function describe_all_collections(tests_cb)
   for type, dao in pairs({ api = dao_factory.apis,
-                           account = dao_factory.accounts,
+                           consumer = dao_factory.consumers,
                            application = dao_factory.applications,
                            plugin = dao_factory.plugins }) do
     local collection = type.."s"
@@ -151,50 +151,50 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Accounts", function()
+    describe("Consumers", function()
 
-      it("should insert an account in DB and add generated values", function()
-        local account_t = faker:fake_entity("account")
-        local account, err = dao_factory.accounts:insert(account_t)
+      it("should insert an consumer in DB and add generated values", function()
+        local consumer_t = faker:fake_entity("consumer")
+        local consumer, err = dao_factory.consumers:insert(consumer_t)
         assert.falsy(err)
-        assert.truthy(account.id)
-        assert.truthy(account.created_at)
+        assert.truthy(consumer.id)
+        assert.truthy(consumer.created_at)
       end)
 
     end)
 
     describe("Applications", function()
 
-      it("should not insert in DB if account does not exist", function()
-        -- Without an account_id, it's a schema error
+      it("should not insert in DB if consumer does not exist", function()
+        -- Without an consumer_id, it's a schema error
         local app_t = faker:fake_entity("application")
-        app_t.account_id = nil
+        app_t.consumer_id = nil
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.schema)
-        assert.are.same("account_id is required", err.message.account_id)
+        assert.are.same("consumer_id is required", err.message.consumer_id)
 
-        -- With an invalid account_id, it's a FOREIGN error
+        -- With an invalid consumer_id, it's a FOREIGN error
         local app_t = faker:fake_entity("application")
-        app_t.account_id = uuid()
+        app_t.consumer_id = uuid()
 
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.foreign)
-        assert.are.same("account_id "..app_t.account_id.." does not exist", err.message.account_id)
+        assert.are.same("consumer_id "..app_t.consumer_id.." does not exist", err.message.consumer_id)
       end)
 
       it("should insert in DB and add generated values", function()
-        local accounts, err = session:execute("SELECT * FROM accounts")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.truthy(#accounts > 0)
+        assert.truthy(#consumers > 0)
 
         local app_t = faker:fake_entity("application")
-        app_t.account_id = accounts[1].id
+        app_t.consumer_id = consumers[1].id
 
         local app, err = dao_factory.applications:insert(app_t)
         assert.falsy(err)
@@ -418,26 +418,26 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Accounts", function()
+    describe("Consumers", function()
 
       it("should update in DB if entity can be found", function()
-        local accounts, err = session:execute("SELECT * FROM accounts")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.True(#accounts > 0)
+        assert.True(#consumers > 0)
 
-        local account_t = accounts[1]
+        local consumer_t = consumers[1]
 
         -- Should be correctly updated in DB
-        account_t.provider_id = account_t.provider_id.."updated"
+        consumer_t.custom_id = consumer_t.custom_id.."updated"
 
-        local account, err = dao_factory.accounts:update(account_t)
+        local consumer, err = dao_factory.consumers:update(consumer_t)
         assert.falsy(err)
-        assert.truthy(account)
+        assert.truthy(consumer)
 
-        local accounts, err = session:execute("SELECT * FROM accounts WHERE provider_id = '"..account_t.provider_id.."'")
+        local consumers, err = session:execute("SELECT * FROM consumers WHERE custom_id = '"..consumer_t.custom_id.."'")
         assert.falsy(err)
-        assert.True(#accounts == 1)
-        assert.are.same(account_t.name, accounts[1].name)
+        assert.True(#consumers == 1)
+        assert.are.same(consumer_t.name, consumers[1].name)
       end)
 
     end)
