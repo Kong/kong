@@ -4,7 +4,8 @@ local lapis = require "lapis"
 local Apis = require "kong.web.routes.apis"
 local PluginsConfigurations = require "kong.web.routes.plugins_configurations"
 local Consumers = require "kong.web.routes.consumers"
-local Applications = require "kong.web.routes.applications"
+local BasicAuthCredentials = require "kong.web.routes.basicauth_credentials"
+local KeyAuthCredentials = require "kong.web.routes.keyauth_credentials"
 
 app = lapis.Application()
 
@@ -61,7 +62,9 @@ end
 -- Load controllers
 Apis()
 Consumers()
-Applications()
 PluginsConfigurations()
+
+BasicAuthCredentials()
+KeyAuthCredentials()
 
 return app

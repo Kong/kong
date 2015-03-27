@@ -62,10 +62,10 @@ describe("RateLimiting Plugin #proxy", function()
 
     end)
 
-    describe("Plugin customized for specific application", function()
+    describe("Plugin customized for specific consumer", function()
 
       it("should get blocked if exceeding limit", function()
-        -- This plugin says this application can make 4 requests/minute, not 2 like fault
+        -- This plugin says this consumer can make 4 requests/minute, not 2 like fault
         local limit = 4
 
         for i = 1, limit do

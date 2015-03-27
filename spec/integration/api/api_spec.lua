@@ -32,20 +32,34 @@ local ENDPOINTS = {
     error_message = nil
   },
   {
-    collection = "applications",
-    total = table.getn(env.faker.FIXTURES.application) + 1,
+    collection = "basicauth_credentials",
+    total = table.getn(env.faker.FIXTURES.basicauth_credential) + 1,
     entity = {
-      public_key = "PUB_key",
-      secret_key = "SEC_key",
+      username = "username5555",
+      password = "password5555",
       consumer_id = function()
         return created_ids.consumers
       end
     },
     update_fields = {
-      public_key = "newPUB",
-      secret_key = "newSEC"
+      username = "upd_username5555",
+      password = "upd_password5555"
     },
-    error_message = '{"public_key":"public_key is required","consumer_id":"consumer_id is required"}'
+    error_message = '{"username":"username is required","consumer_id":"consumer_id is required"}'
+  },
+  {
+    collection = "keyauth_credentials",
+    total = table.getn(env.faker.FIXTURES.keyauth_credential) + 1,
+    entity = {
+      key = "apikey5555",
+      consumer_id = function()
+        return created_ids.consumers
+      end
+    },
+    update_fields = {
+      key = "upd_apikey5555",
+    },
+    error_message = '{"key":"key is required","consumer_id":"consumer_id is required"}'
   },
   {
     collection = "plugins_configurations",
