@@ -1,5 +1,5 @@
 package = "kong"
-version = "0.1.0beta-2"
+version = "0.1.0beta-3"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
