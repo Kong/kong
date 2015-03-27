@@ -21,13 +21,13 @@ local ENDPOINTS = {
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
   {
-    collection = "accounts",
-    total = table.getn(env.faker.FIXTURES.account) + 1,
+    collection = "consumers",
+    total = table.getn(env.faker.FIXTURES.consumer) + 1,
     entity = {
-      provider_id = "123456789"
+      custom_id = "123456789"
     },
     update_fields = {
-      provider_id = "ABC_provider_ID"
+      custom_id = "ABC_custom_ID"
     },
     error_message = nil
   },
@@ -37,15 +37,15 @@ local ENDPOINTS = {
     entity = {
       public_key = "PUB_key",
       secret_key = "SEC_key",
-      account_id = function()
-        return created_ids.accounts
+      consumer_id = function()
+        return created_ids.consumers
       end
     },
     update_fields = {
       public_key = "newPUB",
       secret_key = "newSEC"
     },
-    error_message = '{"account_id":"account_id is required","public_key":"public_key is required"}'
+    error_message = '{"public_key":"public_key is required","consumer_id":"consumer_id is required"}'
   },
   {
     collection = "plugins",
@@ -96,7 +96,7 @@ describe("Web API #web", function()
     describe("#"..v.collection, function()
 
       it("should not create on POST with invalid parameters", function()
-        if v.collection ~= "accounts" then
+        if v.collection ~= "consumers" then
           local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", {})
           assert.are.equal(400, status)
           assert.are.equal(v.error_message, response)

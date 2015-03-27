@@ -6,17 +6,17 @@ local env = spec_helper.get_env()
 describe("Base Controller", function()
 
   it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, nil)
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, nil)
     assert.are.same({}, result)
   end)
 
   it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {})
     assert.are.same({}, result)
   end)
 
   it("should not parse params with invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {hello = true})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true})
     assert.are.same({}, result)
   end)
 
@@ -31,19 +31,19 @@ describe("Base Controller", function()
   end)
 
   it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {})
     assert.are.same({}, result)
   end)
 
   it("should not parse params with invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {hello = true, wot = 123})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true, wot = 123})
     assert.are.same({}, result)
   end)
 
   it("should parse only existing params", function()
-    local result = base_controller.parse_params(env.dao_factory.accounts._schema, {hello = true, provider_id = 123})
+    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true, custom_id = 123})
     assert.are.same({
-      provider_id = 123
+      custom_id = 123
     }, result)
   end)
 
