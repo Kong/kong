@@ -51,7 +51,7 @@ local Migration = {
       CREATE TABLE IF NOT EXISTS plugins_configurations(
         id uuid,
         api_id uuid,
-        application_id uuid,
+        consumer_id uuid,
         name text,
         value text, -- serialized plugin data
         enabled boolean,
@@ -61,7 +61,7 @@ local Migration = {
 
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(name);
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(api_id);
-      CREATE INDEX IF NOT EXISTS ON plugins_configurations(application_id);
+      CREATE INDEX IF NOT EXISTS ON plugins_configurations(consumer_id);
 
       CREATE TABLE IF NOT EXISTS metrics(
         api_id uuid,

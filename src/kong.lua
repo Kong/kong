@@ -35,13 +35,13 @@ local plugins = {}
 
 local _M = {}
 
-local function load_plugin_conf(api_id, application_id, plugin_name)
-  local cache_key = cache.plugin_configuration_key(plugin_name, api_id, application_id)
+local function load_plugin_conf(api_id, consumer_id, plugin_name)
+  local cache_key = cache.plugin_configuration_key(plugin_name, api_id, consumer_id)
 
   local plugin = cache.get_and_set(cache_key, function()
     local rows, err = dao.plugins_configurations:find_by_keys {
         api_id = api_id,
-        application_id = application_id ~= nil and application_id or constants.DATABASE_NULL_ID,
+        consumer_id = consumer_id ~= nil and consumer_id or constants.DATABASE_NULL_ID,
         name = plugin_name
       }
       if err then
@@ -160,9 +160,9 @@ function _M.exec_plugins_access()
   for _, plugin in ipairs(plugins) do
     if ngx.ctx.api then
       ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name)
-      local application_id = ngx.ctx.authenticated_entity and ngx.ctx.authenticated_entity.id or nil
-      if application_id then
-        local app_plugin_conf = load_plugin_conf(ngx.ctx.api.id, application_id, plugin.name)
+      local consumer_id = ngx.ctx.authenticated_entity and ngx.ctx.authenticated_entity.consumer_id or nil
+      if consumer_id then
+        local app_plugin_conf = load_plugin_conf(ngx.ctx.api.id, consumer_id, plugin.name)
         if app_plugin_conf then
           ngx.ctx.plugin_conf[plugin.name] = app_plugin_conf
         end

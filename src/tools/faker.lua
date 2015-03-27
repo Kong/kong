@@ -37,7 +37,7 @@ Faker.FIXTURES = {
   },
   application = {
     { public_key = "apikey122", __consumer = 1 },
-    { public_key = "apikey123", __consumer = 1 },
+    { public_key = "apikey123", __consumer = 2 },
     { public_key = "username", secret_key = "password", __consumer = 1 },
   },
   plugin_configuration = {
@@ -47,7 +47,7 @@ Faker.FIXTURES = {
     { name = "basicauth", value = {}, __api = 3 },
     { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 5 },
     { name = "ratelimiting",   value = { period = "minute", limit = 2 }, __api = 6 },
-    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __application = 2 },
+    { name = "ratelimiting",   value = { period = "minute", limit = 4 }, __api = 6, __consumer = 1 },
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
     { name = "filelog", value = { }, __api = 1 }
@@ -88,7 +88,7 @@ function Faker:fake_entity(type)
       name = plugin_type,
       value = plugin_value,
       api_id = nil,
-      application_id = nil
+      consumer_id = nil
     }
   else
     error("Entity of type "..type.." cannot be generated.")
@@ -151,7 +151,7 @@ function Faker:insert_from_table(entities_to_insert, pick_relations)
           end
         elseif type == "plugin_configuration" then
           if foreign_api then entity.api_id = foreign_api.id end
-          if foreign_application then entity.application_id = foreign_application.id end
+          if foreign_consumer then entity.consumer_id = foreign_consumer.id end
         end
       end
 
