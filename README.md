@@ -69,11 +69,11 @@ HTTP/1.1 200 OK
 
 Kong just forwareded our request to `target_url` of mockbin and sent us the response.
 
-#### Accounts and plugins
+#### Consumers and plugins
 
 One of Kong's core principle is its extensibility through [plugins](http://getkong.org/plugins/), which allow you to add features to your APIs.
 
-Let's configure the [headerauth](http://getkong.org/plugins/header-authentication/) plugin to add authentication to your API.
+Let's configure the [keyauth](http://getkong.org/plugins/key-authentication/) plugin to add authentication to your API.
 
 ###### 1. Enable the plugin
 
@@ -81,7 +81,7 @@ Make sure it is in the `plugins_available` property of your node's configuration
 
 ```yaml
 plugins_available:
-  - headerauth
+  - keyauth
 ```
 
 This will make Kong load the plugin. If the plugin was not previously marked as available, restart Kong:
@@ -102,7 +102,7 @@ To enable this plugin on an API, retrieve the API `id` (as the one of the freshl
 
 ```bash
 $ curl -i -X POST \
-  --url http://localhost:8001/plugins/ \
+  --url http://localhost:8001/plugins_configurations/ \
   --data 'name=headerauth&api_id=<api_id>&value.header_names=apikey'
 HTTP/1.1 201 Created
 ...
@@ -130,7 +130,7 @@ HTTP/1.1 403 Forbidden
 
 This request did not provide a header named `apikey` (as specified by our plugin configuration) and is thus Forbidden. Kong does not proxy the request to the final API.
 
-To authenticate against your API, you now need to create an account associated with an application. An application links an account and a plugin, this way, an account can consume different APIs with different applications (and different keys).
+To authenticate against your API, you now need to create a consumer account and a credential key:
 
 ```bash
 $ curl -i -X POST \ 
@@ -140,12 +140,12 @@ HTTP/1.1 201 Created
 
 # Make sure the given account_id matches the freshly created account
 $ curl -i -X POST \
-  --url http://localhost:8001/applications/
-  --data 'public_key=123456&account_id=<account_id>'
+  --url http://localhost:8001/keyauth_credentials/
+  --data 'key=123456&consumer_id=<consumer_id>'
 HTTP/1.1 201 Created
 ```
 
-That application (which has `123456` as an API key) can now consume APIs having an authentication requirement such as our example. If we make the same query again, but with an `apikey` header:
+That application (which has `123456` as an API key) can now consume APIs having an authentication requirement such as our example. If we make the same query again, but with an `apikey` header containing our credential key:
 
 ```bash
 $ curl -i -X GET \
@@ -155,7 +155,7 @@ $ curl -i -X GET \
 HTTP/1.1 200 OK
 ```
 
-Your user can now consume this API.
+Your user can now consume this API!
 
 To go further into mastering Kong and its plugins, refer to the complete [documentation](#documentation).
 
