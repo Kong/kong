@@ -23,12 +23,12 @@ function Consumers:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "custom_id", "created_at" },
-      query = [[ INSERT INTO consumers(id, custom_id, created_at) VALUES(?, ?, ?); ]]
+      params = { "id", "custom_id", "username", "created_at" },
+      query = [[ INSERT INTO consumers(id, custom_id, username, created_at) VALUES(?, ?, ?, ?); ]]
     },
     update = {
-      params = { "custom_id", "created_at", "id" },
-      query = [[ UPDATE consumers SET custom_id = ?, created_at = ? WHERE id = ?; ]]
+      params = { "custom_id", "username", "created_at", "id" },
+      query = [[ UPDATE consumers SET custom_id = ?, username = ?, created_at = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM consumers %s; ]]
@@ -45,6 +45,10 @@ function Consumers:new(properties)
       custom_id ={
         params = { "custom_id" },
         query = [[ SELECT id FROM consumers WHERE custom_id = ?; ]]
+      },
+      username ={
+        params = { "username" },
+        query = [[ SELECT id FROM consumers WHERE username = ?; ]]
       }
     }
   }

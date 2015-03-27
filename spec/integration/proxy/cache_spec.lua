@@ -52,7 +52,7 @@ describe("Cache #cache", function()
     assert.are.equal(403, status)
 
     -- Create a consumer and a key will make it work again
-    local response, status, headers = http_client.post(kWebURL.."/consumers/", {})
+    local response, status, headers = http_client.post(kWebURL.."/consumers/", {username = "wot"})
     assert.are.equal(201, status)
     local consumer_id = cjson.decode(response).id
 
