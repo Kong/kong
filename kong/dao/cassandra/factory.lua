@@ -44,10 +44,8 @@ function CassandraFactory:new(properties, plugins_available)
   -- TODO: a metatable to this could prepare all statements as soon as an entry is added
   self.daos = {
     apis = Apis(properties),
-    metrics = Metrics(properties),
     plugins = Plugins(properties),
-    consumers = Consumers(properties),
-    applications = Applications(properties)
+    consumers = Consumers(properties)
   }
 
   for _, plugin_name in ipairs(plugins_available) do

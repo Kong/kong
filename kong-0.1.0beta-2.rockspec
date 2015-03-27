@@ -65,7 +65,6 @@ build = {
     ["kong.dao.cassandra.factory"] = "kong/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "kong/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "kong/dao/cassandra/apis.lua",
-    ["kong.dao.cassandra.metrics"] = "kong/dao/cassandra/metrics.lua",
     ["kong.dao.cassandra.plugins"] = "kong/dao/cassandra/plugins.lua",
     ["kong.dao.cassandra.consumers"] = "kong/dao/cassandra/consumers.lua",
     ["kong.dao.cassandra.applications"] = "kong/dao/cassandra/applications.lua",
@@ -75,6 +74,7 @@ build = {
     ["kong.plugins.basicauth.handler"] = "kong/plugins/basicauth/handler.lua",
     ["kong.plugins.basicauth.access"] = "kong/plugins/basicauth/access.lua",
     ["kong.plugins.basicauth.schema"] = "kong/plugins/basicauth/schema.lua",
+    ["kong.plugins.basicauth.dao.cassandra"] = "kong/plugins/basicauth/dao/cassandra.lua",
 
     ["kong.plugins.keyauth.handler"] = "kong/plugins/keyauth/handler.lua",
     ["kong.plugins.keyauth.access"] = "kong/plugins/keyauth/access.lua",
@@ -96,6 +96,7 @@ build = {
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
     ["kong.plugins.ratelimiting.schema"] = "kong/plugins/ratelimiting/schema.lua",
+    ["kong.plugins.ratelimiting.dao.cassandra"] = "kong/plugins/ratelimiting/dao/cassandra.lua",
 
     ["kong.web.app"] = "kong/web/app.lua",
     ["kong.web.routes.apis"] = "kong/web/routes/apis.lua",

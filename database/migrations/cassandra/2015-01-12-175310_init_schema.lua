@@ -101,6 +101,18 @@ local Migration = {
       -- TEMPORARY UNTIL MOVED TO EACH PLUGIN
       -- keyauth_credentials, metrics
       --
+
+      -- username is what the plugin will query this table with. We shouldn't need a consumer_id yet on it
+      -- and then compare the password with the one received by a request
+      CREATE TABLE IF NOT EXISTS basicauth_credentials(
+        consumer_id uuid,
+        username text,
+        password text,
+        created_at timestamp,
+        PRIMARY KEY (username, consumer_id)
+      );
+
+      -- key is what the plugin will query this table with. We shouldn't need a consumer_id yet on it
       CREATE TABLE IF NOT EXISTS keyauth_credentials(
         consumer_id uuid,
         key text,
@@ -108,7 +120,7 @@ local Migration = {
         PRIMARY KEY (key, consumer_id)
       );
 
-      CREATE TABLE IF NOT EXISTS metrics(
+      CREATE TABLE IF NOT EXISTS ratelimiting_metrics(
         api_id uuid,
         identifier text,
         period text,
@@ -141,19 +153,6 @@ local Migration = {
       );
       CREATE INDEX IF NOT EXISTS ON applications(consumer_id);
       CREATE INDEX IF NOT EXISTS ON applications(public_key);
-
-
-
-
-
-
-
-
-
-
-
-
-
     ]]
   end,
 
