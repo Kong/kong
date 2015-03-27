@@ -16,43 +16,43 @@ end
 local SCHEMA = {
   id = { type = constants.DATABASE_TYPES.ID },
   api_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
-  application_id = { type = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
+  consumer_id = { type = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
   name = { type = "string", required = true, queryable = true, immutable = true },
   value = { type = "table", required = true, schema = load_value_schema },
   enabled = { type = "boolean", default = true },
   created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
 }
 
-local Plugins = BaseDao:extend()
+local PluginsConfigurations = BaseDao:extend()
 
-function Plugins:new(properties)
+function PluginsConfigurations:new(properties)
   self._entity = "Plugin"
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "api_id", "application_id", "name", "value", "enabled", "created_at" },
-      query = [[ INSERT INTO plugins(id, api_id, application_id, name, value, enabled, created_at)
+      params = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },
+      query = [[ INSERT INTO plugins_configurations(id, api_id, consumer_id, name, value, enabled, created_at)
                   VALUES(?, ?, ?, ?, ?, ?, ?); ]]
     },
     update = {
-      params = { "api_id", "application_id", "value", "enabled", "created_at", "id", "name" },
-      query = [[ UPDATE plugins SET api_id = ?, application_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
+      params = { "api_id", "consumer_id", "value", "enabled", "created_at", "id", "name" },
+      query = [[ UPDATE plugins_configurations SET api_id = ?, consumer_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
     },
     select = {
-      query = [[ SELECT * FROM plugins %s; ]]
+      query = [[ SELECT * FROM plugins_configurations %s; ]]
     },
     select_one = {
       params = { "id" },
-      query = [[ SELECT * FROM plugins WHERE id = ?; ]]
+      query = [[ SELECT * FROM plugins_configurations WHERE id = ?; ]]
     },
     delete = {
       params = { "id" },
-      query = [[ DELETE FROM plugins WHERE id = ?; ]]
+      query = [[ DELETE FROM plugins_configurations WHERE id = ?; ]]
     },
     __unique = {
       self = {
-        params = { "api_id", "application_id", "name" },
-        query = [[ SELECT * FROM plugins WHERE api_id = ? AND application_id = ? AND name = ? ALLOW FILTERING; ]]
+        params = { "api_id", "consumer_id", "name" },
+        query = [[ SELECT * FROM plugins_configurations WHERE api_id = ? AND consumer_id = ? AND name = ? ALLOW FILTERING; ]]
       }
     },
     __foreign = {
@@ -60,18 +60,18 @@ function Plugins:new(properties)
         params = { "api_id" },
         query = [[ SELECT id FROM apis WHERE id = ?; ]]
       },
-      application_id = {
-        params = { "application_id" },
-        query = [[ SELECT id FROM applications WHERE id = ?; ]]
+      consumer_id = {
+        params = { "consumer_id" },
+        query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
     }
   }
 
-  Plugins.super.new(self, properties)
+  PluginsConfigurations.super.new(self, properties)
 end
 
 -- @override
-function Plugins:_marshall(t)
+function PluginsConfigurations:_marshall(t)
   if type(t.value) == "table" then
     t.value = cjson.encode(t.value)
   end
@@ -80,22 +80,22 @@ function Plugins:_marshall(t)
 end
 
 -- @override
-function Plugins:_unmarshall(t)
+function PluginsConfigurations:_unmarshall(t)
   -- deserialize values (tables) string to json
   if type(t.value) == "string" then
     t.value = cjson.decode(t.value)
   end
-  -- remove application_id if null uuid
-  if t.application_id == constants.DATABASE_NULL_ID then
-    t.application_id = nil
+  -- remove consumer_id if null uuid
+  if t.consumer_id == constants.DATABASE_NULL_ID then
+    t.consumer_id = nil
   end
 
   return t
 end
 
-function Plugins:find_distinct()
+function PluginsConfigurations:find_distinct()
   -- Open session
-  local session, err = Plugins.super._open_session(self)
+  local session, err = PluginsConfigurations.super._open_session(self)
   if err then
     return nil, err
   end
@@ -115,7 +115,7 @@ function Plugins:find_distinct()
   end
 
   -- Close session
-  local socket_err = Plugins.super._close_session(self, session)
+  local socket_err = PluginsConfigurations.super._close_session(self, session)
   if socket_err then
     return nil, socket_err
   end
@@ -128,4 +128,4 @@ function Plugins:find_distinct()
   return result, nil
 end
 
-return Plugins
+return PluginsConfigurations

@@ -6,7 +6,7 @@ local _M = {}
 function _M.execute(conf)
   local current_timestamp = timestamp.get_utc()
 
-  -- Compute is identifier is by ip address or application id
+  -- Compute is identifier is by ip address or authenticated entity id
   local identifier
   if ngx.ctx.authenticated_entity then
     identifier = ngx.ctx.authenticated_entity.id
@@ -15,7 +15,7 @@ function _M.execute(conf)
   end
 
   -- Load current metric for configured period
-  local current_metric, err = dao.metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, conf.period)
+  local current_metric, err = dao.ratelimiting_metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, conf.period)
   if err then
     ngx.log(ngx.ERR, err)
     utils.show_error(500)
@@ -38,7 +38,7 @@ function _M.execute(conf)
   end
 
   -- Increment metrics for all periods if the request goes through
-  local _, stmt_err = dao.metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
+  local _, stmt_err = dao.ratelimiting_metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
   if stmt_err then
     ngx.log(ngx.ERR, stmt_err)
     utils.show_error(500)

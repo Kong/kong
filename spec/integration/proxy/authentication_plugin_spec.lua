@@ -54,25 +54,14 @@ describe("Authentication Plugin #proxy", function()
       assert.are.equal("apikey123", parsed_response.postData.params.apikey)
     end)
 
-  end)
-
-  describe("Header Authentication", function()
-
-    it("should return invalid credentials when the credential value is wrong", function()
-      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test2.com", apikey = "asd"})
-      local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Your authentication credentials are invalid", body.message)
-    end)
-
-    it("should return invalid credentials when the credential parameter name is wrong in GET", function()
+    it("should return invalid credentials when the credential parameter name is wrong in GET header", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test2.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
       assert.are.equal(403, status)
       assert.are.equal("Your authentication credentials are invalid", body.message)
     end)
 
-    it("should return invalid credentials when the credential parameter name is wrong in POST", function()
+    it("should return invalid credentials when the credential parameter name is wrong in POST header", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {}, {host = "test2.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
       assert.are.equal(403, status)
@@ -147,4 +136,5 @@ describe("Authentication Plugin #proxy", function()
     end)
 
   end)
+
 end)

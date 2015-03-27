@@ -20,10 +20,12 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 -- An utility function to apply tests on each collection
 local function describe_all_collections(tests_cb)
   for type, dao in pairs({ api = dao_factory.apis,
-                           account = dao_factory.accounts,
-                           application = dao_factory.applications,
-                           plugin = dao_factory.plugins }) do
-    local collection = type.."s"
+                           consumer = dao_factory.consumers,
+                           keyauth_credential = dao_factory.keyauth_credentials,
+                           basicauth_credential = dao_factory.basicauth_credentials,
+                           plugin_configuration = dao_factory.plugins_configurations }) do
+
+    local collection = type=="plugin_configuration" and "plugins_configurations" or type.."s"
     describe(collection, function()
       tests_cb(type, collection)
     end)
@@ -151,52 +153,52 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Accounts", function()
+    describe("Consumers", function()
 
-      it("should insert an account in DB and add generated values", function()
-        local account_t = faker:fake_entity("account")
-        local account, err = dao_factory.accounts:insert(account_t)
+      it("should insert an consumer in DB and add generated values", function()
+        local consumer_t = faker:fake_entity("consumer")
+        local consumer, err = dao_factory.consumers:insert(consumer_t)
         assert.falsy(err)
-        assert.truthy(account.id)
-        assert.truthy(account.created_at)
+        assert.truthy(consumer.id)
+        assert.truthy(consumer.created_at)
       end)
 
     end)
 
-    describe("Applications", function()
+    describe("KeyAuthCredentials", function()
 
-      it("should not insert in DB if account does not exist", function()
-        -- Without an account_id, it's a schema error
-        local app_t = faker:fake_entity("application")
-        app_t.account_id = nil
-        local app, err = dao_factory.applications:insert(app_t)
+      it("should not insert in DB if consumer does not exist", function()
+        -- Without an consumer_id, it's a schema error
+        local app_t = faker:fake_entity("keyauth_credential")
+        app_t.consumer_id = nil
+        local app, err = dao_factory.keyauth_credentials:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.schema)
-        assert.are.same("account_id is required", err.message.account_id)
+        assert.are.same("consumer_id is required", err.message.consumer_id)
 
-        -- With an invalid account_id, it's a FOREIGN error
-        local app_t = faker:fake_entity("application")
-        app_t.account_id = uuid()
+        -- With an invalid consumer_id, it's a FOREIGN error
+        local app_t = faker:fake_entity("keyauth_credential")
+        app_t.consumer_id = uuid()
 
-        local app, err = dao_factory.applications:insert(app_t)
+        local app, err = dao_factory.keyauth_credentials:insert(app_t)
         assert.falsy(app)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.foreign)
-        assert.are.same("account_id "..app_t.account_id.." does not exist", err.message.account_id)
+        assert.are.same("consumer_id "..app_t.consumer_id.." does not exist", err.message.consumer_id)
       end)
 
       it("should insert in DB and add generated values", function()
-        local accounts, err = session:execute("SELECT * FROM accounts")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.truthy(#accounts > 0)
+        assert.truthy(#consumers > 0)
 
-        local app_t = faker:fake_entity("application")
-        app_t.account_id = accounts[1].id
+        local app_t = faker:fake_entity("keyauth_credential")
+        app_t.consumer_id = consumers[1].id
 
-        local app, err = dao_factory.applications:insert(app_t)
+        local app, err = dao_factory.keyauth_credentials:insert(app_t)
         assert.falsy(err)
         assert.truthy(app.id)
         assert.truthy(app.created_at)
@@ -204,12 +206,12 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Plugins", function()
+    describe("Plugin Configurations", function()
 
       it("should not insert in DB if invalid", function()
         -- Without an api_id, it's a schema error
-        local plugin_t = faker:fake_entity("plugin")
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin_t = faker:fake_entity("plugin_configuration")
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -217,71 +219,70 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.are.same("api_id is required", err.message.api_id)
 
         -- With an invalid api_id, it's an FOREIGN error
-        local plugin_t = faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.api_id = uuid()
 
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
 
-        -- With invalid api_id and application_id, it's an EXISTS error
-        local plugin_t = faker:fake_entity("plugin")
+        -- With invalid api_id and consumer_id, it's an EXISTS error
+        local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.api_id = uuid()
-        plugin_t.application_id = uuid()
+        plugin_t.consumer_id = uuid()
 
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
-        assert.are.same("application_id "..plugin_t.application_id.." does not exist", err.message.application_id)
+        assert.are.same("consumer_id "..plugin_t.consumer_id.." does not exist", err.message.consumer_id)
       end)
 
-      it("should insert a plugin in DB and add generated values", function()
-        -- Create an API and get an Application for insert
+      it("should insert a plugin configuration in DB and add generated values", function()
         local api_t = faker:fake_entity("api")
         local api, err = dao_factory.apis:insert(api_t)
         assert.falsy(err)
 
-        local apps, err = session:execute("SELECT * FROM applications")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.True(#apps > 0)
+        assert.True(#consumers > 0)
 
-        local plugin_t = faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.api_id = api.id
-        plugin_t.application_id = apps[1].id
+        plugin_t.consumer_id = consumers[1].id
 
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
-        assert.truthy(plugin.application_id)
+        assert.truthy(plugin.consumer_id)
       end)
 
-      it("should not insert twice a plugin with same api_id, application_id and name", function()
+      it("should not insert twice a plugin with same api_id, consumer_id and name", function()
         -- Insert a new API for a fresh start
         local api, err = dao_factory.apis:insert(faker:fake_entity("api"))
         assert.falsy(err)
         assert.truthy(api.id)
 
-        local apps, err = session:execute("SELECT * FROM applications")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.True(#apps > 0)
+        assert.True(#consumers > 0)
 
-        local plugin_t = faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.api_id = api.id
-        plugin_t.application_id = apps[#apps].id
+        plugin_t.consumer_id = consumers[#consumers].id
 
         -- This should work
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
 
         -- This should fail
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -290,11 +291,11 @@ describe("Cassandra DAO #dao #cassandra", function()
       end)
 
       it("should not insert a plugin if this plugin doesn't exist (not installed)", function()
-        local plugin_t = faker:fake_entity("plugin")
+        local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.name = "world domination plugin"
 
         -- This should fail
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -308,31 +309,31 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(api.id)
 
-        local apps, err = session:execute("SELECT * FROM applications")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.True(#apps > 0)
+        assert.True(#consumers > 0)
 
         local plugin_t =  {
           api_id = api.id,
-          application_id = apps[#apps].id,
-          name = "queryauth",
+          consumer_id = consumers[#consumers].id,
+          name = "keyauth",
           value = {
             key_names = { "x-kong-key" }
           }
         }
 
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
 
-        local ok, err = dao_factory.plugins:delete(plugin.id)
+        local ok, err = dao_factory.plugins_configurations:delete(plugin.id)
         assert.True(ok)
         assert.falsy(err)
 
         -- Failure
         plugin_t.name = "ratelimiting"
         plugin_t.value = { period = "hello" }
-        local plugin, err = dao_factory.plugins:insert(plugin_t)
+        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.truthy(err)
         assert.is_daoError(err)
         assert.truthy(err.schema)
@@ -418,67 +419,47 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Accounts", function()
+    describe("Consumers", function()
 
       it("should update in DB if entity can be found", function()
-        local accounts, err = session:execute("SELECT * FROM accounts")
+        local consumers, err = session:execute("SELECT * FROM consumers")
         assert.falsy(err)
-        assert.True(#accounts > 0)
+        assert.True(#consumers > 0)
 
-        local account_t = accounts[1]
+        local consumer_t = consumers[1]
 
         -- Should be correctly updated in DB
-        account_t.provider_id = account_t.provider_id.."updated"
+        consumer_t.custom_id = consumer_t.custom_id.."updated"
 
-        local account, err = dao_factory.accounts:update(account_t)
+        local consumer, err = dao_factory.consumers:update(consumer_t)
         assert.falsy(err)
-        assert.truthy(account)
+        assert.truthy(consumer)
 
-        local accounts, err = session:execute("SELECT * FROM accounts WHERE provider_id = '"..account_t.provider_id.."'")
+        local consumers, err = session:execute("SELECT * FROM consumers WHERE custom_id = '"..consumer_t.custom_id.."'")
         assert.falsy(err)
-        assert.True(#accounts == 1)
-        assert.are.same(account_t.name, accounts[1].name)
+        assert.True(#consumers == 1)
+        assert.are.same(consumer_t.name, consumers[1].name)
       end)
 
     end)
 
-    describe("Applications", function()
+    describe("Plugin Configurations", function()
 
       it("should update in DB if entity can be found", function()
-        local apps, err = session:execute("SELECT * FROM applications")
+        local plugins_configurations, err = session:execute("SELECT * FROM plugins_configurations")
         assert.falsy(err)
-        assert.True(#apps > 0)
+        assert.True(#plugins_configurations > 0)
 
-        local app_t = apps[1]
-        app_t.public_key = "updated public_key"
-        local app, err = dao_factory.applications:update(app_t)
+        local plugin_conf_t = plugins_configurations[1]
+        plugin_conf_t.value = cjson.decode(plugin_conf_t.value)
+        plugin_conf_t.enabled = false
+        local plugin_conf, err = dao_factory.plugins_configurations:update(plugin_conf_t)
         assert.falsy(err)
-        assert.truthy(app)
+        assert.truthy(plugin_conf)
 
-        local apps, err = session:execute("SELECT * FROM applications WHERE public_key = ?", { app_t.public_key })
+        local plugins_configurations, err = session:execute("SELECT * FROM plugins_configurations WHERE id = ?", { cassandra.uuid(plugin_conf_t.id) })
         assert.falsy(err)
-        assert.are.same(1, #apps)
-      end)
-
-    end)
-
-    describe("Plugins", function()
-
-      it("should update in DB if entity can be found", function()
-        local plugins, err = session:execute("SELECT * FROM plugins")
-        assert.falsy(err)
-        assert.True(#plugins > 0)
-
-        local plugin_t = plugins[1]
-        plugin_t.value = cjson.decode(plugin_t.value)
-        plugin_t.enabled = false
-        local plugin, err = dao_factory.plugins:update(plugin_t)
-        assert.falsy(err)
-        assert.truthy(plugin)
-
-        local plugins, err = session:execute("SELECT * FROM plugins WHERE id = ?", { cassandra.uuid(plugin_t.id) })
-        assert.falsy(err)
-        assert.are.same(1, #plugins)
+        assert.are.same(1, #plugins_configurations)
       end)
 
     end)
@@ -581,17 +562,17 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Plugins", function()
+    describe("Plugin Configurations", function()
 
       it("should deserialize the table property", function()
-        local plugins, err = session:execute("SELECT * FROM plugins")
+        local plugins_configurations, err = session:execute("SELECT * FROM plugins_configurations")
         assert.falsy(err)
-        assert.truthy(plugins)
-        assert.True(#plugins > 0)
+        assert.truthy(plugins_configurations)
+        assert.True(#plugins_configurations > 0)
 
-        local plugin_t = plugins[1]
+        local plugin_t = plugins_configurations[1]
 
-        local result, err = dao_factory.plugins:find_one(plugin_t.id)
+        local result, err = dao_factory.plugins_configurations:find_one(plugin_t.id)
         assert.falsy(err)
         assert.truthy(result)
         assert.are.same("table", type(result.value))
@@ -660,9 +641,9 @@ describe("Cassandra DAO #dao #cassandra", function()
         assert.falsy(err)
         assert.truthy(results)
 
-        -- in case of plugins
-        if t.application_id == constants.DATABASE_NULL_ID then
-          t.application_id = nil
+        -- in case of plugins configurations
+        if t.consumer_id == constants.DATABASE_NULL_ID then
+          t.consumer_id = nil
         end
 
         assert.are.same(t, results[1])
@@ -670,19 +651,19 @@ describe("Cassandra DAO #dao #cassandra", function()
 
     end)
 
-    describe("Applications", function()
+    describe("KeyAuthCredentials", function()
 
-      it("should find an application by public_key", function()
-        local app, err = dao_factory.applications:find_by_keys {
-          public_key = "user122"
+      it("should find an KeyAuth Credential by public_key", function()
+        local app, err = dao_factory.keyauth_credentials:find_by_keys {
+          key = "user122"
         }
         assert.falsy(err)
         assert.truthy(app)
       end)
 
       it("should handle empty strings", function()
-        local apps, err = dao_factory.applications:find_by_keys {
-          public_key = ""
+        local apps, err = dao_factory.keyauth_credentials:find_by_keys {
+          key = ""
         }
         assert.falsy(err)
         assert.are.same({}, apps)
@@ -692,8 +673,8 @@ describe("Cassandra DAO #dao #cassandra", function()
 
   end)
 
-  describe("Metrics", function()
-    local metrics = dao_factory.metrics
+  describe("Rate Limiting Metrics", function()
+    local ratelimiting_metrics = dao_factory.ratelimiting_metrics
 
     local api_id = uuid()
     local identifier = uuid()
@@ -702,29 +683,29 @@ describe("Cassandra DAO #dao #cassandra", function()
       spec_helper.drop_db()
     end)
 
-    it("should return nil when metrics are not existing", function()
+    it("should return nil when ratelimiting metrics are not existing", function()
       local current_timestamp = 1424217600
       local periods = timestamp.get_timestamps(current_timestamp)
       -- Very first select should return nil
       for period, period_date in pairs(periods) do
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same(nil, metric)
       end
     end)
 
-    it("should increment metrics with the given period", function()
+    it("should increment ratelimiting metrics with the given period", function()
       local current_timestamp = 1424217600
       local periods = timestamp.get_timestamps(current_timestamp)
 
       -- First increment
-      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
+      local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
       -- First select
       for period, period_date in pairs(periods) do
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same({
           api_id = api_id,
@@ -736,13 +717,13 @@ describe("Cassandra DAO #dao #cassandra", function()
       end
 
       -- Second increment
-      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
+      local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
       -- Second select
       for period, period_date in pairs(periods) do
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same({
           api_id = api_id,
@@ -758,7 +739,7 @@ describe("Cassandra DAO #dao #cassandra", function()
       periods = timestamp.get_timestamps(current_timestamp)
 
        -- Third increment
-      local ok, err = metrics:increment(api_id, identifier, current_timestamp)
+      local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp)
       assert.falsy(err)
       assert.True(ok)
 
@@ -771,7 +752,7 @@ describe("Cassandra DAO #dao #cassandra", function()
           expected_value = 1
         end
 
-        local metric, err = metrics:find_one(api_id, identifier, current_timestamp, period)
+        local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
         assert.falsy(err)
         assert.are.same({
           api_id = api_id,
@@ -784,16 +765,16 @@ describe("Cassandra DAO #dao #cassandra", function()
     end)
 
     it("should throw errors for non supported methods of the base_dao", function()
-      assert.has_error(metrics.find, "metrics:find() not supported")
-      assert.has_error(metrics.insert, "metrics:insert() not supported")
-      assert.has_error(metrics.update, "metrics:update() not supported")
-      assert.has_error(metrics.delete, "metrics:delete() not yet implemented")
-      assert.has_error(metrics.find_by_keys, "metrics:find_by_keys() not supported")
+      assert.has_error(ratelimiting_metrics.find, "ratelimiting_metrics:find() not supported")
+      assert.has_error(ratelimiting_metrics.insert, "ratelimiting_metrics:insert() not supported")
+      assert.has_error(ratelimiting_metrics.update, "ratelimiting_metrics:update() not supported")
+      assert.has_error(ratelimiting_metrics.delete, "ratelimiting_metrics:delete() not yet implemented")
+      assert.has_error(ratelimiting_metrics.find_by_keys, "ratelimiting_metrics:find_by_keys() not supported")
     end)
 
   end)
 
-  describe("Plugins", function()
+  describe("Plugin Configurations", function()
     local api_id
     local inserted_plugin
 
@@ -802,15 +783,14 @@ describe("Cassandra DAO #dao #cassandra", function()
       spec_helper.seed_db(nil, 100)
     end)
 
-    it("should find distinct plugins", function()
-      local res, err = dao_factory.plugins:find_distinct()
+    it("should find distinct plugins configurations", function()
+      local res, err = dao_factory.plugins_configurations:find_distinct()
 
       assert.falsy(err)
       assert.truthy(res)
 
-      assert.are.same(7, #res)
-      assert.truthy(utils.array_contains(res, "queryauth"))
-      assert.truthy(utils.array_contains(res, "headerauth"))
+      assert.are.same(6, #res)
+      assert.truthy(utils.array_contains(res, "keyauth"))
       assert.truthy(utils.array_contains(res, "basicauth"))
       assert.truthy(utils.array_contains(res, "ratelimiting"))
       assert.truthy(utils.array_contains(res, "tcplog"))
@@ -818,9 +798,9 @@ describe("Cassandra DAO #dao #cassandra", function()
       assert.truthy(utils.array_contains(res, "filelog"))
     end)
 
-    it("should insert a plugin and set the application_id to a 'null' uuid if none is specified", function()
-      -- Since we want to specifically select plugins which have _no_ application_id sometimes, we cannot rely on using
-      -- NULL (and thus, not inserting the application_id column for the row). To fix this, we use a predefined, nullified
+    it("should insert a plugin and set the consumer_id to a 'null' uuid if none is specified", function()
+      -- Since we want to specifically select plugins configurations which have _no_ consumer_id sometimes, we cannot rely on using
+      -- NULL (and thus, not inserting the consumer_id column for the row). To fix this, we use a predefined, nullified
       -- uuid...
 
       -- Create an API
@@ -828,30 +808,30 @@ describe("Cassandra DAO #dao #cassandra", function()
       local api, err = dao_factory.apis:insert(api_t)
       assert.falsy(err)
 
-      local plugin_t = faker:fake_entity("plugin")
+      local plugin_t = faker:fake_entity("plugin_configuration")
       plugin_t.api_id = api.id
 
-      local plugin, err = dao_factory.plugins:insert(plugin_t)
+      local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
       assert.falsy(err)
       assert.truthy(plugin)
-      assert.falsy(plugin.application_id)
+      assert.falsy(plugin.consumer_id)
 
       -- for next test
       api_id = api.id
       inserted_plugin = plugin
-      inserted_plugin.application_id = nil
+      inserted_plugin.consumer_id = nil
     end)
 
-    it("should select a plugin by 'null' uuid application_id and remove the column", function()
+    it("should select a plugin configuration by 'null' uuid consumer_id and remove the column", function()
       -- Now we should be able to select this plugin
-      local rows, err = dao_factory.plugins:find_by_keys {
+      local rows, err = dao_factory.plugins_configurations:find_by_keys {
         api_id = api_id,
-        application_id = constants.DATABASE_NULL_ID
+        consumer_id = constants.DATABASE_NULL_ID
       }
       assert.falsy(err)
       assert.truthy(rows[1])
       assert.are.same(inserted_plugin, rows[1])
-      assert.falsy(rows[1].application_id)
+      assert.falsy(rows[1].consumer_id)
     end)
 
   end)

@@ -21,42 +21,56 @@ local ENDPOINTS = {
     error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
   },
   {
-    collection = "accounts",
-    total = table.getn(env.faker.FIXTURES.account) + 1,
+    collection = "consumers",
+    total = table.getn(env.faker.FIXTURES.consumer) + 1,
     entity = {
-      provider_id = "123456789"
+      custom_id = "123456789"
     },
     update_fields = {
-      provider_id = "ABC_provider_ID"
+      custom_id = "ABC_custom_ID"
     },
     error_message = nil
   },
   {
-    collection = "applications",
-    total = table.getn(env.faker.FIXTURES.application) + 1,
+    collection = "basicauth_credentials",
+    total = table.getn(env.faker.FIXTURES.basicauth_credential) + 1,
     entity = {
-      public_key = "PUB_key",
-      secret_key = "SEC_key",
-      account_id = function()
-        return created_ids.accounts
+      username = "username5555",
+      password = "password5555",
+      consumer_id = function()
+        return created_ids.consumers
       end
     },
     update_fields = {
-      public_key = "newPUB",
-      secret_key = "newSEC"
+      username = "upd_username5555",
+      password = "upd_password5555"
     },
-    error_message = '{"account_id":"account_id is required","public_key":"public_key is required"}'
+    error_message = '{"username":"username is required","consumer_id":"consumer_id is required"}'
   },
   {
-    collection = "plugins",
-    total = table.getn(env.faker.FIXTURES.plugin) + 1,
+    collection = "keyauth_credentials",
+    total = table.getn(env.faker.FIXTURES.keyauth_credential) + 1,
+    entity = {
+      key = "apikey5555",
+      consumer_id = function()
+        return created_ids.consumers
+      end
+    },
+    update_fields = {
+      key = "upd_apikey5555",
+    },
+    error_message = '{"key":"key is required","consumer_id":"consumer_id is required"}'
+  },
+  {
+    collection = "plugins_configurations",
+    total = table.getn(env.faker.FIXTURES.plugin_configuration) + 1,
     entity = {
       name = "ratelimiting",
       api_id = function()
         return created_ids.apis
       end,
-      application_id = function()
-        return created_ids.applications
+      consumer_id = function()
+        return created_ids.consumers
       end,
       ["value.period"] = "second",
       ["value.limit"] = 10
@@ -96,7 +110,7 @@ describe("Web API #web", function()
     describe("#"..v.collection, function()
 
       it("should not create on POST with invalid parameters", function()
-        if v.collection ~= "accounts" then
+        if v.collection ~= "consumers" then
           local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", {})
           assert.are.equal(400, status)
           assert.are.equal(v.error_message, response)

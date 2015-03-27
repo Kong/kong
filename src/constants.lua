@@ -22,14 +22,15 @@ return {
     SERVER = "Server",
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
-    ACCOUNT_ID = "X-Account-ID",
+    CONSUMER_ID = "X-Consumer-ID",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining"
   },
   CACHE = {
     APIS = "apis",
-    PLUGINS = "plugins",
-    APPLICATIONS = "applications"
+    PLUGINS_CONFIGURATIONS = "plugins_configurations",
+    BASICAUTH_CREDENTIAL = "basicauth_credentials",
+    KEYAUTH_CREDENTIAL = "keyauth_credentials"
   },
   AUTHENTICATION = {
     QUERY = "query",

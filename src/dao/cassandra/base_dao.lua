@@ -220,7 +220,7 @@ end
 -- Execute an operation statement.
 -- The operation can be one of the following:
 --   * _statements (which contains .query and .param for ordered binding of parameters)
---   * a lua-resty-cassandra BatchStatement (see metrics.lua)
+--   * a lua-resty-cassandra BatchStatement (see ratelimiting_metrics.lua)
 --   * a lua-resty-cassandra prepared statement
 --
 -- @param {table} operation The operation to execute

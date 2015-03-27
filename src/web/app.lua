@@ -2,9 +2,10 @@ local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
 local Apis = require "kong.web.routes.apis"
-local Plugins = require "kong.web.routes.plugins"
-local Accounts = require "kong.web.routes.accounts"
-local Applications = require "kong.web.routes.applications"
+local PluginsConfigurations = require "kong.web.routes.plugins_configurations"
+local Consumers = require "kong.web.routes.consumers"
+local BasicAuthCredentials = require "kong.web.routes.basicauth_credentials"
+local KeyAuthCredentials = require "kong.web.routes.keyauth_credentials"
 
 app = lapis.Application()
 
@@ -17,7 +18,7 @@ local function get_hostname()
 end
 
 app:get("/", function(self)
-  local db_plugins, err = dao.plugins:find_distinct()
+  local db_plugins, err = dao.plugins_configurations:find_distinct()
   if err then
     ngx.log(ngx.ERR, err)
     return utils.show_error(500, err)
@@ -60,8 +61,10 @@ end
 
 -- Load controllers
 Apis()
-Accounts()
-Applications()
-Plugins()
+Consumers()
+PluginsConfigurations()
+
+BasicAuthCredentials()
+KeyAuthCredentials()
 
 return app
