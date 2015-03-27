@@ -20,9 +20,9 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 -- An utility function to apply tests on each collection
 local function describe_all_collections(tests_cb)
   for type, dao in pairs({ api = dao_factory.apis,
+                           plugin = dao_factory.plugins,
                            consumer = dao_factory.consumers,
-                           application = dao_factory.applications,
-                           plugin = dao_factory.plugins }) do
+                           application = dao_factory.applications }) do
     local collection = type.."s"
     describe(collection, function()
       tests_cb(type, collection)

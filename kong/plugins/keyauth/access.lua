@@ -65,20 +65,40 @@ end
 -- @param {table} conf Plugin configuration (value property)
 -- @return {string} public_key
 -- @return {string} private_key
-local function retrieve_credentials(request, conf)
-  local public_key
+local retrieve_credentials = {
+  [constants.AUTHENTICATION.HEADER] = function(request, conf)
+    local public_key
+    local headers = request.get_headers()
 
-  if conf.key_names then
-    for _,key_name in ipairs(conf.key_names) do
-      public_key = get_key_from_query(key_name, request, conf)
+    if conf.authentication_key_names then
+      for _,key_name in ipairs(conf.authentication_key_names) do
+        if headers[key_name] ~= nil then
+          public_key = headers[key_name]
 
-      if public_key then
-        return public_key
+          if conf.hide_credentials then
+            request.clear_header(key_name)
+          end
+
+          return public_key
+        end
       end
+    end
+  end,
+  [constants.AUTHENTICATION.QUERY] = function(request, conf)
+    local public_key
 
+    if conf.authentication_key_names then
+      for _,key_name in ipairs(conf.authentication_key_names) do
+        public_key = get_key_from_query(key_name, request, conf)
+
+        if public_key then
+          return public_key
+        end
+
+      end
     end
   end
-end
+}
 
 -- Fast lookup for credential validation depending on the type of the authentication
 --
@@ -88,36 +108,45 @@ end
 -- @param {string} public_key
 -- @param {string} private_key
 -- @return {boolean} Success of authentication
-local function validate_credentials(application, public_key)
-  return application ~= nil
-end
+--[[
+local validate_credentials = {
+  [constants.AUTHENTICATION.HEADER] = function(application, public_key)
+    return application ~= nil
+  end,
+  [constants.AUTHENTICATION.QUERY] = function(application, public_key)
+    return application ~= nil
+  end
+}
+]]
 
 function _M.execute(conf)
   if not conf then return end
 
-  local public_key, secret_key = retrieve_credentials(ngx.req, conf)
-  local application
+  for k, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do
+    local public_key, secret_key = retrieve_credentials[conf.authentication_type](ngx.req, conf)
+    local application
 
-  -- Make sure we are not sending an empty table to find_by_keys
-  if public_key then
-    application = cache.get_and_set(cache.application_key(public_key), function()
-      local applications, err = dao.applications:find_by_keys { public_key = public_key }
-      local result
-      if err then
-        ngx.log(ngx.ERR, err)
-        utils.show_error(500)
-      elseif #applications > 0 then
-        result = applications[1]
-      end
-      return result
-    end)
+    -- Make sure we are not sending an empty table to find_by_keys
+    if public_key then
+      application = cache.get_and_set(cache.application_key(public_key), function()
+        local applications, err = dao.applications:find_by_keys { public_key = public_key }
+        local result
+        if err then
+          ngx.log(ngx.ERR, err)
+          utils.show_error(500)
+        elseif #applications > 0 then
+          result = applications[1]
+        end
+        return result
+      end)
+    end
+
+    if not application then
+      utils.show_error(403, "Your authentication credentials are invalid")
+    end
   end
 
-  if not validate_credentials(application, public_key, secret_key) then
-    utils.show_error(403, "Your authentication credentials are invalid")
-  end
-
-  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, application.consumer_id)
+  ngx.req.set_header(constants.HEADERS.ACCOUNT_ID, application.account_id)
   ngx.ctx.authenticated_entity = application
 end
 
