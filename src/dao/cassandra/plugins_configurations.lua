@@ -16,7 +16,7 @@ end
 local SCHEMA = {
   id = { type = constants.DATABASE_TYPES.ID },
   api_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
-  application_id = { type = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
+  consumer_id = { type = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
   name = { type = "string", required = true, queryable = true, immutable = true },
   value = { type = "table", required = true, schema = load_value_schema },
   enabled = { type = "boolean", default = true },
@@ -30,13 +30,13 @@ function PluginsConfigurations:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "api_id", "application_id", "name", "value", "enabled", "created_at" },
-      query = [[ INSERT INTO plugins_configurations(id, api_id, application_id, name, value, enabled, created_at)
+      params = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },
+      query = [[ INSERT INTO plugins_configurations(id, api_id, consumer_id, name, value, enabled, created_at)
                   VALUES(?, ?, ?, ?, ?, ?, ?); ]]
     },
     update = {
-      params = { "api_id", "application_id", "value", "enabled", "created_at", "id", "name" },
-      query = [[ UPDATE plugins_configurations SET api_id = ?, application_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
+      params = { "api_id", "consumer_id", "value", "enabled", "created_at", "id", "name" },
+      query = [[ UPDATE plugins_configurations SET api_id = ?, consumer_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM plugins_configurations %s; ]]
@@ -51,8 +51,8 @@ function PluginsConfigurations:new(properties)
     },
     __unique = {
       self = {
-        params = { "api_id", "application_id", "name" },
-        query = [[ SELECT * FROM plugins_configurations WHERE api_id = ? AND application_id = ? AND name = ? ALLOW FILTERING; ]]
+        params = { "api_id", "consumer_id", "name" },
+        query = [[ SELECT * FROM plugins_configurations WHERE api_id = ? AND consumer_id = ? AND name = ? ALLOW FILTERING; ]]
       }
     },
     __foreign = {
@@ -60,9 +60,9 @@ function PluginsConfigurations:new(properties)
         params = { "api_id" },
         query = [[ SELECT id FROM apis WHERE id = ?; ]]
       },
-      application_id = {
-        params = { "application_id" },
-        query = [[ SELECT id FROM applications WHERE id = ?; ]]
+      consumer_id = {
+        params = { "consumer_id" },
+        query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
     }
   }
@@ -85,9 +85,9 @@ function PluginsConfigurations:_unmarshall(t)
   if type(t.value) == "string" then
     t.value = cjson.decode(t.value)
   end
-  -- remove application_id if null uuid
-  if t.application_id == constants.DATABASE_NULL_ID then
-    t.application_id = nil
+  -- remove consumer_id if null uuid
+  if t.consumer_id == constants.DATABASE_NULL_ID then
+    t.consumer_id = nil
   end
 
   return t

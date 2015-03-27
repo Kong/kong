@@ -55,8 +55,8 @@ local ENDPOINTS = {
       api_id = function()
         return created_ids.apis
       end,
-      application_id = function()
-        return created_ids.applications
+      consumer_id = function()
+        return created_ids.consumers
       end,
       ["value.period"] = "second",
       ["value.limit"] = 10
