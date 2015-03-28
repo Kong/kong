@@ -1,6 +1,6 @@
 ## [Unreleased][unreleased]
 
-## [0.1.0beta-2] - 2015/03/25
+## [0.1.0beta-3] - 2015/03/25
 
 First public beta. Includes caching and better usability.
 
@@ -46,5 +46,5 @@ First version running with Cassandra.
 - Database migrations (using `db.lua`).
 
 [unreleased]: https://github.com/mashape/kong/compare/0.1.0beta-2...HEAD
-[0.1.0beta-2]: https://github.com/mashape/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-2
+[0.1.0beta-3]: https://github.com/mashape/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-3
 [0.0.1alpha-1]: https://github.com/mashape/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...2236374d5624ad98ea21340ca685f7584ec35744
