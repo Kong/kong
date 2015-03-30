@@ -71,7 +71,7 @@ function _M.execute(conf)
       local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result
       if err then
-        ngx.log(ngx.ERR, err)
+        ngx.log(ngx.ERR, tostring(err))
         utils.show_error(500)
       elseif #credentials > 0 then
         result = credentials[1]
