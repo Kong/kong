@@ -36,14 +36,21 @@ if args.command == "migrations" then
   local migrations, err = dao_factory:get_migrations()
   if err then
     cutils.logger:error_exit(err)
+  elseif migrations then
+    cutils.logger:log(string.format(
+      "Executed migrations for %s on keyspace: %s:\n%s",
+      cutils.colors.yellow(dao_factory.type),
+      cutils.colors.yellow(dao_factory._properties.keyspace),
+      table.concat(migrations, ", ")
+    ))
+  else
+    cutils.logger:log(string.format(
+      "No migrations have been run yet for %s on keyspace: %s",
+      cutils.colors.yellow(dao_factory.type),
+      cutils.colors.yellow(dao_factory._properties.keyspace)
+    ))
   end
 
-  cutils.logger:log(string.format(
-    "Executed migrations for %s on keyspace: %s:\n%s",
-    cutils.colors.yellow(dao_factory.type),
-    cutils.colors.yellow(dao_factory._properties.keyspace),
-    table.concat(migrations, ", ")
-  ))
 
 elseif args.command == "migrations:up" then
 
