@@ -46,7 +46,7 @@ local function parse_dao_error(err)
   else
     status = 400
   end
-  return utils.show_error(status, tostring(err))
+  return utils.show_error(status, err.message)
 end
 
 -- Apparently stringy.startwith doesn't work and always returns true(!)
