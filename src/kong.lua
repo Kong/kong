@@ -45,7 +45,7 @@ local function load_plugin_conf(api_id, consumer_id, plugin_name)
         name = plugin_name
       }
       if err then
-        ngx.log(ngx.ERR, err)
+        ngx.log(ngx.ERR, tostring(err))
         utils.show_error(500)
       end
 

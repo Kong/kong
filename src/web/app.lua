@@ -20,8 +20,8 @@ end
 app:get("/", function(self)
   local db_plugins, err = dao.plugins_configurations:find_distinct()
   if err then
-    ngx.log(ngx.ERR, err)
-    return utils.show_error(500, err)
+    ngx.log(ngx.ERR, tostring(err))
+    return utils.show_error(500, tostring(err))
   end
 
   return utils.success({
