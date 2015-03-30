@@ -1,6 +1,6 @@
 ## [Unreleased][unreleased]
 
-## [0.1.1beta-1] - 2015/03/30
+## [0.1.1beta-2] - 2015/03/30
 
 - Bugfix in auto-migration for `kong start`.
 
@@ -49,7 +49,7 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.1.1beta-1...HEAD
-[0.1.1beta-1]: https://github.com/mashape/kong/compare/0.1.0beta-3...0.1.1beta-1
+[unreleased]: https://github.com/mashape/kong/compare/0.1.1beta-2...HEAD
+[0.1.1beta-2]: https://github.com/mashape/kong/compare/0.1.0beta-3...0.1.1beta-2
 [0.1.0beta-3]: https://github.com/mashape/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-3
 [0.0.1alpha-1]: https://github.com/mashape/kong/compare/ffd70b3101ba38d9acc776038d124f6e2fccac3c...2236374d5624ad98ea21340ca685f7584ec35744
