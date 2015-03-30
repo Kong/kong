@@ -1,5 +1,9 @@
 ## [Unreleased][unreleased]
 
+## [0.1.1beta-1] - 2015/03/30
+
+- Bugfix in auto-migration for `kong start`.
+
 ## [0.1.0beta-3] - 2015/03/25
 
 First public beta. Includes caching and better usability.
