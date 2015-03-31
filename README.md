@@ -4,7 +4,9 @@
 [![Coverage Status][coveralls-badge]][coveralls-url]
 [![Gitter][gitter-badge]][gitter-url]
 
-Kong is an open distributed platform for your APIs, focused on high performance and reliability. Official website at [getkong.org](http://getkong.org)
+Kong is an open distributed platform for your APIs, built on top of nginx it's focused on high performance and reliability.
+
+Official website at [getkong.org](http://getkong.org)
 
 * **[Installation](#installation)**
 * **[Documentation](#documentation)**
