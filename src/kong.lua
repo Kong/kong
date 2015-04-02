@@ -64,7 +64,7 @@ local function load_plugin_conf(api_id, consumer_id, plugin_name)
 end
 
 local function init_plugins()
-  plugins_available = configuration.plugins_available and configuration.plugins_available or {}
+  configuration.plugins_available = configuration.plugins_available and configuration.plugins_available or {}
 
   print("Discovering used plugins. Please wait..")
   local db_plugins, err = dao.plugins_configurations:find_distinct()
@@ -74,14 +74,14 @@ local function init_plugins()
 
   -- Checking that the plugins in the DB are also enabled
   for _, v in ipairs(db_plugins) do
-    if not utils.array_contains(plugins_available, v) then
+    if not utils.array_contains(configuration.plugins_available, v) then
       error("You are using a plugin that has not been enabled in the configuration: "..v)
     end
   end
 
   local unsorted_plugins = {} -- It's a multivalue table: k1 = {v1, v2, v3}, k2 = {...}
 
-  for _, v in ipairs(plugins_available) do
+  for _, v in ipairs(configuration.plugins_available) do
     local status, res = pcall(require, "kong.plugins."..v..".handler")
     if not status then
       error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)

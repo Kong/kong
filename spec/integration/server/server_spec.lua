@@ -14,7 +14,8 @@ local function replace_conf_property(key, value)
     value = nil
   end
   yaml_value[key] = value
-  IO.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
+  local ok = IO.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
+  assert.truthy(ok)
 end
 
 describe("Server", function()

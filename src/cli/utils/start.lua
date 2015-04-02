@@ -48,7 +48,10 @@ local function prepare_nginx_working_dir(kong_config)
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
   -- Extract nginx config to nginx folder
-  IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), kong_config.nginx)
+  local ok, err = IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), kong_config.nginx)
+  if not ok then
+    error(err)
+  end
 
   return kong_config.nginx_working_dir
 end

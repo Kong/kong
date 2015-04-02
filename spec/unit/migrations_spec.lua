@@ -49,7 +49,8 @@ describe("Migrations #tools", function()
     ]]
 
     setup(function()
-      IO.write_to_file(fixtures_path, fixture_migration)
+      local ok = IO.write_to_file(fixtures_path, fixture_migration)
+      assert.truthy(ok)
       local mig_files = IO.retrieve_files(migrations_path, { file_pattern = ".lua" })
       for _, mig in ipairs(mig_files) do
         table.insert(migrations_names, mig:match("[^/]*$"))
