@@ -18,8 +18,13 @@ end
 
 function _M.write_to_file(path, value)
   local file, err = io.open(path, "w")
+  if err then
+    return false, err
+  end
+
   file:write(value)
   file:close()
+  return true
 end
 
 function _M.file_exists(name)

@@ -27,7 +27,7 @@ app:get("/", function(self)
     version = constants.VERSION,
     hostname = get_hostname(),
     plugins = {
-      available_on_server = plugins_available,
+      available_on_server = configuration.plugins_available,
       enabled_in_cluster = db_plugins
     }
   })
@@ -63,8 +63,8 @@ Consumers()
 PluginsConfigurations()
 
 -- Loading plugins routes
-if plugins_available then
-  for _, v in ipairs(plugins_available) do
+if configuration and configuration.plugins_available then
+  for _, v in ipairs(configuration.plugins_available) do
     local status, res = pcall(require, "kong.plugins."..v..".api")
     if status then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)
