@@ -64,7 +64,13 @@ Apis()
 Consumers()
 PluginsConfigurations()
 
-BasicAuthCredentials()
-KeyAuthCredentials()
+-- Loading plugins routes
+for _, v in ipairs(plugins_available) do
+  local status, res = pcall(require, "kong.plugins."..v..".api")
+  if status then
+    print("Loading API endpoints for plugin: "..v)
+    res()
+  end
+end
 
 return app

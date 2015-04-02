@@ -76,10 +76,12 @@ build = {
     ["kong.plugins.basicauth.handler"] = "src/plugins/basicauth/handler.lua",
     ["kong.plugins.basicauth.access"] = "src/plugins/basicauth/access.lua",
     ["kong.plugins.basicauth.schema"] = "src/plugins/basicauth/schema.lua",
+    ["kong.plugins.basicauth.api"] = "src/plugins/basicauth/api.lua",
 
     ["kong.plugins.keyauth.handler"] = "src/plugins/keyauth/handler.lua",
     ["kong.plugins.keyauth.access"] = "src/plugins/keyauth/access.lua",
     ["kong.plugins.keyauth.schema"] = "src/plugins/keyauth/schema.lua",
+    ["kong.plugins.keyauth.api"] = "src/plugins/keyauth/api.lua",
 
     ["kong.plugins.tcplog.handler"] = "src/plugins/tcplog/handler.lua",
     ["kong.plugins.tcplog.log"] = "src/plugins/tcplog/log.lua",
@@ -100,8 +102,6 @@ build = {
     ["kong.web.app"] = "src/web/app.lua",
     ["kong.web.routes.apis"] = "src/web/routes/apis.lua",
     ["kong.web.routes.consumers"] = "src/web/routes/consumers.lua",
-    ["kong.web.routes.basicauth_credentials"] = "src/web/routes/basicauth_credentials.lua",
-    ["kong.web.routes.keyauth_credentials"] = "src/web/routes/keyauth_credentials.lua",
     ["kong.web.routes.plugins_configurations"] = "src/web/routes/plugins_configurations.lua",
     ["kong.web.routes.base_controller"] = "src/web/routes/base_controller.lua"
   },
