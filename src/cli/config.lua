@@ -48,4 +48,7 @@ if DEFAULT_ENV_VALUES[args.env:upper()] then
   end
 end
 
-IO.write_to_file(IO.path:join(args.output, CONFIG_FILENAME), config_content)
+local ok, err = IO.write_to_file(IO.path:join(args.output, CONFIG_FILENAME), config_content)
+if not ok then
+  error(err)
+end
