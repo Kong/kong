@@ -4,8 +4,6 @@ local lapis = require "lapis"
 local Apis = require "kong.web.routes.apis"
 local PluginsConfigurations = require "kong.web.routes.plugins_configurations"
 local Consumers = require "kong.web.routes.consumers"
-local BasicAuthCredentials = require "kong.web.routes.basicauth_credentials"
-local KeyAuthCredentials = require "kong.web.routes.keyauth_credentials"
 
 app = lapis.Application()
 
@@ -65,11 +63,13 @@ Consumers()
 PluginsConfigurations()
 
 -- Loading plugins routes
-for _, v in ipairs(plugins_available) do
-  local status, res = pcall(require, "kong.plugins."..v..".api")
-  if status then
-    print("Loading API endpoints for plugin: "..v)
-    res()
+if plugins_available then
+  for _, v in ipairs(plugins_available) do
+    local status, res = pcall(require, "kong.plugins."..v..".api")
+    if status then
+      ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)
+      res()
+    end
   end
 end
 
