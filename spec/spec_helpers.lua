@@ -8,17 +8,19 @@ local Migrations = require "kong.tools.migrations"
 
 -- Constants
 local KONG_BIN = "bin/kong"
+local DEFAULT_CONF_FILE = "kong.yml"
 local TEST_CONF_FILE = "kong_TEST.yml"
 local TEST_PROXY_URL = "http://localhost:8100"
 local TEST_API_URL = "http://localhost:8101"
 
 local _M = {}
 
+_M.API_URL = TEST_API_URL
 _M.KONG_BIN = KONG_BIN
 _M.PROXY_URL = TEST_PROXY_URL
-_M.API_URL = TEST_API_URL
 _M.STUB_GET_URL = TEST_PROXY_URL.."/request"
 _M.STUB_POST_URL = TEST_PROXY_URL.."/request"
+_M.DEFAULT_CONF_FILE = DEFAULT_CONF_FILE
 _M.envs = {}
 
 -- When dealing with another configuration file for a few tests, this allows to add

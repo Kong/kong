@@ -1,13 +1,40 @@
+local spec_helper = require "spec.spec_helpers"
+local constants = require "kong.constants"
+local stringy = require "stringy"
 local IO = require "kong.tools.io"
+local fs = require "luarocks.fs"
 
-local CONF = "kong.yml"
+describe("Static files", function()
 
-describe("Configuration", function()
+  describe("Constants", function()
 
-  it("should parse a correct configuration", function()
-    local configuration = IO.read_file(CONF)
+    it("version set in constants should match the one in the rockspec", function()
+      local rockspec_path
+      for _, filename in ipairs(fs.list_dir(".")) do
+        if stringy.endswith(filename, "rockspec") then
+          rockspec_path = filename
+          break
+        end
+      end
 
-    assert.are.same([[
+      if not rockspec_path then
+        error("Can't find the rockspec file")
+      end
+
+      local file_content = IO.read_file(rockspec_path)
+      local res = file_content:match("\"+[0-9.-]+[a-z]*[0-9-]*\"+")
+      local extracted_version = res:sub(2, res:len() - 1)
+      assert.are.same(constants.VERSION, extracted_version)
+    end)
+
+  end)
+
+  describe("Configuration", function()
+
+    it("should parse a correct configuration", function()
+      local configuration = IO.read_file(spec_helper.DEFAULT_CONF_FILE)
+
+      assert.are.same([[
 # Available plugins on this server
 plugins_available:
   - keyauth
@@ -181,6 +208,7 @@ nginx: |
     }
   }
 ]], configuration)
-  end)
+    end)
 
+  end)
 end)
