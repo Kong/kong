@@ -6,7 +6,7 @@ sudo apt-get update && sudo apt-get install libreadline-dev libncurses5-dev libp
 
 curl http://openresty.org/download/$OPENRESTY_BASE.tar.gz | tar xz
 cd $OPENRESTY_BASE
-./configure
+./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module
 make && sudo make install
 cd $TRAVIS_BUILD_DIR
 rm -rf $OPENRESTY_BASE
