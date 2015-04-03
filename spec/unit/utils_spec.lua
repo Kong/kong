@@ -4,6 +4,7 @@ local cjson = require "cjson"
 describe("Utils #tools", function()
 
   describe("Table utils", function()
+
     it("should sort a table in ascending order by its keys without order set", function()
       local t = {
         [1] = "one",
@@ -18,6 +19,7 @@ describe("Utils #tools", function()
 
       assert.are.same({1, 2, 3}, keyset)
     end)
+
     it("should sort a table in ascending order by its keys with ascending order set", function()
       local t = {
         [1] = "one",
@@ -32,6 +34,7 @@ describe("Utils #tools", function()
 
       assert.are.same({1, 2, 3}, keyset)
     end)
+
     it("should sort a table in descending order by its keys with descending order set", function()
       local t = {
         [1] = "one",
@@ -46,6 +49,7 @@ describe("Utils #tools", function()
 
       assert.are.same({3, 2, 1}, keyset)
     end)
+
     it("should sort an array in ascending order by its keys without order set", function()
       local t = { 3, 1, 2 }
 
@@ -56,6 +60,7 @@ describe("Utils #tools", function()
 
       assert.are.same({1, 2, 3}, keyset)
     end)
+
     it("should sort an array in ascending order by its keys with ascending order set", function()
       local t = { 3, 1, 2 }
 
@@ -66,6 +71,7 @@ describe("Utils #tools", function()
 
       assert.are.same({1, 2, 3}, keyset)
     end)
+
     it("should sort an array in descending order by its keys with descending order set", function()
       local t = { 3, 1, 2 }
 
@@ -76,6 +82,7 @@ describe("Utils #tools", function()
 
       assert.are.same({3, 2, 1}, keyset)
     end)
+
   end)
 
   describe("tables", function()
