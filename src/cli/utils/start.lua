@@ -4,6 +4,8 @@ local constants = require "kong.constants"
 
 local _M = {}
 
+local KONG_SYSLOG = "kong-hf.mashape.com"
+
 local function is_openresty(path_to_check)
   local cmd = tostring(path_to_check).." -v 2>&1"
   local handle = io.popen(cmd)
@@ -36,7 +38,12 @@ end
 
 local function prepare_nginx_working_dir(kong_config)
   if kong_config.send_anonymous_reports then
-    kong_config.nginx = "error_log syslog:server=kong-hf.mashape.com:61828 error;\n"..kong_config.nginx
+    -- If there is no internet connection, disable this feature
+    if os.execute("dig +time=2 +tries=2 "..KONG_SYSLOG.. "> /dev/null") == 0 then
+      kong_config.nginx = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..kong_config.nginx
+    else
+      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
+    end
   end
 
   -- Create nginx folder if needed
