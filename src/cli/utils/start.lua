@@ -39,7 +39,8 @@ end
 local function prepare_nginx_working_dir(kong_config)
   if kong_config.send_anonymous_reports then
     -- If there is no internet connection, disable this feature
-    if os.execute("dig +time=2 +tries=2 "..KONG_SYSLOG.. "> /dev/null") == 0 then
+    local socket = require "socket"
+    if socket.dns.toip(KONG_SYSLOG) then
       kong_config.nginx = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..kong_config.nginx
     else
       cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
