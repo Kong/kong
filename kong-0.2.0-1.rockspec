@@ -42,6 +42,7 @@ build = {
     ["kong.cli.utils.signal"] = "src/cli/utils/signal.lua",
     ["kong.cli.db"] = "src/cli/db.lua",
     ["kong.cli.config"] = "src/cli/config.lua",
+    ["kong.cli.quit"] = "src/cli/quit.lua",
     ["kong.cli.stop"] = "src/cli/stop.lua",
     ["kong.cli.start"] = "src/cli/start.lua",
     ["kong.cli.reload"] = "src/cli/reload.lua",
