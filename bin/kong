@@ -5,6 +5,7 @@ local infos = cutils.get_infos()
 local commands = {
   db = "kong.cli.db",
   stop = "kong.cli.stop",
+  quit = "kong.cli.quit",
   start = "kong.cli.start",
   reload = "kong.cli.reload",
   config = "kong.cli.config",

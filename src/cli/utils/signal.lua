@@ -149,21 +149,9 @@ function _M.send_signal(args_config, signal)
   return os.execute(cmd) == 0
 end
 
--- Wrapper around a start signal, also migrating the schema if needed
--- @param args_config Path to the desired configuration (usually from the --config CLI argument)
-function _M.send_start(args_config)
-  _M.prepare_kong(args_config)
-
-  if _M.send_signal(args_config) then
-    cutils.logger:success("Started")
-  else
-    cutils.logger:error_exit("Could not start Kong")
-  end
-end
-
 -- Wrapper around a stop signal, testing if Kong is already running
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
-function _M.send_stop(args_config)
+function _M.is_running(args_config)
   -- Get configuration from default or given path
   local _, kong_config = get_kong_config_path(args_config)
 
@@ -171,10 +159,6 @@ function _M.send_stop(args_config)
 
   if not IO.file_exists(pid) then
     cutils.logger:error_exit("Not running. Could not find pid at: "..pid)
-  end
-
-  if _M.send_signal(args_config, "stop") then
-    cutils.logger:success("Stopped")
   end
 end
 
