@@ -10,6 +10,8 @@ Options:
   -c,--config (default %s) configuration file
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
+signal.prepare_kong(args.config)
+
 if signal.send_signal(args.config) then
   cutils.logger:success("Started")
 else
