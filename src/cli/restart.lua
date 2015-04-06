@@ -17,7 +17,7 @@ if not signal.send_signal(args.config, "stop") then
   cutils.logger:error_exit("Could not stop Kong")
 end
 
-signal.prepare_kong(args_config)
+signal.prepare_kong(args.config)
 
 if not signal.send_signal(args.config) then
   cutils.logger:error_exit("Could not restart Kong")
