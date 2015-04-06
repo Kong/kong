@@ -17,7 +17,7 @@ local help_message = string.format([[
 Usage: kong <command>
 
 where <command> is one of:
-  start, stop, restart, reload, config, db, version
+  start, stop, quit, restart, reload, config, db, version
 
 kong --help            print this message
 kong <command> --help  print the help message of a command
