@@ -51,7 +51,6 @@ if args.command == "migrations" then
     ))
   end
 
-
 elseif args.command == "migrations:up" then
 
   cutils.logger:log(string.format(

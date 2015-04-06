@@ -39,12 +39,12 @@ build = {
     ["kong.constants"] = "src/constants.lua",
 
     ["kong.cli.utils"] = "src/cli/utils/utils.lua",
-    ["kong.cli.utils.start"] = "src/cli/utils/start.lua",
-    ["kong.cli.utils.stop"] = "src/cli/utils/stop.lua",
+    ["kong.cli.utils.signal"] = "src/cli/utils/signal.lua",
     ["kong.cli.db"] = "src/cli/db.lua",
     ["kong.cli.config"] = "src/cli/config.lua",
     ["kong.cli.stop"] = "src/cli/stop.lua",
     ["kong.cli.start"] = "src/cli/start.lua",
+    ["kong.cli.reload"] = "src/cli/reload.lua",
     ["kong.cli.restart"] = "src/cli/restart.lua",
     ["kong.cli.version"] = "src/cli/version.lua",
 
