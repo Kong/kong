@@ -10,6 +10,7 @@ local commands = {
   reload = "kong.cli.reload",
   config = "kong.cli.config",
   version = "kong.cli.version",
+  ["--version"] = "kong.cli.version",
   restart = "kong.cli.restart"
 }
 
