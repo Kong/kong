@@ -146,7 +146,6 @@ nginx: |
 
         # This property will be used later by proxy_pass
         set $backend_url nil;
-        set $querystring nil;
 
         # Authenticate the user and load the API info
         access_by_lua 'kong.exec_plugins_access()';

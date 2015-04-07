@@ -22,6 +22,7 @@ describe("Validation #schema", function()
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456, immutable = true },
       allowed = { enum = { "hello", "world" }},
+      boolean_val = { type = "boolean" },
       default = { default = function() return "default" end },
       custom = { func = function(v, t)
                           if v then
@@ -302,6 +303,40 @@ describe("Validation #schema", function()
         assert.truthy(err)
         assert.falsy(valid)
         assert.are.same("Error loading the sub-sub-schema", err["sub_schema.sub_sub_schema"])
+      end)
+
+      it("should return error when an invalid boolean value is passed", function()
+        local values = { string = "test", boolean_val = "ciao" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("boolean_val is not a boolean", err.boolean_val)
+      end)
+
+      it("should return error when an invalid boolean value like 'true' is passed", function()
+        local values = { string = "test", boolean_val = "true" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("boolean_val is not a boolean", err.boolean_val)
+      end)
+
+      it("should not return an error when a true boolean value is passed", function()
+        local values = { string = "test", boolean_val = true }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+      end)
+
+      it("should not return an error when a false boolean value is passed", function()
+        local values = { string = "test", boolean_val = false }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
       end)
 
     end)
