@@ -23,9 +23,6 @@ local function get_key_from_query(key_name, request, conf)
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
-
-      print("HERE")
-
       parameters = request.get_post_args()
       found_in.form = parameters[key_name] ~= nil
     end
@@ -38,7 +35,7 @@ local function get_key_from_query(key_name, request, conf)
     if found_in.querystring then
       parameters[key_name] = nil
       request.set_uri_args(parameters)
-    elseif found_in.form or found_in.body then
+    elseif found_in.form then
       parameters[key_name] = nil
 
       local encoded_params = ngx.encode_args(parameters)
@@ -94,9 +91,6 @@ local retrieve_credentials = {
 }
 
 function _M.execute(conf)
-
-  print("WOT")
-
   if not conf then return end
 
   local credential
