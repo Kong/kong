@@ -15,7 +15,7 @@ Official website at [getkong.org](http://getkong.org)
 
 ## Installation
 
-See [INSTALL.md](INSTALL.md) for installation instructions on your platform.
+To install Kong, please follow the instructions at [getkong.org/download](http://getkong.org/download)
 
 ## Documentation
 
