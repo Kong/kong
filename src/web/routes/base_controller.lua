@@ -49,11 +49,6 @@ local function parse_dao_error(err)
   return utils.show_error(status, err.message)
 end
 
--- Apparently stringy.startwith doesn't work and always returns true(!)
-local function starts_with(full_str, val)
-  return string.sub(full_str, 0, string.len(val)) == val
-end
-
 function BaseController.parse_params(schema, params)
   local result = {}
   if schema and params and utils.table_size(params) > 0 then
@@ -65,7 +60,7 @@ function BaseController.parse_params(schema, params)
         if v.schema then
           local subschema_params = {}
           for param_key, param_value in pairs(params) do
-            if starts_with(param_key, k..".") then
+            if utils.starts_with(param_key, k..".") then
               subschema_params[string.sub(param_key, string.len(k..".") + 1)] = param_value
             end
           end
@@ -78,6 +73,15 @@ function BaseController.parse_params(schema, params)
         end
       elseif v.type == "number" then
         result[k] = tonumber(params[k])
+      elseif v.type == "boolean" then
+        local str = string.lower(params[k] and params[k] or "")
+        if str == "true" then
+          result[k] = true
+        elseif str == "false" then
+          result[k] = false
+        else
+          result[k] = params[k]
+        end
       else
         result[k] = params[k]
       end

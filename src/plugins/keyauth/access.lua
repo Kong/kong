@@ -17,21 +17,17 @@ local function get_key_from_query(key_name, request, conf)
   -- If missing from querystring, try to get it from the body
   elseif request.get_headers()["content-type"] then
     -- Lowercase content-type for easier comparison
-    local content_type = string.lower(request.get_headers()["content-type"])
+    local content_type = stringy.strip(string.lower(request.get_headers()["content-type"]))
 
-    -- Call ngx.req.read_body to read the request body first
-    -- or turn on the lua_need_request_body directive to avoid errors.
-    request.read_body()
+    if utils.starts_with(content_type, "application/x-www-form-urlencoded") or utils.starts_with(content_type, "multipart/form-data") then
+      -- Call ngx.req.read_body to read the request body first
+      -- or turn on the lua_need_request_body directive to avoid errors.
+      request.read_body()
 
-    if content_type == "application/x-www-form-urlencoded" or stringy.startswith(content_type, "multipart/form-data") then
+      print("HERE")
+
       parameters = request.get_post_args()
-      found_in.post = parameters[key_name] ~= nil
-    elseif content_type == "application/json" then
-      parameters = request.get_body_data()
-      if parameters and string.len(parameters) > 0 then
-        parameters = cjson.decode(parameters)
-        found_in.body = parameters[key_name] ~= nil
-      end
+      found_in.form = parameters[key_name] ~= nil
     end
   end
 
@@ -41,16 +37,13 @@ local function get_key_from_query(key_name, request, conf)
   if conf.hide_credentials then
     if found_in.querystring then
       parameters[key_name] = nil
-      ngx.vars.querystring = ngx.encode_args(parameters)
-    elseif found_in.post then
+      request.set_uri_args(parameters)
+    elseif found_in.form or found_in.body then
       parameters[key_name] = nil
-      request.set_header("content-length", string.len(parameters))
-      request.set_body_data(parameters)
-    elseif found_in.body then
-      parameters[key_name] = nil
-      parameters = cjson.encode(parameters)
-      request.set_header("content-length", string.len(parameters))
-      request.set_body_data(parameters)
+
+      local encoded_params = ngx.encode_args(parameters)
+      request.set_header("content-length", string.len(encoded_params))
+      request.set_body_data(encoded_params)
     end
   end
 
@@ -101,6 +94,9 @@ local retrieve_credentials = {
 }
 
 function _M.execute(conf)
+
+  print("WOT")
+
   if not conf then return end
 
   local credential
