@@ -55,14 +55,14 @@ local logger = Logger()
 --
 -- Luarocks
 --
-local function get_infos()
+local function get_kong_infos()
   return { name = constants.NAME, version = constants.VERSION }
 end
 
 local function get_luarocks_dir()
   local cfg = require "luarocks.cfg"
   local search = require "luarocks.search"
-  local infos = get_infos()
+  local infos = get_kong_infos()
 
   local tree_map = {}
   local results = {}
@@ -83,13 +83,13 @@ end
 
 local function get_luarocks_config_dir()
   local repo = get_luarocks_dir()
-  local infos = get_infos()
+  local infos = get_kong_infos()
   return lpath.conf_dir(infos.name:lower(), infos.version, repo)
 end
 
 local function get_luarocks_install_dir()
   local repo = get_luarocks_dir()
-  local infos = get_infos()
+  local infos = get_kong_infos()
   return lpath.install_dir(infos.name:lower(), infos.version, repo)
 end
 
@@ -121,7 +121,7 @@ end
 return {
   colors = colors,
   logger = logger,
-  get_infos = get_infos,
+  get_kong_infos = get_kong_infos,
   get_kong_config_path = get_kong_config_path,
   get_luarocks_install_dir = get_luarocks_install_dir
 }

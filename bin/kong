@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 
 local cutils = require "kong.cli.utils"
-local infos = cutils.get_infos()
+local infos = cutils.get_kong_infos()
 local commands = {
   db = "kong.cli.db",
   stop = "kong.cli.stop",
@@ -9,16 +9,17 @@ local commands = {
   start = "kong.cli.start",
   reload = "kong.cli.reload",
   config = "kong.cli.config",
+  restart = "kong.cli.restart",
   version = "kong.cli.version",
   ["--version"] = "kong.cli.version",
-  restart = "kong.cli.restart"
+  migrations = "kong.cli.migrations"
 }
 
 local help_message = string.format([[
 Usage: kong <command>
 
 where <command> is one of:
-  start, restart, reload, stop, quit, db, version
+  start, restart, reload, stop, quit, version
 
 kong --help            print this message
 kong <command> --help  print the help message of a command
@@ -38,4 +39,5 @@ elseif not commands[cmd] then
   os.exit(1)
 end
 
+-- Load and execute desired command
 require(commands[cmd])
