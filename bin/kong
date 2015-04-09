@@ -1,5 +1,15 @@
 #!/usr/bin/env lua
 
+-- Kong CLI entry-point (bin/kong).
+--
+-- Kong's CLI is a set of small commands invoked by a global executable, this file.
+--
+-- All commands are invoked by this script, then parsed (arguments and options)
+-- by lapp (see http://lua-users.org/wiki/LappFramework).
+--
+-- This script is not parsed by lapp due to limitations of the said framework as it
+-- is currently implemented.
+
 local cutils = require "kong.cli.utils"
 local infos = cutils.get_kong_infos()
 local commands = {
@@ -18,16 +28,16 @@ local commands = {
 local help_message = string.format([[
 Usage: kong <command>
 
-where <command> is one of:
-  start, restart, reload, stop, quit, version
+  where <command> is one of:
+    start, restart, reload, stop, quit, version
 
-kong --help            print this message
-kong <command> --help  print the help message of a command
+  kong --help            print this message
+  kong <command> --help  print the help message of a command
 
 %s@%s]], infos.name, infos.version)
 
+-- Determine validity of the given command
 local cmd = arg[1]
-
 if not cmd then
   print("Missing <command>\n\n"..help_message)
   os.exit(1)

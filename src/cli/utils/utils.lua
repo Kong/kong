@@ -34,19 +34,23 @@ function Logger:log(str)
 end
 
 function Logger:success(str)
-  self:log(colors.green("[SUCCESS] ")..str)
+  self:log(colors.green("[OK] ")..str)
 end
 
 function Logger:warn(str)
-  self:log(colors.yellow("[WARNING] ")..str)
+  self:log(colors.yellow("[WARN] ")..str)
 end
 
 function Logger:error(str)
-  self:log(colors.red("[ERROR] ")..str)
+  self:log(colors.red("[ERR] ")..str)
 end
 
 function Logger:error_exit(str)
+  print("")
   self:error(str)
+  -- Optional stacktrace
+  --print("")
+  --error("", 2)
   os.exit(1)
 end
 
@@ -103,7 +107,7 @@ local function get_kong_config_path(args_config)
   -- Make sure the configuration file really exists
   if not IO.file_exists(args_config) then
     logger:warn("No config at: "..args_config)
-    logger:error_exit("Could not find a path to configuration file.")
+    logger:error_exit("Could not find a configuration file.")
   end
 
   logger:log("Using config: "..args_config)
@@ -111,7 +115,7 @@ local function get_kong_config_path(args_config)
   -- TODO: validate configuration
   --[[local status, res = pcall(require, "kong.dao."..config.database..".factory")
     if not status then
-      logger:error("Wrong config")
+      logger:error("Erroneous config")
       os.exit(1)
     end]]
 
