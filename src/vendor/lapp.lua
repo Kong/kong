@@ -53,7 +53,7 @@ local function quit(msg,no_usage)
 end
 
 local function error(msg,no_usage)
-    quit(msg,no_usage)
+    quit(arg[0]:gsub('.+[\\/]','')..':'..msg,no_usage)
 end
 
 local function ltrim(line)
@@ -68,7 +68,7 @@ local function trim(s)
     return ltrim(rtrim(s))
 end
 
-local function open(file,opt)
+local function open (file,opt)
     local val,err = io.open(file,opt)
     if not val then error(err,true) end
     append(open_files,val)
@@ -122,7 +122,7 @@ local function force_short(short)
     xassert(#short==1,short..": short parameters should be one character")
 end
 
-function process_options_string(str, main_command)
+function process_options_string(str)
     local res = {}
     local varargs
 
@@ -297,8 +297,8 @@ function process_options_string(str, main_command)
     -- check unused parms, set defaults and check if any required parameters were missed
     for parm,ps in pairs(parms) do
         if not ps.used then
-            if ps.required then error("Missing required parameter: "..parm) end
-            set_result(parm,ps.defval)
+            if ps.required then error("missing required parameter: "..parm) end
+            set_result(ps,parm,ps.defval)
         end
     end
     return res
