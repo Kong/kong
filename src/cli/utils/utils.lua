@@ -103,7 +103,7 @@ local function get_kong_config_path(args_config)
   -- Make sure the configuration file really exists
   if not IO.file_exists(args_config) then
     logger:warn("No config at: "..args_config)
-    logger:error_exit("Could not find a configuration file.")
+    logger:error_exit("Could not find a path to configuration file.")
   end
 
   logger:log("Using config: "..args_config)

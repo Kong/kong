@@ -8,7 +8,7 @@ local cutils = require "kong.cli.utils"
 local IO = require "kong.tools.io"
 local lapp = require("lapp")
 local args = lapp(string.format([[
-Migrations, seeding of the DB.
+Kong datastore management operations.
 
 Usage: kong db <command> [options]
 
@@ -17,9 +17,9 @@ Commands:
                        migrations, migrations:up, migrations:down, migrations:reset, seed, drop
 
 Options:
-  -c,--config (default %s) configuration file
-  -r,--random                              <seed>: flag to also insert random entities
-  -n,--number (default 1000)               <seed>: number of random entities to insert if --random
+  -c,--config (default %s) path to configuration file
+  -r,--random                              (seed) flag to also insert random entities
+  -n,--number (default 1000)               (seed) number of random entities to insert if --random
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
 -- $ kong db
