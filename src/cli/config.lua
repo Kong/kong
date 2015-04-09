@@ -4,12 +4,14 @@ local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local IO = require "kong.tools.io"
 local args = require("lapp")(string.format([[
+For development purposes only.
+
 Duplicate an existing configuration for given environment.
 
 Usage: kong config [options]
 
 Options:
-  -c,--config (default %s) configuration file
+  -c,--config (default %s) path to configuration file
   -o,--output (default .)                  ouput
   -e,--env    (string)                     environment name
 ]], constants.CLI.GLOBAL_KONG_CONF))
