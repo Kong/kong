@@ -40,7 +40,7 @@ function _M.validate(t, schema, is_update)
   -- Check the given table against a given schema
   for column, v in pairs(schema) do
 
-    -- Set default value for the filed if given
+    -- Set default value for the field if given
     if t[column] == nil and v.default ~= nil then
       if type(v.default) == "function" then
         t[column] = v.default()
