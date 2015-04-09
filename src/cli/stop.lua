@@ -13,7 +13,10 @@ Options:
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
 -- Check if running, will exit if not
-signal.is_running(args.config)
+local running, err = signal.is_running(args.config)
+if not running then
+  cutils.logger:error_exit(err)
+end
 
 -- Send 'stop' signal (fast shutdown)
 if signal.send_signal(args.config, "stop") then

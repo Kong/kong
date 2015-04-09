@@ -1,4 +1,5 @@
 -- Send signals to the `nginx` executable
+-- Run necessary
 -- @see http://nginx.org/en/docs/beginners_guide.html#control
 
 local IO = require "kong.tools.io"
@@ -158,8 +159,10 @@ function _M.is_running(args_config)
   local pid = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
 
   if not IO.file_exists(pid) then
-    cutils.logger:error_exit("Not running. Could not find pid at: "..pid)
+    return false, "Not running. Could not find pid at: "..pid
   end
+
+  return true
 end
 
 return _M
