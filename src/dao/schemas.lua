@@ -59,7 +59,7 @@ function _M.validate(t, schema, is_update)
     -- Check type if value is allowed in the enum
     elseif v.enum and t[column] ~= nil then
       local found = false
-      for _,allowed in ipairs(v.enum) do
+      for _, allowed in ipairs(v.enum) do
         if allowed == t[column] then
           found = true
           break
