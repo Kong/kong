@@ -156,10 +156,22 @@ function _M.is_running(args_config)
   -- Get configuration from default or given path
   local _, kong_config = get_kong_config_path(args_config)
 
-  local pid = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
+  local pid_file = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
 
-  if not IO.file_exists(pid) then
-    return false, "Not running. Could not find pid at: "..pid
+  if IO.file_exists(pid_file) then
+    local pid = IO.read_file(pid_file)
+    if os.execute("kill -0 "..pid) == 0 then
+      return true
+    else
+      cutils.logger:log("Removing pid at: "..pid_file)
+      local _, err = os.remove(pid_file)
+      if err then
+        error(err)
+      end
+      return false, "Not running. Could not find pid: "..pid
+    end
+  else
+    return false, "Not running. Could not find pid at: "..pid_file
   end
 
   return true
