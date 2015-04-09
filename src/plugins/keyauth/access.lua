@@ -5,6 +5,9 @@ local cache = require "kong.tools.cache"
 local multipart = require "kong.tools.multipart"
 
 local CONTENT_TYPE = "content-type"
+local CONTENT_LENGTH = "content-length"
+local FORM_URLENCODED = "application/x-www-form-urlencoded"
+local MULTIPART_DATA = "multipart/form-data"
 
 local _M = {}
 
@@ -20,11 +23,10 @@ local function get_key_from_query(key_name, request, conf)
     found_in.querystring = true
     key = parameters[key_name]
   -- If missing from querystring, try to get it from the body
-  elseif request.get_headers()["content-type"] then
+  elseif request.get_headers()[CONTENT_TYPE] then
     -- Lowercase content-type for easier comparison
-    local content_type = stringy.strip(string.lower(request.get_headers()["content-type"]))
-
-    if utils.starts_with(content_type, "application/x-www-form-urlencoded") then
+    local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
+    if utils.starts_with(content_type, FORM_URLENCODED) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
@@ -32,7 +34,7 @@ local function get_key_from_query(key_name, request, conf)
 
       found_in.form = parameters[key_name] ~= nil
       key = parameters[key_name]
-    elseif utils.starts_with(content_type, "multipart/form-data") then
+    elseif utils.starts_with(content_type, MULTIPART_DATA) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
@@ -53,13 +55,13 @@ local function get_key_from_query(key_name, request, conf)
     elseif found_in.form then
       parameters[key_name] = nil
       local encoded_args = ngx.encode_args(parameters)
-      request.set_header("content-length", string.len(encoded_args))
+      request.set_header(CONTENT_LENGTH, string.len(encoded_args))
       request.set_body_data(encoded_args)
     elseif found_in.body then
       table.remove(parameters.data, parameters.indexes[key])
 
       local new_data = multipart.encode(parameters, boundary)
-      request.set_header("content-length", string.len(new_data))
+      request.set_header(CONTENT_LENGTH, string.len(new_data))
 
       request.set_body_data(new_data)
     end
