@@ -26,7 +26,7 @@ describe("Validation #schema", function()
       default = { default = function() return "default" end },
       custom = { func = function(v, t)
                           if v then
-                            if t.default == "default" then
+                            if t.default == "test_custom_func" then
                               return true
                             else
                               return false, "Nah"
@@ -169,9 +169,9 @@ describe("Validation #schema", function()
       assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
     end)
 
-    it("should validate against a custom function", function()
+    it("should validate a field against a custom function", function()
       -- Success
-      local values = { string = "somestring", custom = true }
+      local values = { string = "somestring", custom = true, default = "test_custom_func" }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
