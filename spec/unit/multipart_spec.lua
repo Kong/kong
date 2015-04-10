@@ -88,7 +88,6 @@ Content-Type: text/plain
 hello
 --AaB03x--]]
 
-    local inspect = require "inspect"
     local t = multipart.decode(body, boundary)
     assert.truthy(t)
 
@@ -123,7 +122,6 @@ Content-Type: text/plain
 hello
 --AaB03x--]]
 
-    local inspect = require "inspect"
     local t = multipart.decode(body, boundary)
     assert.truthy(t)
 
