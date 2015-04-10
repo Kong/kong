@@ -90,7 +90,14 @@ describe("Authentication Plugin #proxy", function()
       assert.are.equal("wat", parsed_response.postData.params.wot)
     end)
 
-    
+    it("should pass with POST multipart and hide credentials", function()
+      local response, status, headers = http_client.post_multipart(STUB_POST_URL, {apikey = "apikey123", wot = "wat"}, {host = "test6.com"})
+      assert.are.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.falsy(parsed_response.postData.params.apikey)
+      assert.are.equal("wat", parsed_response.postData.params.wot)
+    end)
+
     it("should pass with GET and hide credentials", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test6.com", apikey = "apikey123"})
       assert.are.equal(200, status)
