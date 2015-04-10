@@ -18,6 +18,10 @@ for _, v in ipairs({"red", "green", "yellow"}) do
   colors[v] = function(str) return ansicolors("%{"..v.."}"..str.."%{reset}") end
 end
 
+function trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
 --
 -- Logging
 --
@@ -29,7 +33,7 @@ end
 
 function Logger:log(str)
   if not self.silent then
-    print(str)
+    print(trim(str))
   end
 end
 
