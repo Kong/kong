@@ -46,17 +46,6 @@ hello
     assert.are.same(2, utils.table_size(t.data[index].headers))
     assert.truthy(t.data[index].value)
     assert.are.same("... contents of file1.txt ...\r\nhello", t.data[index].value)
-
-    -- Check simpler interface
-    assert.truthy(t["submit-name"])
-    assert.are.same("submit-name", t["submit-name"].name)
-    assert.are.same({"Content-Disposition: form-data; name=\"submit-name\""}, t["submit-name"].headers)
-    assert.are.same("Larry", t["submit-name"].value)
-
-    assert.truthy(t["files"])
-    assert.are.same("files", t["files"].name)
-    assert.are.same({"Content-Disposition: form-data; name=\"files\"; filename=\"file1.txt\"", "Content-Type: text/plain"}, t["files"].headers)
-    assert.are.same("... contents of file1.txt ...\r\nhello", t["files"].value)
   end)
 
   it("should encode a multipart body", function() 

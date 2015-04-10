@@ -14,19 +14,10 @@ end
 -- @param {string} boundary The multipart/data boundary
 -- @return {table} Lua representation of the body
 function _M.decode(body, boundary)
-  local result = setmetatable({
-      data = {},
-      indexes = {}
-    }, {
-    __index = function(t, key)
-      local index = t.indexes[key]
-      if index then
-        return t.data[index]
-      else
-        return nil
-      end
-    end
-  })
+  local result = {
+    data = {},
+    indexes = {}
+  }
 
   local part_headers = {}
   local part_index = 1

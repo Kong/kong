@@ -70,6 +70,11 @@ local function get_luarocks_dir()
   for _, tree in ipairs(cfg.rocks_trees) do
     local rocks_dir = lpath.rocks_dir(tree)
     tree_map[rocks_dir] = tree
+
+    local inspect = require "inspect"
+    print(inspect(rocks_dir))
+    print(inspect(search.make_query(infos.name:lower())))
+
     search.manifest_search(results, rocks_dir, search.make_query(infos.name:lower(), nil))
   end
 
