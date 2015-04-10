@@ -29,6 +29,16 @@ describe("Http Client", function()
       assert.are.equal("pippo", parsed_response.headers.Custom)
     end)
 
+    it("should return a valid POST multipart response", function()
+      local response, status, headers = http_client.post_multipart("http://httpbin.org/post", {name = "Mark"}, {Custom = "pippo"})
+      assert.are.equal(200, status)
+      assert.truthy(headers)
+      assert.truthy(response)
+      local parsed_response = cjson.decode(response)
+      assert.are.equal("Mark", parsed_response.form.name)
+      assert.are.equal("pippo", parsed_response.headers.Custom)
+    end)
+
   end)
 
   describe("PUT", function()

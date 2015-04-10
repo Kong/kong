@@ -2,34 +2,51 @@ local constants = require "kong.constants"
 local stringy = require "stringy"
 local cjson = require "cjson"
 local cache = require "kong.tools.cache"
+local multipart = require "kong.tools.multipart"
+
+local CONTENT_TYPE = "content-type"
+local CONTENT_LENGTH = "content-length"
+local FORM_URLENCODED = "application/x-www-form-urlencoded"
+local MULTIPART_DATA = "multipart/form-data"
 
 local _M = {}
 
 local function get_key_from_query(key_name, request, conf)
-  local key, parameters
+  local key, parameters, boundary
   local found_in = {}
 
   -- First, try with querystring
   parameters = request.get_uri_args()
 
+  -- Find in querystring
   if parameters[key_name] ~= nil then
     found_in.querystring = true
+    key = parameters[key_name]
   -- If missing from querystring, try to get it from the body
-  elseif request.get_headers()["content-type"] then
+  elseif request.get_headers()[CONTENT_TYPE] then
     -- Lowercase content-type for easier comparison
-    local content_type = stringy.strip(string.lower(request.get_headers()["content-type"]))
-
-    if utils.starts_with(content_type, "application/x-www-form-urlencoded") or utils.starts_with(content_type, "multipart/form-data") then
+    local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
+    if utils.starts_with(content_type, FORM_URLENCODED) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
       parameters = request.get_post_args()
+
       found_in.form = parameters[key_name] ~= nil
+      key = parameters[key_name]
+    elseif utils.starts_with(content_type, MULTIPART_DATA) then
+      -- Call ngx.req.read_body to read the request body first
+      -- or turn on the lua_need_request_body directive to avoid errors.
+      request.read_body()
+
+      local body = request.get_body_data()
+      boundary = string.match(content_type, ";%s+boundary=(%S+)")
+      parameters = multipart.decode(body, boundary)
+
+      found_in.body = parameters.indexes[key_name]
+      key = parameters.data[parameters.indexes[key_name]].value
     end
   end
-
-  -- At this point, we know where the key is supposed to be
-  key = parameters[key_name]
 
   if conf.hide_credentials then
     if found_in.querystring then
@@ -37,10 +54,16 @@ local function get_key_from_query(key_name, request, conf)
       request.set_uri_args(parameters)
     elseif found_in.form then
       parameters[key_name] = nil
+      local encoded_args = ngx.encode_args(parameters)
+      request.set_header(CONTENT_LENGTH, string.len(encoded_args))
+      request.set_body_data(encoded_args)
+    elseif found_in.body then
+      table.remove(parameters.data, parameters.indexes[key])
 
-      local encoded_params = ngx.encode_args(parameters)
-      request.set_header("content-length", string.len(encoded_params))
-      request.set_body_data(encoded_params)
+      local new_data = multipart.encode(parameters, boundary)
+      request.set_header(CONTENT_LENGTH, string.len(new_data))
+
+      request.set_body_data(new_data)
     end
   end
 
