@@ -20,7 +20,7 @@ dependencies = {
   "lapis ~> 1.1.0-1",
   "inspect ~> 3.0-1",
   "stringy ~> 0.2-1",
-  "cassandra ~> 0.5-4",
+  "cassandra ~> 0.5-5",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
   "luasocket ~> 2.0.2-5",

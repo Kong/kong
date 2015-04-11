@@ -5,7 +5,6 @@
 local IO = require "kong.tools.io"
 local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
-local inspect = require "inspect"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
