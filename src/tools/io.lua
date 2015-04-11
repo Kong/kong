@@ -6,6 +6,15 @@ local _M = {}
 
 _M.path = path
 
+function _M.os_execute(command)
+  local n = os.tmpname() -- get a temporary file name to store output
+  local exit_code = os.execute(command.." > "..n.." 2>&1")
+  local result = _M.read_file(n)
+  os.remove(n)
+
+  return result, exit_code / 256
+end
+
 function _M.read_file(path)
   local contents = nil
   local file = io.open(path, "rb")

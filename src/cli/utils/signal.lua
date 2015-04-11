@@ -34,11 +34,15 @@ end
 -- @param path_to_check Path to the binary
 -- @return true or false
 local function is_openresty(path_to_check)
-  local cmd = path_to_check.." -v 2>&1"
-  local handle = io.popen(cmd)
-  local out = handle:read()
-  handle:close()
-  return out:match("^nginx version: ngx_openresty/") or out:match("^nginx version: openresty/")
+  if IO.file_exists(path_to_check) then
+    local cmd = path_to_check.." -v"
+    local out, code = IO.os_execute(cmd)
+    if code ~= 0 then
+      cutils.logger:error_exit(out)
+    end
+    return out:match("^nginx version: ngx_openresty/") or out:match("^nginx version: openresty/")
+  end
+  return false
 end
 
 -- Find an `nginx` executable in defined paths
@@ -134,6 +138,8 @@ function _M.send_signal(args_config, signal)
   local nginx_path = find_nginx()
   if not nginx_path then
     cutils.logger:error_exit("can't find nginx")
+  else
+    cutils.logger:log("Using nginx: "..nginx_path)
   end
 
   local kong_config_path, kong_config = get_kong_config_path(args_config)

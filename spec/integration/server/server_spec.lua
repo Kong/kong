@@ -23,7 +23,7 @@ describe("Server", function()
   describe("CLI", function()
 
     it("should return the right version", function()
-      local result, exit_code = spec_helper.os_execute(spec_helper.KONG_BIN.." version")
+      local result, exit_code = IO.os_execute(spec_helper.KONG_BIN.." version")
       assert.are.same("Kong version: "..constants.VERSION, stringy.strip(result))
     end)
 
