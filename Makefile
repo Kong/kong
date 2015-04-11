@@ -22,15 +22,15 @@ dev:
       echo "$$rock already installed, skipping" ; \
     fi \
 	done;
-	bin/kong config -e TEST
-	bin/kong config -e DEVELOPMENT
-	bin/kong db -c $(DEVELOPMENT_CONF) migrations:up
+	bin/kong config -c kong.yml -e TEST
+	bin/kong config -c kong.yml -e DEVELOPMENT
+	bin/kong migrations -c $(DEVELOPMENT_CONF) up
 
 clean:
 	@rm -f luacov.*
 	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
-	@bin/kong db -c $(DEVELOPMENT_CONF) migrations:reset
+	@bin/kong migrations -c $(DEVELOPMENT_CONF) reset
 
 run:
 	@bin/kong start -c $(DEVELOPMENT_CONF)

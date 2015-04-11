@@ -18,6 +18,10 @@ for _, v in ipairs({"red", "green", "yellow"}) do
   colors[v] = function(str) return ansicolors("%{"..v.."}"..str.."%{reset}") end
 end
 
+function trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
 --
 -- Logging
 --
@@ -29,24 +33,28 @@ end
 
 function Logger:log(str)
   if not self.silent then
-    print(str)
+    print(trim(str))
   end
 end
 
 function Logger:success(str)
-  self:log(colors.green("[SUCCESS] ")..str)
+  self:log(colors.green("[OK] ")..str)
 end
 
 function Logger:warn(str)
-  self:log(colors.yellow("[WARNING] ")..str)
+  self:log(colors.yellow("[WARN] ")..str)
 end
 
 function Logger:error(str)
-  self:log(colors.red("[ERROR] ")..str)
+  self:log(colors.red("[ERR] ")..str)
 end
 
 function Logger:error_exit(str)
+  print("")
   self:error(str)
+  -- Optional stacktrace
+  --print("")
+  --error("", 2)
   os.exit(1)
 end
 
@@ -55,14 +63,14 @@ local logger = Logger()
 --
 -- Luarocks
 --
-local function get_infos()
+local function get_kong_infos()
   return { name = constants.NAME, version = constants.VERSION }
 end
 
 local function get_luarocks_dir()
   local cfg = require "luarocks.cfg"
   local search = require "luarocks.search"
-  local infos = get_infos()
+  local infos = get_kong_infos()
 
   local tree_map = {}
   local results = {}
@@ -84,13 +92,13 @@ end
 
 local function get_luarocks_config_dir()
   local repo = get_luarocks_dir()
-  local infos = get_infos()
+  local infos = get_kong_infos()
   return lpath.conf_dir(infos.name:lower(), infos.version, repo)
 end
 
 local function get_luarocks_install_dir()
   local repo = get_luarocks_dir()
-  local infos = get_infos()
+  local infos = get_kong_infos()
   return lpath.install_dir(infos.name:lower(), infos.version, repo)
 end
 
@@ -112,7 +120,7 @@ local function get_kong_config_path(args_config)
   -- TODO: validate configuration
   --[[local status, res = pcall(require, "kong.dao."..config.database..".factory")
     if not status then
-      logger:error("Wrong config")
+      logger:error("Erroneous config")
       os.exit(1)
     end]]
 
@@ -122,7 +130,7 @@ end
 return {
   colors = colors,
   logger = logger,
-  get_infos = get_infos,
+  get_kong_infos = get_kong_infos,
   get_kong_config_path = get_kong_config_path,
   get_luarocks_install_dir = get_luarocks_install_dir
 }

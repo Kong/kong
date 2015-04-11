@@ -45,21 +45,21 @@ local function is_openresty(path_to_check)
   return false
 end
 
--- Find an `nginx` executable in defined paths
+-- Paths where to search for an `nginx` executable in addition to the usual $PATH
+local NGINX_BIN = "nginx"
+local NGINX_SEARCH_PATHS = {
+  "/usr/local/openresty/nginx/sbin/",
+  "/usr/local/opt/openresty/bin/",
+  "/usr/local/bin/",
+  "/usr/sbin/"
+}
+
+-- Try to find an `nginx` executable in defined paths, or in $PATH
 -- @return Path to found executable or nil if none was found
 local function find_nginx()
-  local nginx_bin = "nginx"
-  local nginx_search_paths = {
-    "/usr/local/openresty/nginx/sbin/",
-    "/usr/local/opt/openresty/bin/",
-    "/usr/local/bin/",
-    "/usr/sbin/",
-    ""
-  }
-
-  for i = 1, #nginx_search_paths do
-    local prefix = nginx_search_paths[i]
-    local to_check = prefix..nginx_bin
+  for i = 1, #NGINX_SEARCH_PATHS + 1 do
+    local prefix = NGINX_SEARCH_PATHS[i] and NGINX_SEARCH_PATHS[i] or ""
+    local to_check = prefix..NGINX_BIN
     if is_openresty(to_check) then
       return to_check
     end
@@ -137,7 +137,7 @@ function _M.send_signal(args_config, signal)
   -- Make sure nginx is there and is openresty
   local nginx_path = find_nginx()
   if not nginx_path then
-    cutils.logger:error_exit("can't find nginx")
+    cutils.logger:error_exit(string.format("Kong cannot find an 'nginx' executable.\nMake sure it is in your $PATH or in one of the following directories:\n%s", table.concat(NGINX_SEARCH_PATHS, "\n")))
   else
     cutils.logger:log("Using nginx: "..nginx_path)
   end
@@ -162,10 +162,22 @@ function _M.is_running(args_config)
   -- Get configuration from default or given path
   local _, kong_config = get_kong_config_path(args_config)
 
-  local pid = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
+  local pid_file = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
 
-  if not IO.file_exists(pid) then
-    return false, "Not running. Could not find pid at: "..pid
+  if IO.file_exists(pid_file) then
+    local pid = IO.read_file(pid_file)
+    if os.execute("kill -0 "..pid) == 0 then
+      return true
+    else
+      cutils.logger:log("Removing pid at: "..pid_file)
+      local _, err = os.remove(pid_file)
+      if err then
+        error(err)
+      end
+      return false, "Not running. Could not find pid: "..pid
+    end
+  else
+    return false, "Not running. Could not find pid at: "..pid_file
   end
 
   return true
