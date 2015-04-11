@@ -5,6 +5,7 @@
 local IO = require "kong.tools.io"
 local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
+local inspect = require "inspect"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
@@ -40,7 +41,7 @@ local function is_openresty(path_to_check)
     if code ~= 0 then
       cutils.logger:error_exit(out)
     end
-    return out:match("^nginx version: ngx_openresty/") or out:match("^nginx version: openresty/")
+    return out:match("^nginx version: ngx_openresty/") or out:match("^nginx version: openresty/" or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus.+%)")
   end
   return false
 end
@@ -98,10 +99,22 @@ local function prepare_nginx_working_dir(args_config)
   end
 end
 
+-- Prettifies table properties in a nice human readable way
+-- @return The prettified string
+local function prettify_table_properties(t)
+  local result = ""
+  for k,v in pairs(t) do
+    result = result..k.."="..v.." "
+  end
+  return result == "" and result or result:sub(1, string.len(result) - 1)
+end
+
 -- Prepare the database keyspace if needed (run schema migrations)
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
-  local _, _, dao_factory = get_kong_config_path(args_config)
+  local _, kong_config, dao_factory = get_kong_config_path(args_config)
+
+  cutils.logger:log("Database: "..kong_config.database..", "..prettify_table_properties(kong_config.databases_available[kong_config.database].properties))
 
   -- Migrate the DB if needed and possible
   local keyspace, err = dao_factory:get_migrations()
