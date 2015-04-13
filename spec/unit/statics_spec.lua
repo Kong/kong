@@ -63,6 +63,9 @@ databases_available:
 # Sends anonymous error reports
 send_anonymous_reports: true
 
+# Nginx Plus Status
+nginx_plus_status: false
+
 # Cache configuration
 cache:
   expiration: 5 # in seconds
@@ -204,6 +207,10 @@ nginx: |
       location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
       }
+
+      # Do not remove the following comment
+      # plugin_configuration_placeholder
+
     }
   }
 ]], configuration)
