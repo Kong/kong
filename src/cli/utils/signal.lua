@@ -40,7 +40,9 @@ local function is_openresty(path_to_check)
     if code ~= 0 then
       cutils.logger:error_exit(out)
     end
-    return out:match("^nginx version: ngx_openresty/") or out:match("^nginx version: openresty/") or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus.+%)")
+    return out:match("^nginx version: ngx_openresty/")
+        or out:match("^nginx version: openresty/")
+        or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus.+%)")
   end
   return false
 end
