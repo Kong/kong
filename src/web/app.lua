@@ -29,7 +29,8 @@ app:get("/", function(self)
     plugins = {
       available_on_server = configuration.plugins_available,
       enabled_in_cluster = db_plugins
-    }
+    },
+    lua_version = jit and jit.version or _VERSION
   })
 end)
 
