@@ -42,7 +42,7 @@ local function is_openresty(path_to_check)
     end
     return out:match("^nginx version: ngx_openresty/")
         or out:match("^nginx version: openresty/")
-        or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus.+%)")
+        or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus-extras.+%)")
   end
   return false
 end
