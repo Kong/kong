@@ -84,6 +84,12 @@ local function prepare_nginx_working_dir(args_config)
     end
   end
 
+  if kong_config.nginx_plus_status then
+    local padding = "    "
+    local nginx_plus_status = padding.."location /status {\n"..padding.."  status;\n"..padding.."}"
+    kong_config.nginx = string.gsub(kong_config.nginx, "plugin_configuration_placeholder", "plugin_configuration_placeholder\n"..nginx_plus_status)
+  end
+
   -- Create nginx folder if needed
   local _, err = IO.path:mkdir(IO.path:join(kong_config.nginx_working_dir, "logs"))
   if err then
