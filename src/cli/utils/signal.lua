@@ -121,7 +121,7 @@ end
 local function prepare_database(args_config)
   local _, kong_config, dao_factory = get_kong_config_path(args_config)
 
-  cutils.logger:log("Database: "..kong_config.database..", "..prettify_table_properties(kong_config.databases_available[kong_config.database].properties))
+  cutils.logger:log("Using database: "..kong_config.database..", "..prettify_table_properties(kong_config.databases_available[kong_config.database].properties))
 
   -- Migrate the DB if needed and possible
   local keyspace, err = dao_factory:get_migrations()
