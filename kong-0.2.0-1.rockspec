@@ -27,7 +27,7 @@ dependencies = {
   "ansicolors ~> 1.0.2-3",
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
-  "multipart ~> 0.1-1"
+  "multipart ~> 0.1-2"
 }
 build = {
   type = "builtin",
