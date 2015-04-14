@@ -54,7 +54,7 @@ database: cassandra
 databases_available:
   cassandra:
     properties:
-      hosts: localhost
+      hosts: "localhost"
       port: 9042
       timeout: 1000
       keyspace: kong
@@ -62,6 +62,9 @@ databases_available:
 
 # Sends anonymous error reports
 send_anonymous_reports: true
+
+# Nginx Plus Status
+nginx_plus_status: false
 
 # Cache configuration
 cache:
@@ -146,7 +149,6 @@ nginx: |
 
         # This property will be used later by proxy_pass
         set $backend_url nil;
-        set $querystring nil;
 
         # Authenticate the user and load the API info
         access_by_lua 'kong.exec_plugins_access()';
@@ -205,6 +207,10 @@ nginx: |
       location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
       }
+
+      # Do not remove the following comment
+      # plugin_configuration_placeholder
+
     }
   }
 ]], configuration)

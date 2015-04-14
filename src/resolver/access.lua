@@ -33,7 +33,7 @@ end
 
 local function skip_authentication(headers)
   -- Skip upload request that expect a 100 Continue response
-  return headers["expect"] and _M.starts_with(headers["expect"], "100")
+  return headers["expect"] and utils.starts_with(headers["expect"], "100")
 end
 
 function _M.execute(conf)

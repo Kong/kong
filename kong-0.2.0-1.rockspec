@@ -20,7 +20,7 @@ dependencies = {
   "lapis ~> 1.1.0-1",
   "inspect ~> 3.0-1",
   "stringy ~> 0.2-1",
-  "cassandra ~> 0.5-4",
+  "cassandra ~> 0.5-5",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
   "luasocket ~> 2.0.2-5",
@@ -48,12 +48,14 @@ build = {
     ["kong.cli.reload"] = "src/cli/reload.lua",
     ["kong.cli.restart"] = "src/cli/restart.lua",
     ["kong.cli.version"] = "src/cli/version.lua",
+    ["kong.cli.migrations"] = "src/cli/migrations.lua",
 
     ["kong.tools.utils"] = "src/tools/utils.lua",
     ["kong.tools.io"] = "src/tools/io.lua",
     ["kong.tools.migrations"] = "src/tools/migrations.lua",
     ["kong.tools.faker"] = "src/tools/faker.lua",
     ["kong.tools.cache"] = "src/tools/cache.lua",
+    ["kong.tools.multipart"] = "src/tools/multipart.lua",
     ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
     ["kong.tools.http_client"] = "src/tools/http_client.lua",
 

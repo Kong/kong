@@ -29,7 +29,8 @@ app:get("/", function(self)
     plugins = {
       available_on_server = configuration.plugins_available,
       enabled_in_cluster = db_plugins
-    }
+    },
+    lua_version = jit and jit.version or _VERSION
   })
 end)
 
@@ -42,18 +43,18 @@ app.handle_error = function(self, err, trace)
 
   local iterator, iter_err = ngx.re.gmatch(err, ".+:\\d+:\\s*(.+)")
   if iter_err then
-    ngx.log(ngx.ERR, err)
+    ngx.log(ngx.ERR, iter_err)
   end
 
-  local m, err = iterator()
-  if err then
-    ngx.log(ngx.ERR, err)
+  local m, iter_err = iterator()
+  if iter_err then
+    ngx.log(ngx.ERR, iter_err)
   end
 
   if m and table.getn(m) > 0 then
     utils.show_error(500, m[1])
   else
-    ngx.log(ngx.ERR, "Can't parse error")
+    utils.show_error(500, err)
   end
 end
 

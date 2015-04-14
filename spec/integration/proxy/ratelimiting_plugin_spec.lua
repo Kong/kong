@@ -20,7 +20,7 @@ describe("RateLimiting Plugin #proxy", function()
 
     it("should get blocked if exceeding limit", function()
       -- Default ratelimiting plugin for this API says 2/minute
-      local limit = 2
+      local limit = 6
 
       for i = 1, limit do
         local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
@@ -44,7 +44,7 @@ describe("RateLimiting Plugin #proxy", function()
 
       it("should get blocked if exceeding limit", function()
         -- Default ratelimiting plugin for this API says 2/minute
-        local limit = 2
+        local limit = 6
 
         for i = 1, limit do
           local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
@@ -66,7 +66,7 @@ describe("RateLimiting Plugin #proxy", function()
 
       it("should get blocked if exceeding limit", function()
         -- This plugin says this consumer can make 4 requests/minute, not 2 like fault
-        local limit = 4
+        local limit = 8
 
         for i = 1, limit do
           local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test6.com"})

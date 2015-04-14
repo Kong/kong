@@ -40,7 +40,7 @@ function _M.validate(t, schema, is_update)
   -- Check the given table against a given schema
   for column, v in pairs(schema) do
 
-    -- Set default value for the filed if given
+    -- Set default value for the field if given
     if t[column] == nil and v.default ~= nil then
       if type(v.default) == "function" then
         t[column] = v.default()
@@ -59,7 +59,7 @@ function _M.validate(t, schema, is_update)
     -- Check type if value is allowed in the enum
     elseif v.enum and t[column] ~= nil then
       local found = false
-      for _,allowed in ipairs(v.enum) do
+      for _, allowed in ipairs(v.enum) do
         if allowed == t[column] then
           found = true
           break

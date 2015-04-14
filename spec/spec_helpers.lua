@@ -49,18 +49,9 @@ end
 --
 -- OS and bin/kong helpers
 --
-function _M.os_execute(command)
-  local n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute(command.." > "..n.." 2>&1")
-  local result = IO.read_file(n)
-  os.remove(n)
-
-  return result, exit_code / 256
-end
-
 function _M.start_kong(conf_file, skip_wait)
   local env = _M.get_env(conf_file)
-  local result, exit_code = _M.os_execute(KONG_BIN.." start -c "..env.conf_file)
+  local result, exit_code = IO.os_execute(KONG_BIN.." start -c "..env.conf_file)
 
   if exit_code ~= 0 then
     error("spec_helper cannot start kong: "..result)
@@ -75,7 +66,7 @@ end
 
 function _M.stop_kong(conf_file)
   local env = _M.get_env(conf_file)
-  local result, exit_code = _M.os_execute(KONG_BIN.." stop -c "..env.conf_file)
+  local result, exit_code = IO.os_execute(KONG_BIN.." stop -c "..env.conf_file)
 
   if exit_code ~= 0 then
     error("spec_helper cannot stop kong: "..result)

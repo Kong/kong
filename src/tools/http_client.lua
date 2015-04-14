@@ -96,6 +96,34 @@ function _M.post(url, form, headers)
   }
 end
 
+-- POST MULTIPART methpd
+function _M.post_multipart(url, form, headers)
+  if not headers then headers = {} end
+  if not form then form = {} end
+
+  local boundary = "8fd84e9444e3946c"
+  local body = ""
+  for k,v in pairs(form) do
+    body = body.."--"..boundary.."\r\nContent-Disposition: form-data; name=\""..k.."\"\r\n\r\n"..v.."\r\n"
+  end
+
+  if body ~= "" then
+    body = body.."--"..boundary.."--\r\n"
+  end
+
+  headers["content-length"] = string.len(body)
+  if not headers["content-type"] then
+    headers["content-type"] = "multipart/form-data; boundary="..boundary
+  end
+
+  return http_call {
+    method = "POST",
+    url = url,
+    headers = headers,
+    source = ltn12.source.string(body)
+  }
+end
+
 -- PUT method
 function _M.put(url, table, headers)
   if not headers then headers = {} end
