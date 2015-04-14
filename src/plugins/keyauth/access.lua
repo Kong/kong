@@ -26,7 +26,7 @@ local function get_key_from_query(key_name, request, conf)
   elseif request.get_headers()[CONTENT_TYPE] then
     -- Lowercase content-type for easier comparison
     local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
-    if utils.starts_with(content_type, FORM_URLENCODED) then
+    if stringy.startswith(content_type, FORM_URLENCODED) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
@@ -34,7 +34,7 @@ local function get_key_from_query(key_name, request, conf)
 
       found_in.form = parameters[key_name] ~= nil
       key = parameters[key_name]
-    elseif utils.starts_with(content_type, MULTIPART_DATA) then
+    elseif stringy.startswith(content_type, MULTIPART_DATA) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()

@@ -60,7 +60,7 @@ function BaseController.parse_params(schema, params)
         if v.schema then
           local subschema_params = {}
           for param_key, param_value in pairs(params) do
-            if utils.starts_with(param_key, k..".") then
+            if stringy.startswith(param_key, k..".") then
               subschema_params[string.sub(param_key, string.len(k..".") + 1)] = param_value
             end
           end

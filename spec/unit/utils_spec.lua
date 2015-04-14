@@ -3,6 +3,18 @@ local cjson = require "cjson"
 
 describe("Utils #tools", function()
 
+  describe("Stringy", function()
+
+    it("should work when using startsiwth", function() 
+      local stringy = require "stringy"
+      assert.truthy(stringy.startswith("hello", "he"))
+      assert.falsy(stringy.startswith("hello", "HE"))
+      assert.falsy(stringy.startswith("hello", "wot"))
+      assert.truthy(stringy.startswith("hello", ""))
+    end)
+
+  end)
+
   describe("Table utils", function()
 
     it("should sort a table in ascending order by its keys without order set", function()
