@@ -7,11 +7,6 @@ local _M = {}
 -- General utils
 --
 
--- Apparently stringy.startwith doesn't work and always returns true(!)
-function _M.starts_with(full_str, val)
-  return string.sub(full_str, 0, string.len(val)) == val
-end
-
 function _M.table_size(t)
   local res = 0
   for _,_ in pairs(t) do
