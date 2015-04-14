@@ -2,7 +2,7 @@ local constants = require "kong.constants"
 local stringy = require "stringy"
 local cjson = require "cjson"
 local cache = require "kong.tools.cache"
-local multipart = require "kong.tools.multipart"
+local Multipart = require "multipart"
 
 local CONTENT_TYPE = "content-type"
 local CONTENT_LENGTH = "content-length"
@@ -12,7 +12,7 @@ local MULTIPART_DATA = "multipart/form-data"
 local _M = {}
 
 local function get_key_from_query(key_name, request, conf)
-  local key, parameters, boundary
+  local key, parameters
   local found_in = {}
 
   -- First, try with querystring
@@ -40,8 +40,7 @@ local function get_key_from_query(key_name, request, conf)
       request.read_body()
 
       local body = request.get_body_data()
-      boundary = string.match(content_type, ";%s+boundary=(%S+)")
-      parameters = multipart.decode(body, boundary)
+      parameters = Multipart(body, content_type)
 
       found_in.body = parameters.indexes[key_name]
       key = parameters.data[parameters.indexes[key_name]].value
@@ -58,11 +57,9 @@ local function get_key_from_query(key_name, request, conf)
       request.set_header(CONTENT_LENGTH, string.len(encoded_args))
       request.set_body_data(encoded_args)
     elseif found_in.body then
-      table.remove(parameters.data, parameters.indexes[key])
-
-      local new_data = multipart.encode(parameters, boundary)
+      parameters:delete(key)
+      local new_data = parameters:tostring()
       request.set_header(CONTENT_LENGTH, string.len(new_data))
-
       request.set_body_data(new_data)
     end
   end

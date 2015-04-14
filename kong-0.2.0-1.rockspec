@@ -26,7 +26,8 @@ dependencies = {
   "luasocket ~> 2.0.2-5",
   "ansicolors ~> 1.0.2-3",
   "lrexlib-pcre ~> 2.7.2-1",
-  "lua-llthreads2 ~> 0.1.3-1"
+  "lua-llthreads2 ~> 0.1.3-1",
+  "multipart ~> 0.1-1"
 }
 build = {
   type = "builtin",
@@ -55,7 +56,6 @@ build = {
     ["kong.tools.migrations"] = "src/tools/migrations.lua",
     ["kong.tools.faker"] = "src/tools/faker.lua",
     ["kong.tools.cache"] = "src/tools/cache.lua",
-    ["kong.tools.multipart"] = "src/tools/multipart.lua",
     ["kong.tools.timestamp"] = "src/tools/timestamp.lua",
     ["kong.tools.http_client"] = "src/tools/http_client.lua",
 

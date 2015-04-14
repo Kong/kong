@@ -1,78 +1,90 @@
 local stringy = require "stringy"
+local Multipart = require "multipart"
 
 local _M = {}
 
+local CONTENT_LENGTH = "content-length"
+local FORM_URLENCODED = "application/x-www-form-urlencoded"
+local MULTIPART_DATA = "multipart/form-data"
+local CONTENT_TYPE = "content-type"
+
 local function iterate_and_exec(val, cb)
-  for _, entry in ipairs(val) do
-    local parts = stringy.split(entry, ":")
-    cb(parts[0], parts[1])  
+  if utils.table_size(val) > 0 then
+    for _, entry in ipairs(val) do
+      local parts = stringy.split(entry, ":")
+      cb(parts[0], parts[1])  
+    end
   end
 end
-
---[[
-local function escape_regex(x)
-  return (x:gsub('%%', '%%%%')
-           :gsub('%^', '%%%^')
-           :gsub('%$', '%%%$')
-           :gsub('%(', '%%%(')
-           :gsub('%)', '%%%)')
-           :gsub('%.', '%%%.')
-           :gsub('%[', '%%%[')
-           :gsub('%]', '%%%]')
-           :gsub('%*', '%%%*')
-           :gsub('%+', '%%%+')
-           :gsub('%-', '%%%-')
-           :gsub('%?', '%%%?'))
-end
---]]
 
 function _M.execute(conf)
   if not conf then return end
 
-  -- Headers
-  if conf.headers and utils.table_size(conf.headers) > 0 then
-    iterate_and_exec(conf.headers, function(name, value)
-      ngx.req.set_header(name, value)
-    end)
+  if conf.add then
+
+    -- Add headers
+    if conf.add.headers then
+      iterate_and_exec(conf.add.headers, function(name, value)
+        ngx.req.set_header(name, value)
+      end)
+    end
+
+    -- Add Querystring
+    if conf.add.querystring then
+      local querystring = ngx.req.get_uri_args()
+      iterate_and_exec(conf.add.querystring, function(name, value)
+        querystring[name] = value
+      end)
+      ngx.req.set_uri_args(querystring)
+    end
+
+    if conf.add.form then
+      local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
+      if utils.starts_with(content_type, FORM_URLENCODED) then
+        -- Call ngx.req.read_body to read the request body first
+        -- or turn on the lua_need_request_body directive to avoid errors.
+        ngx.req.read_body()
+
+        local parameters = ngx.req.get_post_args()
+        iterate_and_exec(conf.add.form, function(name, value)
+          parameters[name] = value
+        end)
+        local encoded_args = ngx.encode_args(parameters)
+        ngx.req.set_header(CONTENT_LENGTH, string.len(encoded_args))
+        ngx.req.set_body_data(encoded_args)
+      elseif utils.starts_with(content_type, MULTIPART_DATA) then
+        -- Call ngx.req.read_body to read the request body first
+        -- or turn on the lua_need_request_body directive to avoid errors.
+        ngx.req.read_body()
+
+        local body = ngx.req.get_body_data()
+        local parameters = Multipart(body, content_type)
+
+        iterate_and_exec(conf.add.form, function(name, value)
+          if parameters.indexes[name] then
+            -- Already exists
+            parameters.data[parameters.indexes[name]].value = value
+          else
+            -- Add new one
+            parameters.indexes[name] = utils.table_size(parameters.indexes) + 1
+            parameters.data[parameters.indexes[name]] = {
+              name = name,
+              headers = { "Content-Disposition: form-data; name=\""..name.."\"" },
+              value = value
+            }
+          end
+        end)
+
+        local new_data = parameters:tostring()
+        ngx.req.set_header(CONTENT_LENGTH, string.len(new_data))
+        ngx.req.set_body_data(new_data)
+      end
+      
+    end
+
+  elseif conf.remove then
+
   end
-
-  -- Querystring
-  if conf.querystring and utils.table_size(conf.querystring) > 0 then
-    local querystring = ngx.req.get_uri_args()
-    iterate_and_exec(conf.querystring, function(name, value)
-      querystring[name] = value
-    end)
-    ngx.req.set_uri_args(querystring)
-  end
-
-  -- Form
-  if conf.form and utils.table_size(conf.form) > 0 then
-    -- Call ngx.req.read_body to read the request body first
-    -- or turn on the lua_need_request_body directive to avoid errors.
-
-    ngx.req.read_body()
-    local parameters = ngx.req.get_post_args()
-    iterate_and_exec(conf.form, function(name, value)
-      parameters[name] = value
-    end)
-
-    ngx.req.set_header("content-length", string.len(parameters))
-    ngx.req.set_body_data(parameters)
-  end
-
--- MULTIPART
---[[
-        local data = request.get_body_data()
-        if not data then data = "" end
-
-        local boundary = string.match(content_type, ";%s+boundary=(%S+)")
-        local new_data = data:gsub(escape_regex(boundary .. "--"), boundary)
-        new_data = new_data ..
-              "Content-Disposition: form-data; name=\"" .. k:gsub("\"", "%%22") .. "\"\r\n\r\n" ..
-              v.value .. "\r\n"
-              .. "--" .. boundary .. "--\r\n"
-        request.set_body_data(new_data)
-]]
 
 end
 
