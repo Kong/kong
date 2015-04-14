@@ -42,8 +42,9 @@ local function get_key_from_query(key_name, request, conf)
       local body = request.get_body_data()
       parameters = Multipart(body, content_type)
 
-      found_in.body = parameters:get(key_name) ~= nil
-      key = parameters:get(key_name)
+      local parameter = parameters:get(key_name) 
+      found_in.body = parameter ~= nil
+      key = parameter and parameter.value or nil
     end
   end
 
