@@ -59,22 +59,9 @@ function _M.execute(conf)
 
         local body = ngx.req.get_body_data()
         local parameters = Multipart(body, content_type)
-
         iterate_and_exec(conf.add.form, function(name, value)
-          if parameters.indexes[name] then
-            -- Already exists
-            parameters.data[parameters.indexes[name]].value = value
-          else
-            -- Add new one
-            parameters.indexes[name] = utils.table_size(parameters.indexes) + 1
-            parameters.data[parameters.indexes[name]] = {
-              name = name,
-              headers = { "Content-Disposition: form-data; name=\""..name.."\"" },
-              value = value
-            }
-          end
+          parameters:set_simple(name, value)
         end)
-
         local new_data = parameters:tostring()
         ngx.req.set_header(CONTENT_LENGTH, string.len(new_data))
         ngx.req.set_body_data(new_data)
