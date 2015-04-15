@@ -5,6 +5,7 @@ local cjson = require "cjson"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 local uuid = require "uuid"
+local stringy = require "stringy"
 local rex = require "rex_pcre"
 
 -- This is important to seed the UUID generator
