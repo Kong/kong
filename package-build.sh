@@ -4,16 +4,16 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 echo "Current directory is: "$DIR
 
-OUT=$DIR/out
-TMP=$DIR/tmp
+OUT=$DIR/build/out
+TMP=$DIR/build/tmp
 
 echo "Cleaning directories"
 rm -rf $OUT
 rm -rf $TMP
 
 echo "Preparing environment"
-mkdir $OUT
-mkdir $TMP
+mkdir -p $OUT
+mkdir -p $TMP
 
 LUA_VERSION=5.1.5
 LUAROCKS_VERSION=2.2.1
@@ -111,7 +111,7 @@ $OUT/usr/local/bin/luarocks install kong $KONG_VERSION
 
 # Make the package
 post_install_script=$(mktemp -t post_install_script.XXX.sh)
-echo 'mkdir -p /etc/kong;cp /usr/local/lib/luarocks/rocks/kong/${KONG_VERSION}/conf/kong.yml /etc/kong/kong.yml' > $post_install_script
+echo "mkdir -p /etc/kong;cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
@@ -125,4 +125,3 @@ usr
 
 
 echo "DONE"
-
