@@ -4,6 +4,7 @@ local Threads = require "llthreads2.ex"
 local cjson = require "cjson"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
+local stringy = require "stringy"
 local uuid = require "uuid"
 local rex = require "rex_pcre"
 
