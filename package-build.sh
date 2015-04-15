@@ -72,6 +72,8 @@ make $LUA_MAKE
 make install INSTALL_TOP=$OUT/usr/local
 cd $OUT
 
+ln -s $OUT/usr/local/bin/lua $OUT/usr/local/bin/lua5.1
+
 export PATH=$PATH:${OUT}/usr/local/bin
 export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
@@ -109,9 +111,15 @@ export LUAROCKS_CONFIG=$rocks_config
 
 $OUT/usr/local/bin/luarocks install kong $KONG_VERSION
 
+sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
+rm $OUT/usr/local/bin/kong.bak
+
+mkdir -p $OUT/etc/kong
+cp $OUT/usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
+
 # Make the package
 post_install_script=$(mktemp -t post_install_script.XXX.sh)
-echo "mkdir -p /etc/kong;cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
+printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
@@ -122,6 +130,5 @@ fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS}
 --url http://getkong.org/ \
 --after-install $post_install_script \
 usr
-
 
 echo "DONE"
