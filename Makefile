@@ -19,7 +19,7 @@ dev:
       echo $$rock not found, installing via luarocks... ; \
       luarocks install $$rock ; \
     else \
-      echo "$$rock already installed, skipping" ; \
+      echo $$rock already installed, skipping ; \
     fi \
 	done;
 	bin/kong config -c kong.yml -e TEST
