@@ -20,11 +20,8 @@ echo "Preparing environment"
 mkdir -p $OUT
 mkdir -p $TMP
 
-LUA_VERSION=5.1.5
-LUAROCKS_VERSION=2.2.1
-OPENRESTY_VERSION=1.7.10.2rc0
-KONG_VERSION=0.1.1beta-2
-PCRE_VERSION=8.36
+# Load dependencies versions
+source ./versions.sh
 
 PACKAGE_TYPE=""
 LUA_MAKE=""
@@ -34,7 +31,7 @@ FPM_PARAMS=""
 if [ "$(uname)" = "Darwin" ]; then
   PACKAGE_TYPE="osxpkg"
   LUA_MAKE="macosx"
-  
+
   # Install PCRE
   cd $TMP
   wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-$PCRE_VERSION.tar.gz
