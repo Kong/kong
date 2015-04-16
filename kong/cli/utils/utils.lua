@@ -14,7 +14,7 @@ local IO = require "kong.tools.io"
 -- Colors
 --
 local colors = {}
-for _, v in ipairs({"red", "green", "yellow"}) do
+for _, v in ipairs({"red", "green", "yellow", "blue"}) do
   colors[v] = function(str) return ansicolors("%{"..v.."}"..str.."%{reset}") end
 end
 
@@ -31,22 +31,26 @@ function Logger:new(silent)
   self.silent = silent
 end
 
-function Logger:log(str)
+function Logger:print(str)
   if not self.silent then
     print(trim(str))
   end
 end
 
+function Logger:info(str)
+  self:print(colors.blue("[INFO] ")..str)
+end
+
 function Logger:success(str)
-  self:log(colors.green("[OK] ")..str)
+  self:print(colors.green("[OK] ")..str)
 end
 
 function Logger:warn(str)
-  self:log(colors.yellow("[WARN] ")..str)
+  self:print(colors.yellow("[WARN] ")..str)
 end
 
 function Logger:error(str)
-  self:log(colors.red("[ERR] ")..str)
+  self:print(colors.red("[ERR] ")..str)
 end
 
 function Logger:error_exit(str)
@@ -104,17 +108,17 @@ end
 local function get_kong_config_path(args_config)
   -- Use the rock's config if no config at default location
   if not IO.file_exists(args_config) then
-    logger:warn("No config at: "..args_config.." using default config instead.")
+    logger:warn("No configuration at: "..args_config.." using default config instead.")
     args_config = IO.path:join(get_luarocks_config_dir(), "kong.yml")
   end
 
   -- Make sure the configuration file really exists
   if not IO.file_exists(args_config) then
-    logger:warn("No config at: "..args_config)
+    logger:warn("No configuration at: "..args_config)
     logger:error_exit("Could not find a configuration file.")
   end
 
-  logger:log("Using config: "..args_config)
+  logger:info("configuration: "..args_config)
 
   -- TODO: validate configuration
   --[[local status, res = pcall(require, "kong.dao."..config.database..".factory")
