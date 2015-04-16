@@ -61,7 +61,7 @@ When developing, use the `Makefile` for doing the following operations:
 | `run`         | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                          |
 | `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
 | `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
-| `lint`        | Lint Lua files in `src/`                                                                            |
+| `lint`        | Lint Lua files in `kong/`                                                                            |
 | `coverage`    | Run unit tests + coverage report (only unit-tested modules)                                         |
 | `test`        | Run the unit tests                                                                                  |
 | `test-proxy`  | Run the proxy integration tests                                                                     |
