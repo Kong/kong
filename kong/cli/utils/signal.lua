@@ -74,22 +74,6 @@ end
 local function prepare_nginx_working_dir(args_config)
   local _, kong_config = get_kong_config_path(args_config)
 
-  if kong_config.send_anonymous_reports then
-    -- If there is no internet connection, disable this feature
-    local socket = require "socket"
-    if socket.dns.toip(KONG_SYSLOG) then
-      kong_config.nginx = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..kong_config.nginx
-    else
-      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
-    end
-  end
-
-  if kong_config.nginx_plus_status then
-    local padding = "    "
-    local nginx_plus_status = padding.."location /status {\n"..padding.."  status;\n"..padding.."}"
-    kong_config.nginx = string.gsub(kong_config.nginx, "plugin_configuration_placeholder", "plugin_configuration_placeholder\n"..nginx_plus_status)
-  end
-
   -- Create nginx folder if needed
   local _, err = IO.path:mkdir(IO.path:join(kong_config.nginx_working_dir, "logs"))
   if err then
@@ -99,8 +83,34 @@ local function prepare_nginx_working_dir(args_config)
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
-  -- Extract nginx config to nginx folder
-  local ok, err = IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), kong_config.nginx)
+  -- Extract nginx config from kong config, replace any needed value
+  local nginx_config = kong_config.nginx
+
+  -- Inject ports
+  for _, v in ipairs({ "proxy_port", "api_port" }) do
+    nginx_config = nginx_config:gsub("{{"..v.."}}", kong_config[v])
+  end
+
+  -- Inject anonymous reports
+  if kong_config.send_anonymous_reports then
+    -- If there is no internet connection, disable this feature
+    local socket = require "socket"
+    if socket.dns.toip(KONG_SYSLOG) then
+      nginx_config = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..nginx_config
+    else
+      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
+    end
+  end
+
+  -- Inject nginx plus status
+  if kong_config.nginx_plus_status then
+    local padding = "    "
+    local nginx_plus_status = padding.."location /status {\n"..padding.."  status;\n"..padding.."}"
+    nginx_config = nginx_config:gsub("plugin_configuration_placeholder", "plugin_configuration_placeholder\n"..nginx_plus_status)
+  end
+
+  -- Write nginx config
+  local ok, err = IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), nginx_config)
   if not ok then
     cutils.logger:error_exit(err)
   end
