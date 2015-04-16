@@ -6,27 +6,27 @@
 # luajit2.0 - master v2.0
 # luajit2.1 - master v2.1
 
-LUAJIT_BASE="LuaJIT-2.0.3"
+LUAJIT_BASE="LuaJIT-$LUAJIT_VERSION"
 
 source .travis/platform.sh
 
-LUAJIT="no"
+LUAJIT_ENABLED="no"
 
 if [ "$PLATFORM" == "macosx" ]; then
   if [ "$LUA" == "luajit" ]; then
-    LUAJIT="yes";
+    LUAJIT_ENABLED="yes";
   fi
   if [ "$LUA" == "luajit2.0" ]; then
-    LUAJIT="yes";
+    LUAJIT_ENABLED="yes";
   fi
   if [ "$LUA" == "luajit2.1" ]; then
-    LUAJIT="yes";
+    LUAJIT_ENABLED="yes";
   fi;
 elif [ "$(expr substr $LUA 1 6)" == "luajit" ]; then
-  LUAJIT="yes";
+  LUAJIT_ENABLED="yes";
 fi
 
-if [ "$LUAJIT" == "yes" ]; then
+if [ "$LUAJIT_ENABLED" == "yes" ]; then
 
   if [ "$LUA" == "luajit" ]; then
     curl http://luajit.org/download/$LUAJIT_BASE.tar.gz | tar xz;
@@ -65,14 +65,14 @@ fi
 
 cd $TRAVIS_BUILD_DIR;
 
-LUAROCKS_BASE=luarocks-$LUAROCKS
+LUAROCKS_BASE=luarocks-$LUAROCKS_VERSION
 
 # curl http://luarocks.org/releases/$LUAROCKS_BASE.tar.gz | tar xz
 
 git clone https://github.com/keplerproject/luarocks.git $LUAROCKS_BASE
 cd $LUAROCKS_BASE
 
-git checkout v$LUAROCKS
+git checkout v$LUAROCKS_VERSION
 
 if [ "$LUA" == "luajit" ]; then
   ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.0;
@@ -90,7 +90,7 @@ cd $TRAVIS_BUILD_DIR
 
 rm -rf $LUAROCKS_BASE
 
-if [ "$LUAJIT" == "yes" ]; then
+if [ "$LUAJIT_ENABLED" == "yes" ]; then
   rm -rf $LUAJIT_BASE;
 elif [ "$LUA" == "lua5.1" ]; then
   rm -rf lua-5.1.5;
