@@ -1,8 +1,13 @@
 #!/bin/bash
+set -o errexit
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 echo "Current directory is: "$DIR
+
+if [ "$DIR" == "/" ]; then
+  DIR=""
+fi
 
 OUT=$DIR/build/out
 TMP=$DIR/build/tmp
@@ -17,7 +22,7 @@ mkdir -p $TMP
 
 LUA_VERSION=5.1.5
 LUAROCKS_VERSION=2.2.1
-OPENRESTY_VERSION=1.7.10.1
+OPENRESTY_VERSION=1.7.10.2rc0
 KONG_VERSION=0.1.1beta-2
 PCRE_VERSION=8.36
 
@@ -26,9 +31,7 @@ LUA_MAKE=""
 OPENRESTY_CONFIGURE=""
 FPM_PARAMS=""
 
-sudo gem install fpm
-
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ]; then
   PACKAGE_TYPE="osxpkg"
   LUA_MAKE="macosx"
   
@@ -45,12 +48,21 @@ if [ "$(uname)" == "Darwin" ]; then
   OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
   FPM_PARAMS="--osxpkg-identifier-prefix org.getkong"
 elif hash yum 2>/dev/null; then
-  sudo yum -y install wget tar make gcc readline-devel perl pcre-devel openssl-devel ldconfig unzip git rpm-build ruby-devel rubygems
+  if [[ $EUID -eq 0 ]]; then
+    # If already root, install sudo just in case (Docker)
+    yum -y install sudo
+  fi
+  sudo yum -y install epel-release
+  sudo yum -y install wget tar make ldconfig gcc readline-devel perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
 elif hash apt-get 2>/dev/null; then
-  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git ruby-dev
+  if [[ $EUID -eq 0 ]]; then
+    # If already root, install sudo just in case (Docker)
+    apt-get update && apt-get install sudo
+  fi
+  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
@@ -59,8 +71,16 @@ else
   exit 1
 fi
 
-echo "WOT"
-echo $FPM_PARAMS
+cd $TMP
+wget http://cache.ruby-lang.org/pub/ruby/2.1/ruby-2.1.2.tar.gz
+tar xvfvz ruby-2.1.2.tar.gz
+cd ruby-2.1.2
+./configure
+make
+sudo make install
+
+sudo gem update --system
+sudo gem install fpm
 
 # Starting building stuff
 
