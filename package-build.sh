@@ -48,6 +48,7 @@ elif hash yum 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
     yum -y install sudo
+    sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
   sudo yum -y install wget tar make ldconfig gcc readline-devel perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel
