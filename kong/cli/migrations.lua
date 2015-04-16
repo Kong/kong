@@ -33,14 +33,14 @@ if args.command == "list" then
   if err then
     cutils.logger:error_exit(err)
   elseif migrations then
-    cutils.logger:log(string.format(
+    cutils.logger:info(string.format(
       "Executed migrations for %s on keyspace %s:\n%s",
       cutils.colors.yellow(dao_factory.type),
       cutils.colors.yellow(dao_factory._properties.keyspace),
       table.concat(migrations, ", ")
     ))
   else
-    cutils.logger:log(string.format(
+    cutils.logger:info(string.format(
       "No migrations have been run yet for %s on keyspace: %s",
       cutils.colors.yellow(dao_factory.type),
       cutils.colors.yellow(dao_factory._properties.keyspace)
@@ -49,7 +49,7 @@ if args.command == "list" then
 
 elseif args.command == "up" then
 
-  cutils.logger:log(string.format(
+  cutils.logger:info(string.format(
     "Migrating %s keyspace: %s",
     cutils.colors.yellow(dao_factory.type),
     cutils.colors.yellow(dao_factory._properties.keyspace))
@@ -67,7 +67,7 @@ elseif args.command == "up" then
 
 elseif args.command == "down" then
 
-  cutils.logger:log(string.format(
+  cutils.logger:info(string.format(
     "Rolling back %s keyspace: %s",
     cutils.colors.yellow(dao_factory.type),
     cutils.colors.yellow(dao_factory._properties.keyspace)
@@ -85,7 +85,7 @@ elseif args.command == "down" then
 
 elseif args.command == "reset" then
 
-  cutils.logger:log(string.format(
+  cutils.logger:info(string.format(
     "Reseting %s keyspace: %s",
     cutils.colors.yellow(dao_factory.type),
     cutils.colors.yellow(dao_factory._properties.keyspace))

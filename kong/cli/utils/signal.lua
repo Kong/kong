@@ -110,7 +110,7 @@ end
 -- @return The prettified string
 local function prettify_table_properties(t)
   local result = ""
-  for k,v in pairs(t) do
+  for k, v in pairs(t) do
     result = result..k.."="..v.." "
   end
   return result == "" and result or result:sub(1, string.len(result) - 1)
@@ -121,14 +121,14 @@ end
 local function prepare_database(args_config)
   local _, kong_config, dao_factory = get_kong_config_path(args_config)
 
-  cutils.logger:log("Using database: "..kong_config.database..", "..prettify_table_properties(kong_config.databases_available[kong_config.database].properties))
+  cutils.logger:info("database: "..kong_config.database.." "..prettify_table_properties(kong_config.databases_available[kong_config.database].properties))
 
   -- Migrate the DB if needed and possible
   local keyspace, err = dao_factory:get_migrations()
   if err then
     cutils.logger:error_exit(err)
   elseif keyspace == nil then
-    cutils.logger:log("Database not initialized. Running migrations...")
+    cutils.logger:info("Database not initialized. Running migrations...")
     local migrations = require("kong.tools.migrations")(dao_factory, cutils.get_luarocks_install_dir())
     migrations:migrate(function(migration, err)
       if err then
@@ -159,7 +159,7 @@ function _M.send_signal(args_config, signal)
   if not nginx_path then
     cutils.logger:error_exit(string.format("Kong cannot find an 'nginx' executable.\nMake sure it is in your $PATH or in one of the following directories:\n%s", table.concat(NGINX_SEARCH_PATHS, "\n")))
   else
-    cutils.logger:log("Using nginx: "..nginx_path)
+    cutils.logger:info("nginx: "..nginx_path)
   end
 
   local kong_config_path, kong_config = get_kong_config_path(args_config)
@@ -189,7 +189,7 @@ function _M.is_running(args_config)
     if os.execute("kill -0 "..pid) == 0 then
       return true
     else
-      cutils.logger:log("Removing pid at: "..pid_file)
+      cutils.logger:info("Removing pid at: "..pid_file)
       local _, err = os.remove(pid_file)
       if err then
         error(err)

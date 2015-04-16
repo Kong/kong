@@ -3,4 +3,4 @@
 local cutils = require "kong.cli.utils"
 local infos = cutils.get_kong_infos()
 
-cutils.logger:log(string.format("Kong version: %s", infos.version))
+cutils.logger:info(string.format("Kong version: %s", infos.version))
