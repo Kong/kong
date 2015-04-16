@@ -82,7 +82,7 @@ local ENDPOINTS = {
   }
 }
 
-describe("Web API #web", function()
+describe("API", function()
 
   setup(function()
     spec_helper.prepare_db()
@@ -107,7 +107,7 @@ describe("Web API #web", function()
   end)
 
   for i, v in ipairs(ENDPOINTS) do
-    describe("#"..v.collection, function()
+    describe("#"..v.collection.." entity", function()
 
       it("should not create on POST with invalid parameters", function()
         if v.collection ~= "consumers" then
@@ -137,6 +137,7 @@ describe("Web API #web", function()
       it("should GET all entities", function()
         local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/")
         local body = cjson.decode(response)
+        local inspect = require "inspect"
         assert.are.equal(200, status)
         assert.truthy(body.data)
         --assert.truthy(body.total)
@@ -185,13 +186,13 @@ describe("Web API #web", function()
       it("should not update when the content-type is wrong", function()
         local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
         assert.are.equal(415, status)
-        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\\/json\\\"\"}", response)
+        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\"\"}", response)
       end)
 
       it("should not save when the content-type is wrong", function()
         local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
         assert.are.equal(415, status)
-        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\\/x-www-form-urlencoded\\\"\"}", response)
+        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\"\"}", response)
       end)
 
     end)
