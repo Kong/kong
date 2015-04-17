@@ -5,10 +5,10 @@ local stringy = require "stringy"
 local Object = require "classic"
 
 local Apis = require "kong.dao.cassandra.apis"
-local RateLimitingMetrics = require "kong.dao.cassandra.ratelimiting_metrics"
-local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 local Consumers = require "kong.dao.cassandra.consumers"
+local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 local BasicAuthCredentials = require "kong.dao.cassandra.basicauth_credentials"
+local RateLimitingMetrics = require "kong.dao.cassandra.ratelimiting_metrics"
 local KeyAuthCredentials = require "kong.dao.cassandra.keyauth_credentials"
 
 local CassandraFactory = Object:extend()
@@ -43,21 +43,21 @@ function CassandraFactory:new(properties)
   self._properties.hosts = normalize_localhost(self._properties.hosts)
 
   self.apis = Apis(properties)
-  self.ratelimiting_metrics = RateLimitingMetrics(properties)
-  self.plugins_configurations = PluginsConfigurations(properties)
   self.consumers = Consumers(properties)
+  self.plugins_configurations = PluginsConfigurations(properties)
   self.basicauth_credentials = BasicAuthCredentials(properties)
+  self.ratelimiting_metrics = RateLimitingMetrics(properties)
   self.keyauth_credentials = KeyAuthCredentials(properties)
 end
 
 function CassandraFactory:drop()
   return self:execute_queries [[
     TRUNCATE apis;
-    TRUNCATE ratelimiting_metrics;
-    TRUNCATE plugins_configurations;
     TRUNCATE consumers;
+    TRUNCATE plugins_configurations;
     TRUNCATE basicauth_credentials;
     TRUNCATE keyauth_credentials;
+    TRUNCATE ratelimiting_metrics;
   ]]
 end
 
@@ -88,9 +88,9 @@ end
 -- @return error if any
 function CassandraFactory:prepare()
   for _, collection in ipairs({ self.apis,
-                                self.ratelimiting_metrics,
-                                self.plugins_configurations,
                                 self.consumers,
+                                self.plugins_configurations,
+                                self.ratelimiting_metrics,
                                 self.basicauth_credentials,
                                 self.keyauth_credentials }) do
     local status, err = pcall(function() prepare_collection(collection) end)
