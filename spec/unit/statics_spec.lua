@@ -47,6 +47,10 @@ plugins_available:
 # Nginx prefix path directory
 nginx_working_dir: /usr/local/kong/
 
+# Ports
+proxy_port: 8000
+admin_port: 8001
+
 # Specify the DAO to use
 database: cassandra
 
@@ -140,7 +144,7 @@ nginx: |
     ';
 
     server {
-      listen 8000;
+      listen {{proxy_port}};
 
       location / {
         # Assigns the default MIME-type to be used for files where the
@@ -183,7 +187,7 @@ nginx: |
     }
 
     server {
-      listen 8001;
+      listen {{admin_port}};
 
       location / {
         default_type application/json;
@@ -208,9 +212,8 @@ nginx: |
         return 200 'User-agent: *\nDisallow: /';
       }
 
-      # Do not remove the following comment
-      # plugin_configuration_placeholder
-
+      # Do not remove, additional configuration placeholder for some plugins
+      # {{additional_configuration}}
     }
   }
 ]], configuration)
