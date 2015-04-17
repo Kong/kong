@@ -87,14 +87,22 @@ local function prepare_nginx_working_dir(args_config)
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
   local nginx_inject = {
-    nginx_plus_status = kong_config.nginx_plus_status and "location /status { status; }" or "",
     proxy_port = kong_config.proxy_port,
-    api_port = kong_config.api_port
+    admin_port = kong_config.admin_port
   }
 
   -- Inject properties
   for k, v in pairs(nginx_inject) do
     nginx_config = nginx_config:gsub("{{"..k.."}}", v)
+  end
+
+  -- Inject additional configurations
+  nginx_inject = {
+    nginx_plus_status = kong_config.nginx_plus_status and "location /status { status; }" or nil
+  }
+
+  for _, v in pairs(nginx_inject) do
+    nginx_config = nginx_config:gsub("# {{additional_configuration}}", "# {{additional_configuration}}\n    "..v)
   end
 
   -- Inject anonymous reports
@@ -161,7 +169,7 @@ function _M.prepare_kong(args_config)
        Database.....%s %s
   ]],
   kong_config.proxy_port,
-  kong_config.api_port,
+  kong_config.admin_port,
   kong_config.database,
   prettify_table_properties(kong_config.databases_available[kong_config.database].properties)))
 end

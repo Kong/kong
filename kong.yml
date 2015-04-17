@@ -12,7 +12,7 @@ nginx_working_dir: /usr/local/kong/
 
 # Ports
 proxy_port: 8000
-api_port: 8001
+admin_port: 8001
 
 # Specify the DAO to use
 database: cassandra
@@ -150,7 +150,7 @@ nginx: |
     }
 
     server {
-      listen {{api_port}};
+      listen {{admin_port}};
 
       location / {
         default_type application/json;
@@ -175,7 +175,7 @@ nginx: |
         return 200 'User-agent: *\nDisallow: /';
       }
 
-      # Do not remove
-      {{nginx_plus_status}}
+      # Do not remove, additional configuration placeholder for some plugins
+      # {{additional_configuration}}
     }
   }
