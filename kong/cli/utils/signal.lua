@@ -199,8 +199,6 @@ function _M.is_running(args_config)
   else
     return false, "Not running. Could not find pid at: "..pid_file
   end
-
-  return true
 end
 
 return _M

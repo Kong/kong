@@ -122,7 +122,7 @@ local function force_short(short)
     xassert(#short==1,short..": short parameters should be one character")
 end
 
-function process_options_string(str)
+local function process_options_string(str)
     local res = {}
     local varargs
 
@@ -236,7 +236,7 @@ function process_options_string(str)
     local parm,ps,val
     while i <= #arg do
         -- look for a flag, -<short flags> or --<long flag>
-        local i1,i2,dash,parmstr = arg[i]:find('^(%-+)(%a.*)')
+        local i1,_,dash,parmstr = arg[i]:find('^(%-+)(%a.*)')
         if i1 then -- we have a flag
             if #dash == 2 then -- long option
                 parm = parmstr
