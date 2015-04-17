@@ -12,7 +12,7 @@ nginx_working_dir: /usr/local/kong/
 
 # Ports
 proxy_port: 8000
-api_port: 8002
+api_port: 8001
 
 # Specify the DAO to use
 database: cassandra
@@ -31,7 +31,7 @@ databases_available:
 send_anonymous_reports: true
 
 # Nginx Plus Status
-nginx_plus_status: true
+nginx_plus_status: false
 
 # Cache configuration
 cache:
@@ -175,8 +175,7 @@ nginx: |
         return 200 'User-agent: *\nDisallow: /';
       }
 
-      # Do not remove the following comment
-      # plugin_configuration_placeholder
-
+      # Do not remove
+      {{nginx_plus_status}}
     }
   }
