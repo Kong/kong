@@ -18,7 +18,7 @@ for _, v in ipairs({"red", "green", "yellow", "blue"}) do
   colors[v] = function(str) return ansicolors("%{"..v.."}"..str.."%{reset}") end
 end
 
-function trim(s)
+local function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
@@ -106,28 +106,21 @@ local function get_luarocks_install_dir()
 end
 
 local function get_kong_config_path(args_config)
+  local config_path = args_config
+
   -- Use the rock's config if no config at default location
-  if not IO.file_exists(args_config) then
-    logger:warn("No configuration at: "..args_config.." using default config instead.")
-    args_config = IO.path:join(get_luarocks_config_dir(), "kong.yml")
+  if not IO.file_exists(config_path) then
+    logger:warn("No configuration at: "..config_path.." using default config instead.")
+    config_path = IO.path:join(get_luarocks_config_dir(), "kong.yml")
   end
 
   -- Make sure the configuration file really exists
-  if not IO.file_exists(args_config) then
-    logger:warn("No configuration at: "..args_config)
+  if not IO.file_exists(config_path) then
+    logger:warn("No configuration at: "..config_path)
     logger:error_exit("Could not find a configuration file.")
   end
 
-  logger:info("configuration: "..args_config)
-
-  -- TODO: validate configuration
-  --[[local status, res = pcall(require, "kong.dao."..config.database..".factory")
-    if not status then
-      logger:error("Erroneous config")
-      os.exit(1)
-    end]]
-
-  return args_config
+  return config_path
 end
 
 return {

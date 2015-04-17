@@ -16,18 +16,19 @@ local KONG_SYSLOG = "kong-hf.mashape.com"
 -- Retrieve the desired Kong config file, parse it and provides a DAO factory
 -- Will cache them for future retrieval
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
--- @return Path to desired Kong config
 -- @return Parsed desired Kong configuration
+-- @return Path to desired Kong config
 -- @return Instanciated DAO factory
-local function get_kong_config_path(args_config)
+local function get_kong_config(args_config)
   -- Get configuration from default or given path
   if not kong_config_path then
     kong_config_path = cutils.get_kong_config_path(args_config)
+    cutils.logger:info("Using configuration: "..kong_config_path)
   end
   if not kong_config then
     kong_config, dao_factory = IO.load_configuration_and_dao(kong_config_path)
   end
-  return kong_config_path, kong_config, dao_factory
+  return kong_config, kong_config_path, dao_factory
 end
 
 -- Check if an executable (typically `nginx`) is a distribution of openresty
@@ -72,23 +73,7 @@ end
 -- Extract the nginx config from a Kong config file into an `nginx.conf` file
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_nginx_working_dir(args_config)
-  local _, kong_config = get_kong_config_path(args_config)
-
-  if kong_config.send_anonymous_reports then
-    -- If there is no internet connection, disable this feature
-    local socket = require "socket"
-    if socket.dns.toip(KONG_SYSLOG) then
-      kong_config.nginx = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..kong_config.nginx
-    else
-      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
-    end
-  end
-
-  if kong_config.nginx_plus_status then
-    local padding = "    "
-    local nginx_plus_status = padding.."location /status {\n"..padding.."  status;\n"..padding.."}"
-    kong_config.nginx = string.gsub(kong_config.nginx, "plugin_configuration_placeholder", "plugin_configuration_placeholder\n"..nginx_plus_status)
-  end
+  local kong_config = get_kong_config(args_config)
 
   -- Create nginx folder if needed
   local _, err = IO.path:mkdir(IO.path:join(kong_config.nginx_working_dir, "logs"))
@@ -99,29 +84,49 @@ local function prepare_nginx_working_dir(args_config)
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
-  -- Extract nginx config to nginx folder
-  local ok, err = IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), kong_config.nginx)
+  -- Extract nginx config from kong config, replace any needed value
+  local nginx_config = kong_config.nginx
+  local nginx_inject = {
+    proxy_port = kong_config.proxy_port,
+    admin_port = kong_config.admin_port
+  }
+
+  -- Inject properties
+  for k, v in pairs(nginx_inject) do
+    nginx_config = nginx_config:gsub("{{"..k.."}}", v)
+  end
+
+  -- Inject additional configurations
+  nginx_inject = {
+    nginx_plus_status = kong_config.nginx_plus_status and "location /status { status; }" or nil
+  }
+
+  for _, v in pairs(nginx_inject) do
+    nginx_config = nginx_config:gsub("# {{additional_configuration}}", "# {{additional_configuration}}\n    "..v)
+  end
+
+  -- Inject anonymous reports
+  if kong_config.send_anonymous_reports then
+    -- If there is no internet connection, disable this feature
+    local socket = require "socket"
+    if socket.dns.toip(KONG_SYSLOG) then
+      nginx_config = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..nginx_config
+    else
+      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
+    end
+  end
+
+  -- Write nginx config
+  local ok, err = IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), nginx_config)
   if not ok then
     cutils.logger:error_exit(err)
   end
 end
 
--- Prettifies table properties in a nice human readable way
--- @return The prettified string
-local function prettify_table_properties(t)
-  local result = ""
-  for k, v in pairs(t) do
-    result = result..k.."="..v.." "
-  end
-  return result == "" and result or result:sub(1, string.len(result) - 1)
-end
-
 -- Prepare the database keyspace if needed (run schema migrations)
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
-  local _, kong_config, dao_factory = get_kong_config_path(args_config)
-
-  cutils.logger:info("database: "..kong_config.database.." "..prettify_table_properties(kong_config.databases_available[kong_config.database].properties))
+  local kong_config, _, dao_factory = get_kong_config(args_config)
 
   -- Migrate the DB if needed and possible
   local keyspace, err = dao_factory:get_migrations()
@@ -140,11 +145,33 @@ local function prepare_database(args_config)
   end
 end
 
+-- Prettifies table properties in a nice human readable way
+-- @return The prettified string
+local function prettify_table_properties(t)
+  local result = ""
+  for k, v in pairs(t) do
+    result = result..k.."="..v.." "
+  end
+  return result == "" and result or result:sub(1, string.len(result) - 1)
+end
+
 local _M = {}
 
 function _M.prepare_kong(args_config)
+  local kong_config, kong_config_path = get_kong_config(args_config)
+
   prepare_nginx_working_dir(args_config)
   prepare_database(args_config)
+
+  -- Print important informations
+  cutils.logger:info(string.format([[Proxy port...%s
+       API port.....%s
+       Database.....%s %s
+  ]],
+  kong_config.proxy_port,
+  kong_config.admin_port,
+  kong_config.database,
+  prettify_table_properties(kong_config.databases_available[kong_config.database].properties)))
 end
 
 -- Send a signal to `nginx`. No signal will start the process
@@ -158,11 +185,9 @@ function _M.send_signal(args_config, signal)
   local nginx_path = find_nginx()
   if not nginx_path then
     cutils.logger:error_exit(string.format("Kong cannot find an 'nginx' executable.\nMake sure it is in your $PATH or in one of the following directories:\n%s", table.concat(NGINX_SEARCH_PATHS, "\n")))
-  else
-    cutils.logger:info("nginx: "..nginx_path)
   end
 
-  local kong_config_path, kong_config = get_kong_config_path(args_config)
+  local kong_config, kong_config_path = get_kong_config(args_config)
 
   -- Build nginx signal command
   local cmd = string.format("KONG_CONF=%s %s -p %s -c %s -g 'pid %s;' %s",
@@ -180,7 +205,7 @@ end
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 function _M.is_running(args_config)
   -- Get configuration from default or given path
-  local _, kong_config = get_kong_config_path(args_config)
+  local kong_config = get_kong_config(args_config)
 
   local pid_file = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
 
