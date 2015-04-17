@@ -116,7 +116,7 @@ function BaseController:new(dao_collection, collection)
     end
   end)
 
-  app:get("/"..collection, function(self)
+  app:get("/"..collection.."/", function(self)
     local size = self.params.size
     if size then
       size = tonumber(size)
