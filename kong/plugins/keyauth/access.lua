@@ -1,8 +1,7 @@
 local constants = require "kong.constants"
-local stringy = require "stringy"
-local cjson = require "cjson"
-local cache = require "kong.tools.cache"
 local Multipart = require "multipart"
+local stringy = require "stringy"
+local cache = require "kong.tools.cache"
 
 local CONTENT_TYPE = "content-type"
 local CONTENT_LENGTH = "content-length"
@@ -42,7 +41,7 @@ local function get_key_from_query(key_name, request, conf)
       local body = request.get_body_data()
       parameters = Multipart(body, content_type)
 
-      local parameter = parameters:get(key_name) 
+      local parameter = parameters:get(key_name)
       found_in.body = parameter ~= nil
       key = parameter and parameter.value or nil
     end

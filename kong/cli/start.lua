@@ -13,7 +13,7 @@ Options:
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
 -- Check if running, will exit if yes
-local running, err = signal.is_running(args.config)
+local running = signal.is_running(args.config)
 if running then
   cutils.logger:error_exit("Could not start Kong because it is already running")
 end
