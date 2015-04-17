@@ -26,7 +26,7 @@ local function get_key_from_query(key_name, request, conf)
   elseif request.get_headers()[CONTENT_TYPE] then
     -- Lowercase content-type for easier comparison
     local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
-    if utils.starts_with(content_type, FORM_URLENCODED) then
+    if stringy.startswith(content_type, FORM_URLENCODED) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
@@ -34,7 +34,7 @@ local function get_key_from_query(key_name, request, conf)
 
       found_in.form = parameters[key_name] ~= nil
       key = parameters[key_name]
-    elseif utils.starts_with(content_type, MULTIPART_DATA) then
+    elseif stringy.startswith(content_type, MULTIPART_DATA) then
       -- Call ngx.req.read_body to read the request body first
       -- or turn on the lua_need_request_body directive to avoid errors.
       request.read_body()
@@ -42,8 +42,9 @@ local function get_key_from_query(key_name, request, conf)
       local body = request.get_body_data()
       parameters = Multipart(body, content_type)
 
-      found_in.body = parameters.indexes[key_name]
-      key = parameters.data[parameters.indexes[key_name]].value
+      local parameter = parameters:get(key_name) 
+      found_in.body = parameter ~= nil
+      key = parameter and parameter.value or nil
     end
   end
 
@@ -57,7 +58,7 @@ local function get_key_from_query(key_name, request, conf)
       request.set_header(CONTENT_LENGTH, string.len(encoded_args))
       request.set_body_data(encoded_args)
     elseif found_in.body then
-      parameters:delete(key)
+      parameters:delete(key_name)
       local new_data = parameters:tostring()
       request.set_header(CONTENT_LENGTH, string.len(new_data))
       request.set_body_data(new_data)
