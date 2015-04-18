@@ -39,12 +39,22 @@ $ kong --help
 
 1. Clone the repository and make it your working directory.
 2. Run `[sudo] make install`
+  
+  This will the `kong` binary and place it in the appropriate place it can be accessed.
+
 3. Run `make dev`
    
-   This will install development dependencies and create your environment configuration files:
-   - `kong_TESTS.yml`
-   - `kong_DEVELOPMENT.yml`
-4. Run `make test-all`
+  This will install development dependencies and create your environment configuration files:
+
+  - `kong_TESTS.yml`
+  - `kong_DEVELOPMENT.yml`
+
+4. Run the tests:
+  
+  ```bash
+  make test-all
+  ```
+  
 5. Run Kong with the development configuration file:
    
    ```bash
