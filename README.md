@@ -40,7 +40,7 @@ $ kong --help
 1. Clone the repository and make it your working directory.
 2. Run `[sudo] make install`
   
-  This will build the `kong` binary.
+  This will build and install the `kong` luarock globally.
 
 3. Run `make dev`
    
