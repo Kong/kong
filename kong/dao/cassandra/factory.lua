@@ -61,25 +61,29 @@ function CassandraFactory:drop()
   ]]
 end
 
--- Prepare all statements in collection._queries and put them in collection._statements.
+-- Prepare all statements in collection._queries and put them in statements cache
 -- Should be called with only a collection and will recursively call itself for nested statements.
 -- @param collection A collection with a ._queries property
-local function prepare_collection(collection, queries, statements)
-  if not queries then queries = collection._queries end
-  if not statements then statements = collection._statements end
+local function prepare_collection(collection, collection_queries)
+  if not collection_queries then collection_queries = collection._queries end
 
-  for stmt_name, query in pairs(queries) do
-    if type(query) == "table" and query.query == nil then
-      collection._statements[stmt_name] = {}
-      prepare_collection(collection, query, collection._statements[stmt_name])
+  for stmt_name, collection_query in pairs(collection_queries) do
+    if type(collection_query) == "table" and collection_query.query == nil then
+      -- Nested queries, let's recurse to prepare them too
+      prepare_collection(collection, collection_query)
     else
-      local q = stringy.strip(query.query)
-      q = string.format(q, "")
-      local kong_stmt, err = collection:prepare_kong_statement(q, query.params)
+      -- _queries can contain strings or tables with string + keys of parameters to bind
+      local query_to_prepare
+      if type(collection_query) == "string" then
+        query_to_prepare = collection_query
+      elseif collection_query.query then
+        query_to_prepare = collection_query.query
+      end
+
+      local _, err = collection:prepare_kong_statement(query_to_prepare, collection_query.params)
       if err then
         error(err)
       end
-      statements[stmt_name] = kong_stmt
     end
   end
 end

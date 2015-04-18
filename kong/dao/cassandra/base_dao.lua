@@ -3,6 +3,7 @@ local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
 local validate = require("kong.dao.schemas").validate
 local DaoError = require "kong.dao.error"
+local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "uuid"
@@ -17,8 +18,7 @@ uuid.seed()
 
 function BaseDao:new(properties)
   self._properties = properties
-  self._statements = {} -- Mirror of _queries but with prepared statements instead of strings
-  self._statements_cache = {} -- Prepared statements of SELECTS generated with find_by_keys
+  self._statements_cache = {}
 end
 
 -------------
@@ -133,10 +133,10 @@ end
 -- @return {table|nil} Error if any during execution
 -- @return {table|nil} A table with the list of not existing foreign entities
 function BaseDao:_check_all_foreign(t)
-  if not self._statements.__foreign then return true end
+  if not self._queries.__foreign then return true end
 
   local errors
-  for k, statement in pairs(self._statements.__foreign) do
+  for k, statement in pairs(self._queries.__foreign) do
     if t[k] and t[k] ~= constants.DATABASE_NULL_ID then
       local exists, err = self:_check_foreign(statement, t)
       if err then
@@ -158,10 +158,10 @@ end
 -- @return {table|nil} Error if any during execution
 -- @return {table|nil} A table with the list of already existing entities
 function BaseDao:_check_all_unique(t, is_updating)
-  if not self._statements.__unique then return true end
+  if not self._queries.__unique then return true end
 
   local errors
-  for k, statement in pairs(self._statements.__unique) do
+  for k, statement in pairs(self._queries.__unique) do
     if t[k] or k == "self" then
       local unique, err = self:_check_unique(statement, t, is_updating)
       if err then
@@ -219,9 +219,11 @@ end
 
 -- Execute an operation statement.
 -- The operation can be one of the following:
---   * _statements (which contains .query and .param for ordered binding of parameters)
+--   * _queries (which contains .query and .param for ordered binding of parameters) and
+--              will be prepared on the go if not already in the statements cache
 --   * a lua-resty-cassandra BatchStatement (see ratelimiting_metrics.lua)
 --   * a lua-resty-cassandra prepared statement
+--   * a plain query (string)
 --
 -- @param {table} operation The operation to execute
 -- @param {table} values_to_bind Raw values to bind
@@ -232,33 +234,39 @@ end
 --                         Boolean if type of results is VOID
 -- @return {table|nil} Cassandra error if any
 function BaseDao:_execute(operation, values_to_bind, options)
-  local statement
+  local statement = operation
 
-  -- Determine kind of operation
-  if operation.is_kong_statement then
-    statement = operation.query
-
-    if operation.params and values_to_bind then
-      local errors
-      values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, operation.params)
-      if errors then
-        return nil, DaoError(errors, error_types.INVALID_TYPE)
-      end
-    end
-  elseif operation.is_batch_statement then
-    statement = operation
-    values_to_bind = nil
-    options = nil
-  else
-    statement = operation
+  -- Retrieve the prepared statement from cache or prepare and cache
+  local cache_key
+  if operation.query then
+    cache_key = operation.query
+  elseif type(operation) == "string" then
+    cache_key = operation
   end
 
+  if cache_key then
+    if not self._statements_cache[cache_key] then
+      statement = self:prepare_kong_statement(cache_key, operation.params)
+    else
+      statement = self._statements_cache[cache_key].statement
+    end
+  end
+
+  -- Bind parameters if operation has some
+  if operation.params and values_to_bind then
+    local errors
+    values_to_bind, errors = encode_cassandra_values(self._schema, values_to_bind, operation.params)
+    if errors then
+      return nil, DaoError(errors, error_types.INVALID_TYPE)
+    end
+  end
+
+  -- Execute operation
   local session, err = self:_open_session()
   if err then
     return nil, err
   end
 
-  -- Execute operation
   local results, err = session:execute(statement, values_to_bind, options)
   if err then
     err = DaoError(err, error_types.DATABASE)
@@ -271,11 +279,12 @@ function BaseDao:_execute(operation, values_to_bind, options)
 
   -- Parse result
   if results and results.type == "ROWS" then
-    -- do we have more pages to fetch?
+    -- do we have more pages to fetch? if so, alias the paging_state
     if results.meta.has_more_pages then
       results.next_page = results.meta.paging_state
     end
 
+    -- only the DAO needs those, it should be transparant in the application
     results.meta = nil
     results.type = nil
 
@@ -285,7 +294,7 @@ function BaseDao:_execute(operation, values_to_bind, options)
 
     return results, err
   elseif results and results.type == "VOID" then
-    -- return boolean
+    -- result is not a set of rows, let's return a boolean to indicate success
     return err == nil, err
   else
     return results, err
@@ -304,15 +313,19 @@ end
 --
 -- @param {string} query A CQL query to prepare
 -- @param {table} params An array of parameters (ordered) matching the query placeholders order
--- @return {table|nil} A "kong statement" to be used by _execute
+-- @return {table|nil} A "kong statement" with a prepared statement and parameters to be used by _execute
 -- @return {table|nil} Error if any
 function BaseDao:prepare_kong_statement(query, params)
+  -- handle SELECT queries with %s for dynamic select by keys
+  local query_to_prepare = string.format(query, "")
+  query_to_prepare = stringy.strip(query_to_prepare)
+
   local session, err = self:_open_session()
   if err then
     return nil, err
   end
 
-  local prepared_stmt, prepare_err = session:prepare(query)
+  local prepared_stmt, prepare_err = session:prepare(query_to_prepare)
 
   local err = self:_close_session(session)
   if err then
@@ -322,11 +335,16 @@ function BaseDao:prepare_kong_statement(query, params)
   if prepare_err then
     return nil, DaoError("Failed to prepare statement: \""..query_to_prepare.."\". "..prepare_err, error_types.DATABASE)
   else
-    return {
-      is_kong_statement = true,
+    local kong_statement = {
+      query = query,
       params = params,
-      query = prepared_stmt
+      statement = prepared_stmt
     }
+
+    -- cache key is the non-striped/non-formatted query from _queries
+    self._statements_cache[query] = kong_statement
+
+    return prepared_stmt
   end
 end
 
@@ -370,7 +388,7 @@ function BaseDao:insert(t)
     return nil, DaoError(errors, error_types.FOREIGN)
   end
 
-  local _, stmt_err = self:_execute(self._statements.insert, self:_marshall(t))
+  local _, stmt_err = self:_execute(self._queries.insert, self:_marshall(t))
   if stmt_err then
     return nil, stmt_err
   else
@@ -392,7 +410,7 @@ function BaseDao:update(t)
 
   -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
   local results
-  ok, err, results = self:_check_foreign(self._statements.select_one, t)
+  ok, err, results = self:_check_foreign(self._queries.select_one, t)
   if err then
     return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
@@ -430,7 +448,7 @@ function BaseDao:update(t)
     return nil, DaoError(errors, error_types.FOREIGN)
   end
 
-  local _, stmt_err = self:_execute(self._statements.update, self:_marshall(t))
+  local _, stmt_err = self:_execute(self._queries.update, self:_marshall(t))
   if stmt_err then
     return nil, stmt_err
   else
@@ -443,7 +461,7 @@ end
 -- @param {string} id UUID of element to select
 -- @return _execute()
 function BaseDao:find_one(id)
-  local data, err = self:_execute(self._statements.select_one, { id = id })
+  local data, err = self:_execute(self._queries.select_one, { id = id })
 
   -- Return the 1st and only element of the result set
   if data and utils.table_size(data) > 0 then
@@ -491,16 +509,7 @@ function BaseDao:find_by_keys(t, page_size, paging_state)
 
   local select_query = string.format(self._queries.select.query, where_str)
 
-  -- prepare query in a statement cache
-  if not self._statements_cache[select_query] then
-    local kong_stmt, err = self:prepare_kong_statement(select_query, keys)
-    if err then
-      return nil, DaoError(err, error_types.DATABASE)
-    end
-    self._statements_cache[select_query] = kong_stmt
-  end
-
-  return self:_execute(self._statements_cache[select_query], t, {
+  return self:_execute({ query = select_query, params = keys }, t, {
     page_size = page_size,
     paging_state = paging_state
   })
@@ -521,14 +530,14 @@ end
 -- @return {boolean} True if deleted, false if otherwise or not found
 -- @return {table|nil} Error if any
 function BaseDao:delete(id)
-  local exists, err = self:_check_foreign(self._statements.select_one, { id = id })
+  local exists, err = self:_check_foreign(self._queries.select_one, { id = id })
   if err then
     return false, DaoError(err, error_types.DATABASE)
   elseif not exists then
     return false
   end
 
-  return self:_execute(self._statements.delete, { id = id })
+  return self:_execute(self._queries.delete, { id = id })
 end
 
 return BaseDao
