@@ -40,7 +40,7 @@ $ kong --help
 1. Clone the repository and make it your working directory.
 2. Run `[sudo] make install`
   
-  This will the `kong` binary and place it in the appropriate place it can be accessed.
+  This will build the `kong` binary.
 
 3. Run `make dev`
    
