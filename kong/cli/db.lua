@@ -38,11 +38,6 @@ if args.command == "seed" then
     cutils.logger:error_exit(err)
   end
 
-  local err = dao_factory:prepare()
-  if err then
-    cutils.logger:error(err)
-  end
-
   local faker = Faker(dao_factory)
   faker:seed(args.random and args.number or nil)
   cutils.logger:success("Populated")
