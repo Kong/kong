@@ -28,7 +28,7 @@ dependencies = {
   "ansicolors ~> 1.0.2-3",
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
-  "multipart ~> 0.1-1"
+  "multipart ~> 0.1-2"
 }
 build = {
   type = "builtin",
@@ -103,9 +103,9 @@ build = {
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
     ["kong.plugins.ratelimiting.schema"] = "kong/plugins/ratelimiting/schema.lua",
 
-    ["kong.plugins.request_transfomer.handler"] = "kong/plugins/request_transfomer/handler.lua",
-    ["kong.plugins.request_transfomer.access"] = "kong/plugins/request_transfomer/access.lua",
-    ["kong.plugins.request_transfomer.schema"] = "kong/plugins/request_transfomer/schema.lua",
+    ["kong.plugins.request_transfomer.handler"] = "kong/plugins/request_transformer/handler.lua",
+    ["kong.plugins.request_transfomer.access"] = "kong/plugins/request_transformer/access.lua",
+    ["kong.plugins.request_transfomer.schema"] = "kong/plugins/request_transformer/schema.lua",
 
     ["kong.web.app"] = "kong/web/app.lua",
     ["kong.web.routes.apis"] = "kong/web/routes/apis.lua",
