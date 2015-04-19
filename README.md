@@ -8,7 +8,7 @@ Kong is a scalable, lightweight open-source Management Layer for APIs and Micros
 
 ## Why Kong
 
-In the old way you write and maintain custom logic in earch service. With Kong you write once, dispatch everywhere.
+In the old way you write and maintain custom logic in each service. With Kong you write once, dispatch everywhere.
 
 
 ![](http://f.cl.ly/items/2r1n0i010g1G3i1S393N/Screen%20Shot%202015-04-17%20at%2012.48.12%20PM.png)
