@@ -4,7 +4,7 @@
 [![Coverage Status][coveralls-badge]][coveralls-url]
 [![Gitter][gitter-badge]][gitter-url]
 
-Kong is a scalable, lightweight open source API Layer *(also known as a API Gateway, or API Middleware)*, built on top of NGINX with focus on high performance and reliability. 
+Kong is a scalable, lightweight open-source Management Layer for APIs and Microservices, built on top of NGINX with focus on high performance and reliability. 
 
 ## Why Kong
 
