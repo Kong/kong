@@ -320,7 +320,7 @@ function BaseDao:prepare_kong_statement(query, params)
   end
 
   if prepare_err then
-    return nil, DaoError("Failed to prepare statement: "..query..". Error: "..prepare_err, error_types.DATABASE)
+    return nil, DaoError("Failed to prepare statement: \""..query_to_prepare.."\". "..prepare_err, error_types.DATABASE)
   else
     return {
       is_kong_statement = true,

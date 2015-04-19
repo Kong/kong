@@ -5,7 +5,7 @@ describe("Utils #tools", function()
 
   describe("Stringy", function()
 
-    it("should work when using startsiwth", function() 
+    it("should work when using startsiwth", function()
       local stringy = require "stringy"
       assert.truthy(stringy.startswith("hello", "he"))
       assert.falsy(stringy.startswith("hello", "HE"))

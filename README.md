@@ -4,53 +4,73 @@
 [![Coverage Status][coveralls-badge]][coveralls-url]
 [![Gitter][gitter-badge]][gitter-url]
 
-Kong is an open distributed platform for your APIs, built on top of nginx it's focused on high performance and reliability.
+Kong is a scalable, lightweight open-source Management Layer for APIs and Microservices. Built on top of NGINX with focus on high performance and reliability. 
 
-Official website at [getkong.org](http://getkong.org)
+## Why Kong
 
-* **[Installation](#installation)**
-* **[Documentation](#documentation)**
-* **[Usage](#usage)**
-* **[Development](#development)**
+We used to write custom code for each service. With Kong we **write once, dispatch everywhere**.
+
+
+![](http://f.cl.ly/items/2r1n0i010g1G3i1S393N/Screen%20Shot%202015-04-17%20at%2012.48.12%20PM.png)
+
+
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Documentation](#documentation)
+3. [Usage](#usage)
+4. [Development](#development)
+  1. [Makefile Operations](#makefile-operations)
 
 ## Installation
 
-To install Kong, please follow the instructions at [getkong.org/download](http://getkong.org/download)
+1. Download: [http://getkong.org/download](http://getkong.org/download)
+2. Run `kong start`
+
+**Note:** Kong requires [Cassandra 2.1.3](http://archive.apache.org/dist/cassandra/2.1.3/)
 
 ## Documentation
 
-Official documentation can be found at [getkong.org/docs/](http://getkong.org/docs/)
+Visit [getkong.org](http://getkong.org/docs/) for the official Kong documentation.
 
 ## Usage
 
-Use Kong through the `kong` executable. If you installed Kong via one of the [available methods](http://getkong.org/download/), then `kong` should be in your `$PATH`.
+Use Kong through the `kong` CLI:
 
 ```bash
 $ kong --help
 ```
+
+**Note** If you installed Kong via one of the [available methods](http://getkong.org/download/), then `kong` should already be in your `$PATH`.
+
 ## Development
 
-To develop for Kong, simply run `[sudo] make install` in a clone of this repo. Then run:
+1. Clone the repository and make it your working directory.
+2. Run `[sudo] make install`
+  
+  This will build and install the `kong` luarock globally.
 
-```bash
-$ make dev
-```
+3. Run `make dev`
+   
+  This will install development dependencies and create your environment configuration files:
 
-This will install development dependencies and create your environment configuration files (`kong_TESTS.yml` and `kong_DEVELOPMENT.yml`).
+  - `kong_TESTS.yml`
+  - `kong_DEVELOPMENT.yml`
 
-- Run the tests:
+4. Run the tests:
+  
+  ```bash
+  make test-all
+  ```
+  
+5. Run Kong with the development configuration file:
+   
+   ```bash
+   $ kong start -c kong_DEVELOPMENT.yml
+   ```
 
-```bash
-$ make test-all
-```
-
-- Run Kong with the development configuration:
-
-```bash
-$ kong start -c kong_DEVELOPMENT.yml
-```
-
-#### Makefile
+#### Makefile Operations
 
 When developing, use the `Makefile` for doing the following operations:
 
