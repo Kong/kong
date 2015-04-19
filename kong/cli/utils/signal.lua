@@ -160,9 +160,6 @@ local _M = {}
 function _M.prepare_kong(args_config)
   local kong_config, kong_config_path = get_kong_config(args_config)
 
-  prepare_nginx_working_dir(args_config)
-  prepare_database(args_config)
-
   -- Print important informations
   cutils.logger:info(string.format([[Proxy port...%s
        API port.....%s
@@ -172,6 +169,9 @@ function _M.prepare_kong(args_config)
   kong_config.admin_port,
   kong_config.database,
   prettify_table_properties(kong_config.databases_available[kong_config.database].properties)))
+
+  prepare_nginx_working_dir(args_config)
+  prepare_database(args_config)
 end
 
 -- Send a signal to `nginx`. No signal will start the process

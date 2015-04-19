@@ -156,19 +156,23 @@ function CassandraFactory:execute(query, params, keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+    return nil, DaoError("Cannot connect to Cassandra: "..err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
   if not ok then
-    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+    return nil, DaoError("Cassandra error: "..err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:execute(query, params)
 
   session:close()
 
-  return ok, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  if not ok then
+    return nil, DaoError("Cassandra error: "..err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  end
+
+  return ok
 end
 
 -- Log (add) given migration to schema_migrations table.
