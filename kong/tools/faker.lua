@@ -29,7 +29,8 @@ Faker.FIXTURES = {
     { name = "test3", public_dns = "test3.com", target_url = "http://mockbin.com" },
     { name = "test4", public_dns = "test4.com", target_url = "http://mockbin.com" },
     { name = "test5", public_dns = "test5.com", target_url = "http://mockbin.com" },
-    { name = "test6", public_dns = "test6.com", target_url = "http://mockbin.com" }
+    { name = "test6", public_dns = "test6.com", target_url = "http://mockbin.com" },
+    { name = "test7", public_dns = "test7.com", target_url = "http://mockbin.com" }
   },
   consumer = {
     { custom_id = "provider_123" },
@@ -52,7 +53,8 @@ Faker.FIXTURES = {
     { name = "ratelimiting", value = { period = "minute", limit = 8 }, __api = 6, __consumer = 1 },
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
-    { name = "filelog", value = { }, __api = 1 }
+    { name = "filelog", value = { }, __api = 1 },
+    { name = "request_transformer", value = { add = { headers = {"x-added:true"}, querystring = {"newparam:value"} } }, __api = 7 },
   }
 }
 

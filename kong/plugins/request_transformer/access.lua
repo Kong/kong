@@ -8,13 +8,15 @@ local FORM_URLENCODED = "application/x-www-form-urlencoded"
 local MULTIPART_DATA = "multipart/form-data"
 local CONTENT_TYPE = "content-type"
 
-local function iterate_and_exec(val, cb)
+local function retrieve_params(val)
+  local t = {}
   if utils.table_size(val) > 0 then
     for _, entry in ipairs(val) do
       local parts = stringy.split(entry, ":")
-      cb(parts[0], parts[1])  
+      t[parts[1]] = parts[2]
     end
   end
+  return t
 end
 
 function _M.execute(conf)
@@ -31,10 +33,17 @@ function _M.execute(conf)
 
     -- Add Querystring
     if conf.add.querystring then
+
       local querystring = ngx.req.get_uri_args()
-      iterate_and_exec(conf.add.querystring, function(name, value)
-        querystring[name] = value
-      end)
+      if not querystring or utils.table_size(querystring) == 0 then 
+        querystring = {} 
+      end
+
+      local new_params = retrieve_params(conf.add.querystring)
+      for k,v in pairs(new_params) do
+        querystring[k] = v
+      end
+
       ngx.req.set_uri_args(querystring)
     end
 
