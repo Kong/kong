@@ -51,6 +51,7 @@ coverage:
 	@rm -f luacov.*
 	@busted --coverage spec/unit
 	@luacov -c spec/.luacov
+	@tail -n 1 luacov.report.out | awk '{ print $$3 }'
 
 test-api:
 	@busted spec/integration/api
