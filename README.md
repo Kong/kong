@@ -4,7 +4,7 @@
 [![Coverage Status][coveralls-badge]][coveralls-url]
 [![Gitter][gitter-badge]][gitter-url]
 
-Kong is a scalable, lightweight open-source Management Layer for APIs and Microservices. Built on top of NGINX with focus on high performance and reliability. 
+Kong is a scalable, open-source Management Layer for APIs and Microservices. Built on top of NGINX with focus on high performance and reliability.
 
 ## Why Kong
 
@@ -48,24 +48,24 @@ $ kong --help
 
 1. Clone the repository and make it your working directory.
 2. Run `[sudo] make install`
-  
+
   This will build and install the `kong` luarock globally.
 
 3. Run `make dev`
-   
+
   This will install development dependencies and create your environment configuration files:
 
   - `kong_TESTS.yml`
   - `kong_DEVELOPMENT.yml`
 
 4. Run the tests:
-  
+
   ```bash
   make test-all
   ```
-  
+
 5. Run Kong with the development configuration file:
-   
+
    ```bash
    $ kong start -c kong_DEVELOPMENT.yml
    ```
