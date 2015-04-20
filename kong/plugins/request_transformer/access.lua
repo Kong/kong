@@ -17,6 +17,14 @@ local function iterate_and_exec(val, cb)
   end
 end
 
+local function get_content_type(request)
+  local header_value = ngx.req.get_headers()[CONTENT_TYPE]
+  if header_value then
+    return stringy.strip(header_value)
+  end
+  return nil
+end
+
 function _M.execute(conf)
   if not conf then return end
 
@@ -37,12 +45,12 @@ function _M.execute(conf)
         querystring[name] = value
       end)
       ngx.req.set_uri_args(querystring)
-      
+
     end
 
     if conf.add.form then
-      local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
-      if utils.starts_with(content_type, FORM_URLENCODED) then
+      local content_type = get_content_type(ngx.req)
+      if content_type and stringy.startswith(content_type, FORM_URLENCODED) then
         -- Call ngx.req.read_body to read the request body first
         -- or turn on the lua_need_request_body directive to avoid errors.
         ngx.req.read_body()
@@ -54,13 +62,13 @@ function _M.execute(conf)
         local encoded_args = ngx.encode_args(parameters)
         ngx.req.set_header(CONTENT_LENGTH, string.len(encoded_args))
         ngx.req.set_body_data(encoded_args)
-      elseif utils.starts_with(content_type, MULTIPART_DATA) then
+      elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
         -- Call ngx.req.read_body to read the request body first
         -- or turn on the lua_need_request_body directive to avoid errors.
         ngx.req.read_body()
 
         local body = ngx.req.get_body_data()
-        local parameters = Multipart(body, content_type)
+        local parameters = Multipart(body and body or "", content_type)
         iterate_and_exec(conf.add.form, function(name, value)
           parameters:set_simple(name, value)
         end)

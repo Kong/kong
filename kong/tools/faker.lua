@@ -54,7 +54,7 @@ Faker.FIXTURES = {
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
     { name = "filelog", value = { }, __api = 1 },
-    { name = "request_transformer", value = { add = { headers = {"x-added:true"}, querystring = {"newparam:value"} } }, __api = 7 },
+    { name = "request_transformer", value = { add = { headers = {"x-added:true"}, querystring = {"newparam:value"}, form = {"newformparam:newvalue"} } }, __api = 7 },
   }
 }
 
