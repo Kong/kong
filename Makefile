@@ -28,9 +28,9 @@ dev:
 
 clean:
 	@rm -f luacov.*
-	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
 	@bin/kong migrations -c $(DEVELOPMENT_CONF) reset
+	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 
 run:
 	@bin/kong start -c $(DEVELOPMENT_CONF)
