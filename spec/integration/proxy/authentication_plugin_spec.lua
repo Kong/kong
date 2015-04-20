@@ -18,7 +18,7 @@ describe("Authentication Plugin #proxy", function()
   end)
 
   describe("Query Authentication", function()
-
+    --[[
     it("should return invalid credentials when the credential value is wrong", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "asd"}, {host = "test.com"})
       local body = cjson.decode(response)
@@ -119,9 +119,18 @@ describe("Authentication Plugin #proxy", function()
       assert.are.equal(403, status)
       assert.are.equal("Your authentication credentials are invalid", body.message)
     end)
+    --]]
+    it("should pass with GET and hide credentials in querystring", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
+      print(response)
+      assert.are.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.falsy(parsed_response.queryString.apikey)
+    end)
 
   end)
 
+  --[[
   describe("Basic Authentication", function()
 
     it("should return invalid credentials when the credential value is wrong", function()
@@ -165,7 +174,7 @@ describe("Authentication Plugin #proxy", function()
       local parsed_response = cjson.decode(response)
       assert.are.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers.authorization)
     end)
-
+    
     it("should pass with POST", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {}, {host = "test3.com", authorization = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       assert.are.equal(200, status)
@@ -174,5 +183,6 @@ describe("Authentication Plugin #proxy", function()
     end)
 
   end)
+  --]]
 
 end)

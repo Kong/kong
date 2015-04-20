@@ -8,43 +8,36 @@ local FORM_URLENCODED = "application/x-www-form-urlencoded"
 local MULTIPART_DATA = "multipart/form-data"
 local CONTENT_TYPE = "content-type"
 
-local function retrieve_params(val)
-  local t = {}
+local function iterate_and_exec(val, cb)
   if utils.table_size(val) > 0 then
     for _, entry in ipairs(val) do
       local parts = stringy.split(entry, ":")
-      t[parts[1]] = parts[2]
+      cb(parts[1], parts[2])
     end
   end
-  return t
 end
 
 function _M.execute(conf)
   if not conf then return end
 
   if conf.add then
-
+    
     -- Add headers
     if conf.add.headers then
       iterate_and_exec(conf.add.headers, function(name, value)
         ngx.req.set_header(name, value)
       end)
     end
-
+    
     -- Add Querystring
     if conf.add.querystring then
 
       local querystring = ngx.req.get_uri_args()
-      if not querystring or utils.table_size(querystring) == 0 then 
-        querystring = {} 
-      end
-
-      local new_params = retrieve_params(conf.add.querystring)
-      for k,v in pairs(new_params) do
-        querystring[k] = v
-      end
-
+      iterate_and_exec(conf.add.querystring, function(name, value)
+        querystring[name] = value
+      end)
       ngx.req.set_uri_args(querystring)
+      
     end
 
     if conf.add.form then
@@ -77,7 +70,7 @@ function _M.execute(conf)
       end
       
     end
-
+    --]]
   elseif conf.remove then
 
   end
