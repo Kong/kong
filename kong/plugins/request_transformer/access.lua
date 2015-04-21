@@ -29,7 +29,7 @@ function _M.execute(conf)
   if not conf then return end
 
   if conf.add then
-    
+
     -- Add headers
     if conf.add.headers then
       iterate_and_exec(conf.add.headers, function(name, value)
@@ -39,13 +39,11 @@ function _M.execute(conf)
     
     -- Add Querystring
     if conf.add.querystring then
-
       local querystring = ngx.req.get_uri_args()
       iterate_and_exec(conf.add.querystring, function(name, value)
         querystring[name] = value
       end)
       ngx.req.set_uri_args(querystring)
-
     end
 
     if conf.add.form then
@@ -76,7 +74,6 @@ function _M.execute(conf)
         ngx.req.set_header(CONTENT_LENGTH, string.len(new_data))
         ngx.req.set_body_data(new_data)
       end
-      
     end
 
   end
@@ -91,13 +88,11 @@ function _M.execute(conf)
     end
 
     if conf.remove.querystring then
-
       local querystring = ngx.req.get_uri_args()
       iterate_and_exec(conf.remove.querystring, function(name)
         querystring[name] = nil
       end)
       ngx.req.set_uri_args(querystring)
-
     end
 
     if conf.remove.form then
