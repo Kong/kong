@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
-describe("Proxy API #proxy", function()
+describe("Resolver #proxy", function()
 
   setup(function()
     spec_helper.prepare_db()

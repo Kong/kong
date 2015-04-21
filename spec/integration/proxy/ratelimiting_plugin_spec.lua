@@ -4,7 +4,7 @@ local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
-describe("RateLimiting Plugin #proxy", function()
+describe("RateLimiting Plugin", function()
 
   setup(function()
     spec_helper.prepare_db()
@@ -19,18 +19,18 @@ describe("RateLimiting Plugin #proxy", function()
   describe("Without authentication (IP address)", function()
 
     it("should get blocked if exceeding limit", function()
-      -- Default ratelimiting plugin for this API says 2/minute
+      -- Default ratelimiting plugin for this API says 6/minute
       local limit = 6
 
       for i = 1, limit do
-        local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
+        local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
         assert.are.equal(200, status)
         assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
         assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
       end
 
-      -- Third query, while limit is 2/minute
-      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
+      -- Additonal request, while limit is 6/minute
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
       local body = cjson.decode(response)
       assert.are.equal(429, status)
       assert.are.equal("API rate limit exceeded", body.message)
@@ -43,18 +43,18 @@ describe("RateLimiting Plugin #proxy", function()
     describe("Default plugin", function()
 
       it("should get blocked if exceeding limit", function()
-        -- Default ratelimiting plugin for this API says 2/minute
+        -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
         for i = 1, limit do
-          local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
+          local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test3.com"})
           assert.are.equal(200, status)
           assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
           assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
         end
 
         -- Third query, while limit is 2/minute
-        local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
+        local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test3.com"})
         local body = cjson.decode(response)
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
@@ -65,17 +65,17 @@ describe("RateLimiting Plugin #proxy", function()
     describe("Plugin customized for specific consumer", function()
 
       it("should get blocked if exceeding limit", function()
-        -- This plugin says this consumer can make 4 requests/minute, not 2 like fault
+        -- This plugin says this consumer can make 4 requests/minute, not 6 like the default
         local limit = 8
 
         for i = 1, limit do
-          local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test6.com"})
+          local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test3.com"})
           assert.are.equal(200, status)
           assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
           assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
         end
 
-        local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test6.com"})
+        local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test3.com"})
         local body = cjson.decode(response)
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
