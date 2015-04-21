@@ -18,11 +18,6 @@ Options:
 local config_path = cutils.get_kong_config_path(args.config)
 local _, dao_factory = IO.load_configuration_and_dao(config_path)
 
-local err = dao_factory:prepare()
-if err then
-  utils.logger:error_exit("cannot prepare statements: "..err)
-end
-
 local res, err = dao_factory.apis:insert {
   name = args.name,
   public_dns = args["public-dns"],
@@ -33,5 +28,5 @@ if err then
   cutils.logger:error_exit("Cannot insert API: "..err)
 elseif res then
   setmetatable(res, printable_mt)
-  cutils.logger:success("API inserted: "..res)
+  cutils.logger:success("API added to Kong: "..res)
 end
