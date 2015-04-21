@@ -28,9 +28,9 @@ dev:
 
 clean:
 	@rm -f luacov.*
-	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	@rm -rf nginx_tmp
 	@bin/kong migrations -c $(DEVELOPMENT_CONF) reset
+	@rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 
 run:
 	@bin/kong start -c $(DEVELOPMENT_CONF)
@@ -51,6 +51,7 @@ coverage:
 	@rm -f luacov.*
 	@busted --coverage spec/unit
 	@luacov -c spec/.luacov
+	@tail -n 1 luacov.report.out | awk '{ print $$3 }'
 
 test-api:
 	@busted spec/integration/api
