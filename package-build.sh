@@ -68,7 +68,7 @@ elif hash yum 2>/dev/null; then
     sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
-  sudo yum -y install wget tar make ldconfig gcc readline-devel perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel
+  sudo yum -y install wget tar make ldconfig gcc readline-devel perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
