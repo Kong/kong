@@ -137,7 +137,6 @@ describe("API", function()
       it("should GET all entities", function()
         local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/")
         local body = cjson.decode(response)
-        local inspect = require "inspect"
         assert.are.equal(200, status)
         assert.truthy(body.data)
         --assert.truthy(body.total)

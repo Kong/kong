@@ -46,7 +46,7 @@ local function start_udp_server()
   return thread;
 end
 
-describe("Logging Plugins #proxy", function()
+describe("Logging Plugins", function()
 
   setup(function()
     spec_helper.prepare_db()
@@ -64,7 +64,7 @@ describe("Logging Plugins #proxy", function()
       local thread = start_tcp_server() -- Starting the mock TCP server
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test.com"})
+      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com"})
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -81,7 +81,7 @@ describe("Logging Plugins #proxy", function()
       local thread = start_udp_server() -- Starting the mock TCP server
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test.com"})
+      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com"})
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -94,11 +94,11 @@ describe("Logging Plugins #proxy", function()
       assert.are.same("127.0.0.1", log_message.ip)
     end)
 
-    it("should log to file", function() 
+    it("should log to file", function()
       local uuid,_ = string.gsub(uuid(), "-", "")
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test.com", file_log_uuid = uuid})
+      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com", file_log_uuid = uuid})
       assert.are.equal(200, status)
 
       -- Reading the log file and finding the entry
@@ -115,7 +115,7 @@ describe("Logging Plugins #proxy", function()
       end
       assert.truthy(line)
 
-      -- Matching the Json 
+      -- Matching the Json
       local iterator, iter_err = rex.gmatch(line, "\\s+({.+})\\s+")
       if not iterator then
         error(iter_err)
