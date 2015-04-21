@@ -90,19 +90,20 @@ function _M.prepare_db(conf_file)
     end
   end)
 
-  -- 2. Prepare statements
-  local err = env.dao_factory:prepare()
-  if err then
-    error(err)
-  end
-
-  -- 3. Drop just to be sure
+  -- 2. Drop just to be sure if the test suite previously crashed for ex
+  --    Otherwise we might try to insert already existing data.
   local err = env.dao_factory:drop()
   if err then
     error(err)
   end
 
-  -- 3. Seed DB with our default data. This will throw any necessary error
+  -- 3. Prepare
+  local err = env.dao_factory:prepare()
+  if err then
+    error(err)
+  end
+
+  -- 4. Seed DB with our default data. This will throw any necessary error
   env.faker:seed()
 end
 

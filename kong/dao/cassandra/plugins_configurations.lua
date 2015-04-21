@@ -102,7 +102,7 @@ function PluginsConfigurations:find_distinct()
 
   -- Execute query
   local distinct_names = {}
-  for _, rows, page, err in session:execute(self._statements.select.query, nil, {auto_paging=true}) do
+  for _, rows, page, err in session:execute(string.format(self._queries.select.query, ""), nil, {auto_paging=true}) do
     if err then
       return nil, err
     end
