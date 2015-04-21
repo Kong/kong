@@ -34,6 +34,16 @@ app:get("/", function(self)
   })
 end)
 
+app.default_route = function(self)
+  local path = self.req.parsed_url.path:match("^(.*)/$")
+
+  if path and self.app.router:resolve(path, self) then
+    return
+  end
+
+  return self.app.handle_404(self)
+end
+
 app.handle_404 = function(self)
   return utils.not_found()
 end

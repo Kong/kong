@@ -47,6 +47,16 @@ if [ "$(uname)" = "Darwin" ]; then
   make install DESTDIR=$OUT
   cd $OUT
 
+  # Install OpenSSL
+  cd $TMP
+  wget https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+  tar xzf openssl-$OPENSSL_VERSION.tar.gz
+  cd openssl-$OPENSSL_VERSION
+  ./Configure darwin64-x86_64-cc
+  make
+  sudo make install
+  cd $OUT
+
   OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
   FPM_PARAMS="--osxpkg-identifier-prefix org.getkong"
 elif hash yum 2>/dev/null; then
@@ -74,13 +84,8 @@ else
   exit 1
 fi
 
-cd $TMP
-wget http://cache.ruby-lang.org/pub/ruby/2.1/ruby-2.1.2.tar.gz
-tar xvfvz ruby-2.1.2.tar.gz
-cd ruby-2.1.2
-./configure
-make
-sudo make install
+curl -sSL https://get.rvm.io | bash -s stable
+~/.rvm/scripts/rvm get stable
 
 sudo gem update --system
 sudo gem install fpm
