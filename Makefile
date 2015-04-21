@@ -2,7 +2,7 @@ TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
 DEV_ROCKS=busted luacov luacov-coveralls luacheck
 
-.PHONY: install dev clean run seed drop lint test coverage test-api test-proxy test-server test-all
+.PHONY: install dev clean run seed drop lint test coverage test-all
 
 install:
 	@if [ `uname` == "Darwin" ]; then \
@@ -52,15 +52,6 @@ coverage:
 	@busted --coverage spec/unit
 	@luacov -c spec/.luacov
 	@tail -n 1 luacov.report.out | awk '{ print $$3 }'
-
-test-api:
-	@busted spec/integration/api
-
-test-proxy:
-	@busted spec/integration/proxy
-
-test-server:
-	@busted spec/integration/server
 
 test-all:
 	@busted spec/

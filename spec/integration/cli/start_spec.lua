@@ -1,6 +1,4 @@
 local spec_helper = require "spec.spec_helpers"
-local constants = require "kong.constants"
-local stringy = require "stringy"
 local utils = require "kong.tools.utils"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
@@ -18,26 +16,7 @@ local function replace_conf_property(key, value)
   assert.truthy(ok)
 end
 
-describe("Server", function()
-
-  describe("CLI", function()
-
-    it("should return the right version", function()
-      local result, exit_code = IO.os_execute(spec_helper.KONG_BIN.." version")
-      assert.are.same("Kong version: "..constants.VERSION, stringy.strip(result))
-    end)
-
-    it("should start with the default configuration", function()
-      assert.has_no.errors(function()
-        spec_helper.start_kong(TEST_CONF, true)
-      end)
-
-      finally(function()
-        pcall(spec_helper.stop_kong, TEST_CONF)
-      end)
-    end)
-
-  end)
+describe("CLI", function()
 
   describe("Startup plugins check", function()
 
@@ -56,6 +35,16 @@ describe("Server", function()
     after_each(function()
       pcall(spec_helper.stop_kong, SERVER_CONF)
       spec_helper.reset_db(SERVER_CONF)
+    end)
+
+    it("should start with the default configuration", function()
+      assert.has_no.errors(function()
+        spec_helper.start_kong(TEST_CONF, true)
+      end)
+
+      finally(function()
+        pcall(spec_helper.stop_kong, TEST_CONF)
+      end)
     end)
 
     it("should work when no plugins are enabled and the DB is empty", function()
@@ -103,7 +92,7 @@ describe("Server", function()
 
       spec_helper.prepare_db(SERVER_CONF)
 
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
