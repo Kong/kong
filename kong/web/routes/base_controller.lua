@@ -101,124 +101,89 @@ function BaseController.parse_params(schema, params)
   return result
 end
 
-local function create(dao_collection, self)
-  if not check_content_type(self.req, FORM_URLENCODED_TYPE) then
-    return utils.unsupported_media_type(FORM_URLENCODED_TYPE)
-  end
+function BaseController:new(dao_collection, collection)
+  app:post("/"..collection, function(self)
+    if not check_content_type(self.req, FORM_URLENCODED_TYPE) then
+      return utils.unsupported_media_type(FORM_URLENCODED_TYPE)
+    end
 
-  local params = BaseController.parse_params(dao_collection._schema, self.params)
-  local data, err = dao_collection:insert(params)
-  if err then
-    return parse_dao_error(err)
-  else
-    return utils.created(data)
-  end
-end
-
-local function get_all(dao_collection, self)
-  local size = self.params.size
-  if size then
-    size = tonumber(size)
-  else
-    size = 100
-  end
-
-  local offset = self.params.offset
-  if offset then
-    offset = ngx.decode_base64(offset)
-  end
-
-  local params = BaseController.parse_params(dao_collection._schema, self.params)
-  local data, err = dao_collection:find_by_keys(params, size, offset)
-  if err then
-    return parse_dao_error(err)
-  end
-
-  local result = render_list_response(self.req, data, size)
-  return utils.show_response(200, result, type(result) ~= "table")
-end
-
-local function get(dao_collection, self)
-  local data, err = dao_collection:find_one(self.params.id)
-  if err then
-    return parse_dao_error(err)
-  end
-  if data then
-    return utils.success(data)
-  else
-    return utils.not_found()
-  end
-end
-
-local function delete(dao_collection, self)
-  local ok, err = dao_collection:delete(self.params.id)
-  if not ok then
+    local params = BaseController.parse_params(dao_collection._schema, self.params)
+    local data, err = dao_collection:insert(params)
     if err then
       return parse_dao_error(err)
     else
-      return utils.not_found()
+      return utils.created(data)
     end
-  else
-    return utils.no_content()
-  end
-end
-
-local function update(dao_collection, self)
-  if not check_content_type(self.req, APPLICATION_JSON_TYPE) then
-    return utils.unsupported_media_type(APPLICATION_JSON_TYPE)
-  end
-
-  local params = self.params
-  if self.params.id then
-    params.id = self.params.id
-  else
-    return utils.not_found()
-  end
-
-  local data, err = dao_collection:update(params)
-  if err then
-    return parse_dao_error(err)
-  elseif not data then
-    return utils.not_found()
-  else
-    return utils.success(data)
-  end
-end
-
-function BaseController:new(dao_collection, collection)
-  app:post("/"..collection, function(self)
-    return create(dao_collection, self)
-  end)
-  app:post("/"..collection.."/", function(self)
-    return create(dao_collection, self)
   end)
 
   app:get("/"..collection, function(self)
-    return get_all(dao_collection, self)
-  end)
-  app:get("/"..collection.."/", function(self)
-    return get_all(dao_collection, self)
+    local size = self.params.size
+    if size then
+      size = tonumber(size)
+    else
+      size = 100
+    end
+
+    local offset = self.params.offset
+    if offset then
+      offset = ngx.decode_base64(offset)
+    end
+
+    local params = BaseController.parse_params(dao_collection._schema, self.params)
+    local data, err = dao_collection:find_by_keys(params, size, offset)
+    if err then
+      return parse_dao_error(err)
+    end
+
+    local result = render_list_response(self.req, data, size)
+    return utils.show_response(200, result, type(result) ~= "table")
   end)
 
   app:get("/"..collection.."/:id", function(self)
-    return get(dao_collection, self)
-  end)
-  app:get("/"..collection.."/:id/", function(self)
-    return get(dao_collection, self)
+    local data, err = dao_collection:find_one(self.params.id)
+    if err then
+      return parse_dao_error(err)
+    end
+    if data then
+      return utils.success(data)
+    else
+      return utils.not_found()
+    end
   end)
 
   app:delete("/"..collection.."/:id", function(self)
-    return delete(dao_collection, self)
-  end)
-  app:delete("/"..collection.."/:id/", function(self)
-    return delete(dao_collection, self)
+    local ok, err = dao_collection:delete(self.params.id)
+    if not ok then
+      if err then
+        return parse_dao_error(err)
+      else
+        return utils.not_found()
+      end
+    else
+      return utils.no_content()
+    end
   end)
 
   app:put("/"..collection.."/:id", json_params(function(self)
-    return update(dao_collection, self)
-  end))
-  app:put("/"..collection.."/:id/", json_params(function(self)
-    return update(dao_collection, self)
+    if not check_content_type(self.req, APPLICATION_JSON_TYPE) then
+      return utils.unsupported_media_type(APPLICATION_JSON_TYPE)
+    end
+
+    local params = self.params
+    if self.params.id then
+      params.id = self.params.id
+    else
+      return utils.not_found()
+    end
+
+    local data, err = dao_collection:update(params)
+    if err then
+      return parse_dao_error(err)
+    elseif not data then
+      return utils.not_found()
+    else
+      return utils.success(data)
+    end
   end))
 
 end

@@ -14,7 +14,7 @@ uuid.seed()
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local TEST_CONF = "kong_TEST.yml"
 
-describe("Real IP", function()
+describe("Real IP #proxy", function()
 
   setup(function()
     spec_helper.prepare_db()
@@ -30,7 +30,7 @@ describe("Real IP", function()
     local uuid,_ = string.gsub(uuid(), "-", "")
 
     -- Making the request
-    local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test.com", ["X-Forwarded-For"] = "4.4.4.4, 1.1.1.1, 5.5.5.5", file_log_uuid = uuid})
+    local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com", ["X-Forwarded-For"] = "4.4.4.4, 1.1.1.1, 5.5.5.5", file_log_uuid = uuid})
     assert.are.equal(200, status)
 
     -- Reading the log file and finding the entry
@@ -47,7 +47,7 @@ describe("Real IP", function()
     end
     assert.truthy(line)
 
-    -- Matching the Json 
+    -- Matching the Json
     local iterator, iter_err = rex.gmatch(line, "\\s+({.+})\\s+")
     if not iterator then
       error(iter_err)
