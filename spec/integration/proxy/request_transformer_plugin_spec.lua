@@ -17,13 +17,14 @@ describe("Request Transformer Plugin #proxy", function()
     spec_helper.reset_db()
   end)
 
-  describe("Test headers", function()
+  describe("Test adding parameters", function()
 
     it("should add new headers", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("true", body.headers["x-added"])
+      assert.are.equal("true", body.headers["x-added2"])
     end)
     
     it("should add new parameters on POST", function()
@@ -63,6 +64,41 @@ describe("Request Transformer Plugin #proxy", function()
       assert.are.equal("value", body.queryString["newparam"])
     end)
 
+  end)
+
+  describe("Test removing parameters", function()
+
+    it("should remove a header", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test7.com", ["x-to-remove"] = "true"})
+      local body = cjson.decode(response)
+      assert.are.equal(200, status)
+      assert.falsy(body.headers["x-to-remove"])
+    end)
+    
+    it("should remove parameters on POST", function()
+      local response, status, headers = http_client.post(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test7.com"})
+      local body = cjson.decode(response)
+      assert.are.equal(200, status)
+      assert.falsy(body.postData.params["toremoveform"])
+      assert.are.same("yes", body.postData.params["nottoremove"])
+    end)
+
+    it("should remove parameters on multipart POST", function()
+      local response, status, headers = http_client.post_multipart(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test7.com"})
+      local body = cjson.decode(response)
+      assert.are.equal(200, status)
+      assert.falsy(body.postData.params["toremoveform"])
+      assert.are.same("yes", body.postData.params["nottoremove"])
+    end)
+    
+    it("should remove parameters on GET", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {["toremovequery"] = "yes", ["nottoremove"] = "yes"}, {host = "test7.com"})
+      local body = cjson.decode(response)
+      assert.are.equal(200, status)
+      assert.falsy(body.queryString["toremovequery"])
+      assert.are.equal("yes", body.queryString["nottoremove"])
+    end)
+    
   end)
 
 end)

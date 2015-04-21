@@ -12,7 +12,7 @@ local function iterate_and_exec(val, cb)
   if utils.table_size(val) > 0 then
     for _, entry in ipairs(val) do
       local parts = stringy.split(entry, ":")
-      cb(parts[1], parts[2])
+      cb(parts[1], utils.table_size(parts) == 2 and parts[2] or nil)
     end
   end
 end
@@ -78,8 +78,55 @@ function _M.execute(conf)
       end
       
     end
-    --]]
-  elseif conf.remove then
+
+  end
+
+  if conf.remove then
+
+    -- Add headers
+    if conf.remove.headers then
+      iterate_and_exec(conf.remove.headers, function(name, value)
+        ngx.req.clear_header(name)
+      end)
+    end
+
+    if conf.remove.querystring then
+
+      local querystring = ngx.req.get_uri_args()
+      iterate_and_exec(conf.remove.querystring, function(name)
+        querystring[name] = nil
+      end)
+      ngx.req.set_uri_args(querystring)
+
+    end
+
+    if conf.remove.form then
+      local content_type = get_content_type(ngx.req)
+      if content_type and stringy.startswith(content_type, FORM_URLENCODED) then
+        local parameters = ngx.req.get_post_args()
+
+        iterate_and_exec(conf.remove.form, function(name)
+          parameters[name] = nil
+        end)
+
+        local encoded_args = ngx.encode_args(parameters)
+        ngx.req.set_header(CONTENT_LENGTH, string.len(encoded_args))
+        ngx.req.set_body_data(encoded_args)
+      elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
+         -- Call ngx.req.read_body to read the request body first
+        -- or turn on the lua_need_request_body directive to avoid errors.
+        ngx.req.read_body()
+
+        local body = ngx.req.get_body_data()
+        local parameters = Multipart(body and body or "", content_type)
+        iterate_and_exec(conf.remove.form, function(name)
+          parameters:delete(name)
+        end)
+        local new_data = parameters:tostring()
+        ngx.req.set_header(CONTENT_LENGTH, string.len(new_data))
+        ngx.req.set_body_data(new_data)
+      end
+    end
 
   end
 

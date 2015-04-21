@@ -122,7 +122,6 @@ describe("Authentication Plugin #proxy", function()
     
     it("should pass with GET and hide credentials in querystring", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
-      print(response)
       assert.are.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.falsy(parsed_response.queryString.apikey)
