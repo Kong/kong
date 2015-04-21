@@ -48,18 +48,18 @@ end
 local mt = {
   -- Constructor
   -- @param err A raw error, typically returned by lua-resty-cassandra (string)
-  -- @param type An error type from constants, will be set as a key with 'true'
-  --             value on the returned error for fast comparison when dealing
-  --             with this error.
+  -- @param err_type An error type from constants, will be set as a key with 'true'
+  --                 value on the returned error for fast comparison when dealing
+  --                 with this error.
   -- @return A DaoError with the error_mt metatable
-  __call = function (self, err, type)
+  __call = function (self, err, err_type)
     if err == nil then
       return nil
     end
 
     local t = {
-      [type] = true,
-      message = err
+      [err_type] = true,
+      message = tostring(err)
     }
 
     return setmetatable(t, error_mt)
