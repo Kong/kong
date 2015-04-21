@@ -87,7 +87,7 @@ end
 function BaseDao:_check_unique(statement, t, is_updating)
   local results, err = self:_execute(statement, t)
   if err then
-    return false, "Error during UNIQUE check: "..err
+    return false, "Error during UNIQUE check: "..err.message
   elseif results and #results > 0 then
     if not is_updating then
       return false
@@ -118,7 +118,7 @@ end
 function BaseDao:_check_foreign(statement, t)
   local results, err = self:_execute(statement, t)
   if err then
-    return false, "Error during FOREIGN check: "..err
+    return false, "Error during FOREIGN check: "..err.message
   elseif not results or #results == 0 then
     return false
   else

@@ -97,7 +97,13 @@ function _M.prepare_db(conf_file)
     error(err)
   end
 
-  -- 3. Seed DB with our default data. This will throw any necessary error
+  -- 3. Prepare
+  local err = env.dao_factory:prepare()
+  if err then
+    error(err)
+  end
+
+  -- 4. Seed DB with our default data. This will throw any necessary error
   env.faker:seed()
 end
 
