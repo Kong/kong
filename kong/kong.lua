@@ -186,9 +186,9 @@ function _M.exec_plugins_access()
       end
     end
 
-    local conf = ngx.ctx.plugin_conf[plugin.name]
-    if not ngx.ctx.stop_phases and (plugin.resolver or conf) then
-      plugin.handler:access(conf and conf.value or nil)
+    local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
+    if not ngx.ctx.stop_phases and (plugin.resolver or plugin_conf) then
+      plugin.handler:access(plugin_conf and plugin_conf.value or nil)
     end
   end
 
@@ -211,9 +211,9 @@ function _M.exec_plugins_header_filter()
     ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
 
     for _, plugin in ipairs(plugins) do
-      local conf = ngx.ctx.plugin_conf[plugin.name]
-      if conf then
-        plugin.handler:header_filter(conf.value)
+      local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
+      if plugin_conf then
+        plugin.handler:header_filter(plugin_conf.value)
       end
     end
   end
@@ -223,9 +223,9 @@ end
 function _M.exec_plugins_body_filter()
   if not ngx.ctx.stop_phases then
     for _, plugin in ipairs(plugins) do
-      local conf = ngx.ctx.plugin_conf[plugin.name]
-      if conf then
-        plugin.handler:body_filter(conf.value)
+      local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
+      if plugin_conf then
+        plugin.handler:body_filter(plugin_conf.value)
       end
     end
   end
@@ -234,33 +234,10 @@ end
 -- Calls log() on every loaded plugin
 function _M.exec_plugins_log()
   if not ngx.ctx.stop_phases then
-    -- Creating the log variable that will be serialized
-    local message = {
-      request = {
-        uri = ngx.var.request_uri,
-        request_uri = ngx.var.scheme.."://"..ngx.var.host..":"..ngx.var.server_port..ngx.var.request_uri,
-        querystring = ngx.req.get_uri_args(), -- parameters, as a table
-        method = ngx.req.get_method(), -- http method
-        headers = ngx.req.get_headers(),
-        size = ngx.var.request_length
-      },
-      response = {
-        status = ngx.status,
-        headers = ngx.resp.get_headers(),
-        size = ngx.var.bytes_sent
-      },
-      authenticated_entity = ngx.ctx.authenticated_entity,
-      api = ngx.ctx.api,
-      client_ip = ngx.var.remote_addr,
-      started_at = ngx.req.start_time() * 1000
-    }
-
-    ngx.ctx.log_message = message
-
     for _, plugin in ipairs(plugins) do
-      local conf = ngx.ctx.plugin_conf[plugin.name]
-      if conf then
-        plugin.handler:log(conf.value)
+      local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
+      if plugin_conf then
+        plugin.handler:log(plugin_conf.value)
       end
     end
   end
