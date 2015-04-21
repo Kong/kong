@@ -5,10 +5,10 @@ local stringy = require "stringy"
 local Object = require "classic"
 
 local Apis = require "kong.dao.cassandra.apis"
-local RateLimitingMetrics = require "kong.dao.cassandra.ratelimiting_metrics"
-local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 local Consumers = require "kong.dao.cassandra.consumers"
+local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 local BasicAuthCredentials = require "kong.dao.cassandra.basicauth_credentials"
+local RateLimitingMetrics = require "kong.dao.cassandra.ratelimiting_metrics"
 local KeyAuthCredentials = require "kong.dao.cassandra.keyauth_credentials"
 
 local CassandraFactory = Object:extend()
@@ -43,54 +43,61 @@ function CassandraFactory:new(properties)
   self._properties.hosts = normalize_localhost(self._properties.hosts)
 
   self.apis = Apis(properties)
-  self.ratelimiting_metrics = RateLimitingMetrics(properties)
-  self.plugins_configurations = PluginsConfigurations(properties)
   self.consumers = Consumers(properties)
+  self.plugins_configurations = PluginsConfigurations(properties)
   self.basicauth_credentials = BasicAuthCredentials(properties)
+  self.ratelimiting_metrics = RateLimitingMetrics(properties)
   self.keyauth_credentials = KeyAuthCredentials(properties)
 end
 
 function CassandraFactory:drop()
   return self:execute_queries [[
     TRUNCATE apis;
-    TRUNCATE ratelimiting_metrics;
-    TRUNCATE plugins_configurations;
     TRUNCATE consumers;
+    TRUNCATE plugins_configurations;
     TRUNCATE basicauth_credentials;
     TRUNCATE keyauth_credentials;
+    TRUNCATE ratelimiting_metrics;
   ]]
 end
 
--- Prepare all statements in collection._queries and put them in collection._statements.
--- Should be called with only a collection and will recursively call itself for nested statements.
--- @param collection A collection with a ._queries property
-local function prepare_collection(collection, queries, statements)
-  if not queries then queries = collection._queries end
-  if not statements then statements = collection._statements end
-
-  for stmt_name, query in pairs(queries) do
-    if type(query) == "table" and query.query == nil then
-      collection._statements[stmt_name] = {}
-      prepare_collection(collection, query, collection._statements[stmt_name])
-    else
-      local q = stringy.strip(query.query)
-      q = string.format(q, "")
-      local kong_stmt, err = collection:prepare_kong_statement(q, query.params)
-      if err then
-        error(err)
-      end
-      statements[stmt_name] = kong_stmt
-    end
-  end
-end
-
--- Prepare all statements of collections
+-- Prepare all statements of collections `._queries` property and put them
+-- in a statements cache
+--
+-- Note:
+-- Even if the BaseDAO's :_execute() method support preparation of statements on-the-go,
+-- this method should be called when Kong starts in order to detect any failure in advance
+-- as well as test the connection to Cassandra.
+--
 -- @return error if any
 function CassandraFactory:prepare()
+  local function prepare_collection(collection, collection_queries)
+    if not collection_queries then collection_queries = collection._queries end
+    for stmt_name, collection_query in pairs(collection_queries) do
+      if type(collection_query) == "table" and collection_query.query == nil then
+        -- Nested queries, let's recurse to prepare them too
+        prepare_collection(collection, collection_query)
+      else
+        -- _queries can contain strings or tables with string + keys of parameters to bind
+        local query_to_prepare
+        if type(collection_query) == "string" then
+          query_to_prepare = collection_query
+        elseif collection_query.query then
+          query_to_prepare = collection_query.query
+        end
+
+        local _, err = collection:prepare_kong_statement(query_to_prepare, collection_query.params)
+        if err then
+          error(err)
+        end
+      end
+    end
+  end
+
   for _, collection in ipairs({ self.apis,
-                                self.ratelimiting_metrics,
-                                self.plugins_configurations,
                                 self.consumers,
+                                self.plugins_configurations,
+                                self.ratelimiting_metrics,
                                 self.basicauth_credentials,
                                 self.keyauth_credentials }) do
     local status, err = pcall(function() prepare_collection(collection) end)
