@@ -661,7 +661,6 @@ describe("Cassandra DAO", function()
       end)
 
       it("should find distinct plugins configurations", function()
-        pending("Waiting for driver fix #50")
         local res, err = dao_factory.plugins_configurations:find_distinct()
 
         assert.falsy(err)
