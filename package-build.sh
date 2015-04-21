@@ -32,6 +32,7 @@ PACKAGE_TYPE=""
 LUA_MAKE=""
 OPENRESTY_CONFIGURE=""
 FPM_PARAMS=""
+RUBY_CONFIGURE=""
 
 if [ "$(uname)" = "Darwin" ]; then
   PACKAGE_TYPE="osxpkg"
@@ -57,8 +58,9 @@ if [ "$(uname)" = "Darwin" ]; then
   sudo make install
   cd $OUT
 
+  RUBY_CONFIGURE="--with-openssl-dir=/usr/local/ssl"
   OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
-  FPM_PARAMS="--osxpkg-identifier-prefix org.getkong"
+  FPM_PARAMS="--osxpkg-identifier-prefix org.kong"
 elif hash yum 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
@@ -84,8 +86,13 @@ else
   exit 1
 fi
 
-curl -sSL https://get.rvm.io | bash -s stable
-~/.rvm/scripts/rvm get stable
+cd $TMP
+wget http://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.2.tar.gz
+tar xvfvz ruby-2.2.2.tar.gz
+cd ruby-2.2.2
+./configure $RUBY_CONFIGURE
+make
+sudo make install
 
 sudo gem update --system
 sudo gem install fpm
