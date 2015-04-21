@@ -74,24 +74,23 @@ $ kong --help
 
 When developing, use the `Makefile` for doing the following operations:
 
-| Name          | Description                                                                                         |
-| ------------- | --------------------------------------------------------------------------------------------------- |
-| `install`     | Install the Kong luarock globally                                                                   |
-| `dev`         | Setup your development environment                                                                  |
-| `run`         | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                          |
-| `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
-| `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)                                         |
-| `lint`        | Lint Lua files in `kong/`                                                                            |
-| `coverage`    | Run unit tests + coverage report (only unit-tested modules)                                         |
-| `test`        | Run the unit tests                                                                                  |
-| `test-proxy`  | Run the proxy integration tests                                                                     |
-| `test-server` | Run the server integration tests                                                                    |
-| `test-api`    | Run the api integration tests                                                                       |
-| `test-all`    | Run all unit + integration tests at once                                                            |
+| Name          | Description                                                              |
+| -------------:| -------------------------------------------------------------------------|
+| `install`     | Install the Kong luarock globally                                        |
+| `dev`         | Setup your development environment                                       |
+| `run`         | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)               |
+| `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
+| `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
+| `lint`        | Lint Lua files in `kong/`                                                |
+| `coverage`    | Run unit tests + coverage report (only unit-tested modules)              |
+| `test`        | Run the unit tests                                                       |
+| `test-all`    | Run all unit + integration tests at once                                 |
 
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
+
 [coveralls-url]: https://coveralls.io/r/Mashape/kong?branch=master
 [coveralls-badge]: https://coveralls.io/repos/Mashape/kong/badge.svg?branch=master
+
 [gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 [gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
