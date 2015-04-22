@@ -666,13 +666,14 @@ describe("Cassandra DAO", function()
         assert.falsy(err)
         assert.truthy(res)
 
-        assert.are.same(6, #res)
+        assert.are.same(7, #res)
         assert.truthy(utils.array_contains(res, "keyauth"))
         assert.truthy(utils.array_contains(res, "basicauth"))
         assert.truthy(utils.array_contains(res, "ratelimiting"))
         assert.truthy(utils.array_contains(res, "tcplog"))
         assert.truthy(utils.array_contains(res, "udplog"))
         assert.truthy(utils.array_contains(res, "filelog"))
+        assert.truthy(utils.array_contains(res, "request_transformer"))
       end)
 
       it("should insert a plugin and set the consumer_id to a 'null' uuid if none is specified", function()
@@ -877,4 +878,5 @@ describe("Cassandra DAO", function()
     end)
 
   end) -- describe rate limiting metrics
+
 end)

@@ -89,7 +89,7 @@ function BaseController.parse_params(schema, params)
 
     -- Process subschemas
     for k, v in pairs(subschemas) do
-      local subschema_value = BaseController.parse_params(v.schema(result), v.params)
+      local subschema_value = BaseController.parse_params(type(v.schema) == "table" and v.schema or v.schema(result), v.params)
       if utils.table_size(subschema_value) > 0 then -- Set subschemas to nil if nothing exists
         result[k] = subschema_value
       else
