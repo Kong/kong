@@ -140,7 +140,8 @@ function _M.init()
   -- Loading configuration
   configuration, dao = IO.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
-  -- Initializing DAO
+  -- Prepare all collections' statements. Even if optional, this call is useful to check
+  -- all statements are valid in advance.
   local err = dao:prepare()
   if err then
     error(err)
