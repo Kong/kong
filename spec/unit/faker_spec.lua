@@ -78,7 +78,7 @@ describe("Faker #tools", function()
     it("should be possible to add some random entities complementing the default hard-coded ones", function()
       faker:seed(2000)
       assert.spy(faker.insert_from_table).was.called(2)
-      assert.spy(insert_spy).was.called(8018) -- 3*2000 + base entities
+      assert.spy(insert_spy).was.called(8020) -- 3*2000 + 21 base entities
     end)
 
     it("should create relations between entities_to_insert and inserted entities", function()

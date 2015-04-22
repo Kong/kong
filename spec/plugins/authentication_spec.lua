@@ -107,7 +107,31 @@ describe("Authentication Plugin", function()
         assert.are.equal(403, status)
         assert.are.equal("Your authentication credentials are invalid", body.message)
       end)
+
+      it("should pass with GET and hide credentials and another param", function()
+        local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test3.com", apikey = "apikey123", wot = "wat"})
+        assert.are.equal(200, status)
+        local parsed_response = cjson.decode(response)
+        assert.falsy(parsed_response.headers.apikey)
+        assert.are.equal("wat", parsed_response.headers.wot)
+      end)
+
+      it("should not pass with GET and hide credentials", function()
+        local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test3.com", apikey = "apikey123123"})
+        local body = cjson.decode(response)
+        assert.are.equal(403, status)
+        assert.are.equal("Your authentication credentials are invalid", body.message)
+      end)
+      
+      it("should pass with GET and hide credentials in querystring", function()
+        local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test3.com"})
+        assert.are.equal(200, status)
+        local parsed_response = cjson.decode(response)
+        assert.falsy(parsed_response.queryString.apikey)
+      end)
+
     end)
+
   end)
 
   describe("Basic Authentication", function()
@@ -153,7 +177,7 @@ describe("Authentication Plugin", function()
       local parsed_response = cjson.decode(response)
       assert.are.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers.authorization)
     end)
-
+    
     it("should pass with POST", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {}, {host = "test2.com", authorization = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       assert.are.equal(200, status)

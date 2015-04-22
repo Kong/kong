@@ -29,6 +29,7 @@ local IO = require "kong.tools.io"
 local cache = require "kong.tools.cache"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
+local stringy = require "stringy"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -175,6 +176,14 @@ function _M.exec_plugins_access()
       plugin.handler:access(conf and conf.value or nil)
     end
   end
+
+  -- Append any modified querystring parameters
+  local parts = stringy.split(ngx.var.backend_url, "?")
+  local final_url = parts[1]
+  if utils.table_size(ngx.req.get_uri_args()) > 0 then
+    final_url = final_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
+  end
+  ngx.var.backend_url = final_url
 
   ngx.ctx.proxy_started_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 end
