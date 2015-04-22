@@ -160,7 +160,6 @@ end
 return {
   colors = colors,
   logger = logger,
-  properties_to_string = properties_to_string,
   get_kong_infos = get_kong_infos,
   get_kong_config_path = get_kong_config_path,
   get_ssl_cert_and_key = get_ssl_cert_and_key,

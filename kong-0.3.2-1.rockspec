@@ -52,8 +52,9 @@ build = {
     ["kong.cli.reload"] = "kong/cli/reload.lua",
     ["kong.cli.restart"] = "kong/cli/restart.lua",
     ["kong.cli.version"] = "kong/cli/version.lua",
-    ["kong.cli.add_api"] = "kong/cli/add_api.lua",
     ["kong.cli.migrations"] = "kong/cli/migrations.lua",
+    ["kong.cli.add_api"] = "kong/cli/add_api.lua",
+    ["kong.cli.add_consumer"] = "kong/cli/add_consumer.lua",
 
     ["kong.tools.io"] = "kong/tools/io.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",

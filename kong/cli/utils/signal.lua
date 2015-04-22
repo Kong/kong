@@ -138,7 +138,6 @@ local function prepare_nginx_working_dir(args_config)
   end
 
   -- Inject anonymous reports
-  local KONG_SYSLOG = "kong-hf.mashape.com"
   if kong_config.send_anonymous_reports then
     -- If there is no internet connection, disable this feature
     if socket.dns.toip(constants.SYSLOG.ADDRESS) then
