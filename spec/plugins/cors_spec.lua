@@ -43,8 +43,6 @@ function enable_plugin (api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
   local response, status, headers = http_client.post(API_URL.."/plugins_configurations/", plugin)
 
-  print(response)
-
   -- decode response
   response = cjson.decode(response)
 
@@ -126,10 +124,8 @@ describe("CORS Plugin", function()
       -- make request
       local response, status, headers = request("options", nil, { origin = "testing.com" })
 
-      print_table(headers)
-
       -- assertions
-      assert.are.equal(status, 200)
+      assert.are.equal(status, 204)
 
       -- cleanup
       delete_plugins()

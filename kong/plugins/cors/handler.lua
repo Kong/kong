@@ -12,4 +12,6 @@ function CorsHandler:access(conf)
   access.execute(conf)
 end
 
+CorsHandler.PRIORITY = 2000
+
 return CorsHandler
