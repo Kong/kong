@@ -43,6 +43,7 @@ plugins_available:
   - tcplog
   - udplog
   - filelog
+  - cors
 
 # Nginx prefix path directory
 nginx_working_dir: /usr/local/kong/

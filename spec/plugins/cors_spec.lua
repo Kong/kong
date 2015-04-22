@@ -90,7 +90,7 @@ describe("CORS Plugin", function()
     spec_helper.prepare_db()
     spec_helper.start_kong()
 
-    create_api("API_TESTS_1", "mockbin1.com")
+    create_api("API_TESTS_1", "mockbin.com")
     create_api("API_TESTS_2", "mockbin2.com")
     create_api("API_TESTS_3", "mockbin3.com")
     create_api("API_TESTS_4", "mockbin4.com")
@@ -166,7 +166,6 @@ describe("CORS Plugin", function()
       local response, status, headers = request("API_TESTS_2", "options")
 
       -- assertions
-      assert.are.equal(status, 204)
       assert.are.equal(headers["access-control-allow-origin"], options["value.origin"])
       assert.are.equal(headers["access-control-allow-headers"], options["value.headers"])
       assert.are.equal(headers["access-control-allow-methods"], options["value.methods"])
@@ -187,7 +186,6 @@ describe("CORS Plugin", function()
       local response, status, headers = request("API_TESTS_3", "get")
 
       -- assertions
-      assert.are.equal(status, 200)
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], nil)
       assert.are.equal(headers["access-control-allow-headers"], nil)
@@ -212,7 +210,6 @@ describe("CORS Plugin", function()
       local response, status, headers = request("API_TESTS_4", "get")
 
       -- assertions
-      assert.are.equal(status, 200)
       assert.are.equal(headers["access-control-allow-origin"], options["value.origin"])
       assert.are.equal(headers["access-control-expose-headers"], options["value.headers"])
       assert.are.equal(headers["access-control-allow-headers"], nil)
