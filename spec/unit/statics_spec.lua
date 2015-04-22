@@ -44,6 +44,7 @@ plugins_available:
   - udplog
   - filelog
   - cors
+  - request_transformer
 
 # Nginx prefix path directory
 nginx_working_dir: /usr/local/kong/

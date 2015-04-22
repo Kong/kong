@@ -29,6 +29,7 @@ Faker.FIXTURES = {
     { name = "API TESTS 2", public_dns = "test2.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 3", public_dns = "test3.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 4", public_dns = "test4.com", target_url = "http://mockbin.com" },
+    { name = "API TESTS 5", public_dns = "test5.com", target_url = "http://mockbin.com" }
 
     -- DEVELOPMENT APIs. Please do not use those in tests
   },
@@ -48,7 +49,7 @@ Faker.FIXTURES = {
     { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
-    { name = "filelog", value = {}, __api = 1 },
+    { name = "filelog", value = { }, __api = 1 },
     -- API 2
     { name = "basicauth", value = {}, __api = 2 },
     -- API 3
@@ -56,7 +57,15 @@ Faker.FIXTURES = {
     { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 3 },
     { name = "ratelimiting", value = {period = "minute", limit = 8}, __api = 3, __consumer = 1 },
     -- API 4
-    { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 4 }
+    { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 4 },
+    --API 5
+    { name = "request_transformer", value = { 
+      add = { headers = {"x-added:true", "x-added2:true" }, 
+              querystring = {"newparam:value"}, 
+              form = {"newformparam:newvalue"} },
+      remove = { headers = { "x-to-remove" },
+                 querystring = { "toremovequery" },
+                 form = { "toremoveform" } } }, __api = 5 }
   }
 }
 

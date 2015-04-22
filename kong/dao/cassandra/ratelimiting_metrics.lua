@@ -6,24 +6,18 @@ local RateLimitingMetrics = BaseDao:extend()
 
 function RateLimitingMetrics:new(properties)
   self._queries = {
-    increment_counter = {
-      query = [[ UPDATE ratelimiting_metrics SET value = value + 1 WHERE api_id = ? AND
-                                                            identifier = ? AND
-                                                            period_date = ? AND
-                                                            period = ?; ]]
-    },
-    select_one = {
-      query = [[ SELECT * FROM ratelimiting_metrics WHERE api_id = ? AND
-                                             identifier = ? AND
-                                             period_date = ? AND
-                                             period = ?; ]]
-    },
-    delete = {
-      query = [[ DELETE FROM ratelimiting_metrics WHERE api_id = ? AND
-                                           identifier = ? AND
-                                           period_date = ? AND
-                                           period = ?; ]]
-    }
+    increment_counter = [[ UPDATE ratelimiting_metrics SET value = value + 1 WHERE api_id = ? AND
+                            identifier = ? AND
+                            period_date = ? AND
+                            period = ?; ]],
+    select_one = [[ SELECT * FROM ratelimiting_metrics WHERE api_id = ? AND
+                      identifier = ? AND
+                      period_date = ? AND
+                      period = ?; ]],
+    delete = [[ DELETE FROM ratelimiting_metrics WHERE api_id = ? AND
+                  identifier = ? AND
+                  period_date = ? AND
+                  period = ?; ]]
   }
 
   RateLimitingMetrics.super.new(self, properties)
@@ -34,7 +28,7 @@ function RateLimitingMetrics:increment(api_id, identifier, current_timestamp)
   local batch = cassandra.BatchStatement(cassandra.batch_types.COUNTER)
 
   for period, period_date in pairs(periods) do
-    batch:add(self._statements.increment_counter.query, {
+    batch:add(self._queries.increment_counter, {
       cassandra.uuid(api_id),
       identifier,
       cassandra.timestamp(period_date),
@@ -48,7 +42,7 @@ end
 function RateLimitingMetrics:find_one(api_id, identifier, current_timestamp, period)
   local periods = timestamp.get_timestamps(current_timestamp)
 
-  local metric, err = RateLimitingMetrics.super._execute(self, self._statements.select_one, {
+  local metric, err = RateLimitingMetrics.super._execute(self, self._queries.select_one, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.timestamp(periods[period]),
@@ -71,19 +65,19 @@ end
 
 -- Unsuported
 function RateLimitingMetrics:insert()
-  error("ratelimiting_metrics:insert() not supported")
+  error("ratelimiting_metrics:insert() not supported", 2)
 end
 
 function RateLimitingMetrics:update()
-  error("ratelimiting_metrics:update() not supported")
+  error("ratelimiting_metrics:update() not supported", 2)
 end
 
 function RateLimitingMetrics:find()
-  error("ratelimiting_metrics:find() not supported")
+  error("ratelimiting_metrics:find() not supported", 2)
 end
 
 function RateLimitingMetrics:find_by_keys()
-  error("ratelimiting_metrics:find_by_keys() not supported")
+  error("ratelimiting_metrics:find_by_keys() not supported", 2)
 end
 
 return RateLimitingMetrics

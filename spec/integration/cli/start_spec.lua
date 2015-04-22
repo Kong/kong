@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 
-local TEST_CONF = "kong_TEST.yml"
+local TEST_CONF = spec_helper.get_env().conf_file
 local SERVER_CONF = "kong_TEST_SERVER.yml"
 
 local function replace_conf_property(key, value)
@@ -78,7 +78,7 @@ describe("CLI", function()
     end)
 
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
-      replace_conf_property("plugins_available", {"keyauth", "basicauth", "tcplog", "udplog", "filelog"})
+      replace_conf_property("plugins_available", {"keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer"})
 
       spec_helper.prepare_db(SERVER_CONF)
 
@@ -88,7 +88,7 @@ describe("CLI", function()
     end)
 
     it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ratelimiting", "keyauth", "basicauth", "tcplog", "udplog", "filelog"})
+      replace_conf_property("plugins_available", {"ratelimiting", "keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer"})
 
       spec_helper.prepare_db(SERVER_CONF)
 

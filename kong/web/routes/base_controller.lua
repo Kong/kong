@@ -89,7 +89,7 @@ function BaseController.parse_params(schema, params)
 
     -- Process subschemas
     for k, v in pairs(subschemas) do
-      local subschema_value = BaseController.parse_params(v.schema(result), v.params)
+      local subschema_value = BaseController.parse_params(type(v.schema) == "table" and v.schema or v.schema(result), v.params)
       if utils.table_size(subschema_value) > 0 then -- Set subschemas to nil if nothing exists
         result[k] = subschema_value
       else
@@ -102,7 +102,7 @@ function BaseController.parse_params(schema, params)
 end
 
 function BaseController:new(dao_collection, collection)
-  app:post("/"..collection.."/", function(self)
+  app:post("/"..collection, function(self)
     if not check_content_type(self.req, FORM_URLENCODED_TYPE) then
       return utils.unsupported_media_type(FORM_URLENCODED_TYPE)
     end
@@ -116,7 +116,7 @@ function BaseController:new(dao_collection, collection)
     end
   end)
 
-  app:get("/"..collection.."/", function(self)
+  app:get("/"..collection, function(self)
     local size = self.params.size
     if size then
       size = tonumber(size)
