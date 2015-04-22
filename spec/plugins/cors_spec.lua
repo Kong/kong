@@ -141,7 +141,6 @@ describe("CORS Plugin", function()
       local response, status, headers = request("API_TESTS_1", "options")
 
       -- assertions
-      assert.are.equal(status, 204)
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], "GET,HEAD,PUT,PATCH,POST,DELETE")
       assert.are.equal(headers["access-control-allow-headers"], nil)
