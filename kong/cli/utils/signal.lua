@@ -11,8 +11,6 @@ local kong_config_path
 local kong_config
 local dao_factory
 
-local KONG_SYSLOG = "kong-hf.mashape.com"
-
 -- Retrieve the desired Kong config file, parse it and provides a DAO factory
 -- Will cache them for future retrieval
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
@@ -109,8 +107,8 @@ local function prepare_nginx_working_dir(args_config)
   if kong_config.send_anonymous_reports then
     -- If there is no internet connection, disable this feature
     local socket = require "socket"
-    if socket.dns.toip(KONG_SYSLOG) then
-      nginx_config = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..nginx_config
+    if socket.dns.toip(constants.SYSLOG.ADDRESS) then
+      nginx_config = "error_log syslog:server="..constants.SYSLOG.ADDRESS..":"..tostring(constants.SYSLOG.PORT).." error;\n"..nginx_config
     else
       cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
     end

@@ -72,6 +72,7 @@ elif hash yum 2>/dev/null; then
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
+  FPM_PARAMS="-d nc"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
@@ -81,6 +82,7 @@ elif hash apt-get 2>/dev/null; then
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
+  FPM_PARAMS="-d netcat"
 else
   echo "Unsupported platform"
   exit 1

@@ -1,6 +1,10 @@
 return {
   NAME = "kong",
   VERSION = "0.2.0-1",
+  SYSLOG = {
+    ADDRESS = "kong-hf.mashape.com",
+    PORT = 61828
+  },
   CLI = {
     GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
     NGINX_CONFIG = "nginx.conf",
