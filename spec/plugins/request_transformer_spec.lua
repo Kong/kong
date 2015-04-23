@@ -26,7 +26,7 @@ describe("Request Transformer Plugin #proxy", function()
       assert.are.equal("true", body.headers["x-added"])
       assert.are.equal("true", body.headers["x-added2"])
     end)
-    
+
     it("should add new parameters on POST", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {}, {host = "test5.com"})
       local body = cjson.decode(response)
@@ -74,7 +74,7 @@ describe("Request Transformer Plugin #proxy", function()
       assert.are.equal(200, status)
       assert.falsy(body.headers["x-to-remove"])
     end)
-    
+
     it("should remove parameters on POST", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test5.com"})
       local body = cjson.decode(response)
@@ -90,7 +90,7 @@ describe("Request Transformer Plugin #proxy", function()
       assert.falsy(body.postData.params["toremoveform"])
       assert.are.same("yes", body.postData.params["nottoremove"])
     end)
-    
+
     it("should remove parameters on GET", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {["toremovequery"] = "yes", ["nottoremove"] = "yes"}, {host = "test5.com"})
       local body = cjson.decode(response)
@@ -98,7 +98,6 @@ describe("Request Transformer Plugin #proxy", function()
       assert.falsy(body.queryString["toremovequery"])
       assert.are.equal("yes", body.queryString["nottoremove"])
     end)
-    
-  end)
 
+  end)
 end)
