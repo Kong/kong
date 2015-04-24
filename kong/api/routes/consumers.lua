@@ -1,6 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
-local BaseController = require "kong.web.routes.base_controller"
+local BaseController = require "kong.api.routes.base_controller"
 
 local Consumers = BaseController:extend()
 
