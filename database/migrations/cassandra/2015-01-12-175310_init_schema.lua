@@ -52,36 +52,6 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(name);
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(api_id);
       CREATE INDEX IF NOT EXISTS ON plugins_configurations(consumer_id);
-
-      CREATE TABLE IF NOT EXISTS basicauth_credentials(
-        id uuid,
-        consumer_id uuid,
-        username text,
-        password text,
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-
-      CREATE INDEX IF NOT EXISTS ON basicauth_credentials(username);
-
-      CREATE TABLE IF NOT EXISTS keyauth_credentials(
-        id uuid,
-        consumer_id uuid,
-        key text,
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-
-      CREATE INDEX IF NOT EXISTS ON keyauth_credentials(key);
-
-      CREATE TABLE IF NOT EXISTS ratelimiting_metrics(
-        api_id uuid,
-        identifier text,
-        period text,
-        period_date timestamp,
-        value counter,
-        PRIMARY KEY ((api_id, identifier, period_date, period))
-      );
     ]]
   end,
 
