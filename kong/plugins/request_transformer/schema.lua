@@ -1,5 +1,3 @@
-local constants = require "kong.constants"
-
 return {
   add = { require = "false", type = "table", schema = {
       form = { required = false, type = "table" },
