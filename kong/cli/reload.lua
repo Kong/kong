@@ -14,6 +14,10 @@ Options:
   -c,--config (default %s) path to configuration file
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
+if not signal.is_running(args.config) then
+  cutils.logger:error_exit("Could not reload: Kong is not running.")
+end
+
 signal.prepare_kong(args.config)
 
 if signal.send_signal(args.config, "reload") then
