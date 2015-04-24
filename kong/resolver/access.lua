@@ -44,7 +44,7 @@ function _M.execute(conf)
     local apis, err = dao.apis:find_by_keys({public_dns = host})
     if err then
       ngx.log(ngx.ERR, tostring(err))
-      utils.show_error(500)
+      utils.show_error(500, tostring(err))
     elseif not apis or #apis == 0 then
       utils.not_found("API not found")
     end
