@@ -10,6 +10,8 @@
 --
 -- @author thibaultcha
 
+local constants = require "kong.constants"
+
 local error_mt = {}
 error_mt.__index = error_mt
 
@@ -23,9 +25,9 @@ end
 -- @return the formatted and concatenated `message` property
 function error_mt.__concat(a, b)
   if getmetatable(a) == error_mt then
-    return a.message..b
+    return tostring(a)..b
   else
-    return a..b.message
+    return a..tostring(b)
   end
 end
 
@@ -39,6 +41,11 @@ local mt = {
   __call = function (self, err, err_type)
     if err == nil then
       return nil
+    end
+
+    -- Cassandra server error
+    if err_type == constants.DATABASE_ERROR_TYPES.DATABASE then
+      err = "Cassandra error: "..err
     end
 
     local t = {
