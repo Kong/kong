@@ -29,7 +29,7 @@ local DEFAULT_ENV_VALUES = {
     ["lua_package_path ';;'"] = "lua_package_path './kong/?.lua;;'",
     ["error_log logs/error.log info"] = "error_log logs/error.log debug",
     ["proxy_port: 8000"] = "proxy_port: 8100",
-    ["admin_port: 8001"] = "admin_port: 8101"
+    ["admin_api_port: 8001"] = "admin_api_port: 8101"
   },
   DEVELOPMENT = {
     ["nginx_working_dir: /usr/local/kong/"] = "nginx_working_dir: nginx_tmp",
