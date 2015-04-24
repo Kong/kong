@@ -34,7 +34,7 @@ describe("DaoError", function()
     }
 
     local err = DaoError(stub_error, "some_type")
-    assert.are.same("name: name is required | public_dns: invalid url", tostring(err))
+    assert.are.same("name=name is required public_dns=invalid url", tostring(err))
   end)
 
 end)
