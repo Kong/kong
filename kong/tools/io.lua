@@ -82,7 +82,7 @@ function _M.load_configuration_and_dao(configuration_path)
 
   local dao_config = configuration.databases_available[configuration.database]
   if dao_config == nil then
-    error("No dao \""..configuration.database.."\" defined")
+    error("No \""..configuration.database.."\" dao defined")
   end
 
   -- Adding computed properties to the configuration

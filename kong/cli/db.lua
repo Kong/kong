@@ -5,6 +5,7 @@ local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local IO = require "kong.tools.io"
 local lapp = require("lapp")
+
 local args = lapp(string.format([[
 For development purposes only.
 

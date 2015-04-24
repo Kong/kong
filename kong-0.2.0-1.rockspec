@@ -59,6 +59,7 @@ build = {
     ["kong.tools.faker"] = "kong/tools/faker.lua",
     ["kong.tools.cache"] = "kong/tools/cache.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
+    ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.http_client"] = "kong/tools/http_client.lua",
 
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
