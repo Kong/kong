@@ -128,6 +128,7 @@ nginx: |
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
     lua_shared_dict cache 512m;
+    lua_socket_log_errors off;
 
     init_by_lua '
       kong = require "kong"
