@@ -3,13 +3,13 @@ local Threads = require "llthreads2.ex"
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
---[[
+
 local function start_udp_server()
   local thread = Threads.new({
     function()
       local socket = require("socket")
       udp = socket.udp()
-      udp:setsockname("*", 8888)
+      udp:setsockname("*", 8889)
       data, ip, port = udp:receivefrom()
       return data
     end;
@@ -26,7 +26,7 @@ describe("Syslog", function()
 
     -- Override constants  
     constants.SYSLOG.ADDRESS = "127.0.0.1"
-    constants.SYSLOG.PORT = 8888
+    constants.SYSLOG.PORT = 8889
 
     -- Make the request
     syslog.log({hello="world"})
@@ -69,4 +69,3 @@ describe("Syslog", function()
   end)
 
 end)
---]]
