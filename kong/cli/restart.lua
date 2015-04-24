@@ -28,4 +28,3 @@ if not signal.send_signal(args.config) then
 end
 
 cutils.logger:success("Restarted")
-cutils.logger:syslog("Restarted")

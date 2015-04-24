@@ -5,6 +5,7 @@
 local IO = require "kong.tools.io"
 local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
+local syslog = require "kong.tools.syslog"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
@@ -110,14 +111,14 @@ local function prepare_nginx_working_dir(args_config)
     if socket.dns.toip(constants.SYSLOG.ADDRESS) then
       nginx_config = "error_log syslog:server="..constants.SYSLOG.ADDRESS..":"..tostring(constants.SYSLOG.PORT).." error;\n"..nginx_config
     else
-      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
+      cutils.logger:warn("The internet connection might not be available, cannot resolve "..constants.SYSLOG.ADDRESS)
     end
   end
 
   -- Write nginx config
   local ok, err = IO.write_to_file(IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_CONFIG), nginx_config)
   if not ok then
-    cutils.logger:error_exit(err)
+    cutils.logger:error_exit(err) 
   end
 end
 
@@ -195,6 +196,11 @@ function _M.send_signal(args_config, signal)
                             constants.CLI.NGINX_CONFIG,
                             constants.CLI.NGINX_PID,
                             signal ~= nil and "-s "..signal or "")
+
+  if kong_config.send_anonymous_reports then
+    if not signal then signal = "start" end
+    syslog.log({signal=signal})
+  end
 
   return os.execute(cmd) == 0
 end
