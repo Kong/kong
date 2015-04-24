@@ -1,4 +1,4 @@
-local BaseController = require "kong.web.routes.base_controller"
+local BaseController = require "kong.api.routes.base_controller"
 
 local Apis = BaseController:extend()
 

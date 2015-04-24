@@ -86,7 +86,7 @@ local function prepare_nginx_working_dir(args_config)
   local nginx_config = kong_config.nginx
   local nginx_inject = {
     proxy_port = kong_config.proxy_port,
-    admin_port = kong_config.admin_port
+    admin_api_port = kong_config.admin_api_port
   }
 
   -- Inject properties
@@ -160,11 +160,11 @@ function _M.prepare_kong(args_config)
 
   -- Print important informations
   cutils.logger:info(string.format([[Proxy port...%s
-       API port.....%s
+       Admin API port.....%s
        Database.....%s %s
   ]],
   kong_config.proxy_port,
-  kong_config.admin_port,
+  kong_config.admin_api_port,
   kong_config.database,
   prettify_table_properties(kong_config.databases_available[kong_config.database].properties)))
 

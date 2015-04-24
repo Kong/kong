@@ -45,12 +45,10 @@ plugins_available:
   - filelog
   - request_transformer
 
-# Nginx prefix path directory
 nginx_working_dir: /usr/local/kong/
 
-# Ports
 proxy_port: 8000
-admin_port: 8001
+admin_api_port: 8001
 
 # Specify the DAO to use
 database: cassandra
@@ -68,10 +66,9 @@ databases_available:
 # Sends anonymous error reports
 send_anonymous_reports: true
 
-# Nginx Plus Status
 nginx_plus_status: false
 
-# Cache configuration
+# Cassandra cache configuration
 cache:
   expiration: 5 # in seconds
 
@@ -91,12 +88,9 @@ nginx: |
   }
 
   http {
-
-    # Generic Settings
     resolver 8.8.8.8;
     charset UTF-8;
 
-    # Logs
     access_log logs/access.log;
     access_log on;
 
@@ -148,8 +142,6 @@ nginx: |
       listen {{proxy_port}};
 
       location / {
-        # Assigns the default MIME-type to be used for files where the
-        # standard MIME map doesn't specify anything.
         default_type 'text/plain';
 
         # This property will be used later by proxy_pass
@@ -188,25 +180,11 @@ nginx: |
     }
 
     server {
-      listen {{admin_port}};
+      listen {{admin_api_port}};
 
       location / {
         default_type application/json;
-        content_by_lua '
-          require("lapis").serve("kong.web.app")
-        ';
-      }
-
-      location /static/ {
-        alias static/;
-      }
-
-      location /admin/ {
-        alias admin/;
-      }
-
-      location /favicon.ico {
-        alias static/favicon.ico;
+        content_by_lua 'require("lapis").serve("kong.api.app")';
       }
 
       location /robots.txt {

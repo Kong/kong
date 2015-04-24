@@ -1,4 +1,4 @@
-local base_controller = require "kong.web.routes.base_controller"
+local base_controller = require "kong.api.routes.base_controller"
 local spec_helper = require "spec.spec_helpers"
 
 local env = spec_helper.get_env()
