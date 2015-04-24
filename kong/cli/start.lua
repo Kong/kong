@@ -22,7 +22,6 @@ signal.prepare_kong(args.config)
 
 if signal.send_signal(args.config) then
   cutils.logger:success("Started")
-  cutils.logger:syslog("Started")
 else
   cutils.logger:error_exit("Could not start Kong")
 end

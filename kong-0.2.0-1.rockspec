@@ -54,6 +54,7 @@ build = {
 
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.io"] = "kong/tools/io.lua",
+    ["kong.tools.syslog"] = "kong/tools/syslog.lua",
     ["kong.tools.migrations"] = "kong/tools/migrations.lua",
     ["kong.tools.faker"] = "kong/tools/faker.lua",
     ["kong.tools.cache"] = "kong/tools/cache.lua",

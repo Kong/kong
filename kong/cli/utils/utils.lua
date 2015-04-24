@@ -62,10 +62,6 @@ function Logger:error_exit(str)
   os.exit(1)
 end
 
-function Logger:syslog(str)
-  IO.os_execute("nc -w0 -u "..constants.SYSLOG.ADDRESS.." "..tostring(constants.SYSLOG.PORT).." <<< \"<14>"..str.."\"")
-end
-
 local logger = Logger()
 
 --
