@@ -110,7 +110,7 @@ local function prepare_nginx_working_dir(args_config)
     if socket.dns.toip(constants.SYSLOG.ADDRESS) then
       nginx_config = "error_log syslog:server="..constants.SYSLOG.ADDRESS..":"..tostring(constants.SYSLOG.PORT).." error;\n"..nginx_config
     else
-      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
+      cutils.logger:warn("The internet connection might not be available, cannot resolve "..constants.SYSLOG.ADDRESS)
     end
   end
 
@@ -124,7 +124,7 @@ end
 -- Prepare the database keyspace if needed (run schema migrations)
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
-  local kong_config, _, dao_factory = get_kong_config(args_config)
+  local _, _, dao_factory = get_kong_config(args_config)
 
   -- Migrate the DB if needed and possible
   local keyspace, err = dao_factory:get_migrations()
@@ -156,7 +156,7 @@ end
 local _M = {}
 
 function _M.prepare_kong(args_config)
-  local kong_config, kong_config_path = get_kong_config(args_config)
+  local kong_config = get_kong_config(args_config)
 
   -- Print important informations
   cutils.logger:info(string.format([[Proxy port...%s
