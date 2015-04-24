@@ -1,9 +1,9 @@
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local lapis = require "lapis"
-local Apis = require "kong.web.routes.apis"
-local PluginsConfigurations = require "kong.web.routes.plugins_configurations"
-local Consumers = require "kong.web.routes.consumers"
+local Apis = require "kong.api.routes.apis"
+local PluginsConfigurations = require "kong.api.routes.plugins_configurations"
+local Consumers = require "kong.api.routes.consumers"
 
 app = lapis.Application()
 
