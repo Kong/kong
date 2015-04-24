@@ -29,9 +29,10 @@ Faker.FIXTURES = {
     { name = "API TESTS 2", public_dns = "test2.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 3", public_dns = "test3.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 4", public_dns = "test4.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 5", public_dns = "test5.com", target_url = "http://mockbin.com" }
+    { name = "API TESTS 5", public_dns = "test5.com", target_url = "http://mockbin.com" },
 
     -- DEVELOPMENT APIs. Please do not use those in tests
+    { name = "API DEV 1", public_dns = "dev.com", target_url = "http://mockbin.com" },
   },
   consumer = {
     { custom_id = "provider_123" },
@@ -59,9 +60,9 @@ Faker.FIXTURES = {
     -- API 4
     { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 4 },
     --API 5
-    { name = "request_transformer", value = { 
-      add = { headers = {"x-added:true", "x-added2:true" }, 
-              querystring = {"newparam:value"}, 
+    { name = "request_transformer", value = {
+      add = { headers = {"x-added:true", "x-added2:true" },
+              querystring = {"newparam:value"},
               form = {"newformparam:newvalue"} },
       remove = { headers = { "x-to-remove" },
                  querystring = { "toremovequery" },
