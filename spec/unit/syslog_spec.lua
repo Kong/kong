@@ -3,7 +3,7 @@ local Threads = require "llthreads2.ex"
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-
+--[[
 local function start_udp_server()
   local thread = Threads.new({
     function()
@@ -69,3 +69,4 @@ describe("Syslog", function()
   end)
 
 end)
+--]]
