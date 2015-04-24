@@ -21,6 +21,7 @@ local commands = {
   config = "kong.cli.config",
   restart = "kong.cli.restart",
   version = "kong.cli.version",
+  ["add-api"] = "kong.cli.add_api",
   ["--version"] = "kong.cli.version",
   migrations = "kong.cli.migrations"
 }
@@ -29,7 +30,8 @@ local help_message = string.format([[
 Usage: kong <command>
 
   where <command> is one of:
-    start, restart, reload, stop, quit, version
+    start, restart, reload, stop, quit,
+    add-api, version
 
   kong --help            print this message
   kong <command> --help  print the help message of a command

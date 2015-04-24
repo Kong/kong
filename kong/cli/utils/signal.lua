@@ -24,7 +24,6 @@ local function get_kong_config(args_config)
   -- Get configuration from default or given path
   if not kong_config_path then
     kong_config_path = cutils.get_kong_config_path(args_config)
-    cutils.logger:info("Using configuration: "..kong_config_path)
   end
   if not kong_config then
     kong_config, dao_factory = IO.load_configuration_and_dao(kong_config_path)
@@ -139,6 +138,7 @@ local function prepare_nginx_working_dir(args_config)
   end
 
   -- Inject anonymous reports
+  local KONG_SYSLOG = "kong-hf.mashape.com"
   if kong_config.send_anonymous_reports then
     -- If there is no internet connection, disable this feature
     if socket.dns.toip(constants.SYSLOG.ADDRESS) then
