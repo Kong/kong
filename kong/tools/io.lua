@@ -95,5 +95,4 @@ function _M.load_configuration_and_dao(configuration_path)
   return configuration, dao_factory
 end
 
-
 return _M
