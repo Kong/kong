@@ -77,7 +77,7 @@ elseif args.command == "down" then
     if err then
       cutils.logger:error_exit(err)
     elseif migration then
-      cutils.logger:success("Rollbacked to: "..cutils.colors.yellow(migration.name))
+      cutils.logger:success("Rollbacked: "..cutils.colors.yellow(migration.name))
     else
       cutils.logger:success("No migration to rollback")
     end
