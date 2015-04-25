@@ -101,18 +101,18 @@ describe("Migrations #tools", function()
         it("if running with some migrations pending, it should only execute the non-recorded ones", function()
           env.dao_factory.get_migrations = spy.new(function() return {migrations_names[1]} end)
 
-          local i = 0
+          local i = 1
           migrations:migrate(function(migration, err)
-            assert.truthy(migration)
-            assert.are.same("2015-12-12-000000_test_migration", migration.name)
-            assert.falsy(err)
             i = i + 1
+            assert.truthy(migration)
+            assert.are.same(migrations_names[i], migration.name..".lua")
+            assert.falsy(err)
           end)
 
-          assert.are.same(1, i)
+          assert.are.same(3, i)
           assert.spy(env.dao_factory.get_migrations).was.called(1)
-          assert.spy(env.dao_factory.execute_queries).was.called(1)
-          assert.spy(env.dao_factory.add_migration).was.called(1)
+          assert.spy(env.dao_factory.execute_queries).was.called(#migrations_names-1)
+          assert.spy(env.dao_factory.add_migration).was.called(#migrations_names-1)
         end)
       end)
 
