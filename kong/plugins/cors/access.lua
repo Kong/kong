@@ -24,8 +24,8 @@ local function configure_headers (ngx, conf, headers)
 end
 
 local function configure_exposed_headers (ngx, conf)
-  if conf.headers ~= nil then
-    ngx.header["Access-Control-Expose-Headers"] = conf.headers
+  if conf.exposed_headers ~= nil then
+    ngx.header["Access-Control-Expose-Headers"] = conf.exposed_headers
   end
 end
 

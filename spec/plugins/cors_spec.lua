@@ -144,6 +144,7 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], "GET,HEAD,PUT,PATCH,POST,DELETE")
       assert.are.equal(headers["access-control-allow-headers"], nil)
+      assert.are.equal(headers["access-control-expose-headers"], nil)
       assert.are.equal(headers["access-control-allow-credentials"], nil)
       assert.are.equal(headers["access-control-max-age"], nil)
     end)
@@ -155,6 +156,7 @@ describe("CORS Plugin", function()
       options["value.origin"] = "example.com"
       options["value.methods"] = "GET"
       options["value.headers"] = "origin, type, accepts"
+      options["value.exposed_headers"] = "x-auth-token"
       options["value.max_age"] = 23
       options["value.credentials"] = true
 
@@ -167,6 +169,7 @@ describe("CORS Plugin", function()
       -- assertions
       assert.are.equal(headers["access-control-allow-origin"], options["value.origin"])
       assert.are.equal(headers["access-control-allow-headers"], options["value.headers"])
+      assert.are.equal(headers["access-control-expose-headers"], nil)
       assert.are.equal(headers["access-control-allow-methods"], options["value.methods"])
       assert.are.equal(headers["access-control-max-age"], tostring(options["value.max_age"]))
       assert.are.equal(headers["access-control-allow-credentials"], "true")
@@ -188,6 +191,7 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], nil)
       assert.are.equal(headers["access-control-allow-headers"], nil)
+      assert.are.equal(headers["access-control-expose-headers"], nil)
       assert.are.equal(headers["access-control-allow-credentials"], nil)
       assert.are.equal(headers["access-control-max-age"], nil)
     end)
@@ -199,6 +203,7 @@ describe("CORS Plugin", function()
       options["value.origin"] = "example.com"
       options["value.methods"] = "GET"
       options["value.headers"] = "origin, type, accepts"
+      options["value.exposed_headers"] = "x-auth-token"
       options["value.max_age"] = 23
       options["value.credentials"] = true
 
@@ -210,7 +215,7 @@ describe("CORS Plugin", function()
 
       -- assertions
       assert.are.equal(headers["access-control-allow-origin"], options["value.origin"])
-      assert.are.equal(headers["access-control-expose-headers"], options["value.headers"])
+      assert.are.equal(headers["access-control-expose-headers"], options["value.exposed_headers"])
       assert.are.equal(headers["access-control-allow-headers"], nil)
       assert.are.equal(headers["access-control-allow-methods"], nil)
       assert.are.equal(headers["access-control-max-age"], nil)
