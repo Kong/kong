@@ -90,14 +90,13 @@ local function prepare_nginx_working_dir(args_config)
     admin_api_port = kong_config.admin_api_port
   }
 
-  if kong_config.auto_tune then
-    local res, code = IO.os_execute("ulimit -n")
-    if code == 0 then
-      nginx_inject.auto_worker_rlimit_nofile = res
-      nginx_inject.auto_worker_connections = tonumber(res) > 16384 and 16384 or res
-    else
-      cutils.logger:error_exit("Can't determine ulimit for auto-tuning")
-    end
+  -- Auto-tune
+  local res, code = IO.os_execute("ulimit -n")
+  if code == 0 then
+    nginx_inject.auto_worker_rlimit_nofile = res
+    nginx_inject.auto_worker_connections = tonumber(res) > 16384 and 16384 or res
+  else
+    cutils.logger:error_exit("Can't determine ulimit")
   end
 
   -- Inject properties
