@@ -4,7 +4,7 @@
 [![Coverage Status][coveralls-badge]][coveralls-url]
 [![Gitter][gitter-badge]][gitter-url]
 
-Kong is a scalable, open-source Management Layer for APIs and Microservices. Built on top of NGINX with focus on high performance and reliability.
+Kong is a scalable, open-source Management Layer for APIs and Microservices. Built on top of NGINX with focus on high performance and reliability --> http://getkong.org/
 
 ## Why Kong
 
