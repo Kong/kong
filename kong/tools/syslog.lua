@@ -9,21 +9,21 @@ function _M.log(args)
   -- CPU cores
   local res, code = IO.os_execute("getconf _NPROCESSORS_ONLN")
   if code == 0 then
-    args["cores"] = string.gsub(res, "[%\r%\n]", "")
+    args["cores"] = res
   end
   -- Hostname
   res, code = IO.os_execute("/bin/hostname")
   if code == 0 then
-    args["hostname"] = string.gsub(res, "[%\r%\n]", "")
+    args["hostname"] = res
   end
   -- Uname
   res, code = IO.os_execute("/bin/uname -a")
   if code == 0 then
-    args["uname"] = string.gsub(string.gsub(res, "[%\r%\n]", ""), ";", ",")
+    args["uname"] = string.gsub(res, ";", ",")
   else
     res, code = IO.os_execute("/usr/bin/uname -a")
     if code == 0 then
-      args["uname"] = string.gsub(string.gsub(res, "[%\r%\n]", ""), ";", ",")
+      args["uname"] = string.gsub(res, ";", ",")
     end
   end
 

@@ -12,7 +12,7 @@ function _M.os_execute(command)
   local result = _M.read_file(n)
   os.remove(n)
 
-  return result, exit_code / 256
+  return string.gsub(result, "[%\r%\n]", ""), exit_code / 256
 end
 
 function _M.read_file(path)

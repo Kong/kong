@@ -195,8 +195,15 @@ function _M.send_signal(args_config, signal)
                             constants.CLI.NGINX_PID,
                             signal ~= nil and "-s "..signal or "")
 
+  if not signal then signal = "start" end
+  if signal == "start" or signal == "restart" or signal == "reload" then
+    local res, code = IO.os_execute("ulimit -n")
+    if code == 0 and tonumber(res) < 4096 then
+      cutils.logger:warn("ulimit is currently set to \""..res.."\". For better performance set it to at least \"4096\" using \"ulimit -n\"")
+    end
+  end
+
   if kong_config.send_anonymous_reports then
-    if not signal then signal = "start" end
     syslog.log({signal=signal})
   end
 
