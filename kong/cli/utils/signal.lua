@@ -94,7 +94,7 @@ local function prepare_nginx_working_dir(args_config)
     local res, code = IO.os_execute("ulimit -n")
     if code == 0 then
       nginx_inject.auto_worker_rlimit_nofile = res
-      nginx_inject.auto_worker_connections = res
+      nginx_inject.auto_worker_connections = tonumber(res) > 16384 and 16384 or res
     else
       cutils.logger:error_exit("Can't determine ulimit for auto-tuning")
     end
