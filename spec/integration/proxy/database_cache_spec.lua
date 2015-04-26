@@ -8,7 +8,7 @@ local created_ids = {}
 local kWebURL = spec_helper.API_URL
 local kProxyURL = spec_helper.PROXY_URL
 
-describe("Cache #proxy", function()
+describe("Database cache", function()
 
   setup(function()
     spec_helper.prepare_db()

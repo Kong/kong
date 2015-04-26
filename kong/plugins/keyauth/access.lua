@@ -1,7 +1,7 @@
 local constants = require "kong.constants"
 local Multipart = require "multipart"
 local stringy = require "stringy"
-local cache = require "kong.tools.cache"
+local cache = require "kong.tools.database_cache"
 
 local CONTENT_TYPE = "content-type"
 local CONTENT_LENGTH = "content-length"
