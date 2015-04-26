@@ -1,6 +1,6 @@
 local constants = require "kong.constants"
 local stringy = require "stringy"
-local cache = require "kong.tools.cache"
+local cache = require "kong.tools.database_cache"
 
 local _M = {}
 

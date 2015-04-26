@@ -26,7 +26,7 @@
 
 utils = require "kong.tools.utils"
 local IO = require "kong.tools.io"
-local cache = require "kong.tools.cache"
+local cache = require "kong.tools.database_cache"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local stringy = require "stringy"
