@@ -1,4 +1,4 @@
-# KONG: API Management Layer
+# KONG: The API Management Layer
 
 [![Build Status][travis-badge]][travis-url] [![Build Status][license-badge]][license-url] 
 
