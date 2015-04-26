@@ -88,6 +88,9 @@ function _M.load_configuration_and_dao(configuration_path)
   -- Adding computed properties to the configuration
   configuration.pid_file = path:join(configuration.nginx_working_dir, constants.CLI.NGINX_PID)
 
+  -- Alias the DAO configuration we are using for this instance for easy access
+  configuration.dao_config = dao_config
+
   -- Instanciate the DAO Factory along with the configuration
   local DaoFactory = require("kong.dao."..configuration.database..".factory")
   local dao_factory = DaoFactory(dao_config.properties)
