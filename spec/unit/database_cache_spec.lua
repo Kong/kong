@@ -1,6 +1,6 @@
-local cache = require "kong.tools.cache"
+local cache = require "kong.tools.database_cache"
 
-describe("Cache", function()
+describe("Database cache", function()
 
   it("should return a valid API cache key", function()
     assert.are.equal("apis/httpbin.org", cache.api_key("httpbin.org"))
