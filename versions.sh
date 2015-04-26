@@ -2,7 +2,7 @@
 CASSANDRA_VERSION=2.1.2
 
 # Travis and package builder
-LUAROCKS_VERSION=2.2.0
+LUAROCKS_VERSION=2.2.2
 OPENRESTY_VERSION=1.7.10.2rc0
 
 # Package builder only
