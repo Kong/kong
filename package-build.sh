@@ -38,16 +38,6 @@ if [ "$(uname)" = "Darwin" ]; then
   PACKAGE_TYPE="osxpkg"
   LUA_MAKE="macosx"
 
-  # Install PCRE
-  cd $TMP
-  wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-$PCRE_VERSION.tar.gz
-  tar xzf pcre-$PCRE_VERSION.tar.gz
-  cd pcre-$PCRE_VERSION
-  ./configure
-  make
-  make install DESTDIR=$OUT
-  cd $OUT
-
   # Install OpenSSL
   cd $TMP
   wget https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
@@ -57,6 +47,28 @@ if [ "$(uname)" = "Darwin" ]; then
   make
   sudo make install
   cd $OUT
+
+  # Install PCRE (included in the package)
+  cd $TMP
+  wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-$PCRE_VERSION.tar.gz
+  tar xzf pcre-$PCRE_VERSION.tar.gz
+  cd pcre-$PCRE_VERSION
+  ./configure
+  make
+  make install DESTDIR=$OUT
+  cd $OUT
+
+  # Install Lua (included in the package)
+  cd $TMP
+  wget http://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz
+  tar xzf lua-$LUA_VERSION.tar.gz
+  cd lua-$LUA_VERSION
+  make $LUA_MAKE
+  make install INSTALL_TOP=$OUT/usr/local
+  cd $OUT
+
+  export PATH=$PATH:${OUT}/usr/local/bin
+  export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
   RUBY_CONFIGURE="--with-openssl-dir=/usr/local/ssl"
   OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
@@ -70,20 +82,9 @@ elif hash yum 2>/dev/null; then
   sudo yum -y install epel-release
   sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which
 
-  # Install Readline
-  cd $TMP
-  wget ftp://ftp.cwru.edu/pub/bash/readline-$READLINE_VERSION.tar.gz
-  tar xzf readline-$READLINE_VERSION.tar.gz
-  cd readline-$READLINE_VERSION
-  ./configure
-  make
-  make install DESTDIR=$OUT
-  sudo make install #Install also on system
-  cd $OUT
-
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d nc"
+  FPM_PARAMS="-d nc -d lua-5.1.4"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
@@ -93,12 +94,13 @@ elif hash apt-get 2>/dev/null; then
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat"
+  FPM_PARAMS="-d netcat -d lua5.1"
 else
   echo "Unsupported platform"
   exit 1
 fi
 
+# This is required on the building machine
 cd $TMP
 wget http://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.2.tar.gz
 tar xvfvz ruby-2.2.2.tar.gz
@@ -110,19 +112,7 @@ sudo make install
 sudo gem update --system
 sudo gem install fpm
 
-# Starting building stuff
-
-cd $TMP
-wget http://www.lua.org/ftp/lua-$LUA_VERSION.tar.gz
-tar xzf lua-$LUA_VERSION.tar.gz
-cd lua-$LUA_VERSION
-make $LUA_MAKE
-make install INSTALL_TOP=$OUT/usr/local
-cd $OUT
-
-export PATH=$PATH:${OUT}/usr/local/bin
-export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
-
+# Starting building software (included in the package)
 cd $TMP
 wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
 tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
@@ -130,11 +120,6 @@ cd luarocks-$LUAROCKS_VERSION
 ./configure --with-lua-include=$OUT/usr/local/include
 make build
 make install DESTDIR=$OUT
-cd $OUT
-
-cd $TMP
-wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-$PCRE_VERSION.tar.gz
-tar xzf pcre-$PCRE_VERSION.tar.gz
 cd $OUT
 
 cd $TMP
@@ -155,17 +140,20 @@ rocks_trees = {
 
 export LUAROCKS_CONFIG=$rocks_config
 
+# Install Kong
 $OUT/usr/local/bin/luarocks install kong $KONG_VERSION
 
+# Fix the Kong bin file
 sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
 
+# Copy the conf to /etc/kong
 mkdir -p $OUT/etc/kong
 cp $OUT/usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
 
 # Make the package
 post_install_script=$(mktemp -t post_install_script.XXX.sh)
-printf "#!/bin/sh\nsudo ln -s /usr/local/bin/lua /usr/local/bin/lua5.1\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
+printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
