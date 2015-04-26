@@ -9,7 +9,7 @@
 
 ## Documentation 
 
-Complete versioned [documentation](http://www.getkong.org/docs) is available on the Kong website. 
+Complete & versioned [documentation](http://www.getkong.org/docs) is available on the Kong website. 
 
 ## Features
 
