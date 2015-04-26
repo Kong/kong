@@ -26,14 +26,13 @@ databases_available:
       keyspace: kong
       keepalive: 60000
 
+# Cassandra cache configuration
+database_cache_expiration: 5 # in seconds
+
 # Sends anonymous error reports
 send_anonymous_reports: true
 
 nginx_plus_status: false
-
-# Cassandra cache configuration
-cache:
-  expiration: 5 # in seconds
 
 # Nginx configuration
 nginx: |

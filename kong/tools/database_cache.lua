@@ -5,7 +5,7 @@ local _M = {}
 
 function _M.set(key, value, exptime)
   if exptime == nil then
-    exptime = configuration and configuration.cache.expiration or 0
+    exptime = configuration and configuration.database_cache_expiration or 0
   end
 
   local cache = ngx.shared.cache
