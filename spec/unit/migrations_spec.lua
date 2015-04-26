@@ -1,7 +1,7 @@
 local spec_helper = require "spec.spec_helpers"
 local Migrations = require "kong.tools.migrations"
 local utils = require "kong.tools.utils"
-local path = require("path").new("/")
+local IO = require "kong.tools.io"
 
 describe("Migrations #tools", function()
 
@@ -19,7 +19,7 @@ describe("Migrations #tools", function()
 
       local s_cb = spy.new(function(interface, f_path, f_name, dao_type)
         assert.are.same("string", type(interface))
-        assert.are.same("./database/migrations/"..dao_type, f_path)
+        assert.are.same(IO.path:join(migrations.migrations_path, dao_type), f_path)
         assert.are.same(os.date("%Y-%m-%d-%H%M%S").."_".."test_migration", f_name)
 
         local mig_module = loadstring(interface)()
@@ -28,7 +28,7 @@ describe("Migrations #tools", function()
         assert.are.same(f_name, mig_module.name)
       end)
 
-      migrations.create(env.configuration, "test_migration", s_cb)
+      migrations:create(env.configuration, "test_migration", s_cb)
 
       assert.spy(s_cb).was.called(n_databases_available)
     end)
@@ -38,8 +38,8 @@ describe("Migrations #tools", function()
   for db_type, v in pairs(env.configuration.databases_available) do
 
     local migrations_names = {} -- used to mock dao's get_migrations for already executed migrations
-    local migrations_path = path:join("./database/migrations", db_type)
-    local fixtures_path = path:join(migrations_path, "2015-12-12-000000_test_migration.lua")
+    local migrations_path = IO.path:join("./database/migrations", db_type)
+    local fixtures_path = IO.path:join(migrations_path, "2015-12-12-000000_test_migration.lua")
     local fixture_migration = [[
       return {
         name = "2015-12-12-000000_test_migration",
@@ -49,8 +49,9 @@ describe("Migrations #tools", function()
     ]]
 
     setup(function()
-      utils.write_to_file(fixtures_path, fixture_migration)
-      local mig_files = utils.retrieve_files(migrations_path, '.lua')
+      local ok = IO.write_to_file(fixtures_path, fixture_migration)
+      assert.truthy(ok)
+      local mig_files = IO.retrieve_files(migrations_path, { file_pattern = ".lua" })
       for _, mig in ipairs(mig_files) do
         table.insert(migrations_names, mig:match("[^/]*$"))
       end
@@ -70,7 +71,7 @@ describe("Migrations #tools", function()
 
     it("first migration should have an init boolean property", function()
       -- `init` says to the migrations not to record changes in db for this migration
-      local migration_module = loadfile(path:join(migrations_path, migrations_names[1]))()
+      local migration_module = loadfile(IO.path:join(migrations_path, migrations_names[1]))()
       assert.True(migration_module.init)
     end)
 
@@ -100,18 +101,18 @@ describe("Migrations #tools", function()
         it("if running with some migrations pending, it should only execute the non-recorded ones", function()
           env.dao_factory.get_migrations = spy.new(function() return {migrations_names[1]} end)
 
-          local i = 0
+          local i = 1
           migrations:migrate(function(migration, err)
-            assert.truthy(migration)
-            assert.are.same("2015-12-12-000000_test_migration", migration.name)
-            assert.falsy(err)
             i = i + 1
+            assert.truthy(migration)
+            assert.are.same(migrations_names[i], migration.name..".lua")
+            assert.falsy(err)
           end)
 
-          assert.are.same(1, i)
+          assert.are.same(3, i)
           assert.spy(env.dao_factory.get_migrations).was.called(1)
-          assert.spy(env.dao_factory.execute_queries).was.called(1)
-          assert.spy(env.dao_factory.add_migration).was.called(1)
+          assert.spy(env.dao_factory.execute_queries).was.called(#migrations_names-1)
+          assert.spy(env.dao_factory.add_migration).was.called(#migrations_names-1)
         end)
       end)
 

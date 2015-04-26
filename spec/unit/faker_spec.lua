@@ -4,7 +4,7 @@ local DaoError = require "kong.dao.error"
 
 describe("Faker #tools", function()
 
-  local ENTITIES_TYPES = { "api", "account", "application", "plugin" }
+  local ENTITIES_TYPES = { "api", "consumer", "basicauth_credential", "keyauth_credential", "plugin_configuration" }
 
   local factory_mock = {}
   local insert_spy
@@ -17,7 +17,7 @@ describe("Faker #tools", function()
                         end)
 
     for _, v in ipairs(ENTITIES_TYPES) do
-      factory_mock[v.."s"] = {
+      factory_mock[v=="plugin_configuration" and "plugins_configurations" or v.."s"] = {
         insert = insert_spy
       }
     end
@@ -78,7 +78,7 @@ describe("Faker #tools", function()
     it("should be possible to add some random entities complementing the default hard-coded ones", function()
       faker:seed(2000)
       assert.spy(faker.insert_from_table).was.called(2)
-      assert.spy(insert_spy).was.called(6021) -- 3*2000 + 21 base entities
+      assert.spy(insert_spy).was.called(8021) -- 3*2000 + base entities
     end)
 
     it("should create relations between entities_to_insert and inserted entities", function()
@@ -106,7 +106,7 @@ describe("Faker #tools", function()
       local inspect = require "inspect"
 
       factory_mock.apis.insert = function(self, t)
-                                   return nil, DaoError("cannot insert api error test", "database")
+                                   return nil, DaoError("cannot insert api error test", "schema")
                                  end
       assert.has_error(function()
         faker:seed()

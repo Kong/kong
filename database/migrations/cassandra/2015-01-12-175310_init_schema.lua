@@ -15,26 +15,16 @@ local Migration = {
         migrations list<text>
       );
 
-      CREATE TABLE IF NOT EXISTS accounts(
+      CREATE TABLE IF NOT EXISTS consumers(
         id uuid,
-        provider_id text,
+        custom_id text,
+        username text,
         created_at timestamp,
         PRIMARY KEY (id)
       );
 
-      CREATE INDEX IF NOT EXISTS ON accounts(provider_id);
-
-      CREATE TABLE IF NOT EXISTS applications(
-        id uuid,
-        account_id uuid,
-        public_key text, -- This is the public
-        secret_key text, -- This is the secret key, it could be an apikey or basic password
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-
-      CREATE INDEX IF NOT EXISTS ON applications(account_id);
-      CREATE INDEX IF NOT EXISTS ON applications(public_key);
+      CREATE INDEX IF NOT EXISTS ON consumers(custom_id);
+      CREATE INDEX IF NOT EXISTS ON consumers(username);
 
       CREATE TABLE IF NOT EXISTS apis(
         id uuid,
@@ -48,10 +38,10 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON apis(name);
       CREATE INDEX IF NOT EXISTS ON apis(public_dns);
 
-      CREATE TABLE IF NOT EXISTS plugins(
+      CREATE TABLE IF NOT EXISTS plugins_configurations(
         id uuid,
         api_id uuid,
-        application_id uuid,
+        consumer_id uuid,
         name text,
         value text, -- serialized plugin data
         enabled boolean,
@@ -59,18 +49,9 @@ local Migration = {
         PRIMARY KEY (id, name)
       );
 
-      CREATE INDEX IF NOT EXISTS ON plugins(name);
-      CREATE INDEX IF NOT EXISTS ON plugins(api_id);
-      CREATE INDEX IF NOT EXISTS ON plugins(application_id);
-
-      CREATE TABLE IF NOT EXISTS metrics(
-        api_id uuid,
-        identifier text,
-        period text,
-        period_date timestamp,
-        value counter,
-        PRIMARY KEY ((api_id, identifier, period_date, period))
-      );
+      CREATE INDEX IF NOT EXISTS ON plugins_configurations(name);
+      CREATE INDEX IF NOT EXISTS ON plugins_configurations(api_id);
+      CREATE INDEX IF NOT EXISTS ON plugins_configurations(consumer_id);
     ]]
   end,
 
