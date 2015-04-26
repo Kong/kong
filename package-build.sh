@@ -75,9 +75,9 @@ elif hash yum 2>/dev/null; then
   wget ftp://ftp.cwru.edu/pub/bash/readline-$READLINE_VERSION.tar.gz
   tar xzf readline-$READLINE_VERSION.tar.gz
   cd readline-$READLINE_VERSION
-  ./configure
   make
   make install DESTDIR=$OUT
+  sudo make install #Install also on system
   cd $OUT
 
   PACKAGE_TYPE="rpm"
@@ -107,7 +107,7 @@ make
 sudo make install
 
 sudo gem update --system
-sudo gem install fpmyum 
+sudo gem install fpm
 
 # Starting building stuff
 
