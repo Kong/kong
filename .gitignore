@@ -3,20 +3,13 @@
 .buildpath
 .project
 .idea
-npm-debug.log
-
-# jekyll
-Gemfile.lock
-site/dist
-\.gh-pages
-
-# gh-pages
-node_modules/
-bower_components/
 
 # kong
 nginx_tmp/
 kong*.yml
+
+# build
+build
 
 # luacov
 luacov.*
