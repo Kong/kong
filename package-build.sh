@@ -94,7 +94,7 @@ elif hash apt-get 2>/dev/null; then
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d lua5.1"
+  FPM_PARAMS="-d netcat -d lua5.1=5.1.4*"
 else
   echo "Unsupported platform"
   exit 1
