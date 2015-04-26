@@ -68,7 +68,17 @@ elif hash yum 2>/dev/null; then
     sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
-  sudo yum -y install wget tar make ldconfig gcc readline-devel perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which
+  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which
+
+  # Install Readline
+  cd $TMP
+  wget ftp://ftp.cwru.edu/pub/bash/readline-$READLINE_VERSION.tar.gz
+  tar xzf readline-$READLINE_VERSION.tar.gz
+  cd readline-$READLINE_VERSION
+  ./configure
+  make
+  make install DESTDIR=$OUT
+  cd $OUT
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
@@ -97,7 +107,7 @@ make
 sudo make install
 
 sudo gem update --system
-sudo gem install fpm
+sudo gem install fpmyum 
 
 # Starting building stuff
 
