@@ -1,17 +1,16 @@
 -- Send signals to the `nginx` executable
--- Run necessary
+-- Run the necessary so the nginx working dir (prefix) and database are correctly prepared
 -- @see http://nginx.org/en/docs/beginners_guide.html#control
 
 local IO = require "kong.tools.io"
 local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
+local syslog = require "kong.tools.syslog"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
 local kong_config
 local dao_factory
-
-local KONG_SYSLOG = "kong-hf.mashape.com"
 
 -- Retrieve the desired Kong config file, parse it and provides a DAO factory
 -- Will cache them for future retrieval
@@ -88,8 +87,17 @@ local function prepare_nginx_working_dir(args_config)
   local nginx_config = kong_config.nginx
   local nginx_inject = {
     proxy_port = kong_config.proxy_port,
-    admin_port = kong_config.admin_port
+    admin_api_port = kong_config.admin_api_port
   }
+
+  -- Auto-tune
+  local res, code = IO.os_execute("ulimit -n")
+  if code == 0 then
+    nginx_inject.auto_worker_rlimit_nofile = res
+    nginx_inject.auto_worker_connections = tonumber(res) > 16384 and 16384 or res
+  else
+    cutils.logger:error_exit("Can't determine ulimit")
+  end
 
   -- Inject properties
   for k, v in pairs(nginx_inject) do
@@ -109,10 +117,10 @@ local function prepare_nginx_working_dir(args_config)
   if kong_config.send_anonymous_reports then
     -- If there is no internet connection, disable this feature
     local socket = require "socket"
-    if socket.dns.toip(KONG_SYSLOG) then
-      nginx_config = "error_log syslog:server="..KONG_SYSLOG..":61828 error;\n"..nginx_config
+    if socket.dns.toip(constants.SYSLOG.ADDRESS) then
+      nginx_config = "error_log syslog:server="..constants.SYSLOG.ADDRESS..":"..tostring(constants.SYSLOG.PORT).." error;\n"..nginx_config
     else
-      cutils.logger:warn("The internet connection might not be available, cannot resolve "..KONG_SYSLOG)
+      cutils.logger:warn("The internet connection might not be available, cannot resolve "..constants.SYSLOG.ADDRESS)
     end
   end
 
@@ -126,7 +134,7 @@ end
 -- Prepare the database keyspace if needed (run schema migrations)
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
-  local kong_config, _, dao_factory = get_kong_config(args_config)
+  local _, _, dao_factory = get_kong_config(args_config)
 
   -- Migrate the DB if needed and possible
   local keyspace, err = dao_factory:get_migrations()
@@ -145,30 +153,28 @@ local function prepare_database(args_config)
   end
 end
 
--- Prettifies table properties in a nice human readable way
--- @return The prettified string
-local function prettify_table_properties(t)
-  local result = ""
-  for k, v in pairs(t) do
-    result = result..k.."="..v.." "
-  end
-  return result == "" and result or result:sub(1, string.len(result) - 1)
-end
+--
+-- PUBLIC
+--
 
 local _M = {}
 
 function _M.prepare_kong(args_config)
-  local kong_config, kong_config_path = get_kong_config(args_config)
+  local kong_config = get_kong_config(args_config)
+  local dao_config = kong_config.databases_available[kong_config.database].properties
+
+  local printable_mt = require "kong.tools.printable"
+  setmetatable(dao_config, printable_mt)
 
   -- Print important informations
-  cutils.logger:info(string.format([[Proxy port...%s
-       API port.....%s
-       Database.....%s %s
+  cutils.logger:info(string.format([[Proxy port.........%s
+       Admin API port.....%s
+       Database...........%s %s
   ]],
   kong_config.proxy_port,
-  kong_config.admin_port,
+  kong_config.admin_api_port,
   kong_config.database,
-  prettify_table_properties(kong_config.databases_available[kong_config.database].properties)))
+  tostring(dao_config)))
 
   prepare_nginx_working_dir(args_config)
   prepare_database(args_config)
@@ -198,31 +204,48 @@ function _M.send_signal(args_config, signal)
                             constants.CLI.NGINX_PID,
                             signal ~= nil and "-s "..signal or "")
 
+  if not signal then signal = "start" end
+  if signal == "start" or signal == "restart" or signal == "reload" then
+    local res, code = IO.os_execute("ulimit -n")
+    if code == 0 and tonumber(res) < 4096 then
+      cutils.logger:warn("ulimit is currently set to \""..res.."\". For better performance set it to at least \"4096\" using \"ulimit -n\"")
+    end
+  end
+
+  if kong_config.send_anonymous_reports then
+    syslog.log({signal=signal})
+  end
+
   return os.execute(cmd) == 0
 end
 
--- Wrapper around a stop signal, testing if Kong is already running
+-- Test if Kong is already running by detecting a pid file.
+--
+-- Note:
+-- If the pid file exists but no process seem to be running, will assume the pid
+-- is obsolete and try to delete it.
+--
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
+-- @return true is running, false otherwise
+-- @return If not running, an error containing the path where the pid was supposed to be
 function _M.is_running(args_config)
   -- Get configuration from default or given path
   local kong_config = get_kong_config(args_config)
 
-  local pid_file = IO.path:join(kong_config.nginx_working_dir, constants.CLI.NGINX_PID)
-
-  if IO.file_exists(pid_file) then
-    local pid = IO.read_file(pid_file)
+  if IO.file_exists(kong_config.pid_file) then
+    local pid = IO.read_file(kong_config.pid_file)
     if os.execute("kill -0 "..pid) == 0 then
       return true
     else
-      cutils.logger:info("Removing pid at: "..pid_file)
-      local _, err = os.remove(pid_file)
+      cutils.logger:info("Removing pid at: "..kong_config.pid_file)
+      local _, err = os.remove(kong_config.pid_file)
       if err then
         error(err)
       end
       return false, "Not running. Could not find pid: "..pid
     end
   else
-    return false, "Not running. Could not find pid at: "..pid_file
+    return false, "Not running. Could not find pid at: "..kong_config.pid_file
   end
 end
 

@@ -54,7 +54,6 @@ function Logger:error(str)
 end
 
 function Logger:error_exit(str)
-  print("")
   self:error(str)
   -- Optional stacktrace
   --print("")

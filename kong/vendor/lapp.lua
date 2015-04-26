@@ -49,7 +49,7 @@ local function quit(msg,no_usage)
     if not no_usage then
         io.stderr:write(usage)
     end
-    os.exit(1);
+    os.exit(1)
 end
 
 local function error(msg,no_usage)

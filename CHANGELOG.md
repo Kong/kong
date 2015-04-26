@@ -1,8 +1,33 @@
 ## [Unreleased][unreleased]
 
+First public release of Kong. This version brings a lot of internal improvements as well as more usability and a few additional plugins.
+
+#### Added
+- Request transformation plugin.
+- NGINX plus monitoring plugin.
+- New configuration properties: `proxy_port` and `api_admin_port`. [#142](https://github.com/Mashape/kong/issues/142)
+- CLI improvements:
+  - Better info, help and error messages. [#118](https://github.com/Mashape/kong/issues/118) [#124](https://github.com/Mashape/kong/issues/124)
+  - New commands: `kong reload`, `kong quit`. [#114](https://github.com/Mashape/kong/issues/114) Alias of `version`: `kong --version` [#119](https://github.com/Mashape/kong/issues/119)
+  - `kong restart` simply starts Kong if not previously running + better pid file handling. [#131](https://github.com/Mashape/kong/issues/131)
+- Package distributions: .rpm, .deb and .pkg for easy installs on most common platforms.
+
+#### Fixed
+- Admin API: trailing slash is not necessary anymore for core ressources such as `/apis` or `/consumers`.
+- Leaner default configuration. [#156](https://github.com/Mashape/kong/issues/156)
+
+> **internal**
+> - All scripts moved to the CLI as "hidden" commands (`kong db`, `kong config`).
+> - More tests as always, and they are structured better. The coverage went down mainly because of plugins which will later move to their own repos. We are all eagerly waiting for that!
+> - `src/` was renamed to `kong/` for ease of development
+> - All system dependencies versions for package building and travis-ci are now listed in `versions.sh`
+> - DAO doesn't need to `:prepare()` prior to run queries. Queries can be prepared at runtime. [#146](https://github.com/Mashape/kong/issues/146)
+
 ## [0.1.1beta-2] - 2015/03/30
 
-- Bugfix in auto-migration for `kong start`.
+#### Fixed
+
+- Wrong behaviour of auto-migration in `kong start`.
 
 ## [0.1.0beta-3] - 2015/03/25
 
@@ -19,16 +44,16 @@ First public beta. Includes caching and better usability.
   - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Mashape/kong/issues/17)
   - Better handling of plugins: Kong now detects which plugins are configured and if they are installed on the current machine.
   - `bin/kong` now defaults on `/etc/kong.yml` for config and `/var/logs/kong` for output. [#71](https://github.com/Mashape/kong/issues/71)
-- **Proxy**: APIs/Consumers caching with expiration for faster authentication.
-- **API**: Plugins now use plain form parameters for configuration. [#70](https://github.com/Mashape/kong/issues/70)
+- Proxy: APIs/Consumers caching with expiration for faster authentication.
+- Admin API: Plugins now use plain form parameters for configuration. [#70](https://github.com/Mashape/kong/issues/70)
 - Keep track of already executed migrations. `rollback` now behaves as expected. [#8](https://github.com/Mashape/kong/issues/8)
 
 #### Fixed
 - `Server` header now sends Kong. [#57](https://github.com/Mashape/kong/issues/57)
 - migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now we only have 1 migration file.
-- **API**: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
+- **Admin API**: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
 
-> **Nerds stuff**
+> **internal**
 > - We now have code linting and coverage.
 > - Faker and Migrations instances don't live in the DAO Factory anymore, they are only used in scripts and tests.
 > - `scripts/config.lua` allows environment based configurations. `make dev` generates a `kong.DEVELOPMENT.yml` and `kong_TEST.yml`. Different keyspaces and ports.

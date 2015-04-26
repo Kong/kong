@@ -54,10 +54,12 @@ build = {
 
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.io"] = "kong/tools/io.lua",
+    ["kong.tools.syslog"] = "kong/tools/syslog.lua",
     ["kong.tools.migrations"] = "kong/tools/migrations.lua",
     ["kong.tools.faker"] = "kong/tools/faker.lua",
-    ["kong.tools.cache"] = "kong/tools/cache.lua",
+    ["kong.tools.database_cache"] = "kong/tools/database_cache.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
+    ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.http_client"] = "kong/tools/http_client.lua",
 
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
@@ -107,15 +109,15 @@ build = {
     ["kong.plugins.request_transfomer.access"] = "kong/plugins/request_transformer/access.lua",
     ["kong.plugins.request_transfomer.schema"] = "kong/plugins/request_transformer/schema.lua",
 
-    ["kong.web.app"] = "kong/web/app.lua",
-    ["kong.web.routes.apis"] = "kong/web/routes/apis.lua",
-    ["kong.web.routes.consumers"] = "kong/web/routes/consumers.lua",
-    ["kong.web.routes.plugins_configurations"] = "kong/web/routes/plugins_configurations.lua",
-    ["kong.web.routes.base_controller"] = "kong/web/routes/base_controller.lua"
+    ["kong.api.app"] = "kong/api/app.lua",
+    ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
+    ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
+    ["kong.api.routes.plugins_configurations"] = "kong/api/routes/plugins_configurations.lua",
+    ["kong.api.routes.base_controller"] = "kong/api/routes/base_controller.lua"
   },
   install = {
     conf = { "kong.yml" },
     bin = { "bin/kong" }
   },
-  copy_directories = { "kong/web/admin/", "kong/web/static/", "database/migrations/" }
+  copy_directories = { "database/migrations/" }
 }

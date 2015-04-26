@@ -9,12 +9,10 @@ plugins_available:
   - cors
   - request_transformer
 
-# Nginx prefix path directory
 nginx_working_dir: /usr/local/kong/
 
-# Ports
 proxy_port: 8000
-admin_port: 8001
+admin_api_port: 8001
 
 # Specify the DAO to use
 database: cassandra
@@ -29,38 +27,33 @@ databases_available:
       keyspace: kong
       keepalive: 60000
 
+# Cassandra cache configuration
+database_cache_expiration: 5 # in seconds
+
 # Sends anonymous error reports
 send_anonymous_reports: true
 
-# Nginx Plus Status
 nginx_plus_status: false
 
-# Cache configuration
-cache:
-  expiration: 5 # in seconds
-
+# Nginx configuration
 nginx: |
   worker_processes auto;
   error_log logs/error.log info;
   daemon on;
 
-  # Set "worker_rlimit_nofile" to a high value
-  # worker_rlimit_nofile 65536;
+  worker_rlimit_nofile {{auto_worker_rlimit_nofile}};
 
   env KONG_CONF;
 
   events {
-    # Set "worker_connections" to a high value
-    worker_connections 1024;
+    worker_connections {{auto_worker_connections}};
+    multi_accept on;
   }
 
   http {
-
-    # Generic Settings
     resolver 8.8.8.8;
     charset UTF-8;
 
-    # Logs
     access_log logs/access.log;
     access_log on;
 
@@ -98,6 +91,7 @@ nginx: |
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
     lua_shared_dict cache 512m;
+    lua_socket_log_errors off;
 
     init_by_lua '
       kong = require "kong"
@@ -112,8 +106,6 @@ nginx: |
       listen {{proxy_port}};
 
       location / {
-        # Assigns the default MIME-type to be used for files where the
-        # standard MIME map doesn't specify anything.
         default_type 'text/plain';
 
         # This property will be used later by proxy_pass
@@ -152,25 +144,11 @@ nginx: |
     }
 
     server {
-      listen {{admin_port}};
+      listen {{admin_api_port}};
 
       location / {
         default_type application/json;
-        content_by_lua '
-          require("lapis").serve("kong.web.app")
-        ';
-      }
-
-      location /static/ {
-        alias static/;
-      }
-
-      location /admin/ {
-        alias admin/;
-      }
-
-      location /favicon.ico {
-        alias static/favicon.ico;
+        content_by_lua 'require("lapis").serve("kong.api.app")';
       }
 
       location /robots.txt {

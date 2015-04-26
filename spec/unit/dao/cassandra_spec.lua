@@ -127,7 +127,7 @@ describe("Cassandra DAO", function()
         assert.truthy(err)
         assert.is_daoError(err)
         assert.True(err.database)
-        assert.are.same("connection refused", err.message)
+        assert.are.same("Cassandra error: connection refused", err.message)
       end)
 
     end)

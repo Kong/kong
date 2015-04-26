@@ -1,6 +1,6 @@
 local stringy = require "stringy"
 local url = require("socket.url")
-local cache = require "kong.tools.cache"
+local cache = require "kong.tools.database_cache"
 
 local _M = {}
 
@@ -44,7 +44,7 @@ function _M.execute(conf)
     local apis, err = dao.apis:find_by_keys({public_dns = host})
     if err then
       ngx.log(ngx.ERR, tostring(err))
-      utils.show_error(500)
+      utils.show_error(500, tostring(err))
     elseif not apis or #apis == 0 then
       utils.not_found("API not found")
     end

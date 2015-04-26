@@ -8,11 +8,11 @@ _M.path = path
 
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute(command.." > "..n.." 2>&1")
+  local exit_code = os.execute("/bin/bash -c '"..command.." > "..n.." 2>&1'")
   local result = _M.read_file(n)
   os.remove(n)
 
-  return result, exit_code / 256
+  return string.gsub(result, "[%\r%\n]", ""), exit_code / 256
 end
 
 function _M.read_file(path)
@@ -82,11 +82,14 @@ function _M.load_configuration_and_dao(configuration_path)
 
   local dao_config = configuration.databases_available[configuration.database]
   if dao_config == nil then
-    error("No dao \""..configuration.database.."\" defined")
+    error("No \""..configuration.database.."\" dao defined")
   end
 
   -- Adding computed properties to the configuration
   configuration.pid_file = path:join(configuration.nginx_working_dir, constants.CLI.NGINX_PID)
+
+  -- Alias the DAO configuration we are using for this instance for easy access
+  configuration.dao_config = dao_config
 
   -- Instanciate the DAO Factory along with the configuration
   local DaoFactory = require("kong.dao."..configuration.database..".factory")
@@ -94,6 +97,5 @@ function _M.load_configuration_and_dao(configuration_path)
 
   return configuration, dao_factory
 end
-
 
 return _M

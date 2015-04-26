@@ -163,12 +163,12 @@ function CassandraFactory:execute(query, params, keyspace)
 
   ok, err = session:connect(self._properties.hosts, self._properties.port)
   if not ok then
-    return nil, DaoError("Cannot connect to Cassandra: "..err, constants.DATABASE_ERROR_TYPES.DATABASE)
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
   if not ok then
-    return nil, DaoError("Cassandra error: "..err, constants.DATABASE_ERROR_TYPES.DATABASE)
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   ok, err = session:execute(query, params)
@@ -176,7 +176,7 @@ function CassandraFactory:execute(query, params, keyspace)
   session:close()
 
   if not ok then
-    return nil, DaoError("Cassandra error: "..err, constants.DATABASE_ERROR_TYPES.DATABASE)
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   return ok
