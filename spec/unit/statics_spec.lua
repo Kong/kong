@@ -72,19 +72,19 @@ nginx_plus_status: false
 cache:
   expiration: 5 # in seconds
 
+# Nginx configuration
 nginx: |
   worker_processes auto;
   error_log logs/error.log info;
   daemon on;
 
-  # Set "worker_rlimit_nofile" to a high value
-  # worker_rlimit_nofile 65536;
+  worker_rlimit_nofile {{auto_worker_rlimit_nofile}};
 
   env KONG_CONF;
 
   events {
-    # Set "worker_connections" to a high value
-    worker_connections 1024;
+    worker_connections {{auto_worker_connections}};
+    multi_accept on;
   }
 
   http {
