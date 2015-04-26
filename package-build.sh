@@ -149,11 +149,11 @@ rm $OUT/usr/local/bin/kong.bak
 
 # Copy the conf to /etc/kong
 mkdir -p $OUT/etc/kong
-cp $OUT/usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
+cp $OUT/usr/local/lib/luarocks/rocks-5.1/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
 
 # Make the package
 post_install_script=$(mktemp -t post_install_script.XXX.sh)
-printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
+printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks-5.1/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
