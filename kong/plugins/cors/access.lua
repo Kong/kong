@@ -1,6 +1,6 @@
 local _M = {}
 
-local function configure_origin(ngx, conf)
+local function configure_origin (ngx, conf)
   if conf.origin == nil then
     ngx.header["Access-Control-Allow-Origin"] = "*"
   else
@@ -9,13 +9,13 @@ local function configure_origin(ngx, conf)
   end
 end
 
-local function configure_credentials(ngx, conf)
+local function configure_credentials (ngx, conf)
   if (conf.credentials) then
     ngx.header["Access-Control-Allow-Credentials"] = "true"
   end
 end
 
-local function configure_headers(ngx, conf, headers)
+local function configure_headers (ngx, conf, headers)
   if conf.headers == nil then
     ngx.header["Access-Control-Allow-Headers"] = headers['access-control-request-headers'] or ""
   else
@@ -23,13 +23,13 @@ local function configure_headers(ngx, conf, headers)
   end
 end
 
-local function configure_exposed_headers(ngx, conf)
+local function configure_exposed_headers (ngx, conf)
   if conf.exposed_headers ~= nil then
     ngx.header["Access-Control-Expose-Headers"] = conf.exposed_headers
   end
 end
 
-local function configure_methods(ngx, conf)
+local function configure_methods (ngx, conf)
   if conf.methods ~= nil then
     ngx.header["Access-Control-Allow-Methods"] = conf.methods
   else
@@ -37,13 +37,13 @@ local function configure_methods(ngx, conf)
   end
 end
 
-local function configure_max_age(ngx, conf)
+local function configure_max_age (ngx, conf)
   if conf.max_age ~= nil then
     ngx.header["Access-Control-Max-Age"] = tostring(conf.max_age)
   end
 end
 
-function _M.execute(conf)
+function _M.execute (conf)
   local request = ngx.req
   local method = request.get_method()
   local headers = request.get_headers()

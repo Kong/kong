@@ -7,12 +7,12 @@ local PLUGINS = {}
 local API_URL = spec_helper.API_URL
 local PROXY_URL = spec_helper.PROXY_URL
 
-function request(name, method, qs, headers)
+function request (name, method, qs, headers)
   headers = merge({ host = get_dns(name) }, headers or {})
   return http_client[method](PROXY_URL, qs, headers)
 end
 
-function create_api(name, dns)
+function create_api (name, dns)
   local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
 
   -- decode response
@@ -22,7 +22,7 @@ function create_api(name, dns)
   APIS[name] = { id = response.id, dns = dns }
 end
 
-function delete_api(name)
+function delete_api (name)
   local response, status, headers = http_client.delete(API_URL.."/apis/"..get_id(name))
 
   -- remove api if we obtain 200
@@ -34,7 +34,7 @@ function delete_api(name)
   assert.are.equal(get_id(name), nil)
 end
 
-function delete_apis()
+function delete_apis ()
   for name, t in pairs(APIS) do
     local response, status, headers = http_client.delete(API_URL.."/apis/"..t.id)
     assert.are.equal(status, 204)
@@ -42,7 +42,7 @@ function delete_apis()
   APIS = {}
 end
 
-function enable_plugin(api_name, name, options)
+function enable_plugin (api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
   local response, status, headers = http_client.post(API_URL.."/plugins_configurations/", plugin)
 
@@ -59,7 +59,7 @@ function enable_plugin(api_name, name, options)
   return response, status, headers
 end
 
-function delete_plugins()
+function delete_plugins ()
   for i, id in ipairs(PLUGINS) do
     local response, status, headers = http_client.delete(API_URL.."/plugins_configurations/"..id)
     assert.are.equal(status, 204)
@@ -67,11 +67,11 @@ function delete_plugins()
   PLUGINS = {}
 end
 
-function get_id(name)
+function get_id (name)
   return APIS[name].id
 end
 
-function get_dns(name)
+function get_dns (name)
   return APIS[name].dns
 end
 
@@ -115,6 +115,7 @@ describe("CORS Plugin", function()
       assert.are.equal(response.value.credentials, false)
       assert.are.equal(response.value.methods, nil)
       assert.are.equal(response.value.headers, nil)
+      assert.are.equal(response.value.exposed_headers, nil)
       assert.are.equal(response.value.max_age, nil)
       assert.are.equal(response.value.origin, nil)
     end)
