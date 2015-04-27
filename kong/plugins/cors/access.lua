@@ -1,7 +1,11 @@
+local stringy = require "stringy"
+
 local _M = {}
 
 local function configure_origin(ngx, conf)
-  if conf.origin == nil then
+  print("ORIGIN CHECK")
+  print(conf.origin)
+  if not conf.origin or stringy.strip(conf.origin) == "" then
     ngx.header["Access-Control-Allow-Origin"] = "*"
   else
     ngx.header["Access-Control-Allow-Origin"] = conf.origin
@@ -51,7 +55,7 @@ function _M.execute(conf)
   configure_origin(ngx, conf)
   configure_credentials(ngx, conf)
 
-  if string.upper(method) == "OPTIONS" then
+  if method == "OPTIONS" then
     -- Preflight
     configure_headers(ngx, conf, headers)
     configure_methods(ngx, conf)
