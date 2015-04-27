@@ -84,7 +84,7 @@ elif hash yum 2>/dev/null; then
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d nc -d lua-5.1.4"
+  FPM_PARAMS="-d nc -d lua-$LUA_VERSION"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
@@ -94,7 +94,7 @@ elif hash apt-get 2>/dev/null; then
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d lua5.1=5.1.4*"
+  FPM_PARAMS="-d netcat -d lua5.1=$LUA_VERSION*"
 else
   echo "Unsupported platform"
   exit 1
@@ -147,13 +147,15 @@ $OUT/usr/local/bin/luarocks install kong $KONG_VERSION
 sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
 
+rocks_folder=$(find $OUT/usr/local/lib/luarocks -type d -name "rocks*" | head -1)
+
 # Copy the conf to /etc/kong
 mkdir -p $OUT/etc/kong
-cp $OUT/usr/local/lib/luarocks/rocks-5.1/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
+cp $rocks_folder/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
 
 # Make the package
 post_install_script=$(mktemp -t post_install_script.XXX.sh)
-printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks-5.1/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
+printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp $rocks_folder/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
