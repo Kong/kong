@@ -21,7 +21,14 @@ local function get_dns(name)
 end
 
 local function request(name, method, qs, headers)
+
+  print("TRYING TO MAKE REQUEST")
+
   headers = merge({ host = get_dns(name) }, headers or {})
+
+  local inspect = require "inspect"
+  print(inspect(headers))
+
   return http_client[method](PROXY_URL, qs, headers)
 end
 
