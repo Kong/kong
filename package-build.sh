@@ -29,8 +29,11 @@ mkdir -p $TMP
 source ./versions.sh
 
 PACKAGE_TYPE=""
+MKTEMP_LUAROCKS_CONF=""
+MKTEMP_POSTSCRIPT_CONF=""
 LUA_MAKE=""
 OPENRESTY_CONFIGURE=""
+LUAROCKS_CONFIGURE=""
 FPM_PARAMS=""
 RUBY_CONFIGURE=""
 
@@ -68,10 +71,12 @@ if [ "$(uname)" = "Darwin" ]; then
   cd $OUT
 
   export PATH=$PATH:${OUT}/usr/local/bin
-  export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
+  LUAROCKS_CONFIGURE="--with-lua-include=$OUT/usr/local/include"
   RUBY_CONFIGURE="--with-openssl-dir=/usr/local/ssl"
   OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
+  MKTEMP_LUAROCKS_CONF="-t rocks_config.lua"
+  MKTEMP_POSTSCRIPT_CONF="-t post_install_script.XXX.sh"
   FPM_PARAMS="--osxpkg-identifier-prefix org.kong"
 elif hash yum 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
@@ -80,48 +85,42 @@ elif hash yum 2>/dev/null; then
     sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
-  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which
+  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which lua-$LUA_VERSION lua-devel-$LUA_VERSION
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d nc -d lua-5.1.4"
+  FPM_PARAMS="-d epel-release -d nc -d 'lua = $LUA_VERSION'"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
     apt-get update && apt-get install sudo
   fi
-  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git
+  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua${LUA_VERSION%.*}=$LUA_VERSION* liblua${LUA_VERSION%.*}-0-dev=$LUA_VERSION*
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d lua5.1=5.1.4*"
+  FPM_PARAMS="-d netcat -d lua5.1"
 else
   echo "Unsupported platform"
   exit 1
 fi
 
 # This is required on the building machine
-cd $TMP
-wget http://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.2.tar.gz
-tar xvfvz ruby-2.2.2.tar.gz
-cd ruby-2.2.2
-./configure $RUBY_CONFIGURE
-make
-sudo make install
+MATCH_STR="ruby $RUBY_VERSION"
+if ! [[ `ruby -v` == $MATCH_STR* ]]; then
+  cd $TMP
+  wget http://cache.ruby-lang.org/pub/ruby/${RUBY_VERSION%.*}/ruby-$RUBY_VERSION.tar.gz
+  tar xvfvz ruby-$RUBY_VERSION.tar.gz
+  cd ruby-$RUBY_VERSION
+  ./configure $RUBY_CONFIGURE
+  make
+  sudo make install
 
-sudo gem update --system
-sudo gem install fpm
+  sudo gem update --system
+  sudo gem install fpm
+fi
 
 # Starting building software (included in the package)
-cd $TMP
-wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
-tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
-cd luarocks-$LUAROCKS_VERSION
-./configure --with-lua-include=$OUT/usr/local/include
-make build
-make install DESTDIR=$OUT
-cd $OUT
-
 cd $TMP
 wget http://openresty.org/download/ngx_openresty-$OPENRESTY_VERSION.tar.gz
 tar xzf ngx_openresty-$OPENRESTY_VERSION.tar.gz
@@ -131,7 +130,16 @@ make
 make install DESTDIR=$OUT
 cd $OUT
 
-rocks_config=$(mktemp -t rocks_config.XXX.lua)
+cd $TMP
+wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
+tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
+cd luarocks-$LUAROCKS_VERSION
+./configure $LUAROCKS_CONFIGURE
+make build
+make install DESTDIR=$OUT
+cd $OUT
+
+rocks_config=$(mktemp $MKTEMP_LUAROCKS_CONF)
 echo "
 rocks_trees = {
    { name = [[system]], root = [[${OUT}/usr/local]] }
@@ -139,6 +147,7 @@ rocks_trees = {
 " > $rocks_config
 
 export LUAROCKS_CONFIG=$rocks_config
+export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
 # Install Kong
 $OUT/usr/local/bin/luarocks install kong $KONG_VERSION
@@ -151,18 +160,14 @@ rm $OUT/usr/local/bin/kong.bak
 mkdir -p $OUT/etc/kong
 cp $OUT/usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
 
-# Make the package
-post_install_script=$(mktemp -t post_install_script.XXX.sh)
-printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
-
 cd $OUT
-fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
+
+eval "fpm -a all -f -s dir -t $PACKAGE_TYPE -n 'kong' -v $KONG_VERSION $FPM_PARAMS \
 --iteration 1 \
 --description 'Kong is an open distributed platform for your APIs, focused on high performance and reliability.' \
 --vendor Mashape \
 --license MIT \
 --url http://getkong.org/ \
---after-install $post_install_script \
-usr
+usr"
 
 echo "DONE"
