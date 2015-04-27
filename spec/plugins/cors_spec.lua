@@ -7,12 +7,25 @@ local PLUGINS = {}
 local API_URL = spec_helper.API_URL
 local PROXY_URL = spec_helper.PROXY_URL
 
-function request(name, method, qs, headers)
+local function get_id(name)
+  return APIS[name].id
+end
+
+local function merge (a, b)
+  for k, v in pairs(b) do a[k] = v end
+  return a
+end
+
+local function get_dns(name)
+  return APIS[name].dns
+end
+
+local function request(name, method, qs, headers)
   headers = merge({ host = get_dns(name) }, headers or {})
   return http_client[method](PROXY_URL, qs, headers)
 end
 
-function create_api(name, dns)
+local function create_api(name, dns)
   local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
 
   -- decode response
@@ -22,7 +35,7 @@ function create_api(name, dns)
   APIS[name] = { id = response.id, dns = dns }
 end
 
-function delete_api(name)
+local function delete_api(name)
   local response, status, headers = http_client.delete(API_URL.."/apis/"..get_id(name))
 
   -- remove api if we obtain 200
@@ -34,7 +47,7 @@ function delete_api(name)
   assert.are.equal(get_id(name), nil)
 end
 
-function delete_apis()
+local function delete_apis()
   for name, t in pairs(APIS) do
     local response, status, headers = http_client.delete(API_URL.."/apis/"..t.id)
     assert.are.equal(status, 204)
@@ -42,7 +55,7 @@ function delete_apis()
   APIS = {}
 end
 
-function enable_plugin(api_name, name, options)
+local function enable_plugin(api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
   local response, status, headers = http_client.post(API_URL.."/plugins_configurations/", plugin)
 
@@ -59,7 +72,7 @@ function enable_plugin(api_name, name, options)
   return response, status, headers
 end
 
-function delete_plugins()
+local function delete_plugins()
   for i, id in ipairs(PLUGINS) do
     local response, status, headers = http_client.delete(API_URL.."/plugins_configurations/"..id)
     assert.are.equal(status, 204)
@@ -67,20 +80,7 @@ function delete_plugins()
   PLUGINS = {}
 end
 
-function get_id(name)
-  return APIS[name].id
-end
-
-function get_dns(name)
-  return APIS[name].dns
-end
-
-function merge (a, b)
-  for k, v in pairs(b) do a[k] = v end
-  return a
-end
-
-function print_table (t)
+local function print_table (t)
   for k, v in pairs(t) do print(k, v) end
 end
 
