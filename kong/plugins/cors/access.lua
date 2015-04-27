@@ -51,7 +51,7 @@ function _M.execute(conf)
   configure_origin(ngx, conf)
   configure_credentials(ngx, conf)
 
-  if method == "OPTIONS" then
+  if string.upper(method) == "OPTIONS" then
     -- Preflight
     configure_headers(ngx, conf, headers)
     configure_methods(ngx, conf)
