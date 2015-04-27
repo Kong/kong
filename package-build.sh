@@ -167,8 +167,8 @@ cd $OUT
 # Copy the conf to /etc/kong
 post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
 echo "#!/bin/sh
-sudo /usr/local/bin/luarocks install $OUT/usr/local/kong/kong-$KONG_VERSION.src.rock
-rm $OUT/usr/local/kong/kong-$KONG_VERSION.src.rock
+sudo /usr/local/bin/luarocks install /usr/local/kong/kong-$KONG_VERSION.src.rock
+sudo rm /usr/local/kong/kong-$KONG_VERSION.src.rock
 sudo mkdir -p /etc/kong
 sudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml
 " > $post_install_script
