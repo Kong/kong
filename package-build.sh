@@ -32,6 +32,7 @@ PACKAGE_TYPE=""
 LUA_MAKE=""
 OPENRESTY_CONFIGURE=""
 LUAROCKS_CONFIGURE=""
+LUAROCKS_ROOT="/usr/local"
 FPM_PARAMS=""
 RUBY_CONFIGURE=""
 
@@ -67,6 +68,8 @@ if [ "$(uname)" = "Darwin" ]; then
   make $LUA_MAKE
   make install INSTALL_TOP=$OUT/usr/local
   cd $OUT
+
+  LUAROCKS_ROOT="${OUT}/usr/local"
 
   export PATH=$PATH:${OUT}/usr/local/bin
   export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
@@ -136,7 +139,7 @@ cd $OUT
 rocks_config=$(mktemp -t rocks_config.XXX.lua)
 echo "
 rocks_trees = {
-   { name = [[system]], root = [[${OUT}/usr/local]] }
+   { name = [[system]], root = [[${LUAROCKS_ROOT}]] }
 }
 " > $rocks_config
 
