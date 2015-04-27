@@ -31,6 +31,7 @@ source ./versions.sh
 PACKAGE_TYPE=""
 LUA_MAKE=""
 OPENRESTY_CONFIGURE=""
+LUAROCKS_CONFIGURE=""
 FPM_PARAMS=""
 RUBY_CONFIGURE=""
 
@@ -70,6 +71,7 @@ if [ "$(uname)" = "Darwin" ]; then
   export PATH=$PATH:${OUT}/usr/local/bin
   export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
+  LUAROCKS_CONFIGURE="--with-lua-include=$OUT/usr/local/include"
   RUBY_CONFIGURE="--with-openssl-dir=/usr/local/ssl"
   OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
   FPM_PARAMS="--osxpkg-identifier-prefix org.kong"
@@ -84,7 +86,7 @@ elif hash yum 2>/dev/null; then
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d nc -d lua-$LUA_VERSION"
+  FPM_PARAMS="-d nc -d lua-5.1.4"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
@@ -94,7 +96,7 @@ elif hash apt-get 2>/dev/null; then
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d lua5.1=$LUA_VERSION*"
+  FPM_PARAMS="-d netcat -d lua5.1=5.1.4*"
 else
   echo "Unsupported platform"
   exit 1
@@ -117,7 +119,7 @@ cd $TMP
 wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
 tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
 cd luarocks-$LUAROCKS_VERSION
-./configure --with-lua-include=$OUT/usr/local/include
+./configure $LUAROCKS_CONFIGURE
 make build
 make install DESTDIR=$OUT
 cd $OUT
@@ -147,15 +149,13 @@ $OUT/usr/local/bin/luarocks install kong $KONG_VERSION
 sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
 
-rocks_folder=$(find $OUT/usr/local/lib/luarocks -type d -name "rocks*" | head -1)
-
 # Copy the conf to /etc/kong
 mkdir -p $OUT/etc/kong
-cp $rocks_folder/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
+cp $OUT/usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
 
 # Make the package
 post_install_script=$(mktemp -t post_install_script.XXX.sh)
-printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp $rocks_folder/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
+printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 fpm -a all -f -s dir -t $PACKAGE_TYPE -n "kong" -v ${KONG_VERSION} ${FPM_PARAMS} \
