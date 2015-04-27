@@ -24,7 +24,7 @@ describe("Static files", function()
       local file_content = IO.read_file(rockspec_path)
       local res = file_content:match("\"+[0-9.-]+[a-z]*[0-9-]*\"+")
       local extracted_version = res:sub(2, res:len() - 1)
-      assert.are.same(constants.VERSION, stringy.split(extracted_version, "-")[1])
+      assert.are.same(constants.VERSION, extracted_version)
     end)
 
   end)
