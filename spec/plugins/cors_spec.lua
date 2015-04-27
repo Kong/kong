@@ -7,41 +7,32 @@ local PLUGINS = {}
 local API_URL = spec_helper.API_URL
 local PROXY_URL = spec_helper.PROXY_URL
 
-local function merge(a, b)
-  for k, v in pairs(b) do a[k] = v end
-  return a
-end
-
 local function get_id(name)
   return APIS[name].id
 end
 
+local function merge (a, b)
+  for k, v in pairs(b) do a[k] = v end
+  return a
+end
+
 local function get_dns(name)
-  return APIS[name].public_dns
+  return APIS[name].dns
 end
 
 local function request(name, method, qs, headers)
-
-  print("TRYING TO MAKE REQUEST")
   headers = merge({ host = get_dns(name) }, headers or {})
-
-  local inspect = require "inspect"
-  print(inspect(headers))
-
   return http_client[method](PROXY_URL, qs, headers)
 end
 
-local function create_api(name, public_dns)
-  local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(public_dns and public_dns or "mockbin.com") }, {})
-  print(response)
-  print(public_dns)
-  assert.are.equal(201, status)
+local function create_api(name, dns)
+  local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
 
   -- decode response
   response = cjson.decode(response)
 
   -- store id for later usage
-  APIS[name] = { id = response.id, public_dns = public_dns }
+  APIS[name] = { id = response.id, dns = dns }
 end
 
 local function delete_api(name)
@@ -66,14 +57,7 @@ end
 
 local function enable_plugin(api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
-
-  local inspect = require "inspect"
-  print(inspect(plugin))
-
   local response, status, headers = http_client.post(API_URL.."/plugins_configurations/", plugin)
-
-  print(status)
-  print(response)
 
   -- ensure created
   assert.are.equal(status, 201)
@@ -96,16 +80,20 @@ local function delete_plugins()
   PLUGINS = {}
 end
 
+local function print_table (t)
+  for k, v in pairs(t) do print(k, v) end
+end
+
 describe("CORS Plugin", function()
 
   setup(function()
     spec_helper.prepare_db()
     spec_helper.start_kong()
 
-    create_api("API_TESTS_1", "cors.mockbin.com")
-    create_api("API_TESTS_2", "cors.mockbin2.com")
-    create_api("API_TESTS_3", "cors.mockbin3.com")
-    create_api("API_TESTS_4", "cors.mockbin4.com")
+    create_api("API_TESTS_1", "mockbin.com")
+    create_api("API_TESTS_2", "mockbin2.com")
+    create_api("API_TESTS_3", "mockbin3.com")
+    create_api("API_TESTS_4", "mockbin4.com")
   end)
 
   teardown(function()
@@ -118,7 +106,6 @@ describe("CORS Plugin", function()
       delete_plugins()
     end)
 
-    --[[
     it("should set the appropriate defaults", function()
       local response, status, headers = enable_plugin("API_TESTS_1", "cors")
 
@@ -128,7 +115,6 @@ describe("CORS Plugin", function()
       assert.are.equal(response.value.credentials, false)
       assert.are.equal(response.value.methods, nil)
       assert.are.equal(response.value.headers, nil)
-      assert.are.equal(response.value.exposed_headers, nil)
       assert.are.equal(response.value.max_age, nil)
       assert.are.equal(response.value.origin, nil)
     end)
@@ -146,34 +132,20 @@ describe("CORS Plugin", function()
       assert.are.equal(status, 201)
       assert.falsy(response.value.testing)
     end)
-    --]]
   end)
-  
+
   describe("OPTIONS", function()
     after_each(function()
       delete_plugins()
     end)
 
     it("should give appropriate defaults when no options are passed", function()
-      print("INIT_TEST")
-
       enable_plugin("API_TESTS_1", "cors")
-
-      print("APIS ON THE SYSTEM")
-      local a,b,c = http_client.get(API_URL.."/apis/")
-      print(a)
-      print(b)
 
       -- make proxy request
       local response, status, headers = request("API_TESTS_1", "options")
 
-      print("CORS RESPONSE")
-      local inspect = require "inspect"
-      print(inspect(headers))
-      print(response)
-
       -- assertions
-      assert.are.equal(204, status)
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], "GET,HEAD,PUT,PATCH,POST,DELETE")
       assert.are.equal(headers["access-control-allow-headers"], nil)
@@ -181,7 +153,7 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-allow-credentials"], nil)
       assert.are.equal(headers["access-control-max-age"], nil)
     end)
-    --[[
+
     it("should reflect what is specified in options", function()
       local options = {}
 
@@ -207,9 +179,8 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-max-age"], tostring(options["value.max_age"]))
       assert.are.equal(headers["access-control-allow-credentials"], "true")
     end)
-    --]]
   end)
-  --[[
+
   describe("GET,PUT,POST,ETC", function()
     after_each(function()
       delete_plugins()
@@ -256,5 +227,4 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-allow-credentials"], "true")
     end)
   end)
-  --]]
 end)
