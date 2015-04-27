@@ -157,8 +157,9 @@ sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
 
 # Copy the conf to /etc/kong
+luarocks_dir=$(find $OUT/usr/local/lib/luarocks -type d -name "rocks*" | head -1)
 mkdir -p $OUT/etc/kong
-cp $OUT/usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
+cp $luarocks_dir/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
 
 cd $OUT
 
