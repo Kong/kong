@@ -139,26 +139,39 @@ make build
 make install DESTDIR=$OUT
 cd $OUT
 
-rocks_config=$(mktemp $MKTEMP_LUAROCKS_CONF)
-echo "
-rocks_trees = {
-   { name = [[system]], root = [[${OUT}/usr/local]] }
-}
-" > $rocks_config
+#rocks_config=$(mktemp $MKTEMP_LUAROCKS_CONF)
+#echo "
+#rocks_trees = {
+#   { name = [[system]], root = [[${OUT}/usr/local]] }
+#}
+#" > $rocks_config
 
-export LUAROCKS_CONFIG=$rocks_config
-export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
+#export LUAROCKS_CONFIG=$rocks_config
+#export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
 # Install Kong
-$OUT/usr/local/bin/luarocks install kong $KONG_VERSION
+#$OUT/usr/local/bin/luarocks install kong $KONG_VERSION
 
 # Fix the Kong bin file
-sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
-rm $OUT/usr/local/bin/kong.bak
+#sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
+#rm $OUT/usr/local/bin/kong.bak
+
+cd $TMP
+git clone --branch $KONG_VERSION https://github.com/Mashape/kong.git
+cd kong
+luarocks pack kong-$KONG_VERSION.rockspec
+mkdir -p $OUT/usr/local/kong
+cp kong-$KONG_VERSION.src.rock $OUT/usr/local/kong/
+cd $OUT
 
 # Copy the conf to /etc/kong
 post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
-printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
+echo "#!/bin/sh
+sudo /usr/local/bin/luarocks install $OUT/usr/local/kong/kong-$KONG_VERSION.src.rock
+rm $OUT/usr/local/kong/kong-$KONG_VERSION.src.rock
+sudo mkdir -p /etc/kong
+sudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml
+" > $post_install_script
 
 cd $OUT
 
