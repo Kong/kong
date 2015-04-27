@@ -120,7 +120,12 @@ describe("CORS Plugin", function()
     end)
 
     it("should ignore values outside of the schema", function()
-      local options = { values={ testing="invalid" } }
+      local options = {}
+
+      -- setup options
+      options["value.testing"] = "example.com"
+
+      -- make request
       local response, status, headers = enable_plugin("API_TESTS_1", "cors", options)
 
       -- assertions
