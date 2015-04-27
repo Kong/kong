@@ -31,7 +31,7 @@ local function request(name, method, qs, headers)
   return http_client[method](PROXY_URL, qs, headers)
 end
 
-function create_api (name, public_dns)
+local function create_api(name, public_dns)
   local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(public_dns and public_dns or "mockbin.com") }, {})
 
   -- decode response
@@ -41,7 +41,7 @@ function create_api (name, public_dns)
   APIS[name] = { id = response.id, public_dns = public_dns }
 end
 
-function delete_api(name)
+local function delete_api(name)
   local response, status, headers = http_client.delete(API_URL.."/apis/"..get_id(name))
 
   -- remove api if we obtain 200
@@ -53,7 +53,7 @@ function delete_api(name)
   assert.are.equal(get_id(name), nil)
 end
 
-function delete_apis()
+local function delete_apis()
   for name, t in pairs(APIS) do
     local response, status, headers = http_client.delete(API_URL.."/apis/"..t.id)
     assert.are.equal(status, 204)
@@ -61,7 +61,7 @@ function delete_apis()
   APIS = {}
 end
 
-function enable_plugin(api_name, name, options)
+local function enable_plugin(api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
 
   local inspect = require "inspect"
@@ -85,7 +85,7 @@ function enable_plugin(api_name, name, options)
   return response, status, headers
 end
 
-function delete_plugins()
+local function delete_plugins()
   for i, id in ipairs(PLUGINS) do
     local response, status, headers = http_client.delete(API_URL.."/plugins_configurations/"..id)
     assert.are.equal(status, 204)
