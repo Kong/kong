@@ -1,6 +1,6 @@
 return {
   NAME = "kong",
-  VERSION = "0.2.0-1",
+  VERSION = "0.2.0-2",
   SYSLOG = {
     ADDRESS = "kong-hf.mashape.com",
     PORT = 61828
