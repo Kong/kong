@@ -159,7 +159,7 @@ cd $OUT
 cd $TMP
 git clone --branch $KONG_VERSION https://github.com/Mashape/kong.git
 cd kong
-luarocks pack kong-$KONG_VERSION.rockspec
+/usr/local/bin/luarocks pack kong-$KONG_VERSION.rockspec
 mkdir -p $OUT/usr/local/kong
 cp kong-$KONG_VERSION.src.rock $OUT/usr/local/kong/
 cd $OUT
