@@ -1,6 +1,9 @@
 local _M = {}
 
 local function configure_origin (ngx, conf)
+  print("CONFIGURING ORIGIN")
+  print(conf.origin)
+
   if conf.origin == nil then
     ngx.header["Access-Control-Allow-Origin"] = "*"
   else
@@ -44,6 +47,11 @@ local function configure_max_age (ngx, conf)
 end
 
 function _M.execute (conf)
+
+  print("EXECUTING CORS")
+  local inspect = require "inspect"
+  print(inspect(conf))
+
   local request = ngx.req
   local method = request.get_method()
   local headers = request.get_headers()
@@ -52,6 +60,7 @@ function _M.execute (conf)
   configure_credentials(ngx, conf)
 
   if method == "OPTIONS" then
+    print("IS OPTIONS")
     -- Preflight
     configure_headers(ngx, conf, headers)
     configure_methods(ngx, conf)

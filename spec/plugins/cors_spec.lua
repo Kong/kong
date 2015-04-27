@@ -96,7 +96,7 @@ describe("CORS Plugin", function()
     spec_helper.stop_kong()
     spec_helper.reset_db()
   end)
-
+  --[[
   describe("Schema", function()
     after_each(function()
       delete_plugins()
@@ -130,7 +130,7 @@ describe("CORS Plugin", function()
       assert.falsy(response.value.testing)
     end)
   end)
-
+  --]]
   describe("OPTIONS", function()
     after_each(function()
       delete_plugins()
@@ -138,8 +138,6 @@ describe("CORS Plugin", function()
 
     it("should give appropriate defaults when no options are passed", function()
       enable_plugin("API_TESTS_1", "cors")
-
-      os.execute("sleep 10")
 
       -- make proxy request
       local response, status, headers = request("API_TESTS_1", "options")
@@ -152,7 +150,7 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-allow-credentials"], nil)
       assert.are.equal(headers["access-control-max-age"], nil)
     end)
-
+    --[[
     it("should reflect what is specified in options", function()
       local options = {}
 
@@ -178,8 +176,9 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-max-age"], tostring(options["value.max_age"]))
       assert.are.equal(headers["access-control-allow-credentials"], "true")
     end)
+    --]]
   end)
-
+  --[[
   describe("GET,PUT,POST,ETC", function()
     after_each(function()
       delete_plugins()
@@ -226,4 +225,5 @@ describe("CORS Plugin", function()
       assert.are.equal(headers["access-control-allow-credentials"], "true")
     end)
   end)
+  --]]
 end)
