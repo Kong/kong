@@ -28,6 +28,8 @@ end
 local function create_api(name, dns)
   local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "cors.mockbin.com") }, {})
 
+  assert.are.equal(201, status)
+
   -- decode response
   response = cjson.decode(response)
 
@@ -145,6 +147,7 @@ describe("CORS Plugin", function()
       -- make proxy request
       local response, status, headers = request("API_TESTS_1", "options")
 
+      assert.are.equal(204, status)
       -- assertions
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], "GET,HEAD,PUT,PATCH,POST,DELETE")
