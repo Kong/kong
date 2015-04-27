@@ -63,6 +63,9 @@ local function enable_plugin (api_name, name, options)
 
   local response, status, headers = http_client.post(API_URL.."/plugins_configurations/", plugin)
 
+  print(status)
+  print(response)
+
   -- ensure created
   assert.are.equal(status, 201)
 
@@ -147,6 +150,11 @@ describe("CORS Plugin", function()
 
       -- make proxy request
       local response, status, headers = request("API_TESTS_1", "options")
+
+      print("CORS RESPONSE")
+      local inspect = require "inspect"
+      print(inspect(headers))
+      print(response)
 
       -- assertions
       assert.are.equal(headers["access-control-allow-origin"], "*")
