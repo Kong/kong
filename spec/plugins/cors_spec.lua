@@ -57,6 +57,10 @@ end
 
 local function enable_plugin (api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
+
+  local inspect = require "inspect"
+  print(inspect(plugin))
+
   local response, status, headers = http_client.post(API_URL.."/plugins_configurations/", plugin)
 
   -- ensure created
