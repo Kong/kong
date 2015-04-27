@@ -85,11 +85,11 @@ elif hash yum 2>/dev/null; then
     sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
-  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which lua-$LUA_VERSION lua-devel-$LUA_VERSION
+  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel-0.9.8e ldconfig unzip git rpm-build ncurses-devel which lua-$LUA_VERSION lua-devel-$LUA_VERSION
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d epel-release -d nc -d 'lua = $LUA_VERSION'"
+  FPM_PARAMS="-d epel-release -d nc -d 'lua = $LUA_VERSION' -d openssl098e"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
