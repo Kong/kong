@@ -49,9 +49,9 @@ local function http_call(options)
     local parsed_url = url.parse(options.url)
     local port_segment = ""
     if parsed_url.port then
-      port_segment = ":" .. parsed_url.port
+      port_segment = ":"..parsed_url.port
     end
-    options.headers["host"] = parsed_url.host .. port_segment
+    options.headers["host"] = parsed_url.host..port_segment
   end
 
   -- Returns: response, code, headers
@@ -143,7 +143,7 @@ function _M.put(url, table, headers)
   }
 end
 
--- DELETE methpd
+-- DELETE method
 function _M.delete(url, querystring, headers)
   if not headers then headers = {} end
 
@@ -153,6 +153,21 @@ function _M.delete(url, querystring, headers)
 
   return http_call {
     method = "DELETE",
+    url = url,
+    headers = headers
+  }
+end
+
+-- OPTIONS method
+function _M.options(url, querystring, headers)
+  if not headers then headers = {} end
+
+  if querystring then
+    url = string.format("%s?%s", url, build_query(querystring))
+  end
+
+  return http_call {
+    method = "OPTIONS",
     url = url,
     headers = headers
   }
