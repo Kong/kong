@@ -28,6 +28,8 @@ end
 local function create_api (name, dns)
   local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
 
+  assert.are.equal(201, status)
+
   -- decode response
   response = cjson.decode(response)
 
