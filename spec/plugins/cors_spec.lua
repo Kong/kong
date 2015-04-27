@@ -139,6 +139,8 @@ describe("CORS Plugin", function()
     it("should give appropriate defaults when no options are passed", function()
       enable_plugin("API_TESTS_1", "cors")
 
+      os.execute("sleep 10")
+
       -- make proxy request
       local response, status, headers = request("API_TESTS_1", "options")
 
