@@ -7,25 +7,25 @@ local PLUGINS = {}
 local API_URL = spec_helper.API_URL
 local PROXY_URL = spec_helper.PROXY_URL
 
-local function merge (a, b)
+function merge(a, b)
   for k, v in pairs(b) do a[k] = v end
   return a
 end
 
-local function get_id(name)
+function get_id(name)
   return APIS[name].id
 end
 
-local function get_dns(name)
+function get_dns(name)
   return APIS[name].dns
 end
 
-local function request(name, method, qs, headers)
+function request(name, method, qs, headers)
   headers = merge({ host = get_dns(name) }, headers or {})
   return http_client[method](PROXY_URL, qs, headers)
 end
 
-local function create_api (name, dns)
+function create_api (name, dns)
   local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
 
   -- decode response
@@ -35,7 +35,7 @@ local function create_api (name, dns)
   APIS[name] = { id = response.id, dns = dns }
 end
 
-local function delete_api (name)
+function delete_api(name)
   local response, status, headers = http_client.delete(API_URL.."/apis/"..get_id(name))
 
   -- remove api if we obtain 200
@@ -47,7 +47,7 @@ local function delete_api (name)
   assert.are.equal(get_id(name), nil)
 end
 
-local function delete_apis ()
+function delete_apis()
   for name, t in pairs(APIS) do
     local response, status, headers = http_client.delete(API_URL.."/apis/"..t.id)
     assert.are.equal(status, 204)
@@ -55,7 +55,7 @@ local function delete_apis ()
   APIS = {}
 end
 
-local function enable_plugin (api_name, name, options)
+function enable_plugin(api_name, name, options)
   local plugin = merge({ name=name, api_id=get_id(api_name) }, options or {})
 
   local inspect = require "inspect"
@@ -79,7 +79,7 @@ local function enable_plugin (api_name, name, options)
   return response, status, headers
 end
 
-local function delete_plugins ()
+function delete_plugins()
   for i, id in ipairs(PLUGINS) do
     local response, status, headers = http_client.delete(API_URL.."/plugins_configurations/"..id)
     assert.are.equal(status, 204)
@@ -103,7 +103,7 @@ describe("CORS Plugin", function()
     spec_helper.stop_kong()
     spec_helper.reset_db()
   end)
-  --[[
+
   describe("Schema", function()
     after_each(function()
       delete_plugins()
@@ -137,7 +137,7 @@ describe("CORS Plugin", function()
       assert.falsy(response.value.testing)
     end)
   end)
-  --]]
+
   describe("OPTIONS", function()
     after_each(function()
       delete_plugins()
