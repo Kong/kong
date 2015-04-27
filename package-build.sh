@@ -95,11 +95,11 @@ elif hash apt-get 2>/dev/null; then
     # If already root, install sudo just in case (Docker)
     apt-get update && apt-get install sudo
   fi
-  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua${LUA_VERSION%.*}=$LUA_VERSION* liblua${LUA_VERSION%.*}-0-dev=$LUA_VERSION*
+  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev=0.9.8* perl unzip git lua${LUA_VERSION%.*}=$LUA_VERSION* liblua${LUA_VERSION%.*}-0-dev=$LUA_VERSION*
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d lua5.1"
+  FPM_PARAMS="-d netcat -d lua5.1 -d libssl0.9.8"
 else
   echo "Unsupported platform"
   exit 1
