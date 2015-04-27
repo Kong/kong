@@ -154,6 +154,11 @@ describe("CORS Plugin", function()
 
       enable_plugin("API_TESTS_1", "cors")
 
+      print("APIS ON THE SYSTEM")
+      local a,b,c = http_client.get(API_URL.."/apis/")
+      print(a)
+      print(b)
+
       -- make proxy request
       local response, status, headers = request("API_TESTS_1", "options")
 
@@ -163,6 +168,7 @@ describe("CORS Plugin", function()
       print(response)
 
       -- assertions
+      assert.are.equal(204, status)
       assert.are.equal(headers["access-control-allow-origin"], "*")
       assert.are.equal(headers["access-control-allow-methods"], "GET,HEAD,PUT,PATCH,POST,DELETE")
       assert.are.equal(headers["access-control-allow-headers"], nil)
