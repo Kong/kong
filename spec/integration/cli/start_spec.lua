@@ -88,7 +88,7 @@ describe("CLI", function()
     end)
 
     it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ratelimiting", "keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer"})
+      replace_conf_property("plugins_available", {"ratelimiting", "keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer", "cors"})
 
       spec_helper.prepare_db(SERVER_CONF)
 

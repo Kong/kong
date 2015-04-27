@@ -109,6 +109,10 @@ build = {
     ["kong.plugins.request_transfomer.access"] = "kong/plugins/request_transformer/access.lua",
     ["kong.plugins.request_transfomer.schema"] = "kong/plugins/request_transformer/schema.lua",
 
+    ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
+    ["kong.plugins.cors.access"] = "kong/plugins/cors/access.lua",
+    ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
+
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
