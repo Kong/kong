@@ -141,6 +141,8 @@ describe("CORS Plugin", function()
     end)
 
     it("should give appropriate defaults when no options are passed", function()
+      print("INIT_TEST")
+
       enable_plugin("API_TESTS_1", "cors")
 
       -- make proxy request
