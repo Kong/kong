@@ -33,8 +33,6 @@ database_cache_expiration: 5 # in seconds
 # Sends anonymous error reports
 send_anonymous_reports: true
 
-nginx_plus_status: false
-
 # Nginx configuration
 nginx: |
   worker_processes auto;
