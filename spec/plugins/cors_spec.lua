@@ -7,17 +7,17 @@ local PLUGINS = {}
 local API_URL = spec_helper.API_URL
 local PROXY_URL = spec_helper.PROXY_URL
 
-function merge(a, b)
+local function merge(a, b)
   for k, v in pairs(b) do a[k] = v end
   return a
 end
 
-function get_id(name)
+local function get_id(name)
   return APIS[name].id
 end
 
-function get_dns(name)
-  return APIS[name].dns
+local function get_dns(name)
+  return APIS[name].public_dns
 end
 
 local function request(name, method, qs, headers)
@@ -31,14 +31,14 @@ local function request(name, method, qs, headers)
   return http_client[method](PROXY_URL, qs, headers)
 end
 
-function create_api (name, dns)
-  local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
+function create_api (name, public_dns)
+  local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(public_dns and public_dns or "mockbin.com") }, {})
 
   -- decode response
   response = cjson.decode(response)
 
   -- store id for later usage
-  APIS[name] = { id = response.id, dns = dns }
+  APIS[name] = { id = response.id, public_dns = public_dns }
 end
 
 function delete_api(name)
