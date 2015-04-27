@@ -201,6 +201,8 @@ function _M.exec_plugins_header_filter()
       end
     end
   end
+  
+  ngx.header[constants.HEADERS.VIA] = "kong/"..constants.VERSION
 end
 
 -- Calls body_filter() on every loaded plugin

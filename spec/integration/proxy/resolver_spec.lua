@@ -1,5 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local constants = require "kong.constants"
 local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
@@ -32,6 +33,16 @@ describe("Resolver #proxy", function()
     it("should return API found when the API has been created", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
       assert.are.equal(200, status)
+    end)
+
+    it("should return correct server header", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
+      assert.are.equal("cloudflare-nginx", headers.server)
+    end)
+
+    it("should return correct via header", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
+      assert.are.equal("kong/"..constants.VERSION, headers.via)
     end)
 
   end)
