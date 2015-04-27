@@ -157,9 +157,8 @@ sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
 
 # Copy the conf to /etc/kong
-luarocks_dir=$(find $OUT/usr/local/lib/luarocks -type d -name "rocks*" | head -1)
-mkdir -p $OUT/etc/kong
-cp $luarocks_dir/kong/$KONG_VERSION/conf/kong.yml $OUT/etc/kong/kong.yml
+post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
+printf "#!/bin/sh\nsudo mkdir -p /etc/kong\nsudo cp /usr/local/lib/luarocks/rocks/kong/$KONG_VERSION/conf/kong.yml /etc/kong/kong.yml" > $post_install_script
 
 cd $OUT
 
@@ -169,6 +168,7 @@ eval "fpm -a all -f -s dir -t $PACKAGE_TYPE -n 'kong' -v $KONG_VERSION $FPM_PARA
 --vendor Mashape \
 --license MIT \
 --url http://getkong.org/ \
+--after-install $post_install_script \
 usr"
 
 echo "DONE"
