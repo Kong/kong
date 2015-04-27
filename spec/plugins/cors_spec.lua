@@ -143,8 +143,9 @@ describe("CORS Plugin", function()
       assert.are.equal(status, 201)
       assert.falsy(response.value.testing)
     end)
+    --]]
   end)
-  --]]
+  
   describe("OPTIONS", function()
     after_each(function()
       delete_plugins()
