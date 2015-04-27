@@ -26,7 +26,7 @@ local function request(name, method, qs, headers)
 end
 
 local function create_api(name, dns)
-  local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "mockbin.com") }, {})
+  local response, status, headers = http_client.post(API_URL.."/apis/", { name=name, target_url="http://mockbin.com", public_dns=(dns or "cors.mockbin.com") }, {})
 
   -- decode response
   response = cjson.decode(response)
@@ -90,10 +90,10 @@ describe("CORS Plugin", function()
     spec_helper.prepare_db()
     spec_helper.start_kong()
 
-    create_api("API_TESTS_1", "mockbin.com")
-    create_api("API_TESTS_2", "mockbin2.com")
-    create_api("API_TESTS_3", "mockbin3.com")
-    create_api("API_TESTS_4", "mockbin4.com")
+    create_api("API_TESTS_1", "cors.mockbin.com")
+    create_api("API_TESTS_2", "cors.mockbin2.com")
+    create_api("API_TESTS_3", "cors.mockbin3.com")
+    create_api("API_TESTS_4", "cors.mockbin4.com")
   end)
 
   teardown(function()
