@@ -82,21 +82,21 @@ elif hash yum 2>/dev/null; then
     sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
-  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which
+  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which lua-$LUA_VERSION
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d nc -d lua-5.1.4"
+  FPM_PARAMS="-d nc -d lua-$LUA_VERSION"
 elif hash apt-get 2>/dev/null; then
   if [[ $EUID -eq 0 ]]; then
     # If already root, install sudo just in case (Docker)
     apt-get update && apt-get install sudo
   fi
-  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git
+  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua5.1=$LUA_VERSION*
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d lua5.1=5.1.4*"
+  FPM_PARAMS="-d netcat -d lua5.1=$LUA_VERSION*"
 else
   echo "Unsupported platform"
   exit 1
