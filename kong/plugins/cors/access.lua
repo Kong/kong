@@ -1,5 +1,3 @@
-local stringy = require "stringy"
-
 local _M = {}
 
 local function configure_origin (ngx, conf)
