@@ -20,4 +20,4 @@ install:
 
 script: "busted --coverage spec/"
 
-after_success: "luacov-coveralls -i kong"
+after_success: "cat nginx_tmp/logs/error.log"
