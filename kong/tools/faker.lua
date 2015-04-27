@@ -31,6 +31,9 @@ Faker.FIXTURES = {
     { name = "API TESTS 4", public_dns = "test4.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 5", public_dns = "test5.com", target_url = "http://mockbin.com" },
 
+    { name = "API TESTS 6", public_dns = "cors1.com", target_url = "http://mockbin.com" },
+    { name = "API TESTS 7", public_dns = "cors2.com", target_url = "http://mockbin.com" },
+
     -- DEVELOPMENT APIs. Please do not use those in tests
     { name = "API DEV 1", public_dns = "dev.com", target_url = "http://mockbin.com" },
   },
@@ -59,14 +62,23 @@ Faker.FIXTURES = {
     { name = "ratelimiting", value = {period = "minute", limit = 8}, __api = 3, __consumer = 1 },
     -- API 4
     { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 4 },
-    --API 5
+    -- API 5
     { name = "request_transformer", value = {
       add = { headers = {"x-added:true", "x-added2:true" },
               querystring = {"newparam:value"},
               form = {"newformparam:newvalue"} },
       remove = { headers = { "x-to-remove" },
                  querystring = { "toremovequery" },
-                 form = { "toremoveform" } } }, __api = 5 }
+                 form = { "toremoveform" } } }, __api = 5 },
+    -- API 6
+    { name = "cors", value = {}, __api = 6 },
+    -- API 7
+    { name = "cors", value = { origin = "example.com", 
+                               methods = "GET", 
+                               headers = "origin, type, accepts", 
+                               exposed_headers = "x-auth-token",
+                               max_age = 23,
+                               credentials = true }, __api = 7 }
   }
 }
 

@@ -49,9 +49,9 @@ local function http_call(options)
     local parsed_url = url.parse(options.url)
     local port_segment = ""
     if parsed_url.port then
-      port_segment = ":" .. parsed_url.port
+      port_segment = ":"..parsed_url.port
     end
-    options.headers["host"] = parsed_url.host .. port_segment
+    options.headers["host"] = parsed_url.host..port_segment
   end
 
   -- Returns: response, code, headers
