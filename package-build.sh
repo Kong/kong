@@ -85,7 +85,7 @@ elif hash yum 2>/dev/null; then
     sed -i "s/^.*requiretty/#Defaults requiretty/" /etc/sudoers
   fi
   sudo yum -y install epel-release
-  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel-0.9.8e ldconfig unzip git rpm-build ncurses-devel which lua-$LUA_VERSION lua-devel-$LUA_VERSION
+  sudo yum -y install wget tar make ldconfig gcc perl pcre-devel openssl-devel-0.9.8e ldconfig unzip zip git rpm-build ncurses-devel which lua-$LUA_VERSION lua-devel-$LUA_VERSION
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
@@ -95,7 +95,7 @@ elif hash apt-get 2>/dev/null; then
     # If already root, install sudo just in case (Docker)
     apt-get update && apt-get install sudo
   fi
-  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev=0.9.8* perl unzip git lua${LUA_VERSION%.*}=$LUA_VERSION* liblua${LUA_VERSION%.*}-0-dev=$LUA_VERSION*
+  sudo apt-get update && sudo apt-get -y install wget tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev=0.9.8* perl unzip zip git lua${LUA_VERSION%.*}=$LUA_VERSION* liblua${LUA_VERSION%.*}-0-dev=$LUA_VERSION*
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
@@ -147,7 +147,7 @@ cd $OUT
 #" > $rocks_config
 
 #export LUAROCKS_CONFIG=$rocks_config
-#export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
+export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
 # Install Kong
 #$OUT/usr/local/bin/luarocks install kong $KONG_VERSION
