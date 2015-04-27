@@ -18,6 +18,6 @@ install:
   - sudo make install
   - sudo make dev
 
-script: "busted --coverage spec/"
+script: "busted spec/plugins/cors_spec.lua"
 
-after_success: "cat nginx_tmp/logs/error.log"
+after_script: "cat nginx_tmp/logs/error.log"
