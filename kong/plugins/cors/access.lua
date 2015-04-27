@@ -1,11 +1,7 @@
-local stringy = require "stringy"
-
 local _M = {}
 
 local function configure_origin(ngx, conf)
-  print("ORIGIN CHECK")
-  print(conf.origin)
-  if not conf.origin or stringy.strip(conf.origin) == "" then
+  if conf.origin == nil then
     ngx.header["Access-Control-Allow-Origin"] = "*"
   else
     ngx.header["Access-Control-Allow-Origin"] = conf.origin
