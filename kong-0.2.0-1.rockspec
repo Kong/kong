@@ -105,9 +105,9 @@ build = {
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
     ["kong.plugins.ratelimiting.schema"] = "kong/plugins/ratelimiting/schema.lua",
 
-    ["kong.plugins.request_transfomer.handler"] = "kong/plugins/request_transformer/handler.lua",
-    ["kong.plugins.request_transfomer.access"] = "kong/plugins/request_transformer/access.lua",
-    ["kong.plugins.request_transfomer.schema"] = "kong/plugins/request_transformer/schema.lua",
+    ["kong.plugins.request_transformer.handler"] = "kong/plugins/request_transformer/handler.lua",
+    ["kong.plugins.request_transformer.access"] = "kong/plugins/request_transformer/access.lua",
+    ["kong.plugins.request_transformer.schema"] = "kong/plugins/request_transformer/schema.lua",
 
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.access"] = "kong/plugins/cors/access.lua",
