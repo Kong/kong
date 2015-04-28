@@ -1,5 +1,9 @@
 ## [Unreleased][unreleased]
 
+#### Fixed
+- Admin API: responses now have a new line after the body. [#164](https://github.com/Mashape/kong/issues/164)
+- keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
+
 ## [0.2.0-2] - 2015/04/27
 
 First public release of Kong. This version brings a lot of internal improvements as well as more usability and a few additional plugins.
@@ -53,7 +57,7 @@ First public beta. Includes caching and better usability.
 #### Fixed
 - `Server` header now sends Kong. [#57](https://github.com/Mashape/kong/issues/57)
 - migrations not being executed in order on Linux. This issue wasn't noticed until unit testing the migrations because for now we only have 1 migration file.
-- **Admin API**: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
+- Admin API: Errors responses are now sent as JSON. [#58](https://github.com/Mashape/kong/issues/58)
 
 > **internal**
 > - We now have code linting and coverage.
