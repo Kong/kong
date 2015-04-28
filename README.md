@@ -56,13 +56,15 @@ We then load tested the Kong server ramping up from 100 to 1000 concurrent conne
 
 #### Response Data:
 
-- Success: 100.00% 
-- Error: 0.00% 
-- Timeout: 0.00% 
+```
+Success: 100.00%
+Error: 0.00%
+Timeout: 0.00% 
 
-- Fastest Response: 4 ms
-- Slowest Response: 31 ms
-- Average Response: 6 ms
+Fastest Response: 4 ms
+Slowest Response: 31 ms
+Average Response: 6 ms
+```
 
 ![](http://i.imgur.com/ROxu4AP.png)
 
