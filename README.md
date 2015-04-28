@@ -7,7 +7,7 @@
 - Mailing List: [Google Groups](https://groups.google.com/forum/#!forum/konglayer)
 - Gitter Chat: [mashape/kong](https://gitter.im/Mashape/kong)
 
-Kong was built for securing, managing and extending APIs & Microservices. If you're building for web, mobile or IoT you will likely end up needing to implement common functionality on top of your actual software. Kong can help by acting as a gateway for any HTTP resource while providing logging, authentication and other functionality through plugins.
+Kong was built for securing, managing and extending APIs & Microservices. If you're building for web, mobile or IoT (Internet of Things) you will likely end up needing to implement common functionality on top of your actual software. Kong can help by acting as a gateway for any HTTP resource while providing logging, authentication and other functionality through plugins.
 
 ## Core Features
 
