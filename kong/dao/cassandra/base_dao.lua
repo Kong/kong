@@ -207,7 +207,7 @@ end
 -- @return Error if any
 function BaseDao:_close_session(session)
   -- Back to the pool or close if using luasocket
-  local ok, err = session:set_keepalive()
+  local ok, err = session:set_keepalive(self._properties.keepalive)
   if not ok and err == "luasocket does not support reusable sockets" then
     ok, err = session:close()
   end
