@@ -1,5 +1,6 @@
 local Migration = {
   name = "2015-04-24-154530_plugins",
+
   up = function(options)
     return [[
       CREATE TABLE IF NOT EXISTS basicauth_credentials(

@@ -24,7 +24,8 @@ local function render_list_response(req, data, size)
   end
 
   -- This check is required otherwise the response is going to be a
-  -- JSON Object and not a JSON array.
+  -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
+  -- will not be translated as an empty array by cjson, but as an empty object.
   if #data == 0 then
     return "{\"data\":[]}"
   else
