@@ -1,50 +1,46 @@
-# KONG - The API Layer
+# KONG: The API Management Layer
 
-[![Build Status][travis-badge]][travis-url]
-[![Coverage Status][coveralls-badge]][coveralls-url]
-[![Gitter][gitter-badge]][gitter-url]
+[![Build Status][travis-badge]][travis-url] [![Build Status][license-badge]][license-url] 
 
-Kong is a scalable, open-source Management Layer for APIs and Microservices. Built on top of NGINX with focus on high performance and reliability --> http://getkong.org/
+- Website: [getkong.org](http://getkong.org/)
+- Docs: [getkong.org/docs](http://getkong.org/docs)
+- Mailing List: [Google Groups](https://groups.google.com/forum/#!forum/konglayer)
+- Gitter Chat: [mashape/kong](https://gitter.im/Mashape/kong)
 
-## Why Kong
+**Kong is next-generation software for securing, managing and extending APIs & Microservices**. If you're building for web, mobile or IoT you will likely end up needing to implement common functionality on top of your actual software. Kong can help by acting as a gateway for any HTTP resource while providing logging, authentication and other functionality through plugins. 
 
-We used to write custom code for each service. With Kong we **write once, dispatch everywhere**.
+Powered by NGINX and Cassandra with a focus on high performance and reliability, Kong runs in production at [Mashape](https://www.mashape.com) where it has handled billions of API requests for over ten thousand APIs.
 
+[![](http://i.imgur.com/fxkvt5k.png)](http://getkong.org/)
 
-![](http://f.cl.ly/items/2r1n0i010g1G3i1S393N/Screen%20Shot%202015-04-17%20at%2012.48.12%20PM.png)
+## Core Features
 
+- **CLI**: Control your Kong cluster from the command line just like Neo in the matrix.
+- **REST API**: Kong can be operated with it's RESTful API for maximum flexibility.
+- **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
+- **Performance**: Kong handles load with ease by scaling and using nginx at the core.
+- **Plugins**: Extendable architecture for adding functionality to kong and APIs.
+  - **Logging**: Log requests and responses to your system over TCP, UDP or to disk.
+  - **Monitoring**: Live monitoring provides key load and performance server metrics
+  - **Authentication**: Manage consumer credentials query sring and header tokens.
+  - **Rate-limiting**: Block and throttle requests based on IP or authentication.
+  - **Transformations**: Add, remove or manipulate HTTP params and headers on-the-fly. 
+  - **CORS**: Enable cross origin requests to your APIs that would otherwise be blocked.
+  - **Anything**:Need custom functionality? Extend Kong with your own Lua plugins!
 
+## Documentation 
 
-## Table of Contents
+Full versioned documentation is available at [GetKong.org](http://getkong.org):
 
-1. [Installation](#installation)
-2. [Documentation](#documentation)
-3. [Usage](#usage)
-4. [Development](#development)
-  1. [Makefile Operations](#makefile-operations)
-
-## Installation
-
-1. Download: [http://getkong.org/download](http://getkong.org/download)
-2. Run `kong start`
-
-**Note:** Kong requires [Cassandra 2.1.3](http://archive.apache.org/dist/cassandra/2.1.3/)
-
-## Documentation
-
-Visit [getkong.org](http://getkong.org/docs/) for the official Kong documentation.
-
-## Usage
-
-Use Kong through the `kong` CLI:
-
-```bash
-$ kong --help
-```
-
-**Note** If you installed Kong via one of the [available methods](http://getkong.org/download/), then `kong` should already be in your `$PATH`.
+- [Installation](http://www.getkong.org/download)
+- [Quick Start](http://getkong.org/docs/latest/getting-started/quickstart/)
+- [CLI Reference](http://getkong.org/docs/latest/cli/)
+- [API Reference](http://getkong.org/docs/latest/admin-api)
+- [Configuration](http://getkong.org/docs/latest/configuration/)
 
 ## Development
+
+Please see the [CONTRIBUTING.md][kong-contrib] if you would like to have your changes merged into Kong.
 
 1. Clone the repository and make it your working directory.
 2. Run `[sudo] make install`
@@ -86,11 +82,15 @@ When developing, use the `Makefile` for doing the following operations:
 | `test`        | Run the unit tests                                                       |
 | `test-all`    | Run all unit + integration tests at once                                 |
 
+## License
+
+Kong is provided under the [MIT License][license-url]. 
+
+[kong-contrib]: https://github.com/Mashape/kong/blob/master/CONTRIBUTING.md
+[kong-changelog]: https://github.com/Mashape/kong/blob/master/CHANGELOG.md
+
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
 
-[coveralls-url]: https://coveralls.io/r/Mashape/kong?branch=master
-[coveralls-badge]: https://coveralls.io/repos/Mashape/kong/badge.svg?branch=master
-
-[gitter-url]: https://gitter.im/Mashape/kong?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
-[gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
+[license-url]: https://github.com/Mashape/kong/blob/master/LICENSE
+[license-badge]: https://img.shields.io/github/license/mashape/kong.svg
