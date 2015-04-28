@@ -84,7 +84,7 @@ elif hash yum 2>/dev/null; then
 
   PACKAGE_TYPE="rpm"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d epel-release -d nc -d 'lua = $LUA_VERSION' -d openssl -d pcre"
+  FPM_PARAMS="-d epel-release -d nc -d 'lua = $LUA_VERSION' -d openssl -d pcre -d openssl098e"
 
   CENTOS_VERSION=`cat /etc/redhat-release | grep -oE '[0-9]+\.[0-9]+'`
 
