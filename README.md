@@ -2,11 +2,12 @@
 
 [![Build Status][travis-badge]][travis-url] [![Build Status][license-badge]][license-url] 
 
-- Website: [getkong.org](http://getkong.org)
-- Mailing list: [Google Groups](https://groups.google.com/forum/#!forum/konglayer)
-- gitter: [mashape/kong](https://gitter.im/Mashape/kong)
+- Website: [getkong.org](http://getkong.org/)
+- Docs: [getkong.org/docs](http://getkong.org/docs)
+- Mailing List: [Google Groups](https://groups.google.com/forum/#!forum/konglayer)
+- Gitter Chat: [mashape/kong](https://gitter.im/Mashape/kong)
 
-**Kong is next-generation software for securing, managing and extending HTTP resources.** If you are building for web, mobile or IoT you will likely end up needing common functionality on top of the actual software you're building. Kong can help by acting as a gateway for your APIs and Microserves and handling routing, authentication, transformations and other functionality through plugins. 
+**Kong is next-generation software for securing, managing and extending HTTP resources.** If you're building for web, mobile or IoT you will likely end up implementing functionality on top of the actual software you're building. Kong can help by acting as a gateway for your APIs and Microserves and handle the routing, authentication, transformations and other common functionality through plugins. 
 
 Powered by NGINX and Cassandra with a focus on high performance and reliability, Kong runs in production at [Mashape](https://www.mashape.com) where it has handled billions of API requests for over ten thousand APIs.
 
@@ -19,22 +20,23 @@ Powered by NGINX and Cassandra with a focus on high performance and reliability,
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using nginx at the core.
 - **Plugins**: Extendable architecture for adding functionality to kong and APIs.
-  - **CORS**: Enable cross origin requests to your APIs that otherwise would be blocked.
   - **Logging**: Log requests and responses to your system over TCP, UDP or to disk.
-  - **Monitoring**: With our nginx plus plugin you can monitor your Kong services.
+  - **Monitoring**: Live monitoring provides key load and performance server metrics
   - **Authentication**: Manage consumer credentials query sring and header tokens.
   - **Rate-limiting**: Block and throttle requests based on IP or authentication.
   - **Transformations**: Add, remove or manipulate HTTP params and headers on-the-fly. 
-  - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins.
+  - **CORS**: Enable cross origin requests to your APIs that would otherwise be blocked.
+  - **Anything**:Need custom functionality? Extend Kong with your own Lua plugins!
 
 ## Documentation 
 
 Full versioned documentation is available at [GetKong.org](http://getkong.org):
 
-- [Latest Docs](http://www.getkong.org/docs)
 - [Installation](http://www.getkong.org/download)
-- [Quick Start](http://getkong.org/docs/0.1.1beta-2/getting-started/quickstart/)
-- [API Reference](http://getkong.org/docs/0.1.1beta-2/internal-api/)
+- [Quick Start](http://getkong.org/docs/0.2.0-2/getting-started/quickstart/)
+- [Configuration](http://getkong.org/docs/0.2.0-2/configuration/)
+- [CLI Reference](http://getkong.org/docs/0.2.0-2/cli/)
+- [API Reference](http://getkong.org/docs/0.2.0-2/admin-api)
 
 ## Development
 
@@ -82,9 +84,8 @@ When developing, use the `Makefile` for doing the following operations:
 
 ## License
 
-Kong is provided under the [MIT License][kong-license]. 
+Kong is provided under the [MIT License][license-url]. 
 
-[kong-license]: https://github.com/Mashape/kong/blob/master/LICENSE
 [kong-contrib]: https://github.com/Mashape/kong/blob/master/CONTRIBUTING.md
 [kong-changelog]: https://github.com/Mashape/kong/blob/master/CHANGELOG.md
 
