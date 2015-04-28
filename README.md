@@ -1,6 +1,6 @@
 # KONG: The API Management Layer
 
-[![Build Status][license-badge]][license-url]
+[![Build Status][travis-badge]][travis-url] [![Build Status][license-badge]][license-url]
 
 - Website: [getkong.org](http://getkong.org/)
 - Docs: [getkong.org/docs](http://getkong.org/docs)
