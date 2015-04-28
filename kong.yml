@@ -25,7 +25,7 @@ databases_available:
       port: 9042
       timeout: 1000
       keyspace: kong
-      keepalive: 60000
+      keepalive: 60000 # in milliseconds
 
 # Cassandra cache configuration
 database_cache_expiration: 5 # in seconds
