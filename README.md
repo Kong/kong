@@ -11,7 +11,7 @@ Kong was built for securing, managing and extending APIs & Microservices. If you
 
 ## Core Features
 
-- **CLI**: Control your Kong cluster from the command line just like Neo in the matrix.
+- **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using nginx at the core.
