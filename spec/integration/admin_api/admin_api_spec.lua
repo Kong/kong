@@ -18,7 +18,7 @@ local ENDPOINTS = {
     update_fields = {
       public_dns = "newapi.mockbin.com"
     },
-    error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}'
+    error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}\n'
   },
   {
     collection = "consumers",
@@ -45,7 +45,7 @@ local ENDPOINTS = {
       username = "upd_username5555",
       password = "upd_password5555"
     },
-    error_message = '{"username":"username is required","consumer_id":"consumer_id is required"}'
+    error_message = '{"username":"username is required","consumer_id":"consumer_id is required"}\n'
   },
   {
     collection = "keyauth_credentials",
@@ -59,7 +59,7 @@ local ENDPOINTS = {
     update_fields = {
       key = "upd_apikey5555",
     },
-    error_message = '{"key":"key is required","consumer_id":"consumer_id is required"}'
+    error_message = '{"key":"key is required","consumer_id":"consumer_id is required"}\n'
   },
   {
     collection = "plugins_configurations",
@@ -78,7 +78,7 @@ local ENDPOINTS = {
     update_fields = {
       enabled = false
     },
-    error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}'
+    error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}\n'
   }
 }
 
@@ -157,7 +157,7 @@ describe("Admin API", function()
         local body = cjson.decode(response)
         assert.are.equal(404, status)
         assert.truthy(body)
-        assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}', response)
+        assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}\n', response)
       end)
 
       it("should update a created entity on PUT", function()
@@ -185,13 +185,13 @@ describe("Admin API", function()
       it("should not update when the content-type is wrong", function()
         local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
         assert.are.equal(415, status)
-        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\"\"}", response)
+        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\"\"}\n", response)
       end)
 
       it("should not save when the content-type is wrong", function()
         local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
         assert.are.equal(415, status)
-        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\"\"}", response)
+        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\"\"}\n", response)
       end)
 
     end)
