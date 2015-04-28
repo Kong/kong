@@ -33,10 +33,10 @@ Powered by NGINX and Cassandra with a focus on high performance and reliability,
 Full versioned documentation is available at [GetKong.org](http://getkong.org):
 
 - [Installation](http://www.getkong.org/download)
-- [Quick Start](http://getkong.org/docs/0.2.0-2/getting-started/quickstart/)
-- [Configuration](http://getkong.org/docs/0.2.0-2/configuration/)
-- [CLI Reference](http://getkong.org/docs/0.2.0-2/cli/)
-- [API Reference](http://getkong.org/docs/0.2.0-2/admin-api)
+- [Quick Start](http://getkong.org/docs/latest/getting-started/quickstart/)
+- [Configuration](http://getkong.org/docs/latest/configuration/)
+- [CLI Reference](http://getkong.org/docs/latest/cli/)
+- [API Reference](http://getkong.org/docs/latest/admin-api)
 
 ## Development
 
