@@ -9,10 +9,6 @@
 
 Kong was built for securing, managing and extending APIs & Microservices. If you're building for web, mobile or IoT you will likely end up needing to implement common functionality on top of your actual software. Kong can help by acting as a gateway for any HTTP resource while providing logging, authentication and other functionality through plugins.
 
-Powered by NGINX and Cassandra with a focus on high performance and reliability, Kong runs in production at [Mashape](https://www.mashape.com) where it has handled billions of API requests for over ten thousand APIs.
-
-[![](http://i.imgur.com/fxkvt5k.png)](http://getkong.org/)
-
 ## Core Features
 
 - **CLI**: Control your Kong cluster from the command line just like Neo in the matrix.
@@ -28,6 +24,11 @@ Powered by NGINX and Cassandra with a focus on high performance and reliability,
   - **CORS**: Enable cross origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
 
+
+Powered by NGINX and Cassandra with a focus on high performance and reliability, Kong runs in production at [Mashape](https://www.mashape.com) where it has handled billions of API requests for over ten thousand APIs.
+
+[![](http://i.imgur.com/fxkvt5k.png)](http://getkong.org/)
+
 ## Documentation
 
 Full versioned documentation is available at [GetKong.org](http://getkong.org):
@@ -40,11 +41,13 @@ Full versioned documentation is available at [GetKong.org](http://getkong.org):
 
 ## Benchmarks
 
-We set Kong up on AWS and load tested it to get some performance metrics. The setup consisted of three `m3.medium` EC2 instances; one for Kong, another running Cassandra and a third acting as the target API powered by Lwan. All servers were tuned with the following:
+We set Kong up on AWS and load tested it to get some performance metrics. The Kong setup consisted of two `m3.medium` EC2 instances; one for Kong, the other running Cassandra. 
 
-1) Added `fs.file-max=80000` to `/etc/sysctl.conf`
+Both servers had their limits increased:
 
-2) Added the following lines to: `/etc/security/limits.conf`
+Added `fs.file-max=80000` to `/etc/sysctl.conf`
+
+Added the following lines to: `/etc/security/limits.conf`
 ```
 *          soft     nproc          80000
 *          hard     nproc          80000
@@ -52,21 +55,11 @@ We set Kong up on AWS and load tested it to get some performance metrics. The se
 *          hard     nofile         80000
 ```
 
-We then load tested the Kong server ramping up from 100 to 1000 concurrent connections. The benchmark generating 65,084 requests over 120 seconds with an average of 542 req/second or about 46,860,480 req/day.
+For these benchmarks a third server running an optimized "hello world" web server written in C was used as the target, while not exactly "real world usage" not having the target as a bottleneck we hope to get a more accurate assessment of Kong itself. 
 
-#### Response Data:
+After adding the `target_url` into the Kong instance we load tested while ramping up from 1 to 2000 concurrent connections over 120 seconds. All together 117,185 requests with an average of 976 req/second or about 84,373,200 req/day went through Kong and back with only a single timeout.
 
-```
-Success: 100.00%
-Error: 0.00%
-Timeout: 0.00%
-
-Fastest Response: 4 ms
-Slowest Response: 31 ms
-Average Response: 6 ms
-```
-
-![](http://i.imgur.com/ROxu4AP.png)
+![](http://i.imgur.com/aDGRe4G.png)
 
 ## Development
 
