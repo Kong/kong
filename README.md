@@ -7,7 +7,7 @@
 - Mailing List: [Google Groups](https://groups.google.com/forum/#!forum/konglayer)
 - Gitter Chat: [mashape/kong](https://gitter.im/Mashape/kong)
 
-**Kong is next-generation software for securing, managing and extending HTTP resources.** If you're building for web, mobile or IoT you will likely end up implementing functionality on top of the actual software you're building. Kong can help by acting as a gateway for your APIs and Microserves and handle the routing, authentication, transformations and other common functionality through plugins. 
+**Kong is next-generation software for securing, managing and extending APIs & Microservices**. If you're building for web, mobile or IoT you will likely end up needing to implement common functionality on top of your actual software. Kong can help by acting as a gateway for any HTTP resource while providing logging, authentication and other functionality through plugins. 
 
 Powered by NGINX and Cassandra with a focus on high performance and reliability, Kong runs in production at [Mashape](https://www.mashape.com) where it has handled billions of API requests for over ten thousand APIs.
 
@@ -34,9 +34,9 @@ Full versioned documentation is available at [GetKong.org](http://getkong.org):
 
 - [Installation](http://www.getkong.org/download)
 - [Quick Start](http://getkong.org/docs/latest/getting-started/quickstart/)
-- [Configuration](http://getkong.org/docs/latest/configuration/)
 - [CLI Reference](http://getkong.org/docs/latest/cli/)
 - [API Reference](http://getkong.org/docs/latest/admin-api)
+- [Configuration](http://getkong.org/docs/latest/configuration/)
 
 ## Development
 
