@@ -97,15 +97,17 @@ end
 -- Response utils
 --
 function _M.show_response(status, message, raw)
-  ngx.header[constants.HEADERS.SERVER] = "kong/"..constants.VERSION
+  ngx.header[constants.HEADERS.SERVER] = constants.NAME.."/"..constants.VERSION
   ngx.status = status
 
   if raw then
-    ngx.print(message)
+    -- When we want to send "{\"data\":[]}" (as a string, yes) as a response,
+    -- we have to force it to be raw. (see base_controller.lua on why)
+    ngx.say(message)
   elseif (type(message) == "table") then
-    ngx.print(cjson.encode(message))
+    ngx.say(cjson.encode(message))
   else
-    ngx.print(cjson.encode({ message = message }))
+    ngx.say(cjson.encode({ message = message }))
   end
 
   ngx.exit(status)
