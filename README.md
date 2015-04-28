@@ -40,11 +40,11 @@ Full versioned documentation is available at [GetKong.org](http://getkong.org):
 
 ## Benchmarks
 
-We set Kong up on AWS and load tested it to get some performance metrics. The setup consisted of three `m3.medium` EC2 instances; one for Kong, another running Cassandra and a third acting as the target API powered by Lwan. All servers were tuned with the following:
+We set Kong up on AWS and load tested it to get some performance metrics. The Kong setup consisted of two `m3.medium` EC2 instances; one for Kong, another running Cassandra. Both servers had their limits increased:
 
-1) Added `fs.file-max=80000` to `/etc/sysctl.conf`
+Added `fs.file-max=80000` to `/etc/sysctl.conf`
 
-2) Added the following lines to: `/etc/security/limits.conf`
+Added the following lines to: `/etc/security/limits.conf`
 ```
 *          soft     nproc          80000
 *          hard     nproc          80000
@@ -52,19 +52,11 @@ We set Kong up on AWS and load tested it to get some performance metrics. The se
 *          hard     nofile         80000
 ```
 
-We then load tested the Kong server ramping up from 100 to 1000 concurrent connections. The benchmark generating 65,084 requests over 120 seconds with an average of 542 req/second or about 46,860,480 req/day. 
+For these benchmarks a third server running a "hello world" server written in C was used as the target URL, while not exactly "real world usage" by not having the target be a bottleneck we get a more accurate assessment of Kong itself. 
 
-#### Response Data:
+We added the hello world target and load tested on the Kong instance while ramping up from 1 to 2000 concurrent connections over 120 seconds. All together 117,185 requests with an average of 976.54req/second or about 84,373,200 req/day went through Kong and back with only a single timeout.
 
-- Success: 100.00% 
-- Error: 0.00% 
-- Timeout: 0.00% 
-
-- Fastest Response: 4 ms
-- Slowest Response: 31 ms
-- Average Response: 6 ms
-
-![](http://i.imgur.com/ROxu4AP.png)
+![](http://i.imgur.com/aDGRe4G.png)
 
 ## Development
 
