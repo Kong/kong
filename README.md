@@ -52,9 +52,9 @@ Added the following lines to: `/etc/security/limits.conf`
 *          hard     nofile         80000
 ```
 
-For these benchmarks a third server running a "hello world" server written in C was used as the target URL, while not exactly "real world usage" by not having the target be a bottleneck we get a more accurate assessment of Kong itself. 
+For these benchmarks a third server running an optimized "hello world" web server written in C was used as the target, while not exactly "real world usage" by not having the target be a bottleneck we get a more accurate assessment of Kong itself. 
 
-We added the hello world target and load tested on the Kong instance while ramping up from 1 to 2000 concurrent connections over 120 seconds. All together 117,185 requests with an average of 976.54req/second or about 84,373,200 req/day went through Kong and back with only a single timeout.
+After adding the `target_url` into the Kong instance we load tested while ramping up from 1 to 2000 concurrent connections over 120 seconds. All together 117,185 requests with an average of 976.54req/second or about 84,373,200 req/day went through Kong and back with only a single timeout.
 
 ![](http://i.imgur.com/aDGRe4G.png)
 
