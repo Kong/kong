@@ -14,14 +14,14 @@ Kong was built for securing, managing and extending APIs & Microservices. If you
 - **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using nginx at the core.
+- **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
   - **Logging**: Log requests and responses to your system over TCP, UDP or to disk.
   - **Monitoring**: Live monitoring provides key load and performance server metrics
   - **Authentication**: Manage consumer credentials query string and header tokens.
   - **Rate-limiting**: Block and throttle requests based on IP or authentication.
   - **Transformations**: Add, remove or manipulate HTTP params and headers on-the-fly.
-  - **CORS**: Enable cross origin requests to your APIs that would otherwise be blocked.
+  - **CORS**: Enable cross-origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
 
 
