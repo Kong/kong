@@ -11,14 +11,14 @@ local function get_backend_url(api)
   local len = string.len(result)
   if string.sub(result, len, len) == "/" then
     -- Remove one slash to avoid having a double slash
-    -- Because ngx.var.uri always starts with a slash
+    -- Because ngx.var.request_uri always starts with a slash
     result = string.sub(result, 0, len - 1)
   end
 
   return result
 end
 
-local function get_host_header(val)
+local function get_host_from_url(val)
   local parsed_url = url.parse(val)
 
   local port
@@ -36,33 +36,31 @@ local function skip_authentication(headers)
   return headers["expect"] and stringy.startswith(headers["expect"], "100")
 end
 
+-- Retrieve the API from the Host that has been requested
 function _M.execute(conf)
-  -- Retrieving the API from the Host that has been requested
-  local host = stringy.strip(stringy.split(ngx.var.http_host, ":")[1])
+  local host = ngx.var.http_host
 
   local api = cache.get_and_set(cache.api_key(host), function()
-    local apis, err = dao.apis:find_by_keys({public_dns = host})
+    local apis, err = dao.apis:find_by_keys { public_dns = host }
     if err then
       ngx.log(ngx.ERR, tostring(err))
       utils.show_error(500, tostring(err))
     elseif not apis or #apis == 0 then
-      utils.not_found("API not found")
+      utils.not_found("API not found with Host: \""..host.."\"")
     end
     return apis[1]
   end)
 
   -- Setting the backend URL for the proxy_pass directive
-  ngx.var.backend_url = get_backend_url(api) .. ngx.var.request_uri
+  ngx.var.backend_url = get_backend_url(api)..ngx.var.request_uri
 
-  ngx.req.set_header("host", get_host_header(ngx.var.backend_url))
+  ngx.req.set_header("host", get_host_from_url(ngx.var.backend_url))
 
   -- There are some requests whose authentication needs to be skipped
-  if skip_authentication(ngx.req.get_headers()) then
-    return -- Returning and keeping the Lua code running to the next handler
+  if not skip_authentication(ngx.req.get_headers()) then
+    -- Saving these properties for the other plugins handlers
+    ngx.ctx.api = api
   end
-
-  -- Saving these properties for the other handlers, especially the log handler
-  ngx.ctx.api = api
 end
 
 return _M
