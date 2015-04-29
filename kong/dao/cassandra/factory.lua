@@ -1,3 +1,9 @@
+-- Kong's cassandra Factory DAO. Entry-point for retrieving DAO objects that allow
+-- interations with the database for entities (APIs, Consumers...).
+--
+-- Also provides helper methods for preparing queries among the DAOs, migrating the
+-- database and dropping it.
+
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local DaoError = require "kong.dao.error"
@@ -65,7 +71,7 @@ end
 -- in a statements cache
 --
 -- Note:
--- Even if the BaseDAO's :_execute() method support preparation of statements on-the-go,
+-- Even if the BaseDAO's :_execute_kong_query() method support preparation of statements on-the-go,
 -- this method should be called when Kong starts in order to detect any failure in advance
 -- as well as test the connection to Cassandra.
 --
@@ -78,15 +84,7 @@ function CassandraFactory:prepare()
         -- Nested queries, let's recurse to prepare them too
         prepare_collection(collection, collection_query)
       else
-        -- _queries can contain strings or tables with string + keys of parameters to bind
-        local query_to_prepare
-        if type(collection_query) == "string" then
-          query_to_prepare = collection_query
-        elseif collection_query.query then
-          query_to_prepare = collection_query.query
-        end
-
-        local _, err = collection:prepare_kong_statement(query_to_prepare, collection_query.params)
+        local _, err = collection:prepare_kong_statement(collection_query)
         if err then
           error(err)
         end
@@ -152,11 +150,11 @@ local MIGRATION_IDENTIFIER = "migrations"
 
 -- Create a cassandra session and execute a query on given keyspace or default one (from properties).
 -- @param query Query or prepared statement given to session:execute
--- @param params List of parameters given to session:execute
+-- @param args List of arguments given to session:execute
 -- @param keyspace Optional: overrides properties keyspace if specified
 -- @return query result
 -- @return error if any
-function CassandraFactory:execute(query, params, keyspace)
+function CassandraFactory:execute(query, args, keyspace)
   local ok, err
   local session = cassandra.new()
   session:set_timeout(self._properties.timeout)
@@ -171,7 +169,7 @@ function CassandraFactory:execute(query, params, keyspace)
     return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
-  ok, err = session:execute(query, params)
+  ok, err = session:execute(query, args)
 
   session:close()
 
