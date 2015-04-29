@@ -121,4 +121,4 @@ Kong is provided under the [MIT License][license-url].
 [license-badge]: https://img.shields.io/github/license/mashape/kong.svg
 
 [gitter-url]: https://gitter.im/Mashape/kong
-[gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
+[gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
