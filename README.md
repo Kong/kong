@@ -1,6 +1,8 @@
 # KONG: The API Management Layer
 
-[![Build Status][travis-badge]][travis-url] [![Build Status][license-badge]][license-url]
+[![Build Status][travis-badge]][travis-url] 
+[![License Badge][license-badge]][license-url] 
+[![Gitter Badge][gitter-badge]][gitter-url]
 
 - Website: [getkong.org](http://getkong.org/)
 - Docs: [getkong.org/docs](http://getkong.org/docs)
@@ -117,3 +119,6 @@ Kong is provided under the [MIT License][license-url].
 
 [license-url]: https://github.com/Mashape/kong/blob/master/LICENSE
 [license-badge]: https://img.shields.io/github/license/mashape/kong.svg
+
+[gitter-url]: https://gitter.im/Mashape/kong
+[gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
