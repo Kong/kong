@@ -9,6 +9,7 @@
 First public release of Kong. This version brings a lot of internal improvements as well as more usability and a few additional plugins.
 
 #### Added
+- CORS plugin.
 - Request transformation plugin.
 - NGINX plus monitoring plugin.
 - New configuration properties: `proxy_port` and `api_admin_port`. [#142](https://github.com/Mashape/kong/issues/142)
