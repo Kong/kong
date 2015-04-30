@@ -152,9 +152,16 @@ function BaseDao:_open_session()
     return nil, DaoError(err, error_types.DATABASE)
   end
 
-  ok, err = session:set_keyspace(self._properties.keyspace)
-  if not ok then
+  local times, err = session:get_reused_times()
+  if err and err ~= "luasocket does not support reusable sockets" then
     return nil, DaoError(err, error_types.DATABASE)
+  end
+
+  if times == 0 or not times then
+    ok, err = session:set_keyspace(self._properties.keyspace)
+    if not ok then
+      return nil, DaoError(err, error_types.DATABASE)
+    end
   end
 
   return session
@@ -322,7 +329,9 @@ function BaseDao:_execute_kong_query(operation, args_to_bind, options)
   local results, err
   results, err = self:_execute(statement, args, options)
   if err and err.cassadra_err_code == cassandra_constants.error_codes.UNPREPARED then
-    ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
+    if ngx then
+      ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
+    end
     -- If the statement was declared unprepared, clear it from the cache, and try again.
     self._statements_cache[cache_key] = nil
     return self:_execute_kong_query(operation, args_to_bind, options)
