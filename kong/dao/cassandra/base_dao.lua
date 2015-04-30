@@ -157,7 +157,7 @@ function BaseDao:_open_session()
     return nil, DaoError(err, error_types.DATABASE)
   end
 
-  if times == 0 or not times then
+  if times == 0 then
     ok, err = session:set_keyspace(self._properties.keyspace)
     if not ok then
       return nil, DaoError(err, error_types.DATABASE)
