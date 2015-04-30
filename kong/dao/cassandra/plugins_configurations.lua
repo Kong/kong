@@ -30,38 +30,38 @@ function PluginsConfigurations:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },
+      args_keys = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },
       query = [[ INSERT INTO plugins_configurations(id, api_id, consumer_id, name, value, enabled, created_at)
                   VALUES(?, ?, ?, ?, ?, ?, ?); ]]
     },
     update = {
-      params = { "api_id", "consumer_id", "value", "enabled", "created_at", "id", "name" },
+      args_keys = { "api_id", "consumer_id", "value", "enabled", "created_at", "id", "name" },
       query = [[ UPDATE plugins_configurations SET api_id = ?, consumer_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM plugins_configurations %s; ]]
     },
     select_one = {
-      params = { "id" },
+      args_keys = { "id" },
       query = [[ SELECT * FROM plugins_configurations WHERE id = ?; ]]
     },
     delete = {
-      params = { "id" },
+      args_keys = { "id" },
       query = [[ DELETE FROM plugins_configurations WHERE id = ?; ]]
     },
     __unique = {
       self = {
-        params = { "api_id", "consumer_id", "name" },
+        args_keys = { "api_id", "consumer_id", "name" },
         query = [[ SELECT * FROM plugins_configurations WHERE api_id = ? AND consumer_id = ? AND name = ? ALLOW FILTERING; ]]
       }
     },
     __foreign = {
       api_id = {
-        params = { "api_id" },
+        args_keys = { "api_id" },
         query = [[ SELECT id FROM apis WHERE id = ?; ]]
       },
       consumer_id = {
-        params = { "consumer_id" },
+        args_keys = { "consumer_id" },
         query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
     }
