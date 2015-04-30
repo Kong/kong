@@ -23,31 +23,31 @@ function Consumers:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "custom_id", "username", "created_at" },
+      args_keys = { "id", "custom_id", "username", "created_at" },
       query = [[ INSERT INTO consumers(id, custom_id, username, created_at) VALUES(?, ?, ?, ?); ]]
     },
     update = {
-      params = { "custom_id", "username", "created_at", "id" },
+      args_keys = { "custom_id", "username", "created_at", "id" },
       query = [[ UPDATE consumers SET custom_id = ?, username = ?, created_at = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM consumers %s; ]]
     },
     select_one = {
-      params = { "id" },
+      args_keys = { "id" },
       query = [[ SELECT * FROM consumers WHERE id = ?; ]]
     },
     delete = {
-      params = { "id" },
+      args_keys = { "id" },
       query = [[ DELETE FROM consumers WHERE id = ?; ]]
     },
     __unique = {
       custom_id ={
-        params = { "custom_id" },
+        args_keys = { "custom_id" },
         query = [[ SELECT id FROM consumers WHERE custom_id = ?; ]]
       },
       username ={
-        params = { "username" },
+        args_keys = { "username" },
         query = [[ SELECT id FROM consumers WHERE username = ?; ]]
       }
     }

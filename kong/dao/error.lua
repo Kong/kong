@@ -43,15 +43,16 @@ local mt = {
       return nil
     end
 
-    -- Cassandra server error
-    if err_type == constants.DATABASE_ERROR_TYPES.DATABASE then
-      err = "Cassandra error: "..err
-    end
-
     local t = {
       [err_type] = true,
       message = err
     }
+
+    -- Cassandra server error
+    if err_type == constants.DATABASE_ERROR_TYPES.DATABASE then
+      t.message = "Cassandra error: "..t.message
+      t.cassadra_err_code = err.code
+    end
 
     -- If message is a table, use the printable metatable
     if type(t.message) == "table" then

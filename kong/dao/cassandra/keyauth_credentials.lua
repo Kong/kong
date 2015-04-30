@@ -14,36 +14,36 @@ function KeyAuthCredentials:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
-      params = { "id", "consumer_id", "key", "created_at" },
+      args_keys = { "id", "consumer_id", "key", "created_at" },
       query = [[
         INSERT INTO keyauth_credentials(id, consumer_id, key, created_at)
           VALUES(?, ?, ?, ?);
       ]]
     },
     update = {
-      params = { "key", "created_at", "id" },
+      args_keys = { "key", "created_at", "id" },
       query = [[ UPDATE keyauth_credentials SET key = ?, created_at = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM keyauth_credentials %s; ]]
     },
     select_one = {
-      params = { "id" },
+      args_keys = { "id" },
       query = [[ SELECT * FROM keyauth_credentials WHERE id = ?; ]]
     },
     delete = {
-      params = { "id" },
+      args_keys = { "id" },
       query = [[ DELETE FROM keyauth_credentials WHERE id = ?; ]]
     },
     __foreign = {
       consumer_id = {
-        params = { "consumer_id" },
+        args_keys = { "consumer_id" },
         query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
     },
     __unique = {
       key = {
-        params = { "key" },
+        args_keys = { "key" },
         query = [[ SELECT id FROM keyauth_credentials WHERE key = ?; ]]
       }
     }
