@@ -70,7 +70,12 @@ function BaseController.parse_params(schema, params)
             params = subschema_params
           }
         elseif params[k] then
-          result[k] = stringy.split(params[k], ",")
+          local parts = stringy.split(params[k], ",")
+          local sanitized_parts = {}
+          for _,v in ipairs(parts) do
+            table.insert(sanitized_parts, stringy.strip(v))
+          end
+          result[k] = sanitized_parts
         end
       elseif v.type == "number" then
         result[k] = tonumber(params[k])
