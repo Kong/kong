@@ -1,5 +1,5 @@
 # Travis only
-CASSANDRA_VERSION=2.1.2
+CASSANDRA_VERSION=2.1.5
 
 # Travis and package builder
 LUAROCKS_VERSION=2.2.2
