@@ -1,6 +1,5 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
-local Threads = require "llthreads2.ex"
 local cjson = require "cjson"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"

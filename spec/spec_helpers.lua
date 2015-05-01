@@ -58,7 +58,7 @@ function _M.start_kong(conf_file, skip_wait)
   end
 
   if not skip_wait then
-    os.execute("while ! [ -f "..env.configuration.pid_file.." ]; do sleep 1; done")
+    os.execute("while ! [ -f "..env.configuration.pid_file.." ]; do sleep 0.5; done")
   end
 
   return result, exit_code
@@ -72,7 +72,7 @@ function _M.stop_kong(conf_file)
     error("spec_helper cannot stop kong: "..result)
   end
 
-  os.execute("while [ -f "..env.configuration.pid_file.." ]; do sleep 1; done")
+  os.execute("while [ -f "..env.configuration.pid_file.." ]; do sleep 0.5; done")
 
   return result, exit_code
 end
