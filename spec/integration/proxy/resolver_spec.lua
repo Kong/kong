@@ -32,7 +32,7 @@ describe("Resolver", function()
   end)
 
   describe("Existing API", function()
-    
+
     it("should return Success when the API is in Kong", function()
       local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
       assert.are.equal(200, status)
