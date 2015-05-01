@@ -38,18 +38,31 @@ end
 
 -- Retrieve the API from the Host that has been requested
 function _M.execute(conf)
-  local host = ngx.var.http_host
+  local hosts = ngx.req.get_headers()["host"] -- Multiple "Host" can have been requested
+  if type(hosts) == "string" then
+    hosts = { hosts }
+  elseif not hosts then
+    hosts = {}
+  end
 
-  local api = cache.get_and_set(cache.api_key(host), function()
-    local apis, err = dao.apis:find_by_keys { public_dns = host }
-    if err then
-      ngx.log(ngx.ERR, tostring(err))
-      utils.show_error(500, tostring(err))
-    elseif not apis or #apis == 0 then
-      utils.not_found("API not found with Host: \""..host.."\"")
-    end
-    return apis[1]
-  end)
+  -- Find the API
+  local api = nil
+  for _,host in ipairs(hosts) do
+    api = cache.get_and_set(cache.api_key(host), function()
+      local apis, err = dao.apis:find_by_keys { public_dns = host }
+      if err then
+        ngx.log(ngx.ERR, tostring(err))
+        utils.show_error(500, tostring(err))
+      elseif apis and #apis == 1 then
+        return apis[1]
+      end
+    end)
+    if api then break end
+  end
+
+  if not api then
+    utils.not_found("API not found with Host: "..table.concat(hosts, ","))
+  end
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api)..ngx.var.request_uri
