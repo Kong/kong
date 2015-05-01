@@ -1,8 +1,16 @@
 ## [Unreleased][unreleased]
 
+#### Added
+- DAO
+  - Cassandra version bumped to 2.1.5
+  - support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Mashape/kong/pull/146) and [#187](https://github.com/Mashape/kong/pull/187).
+Queries effectued during the downtime will still be lost. [#11](https://github.com/Mashape/kong/pull/11)
+  - Leverage reused sockets. If the DAO reuses a socket, it will not re-set their keyspace. This should give a small but appreciable performance improvement. [#170](https://github.com/Mashape/kong/pull/170)
+
 #### Fixed
 - Admin API: responses now have a new line after the body. [#164](https://github.com/Mashape/kong/issues/164)
-- keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
+- DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
+- Resolver: More explicit "API not found" message from the resolver if the Host was not found in the system. "Api not foun with Host: %s".
 
 ## [0.2.0-2] - 2015/04/27
 
