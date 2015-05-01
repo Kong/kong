@@ -19,7 +19,7 @@ if not running then
 end
 
 -- Send 'quit' signal (graceful shutdown)
-if signal.send_signal(args.config, "quit") then
+if signal.send_signal(args.config, signal.QUIT) then
   cutils.logger:success("Stopped")
 else
   cutils.logger:error_exit("Could not gracefully stop Kong")
