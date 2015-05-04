@@ -481,14 +481,170 @@ describe("Cassandra DAO", function()
           assert.truthy(entities)
           assert.True(#entities > 0)
 
-          local success, err = dao_factory[collection]:delete(entities[1].id)
+          local ok, err = dao_factory[collection]:delete(entities[1].id)
           assert.falsy(err)
-          assert.True(success)
+          assert.True(ok)
 
           local entities, err = session:execute("SELECT * FROM "..collection.." WHERE id = "..entities[1].id )
           assert.falsy(err)
           assert.truthy(entities)
           assert.are.same(0, #entities)
+        end)
+
+      end)
+
+      describe("APIs", function()
+        local api, untouched_api
+
+        setup(function()
+          spec_helper.drop_db()
+
+          -- Insert an API
+          local _, err
+          api, err = dao_factory.apis:insert {
+            name = "cascade delete test",
+            public_dns = "cascade.com",
+            target_url = "http://mockbin.com"
+          }
+          assert.falsy(err)
+
+          -- Insert some plugins_configurations
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "keyauth", value = { key_names = {"apikey"} }, api_id = api.id
+          }
+          assert.falsy(err)
+
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "ratelimiting", value = { period = "minute", limit = 6 }, api_id = api.id
+          }
+          assert.falsy(err)
+
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "filelog", value = {}, api_id = api.id
+          }
+          assert.falsy(err)
+
+          -- Insert an unrelated API + plugin
+          untouched_api, err = dao_factory.apis:insert {
+            name = "untouched cascade test api",
+            public_dns = "untouched.com",
+            target_url = "http://mockbin.com"
+          }
+          assert.falsy(err)
+
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "filelog", value = {}, api_id = untouched_api.id
+          }
+
+          -- Make sure we have 3 matches
+          local results, err = dao_factory.plugins_configurations:find_by_keys {
+            api_id = api.id
+          }
+          assert.falsy(err)
+          assert.are.same(3, #results)
+        end)
+
+        teardown(function()
+          spec_helper.drop_db()
+        end)
+
+        it("should delete all related plugins_configurations when deleting an API", function()
+          local ok, err = dao_factory.apis:delete(api.id)
+          assert.falsy(err)
+          assert.True(ok)
+
+          -- Make sure we have 0 matches
+          local results, err = dao_factory.plugins_configurations:find_by_keys {
+            api_id = api.id
+          }
+          assert.falsy(err)
+          assert.are.same(0, #results)
+
+          -- Make sure the untouched API still has its plugin
+          local results, err = dao_factory.plugins_configurations:find_by_keys {
+            api_id = untouched_api.id
+          }
+          assert.falsy(err)
+          assert.are.same(1, #results)
+        end)
+
+      end)
+
+      describe("Consumers", function()
+        local consumer, untouched_consumer
+
+        setup(function()
+          spec_helper.drop_db()
+
+          local _, err
+
+          -- Insert a Consumer
+          consumer, err = dao_factory.consumers:insert { username = "king kong" }
+          assert.falsy(err)
+
+          -- Insert an API
+          api, err = dao_factory.apis:insert {
+            name = "cascade delete test",
+            public_dns = "cascade.com",
+            target_url = "http://mockbin.com"
+          }
+
+          -- Insert some plugins_configurations
+          _, err = dao_factory.plugins_configurations:insert {
+            name="keyauth", value = { key_names = {"apikey"} }, api_id = api.id,
+            consumer_id = consumer.id
+          }
+          assert.falsy(err)
+
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "ratelimiting", value = { period = "minute", limit = 6 }, api_id = api.id,
+            consumer_id = consumer.id
+          }
+          assert.falsy(err)
+
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "filelog", value = {}, api_id = api.id,
+            consumer_id = consumer.id
+          }
+          assert.falsy(err)
+
+          -- Inser an untouched consumer + plugin
+          untouched_consumer, err = dao_factory.consumers:insert { username = "untouched consumer" }
+          assert.falsy(err)
+
+          _, err = dao_factory.plugins_configurations:insert {
+            name = "filelog", value = {}, api_id = api.id,
+            consumer_id = untouched_consumer.id
+          }
+
+          local results, err = dao_factory.plugins_configurations:find_by_keys {
+            consumer_id = consumer.id
+          }
+          assert.falsy(err)
+          assert.are.same(3, #results)
+        end)
+
+        teardown(function()
+          spec_helper.drop_db()
+        end)
+
+        it("should delete all related plugins_configurations when deleting an API", function()
+          local ok, err = dao_factory.consumers:delete(consumer.id)
+          assert.True(ok)
+          assert.falsy(err)
+
+          local results, err = dao_factory.plugins_configurations:find_by_keys {
+            consumer_id = consumer.id
+          }
+          assert.falsy(err)
+          assert.are.same(0, #results)
+
+          -- Make sure the untouched Consumer still has its plugin
+          local results, err = dao_factory.plugins_configurations:find_by_keys {
+            consumer_id = untouched_consumer.id
+          }
+          assert.falsy(err)
+          assert.are.same(1, #results)
         end)
 
       end)

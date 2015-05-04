@@ -1,5 +1,6 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local constants = require "kong.constants"
+local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 
 local SCHEMA = {
   id = { type = constants.DATABASE_TYPES.ID },
@@ -48,6 +49,38 @@ function Apis:new(properties)
   }
 
   Apis.super.new(self, properties)
+end
+
+-- @override
+function Apis:delete(api_id)
+  local ok, err = Apis.super.delete(self, api_id)
+  if not ok then
+    return err
+  end
+
+  -- delete all related plugins configurations
+  local plugins_dao = PluginsConfigurations(self._properties)
+  local query, args_keys, errors = plugins_dao:_build_where_query(plugins_dao._queries.select.query, {
+    api_id = api_id
+  })
+  if errors then
+    return nil, errors
+  end
+
+  for _, rows, page, err in plugins_dao:_execute_kong_query({query=query, args_keys=args_keys}, {api_id=api_id}, {auto_paging=true}) do
+    if err then
+      return nil, err
+    end
+
+    for _, row in ipairs(rows) do
+      local ok_del_plugin, err = plugins_dao:delete(row.id)
+      if not ok_del_plugin then
+        return nil, err
+      end
+    end
+  end
+
+  return ok
 end
 
 return Apis
