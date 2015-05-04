@@ -121,7 +121,7 @@ function PluginsConfigurations:find_distinct()
   end
 
   local result = {}
-  for k,_ in pairs(distinct_names) do
+  for k, _ in pairs(distinct_names) do
     table.insert(result, k)
   end
 

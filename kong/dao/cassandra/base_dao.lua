@@ -223,6 +223,33 @@ local function encode_cassandra_args(schema, t, args_keys)
   return args_to_bind, errors
 end
 
+function BaseDao:_build_where_query(query, t)
+  local args_keys = {}
+  local where_str = ""
+  local errors
+
+  -- if t is an args_keys, compute a WHERE statement
+  if t and utils.table_size(t) > 0 then
+    local where = {}
+    for k, v in pairs(t) do
+      if self._schema[k] and self._schema[k].queryable or k == "id" then
+        table.insert(where, string.format("%s = ?", k))
+        table.insert(args_keys, k)
+      else
+        errors = utils.add_error(errors, k, k.." is not queryable.")
+      end
+    end
+
+    if errors then
+      return nil, nil, DaoError(errors, error_types.SCHEMA)
+    end
+
+    where_str = "WHERE "..table.concat(where, " AND ").." ALLOW FILTERING"
+  end
+
+  return string.format(query, where_str), args_keys
+end
+
 -- Get a statement from the cache or prepare it (and thus insert it in the cache).
 -- The cache key will be the plain string query representation.
 -- @param `kong_query` A kong query from the _queries property.
@@ -267,6 +294,14 @@ function BaseDao:_execute(statement, args, options, keyspace)
   local session, err = self:_open_session(keyspace)
   if err then
     return nil, err
+  end
+
+  if options and options.auto_paging then
+    local _, rows, page, err = session:execute(statement, args, options)
+    for i, row in ipairs(rows) do
+      rows[i] = self:_unmarshall(row)
+    end
+    return _, rows, page, err
   end
 
   local results, err = session:execute(statement, args, options)
@@ -523,31 +558,12 @@ end
 -- @param `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
 -- @return _execute_kong_query()
 function BaseDao:find_by_keys(t, page_size, paging_state)
-  local where, keys = {}, {}
-  local where_str = ""
-  local errors
-
-  -- if keys are passed, compute a WHERE statement
-  if t and utils.table_size(t) > 0 then
-    for k,v in pairs(t) do
-      if self._schema[k] and self._schema[k].queryable or k == "id" then
-        table.insert(where, string.format("%s = ?", k))
-        table.insert(keys, k)
-      else
-        errors = utils.add_error(errors, k, k.." is not queryable.")
-      end
-    end
-
-    if errors then
-      return nil, DaoError(errors, error_types.SCHEMA)
-    end
-
-    where_str = "WHERE "..table.concat(where, " AND ").." ALLOW FILTERING"
+  local select_where_query, args_keys, errors = self:_build_where_query(self._queries.select.query, t)
+  if errors then
+    return nil, errors
   end
 
-  local select_query = string.format(self._queries.select.query, where_str)
-
-  return self:_execute_kong_query({ query = select_query, args_keys = keys }, t, {
+  return self:_execute_kong_query({ query = select_where_query, args_keys = args_keys }, t, {
     page_size = page_size,
     paging_state = paging_state
   })

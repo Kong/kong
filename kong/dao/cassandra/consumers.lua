@@ -1,6 +1,7 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local constants = require "kong.constants"
 local stringy = require "stringy"
+local constants = require "kong.constants"
+local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 
 local function check_custom_id_and_username(value, consumer_t)
   if (consumer_t.custom_id == nil or stringy.strip(consumer_t.custom_id) == "")
@@ -54,6 +55,38 @@ function Consumers:new(properties)
   }
 
   Consumers.super.new(self, properties)
+end
+
+-- @override
+function Consumers:delete(consumer_id)
+  local ok, err = Consumers.super.delete(self, consumer_id)
+  if not ok then
+    return err
+  end
+
+  -- delete all related plugins configurations
+  local plugins_dao = PluginsConfigurations(self._properties)
+  local query, args_keys, errors = plugins_dao:_build_where_query(plugins_dao._queries.select.query, {
+    consumer_id = consumer_id
+  })
+  if errors then
+    return nil, errors
+  end
+
+  for _, rows, page, err in plugins_dao:_execute_kong_query({query=query, args_keys=args_keys}, {consumer_id=consumer_id}, {auto_paging=true}) do
+    if err then
+      return nil, err
+    end
+
+    for _, row in ipairs(rows) do
+      local ok_del_plugin, err = plugins_dao:delete(row.id)
+      if not ok_del_plugin then
+        return nil, err
+      end
+    end
+  end
+
+  return ok
 end
 
 return Consumers
