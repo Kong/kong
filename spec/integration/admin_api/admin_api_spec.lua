@@ -106,106 +106,145 @@ describe("Admin API", function()
 
   end)
 
-  for i, v in ipairs(ENDPOINTS) do
-    describe("#"..v.collection.." entity", function()
+  describe("POST", function()
+    for i, v in ipairs(ENDPOINTS) do
+      describe(v.collection.." entity", function()
 
-      it("should not create on POST with invalid parameters", function()
-        if v.collection ~= "consumers" then
-          local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", {})
-          assert.are.equal(400, status)
-          assert.are.equal(v.error_message, response)
-        end
-      end)
-
-      it("should create an entity from valid paremeters", function()
-        -- Replace the IDs
-        for k, p in pairs(v.entity) do
-          if type(p) == "function" then
-            v.entity[k] = p()
+        it("should not create with invalid parameters", function()
+          if v.collection ~= "consumers" then
+            local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", {})
+            assert.are.equal(400, status)
+            assert.are.equal(v.error_message, response)
           end
-        end
+        end)
 
-        local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity)
-        local body = cjson.decode(response)
-        assert.are.equal(201, status)
-        assert.truthy(body)
+        it("should create an entity from valid paremeters", function()
+          -- Replace the IDs
+          for k, p in pairs(v.entity) do
+            if type(p) == "function" then
+              v.entity[k] = p()
+            end
+          end
 
-        -- Save the ID for later use
-        created_ids[v.collection] = body.id
+          local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity)
+          local body = cjson.decode(response)
+          assert.are.equal(201, status)
+          assert.truthy(body)
+
+          -- Save the ID for later use
+          created_ids[v.collection] = body.id
+        end)
+
+        it("should not create when the content-type is wrong", function()
+          local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
+          assert.are.equal(415, status)
+          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\"\"}\n", response)
+        end)
+
       end)
+    end
+  end)
 
-      it("should GET all entities", function()
-        local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/")
-        local body = cjson.decode(response)
-        assert.are.equal(200, status)
-        assert.truthy(body.data)
-        --assert.truthy(body.total)
-        --assert.are.equal(v.total, body.total)
-        assert.are.equal(v.total, table.getn(body.data))
+  describe("GET", function()
+    for i, v in ipairs(ENDPOINTS) do
+      describe(v.collection.." entity", function()
+
+        it("should return not retrieve any entity with an invalid parameter", function()
+          local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
+          local body = cjson.decode(response)
+          assert.are.equal(404, status)
+          assert.truthy(body)
+          assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}\n', response)
+        end)
+
+        it("should retrieve all entities", function()
+          local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/")
+          local body = cjson.decode(response)
+          assert.are.equal(200, status)
+          assert.truthy(body.data)
+          --assert.truthy(body.total)
+          --assert.are.equal(v.total, body.total)
+          assert.are.equal(v.total, table.getn(body.data))
+        end)
+
+        it("should retrieve one entity", function()
+          local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
+          local body = cjson.decode(response)
+          assert.are.equal(200, status)
+          assert.truthy(body)
+          assert.are.equal(created_ids[v.collection], body.id)
+        end)
+
       end)
+    end
+  end)
 
-      it("should GET one entity", function()
-        local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
-        local body = cjson.decode(response)
-        assert.are.equal(200, status)
-        assert.truthy(body)
-        assert.are.equal(created_ids[v.collection], body.id)
+  describe("PUT", function()
+    for i, v in ipairs(ENDPOINTS) do
+      describe(v.collection.." entity", function()
+
+        it("should not update when the content-type is wrong", function()
+          local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
+          assert.are.equal(415, status)
+          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\"\"}\n", response)
+        end)
+
+        it("should update an entity if valid parameters", function()
+          local data = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
+          local body = cjson.decode(data)
+
+          -- Create new body
+          for k,v in pairs(v.update_fields) do
+            body[k] = v
+          end
+
+          local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
+          local new_body = cjson.decode(response)
+          assert.are.equal(200, status)
+          assert.truthy(new_body)
+          assert.are.equal(created_ids[v.collection], new_body.id)
+
+          for k,v in pairs(v.update_fields) do
+            assert.are.equal(v, new_body[k])
+          end
+
+          assert.are.same(body, new_body)
+        end)
+
       end)
+    end
+  end)
 
-      it("should return not found on GET", function()
-        local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
-        local body = cjson.decode(response)
-        assert.are.equal(404, status)
-        assert.truthy(body)
-        assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}\n', response)
-      end)
+  -- Tests on DELETE must run in that order:
+  --  1. plugins_configurations
+  --  2. APIs/Consumers
+  -- Since deleting APIs and Consumers delete related plugins_configurations.
+  describe("DELETE", function()
+    describe("plugins_configurations", function()
 
-      it("should update a created entity on PUT", function()
-        local data = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
-        local body = cjson.decode(data)
-
-        -- Create new body
-        for k,v in pairs(v.update_fields) do
-          body[k] = v
-        end
-
-        local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
-        local new_body = cjson.decode(response)
-        assert.are.equal(200, status)
-        assert.truthy(new_body)
-        assert.are.equal(created_ids[v.collection], new_body.id)
-
-        for k,v in pairs(v.update_fields) do
-          assert.are.equal(v, new_body[k])
-        end
-
-        assert.are.same(body, new_body)
-      end)
-
-      it("should not update when the content-type is wrong", function()
-        local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
-        assert.are.equal(415, status)
-        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\"\"}\n", response)
-      end)
-
-      it("should not save when the content-type is wrong", function()
-        local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
-        assert.are.equal(415, status)
-        assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\"\"}\n", response)
-      end)
-
-    end)
-  end
-
-  for i,v in ipairs(ENDPOINTS) do
-    describe("#"..v.collection, function()
-
-      it("should delete an entity on DELETE", function()
-        local response, status, headers = http_client.delete(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
+      it("should delete a plugin_configuration", function()
+        local response, status, headers = http_client.delete(kWebURL.."/plugins_configurations/"..created_ids.plugins_configurations)
         assert.are.equal(204, status)
       end)
 
     end)
-  end
 
+    describe("APIs", function()
+
+      it("should delete an API", function()
+        local response, status, headers = http_client.delete(kWebURL.."/apis/"..created_ids.apis)
+        assert.are.equal(204, status)
+      end)
+
+    end)
+
+    describe("Consumers", function()
+
+      it("should delete a Consumer", function()
+        local response, status, headers = http_client.delete(kWebURL.."/consumers/"..created_ids.consumers)
+        assert.are.equal(204, status)
+      end)
+
+    end)
+  end)
 end)
