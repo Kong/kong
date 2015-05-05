@@ -137,7 +137,7 @@ local function prepare_database(args_config)
   local _, _, dao_factory = get_kong_config(args_config)
 
   -- Migrate the DB if needed and possible
-  local keyspace, err = dao_factory:get_migrations()
+  local keyspace, err = dao_factory.migrations:get_migrations()
   if err then
     cutils.logger:error_exit(err)
   elseif keyspace == nil then
