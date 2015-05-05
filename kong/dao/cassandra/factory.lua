@@ -26,7 +26,7 @@ local LOCALHOST_IP = "127.0.0.1"
 -- @param host can either be a string or an array of hosts
 local function normalize_localhost(host)
   if type(host) == "table" then
-    for i,v in ipairs(host) do
+    for i, v in ipairs(host) do
       if v == LOCALHOST then
         host[i] = LOCALHOST_IP
       end
