@@ -10,6 +10,10 @@ local printable_mt = {}
 function printable_mt:__tostring()
   local t = {}
   for k, v in pairs(self) do
+    if type(v) == "table" then
+      v = table.concat(v, ",")
+    end
+
     table.insert(t, k.."="..v)
   end
   return table.concat(t, " ")
