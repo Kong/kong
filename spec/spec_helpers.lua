@@ -54,7 +54,7 @@ function _M.start_kong(conf_file, skip_wait)
   local result, exit_code = IO.os_execute(KONG_BIN.." start -c "..env.conf_file)
 
   if exit_code ~= 0 then
-    error("spec_helper cannot start kong: "..result)
+    error("spec_helper cannot start kong: \n"..result)
   end
 
   if not skip_wait then
