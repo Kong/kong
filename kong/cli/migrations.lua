@@ -29,7 +29,7 @@ local migrations = Migrations(dao_factory, cutils.get_luarocks_install_dir())
 
 if args.command == "list" then
 
-  local migrations, err = dao_factory:get_migrations()
+  local migrations, err = dao_factory.migrations:get_migrations()
   if err then
     cutils.logger:error_exit(err)
   elseif migrations then

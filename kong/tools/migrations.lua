@@ -53,7 +53,7 @@ end
 -- Execute all migrations UP
 -- @param callback A function to execute on each migration (ie: for logging)
 function Migrations:migrate(callback)
-  local old_migrations, err = self.dao:get_migrations()
+  local old_migrations, err = self.dao.migrations:get_migrations()
   if err then
     callback(nil, err)
     return
@@ -92,7 +92,7 @@ function Migrations:migrate(callback)
     end
 
     -- Record migration in db
-    local _, err = self.dao:add_migration(migration.name)
+    local _, err = self.dao.migrations:add_migration(migration.name)
     if err then
       err = "Cannot record migration "..migration.name..": "..err
     end
@@ -107,7 +107,7 @@ end
 -- Take the latest executed migration and DOWN it
 -- @param callback A function to execute (for consistency with other functions of this module)
 function Migrations:rollback(callback)
-  local old_migrations, err = self.dao:get_migrations()
+  local old_migrations, err = self.dao.migrations:get_migrations()
   if err then
     callback(nil, err)
     return
@@ -133,7 +133,7 @@ function Migrations:rollback(callback)
   -- delete migration from schema changes records if it's not the first one
   -- (otherwise the schema_migrations table doesn't exist anymore)
   if not migration_to_rollback.init then
-    local _, err = self.dao:delete_migration(migration_to_rollback.name)
+    local _, err = self.dao.migrations:delete_migration(migration_to_rollback.name)
     if err then
       callback(migration_to_rollback, "Cannot delete migration "..migration_to_rollback.name..": "..err)
       return
