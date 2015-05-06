@@ -138,9 +138,10 @@ function BaseDao:_check_all_unique(t, is_updating)
 end
 
 -- Open a Cassandra session on the configured keyspace.
+-- @param `keyspace` (Optional) Override the keyspace for this session if specified.
 -- @return `session` Opened session
 -- @return `error`   Error if any
-function BaseDao:_open_session()
+function BaseDao:_open_session(keyspace)
   local ok, err
 
   -- Start cassandra session
@@ -158,7 +159,7 @@ function BaseDao:_open_session()
   end
 
   if times == 0 or not times then
-    ok, err = session:set_keyspace(self._properties.keyspace)
+    ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
     if not ok then
       return nil, DaoError(err, error_types.DATABASE)
     end
@@ -259,10 +260,11 @@ end
 -- @param `statement` Prepared statement, plain string query or BatchStatement.
 -- @param `args`      (Optional) Arguments to the query, simply passed to lua-resty-cassandra's :execute()
 -- @param `options`   (Optional) Options to give to lua-resty-cassandra's :execute()
+-- @param `keyspace`  (Optional) Override the keyspace for this query if specified.
 -- @return `results`  If results set are ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results have a paging_state.
 -- @return `error`    An error if any during the whole execution (sockets/query execution)
-function BaseDao:_execute(statement, args, options)
-  local session, err = self:_open_session()
+function BaseDao:_execute(statement, args, options, keyspace)
+  local session, err = self:_open_session(keyspace)
   if err then
     return nil, err
   end
