@@ -14,7 +14,7 @@ uuid.seed()
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local TEST_CONF = "kong_TEST.yml"
 
-describe("Real IP #proxy", function()
+describe("Real IP", function()
 
   setup(function()
     spec_helper.prepare_db()
