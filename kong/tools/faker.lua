@@ -1,5 +1,4 @@
 local Object = require "classic"
-local inspect = require "inspect"
 local utils = require "kong.tools.utils"
 
 math.randomseed(os.time())
@@ -194,7 +193,9 @@ function Faker:insert_from_table(entities_to_insert, pick_relations)
       local dao_type = type=="plugin_configuration" and "plugins_configurations" or type.."s"
       local res, err = self.dao_factory[dao_type]:insert(entity)
       if err then
-        error("Faker failed to insert "..type.." entity: "..inspect(entity).."\n"..err)
+        local printable_mt = require "kong.tools.printable"
+        setmetatable(entity, printable_mt)
+        error("Faker failed to insert "..type.." entity: "..entity.."\n"..err)
       end
 
       -- For other hard-coded entities relashionships
