@@ -103,14 +103,15 @@ describe("Faker #tools", function()
     end)
 
     it("should throw a descriptive error if cannot insert an entity", function()
-      local inspect = require "inspect"
+      local printable_mt = require "kong.tools.printable"
+      local entity_to_str = setmetatable(Faker.FIXTURES.api[1], printable_mt)
 
       factory_mock.apis.insert = function(self, t)
                                    return nil, DaoError("cannot insert api error test", "schema")
                                  end
       assert.has_error(function()
         faker:seed()
-      end, "Faker failed to insert api entity: "..inspect(Faker.FIXTURES.api[1]).."\ncannot insert api error test")
+      end, "Faker failed to insert api entity: "..entity_to_str.."\ncannot insert api error test")
     end)
 
   end)

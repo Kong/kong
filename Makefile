@@ -1,6 +1,6 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
-DEV_ROCKS=busted luacov luacov-coveralls luacheck
+DEV_ROCKS=busted luacov luacov-coveralls luacheck inspect lua-llthreads2
 
 .PHONY: install dev clean run seed drop lint test coverage test-all
 

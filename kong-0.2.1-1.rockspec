@@ -18,16 +18,13 @@ dependencies = {
   "yaml ~> 1.1.1-1",
   "luasec ~> 0.5-2",
   "lapis ~> 1.1.0-1",
-  "inspect ~> 3.0-1",
   "stringy ~> 0.4-1",
-  "multipart ~> 0.1-2",
   "cassandra ~> 0.5-7",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
   "luasocket ~> 2.0.2-5",
   "ansicolors ~> 1.0.2-3",
   "lrexlib-pcre ~> 2.7.2-1",
-  "lua-llthreads2 ~> 0.1.3-1",
   "multipart ~> 0.1-2"
 }
 build = {
