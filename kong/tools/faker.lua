@@ -53,7 +53,7 @@ Faker.FIXTURES = {
     { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
-    { name = "filelog", value = { }, __api = 1 },
+    { name = "filelog", value = {}, __api = 1 },
     -- API 2
     { name = "basicauth", value = {}, __api = 2 },
     -- API 3
@@ -73,9 +73,9 @@ Faker.FIXTURES = {
     -- API 6
     { name = "cors", value = {}, __api = 6 },
     -- API 7
-    { name = "cors", value = { origin = "example.com", 
-                               methods = "GET", 
-                               headers = "origin, type, accepts", 
+    { name = "cors", value = { origin = "example.com",
+                               methods = "GET",
+                               headers = "origin, type, accepts",
                                exposed_headers = "x-auth-token",
                                max_age = 23,
                                credentials = true }, __api = 7 }
