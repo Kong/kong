@@ -10,9 +10,7 @@
 
 [![][kong-logo]][kong-url]
 
-Kong was built to secure, manage and extend Microservices & APIs. If you're building for web, mobile or IoT (Internet of Things) you will likely end up needing to implement common functionality on top of your actual software. Kong can help by acting as a gateway for any HTTP resource while providing logging, authentication and other functionality through plugins.
-
-Powered by NGINX and Cassandra with a focus on high performance and reliability, Kong runs in production at [Mashape][mashape-url] where it has handled billions of API requests for over ten thousand APIs.
+Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of NGINX and Cassandra with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] handling billions of requests to over ten thousand APIs.
 
 ## Core Features
 
@@ -29,44 +27,21 @@ Powered by NGINX and Cassandra with a focus on high performance and reliability,
   - **CORS**: Enable cross-origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
 
+## Architecture
+
+If you're building for web, mobile or IoT (Internet of Things) you will likely end up needing common functionality on top of your actual software. Kong can help by acting as a gateway for HTTP requests while providing logging, authentication, rate-limiting and more through plugins.
+
 [![][kong-benefits]][kong-url]
 
 ## Benchmarks
 
-We set Kong up on AWS and load tested it to get some performance metrics. The Kong setup consisted of two `m3.medium` EC2 instances; one for Kong, the other running Cassandra. 
+We set Kong up on AWS and load tested it to get some performance metrics. The setup consisted of three `m3.medium` EC2 instances; one for Kong, one for Cassandra and a third for an upstream API. After adding the upstream API's `target_url` into Kong we load tested from 1 to 2000 concurrent connections. Complete [reproduction instructions](https://gist.github.com/montanaflynn/01376991f0a3ad07059c) are available and we are currently working towards automating a suite of benchmarks to compare against subsequent releases.
 
-Both servers had their limits increased:
-
-Added `fs.file-max=80000` to `/etc/sysctl.conf`
-
-Added the following lines to: `/etc/security/limits.conf`
-```
-*          soft     nproc          80000
-*          hard     nproc          80000
-*          soft     nofile         80000
-*          hard     nofile         80000
-```
-
-For these benchmarks a third server running an optimized "hello world" web server written in C was used as the target, while not exactly "real world usage" not having the target as a bottleneck we hope to get a more accurate assessment of Kong itself. 
-
-After adding the `target_url` into the Kong instance we load tested while ramping up from 1 to 2000 concurrent connections over 120 seconds. All together 117,185 requests with an average of 976 req/second or about 84,373,200 req/day went through Kong and back with only a single timeout.
+Over two minutes **117,185** requests with an average latency of **10ms** at **976 requests a second** or about **84,373,200 requests a day** went through Kong and back with only a single timeout. 
 
 ![](http://i.imgur.com/aDGRe4G.png)
 
-## Documentation
-
-Full versioned documentation is available at [GetKong.org][kong-url]:
-
-- [Latest Docs](http://www.getkong.org/docs/)
-- [Installation](http://www.getkong.org/download)
-- [Quick Start](http://getkong.org/docs/latest/getting-started/quickstart/)
-- [CLI Reference](http://getkong.org/docs/latest/cli/)
-- [API Reference](http://getkong.org/docs/latest/admin-api)
-- [Configuration](http://getkong.org/docs/latest/configuration/)
-
 ## Development
-
-Please see the [CONTRIBUTING.md][kong-contrib] if you would like to have your changes merged into Kong.
 
 1. Clone the repository and make it your working directory.
 2. Run `[sudo] make install`
@@ -108,9 +83,16 @@ When developing, use the `Makefile` for doing the following operations:
 | `test`        | Run the unit tests                                                       |
 | `test-all`    | Run all unit + integration tests at once                                 |
 
-## License
+## Documentation
 
-Kong is provided under the [MIT License][license-url].
+Complete & versioned documentation is available at [GetKong.org][kong-url]:
+
+- [Latest Docs](http://www.getkong.org/docs/)
+- [Installation](http://www.getkong.org/download)
+- [Quick Start](http://getkong.org/docs/latest/getting-started/quickstart/)
+- [Configuration](http://getkong.org/docs/latest/configuration/)
+- [CLI Reference](http://getkong.org/docs/latest/cli/)
+- [API Reference](http://getkong.org/docs/latest/admin-api)
 
 [kong-url]: http://getkong.org/
 [kong-docs]: http://getkong.org/docs/
