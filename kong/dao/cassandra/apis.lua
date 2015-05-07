@@ -4,7 +4,7 @@ local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations
 
 local SCHEMA = {
   id = { type = constants.DATABASE_TYPES.ID },
-  name = { type = "string", required = true, unique = true, queryable = true },
+  name = { type = "string", unique = true, queryable = true, default = function(api_t) return api_t.public_dns end },
   public_dns = { type = "string", required = true, unique = true, queryable = true,
                  regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
