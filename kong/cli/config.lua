@@ -37,8 +37,7 @@ local DEFAULT_ENV_VALUES = {
     ["keyspace: kong"] = "keyspace: kong_development",
     ["lua_package_path ';;'"] = "lua_package_path './kong/?.lua;;'",
     ["error_log logs/error.log info"] = "error_log logs/error.log debug",
-    ["lua_code_cache on"] = "lua_code_cache off",
-    ["daemon on"] = "daemon off"
+    ["lua_code_cache on"] = "lua_code_cache off"
   }
 }
 
