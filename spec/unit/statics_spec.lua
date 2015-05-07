@@ -31,7 +31,7 @@ describe("Static files", function()
 
   describe("Configuration", function()
 
-    it("should parse a correct configuration", function()
+    it("should equal to this template to make sure no errors are pushed in the default config", function()
       local configuration = IO.read_file(spec_helper.DEFAULT_CONF_FILE)
 
       assert.are.same([[
