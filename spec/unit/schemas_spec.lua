@@ -2,9 +2,9 @@ local schemas = require "kong.dao.schemas"
 local constants = require "kong.constants"
 local validate = schemas.validate
 
-describe("Validation", function()
+describe("Schemas", function()
 
-  it("should return the right alias", function()
+  it("should alias lua types to database types", function()
     assert.are.same("number", schemas.get_type("number"))
     assert.are.same("string", schemas.get_type("string"))
     assert.are.same("boolean", schemas.get_type("boolean"))
@@ -13,9 +13,9 @@ describe("Validation", function()
     assert.are.same("number", schemas.get_type(constants.DATABASE_TYPES.TIMESTAMP))
   end)
 
+  -- Ok kids, today we're gonna test a custom validation schema,
+  -- grab a pair of glasses, this stuff can literally explode.
   describe("#validate()", function()
-    -- Ok kids, today we're gonna test a custom validation schema,
-    -- grab a pair of glasses, this stuff can literally explode.
     local schema = {
       string = { type = "string", required = true, immutable = true },
       table = { type = "table" },

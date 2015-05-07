@@ -365,7 +365,7 @@ function BaseDao:_execute_kong_query(operation, args_to_bind, options)
   -- Execute statement
   local results, err
   results, err = self:_execute(statement, args, options)
-  if err and err.cassadra_err_code == cassandra_constants.error_codes.UNPREPARED then
+  if err and err.cassandra_err_code == cassandra_constants.error_codes.UNPREPARED then
     if ngx then
       ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
     end

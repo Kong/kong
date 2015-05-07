@@ -51,7 +51,7 @@ local mt = {
     -- Cassandra server error
     if err_type == constants.DATABASE_ERROR_TYPES.DATABASE then
       t.message = "Cassandra error: "..t.message
-      t.cassadra_err_code = err.code
+      t.cassandra_err_code = err.code
     end
 
     -- If message is a table, use the printable metatable

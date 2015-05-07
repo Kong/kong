@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local http_client = require "kong.tools.http_client"
 
-describe("Http Client", function()
+describe("HTTP Client", function()
 
   describe("GET", function()
 
