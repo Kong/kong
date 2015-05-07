@@ -24,7 +24,6 @@ dependencies = {
   "lua-cjson ~> 2.1.0-1",
   "luasocket ~> 2.0.2-5",
   "ansicolors ~> 1.0.2-3",
-  "lrexlib-pcre ~> 2.7.2-1",
   "multipart ~> 0.1-2"
 }
 build = {
