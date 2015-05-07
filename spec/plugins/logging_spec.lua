@@ -6,7 +6,6 @@ local yaml = require "yaml"
 local IO = require "kong.tools.io"
 local uuid = require "uuid"
 local stringy = require "stringy"
-local rex = require "rex_pcre"
 
 -- This is important to seed the UUID generator
 uuid.seed()
@@ -64,7 +63,7 @@ describe("Logging Plugins", function()
       local thread = start_tcp_server() -- Starting the mock TCP server
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com"})
+      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -81,7 +80,7 @@ describe("Logging Plugins", function()
       local thread = start_udp_server() -- Starting the mock TCP server
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com"})
+      local response, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -95,13 +94,15 @@ describe("Logging Plugins", function()
     end)
 
     it("should log to file", function()
-      local uuid,_ = string.gsub(uuid(), "-", "")
+      local uuid = string.gsub(uuid(), "-", "")
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test1.com", file_log_uuid = uuid})
+      local response, status = http_client.get(STUB_GET_URL, nil,
+        { host = "logging.com", file_log_uuid = uuid }
+      )
       assert.are.equal(200, status)
 
-      -- Reading the log file and finding the entry
+      -- Reading the log file and finding the line with the entry
       local configuration = yaml.load(IO.read_file(TEST_CONF))
       assert.truthy(configuration)
       local error_log = IO.read_file(configuration.nginx_working_dir.."/logs/error.log")
@@ -115,22 +116,14 @@ describe("Logging Plugins", function()
       end
       assert.truthy(line)
 
-      -- Matching the Json
-      local iterator, iter_err = rex.gmatch(line, "\\s+({.+})\\s+")
-      if not iterator then
-        error(iter_err)
-      end
-      local m, err = iterator()
-      if err then
-        error(err)
-      end
-      assert.truthy(m)
+      -- Retrieve the JSON part of the line
+      local json_str = line:match("(%{.*%})")
+      assert.truthy(json_str)
 
-      local log_message = cjson.decode(m)
+      local log_message = cjson.decode(json_str)
       assert.are.same("127.0.0.1", log_message.ip)
       assert.are.same(uuid, log_message.request.headers.file_log_uuid)
     end)
 
   end)
-
 end)
