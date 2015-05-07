@@ -35,6 +35,9 @@ clean:
 run:
 	@bin/kong start -c $(DEVELOPMENT_CONF)
 
+stop:
+	@bin/kong stop -c $(DEVELOPMENT_CONF)
+
 seed:
 	@bin/kong db -c $(DEVELOPMENT_CONF) seed
 
