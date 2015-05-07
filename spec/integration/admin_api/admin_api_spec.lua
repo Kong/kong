@@ -18,7 +18,7 @@ local ENDPOINTS = {
     update_fields = {
       public_dns = "newapi.mockbin.com"
     },
-    error_message = '{"public_dns":"public_dns is required","name":"name is required","target_url":"target_url is required"}\n'
+    error_message = '{"public_dns":"public_dns is required","target_url":"target_url is required"}\n'
   },
   {
     collection = "consumers",
