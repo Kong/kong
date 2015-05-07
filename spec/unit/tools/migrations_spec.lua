@@ -3,7 +3,7 @@ local Migrations = require "kong.tools.migrations"
 local utils = require "kong.tools.utils"
 local IO = require "kong.tools.io"
 
-describe("Migrations #tools", function()
+describe("Migrations", function()
 
   local env = spec_helper.get_env()
   local migrations

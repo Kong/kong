@@ -1,7 +1,7 @@
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 
-describe("Utils #tools", function()
+describe("Utils", function()
 
   describe("Stringy", function()
 

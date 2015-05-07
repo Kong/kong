@@ -14,9 +14,6 @@ local LUA_TYPE_ALIASES = {
   [constants.DATABASE_TYPES.TIMESTAMP] = "number"
 }
 
---
--- Schemas
---
 local _M = {}
 
 -- Returns the proper Lua type from a schema type, handling aliases
