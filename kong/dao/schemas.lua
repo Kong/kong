@@ -1,4 +1,3 @@
-local rex = require "rex_pcre"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 
@@ -65,12 +64,6 @@ function _M.validate(t, schema, is_update)
 
       if not found then
         errors = utils.add_error(errors, column, string.format("\"%s\" is not allowed. Allowed values are: \"%s\"", t[column], table.concat(v.enum, "\", \"")))
-      end
-
-    -- Check field against a regex if specified
-    elseif t[column] ~= nil and v.regex then
-      if not rex.match(t[column], v.regex) then
-        errors = utils.add_error(errors, column, column.." has an invalid value")
       end
 
     -- Check field against a custom function
