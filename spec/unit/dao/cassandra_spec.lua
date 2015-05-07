@@ -151,6 +151,16 @@ describe("Cassandra DAO", function()
           assert.truthy(api.created_at)
         end)
 
+        it("should use the public_dns as the name if none is specified", function()
+          local api, err = dao_factory.apis:insert {
+            public_dns = "test.com",
+            target_url = "http://mockbin.com"
+          }
+          assert.falsy(err)
+          assert.truthy(api.name)
+          assert.are.same("test.com", api.name)
+        end)
+
         it("should not insert an invalid api", function()
           -- Nil
           local api, err = dao_factory.apis:insert()
