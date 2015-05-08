@@ -1,5 +1,3 @@
--- Copyright (C) Mashape, Inc.
-
 local Object = require "classic"
 local BasePlugin = Object:extend()
 

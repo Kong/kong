@@ -8,6 +8,7 @@ describe("DaoError", function()
     assert.truthy(err)
     assert.truthy(err.message)
     assert.truthy(err.some_type)
+    assert.truthy(err.is_dao_error)
   end)
 
   it("should have an error code if the error comes from the database driver", function()

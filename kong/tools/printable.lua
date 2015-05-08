@@ -1,9 +1,9 @@
 -- A metatable for pretty printing a table with key=value properties
 --
 -- Example:
---   { hello = "world", foo = "bar" }
+--   { hello = "world", foo = "bar", baz = {"hello", "world"} }
 -- Output:
---   "hello=world foo=bar"
+--   "hello=world foo=bar, baz=hello,world"
 
 local printable_mt = {}
 

@@ -1,6 +1,7 @@
-local stringy = require "stringy"
 local url = require("socket.url")
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
+local responses = require "kong.tools.responses"
 
 local _M = {}
 
@@ -51,8 +52,7 @@ function _M.execute(conf)
     api = cache.get_and_set(cache.api_key(host), function()
       local apis, err = dao.apis:find_by_keys { public_dns = host }
       if err then
-        ngx.log(ngx.ERR, tostring(err))
-        utils.show_error(500, tostring(err))
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       elseif apis and #apis == 1 then
         return apis[1]
       end
@@ -61,7 +61,7 @@ function _M.execute(conf)
   end
 
   if not api then
-    utils.not_found("API not found with Host: "..table.concat(hosts, ","))
+    responses.send_HTTP_NOT_FOUND("API not found with Host: "..table.concat(hosts, ","))
   end
 
   -- Setting the backend URL for the proxy_pass directive
