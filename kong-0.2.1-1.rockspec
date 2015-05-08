@@ -60,6 +60,7 @@ build = {
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.http_client"] = "kong/tools/http_client.lua",
+    ["kong.tools.responses"] = "kong/tools/responses.lua",
 
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
     ["kong.resolver.access"] = "kong/resolver/access.lua",

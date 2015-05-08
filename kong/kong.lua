@@ -24,12 +24,13 @@
 -- |[[    ]]|
 -- ==========
 
-utils = require "kong.tools.utils"
-local IO = require "kong.tools.io"
-local cache = require "kong.tools.database_cache"
-local constants = require "kong.constants"
-local timestamp = require "kong.tools.timestamp"
 local stringy = require "stringy"
+local constants = require "kong.constants"
+local IO = require "kong.tools.io"
+local utils = require "kong.tools.utils"
+local cache = require "kong.tools.database_cache"
+local responses = require "kong.tools.responses"
+local timestamp = require "kong.tools.timestamp"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -46,8 +47,7 @@ local function load_plugin_conf(api_id, consumer_id, plugin_name)
         name = plugin_name
       }
       if err then
-        ngx.log(ngx.ERR, tostring(err))
-        utils.show_error(500)
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
 
       if #rows > 0 then
@@ -201,7 +201,7 @@ function _M.exec_plugins_header_filter()
       end
     end
   end
-  
+
   ngx.header[constants.HEADERS.VIA] = "kong/"..constants.VERSION
 end
 

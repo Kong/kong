@@ -1,5 +1,3 @@
--- Copyright (C) Mashape, Inc.
-
 local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.tcplog.log"
 
