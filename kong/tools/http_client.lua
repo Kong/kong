@@ -5,44 +5,6 @@ local cjson = require "cjson"
 
 local _M = {}
 
--- Builds a querystring from a table, separated by `&`
--- @param tab The key/value parameters
--- @param key The parent key if the value is multi-dimensional (optional)
--- @return a string representing the built querystring
-local function build_query(tab, key)
-  if ngx then
-    return ngx.encode_args(tab)
-  else
-    local query = {}
-    local keys = {}
-
-    for k in pairs(tab) do
-      keys[#keys+1] = k
-    end
-
-    table.sort(keys)
-
-    for _,name in ipairs(keys) do
-      local value = tab[name]
-      if key then
-        name = string.format("%s[%s]", tostring(key), tostring(name))
-      end
-      if type(value) == "table" then
-        query[#query+1] = build_query(value, name)
-      else
-        value = tostring(value)
-        if value ~= "" then
-          query[#query+1] = string.format("%s=%s", name, value)
-        else
-          query[#query+1] = name
-        end
-      end
-    end
-
-    return table.concat(query, "&")
-  end
-end
-
 local function http_call(options)
   -- Set Host header accordingly
   if not options.headers["host"] then
@@ -67,7 +29,7 @@ function _M.get(url, querystring, headers)
   if not headers then headers = {} end
 
   if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
+    url = string.format("%s?%s", url, ngx.encode_args(querystring))
   end
 
   return http_call {
@@ -82,7 +44,7 @@ function _M.post(url, form, headers)
   if not headers then headers = {} end
   if not form then form = {} end
 
-  local body = build_query(form)
+  local body = ngx.encode_args(form)
   headers["content-length"] = string.len(body)
   if not headers["content-type"] then
     headers["content-type"] = "application/x-www-form-urlencoded"
@@ -148,7 +110,7 @@ function _M.delete(url, querystring, headers)
   if not headers then headers = {} end
 
   if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
+    url = string.format("%s?%s", url, ngx.encode_args(querystring))
   end
 
   return http_call {
@@ -163,7 +125,7 @@ function _M.options(url, querystring, headers)
   if not headers then headers = {} end
 
   if querystring then
-    url = string.format("%s?%s", url, build_query(querystring))
+    url = string.format("%s?%s", url, ngx.encode_args(querystring))
   end
 
   return http_call {

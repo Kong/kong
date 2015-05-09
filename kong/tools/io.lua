@@ -1,7 +1,7 @@
-local constants = require "kong.constants"
-local path = require("path").new("/")
 local yaml = require "yaml"
+local path = require("path").new("/")
 local stringy = require "stringy"
+local constants = require "kong.constants"
 
 local _M = {}
 
