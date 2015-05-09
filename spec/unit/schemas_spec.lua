@@ -2,6 +2,8 @@ local schemas = require "kong.dao.schemas"
 local constants = require "kong.constants"
 local validate = schemas.validate
 
+require "spec.ngx_stub"
+
 describe("Schemas", function()
 
   it("should alias lua types to database types", function()

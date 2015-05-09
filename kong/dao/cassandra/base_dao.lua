@@ -14,7 +14,6 @@ local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "uuid"
-local rex = require "rex_pcre"
 
 local cassandra_constants = require "cassandra.constants"
 local error_types = constants.DATABASE_ERROR_TYPES
@@ -183,9 +182,10 @@ function BaseDao:_close_session(session)
   end
 end
 
-local pattern = "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+local digit = "[0-9a-f]"
+local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
 local function is_valid_uuid(uuid)
-  return rex.match(uuid, pattern) ~= nil
+  return uuid and uuid:match(uuid_pattern) ~= nil
 end
 
 -- Build the array of arguments to pass to lua-resty-cassandra :execute method.

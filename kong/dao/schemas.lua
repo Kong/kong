@@ -1,4 +1,3 @@
-local rex = require "rex_pcre"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 
@@ -69,7 +68,7 @@ function _M.validate(t, schema, is_update)
 
     -- Check field against a regex if specified
     elseif t[column] ~= nil and v.regex then
-      if not rex.match(t[column], v.regex) then
+      if not ngx.re.match(t[column], v.regex) then
         errors = utils.add_error(errors, column, column.." has an invalid value")
       end
 
@@ -109,7 +108,7 @@ function _M.validate(t, schema, is_update)
   end
 
   -- Check for unexpected fields in the entity
-  for k,v in pairs(t) do
+  for k, v in pairs(t) do
     if schema[k] == nil then
       errors = utils.add_error(errors, k, k.." is an unknown field")
     end

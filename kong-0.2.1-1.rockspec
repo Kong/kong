@@ -12,20 +12,22 @@ description = {
 }
 dependencies = {
   "lua ~> 5.1",
+  "luasec ~> 0.5-2",
 
   "uuid ~> 0.2-1",
   "luatz ~> 0.3-1",
   "yaml ~> 1.1.1-1",
-  "luasec ~> 0.5-2",
   "lapis ~> 1.1.0-1",
   "stringy ~> 0.4-1",
   "cassandra ~> 0.5-7",
+  "multipart ~> 0.1-2",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
-  "luasocket ~> 2.0.2-5",
   "ansicolors ~> 1.0.2-3",
+
+  "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
-  "multipart ~> 0.1-2"
+  "lua-llthreads2 ~> 0.1.3-1"
 }
 build = {
   type = "builtin",
