@@ -182,8 +182,8 @@ function BaseDao:_close_session(session)
   end
 end
 
-local x = "%x"
-local uuid_pattern = "^"..table.concat({ x:rep(8), x:rep(4), x:rep(4), x:rep(4), x:rep(12) }, '%-').."$"
+local digit = "[0-9a-f]"
+local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
 local function is_valid_uuid(uuid)
   return uuid and uuid:match(uuid_pattern) ~= nil
 end

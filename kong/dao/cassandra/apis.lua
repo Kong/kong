@@ -2,20 +2,11 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 local constants = require "kong.constants"
 local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 
-local function is_valid_public_dns(str)
-  -- check the format
-  local pattern1 = "[A-Za-z0-9%-]*%.*[A-Za-z0-9%-]*%.[A-Za-z0-9][A-Za-z0-9]+$"
-  -- check all characters are alphanumeric
-  local pattern2 = "^[%w%.%-]*$"
-  -- both checks need to be true to be a valid public_dns
-  return str:match(pattern1) and str:match(pattern2)
-end
-
 local SCHEMA = {
   id = { type = constants.DATABASE_TYPES.ID },
   name = { type = "string", unique = true, queryable = true, default = function(api_t) return api_t.public_dns end },
   public_dns = { type = "string", required = true, unique = true, queryable = true,
-                 func = is_valid_public_dns },
+                 regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
   target_url = { type = "string", required = true },
   created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
 }
