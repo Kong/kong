@@ -1,7 +1,7 @@
 # KONG: Microservice Management Layer
 
-[![Build Status][travis-badge]][travis-url] 
-[![License Badge][license-badge]][license-url] 
+[![Build Status][travis-badge]][travis-url]
+[![License Badge][license-badge]][license-url]
 [![Gitter Badge][gitter-badge]][gitter-url]
 
 - Website: [getkong.org][kong-url]
@@ -37,7 +37,7 @@ If you're building for web, mobile or IoT (Internet of Things) you will likely e
 
 We set Kong up on AWS and load tested it to get some performance metrics. The setup consisted of three `m3.medium` EC2 instances; one for Kong, one for Cassandra and a third for an upstream API. After adding the upstream API's `target_url` into Kong we load tested from 1 to 2000 concurrent connections. Complete [reproduction instructions](https://gist.github.com/montanaflynn/01376991f0a3ad07059c) are available and we are currently working towards automating a suite of benchmarks to compare against subsequent releases.
 
-Over two minutes **117,185** requests with an average latency of **10ms** at **976 requests a second** or about **84,373,200 requests a day** went through Kong and back with only a single timeout. 
+Over two minutes **117,185** requests with an average latency of **10ms** at **976 requests a second** or about **84,373,200 requests a day** went through Kong and back with only a single timeout.
 
 ![](http://i.imgur.com/aDGRe4G.png)
 
@@ -75,11 +75,12 @@ When developing, use the `Makefile` for doing the following operations:
 | -------------:| -------------------------------------------------------------------------|
 | `install`     | Install the Kong luarock globally                                        |
 | `dev`         | Setup your development environment                                       |
-| `run`         | Run the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)               |
+| `clean`       | Clean your development environment                                       |
+| `start`       | Start the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)             |
 | `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
 | `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
 | `lint`        | Lint Lua files in `kong/`                                                |
-| `coverage`    | Run unit tests + coverage report (only unit-tested modules)              |
+| `coverage`    | Run unit tests + coverage report                                         |
 | `test`        | Run the unit tests                                                       |
 | `test-all`    | Run all unit + integration tests at once                                 |
 
