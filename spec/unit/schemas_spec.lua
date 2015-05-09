@@ -2,6 +2,8 @@ local schemas = require "kong.dao.schemas"
 local constants = require "kong.constants"
 local validate = schemas.validate
 
+require "spec.ngx_stub"
+
 describe("Schemas", function()
 
   it("should alias lua types to database types", function()
@@ -19,6 +21,7 @@ describe("Schemas", function()
     local schema = {
       string = { type = "string", required = true, immutable = true },
       table = { type = "table" },
+      url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456, immutable = true },
       allowed = { enum = { "hello", "world" }},
       boolean_val = { type = "boolean" },
@@ -40,7 +43,7 @@ describe("Schemas", function()
     }
 
     it("should confirm a valid entity is valid", function()
-      local values = { string = "mockbin entity" }
+      local values = { string = "mockbin entity", url = "mockbin.com" }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
@@ -48,7 +51,7 @@ describe("Schemas", function()
     end)
 
     it("should invalidate entity if required property is missing", function()
-      local values = { table = {"mockbin.com"} }
+      local values = { url = "mockbin.com" }
 
       local valid, err = validate(values, schema)
       assert.falsy(valid)
@@ -93,7 +96,7 @@ describe("Schemas", function()
 
     it("should set default values if those are variables or functions specified in the validator", function()
       -- Variables
-      local values = { string = "mockbin entity" }
+      local values = { string = "mockbin entity", url = "mockbin.com" }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
@@ -101,7 +104,7 @@ describe("Schemas", function()
       assert.are.same(123456, values.date)
 
       -- Functions
-      local values = { string = "mockbin entity" }
+      local values = { string = "mockbin entity", url = "mockbin.com" }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
@@ -111,7 +114,7 @@ describe("Schemas", function()
 
     it("should override default values if specified", function()
       -- Variables
-      local values = { string = "mockbin entity", date = 654321 }
+      local values = { string = "mockbin entity", url = "mockbin.com", date = 654321 }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
@@ -119,7 +122,7 @@ describe("Schemas", function()
       assert.are.same(654321, values.date)
 
       -- Functions
-      local values = { string = "mockbin entity", default = "abcdef" }
+      local values = { string = "mockbin entity", url = "mockbin.com", default = "abcdef" }
 
       local valid, err = validate(values, schema)
       assert.falsy(err)
@@ -127,8 +130,17 @@ describe("Schemas", function()
       assert.are.same("abcdef", values.default)
     end)
 
+    it("should validate a field against a regex", function()
+      local values = { string = "mockbin entity", url = "mockbin_!" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.same("url has an invalid value", err.url)
+    end)
+
     it("should return error when unexpected values are included in the schema", function()
-      local values = { string = "mockbin entity", unexpected = "abcdef" }
+      local values = { string = "mockbin entity", url = "mockbin.com", unexpected = "abcdef" }
 
       local valid, err = validate(values, schema)
       assert.falsy(valid)
@@ -136,7 +148,7 @@ describe("Schemas", function()
     end)
 
     it("should be able to return multiple errors at once", function()
-      local values = { unexpected = "abcdef" }
+      local values = { url = "mockbin.com", unexpected = "abcdef" }
 
       local valid, err = validate(values, schema)
       assert.falsy(valid)
