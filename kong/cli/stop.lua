@@ -19,7 +19,7 @@ if not running then
 end
 
 -- Send 'stop' signal (fast shutdown)
-if signal.send_signal(args.config, "stop") then
+if signal.send_signal(args.config, signal.STOP) then
   cutils.logger:success("Stopped")
 else
   cutils.logger:error_exit("Could not stop Kong")

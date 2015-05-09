@@ -66,6 +66,8 @@ describe("Syslog", function()
     assert.truthy(has_hostname)
     assert.truthy(has_cores)
     assert.truthy(has_hello)
+
+    thread:join() -- wait til it exists
   end)
 
 end)
