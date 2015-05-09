@@ -33,6 +33,9 @@ Faker.FIXTURES = {
     { name = "API TESTS 6", public_dns = "cors1.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 7", public_dns = "cors2.com", target_url = "http://mockbin.com" },
 
+    { name = "API TESTS 8 (dns)", public_dns = "dns1.com", target_url = "http://127.0.0.1:7771" },
+    { name = "API TESTS 9 (dns)", public_dns = "dns2.com", target_url = "http://localhost:7771" },
+
     -- DEVELOPMENT APIs. Please do not use those in tests
     { name = "API DEV 1", public_dns = "dev.com", target_url = "http://mockbin.com" },
   },

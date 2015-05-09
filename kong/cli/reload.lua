@@ -20,7 +20,7 @@ end
 
 signal.prepare_kong(args.config)
 
-if signal.send_signal(args.config, "reload") then
+if signal.send_signal(args.config, signal.RELOAD) then
   cutils.logger:success("Reloaded")
 else
   cutils.logger:error_exit("Could not reload Kong")

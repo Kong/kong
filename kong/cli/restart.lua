@@ -16,7 +16,7 @@ Options:
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
 if signal.is_running(args.config) then
-  if not signal.send_signal(args.config, "stop") then
+  if not signal.send_signal(args.config, signal.STOP) then
     cutils.logger:error_exit("Could not stop Kong")
   end
 end
