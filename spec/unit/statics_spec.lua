@@ -71,6 +71,9 @@ database_cache_expiration: 5 # in seconds
 # Sends anonymous error reports
 send_anonymous_reports: true
 
+# In-memory cache size (MB)
+memory_cache_size: 128
+
 # Nginx configuration
 nginx: |
   worker_processes auto;
@@ -126,7 +129,7 @@ nginx: |
     lua_code_cache on;
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
-    lua_shared_dict cache 512m;
+    lua_shared_dict cache {{memory_cache_size}}m;
     lua_socket_log_errors off;
 
     init_by_lua '
