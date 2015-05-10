@@ -85,17 +85,17 @@ local function prepare_nginx_working_dir(args_config)
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
    -- Check memory cache
-  if kong_config.memory_cache then
-    if tonumber(kong_config.memory_cache) == nil then
-      cutils.logger:error_exit("Invalid \"memory_cache\" setting")
-    elseif tonumber(kong_config.memory_cache) < 32 then
-      cutils.logger:error_exit("Invalid \"memory_cache\" setting: needs to be at least 32")
+  if kong_config.memory_cache_size then
+    if tonumber(kong_config.memory_cache_size) == nil then
+      cutils.logger:error_exit("Invalid \"memory_cache_size\" setting")
+    elseif tonumber(kong_config.memory_cache_size) < 32 then
+      cutils.logger:error_exit("Invalid \"memory_cache_size\" setting: needs to be at least 32")
     else
-      cutils.logger:info("Memory cache size: "..tostring(kong_config.memory_cache).."MB")
+      cutils.logger:info("Memory cache size: "..tostring(kong_config.memory_cache_size).."MB")
     end
   else
-    kong_config.memory_cache = 128 -- Default value
-    cutils.logger:warn("Setting \"memory_cache\" to default 128MB")
+    kong_config.memory_cache_size = 128 -- Default value
+    cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
 
   -- Extract nginx config from kong config, replace any needed value
@@ -104,7 +104,7 @@ local function prepare_nginx_working_dir(args_config)
     proxy_port = kong_config.proxy_port,
     admin_api_port = kong_config.admin_api_port,
     dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
-    memory_cache = kong_config.memory_cache
+    memory_cache_size = kong_config.memory_cache_size
   }
 
   -- Auto-tune
