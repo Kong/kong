@@ -1,26 +1,8 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
-local Threads = require "llthreads2.ex"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
-
-local function start_tcp_server()
-  local thread = Threads.new({
-    function()
-      local socket = require "socket"
-      local server = assert(socket.bind("*", 7771))
-      local client = server:accept()
-      local line, err = client:receive()
-      local message = "{\"ok\": true}"
-      if not err then client:send("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "..string.len(message).."\r\n\r\n"..message) end
-      client:close()
-      return line
-    end;
-  })
-
-  thread:start()
-  return thread;
-end
+local TCP_PORT = 7771
 
 describe("DNS", function()
 
@@ -37,7 +19,7 @@ describe("DNS", function()
   describe("DNS", function()
 
     it("should work when calling local IP", function()
-      local thread = start_tcp_server() -- Starting the mock TCP server
+      local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
     
       local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns1.com" })
       assert.are.equal(200, status)
@@ -46,7 +28,7 @@ describe("DNS", function()
     end)
 
     it("should work when calling local hostname", function()
-      local thread = start_tcp_server() -- Starting the mock TCP server
+      local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
     
       local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns2.com" })
       assert.are.equal(200, status)

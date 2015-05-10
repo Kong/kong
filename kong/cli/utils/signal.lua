@@ -90,14 +90,20 @@ local function prepare_nginx_working_dir(args_config)
       cutils.logger:error_exit("Invalid \"memory_cache_size\" setting")
     elseif tonumber(kong_config.memory_cache_size) < 32 then
       cutils.logger:error_exit("Invalid \"memory_cache_size\" setting: needs to be at least 32")
-    else
-      cutils.logger:info("Memory cache size: "..tostring(kong_config.memory_cache_size).."MB")
     end
   else
     kong_config.memory_cache_size = 128 -- Default value
     cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
 
+  -- Check ports
+  local ports = { kong_config.proxy_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
+  for _,port in ipairs(ports) do
+    if IO.is_port_open(port) then
+      cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
+    end
+  end
+  
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
   local nginx_inject = {

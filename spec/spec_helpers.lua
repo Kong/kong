@@ -5,6 +5,7 @@
 local IO = require "kong.tools.io"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
+local Threads = require "llthreads2.ex"
 
 -- Constants
 local KONG_BIN = "bin/kong"
@@ -77,6 +78,50 @@ function _M.stop_kong(conf_file)
   os.execute("while [ -f "..env.configuration.pid_file.." ]; do sleep 0.5; done")
 
   return result, exit_code
+end
+
+--
+-- TCP/UDP server helpers
+--
+
+-- Starts a TCP server
+--
+-- @param {number} port The port where the server will be listening to
+-- @return {thread} Returns a thread object
+function _M.start_tcp_server(port, ...)
+  local thread = Threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.bind("*", port))
+      local client = server:accept()
+      local line, err = client:receive()
+      if not err then client:send(line .. "\n") end
+      client:close()
+      return line
+    end;
+  }, port)
+
+  thread:start(...)
+  return thread;
+end
+
+-- Starts a UDP server
+--
+-- @param {number} port The port where the server will be listening to
+-- @return {thread} Returns a thread object
+function _M.start_udp_server(port, ...)
+  local thread = Threads.new({
+    function(port)
+      local socket = require("socket")
+      udp = socket.udp()
+      udp:setsockname("*", port)
+      data = udp:receivefrom()
+      return data
+    end;
+  }, port)
+
+  thread:start(...)
+  return thread;
 end
 
 --

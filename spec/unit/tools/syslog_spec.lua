@@ -1,32 +1,19 @@
 local syslog = require "kong.tools.syslog"
-local Threads = require "llthreads2.ex"
 local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
+local spec_helper = require "spec.spec_helpers"
 
-local function start_udp_server()
-  local thread = Threads.new({
-    function()
-      local socket = require("socket")
-      udp = socket.udp()
-      udp:setsockname("*", 8889)
-      data, ip, port = udp:receivefrom()
-      return data
-    end;
-  })
-
-  thread:start()
-  return thread;
-end
+local UDP_PORT = 8889
 
 describe("Syslog", function()
 
   it("should log", function()
-    local thread = start_udp_server() -- Starting the mock TCP server
+    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock TCP server
 
     -- Override constants  
     constants.SYSLOG.ADDRESS = "127.0.0.1"
-    constants.SYSLOG.PORT = 8889
+    constants.SYSLOG.PORT = UDP_PORT
 
     -- Make the request
     syslog.log({hello="world"})
