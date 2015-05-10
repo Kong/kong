@@ -95,14 +95,6 @@ local function prepare_nginx_working_dir(args_config)
     kong_config.memory_cache_size = 128 -- Default value
     cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
-
-  -- Check ports
-  local ports = { kong_config.proxy_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
-  for _,port in ipairs(ports) do
-    if IO.is_port_open(port) then
-      cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
-    end
-  end
   
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
@@ -225,7 +217,7 @@ _M.RELOAD = RELOAD
 _M.STOP = STOP
 _M.QUIT = QUIT
 
-function _M.prepare_kong(args_config)
+function _M.prepare_kong(args_config, signal)
   local kong_config = get_kong_config(args_config)
   local dao_config = kong_config.databases_available[kong_config.database].properties
 
@@ -244,9 +236,19 @@ function _M.prepare_kong(args_config)
   kong_config.database,
   tostring(dao_config)))
 
+  if not signal or (signal and signal ~= RELOAD) then
+    -- Check ports
+    local ports = { kong_config.proxy_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
+    for _,port in ipairs(ports) do
+      if IO.is_port_open(port) then
+        cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
+      end
+    end
+  end
+
   cutils.logger:info("Connecting to the database...")
   prepare_database(args_config)
-  prepare_nginx_working_dir(args_config)
+  prepare_nginx_working_dir(args_config, signal)
 end
 
 -- Send a signal to `nginx`. No signal will start the process
