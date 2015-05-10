@@ -7,8 +7,29 @@ local _M = {}
 
 _M.path = path
 
-function _M.file_exists(name)
-  local f, err = io.open(name, "r")
+-- Checks if a port is open on localhost
+--
+-- @param {number} port The port to check
+-- @return {boolean}
+function _M.is_port_open(port)
+  local tcp
+  if ngx and ngx.get_phase ~= nil and ngx.get_phase() ~= "init" then
+    -- openresty
+    tcp = ngx.socket.tcp()
+  else
+    -- fallback to luasocket
+    -- It's also a fallback for openresty in the
+    -- "init" phase that doesn't support Cosockets
+    tcp = require("socket").tcp()
+  end
+
+  local ok, err = tcp:connect("127.0.0.1", port)
+  tcp:close()
+  return ok
+end
+
+function _M.file_exists(path)
+  local f, err = io.open(path, "r")
   if f ~= nil then
     io.close(f)
     return true

@@ -1,4 +1,5 @@
 local IO = require "kong.tools.io"
+local spec_helper = require "spec.spec_helpers"
 
 local TEST_FILE = "/tmp/test_file"
 
@@ -32,6 +33,15 @@ describe("IO", function()
     local res, code = IO.os_execute("asdasda \"Hello\"")
     assert.are.same(127, code)
     assert.are.same("/bin/bash: asdasda: command not found", res)
+  end)
+
+  it("should check if a port is open", function()
+    local PORT = 30000
+
+    assert.falsy(IO.is_port_open(PORT))
+    spec_helper.start_tcp_server(PORT, true, true)
+    os.execute("sleep 0.5") -- Wait for the server to start
+    assert.truthy(IO.is_port_open(PORT))
   end)
   
 end)
