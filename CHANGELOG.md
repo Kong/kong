@@ -1,31 +1,51 @@
 ## [Unreleased][unreleased]
 
+## [0.2.1] - 2015/05/12
+
 #### Added
+- Support for local DNS resolution. [#194](https://github.com/Mashape/kong/pull/194)
+- Support for Debian 8 and Ubuntu 15.04.
 - DAO
   - Cassandra version bumped to 2.1.5
-  - support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Mashape/kong/pull/146) and [#187](https://github.com/Mashape/kong/pull/187).
+  - Support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Mashape/kong/pull/146) and [#187](https://github.com/Mashape/kong/pull/187).
 Queries effectued during the downtime will still be lost. [#11](https://github.com/Mashape/kong/pull/11)
   - Leverage reused sockets. If the DAO reuses a socket, it will not re-set their keyspace. This should give a small but appreciable performance improvement. [#170](https://github.com/Mashape/kong/pull/170)
   - Cascade delete plugins configurations when deleting a Consumer or an API associated with it. [#107](https://github.com/Mashape/kong/pull/107)
   - Allow Cassandra hosts listening on different ports than the default. [#185](https://github.com/Mashape/kong/pull/185)
+- CLI
+  - Added a notice log when Kong tries to connect to Cassandra to avoid user confusion. [#168](https://github.com/Mashape/kong/pull/168)
+  - The CLI now tests if the ports are already being used before starting and warns.
+- Admin API
+  - `name` is now an optional property for APIs. If none is being specified, the name will be the API `public_dns`. [#181](https://github.com/Mashape/kong/pull/181)
+- Configuration
+  - The memory cache size is now configurable. [#208](https://github.com/Mashape/kong/pull/208)
 
 #### Fixed
-- Admin API: responses now have a new line after the body. [#164](https://github.com/Mashape/kong/issues/164)
-- DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
 - Resolver
   - More explicit "API not found" message from the resolver if the Host was not found in the system. "Api not foun with Host: %s".
   - If multiple hosts headers are being sent, Kong will test them all to see if one of the API is in the system. [#186](https://github.com/Mashape/kong/pull/186)
+- Admin API: responses now have a new line after the body. [#164](https://github.com/Mashape/kong/issues/164)
+- DAO: keepalive property is now properly passed when Kong calls `set_keepalive` on Cassandra sockets.
+- Multipart dependency throwing error at startup. [#213](https://github.com/Mashape/kong/pull/213)
+
+> **internal**
+> - Separate Migrations from the DAO factory.
+> - Update dev config + Makefile rules (`run` becomes `start`).
+> - Introducing an `ngx` stub for unit tests and CLI.
+> - Switch many PCRE regexes to using patterns.
 
 ## [0.2.0-2] - 2015/04/27
 
 First public release of Kong. This version brings a lot of internal improvements as well as more usability and a few additional plugins.
 
 #### Added
-- CORS plugin.
-- Request transformation plugin.
-- NGINX plus monitoring plugin.
-- New configuration properties: `proxy_port` and `api_admin_port`. [#142](https://github.com/Mashape/kong/issues/142)
-- CLI improvements:
+- Plugins
+  - CORS plugin.
+  - Request transformation plugin.
+  - NGINX plus monitoring plugin.
+- Configuration
+  - New properties: `proxy_port` and `api_admin_port`. [#142](https://github.com/Mashape/kong/issues/142)
+- CLI
   - Better info, help and error messages. [#118](https://github.com/Mashape/kong/issues/118) [#124](https://github.com/Mashape/kong/issues/124)
   - New commands: `kong reload`, `kong quit`. [#114](https://github.com/Mashape/kong/issues/114) Alias of `version`: `kong --version` [#119](https://github.com/Mashape/kong/issues/119)
   - `kong restart` simply starts Kong if not previously running + better pid file handling. [#131](https://github.com/Mashape/kong/issues/131)
@@ -57,7 +77,7 @@ First public beta. Includes caching and better usability.
 - Freshly built CLI, rewritten in Lua
 - `kong start` using a new DB keyspace will automatically migrate the schema. [#68](https://github.com/Mashape/kong/issues/68)
 - Anonymous error reporting on Proxy and API. [#64](https://github.com/Mashape/kong/issues/64)
-- Configuration:
+- Configuration
   - Simplified configuration file (unified in `kong.yml`).
   - In configuration, `plugins_installed` was renamed to `plugins_available`. [#59](https://github.com/Mashape/kong/issues/59)
   - Order of `plugins_available` doesn't matter anymore. [#17](https://github.com/Mashape/kong/issues/17)
@@ -93,7 +113,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.2.0-2...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/mashape/kong/compare/0.2.0-2...0.2.1
 [0.2.0-2]: https://github.com/mashape/kong/compare/0.1.1beta-2...0.2.0-2
 [0.1.1beta-2]: https://github.com/mashape/kong/compare/0.1.0beta-3...0.1.1beta-2
 [0.1.0beta-3]: https://github.com/mashape/kong/compare/2236374d5624ad98ea21340ca685f7584ec35744...0.1.0beta-3
