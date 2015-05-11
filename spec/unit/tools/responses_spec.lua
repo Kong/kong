@@ -1,13 +1,7 @@
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
-_G.ngx = {
-  ctx = {},
-  header = {},
-  exit = function() end,
-  say = function() end,
-  log = function() end
-}
+require "spec.ngx_stub"
 
 describe("Responses", function()
 
@@ -18,9 +12,12 @@ describe("Responses", function()
   after_each(function()
     ngx.ctx = {}
     ngx.header = {}
-    ngx.exit:revert()
-    ngx.say:revert()
-    ngx.log:revert()
+    -- Revert mocked functions
+    for _, v in pairs(ngx) do
+      if type(v) == "table" and v.revert then
+        v:revert()
+      end
+    end
   end)
 
   it("should have a list of the main http status codes used in Kong", function()
@@ -92,6 +89,23 @@ describe("Responses", function()
       assert.stub(ngx.say).was.called_with("{\"message\":\"An error occured\"}")
       responses.send_HTTP_INTERNAL_SERVER_ERROR("override")
       assert.stub(ngx.say).was.called_with("{\"message\":\"override\"}")
+    end)
+
+  end)
+
+  describe("#send()", function()
+
+    it("should send a custom status code", function()
+      responses.send(415, "Unsupported media type")
+      assert.stub(ngx.say).was.called_with("{\"message\":\"Unsupported media type\"}")
+      assert.stub(ngx.exit).was.called_with(415)
+
+      responses.send(415, "Unsupported media type")
+      assert.stub(ngx.say).was.called_with("{\"message\":\"Unsupported media type\"}")
+      assert.stub(ngx.exit).was.called_with(415)
+
+      responses.send(501)
+      assert.stub(ngx.exit).was.called_with(501)
     end)
 
   end)

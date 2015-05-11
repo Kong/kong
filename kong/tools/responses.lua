@@ -1,9 +1,8 @@
 -- Kong helper methods to send HTTP responses to clients.
-
--- TODO: server/via headers
--- TODO: content-type of responses (html while sending json)
--- TODO: responses docs
--- TODO: test send function in responses
+-- Can be used in the proxy, plugins or admin API.
+-- Most used status codes and responses are implemented as helper methods.
+--
+-- @author thibaultcha
 
 local constants = require "kong.constants"
 local cjson = require "cjson"
@@ -23,6 +22,8 @@ local _M = {
   }
 }
 
+-- Define some rules that will ALWAYS be applied to some status codes.
+-- Ex: 204 must not have content, but if 404 has no content then "Not found" will be set.
 local response_default_content = {
   [_M.status_codes.HTTP_NOT_FOUND] = function(content)
     return content and content or "Not found"
@@ -35,7 +36,15 @@ local response_default_content = {
   end
 }
 
+-- Return a closure which will be usable to respond with a certain status code.
+-- @param `status_code` The status for which to define a function
 local function send_response(status_code)
+  -- Send a response for the closure's status code with the given content.
+  -- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
+  -- @param `content` (Optional) The content to send as a response.
+  -- @param `raw`     (Optional) A boolean defining if the `content` should not be serialized to JSON
+  --                              This is mostly useful to send text.
+  -- @return `ngx.exit()`
   return function(content, raw)
     if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       -- Log the error to errors.log if it is an internal server error
@@ -64,13 +73,22 @@ local function send_response(status_code)
   end
 end
 
+-- Generate sugar methods (closures) for the most used HTTP status codes.
 for status_code_name, status_code in pairs(_M.status_codes) do
   _M["send_"..status_code_name] = send_response(status_code)
 end
 
-_M.send = function(status_code, content, raw)
-  local f = send_response(status_code)
-  return f(content, raw)
+local closure_cache = {}
+-- Sends any status code as a response. This is useful for plugins which want to
+-- send a response when the status code is not defined in `_M.status_codes` and thus
+-- has no sugar method on `_M`.
+function _M.send(status_code, content, raw)
+  local res = closure_cache[status_code]
+  if not res then
+    res = send_response(status_code)
+    closure_cache[status_code] = res
+  end
+  return res(content, raw)
 end
 
 return _M
