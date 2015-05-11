@@ -24,11 +24,11 @@
 -- |[[    ]]|
 -- ==========
 
-local stringy = require "stringy"
-local constants = require "kong.constants"
 local IO = require "kong.tools.io"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
+local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local timestamp = require "kong.tools.timestamp"
 
@@ -135,7 +135,6 @@ end
 --     - sort the plugins by priority
 --
 -- If any error during the initialization of the DAO or plugins, it will be thrown and needs to be catched in init_by_lua.
--- @return nil
 function _M.init()
   -- Loading configuration
   configuration, dao = IO.load_configuration_and_dao(os.getenv("KONG_CONF"))
@@ -152,7 +151,6 @@ function _M.init()
 end
 
 -- Calls plugins_access() on every loaded plugin
--- @return nil
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
   ngx.ctx.started_at = timestamp.get_utc()
@@ -189,7 +187,6 @@ function _M.exec_plugins_access()
 end
 
 -- Calls header_filter() on every loaded plugin
--- @return nil
 function _M.exec_plugins_header_filter()
   ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 
@@ -202,11 +199,10 @@ function _M.exec_plugins_header_filter()
     end
   end
 
-  ngx.header[constants.HEADERS.VIA] = "kong/"..constants.VERSION
+  ngx.header[constants.HEADERS.VIA] = constants.NAME.."/"..constants.VERSION
 end
 
 -- Calls body_filter() on every loaded plugin
--- @return nil
 function _M.exec_plugins_body_filter()
   if not ngx.ctx.error then
     for _, plugin in ipairs(plugins) do
@@ -219,10 +215,8 @@ function _M.exec_plugins_body_filter()
 end
 
 -- Calls log() on every loaded plugin
--- @return nil
 function _M.exec_plugins_log()
   if not ngx.ctx.error then
-
     -- Creating the log variable that will be serialized
     local message = {
       request = {
@@ -242,6 +236,7 @@ function _M.exec_plugins_log()
     }
 
     ngx.ctx.log_message = message
+
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then

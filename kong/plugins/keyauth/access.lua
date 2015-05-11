@@ -105,7 +105,6 @@ local retrieve_credentials = {
         if key then
           return key
         end
-
       end
     end
   end

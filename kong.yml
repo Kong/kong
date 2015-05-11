@@ -140,8 +140,8 @@ nginx: |
       location = /500.html {
         internal;
         content_by_lua '
-          local utils = require "kong.tools.utils"
-          utils.show_error(ngx.status, "Oops, an unexpected error occurred!")
+          local responses = require "kong.tools.responses"
+          responses.send_HTTP_INTERNAL_SERVER_ERROR("Oops, an unexpected error occurred!")
         ';
       }
     }

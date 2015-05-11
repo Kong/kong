@@ -8,9 +8,8 @@ local _M = {}
 _M.path = path
 
 -- Checks if a port is open on localhost
---
--- @param {number} port The port to check
--- @return {boolean}
+-- @param `port`  The port to check
+-- @return `open` True if open, false otherwise
 function _M.is_port_open(port)
   local tcp
   if ngx and ngx.get_phase ~= nil and ngx.get_phase() ~= "init" then
@@ -23,7 +22,7 @@ function _M.is_port_open(port)
     tcp = require("socket").tcp()
   end
 
-  local ok, err = tcp:connect("127.0.0.1", port)
+  local ok = tcp:connect("127.0.0.1", port)
   tcp:close()
   return ok
 end
@@ -52,11 +51,10 @@ function _M.cmd_exists(cmd)
   return code == 0
 end
 
--- Kills a process by PID and waits until it's terminated
---
--- @param {string} the pid to kill
-function _M.kill_process_by_pid(pid, signal)
-  local res, code = _M.os_execute("kill "..(signal and "-"..tostring(signal).." " or "")..pid)
+-- Kill a process by PID and wait until it's terminated
+-- @param `pid` the pid to kill
+function _M.kill_process_by_pid(pid)
+  local res, code = _M.os_execute("kill "..pid)
   _M.os_execute("wait "..pid)
   return res, code
 end
