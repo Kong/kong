@@ -47,7 +47,7 @@ local function load_plugin_conf(api_id, consumer_id, plugin_name)
         name = plugin_name
       }
       if err then
-        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
 
       if #rows > 0 then
@@ -170,7 +170,7 @@ function _M.exec_plugins_access()
     end
 
     local conf = ngx.ctx.plugin_conf[plugin.name]
-    if not ngx.ctx.error and (plugin.resolver or conf) then
+    if not ngx.ctx.stop_phases and (plugin.resolver or conf) then
       plugin.handler:access(conf and conf.value or nil)
     end
   end
@@ -190,7 +190,9 @@ end
 function _M.exec_plugins_header_filter()
   ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 
-  if not ngx.ctx.error then
+  if not ngx.ctx.stop_phases then
+    ngx.header[constants.HEADERS.VIA] = constants.NAME.."/"..constants.VERSION
+
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
@@ -198,13 +200,11 @@ function _M.exec_plugins_header_filter()
       end
     end
   end
-
-  ngx.header[constants.HEADERS.VIA] = constants.NAME.."/"..constants.VERSION
 end
 
 -- Calls body_filter() on every loaded plugin
 function _M.exec_plugins_body_filter()
-  if not ngx.ctx.error then
+  if not ngx.ctx.stop_phases then
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
       if conf then
@@ -216,7 +216,7 @@ end
 
 -- Calls log() on every loaded plugin
 function _M.exec_plugins_log()
-  if not ngx.ctx.error then
+  if not ngx.ctx.stop_phases then
     -- Creating the log variable that will be serialized
     local message = {
       request = {

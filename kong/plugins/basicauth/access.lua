@@ -72,7 +72,7 @@ function _M.execute(conf)
       local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result
       if err then
-        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       elseif #credentials > 0 then
         result = credentials[1]
       end
@@ -81,7 +81,8 @@ function _M.execute(conf)
   end
 
   if not validate_credentials(credential, username, password) then
-    responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
+    ngx.ctx.stop_phases = true -- interrupt other phases of this request
+    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, credential.consumer_id)

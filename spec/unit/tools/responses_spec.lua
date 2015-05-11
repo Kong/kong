@@ -1,7 +1,7 @@
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
-require "spec.ngx_stub"
+require "kong.tools.ngx_stub"
 
 describe("Responses", function()
 
@@ -65,9 +65,14 @@ describe("Responses", function()
     end
   end)
 
-  it("should call `ngx.log` if a 500 status code range was given", function()
+  it("should call `ngx.log` and set `stop_phases` if and only if a 500 status code range was given", function()
+    responses.send_HTTP_BAD_REQUEST()
+    assert.stub(ngx.log).was_not_called()
+    assert.falsy(ngx.ctx.stop_phases)
+
     responses.send_HTTP_INTERNAL_SERVER_ERROR()
     assert.stub(ngx.log).was.called()
+    assert.True(ngx.ctx.stop_phases)
   end)
 
   describe("default content rules for some status codes", function()

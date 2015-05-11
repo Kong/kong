@@ -11,17 +11,7 @@ _M.path = path
 -- @param `port`  The port to check
 -- @return `open` True if open, false otherwise
 function _M.is_port_open(port)
-  local tcp
-  if ngx and ngx.get_phase ~= nil and ngx.get_phase() ~= "init" then
-    -- openresty
-    tcp = ngx.socket.tcp()
-  else
-    -- fallback to luasocket
-    -- It's also a fallback for openresty in the
-    -- "init" phase that doesn't support Cosockets
-    tcp = require("socket").tcp()
-  end
-
+  local tcp = require("socket").tcp()
   local ok = tcp:connect("127.0.0.1", port)
   tcp:close()
   return ok

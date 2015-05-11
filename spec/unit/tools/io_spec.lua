@@ -43,5 +43,5 @@ describe("IO", function()
     os.execute("sleep 0.5") -- Wait for the server to start
     assert.truthy(IO.is_port_open(PORT))
   end)
-  
+
 end)

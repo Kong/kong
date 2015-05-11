@@ -62,9 +62,9 @@ app.handle_error = function(self, err, trace)
   end
 
   if m and table.getn(m) > 0 then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(m[1])
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(m[1])
   else
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 end
 

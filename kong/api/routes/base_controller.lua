@@ -34,15 +34,15 @@ end
 
 local function send_dao_error_response(err)
   if err.database then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
   elseif err.unique then
-    responses.send_HTTP_CONFLICT(err.message)
+    return responses.send_HTTP_CONFLICT(err.message)
   elseif err.foreign then
-    responses.send_HTTP_NOT_FOUND(err.message)
+    return responses.send_HTTP_NOT_FOUND(err.message)
   elseif err.invalid_type and err.message.id then
-    responses.send_HTTP_NOT_FOUND(err.message)
+    return responses.send_HTTP_NOT_FOUND(err.message)
   else
-    responses.send_HTTP_BAD_REQUEST(err.message)
+    return responses.send_HTTP_BAD_REQUEST(err.message)
   end
 end
 
