@@ -72,8 +72,7 @@ local ENDPOINTS = {
       consumer_id = function()
         return created_ids.consumers
       end,
-      ["value.period"] = "second",
-      ["value.limit"] = 10
+      ["value.limit"] = "second:10",
     },
     update_fields = {
       enabled = false

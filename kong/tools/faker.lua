@@ -35,13 +35,15 @@ Faker.FIXTURES = {
 
     { name = "API TESTS 8 (dns)", public_dns = "dns1.com", target_url = "http://127.0.0.1:7771" },
     { name = "API TESTS 9 (dns)", public_dns = "dns2.com", target_url = "http://localhost:7771" },
+    { name = "API TESTS 11", public_dns = "test8.com", target_url = "http://mockbin.com" },
 
     -- DEVELOPMENT APIs. Please do not use those in tests
     { name = "API DEV 1", public_dns = "dev.com", target_url = "http://mockbin.com" },
   },
   consumer = {
     { custom_id = "provider_123" },
-    { custom_id = "provider_124" }
+    { custom_id = "provider_124" },
+    { custom_id = "provider_125" },
   },
   plugin_configuration = {
     -- API 1
@@ -50,10 +52,10 @@ Faker.FIXTURES = {
     { name = "basicauth", value = {}, __api = 2 },
     -- API 3
     { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
-    { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 3 },
-    { name = "ratelimiting", value = {period = "minute", limit = 8}, __api = 3, __consumer = 1 },
+    { name = "ratelimiting", value = {limit = { "minute:6" }}, __api = 3 },
+    { name = "ratelimiting", value = {limit = { "minute:8" }}, __api = 3, __consumer = 1 },
     -- API 4
-    { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 4 },
+    { name = "ratelimiting", value = {limit = { "minute:6" }}, __api = 4 },
     -- API 5
     { name = "request_transformer", value = {
       add = { headers = {"x-added:true", "x-added2:true" },
@@ -75,6 +77,9 @@ Faker.FIXTURES = {
     { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 8 },
     { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 8 },
     { name = "filelog", value = {}, __api = 8 },
+
+    -- API 11
+    { name = "ratelimiting", value = { limit = { "minute:6", "hour:60" }}, __api = 11 }
   },
   -- TODO: remove plugins from core
   keyauth_credential = {
@@ -108,7 +113,7 @@ function Faker:fake_entity(type)
     if plugin_type == "keyauth" then
       plugin_value = { key_names = { "apikey"..r }}
     else
-      plugin_value = { period = "minute", limit = r }
+      plugin_value = { limit = {"minute:"..r}}
     end
     return {
       name = plugin_type,

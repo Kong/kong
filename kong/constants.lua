@@ -33,6 +33,7 @@ return {
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
     CONSUMER_ID = "X-Consumer-ID",
+    RATELIMIT_PERIOD = "X-RateLimit-Period",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining"
   },

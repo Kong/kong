@@ -337,12 +337,12 @@ describe("Cassandra DAO", function()
 
           -- Failure
           plugin_t.name = "ratelimiting"
-          plugin_t.value = { period = "hello" }
+          plugin_t.value = { limit = { "hello:4" } }
           local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
           assert.truthy(err)
           assert.is_daoError(err)
           assert.truthy(err.schema)
-          assert.are.same("\"hello\" is not allowed. Allowed values are: \"second\", \"minute\", \"hour\", \"day\", \"month\", \"year\"", err.message["value.period"])
+          assert.are.same("The ratelimiting period should match any of the following durations : second,minute,hour,day,month,year", err.message["value.limit"])
           assert.falsy(plugin)
         end)
 
@@ -525,7 +525,7 @@ describe("Cassandra DAO", function()
           assert.falsy(err)
 
           _, err = dao_factory.plugins_configurations:insert {
-            name = "ratelimiting", value = { period = "minute", limit = 6 }, api_id = api.id
+            name = "ratelimiting", value = { limit = { "minute:6" } }, api_id = api.id
           }
           assert.falsy(err)
 
@@ -607,7 +607,7 @@ describe("Cassandra DAO", function()
           assert.falsy(err)
 
           _, err = dao_factory.plugins_configurations:insert {
-            name = "ratelimiting", value = { period = "minute", limit = 6 }, api_id = api.id,
+             name = "ratelimiting", value = { limit = { "minute:6" } }, api_id = api.id,
             consumer_id = consumer.id
           }
           assert.falsy(err)
