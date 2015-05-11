@@ -1,19 +1,24 @@
+-- Kong helper methods to send HTTP responses to clients.
+
+-- TODO: server/via headers
+-- TODO: content-type of responses (html while sending json)
+-- TODO: responses docs
+-- TODO: test send function in responses
+
 local constants = require "kong.constants"
 local cjson = require "cjson"
 
+-- Define the most used HTTP status codes through Kong
 local _M = {
   status_codes = {
-    -- 200s
     HTTP_OK = 200,
     HTTP_CREATED = 201,
     HTTP_NO_CONTENT = 204,
-    -- 400s
     HTTP_BAD_REQUEST = 400,
     HTTP_FORBIDDEN = 403,
     HTTP_NOT_FOUND = 404,
     HTTP_CONFLICT = 409,
     HTTP_UNSUPPORTED_MEDIA_TYPE = 415,
-    -- 500s
     HTTP_INTERNAL_SERVER_ERROR = 500
   }
 }
@@ -32,11 +37,10 @@ local response_default_content = {
 
 local function send_response(status_code)
   return function(content, raw)
-    if status_code <= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
+    if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       -- Log the error to errors.log if it is an internal server error
       ngx.log(ngx.ERR, tostring(content))
-      -- TODO remove
-      ngx.ctx.error = true
+      ngx.ctx.error = true -- interrupt other phases of this request
     end
 
     ngx.status = status_code -- set the response's status http://wiki.nginx.org/HttpLuaModule#ngx.status
