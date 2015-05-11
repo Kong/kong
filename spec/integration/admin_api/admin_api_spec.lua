@@ -27,16 +27,19 @@ local ENDPOINTS = {
     entity = {
       form = {
         name = "ratelimiting",
-        api_id = nil,
-        consumer_id = nil,
-        ["value.period"] = "second",
-        ["value.limit"] = 10
+        api_id = function()
+          return created_ids.apis
+        end,
+        consumer_id = function()
+          return created_ids.consumers
+        end,
+        ["value.limit"] = { "second:10" },
       },
       json = {
         name = "ratelimiting",
         api_id = nil,
         consumer_id = nil,
-        value = { period = "second", limit = 10 }
+        value = { limit = { "second:10" } }
       }
     },
     update_fields = { enabled = false },

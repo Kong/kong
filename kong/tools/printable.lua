@@ -13,7 +13,6 @@ function printable_mt:__tostring()
     if type(v) == "table" then
       v = table.concat(v, ",")
     end
-
     table.insert(t, k.."="..tostring(v))
   end
   return table.concat(t, " ")
