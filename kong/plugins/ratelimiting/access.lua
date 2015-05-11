@@ -18,7 +18,7 @@ function _M.execute(conf)
   -- Load current metric for configured period
   local current_metric, err = dao.ratelimiting_metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, conf.period)
   if err then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   -- What is the current usage for the configured period?
@@ -28,13 +28,14 @@ function _M.execute(conf)
   ngx.header[constants.HEADERS.RATELIMIT_REMAINING] = math.max(0, remaining - 1) -- -1 for this current request
 
   if remaining == 0 then
-    responses.send(429, "API rate limit exceeded")
+    ngx.ctx.stop_phases = true -- interrupt other phases of this request
+    return responses.send(429, "API rate limit exceeded")
   end
 
   -- Increment metrics for all periods if the request goes through
   local _, stmt_err = dao.ratelimiting_metrics:increment(ngx.ctx.api.id, identifier, current_timestamp)
   if stmt_err then
-    responses.send_HTTP_INTERNAL_SERVER_ERROR(stmt_err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(stmt_err)
   end
 end
 

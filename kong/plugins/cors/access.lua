@@ -60,7 +60,7 @@ function _M.execute(conf)
     configure_max_age(ngx, conf)
 
     if not conf.preflight_continue then
-      responses.send_HTTP_NO_CONTENT()
+      return responses.send_HTTP_NO_CONTENT()
     end
   else
     configure_exposed_headers(ngx, conf)

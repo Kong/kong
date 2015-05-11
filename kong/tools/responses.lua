@@ -4,9 +4,6 @@
 --
 -- @author thibaultcha
 
-local constants = require "kong.constants"
-local cjson = require "cjson"
-
 -- Define the most used HTTP status codes through Kong
 local _M = {
   status_codes = {
@@ -38,30 +35,36 @@ local response_default_content = {
 
 -- Return a closure which will be usable to respond with a certain status code.
 -- @param `status_code` The status for which to define a function
+--
+-- Send a JSON response for the closure's status code with the given content.
+-- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
+-- @see http://wiki.nginx.org/HttpLuaModule
+-- @param `content` (Optional) The content to send as a response.
+-- @param `raw`     (Optional) A boolean defining if the `content` should not be serialized to JSON
+--                             This useed to send text as JSON in some edge-cases of cjson.
+-- @return `ngx.exit()`
 local function send_response(status_code)
-  -- Send a response for the closure's status code with the given content.
-  -- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
-  -- @param `content` (Optional) The content to send as a response.
-  -- @param `raw`     (Optional) A boolean defining if the `content` should not be serialized to JSON
-  --                              This is mostly useful to send text.
-  -- @return `ngx.exit()`
+  local constants = require "kong.constants"
+  local cjson = require "cjson"
+
   return function(content, raw)
     if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
-      -- Log the error to errors.log if it is an internal server error
       ngx.log(ngx.ERR, tostring(content))
-      ngx.ctx.error = true -- interrupt other phases of this request
+      ngx.ctx.stop_phases = true -- interrupt other phases of this request
     end
 
-    ngx.status = status_code -- set the response's status http://wiki.nginx.org/HttpLuaModule#ngx.status
-    ngx.header[constants.HEADERS.SERVER] = constants.NAME.."/"..constants.VERSION -- set the server header http://wiki.nginx.org/HttpLuaModule#ngx.header.HEADER
+    ngx.status = status_code
+    ngx.header[constants.HEADERS.CONTENT_TYPE] = "application/json; charset=utf-8"
+    ngx.header[constants.HEADERS.SERVER] = constants.NAME.."/"..constants.VERSION
 
     if type(response_default_content[status_code]) == "function" then
       content = response_default_content[status_code](content)
     end
 
     if raw then
-      -- When we want to send "{\"data\":[]}" (as a string, yes) as a response,
-      -- we have to force it to be raw. (see base_controller.lua on why)
+      -- When we want to send an empty array, such as "{\"data\":[]}"
+      -- cjson has a flaw and encodes a Lua `{}` as a JSON `{}`.
+      -- This allows to send plain string JSON as "[]".
       ngx.say(content)
     elseif (type(content) == "table") then
       ngx.say(cjson.encode(content))
@@ -69,7 +72,7 @@ local function send_response(status_code)
       ngx.say(cjson.encode({ message = content }))
     end
 
-    return ngx.exit(status_code) -- http://wiki.nginx.org/HttpLuaModule#ngx.exit
+    return ngx.exit(status_code)
   end
 end
 

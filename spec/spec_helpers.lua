@@ -14,7 +14,7 @@ local TEST_CONF_FILE = "kong_TEST.yml"
 local TEST_PROXY_URL = "http://localhost:8100"
 local TEST_API_URL = "http://localhost:8101"
 
-require "spec.ngx_stub"
+require "kong.tools.ngx_stub"
 
 local _M = {}
 

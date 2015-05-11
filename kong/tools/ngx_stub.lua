@@ -1,3 +1,5 @@
+-- Stub _G.ngx for unit testing Kong's modules and using them in the CLI, such as the DAO.
+
 local reg = require "rex_pcre"
 
 _G.ngx = {
@@ -6,7 +8,7 @@ _G.ngx = {
   exit = function() end,
   say = function() end,
   log = function() end,
-  time = function() return os.time() end, -- cassandra.lua
+  time = function() return os.time() end,
   re = {
     match = reg.match
   },
