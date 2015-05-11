@@ -95,13 +95,22 @@ describe("Admin API", function()
   end)
 
   describe("/", function()
+    local constants = require "kong.constants"
 
     it("should return Kong's version and a welcome message", function()
-      local response, status, headers = http_client.get(kWebURL)
+      local response, status = http_client.get(kWebURL)
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.truthy(body.version)
       assert.truthy(body.tagline)
+      assert.are.same(constants.VERSION, body.version)
+    end)
+
+    it("should have a Server header", function()
+      local _, _, headers = http_client.get(kWebURL)
+      assert.are.same(string.format("%s/%s", constants.NAME, constants.VERSION), headers.server)
+      -- Via is only set for proxied requests
+      assert.falsy(headers.via)
     end)
 
   end)
