@@ -6,6 +6,9 @@ local _M = {}
 function _M.log(args)
   if not args then args = {} end
 
+  -- Kong Version
+  args["version"] = constants.VERSION
+
   -- CPU cores
   local res, code = IO.os_execute("getconf _NPROCESSORS_ONLN")
   if code == 0 then
