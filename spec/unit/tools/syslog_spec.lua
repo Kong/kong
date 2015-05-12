@@ -29,12 +29,13 @@ describe("Syslog", function()
     res = string.sub(res, string.len(PRIORITY) + 1)
 
     local args = stringy.split(res, ";")
-    assert.are.same(4, utils.table_size(args))
+    assert.are.same(5, utils.table_size(args))
 
     local has_uname = false
     local has_cores = false
     local has_hostname = false
     local has_hello = false
+    local has_version = false
 
     for _, v in ipairs(args) do
       local parts = stringy.split(v, "=")
@@ -46,6 +47,8 @@ describe("Syslog", function()
         has_hostname = true
       elseif parts[1] == "hello" and parts[2] and parts[2] == "world" then
         has_hello = true
+      elseif parts[1] == "version" and parts[2] and parts[2] == constants.VERSION then
+        has_version = true
       end
     end
 
@@ -53,6 +56,7 @@ describe("Syslog", function()
     assert.truthy(has_hostname)
     assert.truthy(has_cores)
     assert.truthy(has_hello)
+    assert.truthy(has_version)
 
     thread:join() -- wait til it exists
   end)
