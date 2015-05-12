@@ -26,6 +26,7 @@ return {
   HEADERS = {
     SERVER = "Server",
     VIA = "Via",
+    CONTENT_TYPE = "Content-Type",
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
     CONSUMER_ID = "X-Consumer-ID",

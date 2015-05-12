@@ -1,6 +1,7 @@
-local constants = require "kong.constants"
-local stringy = require "stringy"
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
+local responses = require "kong.tools.responses"
+local constants = require "kong.constants"
 
 local _M = {}
 
@@ -71,8 +72,7 @@ function _M.execute(conf)
       local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result
       if err then
-        ngx.log(ngx.ERR, tostring(err))
-        utils.show_error(500)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       elseif #credentials > 0 then
         result = credentials[1]
       end
@@ -81,7 +81,8 @@ function _M.execute(conf)
   end
 
   if not validate_credentials(credential, username, password) then
-    utils.show_error(403, "Your authentication credentials are invalid")
+    ngx.ctx.stop_phases = true -- interrupt other phases of this request
+    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, credential.consumer_id)

@@ -1,11 +1,4 @@
-local constants = require "kong.constants"
-local cjson = require "cjson"
-
 local _M = {}
-
---
--- General utils
---
 
 function _M.table_size(t)
   local res = 0
@@ -63,7 +56,7 @@ function _M.reverse_table(arr)
 end
 
 function _M.array_contains(arr, val)
-  for _,v in pairs(arr) do
+  for _, v in pairs(arr) do
     if v == val then
       return true
     end
@@ -71,13 +64,12 @@ function _M.array_contains(arr, val)
   return false
 end
 
--- Add an error message to a key/value table
--- Can accept a nil argument, and if is nil, will initialize the table
---
--- @param {table|nil} errors Table to attach the error to
--- @param {string} k Key of the error
--- @param v Value of the error
--- @return {table} errors
+-- Add an error message to a key/value table.
+-- Can accept a nil argument, and if is nil, will initialize the table.
+-- @param `errors`  (Optional) Can be nil. Table to attach the error to. If nil, the table will be created.
+-- @param `k`       Key on which to insert the error in the `errors` table.
+-- @param `v`       Value of the error
+-- @return `errors` The `errors` table with the new error inserted.
 function _M.add_error(errors, k, v)
   if not errors then errors = {} end
 
@@ -91,55 +83,6 @@ function _M.add_error(errors, k, v)
   end
 
   return errors
-end
-
---
--- Response utils
---
-function _M.show_response(status, message, raw)
-  ngx.header[constants.HEADERS.SERVER] = constants.NAME.."/"..constants.VERSION
-  ngx.status = status
-
-  if raw then
-    -- When we want to send "{\"data\":[]}" (as a string, yes) as a response,
-    -- we have to force it to be raw. (see base_controller.lua on why)
-    ngx.say(message)
-  elseif (type(message) == "table") then
-    ngx.say(cjson.encode(message))
-  else
-    ngx.say(cjson.encode({ message = message }))
-  end
-
-  ngx.exit(status)
-end
-
-function _M.show_error(status, message)
-  ngx.ctx.error = true
-  if not message then
-    message = "An error occurred"
-  end
-  _M.show_response(status, message)
-end
-
-function _M.success(message)
-  _M.show_response(200, message)
-end
-
-function _M.no_content(message)
-  _M.show_response(204, message)
-end
-
-function _M.unsupported_media_type(required_type)
-  _M.show_response(415, "Unsupported Content-Type. Use \""..required_type.."\"")
-end
-
-function _M.created(message)
-  _M.show_response(201, message)
-end
-
-function _M.not_found(message)
-  message = message and message or "Not found"
-  _M.show_error(404, message)
 end
 
 return _M

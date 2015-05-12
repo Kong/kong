@@ -2,7 +2,7 @@ local schemas = require "kong.dao.schemas"
 local constants = require "kong.constants"
 local validate = schemas.validate
 
-require "spec.ngx_stub"
+require "kong.tools.ngx_stub"
 
 describe("Schemas", function()
 

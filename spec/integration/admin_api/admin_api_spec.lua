@@ -95,13 +95,22 @@ describe("Admin API", function()
   end)
 
   describe("/", function()
+    local constants = require "kong.constants"
 
     it("should return Kong's version and a welcome message", function()
-      local response, status, headers = http_client.get(kWebURL)
+      local response, status = http_client.get(kWebURL)
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.truthy(body.version)
       assert.truthy(body.tagline)
+      assert.are.same(constants.VERSION, body.version)
+    end)
+
+    it("should have a Server header", function()
+      local _, _, headers = http_client.get(kWebURL)
+      assert.are.same(string.format("%s/%s", constants.NAME, constants.VERSION), headers.server)
+      -- Via is only set for proxied requests
+      assert.falsy(headers.via)
     end)
 
   end)
@@ -138,7 +147,7 @@ describe("Admin API", function()
         it("should not create when the content-type is wrong", function()
           local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
           assert.are.equal(415, status)
-          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\"\"}\n", response)
+          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\".\"}\n", response)
         end)
 
       end)
@@ -186,7 +195,7 @@ describe("Admin API", function()
         it("should not update when the content-type is wrong", function()
           local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
           assert.are.equal(415, status)
-          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\"\"}\n", response)
+          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\".\"}\n", response)
         end)
 
         it("should update an entity if valid parameters", function()

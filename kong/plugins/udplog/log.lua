@@ -1,5 +1,3 @@
--- Copyright (C) Mashape, Inc.
-
 local cjson = require "cjson"
 
 local _M = {}
