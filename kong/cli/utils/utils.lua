@@ -67,7 +67,7 @@ local logger = Logger()
 -- Luarocks
 --
 local function get_kong_infos()
-  return { name = constants.NAME, version = constants.VERSION }
+  return { name = constants.NAME, version = constants.ROCK_VERSION }
 end
 
 local function get_luarocks_dir()
