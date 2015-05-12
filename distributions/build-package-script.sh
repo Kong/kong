@@ -60,7 +60,7 @@ elif hash yum 2>/dev/null; then
   yum -y install wget tar make curl ldconfig gcc perl pcre-devel openssl-devel ldconfig unzip git rpm-build ncurses-devel which lua-$LUA_VERSION lua-devel-$LUA_VERSION gpg
 
   CENTOS_VERSION=`cat /etc/redhat-release | grep -oE '[0-9]+\.[0-9]+'`
-  FPM_PARAMS="-d epel-release -d sudo -d nc -d 'lua = $LUA_VERSION' -d openssl -d pcre -d dnsmasq"
+  FPM_PARAMS="-d 'epel-release' -d 'sudo' -d 'nc' -d 'lua = $LUA_VERSION' -d 'openssl' -d 'pcre' -d 'dnsmasq'"
 
   # Install Ruby for fpm
   if [[ ${CENTOS_VERSION%.*} == "5" ]]; then
@@ -74,7 +74,7 @@ elif hash yum 2>/dev/null; then
     gem update --system
   else
     yum -y install ruby ruby-devel rubygems
-    FPM_PARAMS=$FPM_PARAMS" -d openssl098e"
+    FPM_PARAMS=$FPM_PARAMS" -d 'openssl098e'"
   fi
 
   PACKAGE_TYPE="rpm"
@@ -90,7 +90,7 @@ elif hash apt-get 2>/dev/null; then
 
   PACKAGE_TYPE="deb"
   LUA_MAKE="linux"
-  FPM_PARAMS="-d netcat -d sudo -d lua5.1 -d openssl -d libpcre3 -d dnsmasq"
+  FPM_PARAMS="-d 'netcat' -d 'sudo' -d 'lua5.1' -d 'openssl' -d 'libpcre3' -d 'dnsmasq'"
   FINAL_FILE_NAME_SUFFIX=".${DEBIAN_VERSION}_all.deb"
 else
   echo "Unsupported platform"
@@ -205,18 +205,18 @@ echo \"user=root\" > /etc/dnsmasq.conf" > $post_install_script
 
 # Build proper version
 initial_letter="$(echo $KONG_BRANCH | head -c 1)"
-if ! [[ $initial_letter =~ '^[0-9]+$' ]] ; then
+re='^[0-9]+$' # to check it's a number
+if ! [[ $initial_letter =~ $re ]] ; then
   KONG_VERSION="${rockspec_version%-*}$KONG_BRANCH"
-fi
-
-if [ $PACKAGE_TYPE == "rpm" ]; then
-  KONG_VERSION=${KONG_VERSION//-/_}
+elif [ $PACKAGE_TYPE == "rpm" ]; then
+  KONG_VERSION=${KONG_BRANCH//-/_}
+else
+  KONG_VERSION=$KONG_BRANCH
 fi
 
 # Execute fpm
 cd $OUT
 eval "fpm -a all -f -s dir -t $PACKAGE_TYPE -n 'kong' -v $KONG_VERSION $FPM_PARAMS \
---iteration 1 \
 --description 'Kong is an open distributed platform for your APIs, focused on high performance and reliability.' \
 --vendor Mashape \
 --license MIT \
