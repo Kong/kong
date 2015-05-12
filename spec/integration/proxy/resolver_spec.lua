@@ -19,7 +19,7 @@ describe("Resolver", function()
     spec_helper.stop_kong()
     spec_helper.reset_db()
   end)
-  
+
   describe("Inexistent API", function()
 
     it("should return Not Found when the API is not in Kong", function()
@@ -34,23 +34,27 @@ describe("Resolver", function()
   describe("Existing API", function()
 
     it("should return Success when the API is in Kong", function()
-      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
+      local response, status = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
       assert.are.equal(200, status)
     end)
 
     it("should return Success when the Host header is not trimmed", function()
-      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "   test4.com  "})
+      local response, status = http_client.get(STUB_GET_URL, nil, { host = "   test4.com  "})
       assert.are.equal(200, status)
     end)
 
-    it("should return the correct Server header", function()
-      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
+    it("should return the correct Server and Via headers when the request was proxied", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
+      assert.are.equal(200, status)
       assert.are.equal("cloudflare-nginx", headers.server)
+      assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.via)
     end)
 
-    it("should return the correct Via header", function()
-      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
-      assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.via)
+    it("should return the correct Server and no Via header when the request was NOT proxied", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test1.com"})
+      assert.are.equal(403, status)
+      assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.server)
+      assert.falsy(headers.via)
     end)
 
     it("should return Success when the API is in Kong and one Host headers is being sent via plain TCP", function()

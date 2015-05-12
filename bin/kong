@@ -49,5 +49,7 @@ elseif not commands[cmd] then
   os.exit(1)
 end
 
+require "kong.tools.ngx_stub"
+
 -- Load and execute desired command
 require(commands[cmd])

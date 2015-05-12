@@ -1,9 +1,10 @@
-local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
 local lapis = require "lapis"
+local responses = require "kong.tools.responses"
+local constants = require "kong.constants"
+
 local Apis = require "kong.api.routes.apis"
-local PluginsConfigurations = require "kong.api.routes.plugins_configurations"
 local Consumers = require "kong.api.routes.consumers"
+local PluginsConfigurations = require "kong.api.routes.plugins_configurations"
 
 app = lapis.Application()
 
@@ -18,11 +19,10 @@ end
 app:get("/", function(self)
   local db_plugins, err = dao.plugins_configurations:find_distinct()
   if err then
-    ngx.log(ngx.ERR, tostring(err))
-    return utils.show_error(500, tostring(err))
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  return utils.success({
+  return responses.send_HTTP_OK({
     tagline = "Welcome to Kong",
     version = constants.VERSION,
     hostname = get_hostname(),
@@ -45,7 +45,7 @@ app.default_route = function(self)
 end
 
 app.handle_404 = function(self)
-  return utils.not_found()
+  return responses.send_HTTP_NOT_FOUND()
 end
 
 app.handle_error = function(self, err, trace)
@@ -62,9 +62,9 @@ app.handle_error = function(self, err, trace)
   end
 
   if m and table.getn(m) > 0 then
-    utils.show_error(500, m[1])
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(m[1])
   else
-    utils.show_error(500, err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 end
 

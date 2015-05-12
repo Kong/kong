@@ -1,7 +1,8 @@
-local constants = require "kong.constants"
-local Multipart = require "multipart"
-local stringy = require "stringy"
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
+local Multipart = require "multipart"
+local responses = require "kong.tools.responses"
+local constants = require "kong.constants"
 
 local CONTENT_TYPE = "content-type"
 local CONTENT_LENGTH = "content-length"
@@ -81,7 +82,7 @@ local retrieve_credentials = {
     local headers = request.get_headers()
 
     if conf.key_names then
-      for _,key_name in ipairs(conf.key_names) do
+      for _, key_name in ipairs(conf.key_names) do
         if headers[key_name] ~= nil then
           key = headers[key_name]
 
@@ -98,13 +99,12 @@ local retrieve_credentials = {
     local key
 
     if conf.key_names then
-      for _,key_name in ipairs(conf.key_names) do
+      for _, key_name in ipairs(conf.key_names) do
         key = get_key_from_query(key_name, request, conf)
 
         if key then
           return key
         end
-
       end
     end
   end
@@ -123,8 +123,7 @@ function _M.execute(conf)
         local credentials, err = dao.keyauth_credentials:find_by_keys { key = key }
         local result
         if err then
-          ngx.log(ngx.ERR, tostring(err))
-          utils.show_error(500)
+          return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
         elseif #credentials > 0 then
           result = credentials[1]
         end
@@ -136,7 +135,8 @@ function _M.execute(conf)
   end
 
   if not credential then
-    utils.show_error(403, "Your authentication credentials are invalid")
+    ngx.ctx.stop_phases = true -- interrupt other phases of this request
+    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, credential.consumer_id)

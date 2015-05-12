@@ -1,3 +1,5 @@
+local responses = require "kong.tools.responses"
+
 local _M = {}
 
 local function configure_origin(ngx, conf)
@@ -58,7 +60,7 @@ function _M.execute(conf)
     configure_max_age(ngx, conf)
 
     if not conf.preflight_continue then
-      utils.no_content()
+      return responses.send_HTTP_NO_CONTENT()
     end
   else
     configure_exposed_headers(ngx, conf)

@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local http_client = require "kong.tools.http_client"
 
-require "spec.ngx_stub"
+require "kong.tools.ngx_stub"
 
 describe("HTTP Client", function()
 

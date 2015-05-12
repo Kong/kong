@@ -1,14 +1,21 @@
+-- Stub _G.ngx for unit testing Kong's modules and using them in the CLI, such as the DAO.
+
 local reg = require "rex_pcre"
 
 _G.ngx = {
-  time = function() return os.time() end, -- cassandra.lua
+  ctx = {},
+  header = {},
+  exit = function() end,
+  say = function() end,
+  log = function() end,
+  time = function() return os.time() end,
   re = {
     match = reg.match
   },
   -- Builds a querystring from a table, separated by `&`
-  -- @param tab The key/value parameters
-  -- @param key The parent key if the value is multi-dimensional (optional)
-  -- @return a string representing the built querystring
+  -- @param `tab`          The key/value parameters
+  -- @param `key`          The parent key if the value is multi-dimensional (optional)
+  -- @return `querystring` A string representing the built querystring
   encode_args = function(tab, key)
     local query = {}
     local keys = {}

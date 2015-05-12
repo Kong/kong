@@ -1,8 +1,7 @@
--- Copyright (C) Mashape, Inc.
-
-local stringy = require "stringy"
-local Object = require "classic"
 local utils = require "kong.tools.utils"
+local Object = require "classic"
+local stringy = require "stringy"
+local responses = require "kong.tools.responses"
 local json_params = require("lapis.application").json_params
 
 local BaseController = Object:extend()
@@ -33,21 +32,18 @@ local function render_list_response(req, data, size)
   end
 end
 
-local function parse_dao_error(err)
-  local status
+local function send_dao_error_response(err)
   if err.database then
-    status = 500
-    ngx.log(ngx.ERR, tostring(err))
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
   elseif err.unique then
-    status = 409
+    return responses.send_HTTP_CONFLICT(err.message)
   elseif err.foreign then
-    status = 404
+    return responses.send_HTTP_NOT_FOUND(err.message)
   elseif err.invalid_type and err.message.id then
-    status = 404
+    return responses.send_HTTP_NOT_FOUND(err.message)
   else
-    status = 400
+    return responses.send_HTTP_BAD_REQUEST(err.message)
   end
-  return utils.show_error(status, err.message)
 end
 
 function BaseController.parse_params(schema, params)
@@ -110,15 +106,15 @@ end
 function BaseController:new(dao_collection, collection)
   app:post("/"..collection, function(self)
     if not check_content_type(self.req, FORM_URLENCODED_TYPE) then
-      return utils.unsupported_media_type(FORM_URLENCODED_TYPE)
+      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE("Unsupported Content-Type. Use \""..FORM_URLENCODED_TYPE.."\".")
     end
 
     local params = BaseController.parse_params(dao_collection._schema, self.params)
     local data, err = dao_collection:insert(params)
     if err then
-      return parse_dao_error(err)
+      return send_dao_error_response(err)
     else
-      return utils.created(data)
+      return responses.send_HTTP_CREATED(data)
     end
   end)
 
@@ -138,22 +134,22 @@ function BaseController:new(dao_collection, collection)
     local params = BaseController.parse_params(dao_collection._schema, self.params)
     local data, err = dao_collection:find_by_keys(params, size, offset)
     if err then
-      return parse_dao_error(err)
+      return send_dao_error_response(err)
     end
 
     local result = render_list_response(self.req, data, size)
-    return utils.show_response(200, result, type(result) ~= "table")
+    return responses.send_HTTP_OK(result, type(result) ~= "table")
   end)
 
   app:get("/"..collection.."/:id", function(self)
     local data, err = dao_collection:find_one(self.params.id)
     if err then
-      return parse_dao_error(err)
+      return send_dao_error_response(err)
     end
     if data then
-      return utils.success(data)
+      return responses.send_HTTP_OK(data)
     else
-      return utils.not_found()
+      return responses.send_HTTP_NOT_FOUND()
     end
   end)
 
@@ -161,34 +157,34 @@ function BaseController:new(dao_collection, collection)
     local ok, err = dao_collection:delete(self.params.id)
     if not ok then
       if err then
-        return parse_dao_error(err)
+        return send_dao_error_response(err)
       else
-        return utils.not_found()
+        return responses.send_HTTP_NOT_FOUND()
       end
     else
-      return utils.no_content()
+      return responses.send_HTTP_NO_CONTENT()
     end
   end)
 
   app:put("/"..collection.."/:id", json_params(function(self)
     if not check_content_type(self.req, APPLICATION_JSON_TYPE) then
-      return utils.unsupported_media_type(APPLICATION_JSON_TYPE)
+      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE("Unsupported Content-Type. Use \""..APPLICATION_JSON_TYPE.."\".")
     end
 
     local params = self.params
     if self.params.id then
       params.id = self.params.id
     else
-      return utils.not_found()
+      return responses.send_HTTP_NOT_FOUND()
     end
 
     local data, err = dao_collection:update(params)
     if err then
-      return parse_dao_error(err)
+      return send_dao_error_response(err)
     elseif not data then
-      return utils.not_found()
+      return responses.send_HTTP_NOT_FOUND()
     else
-      return utils.success(data)
+      return responses.send_HTTP_OK(data)
     end
   end))
 

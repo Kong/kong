@@ -1,3 +1,4 @@
+local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 local Multipart = require "multipart"
 
@@ -36,7 +37,7 @@ function _M.execute(conf)
         ngx.req.set_header(name, value)
       end)
     end
-    
+
     -- Add Querystring
     if conf.add.querystring then
       local querystring = ngx.req.get_uri_args()
