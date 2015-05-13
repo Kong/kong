@@ -16,45 +16,36 @@ function _M.execute(conf)
     identifier = ngx.var.remote_addr
   end
 
-  local periods_and_limits = {}x
-  for _,v in ipairs(conf.limit) do
-     local parts = stringy.split(v, ":")
-     periods_and_limits[parts[1]] = parts[2]
-  end
+  local least_remaining_limit
 
-  local least_remaining_limit = 99999999 -- A huge number so that any limit will be actually less than this
-
-  for period, limit in pairs(periods_and_limits) do
-    limit = tonumber(limit)
-    -- Load current metric for configured period
-    local current_metric, err = dao.ratelimiting_metrics:find_all_periods(ngx.ctx.api.id, identifier, current_timestamp, period)
-    if err then
-      ngx.log(ngx.ERR, tostring(err))
-      utils.show_error(500)
-    end
-
-    -- What is the current usage for the configured period?
-    local current_usage
-    if current_metric ~= nil then
-      current_usage = current_metric.value
-    else
-      current_usage = 0
-    end
+  for _, period_conf in ipairs(conf.limit) do
+    local period, period_limit = unpack(stringy.split(period_conf, ":"))
     
-    local remaining = limit - current_usage
+    period_limit = tonumber(period_limit)
+    -- Load metric for configured period
+    local period_metric, err = dao.ratelimiting_metrics:find_one(ngx.ctx.api.id, identifier, period_timestamp, period)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(stmt_err)
+    end
+ 
+    -- What is the usage for the configured period?
+    local period_usage = period_metric and period_metric.value or 0
+    
+    local period_remaining = period_limit - period_usage
 
     -- Figure out the period, which has the least remaining calls left
-    if remaining < least_remaining_limit then
-       least_remaining_limit = remaining
+    if not least_remaining_limit or period_remaining < least_remaining_limit then
+       least_remaining_limit = period_remaining
     end
 
-    -- Set the least reamining limit period in the header
-    ngx.header[constants.HEADERS.RATELIMIT_LIMIT.."-"..period.upper] = limit
-    ngx.header[constants.HEADERS.RATELIMIT_REMAINING.."-"..period.upper] = math.max(0, remaining - 1) -- -1 for this current request
+    -- Set the reamining limit of this period in the header
+    ngx.header[constants.HEADERS.RATELIMIT_LIMIT:gsub("<duration>", period:gsub("^%l", string.upper))] = period_limit
+    ngx.header[constants.HEADERS.RATELIMIT_REMAINING:gsub("<duration>", period:gsub("^%l", string.upper))] = math.max(0, period_remaining - 1) -- -1 for this period request
   end
 
   if least_remaining_limit <= 0 then
-     utils.show_error(429, "API rate limit exceeded")
+     ngx.ctx.stop_phases = true -- interrupt other phases of this request
+     return responses.send(429, "API rate limit exceeded")
   end 
 
   -- Increment metrics for all periods if the request goes through

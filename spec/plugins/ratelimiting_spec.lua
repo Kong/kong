@@ -25,9 +25,8 @@ describe("RateLimiting Plugin", function()
       for i = 1, limit do
         local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
         assert.are.equal(200, status)
-        assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-        assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
-        assert.are.same("minute", headers["x-ratelimit-period"])
+        assert.are.same(tostring(limit), headers["x-ratelimit-minute-limit"])
+        assert.are.same(tostring(limit - i), headers["x-ratelimit-minute-remaining"])
       end
 
       -- Additonal request, while limit is 6/minute
@@ -50,17 +49,15 @@ describe("RateLimiting Plugin", function()
         for i = 1, limit do
           local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test3.com"})
           assert.are.equal(200, status)
-          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
-          assert.are.same("minute", headers["x-ratelimit-period"])
+          assert.are.same(tostring(limit), headers["x-ratelimit-minute-limit"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-minute-remaining"])
         end
 
         -- Third query, while limit is 2/minute
         local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test3.com"})
         local body = cjson.decode(response)
-        assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-        assert.are.same(tostring(0), headers["x-ratelimit-remaining"])
-        assert.are.same("minute", headers["x-ratelimit-period"])
+        assert.are.same(tostring(limit), headers["x-ratelimit-minute-limit"])
+        assert.are.same(tostring(0), headers["x-ratelimit-minute-remaining"])
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
       end)
@@ -76,16 +73,14 @@ describe("RateLimiting Plugin", function()
         for i = 1, limit do
           local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test3.com"})
           assert.are.equal(200, status)
-          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
-          assert.are.same("minute", headers["x-ratelimit-period"])
+          assert.are.same(tostring(limit), headers["x-ratelimit-minute-limit"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-minute-remaining"])
         end
 
         local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test3.com"})
         local body = cjson.decode(response)
-        assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-        assert.are.same(tostring(0), headers["x-ratelimit-remaining"])
-        assert.are.same("minute", headers["x-ratelimit-period"])
+        assert.are.same(tostring(limit), headers["x-ratelimit-minute-limit"])
+        assert.are.same(tostring(0), headers["x-ratelimit-minute-remaining"])
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
       end)
@@ -95,21 +90,24 @@ describe("RateLimiting Plugin", function()
     describe("Plugin with multiple ratelimiting configs", function()
 
       it("should get blocked if exceeding limit even for one limit", function()
-        local limit = 6
+        local minute_limit = 6
+        local hour_limit = 60
 
-        for i = 1, limit do
+        for i = 1, minute_limit do
           local response, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "test8.com"})
           assert.are.equal(200, status)
-          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
-          assert.are.same("minute", headers["x-ratelimit-period"])
+          assert.are.same(tostring(minute_limit), headers["x-ratelimit-minute-limit"])
+          assert.are.same(tostring(minute_limit - i), headers["x-ratelimit-minute-remaining"])
+          assert.are.same(tostring(hour_limit), headers["x-ratelimit-hour-limit"])
+          assert.are.same(tostring(hour_limit - i), headers["x-ratelimit-hour-remaining"])
         end
 
         local response, status, headers = http_client.get(STUB_GET_URL,  {apikey = "apikey124"}, {host = "test8.com"})
         local body = cjson.decode(response)
-        assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-        assert.are.same(tostring(0), headers["x-ratelimit-remaining"])
-        assert.are.same("minute", headers["x-ratelimit-period"])
+        assert.are.same(tostring(minute_limit), headers["x-ratelimit-minute-limit"])
+        assert.are.same(tostring(0), headers["x-ratelimit-minute-remaining"])
+        assert.are.same(tostring(hour_limit), headers["x-ratelimit-hour-limit"])
+        assert.are.same(tostring(hour_limit - minute_limit - 1), headers["x-ratelimit-hour-remaining"])
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
       end)
