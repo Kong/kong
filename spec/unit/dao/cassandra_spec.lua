@@ -842,8 +842,8 @@ describe("Cassandra DAO", function()
           },
           plugin_configuration = {
             { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
-            { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
-            { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 2 },
+            { name = "ratelimiting", value = { limit = { "minute:6" } }, __api = 1 },
+            { name = "ratelimiting", value = { limit = { "minute:6" } }, __api = 2 },
             { name = "filelog", value = {}, __api = 1 }
           }
         }
