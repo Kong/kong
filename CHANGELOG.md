@@ -2,6 +2,8 @@
 
 ## [0.2.1] - 2015/05/12
 
+This is a maintenance release including several bug fixes and usability improvements.
+
 #### Added
 - Support for local DNS resolution. [#194](https://github.com/Mashape/kong/pull/194)
 - Support for Debian 8 and Ubuntu 15.04.
