@@ -52,7 +52,7 @@ if [ "$(uname)" = "Darwin" ]; then
   MKTEMP_LUAROCKS_CONF="-t rocks_config.lua"
   MKTEMP_POSTSCRIPT_CONF="-t post_install_script.sh"
   FPM_PARAMS="--osxpkg-identifier-prefix org.kong"
-  FINAL_FILE_NAME_SUFFIX=".pkg"
+  FINAL_FILE_NAME_SUFFIX=".osx.pkg"
 
   FINAL_BUILD_OUTPUT="$DIR/build-output"
 elif hash yum 2>/dev/null; then
