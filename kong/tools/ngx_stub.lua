@@ -3,6 +3,7 @@
 local reg = require "rex_pcre"
 
 _G.ngx = {
+  req = {},
   ctx = {},
   header = {},
   exit = function() end,
@@ -32,7 +33,7 @@ _G.ngx = {
         name = string.format("%s[%s]", tostring(key), tostring(name))
       end
       if type(value) == "table" then
-        query[#query+1] = build_query(value, name)
+        query[#query+1] = ngx.encode_args(value, name)
       else
         value = tostring(value)
         if value ~= "" then
