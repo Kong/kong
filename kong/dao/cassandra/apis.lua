@@ -55,7 +55,7 @@ end
 function Apis:delete(api_id)
   local ok, err = Apis.super.delete(self, api_id)
   if not ok then
-    return err
+    return false, err
   end
 
   -- delete all related plugins configurations
