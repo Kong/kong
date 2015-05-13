@@ -7,6 +7,7 @@ local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
 local syslog = require "kong.tools.syslog"
 local stringy = require "stringy"
+local socket = require "socket"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
@@ -131,7 +132,6 @@ local function prepare_nginx_working_dir(args_config)
   -- Inject anonymous reports
   if kong_config.send_anonymous_reports then
     -- If there is no internet connection, disable this feature
-    local socket = require "socket"
     if socket.dns.toip(constants.SYSLOG.ADDRESS) then
       nginx_config = "error_log syslog:server="..constants.SYSLOG.ADDRESS..":"..tostring(constants.SYSLOG.PORT).." error;\n"..nginx_config
     else
@@ -240,7 +240,7 @@ function _M.prepare_kong(args_config, signal)
     -- Check ports
     local ports = { kong_config.proxy_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
     for _,port in ipairs(ports) do
-      if IO.is_port_open(port) then
+      if cutils.is_port_open(port) then
         cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
       end
     end
