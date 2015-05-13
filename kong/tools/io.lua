@@ -7,16 +7,6 @@ local _M = {}
 
 _M.path = path
 
--- Checks if a port is open on localhost
--- @param `port`  The port to check
--- @return `open` True if open, false otherwise
-function _M.is_port_open(port)
-  local tcp = require("socket").tcp()
-  local ok = tcp:connect("127.0.0.1", port)
-  tcp:close()
-  return ok
-end
-
 function _M.file_exists(path)
   local f, err = io.open(path, "r")
   if f ~= nil then
