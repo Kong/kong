@@ -29,7 +29,7 @@ local response_default_content = {
     return nil
   end,
   [_M.status_codes.HTTP_INTERNAL_SERVER_ERROR] = function(content)
-    return content and content or "An error occured"
+    return "An unexpected error occurred"
   end
 }
 
