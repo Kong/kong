@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 local Object = require "classic"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
+local json_params = require("lapis.application").json_params
 
 local BaseController = Object:extend()
 
@@ -64,28 +65,16 @@ local function normalize_nested_params(obj)
 end
 
 local function parse_params(fn)
-  -- Could have been this but json_params doesn't throw JSON parsing errors.
-  --[[return json_params(function(self, ...)
-    normalize_nested_params(self.params)
-    return fn(self, ...)
-  end)]]
-  return function(self, ...)
+  return json_params(function(self, ...)
     local content_type = self.req.headers["content-type"]
-    if content_type then
-      if string.find(content_type:lower(), "application/json", nil, true) then
-        ngx.req.read_body()
-        local obj
-        local status, res = pcall(function() obj = json.decode(ngx.req.get_body_data()) end)
-        if not status then
-          return responses.send_HTTP_BAD_REQUEST(res)
-        elseif obj then
-          self:add_params(obj, "json")
-        end
+    if content_type and string.find(content_type:lower(), "application/json", nil, true) then
+      if not self.json then
+        return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
       end
     end
     self.params = normalize_nested_params(self.params)
     return fn(self, ...)
-  end
+  end)
 end
 
 -- Expose for children classes and unit testing
