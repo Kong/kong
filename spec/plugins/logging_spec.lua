@@ -79,7 +79,7 @@ describe("Logging Plugins", function()
       local line
       local lines = stringy.split(error_log, "\n")
       for _, v in ipairs(lines) do
-        if string.find(v, uuid, true) then
+        if string.find(v, uuid, nil, true) then
           line = v
           break
         end
