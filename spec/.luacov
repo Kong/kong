@@ -24,7 +24,7 @@ return {
   -- (exclude overrules include, do not include
   -- the .lua extension)
   ['include'] = {
-    'kong'
+    './kong'
   },
 
   -- Patterns for files to exclude when reporting
@@ -44,5 +44,6 @@ return {
     'mediator$',
     'moonscript.*$',
     'socket$',
+    '^/'
   }
 }
