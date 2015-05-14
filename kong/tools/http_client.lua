@@ -30,10 +30,14 @@ local function with_body(method)
     if not body then body = {} end
 
     if headers["content-type"] == "application/json" then
-      body = json.encode(body)
+      if type(body) == "table" then
+        body = json.encode(body)
+      end
     else
       headers["content-type"] = "application/x-www-form-urlencoded"
-      body = ngx.encode_args(body)
+      if type(body) == "table" then
+        body = ngx.encode_args(body)
+      end
     end
 
     headers["content-length"] = string.len(body)
