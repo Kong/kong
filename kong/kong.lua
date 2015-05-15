@@ -150,6 +150,10 @@ function _M.init()
   plugins = init_plugins()
 end
 
+function _M.exec_plugins_certificate()
+  local ssl = require "ngx.ssl"
+end
+
 -- Calls plugins_access() on every loaded plugin
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin

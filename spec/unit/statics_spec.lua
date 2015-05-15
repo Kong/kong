@@ -40,6 +40,7 @@ describe("Static files", function()
       assert.are.same([[
 # Available plugins on this server
 plugins_available:
+  - ssl
   - keyauth
   - basicauth
   - ratelimiting
@@ -154,9 +155,7 @@ nginx: |
       listen {{proxy_port}};
       listen {{proxy_ssl_port}} ssl;
 
-      ssl_certificate_by_lua '
-        local ssl = require "ngx.ssl"
-      ';
+      ssl_certificate_by_lua 'kong.exec_plugins_certificate()';
 
       ssl_certificate {{ssl_cert}};
       ssl_certificate_key {{ssl_key}};

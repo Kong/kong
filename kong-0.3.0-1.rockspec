@@ -115,6 +115,9 @@ build = {
     ["kong.plugins.cors.access"] = "kong/plugins/cors/access.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
 
+    ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
+    ["kong.plugins.ssl.certificate"] = "kong/plugins/ssl/certificate.lua",
+
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
