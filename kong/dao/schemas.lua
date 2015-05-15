@@ -60,8 +60,9 @@ function _M.validate(t, schema, is_update)
         t[column] = tonumber(t[column])
         valid = t[column] ~= nil
       elseif _M.get_type(v.type) == "boolean" and type(t[column]) == "string" then
-        valid = t[column] == "true" or t[column] == "false"
-        t[column] = t[column] == "true"
+        local bool = t[column]:lower()
+        valid = bool == "true" or bool == "false"
+        t[column] = bool == "true"
       else
         valid = type(t[column]) == _M.get_type(v.type)
       end
