@@ -5,12 +5,13 @@ source ./versions.sh
 OPENRESTY_BASE=ngx_openresty-$OPENRESTY_VERSION
 OPENSSL_BASE=openssl-$OPENSSL_VERSION
 
-sudo apt-get update && sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make
+sudo apt-get update && sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make wget
 
 cd $TRAVIS_BUILD_DIR
 
 # Download OpenSSL
-curl https://www.openssl.org/source/$OPENRESTY_BASE.tar.gz | tar xz
+wget https://www.openssl.org/source/$OPENSSL_BASE.tar.gz -O $OPENSSL_BASE.tar.gz
+tar xzf $OPENSSL_BASE.tar.gz
 OPENRESTY_CONFIGURE_PARAMS="--with-openssl=$TRAVIS_BUILD_DIR/$OPENSSL_BASE"
 
 # Download OpenResty
