@@ -69,6 +69,7 @@ end
 
 _M.put = with_body("PUT")
 _M.post = with_body("POST")
+_M.patch = with_body("PATCH")
 _M.get = without_body("GET")
 _M.delete = without_body("DELETE")
 _M.options = without_body("OPTIONS")

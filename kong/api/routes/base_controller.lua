@@ -90,7 +90,26 @@ function BaseController:new(dao_collection, collection)
     end
   end))
 
-  app:get("/"..collection, parse_params(function(self)
+  app:put("/"..collection, parse_params(function(self)
+    local data, err
+    if self.params.id then
+      data, err = dao_collection:update(self.params)
+      if not err then
+        return responses.send_HTTP_OK(data)
+      end
+    else
+      data, err = dao_collection:insert(self.params)
+      if not err then
+        return responses.send_HTTP_CREATED(data)
+      end
+    end
+
+    if err then
+      return send_dao_error_response(err)
+    end
+  end))
+
+  app:get("/"..collection, function(self)
     local size = self.params.size and tonumber(self.params.size) or 100
     local offset = self.params.offset and ngx.decode_base64(self.params.offset) or nil
 
@@ -120,7 +139,7 @@ function BaseController:new(dao_collection, collection)
     local result = #data == 0 and "{\"data\":[]}" or {data=data, ["next"]=next_url}
 
     return responses.send_HTTP_OK(result, type(result) ~= "table")
-  end))
+  end)
 
   app:get("/"..collection.."/:id", function(self)
     local data, err = dao_collection:find_one(self.params.id)
@@ -147,7 +166,7 @@ function BaseController:new(dao_collection, collection)
     end
   end)
 
-  app:put("/"..collection.."/:id", parse_params(function(self)
+  app:patch("/"..collection.."/:id", parse_params(function(self)
     local data, err = dao_collection:update(self.params)
     if err then
       return send_dao_error_response(err)

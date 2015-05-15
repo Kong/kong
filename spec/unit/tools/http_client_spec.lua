@@ -71,6 +71,21 @@ describe("HTTP Client", function()
 
   end)
 
+  describe("PATCH", function()
+
+    it("should send a valid PUT request", function()
+      local response, status, headers = http_client.patch("http://httpbin.org/patch", {name="Mark"}, {["content-type"] = "application/json", Custom = "pippo"})
+      assert.are.equal(200, status)
+      assert.truthy(headers)
+      assert.truthy(response)
+      local parsed_response = cjson.decode(response)
+      assert.are.equal("Mark", parsed_response.json.name)
+      assert.are.equal("pippo", parsed_response.headers.Custom)
+    end)
+
+  end)
+
+
   describe("DELETE", function()
 
     it("should send a valid DELETE request", function()
