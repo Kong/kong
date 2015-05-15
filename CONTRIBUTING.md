@@ -1,29 +1,42 @@
-## Contributing code and documentation changes
+# Contributing to Kong
 
-If you have a bugfix or a new feature that you would like to contribute to Kong, please find or open an issue about it first. Talk about what you would like to do. It may be that somebody is already working on it, or that there are particular issues that you should know about before implementing the change.
+## Got a question or problem?
 
-We enjoy working with contributors to get their code accepted. There are many approaches to fixing a problem and it is important to find the best approach before writing too much code.
+Discuss it on the [Google Group](https://groups.google.com/forum/#!forum/konglayer) or chat with us on [Gitter](https://gitter.im/Mashape/kong).
 
-The process for contributing to any of the Kong repositories is similar. Details for individual projects can be found below:
+## Found a bug?
 
-### Fork and clone the repository
+We would like to hear about it. Please [submit an issue][new-issue] on GitHub and we will follow up. Even better, we would appreaciate a [Pull Request][new-pr] with a fix for it.
 
-You will need to fork the main Kong code or documentation repository and clone it to your local machine. See [https://help.github.com/articles/fork-a-repo](https://help.github.com/articles/fork-a-repo) for help.
+## Want a feature?
 
-Further instructions for specific projects are given below.
+Fell free to request a feature by [submitting an issue][new-issue] on GitHub and open the discussion.
 
-### Submitting your changes
+If you'd like to implement a new feature, please consider opening an issue first to talk about it. It may be that somebody is already working on it, or that there are particular issues that you should be aware of before implementing the change. If you are about to open a Pull Request, please make sure to follow the [submissions guidelines][new-pr].
 
-Once your changes and tests are ready to submit for review:
+## Submission Guildelines
 
-#### 1. Test Your Changes
+### Submitting an issue
 
-Run the test suite to make sure that nothing is broken.
+Before you submit an issue, search the archive, maybe you will find that a similar one already exists.
 
-#### 2. Rebase Your Changes
+If you are submitting an issue about a bug, please include the following:
 
-Update your local repository with the most recent code from the main Kong repository, and rebase your branch on top of the latest master branch. We prefer your initial changes to be squashed into a single commit. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review. As a final step before merging we will either ask you to squash all commits yourself or we'll do it for you.
+- The platform you are running Kong on
+- The version of Kong you are running
+- Steps to reproduce the issue
+- Eventually, logs from your `error.log` file. You can find this file at `<nginx_working_dir>/logs/error.log`
 
-#### 3. Submit a Pull Request
+### Submitting a Pull Request
 
-Update your local repository with the most recent code from the main Kong repository, and rebase your branch on top of the latest master branch. We prefer your initial changes to be squashed into a single commit. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review. As a final step before merging we will either ask you to squash all commits yourself or we'll do it for you.
+Before submitting your Pull Request please make sure to:
+
+- Include tests with your changes. If your changes introduce a new feature, please include tests with it. If it fixes a bug, please create a test to validate the fix.
+- Rebase your commits. It may be that new commits have been introduced on the branch your are opening your Pull Request against. Rebasing will update your branch with the most resent code and make your changes easier to review.
+- Consider squashing your commits. We prefer your initial changes to be squashed into a single commit. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review. As a final step before merging we will either ask you to squash all commits yourself or we'll do it for you.
+- Run the test suite with `make test-all`.
+
+If all went well, we are eager to see your contribution, feel free to submit your Pull Request!
+
+[new-issue]: #submitting-an-issue
+[new-pr]: #submitting-a-pull-request
