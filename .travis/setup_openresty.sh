@@ -7,6 +7,8 @@ OPENSSL_BASE=openssl-$OPENSSL_VERSION
 
 sudo apt-get update && sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl make
 
+cd $TRAVIS_BUILD_DIR
+
 # Download OpenSSL
 curl https://www.openssl.org/source/$OPENRESTY_BASE.tar.gz | tar xz
 OPENRESTY_CONFIGURE_PARAMS="--with-openssl="`pwd`"/$OPENSSL_BASE"
@@ -48,10 +50,10 @@ build = {
   }
 }
 ' > ngxssl-0.1-1.rockspec
-luarocks make ngxssl-0.1-1.rockspec
+sudo luarocks make ngxssl-0.1-1.rockspec
 
 # Install OpenResty
-cd ..
+cd $TRAVIS_BUILD_DIR/$OPENRESTY_BASE
 ./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module $OPENRESTY_CONFIGURE_PARAMS
 make && sudo make install
 cd $TRAVIS_BUILD_DIR
