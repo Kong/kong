@@ -49,10 +49,16 @@ plugins_available:
   - cors
   - request_transformer
 
+# The working directory
+# (make sure you have read/write permissions)
 nginx_working_dir: /usr/local/kong/
 
+# Port configuration
 proxy_port: 8000
+proxy_ssl_port: 8443
 admin_api_port: 8001
+
+# Secondary port configuration
 dnsmasq_port: 8053
 
 # Specify the DAO to use
@@ -146,6 +152,14 @@ nginx: |
 
     server {
       listen {{proxy_port}};
+      listen {{proxy_ssl_port}} ssl;
+
+      ssl_certificate_by_lua '
+        local ssl = require "ngx.ssl"
+      ';
+
+      ssl_certificate {{ssl_cert}};
+      ssl_certificate_key {{ssl_key}};
 
       location / {
         default_type 'text/plain';
