@@ -1,4 +1,4 @@
-local VERSION = "0.2.1"
+local VERSION = "0.3.0"
 
 return {
   NAME = "kong",

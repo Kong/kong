@@ -81,7 +81,7 @@ local function prepare_nginx_working_dir(args_config)
   if err then
     cutils.logger:error_exit(err)
   end
-
+  -- Create logs files
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
@@ -97,13 +97,18 @@ local function prepare_nginx_working_dir(args_config)
     cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
   
+  local ssl_cert_path, ssl_key_path = cutils.get_ssl_cert_and_key(kong_config.nginx_working_dir)
+
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
   local nginx_inject = {
     proxy_port = kong_config.proxy_port,
+    proxy_ssl_port = kong_config.proxy_ssl_port,
     admin_api_port = kong_config.admin_api_port,
     dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
-    memory_cache_size = kong_config.memory_cache_size
+    memory_cache_size = kong_config.memory_cache_size,
+    ssl_cert = ssl_cert_path,
+    ssl_key = ssl_key_path
   }
 
   -- Auto-tune
@@ -238,7 +243,7 @@ function _M.prepare_kong(args_config, signal)
 
   if not signal or (signal and signal ~= RELOAD) then
     -- Check ports
-    local ports = { kong_config.proxy_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
+    local ports = { kong_config.proxy_port, kong_config.proxy_ssl_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
     for _,port in ipairs(ports) do
       if cutils.is_port_open(port) then
         cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  

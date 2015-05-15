@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.2.1-1"
+version = "0.3.0-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.2.1"
+  tag = "0.3.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -125,5 +125,5 @@ build = {
     conf = { "kong.yml" },
     bin = { "bin/kong" }
   },
-  copy_directories = { "database/migrations/" }
+  copy_directories = { "database/migrations/", "ssl" }
 }
