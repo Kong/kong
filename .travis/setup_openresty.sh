@@ -11,7 +11,7 @@ cd $TRAVIS_BUILD_DIR
 
 # Download OpenSSL
 curl https://www.openssl.org/source/$OPENRESTY_BASE.tar.gz | tar xz
-OPENRESTY_CONFIGURE_PARAMS="--with-openssl="`pwd`"/$OPENSSL_BASE"
+OPENRESTY_CONFIGURE_PARAMS="--with-openssl=$TRAVIS_BUILD_DIR/$OPENSSL_BASE"
 
 # Download OpenResty
 curl http://openresty.org/download/$OPENRESTY_BASE.tar.gz | tar xz
