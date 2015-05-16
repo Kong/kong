@@ -44,7 +44,7 @@ function _M.post(url, form, headers)
   if not headers then headers = {} end
   if not form then form = {} end
 
-  local body = ngx.encode_args(form)
+  local body = type(form) == "table" and ngx.encode_args(form) or form
   headers["content-length"] = string.len(body)
   if not headers["content-type"] then
     headers["content-type"] = "application/x-www-form-urlencoded"
