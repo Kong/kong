@@ -40,7 +40,8 @@ return {
     APIS = "apis",
     PLUGINS_CONFIGURATIONS = "plugins_configurations",
     BASICAUTH_CREDENTIAL = "basicauth_credentials",
-    KEYAUTH_CREDENTIAL = "keyauth_credentials"
+    KEYAUTH_CREDENTIAL = "keyauth_credentials",
+    SSL = "ssl"
   },
   AUTHENTICATION = {
     QUERY = "query",

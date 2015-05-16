@@ -24,6 +24,9 @@ local function http_call(options)
 
   if parsed_url.scheme == "https" then
     options.protocol = "tlsv1"
+    options.mode = "client"
+    options.options = "all"
+
     local _, code, headers = https.request(options)
     return resp[1], code, headers
   else

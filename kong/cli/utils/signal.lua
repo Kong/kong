@@ -97,7 +97,7 @@ local function prepare_nginx_working_dir(args_config)
     cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
   
-  local ssl_cert_path, ssl_key_path = cutils.get_ssl_cert_and_key(kong_config.nginx_working_dir)
+  local ssl_cert_path, ssl_key_path = cutils.get_ssl_cert_and_key(kong_config)
 
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx

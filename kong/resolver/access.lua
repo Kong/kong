@@ -1,7 +1,7 @@
 local url = require("socket.url")
-local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
+local resolver_util = require "kong.resolver.resolver_util"
 
 local _M = {}
 
@@ -40,27 +40,19 @@ end
 -- Retrieve the API from the Host that has been requested
 function _M.execute(conf)
   local hosts = ngx.req.get_headers()["host"] -- Multiple "Host" can have been requested
+
   if type(hosts) == "string" then
     hosts = { hosts }
   elseif not hosts then
     hosts = {}
   end
-
+  
   -- Find the API
-  local api = nil
-  for _, host in ipairs(hosts) do
-    api = cache.get_and_set(cache.api_key(host), function()
-      local apis, err = dao.apis:find_by_keys { public_dns = host }
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif apis and #apis == 1 then
-        return apis[1]
-      end
-    end)
-    if api then break end
-  end
+  local api, err = resolver_util.find_api(hosts)
 
-  if not api then
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  elseif not api then
     return responses.send_HTTP_NOT_FOUND("API not found with Host: "..table.concat(hosts, ","))
   end
 

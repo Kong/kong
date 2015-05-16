@@ -9,9 +9,9 @@ function SSLHandler:new()
   SSLHandler.super.new(self, "ssl")
 end
 
-function SSLHandler:access(conf)
+function SSLHandler:certificate(conf)
   SSLHandler.super.certificate(self)
-  access.execute(conf)
+  certificate.execute(conf)
 end
 
 return SSLHandler

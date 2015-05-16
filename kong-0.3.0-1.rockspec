@@ -66,6 +66,8 @@ build = {
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
     ["kong.resolver.access"] = "kong/resolver/access.lua",
     ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
+    ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
+    ["kong.resolver.resolver_util"] = "kong/resolver/resolver_util.lua",
 
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas"] = "kong/dao/schemas.lua",
@@ -117,6 +119,9 @@ build = {
 
     ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
     ["kong.plugins.ssl.certificate"] = "kong/plugins/ssl/certificate.lua",
+    ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
+    ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
+
 
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",

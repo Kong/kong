@@ -151,7 +151,25 @@ function _M.init()
 end
 
 function _M.exec_plugins_certificate()
-  local ssl = require "ngx.ssl"
+  ngx.ctx.plugin_conf = {}
+
+  for _, plugin in ipairs(plugins) do
+    if ngx.ctx.api then
+      ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name)
+      local consumer_id = ngx.ctx.authenticated_entity and ngx.ctx.authenticated_entity.consumer_id or nil
+      if consumer_id then
+        local app_plugin_conf = load_plugin_conf(ngx.ctx.api.id, consumer_id, plugin.name)
+        if app_plugin_conf then
+          ngx.ctx.plugin_conf[plugin.name] = app_plugin_conf
+        end
+      end
+    end
+
+    local conf = ngx.ctx.plugin_conf[plugin.name]
+    if not ngx.ctx.stop_phases and (plugin.resolver or conf) then
+      plugin.handler:certificate(conf and conf.value or nil)
+    end
+  end
 end
 
 -- Calls plugins_access() on every loaded plugin

@@ -74,9 +74,14 @@ function _M.validate(t, schema, is_update)
 
     -- Check field against a custom function
     elseif v.func and type(v.func) == "function" then
-      local ok, err = v.func(t[column], t)
+      local ok, err, new_fields = v.func(t[column], t)
       if not ok or err then
         errors = utils.add_error(errors, column, err)
+      end
+      if new_fields then
+        for k, v in pairs(new_fields) do
+          t[k] = v
+        end
       end
 
     -- is_update check immutability of a field

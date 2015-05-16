@@ -6,11 +6,18 @@ local json_params = require("lapis.application").json_params
 
 local BaseController = Object:extend()
 
+local CONTENT_TYPE = "content-type"
 local APPLICATION_JSON_TYPE = "application/json"
 local FORM_URLENCODED_TYPE = "application/x-www-form-urlencoded"
+local MULTIPART_DATA_TYPE = "multipart/form-data"
 
 local function check_content_type(req, type)
-  return req.headers["content-type"] and string.lower(stringy.strip(req.headers["content-type"])) == type
+  if req.headers[CONTENT_TYPE] then
+    -- Splitting on ";" just in case is a multipart/data, to separate it from the boundary
+    local sanitized_type = stringy.split(req.headers[CONTENT_TYPE], ";")[1]
+    return sanitized_type == stringy.strip(type)
+  end
+  return false
 end
 
 local function render_list_response(req, data, size)
@@ -58,6 +65,7 @@ function BaseController.parse_params(schema, params)
           local subschema_params = {}
           for param_key, param_value in pairs(params) do
             if stringy.startswith(param_key, k..".") then
+              param_value = type(param_value) == "table" and param_value.content or param_value -- Handle multipart
               subschema_params[string.sub(param_key, string.len(k..".") + 1)] = param_value
             end
           end
@@ -105,8 +113,9 @@ end
 
 function BaseController:new(dao_collection, collection)
   app:post("/"..collection, function(self)
-    if not check_content_type(self.req, FORM_URLENCODED_TYPE) then
-      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE("Unsupported Content-Type. Use \""..FORM_URLENCODED_TYPE.."\".")
+    if not (check_content_type(self.req, FORM_URLENCODED_TYPE)
+      or check_content_type(self.req, MULTIPART_DATA_TYPE)) then
+      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE("Unsupported Content-Type. Use \""..FORM_URLENCODED_TYPE.."\" or \""..MULTIPART_DATA_TYPE.."\".")
     end
 
     local params = BaseController.parse_params(dao_collection._schema, self.params)
