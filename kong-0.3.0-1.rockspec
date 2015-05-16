@@ -24,6 +24,7 @@ dependencies = {
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
   "ansicolors ~> 1.0.2-3",
+  "lbase64 ~> 20120820-1",
 
   "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
@@ -121,7 +122,6 @@ build = {
     ["kong.plugins.ssl.certificate"] = "kong/plugins/ssl/certificate.lua",
     ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
-
 
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",

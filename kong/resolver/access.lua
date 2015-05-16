@@ -46,7 +46,7 @@ function _M.execute(conf)
   elseif not hosts then
     hosts = {}
   end
-  
+
   -- Find the API
   local api, err = resolver_util.find_api(hosts)
 

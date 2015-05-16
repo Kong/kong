@@ -18,7 +18,6 @@ describe("SSL Plugin", function()
 
   it("should return invalid credentials when the credential value is wrong", function()
     local response, status, headers = http_client.get(STUB_GET_SSL_URL, { })
-    print(response)
     assert.are.equal(200, status)
   end)
 

@@ -147,7 +147,7 @@ describe("Admin API", function()
         it("should not create when the content-type is wrong", function()
           local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
           assert.are.equal(415, status)
-          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\".\"}\n", response)
+          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\" or \\\"multipart\\/form-data\\\".\"}\n", response)
         end)
 
       end)
