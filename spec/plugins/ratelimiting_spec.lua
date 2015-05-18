@@ -8,12 +8,32 @@ describe("RateLimiting Plugin", function()
 
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        { name = "tests ratelimiting 1", public_dns = "test3.com", target_url = "http://mockbin.com" },
+        { name = "tests ratelimiting 2", public_dns = "test4.com", target_url = "http://mockbin.com" }
+      },
+      consumer = {
+        { custom_id = "provider_123" },
+        { custom_id = "provider_124" }
+      },
+      plugin_configuration = {
+        { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
+        { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
+        { name = "ratelimiting", value = {period = "minute", limit = 8}, __api = 1, __consumer = 1 },
+        { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 2 },
+      },
+      keyauth_credential = {
+        { key = "apikey122", __consumer = 1 },
+        { key = "apikey123", __consumer = 2 }
+      }
+    }
+
     spec_helper.start_kong()
   end)
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
 
   describe("Without authentication (IP address)", function()

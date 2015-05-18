@@ -1,36 +1,41 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local stringy = require "stringy"
 local cjson = require "cjson"
 local yaml = require "yaml"
-local IO = require "kong.tools.io"
-local stringy = require "stringy"
 local uuid = require "uuid"
+local IO = require "kong.tools.io"
 
 -- This is important to seed the UUID generator
 uuid.seed()
-
-local STUB_GET_URL = spec_helper.STUB_GET_URL
-local TEST_CONF = "kong_TEST.yml"
 
 describe("Real IP", function()
 
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        { name = "tests realip", public_dns = "realip.com", target_url = "http://mockbin.com" }
+      },
+      plugin_configuration = {
+        { name = "filelog", value = {}, __api = 1 }
+      }
+    }
+
     spec_helper.start_kong()
   end)
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
 
   it("should parse the correct IP", function()
     local uuid,_ = string.gsub(uuid(), "-", "")
 
     -- Making the request
-    local _, status = http_client.get(STUB_GET_URL, nil,
+    local _, status = http_client.get(spec_helper.STUB_GET_URL, nil,
       {
-        host = "logging.com",
+        host = "realip.com",
         ["X-Forwarded-For"] = "4.4.4.4, 1.1.1.1, 5.5.5.5",
         file_log_uuid = uuid
       }
@@ -38,7 +43,7 @@ describe("Real IP", function()
     assert.are.equal(200, status)
 
     -- Reading the log file and finding the line with the entry
-    local configuration = yaml.load(IO.read_file(TEST_CONF))
+    local configuration = yaml.load(IO.read_file(spec_helper.TEST_CONF_FILE))
     assert.truthy(configuration)
     local error_log = IO.read_file(configuration.nginx_working_dir.."/logs/error.log")
     local line

@@ -9,12 +9,35 @@ describe("Request Transformer Plugin #proxy", function()
 
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        { name = "tests request_transformer", public_dns = "test5.com", target_url = "http://mockbin.com" },
+      },
+      plugin_configuration = {
+        {
+          name = "request_transformer",
+          value = {
+            add = {
+              headers = {"x-added:true", "x-added2:true" },
+              querystring = {"newparam:value"},
+              form = {"newformparam:newvalue"}
+            },
+            remove = {
+              headers = { "x-to-remove" },
+              querystring = { "toremovequery" },
+              form = { "toremoveform" }
+            }
+          },
+          __api = 1
+        }
+      }
+    }
+
     spec_helper.start_kong()
   end)
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
 
   describe("Test adding parameters", function()

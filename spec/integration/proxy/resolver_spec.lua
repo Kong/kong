@@ -12,12 +12,21 @@ describe("Resolver", function()
 
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        { name = "tests host resolver 1", public_dns = "mocbkin.com", target_url = "http://mockbin.com" },
+        { name = "tests host resolver 2", public_dns = "mocbkin-auth.com", target_url = "http://mockbin.com" }
+      },
+      plugin_configuration = {
+        { name = "keyauth", value = {key_names = {"apikey"} }, __api = 2 }
+      }
+    }
+
     spec_helper.start_kong()
   end)
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
 
   describe("Inexistent API", function()
@@ -34,24 +43,24 @@ describe("Resolver", function()
   describe("Existing API", function()
 
     it("should return Success when the API is in Kong", function()
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "mocbkin.com"})
       assert.are.equal(200, status)
     end)
 
     it("should return Success when the Host header is not trimmed", function()
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "   test4.com  "})
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "   mocbkin.com  "})
       assert.are.equal(200, status)
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mocbkin.com"})
       assert.are.equal(200, status)
       assert.are.equal("cloudflare-nginx", headers.server)
       assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.via)
     end)
 
     it("should return the correct Server and no Via header when the request was NOT proxied", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "test1.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mocbkin-auth.com"})
       assert.are.equal(403, status)
       assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.server)
       assert.falsy(headers.via)
@@ -64,7 +73,7 @@ describe("Resolver", function()
 
       local tcp = socket.tcp()
       tcp:connect(host, port)
-      tcp:send("GET "..parsed_url.path.." HTTP/1.0\r\nHost: test4.com\r\n\r\n");
+      tcp:send("GET "..parsed_url.path.." HTTP/1.0\r\nHost: mocbkin.com\r\n\r\n");
       local response = ""
       while true do
         local s, status, partial = tcp:receive()
@@ -83,7 +92,7 @@ describe("Resolver", function()
 
       local tcp = socket.tcp()
       tcp:connect(host, port)
-      tcp:send("GET "..parsed_url.path.." HTTP/1.0\r\nHost: fake.com\r\nHost: test4.com\r\n\r\n");
+      tcp:send("GET "..parsed_url.path.." HTTP/1.0\r\nHost: fake.com\r\nHost: mocbkin.com\r\n\r\n");
       local response = ""
       while true do
         local s, status, partial = tcp:receive()

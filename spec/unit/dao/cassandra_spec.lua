@@ -20,9 +20,7 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 -- An utility function to apply tests on core collections.
 local function describe_core_collections(tests_cb)
   for type, dao in pairs({ api = dao_factory.apis,
-                           consumer = dao_factory.consumers,
-                           plugin_configuration = dao_factory.plugins_configurations }) do
-
+                           consumer = dao_factory.consumers }) do
     local collection = type == "plugin_configuration" and "plugins_configurations" or type.."s"
     describe(collection, function()
       tests_cb(type, collection)
@@ -64,7 +62,6 @@ describe("Cassandra DAO", function()
       local _, err = session:close()
       assert.falsy(err)
     end
-    spec_helper.reset_db()
   end)
 
   describe("Collections schemas", function()
@@ -211,7 +208,7 @@ describe("Cassandra DAO", function()
 
       end)
 
-      describe("Plugin Configurations", function()
+      describe("plugin_configurations", function()
 
         it("should not insert in DB if invalid", function()
           -- Without an api_id, it's a schema error
@@ -448,7 +445,16 @@ describe("Cassandra DAO", function()
 
       end)
 
-      describe("Plugin Configurations", function()
+      describe("plugin_configurations", function()
+
+        setup(function()
+          local fixtures = spec_helper.seed_db(1)
+          faker:insert_from_table {
+            plugin_configuration = {
+              { name = "keyauth", value = {key_names = {"apikey"}}, api_id = fixtures.api[1].id }
+            }
+          }
+        end)
 
         it("should update in DB if entity can be found", function()
           local plugins_configurations, err = session:execute("SELECT * FROM plugins_configurations")
@@ -471,11 +477,6 @@ describe("Cassandra DAO", function()
     end) -- describe :update()
 
     describe(":delete()", function()
-
-      setup(function()
-        spec_helper.drop_db()
-        spec_helper.seed_db(nil, 100)
-      end)
 
       describe_core_collections(function(type, collection)
 
@@ -667,7 +668,7 @@ describe("Cassandra DAO", function()
 
       setup(function()
         spec_helper.drop_db()
-        spec_helper.seed_db(nil, 100)
+        spec_helper.seed_db(10)
       end)
 
       describe_core_collections(function(type, collection)
@@ -726,7 +727,16 @@ describe("Cassandra DAO", function()
 
       end)
 
-      describe("Plugin Configurations", function()
+      describe("plugin_configurations", function()
+
+        setup(function()
+          local fixtures = spec_helper.seed_db(1)
+          faker:insert_from_table {
+            plugin_configuration = {
+              { name = "keyauth", value = {key_names = {"apikey"}}, api_id = fixtures.api[1].id }
+            }
+          }
+        end)
 
         it("should deserialize the table property", function()
           local plugins_configurations, err = session:execute("SELECT * FROM plugins_configurations")
@@ -820,30 +830,33 @@ describe("Cassandra DAO", function()
     -- Plugins configuration additional behaviour
     --
 
-    describe("Plugin Configurations", function()
+    describe("plugin_configurations", function()
       local api_id
       local inserted_plugin
 
-      setup(function()
-        spec_helper.drop_db()
-        spec_helper.seed_db(nil, 100)
-      end)
-
       it("should find distinct plugins configurations", function()
+        faker:insert_from_table {
+          api = {
+            { name = "tests distinct 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
+            { name = "tests distinct 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
+          },
+          plugin_configuration = {
+            { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
+            { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
+            { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 2 },
+            { name = "filelog", value = {}, __api = 1 }
+          }
+        }
+
         local res, err = dao_factory.plugins_configurations:find_distinct()
 
         assert.falsy(err)
         assert.truthy(res)
 
-        assert.are.same(8, #res)
+        assert.are.same(3, #res)
         assert.truthy(utils.array_contains(res, "keyauth"))
-        assert.truthy(utils.array_contains(res, "basicauth"))
         assert.truthy(utils.array_contains(res, "ratelimiting"))
-        assert.truthy(utils.array_contains(res, "tcplog"))
-        assert.truthy(utils.array_contains(res, "udplog"))
         assert.truthy(utils.array_contains(res, "filelog"))
-        assert.truthy(utils.array_contains(res, "cors"))
-        assert.truthy(utils.array_contains(res, "request_transformer"))
       end)
 
       it("should insert a plugin and set the consumer_id to a 'null' uuid if none is specified", function()
@@ -892,8 +905,7 @@ describe("Cassandra DAO", function()
 
     it("should not insert in DB if consumer does not exist", function()
       -- Without an consumer_id, it's a schema error
-      local app_t = faker:fake_entity("keyauth_credential")
-      app_t.consumer_id = nil
+      local app_t = { name = "keyauth", value = {key_names = {"apikey"}} }
       local app, err = dao_factory.keyauth_credentials:insert(app_t)
       assert.falsy(app)
       assert.truthy(err)
@@ -902,9 +914,7 @@ describe("Cassandra DAO", function()
       assert.are.same("consumer_id is required", err.message.consumer_id)
 
       -- With an invalid consumer_id, it's a FOREIGN error
-      local app_t = faker:fake_entity("keyauth_credential")
-      app_t.consumer_id = uuid()
-
+      local app_t = { key = "apikey123", consumer_id = uuid() }
       local app, err = dao_factory.keyauth_credentials:insert(app_t)
       assert.falsy(app)
       assert.truthy(err)
@@ -918,9 +928,7 @@ describe("Cassandra DAO", function()
       assert.falsy(err)
       assert.truthy(#consumers > 0)
 
-      local app_t = faker:fake_entity("keyauth_credential")
-      app_t.consumer_id = consumers[1].id
-
+      local app_t = { key = "apikey123", consumer_id = consumers[1].id }
       local app, err = dao_factory.keyauth_credentials:insert(app_t)
       assert.falsy(err)
       assert.truthy(app.id)
