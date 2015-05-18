@@ -545,6 +545,7 @@ describe("Cassandra DAO", function()
           _, err = dao_factory.plugins_configurations:insert {
             name = "filelog", value = {}, api_id = untouched_api.id
           }
+          assert.falsy(err)
 
           -- Make sure we have 3 matches
           local results, err = dao_factory.plugins_configurations:find_by_keys {
@@ -581,7 +582,7 @@ describe("Cassandra DAO", function()
       end)
 
       describe("Consumers", function()
-        local consumer, untouched_consumer
+        local api, consumer, untouched_consumer
 
         setup(function()
           spec_helper.drop_db()
@@ -598,6 +599,7 @@ describe("Cassandra DAO", function()
             public_dns = "cascade.com",
             target_url = "http://mockbin.com"
           }
+          assert.falsy(err)
 
           -- Insert some plugins_configurations
           _, err = dao_factory.plugins_configurations:insert {
@@ -626,6 +628,7 @@ describe("Cassandra DAO", function()
             name = "filelog", value = {}, api_id = api.id,
             consumer_id = untouched_consumer.id
           }
+          assert.falsy(err)
 
           local results, err = dao_factory.plugins_configurations:find_by_keys {
             consumer_id = consumer.id

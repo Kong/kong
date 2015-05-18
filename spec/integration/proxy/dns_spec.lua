@@ -1,7 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 
-local STUB_GET_URL = spec_helper.STUB_GET_URL
 local TCP_PORT = 7771
 
 describe("DNS", function()
@@ -20,8 +19,8 @@ describe("DNS", function()
 
     it("should work when calling local IP", function()
       local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
-    
-      local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns1.com" })
+
+      local _, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns1.com" })
       assert.are.equal(200, status)
 
       thread:join() -- Wait til it exists
@@ -29,8 +28,8 @@ describe("DNS", function()
 
     it("should work when calling local hostname", function()
       local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
-    
-      local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns2.com" })
+
+      local _, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns2.com" })
       assert.are.equal(200, status)
 
       thread:join() -- Wait til it exists
