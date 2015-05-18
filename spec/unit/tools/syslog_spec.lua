@@ -1,8 +1,8 @@
-local syslog = require "kong.tools.syslog"
-local constants = require "kong.constants"
-local utils = require "kong.tools.utils"
-local stringy = require "stringy"
 local spec_helper = require "spec.spec_helpers"
+local constants = require "kong.constants"
+local stringy = require "stringy"
+local syslog = require "kong.tools.syslog"
+local utils = require "kong.tools.utils"
 
 local UDP_PORT = 8889
 
@@ -11,7 +11,7 @@ describe("Syslog", function()
   it("should log", function()
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock TCP server
 
-    -- Override constants  
+    -- Override constants
     constants.SYSLOG.ADDRESS = "127.0.0.1"
     constants.SYSLOG.PORT = UDP_PORT
 

@@ -33,7 +33,7 @@ describe("Logging Plugins", function()
       local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request
-      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -50,7 +50,7 @@ describe("Logging Plugins", function()
       local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock TCP server
 
       -- Making the request
-      local response, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -67,7 +67,7 @@ describe("Logging Plugins", function()
       local uuid = string.gsub(uuid(), "-", "")
 
       -- Making the request
-      local response, status = http_client.get(STUB_GET_URL, nil,
+      local _, status = http_client.get(STUB_GET_URL, nil,
         { host = "logging.com", file_log_uuid = uuid }
       )
       assert.are.equal(200, status)

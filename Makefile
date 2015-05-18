@@ -45,7 +45,7 @@ drop:
 	@bin/kong db -c $(DEVELOPMENT_CONF) drop
 
 lint:
-	@luacheck kong*.rockspec
+	@luacheck .
 
 test:
 	@busted spec/unit

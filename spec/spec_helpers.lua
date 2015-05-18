@@ -113,9 +113,9 @@ function _M.start_udp_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require("socket")
-      udp = socket.udp()
+      local udp = socket.udp()
       udp:setsockname("*", port)
-      data = udp:receivefrom()
+      local data = udp:receivefrom()
       return data
     end;
   }, port)

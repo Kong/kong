@@ -28,7 +28,7 @@ describe("Real IP", function()
     local uuid,_ = string.gsub(uuid(), "-", "")
 
     -- Making the request
-    local response, status = http_client.get(STUB_GET_URL, nil,
+    local _, status = http_client.get(STUB_GET_URL, nil,
       {
         host = "logging.com",
         ["X-Forwarded-For"] = "4.4.4.4, 1.1.1.1, 5.5.5.5",

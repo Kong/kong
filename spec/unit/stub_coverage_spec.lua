@@ -9,5 +9,5 @@ _G.dao = {}
 local lua_sources = IO.retrieve_files("./kong", { exclude_dir_patterns = {"cli", "vendor"}, file_pattern = ".lua" })
 
 for _, source_link in ipairs(lua_sources) do
-  local source_file = dofile(source_link)
+  dofile(source_link)
 end

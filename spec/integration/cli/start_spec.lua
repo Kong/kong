@@ -50,7 +50,7 @@ describe("CLI", function()
     it("should work when no plugins are enabled and the DB is empty", function()
       replace_conf_property("plugins_available", {})
 
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
@@ -65,7 +65,7 @@ describe("CLI", function()
     it("should not fail when an existing plugin is being enabled", function()
       replace_conf_property("plugins_available", {"keyauth"})
 
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 

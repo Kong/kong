@@ -23,7 +23,7 @@ describe("Resolver", function()
   describe("Inexistent API", function()
 
     it("should return Not Found when the API is not in Kong", function()
-      local response, status, headers = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "foo.com" })
+      local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "foo.com" })
       local body = cjson.decode(response)
       assert.are.equal(404, status)
       assert.are.equal('API not found with Host: foo.com', body.message)
@@ -34,12 +34,12 @@ describe("Resolver", function()
   describe("Existing API", function()
 
     it("should return Success when the API is in Kong", function()
-      local response, status = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "test4.com"})
       assert.are.equal(200, status)
     end)
 
     it("should return Success when the Host header is not trimmed", function()
-      local response, status = http_client.get(STUB_GET_URL, nil, { host = "   test4.com  "})
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "   test4.com  "})
       assert.are.equal(200, status)
     end)
 

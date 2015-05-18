@@ -45,7 +45,7 @@ describe("Faker", function()
     end)
 
     it("should throw an error if the type doesn't exist", function()
-      local func_err = function() local t = faker:fake_entity("foo") end
+      local func_err = function() faker:fake_entity("foo") end
       assert.has_error(func_err, "Entity of type foo cannot be generated.")
     end)
 
