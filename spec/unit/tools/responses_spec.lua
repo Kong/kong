@@ -91,9 +91,9 @@ describe("Responses", function()
 
     it("should apply default content rules for some status codes", function()
       responses.send_HTTP_INTERNAL_SERVER_ERROR()
-      assert.stub(ngx.say).was.called_with("{\"message\":\"An error occured\"}")
+      assert.stub(ngx.say).was.called_with("{\"message\":\"An unexpected error occurred\"}")
       responses.send_HTTP_INTERNAL_SERVER_ERROR("override")
-      assert.stub(ngx.say).was.called_with("{\"message\":\"override\"}")
+      assert.stub(ngx.say).was.called_with("{\"message\":\"An unexpected error occurred\"}")
     end)
 
   end)

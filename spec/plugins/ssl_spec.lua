@@ -3,7 +3,6 @@ local http_client = require "kong.tools.http_client"
 local ssl_util = require "kong.plugins.ssl.ssl_util"
 local cjson = require "cjson"
 
-
 STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 
 describe("SSL Plugin", function()
@@ -16,11 +15,6 @@ describe("SSL Plugin", function()
   teardown(function()
     spec_helper.stop_kong()
     spec_helper.reset_db()
-  end)
-
-  it("should return invalid credentials when the credential value is wrong", function()
-    local response, status, headers = http_client.get(STUB_GET_SSL_URL, { })
-    assert.are.equal(200, status)
   end)
 
   it("should not convert an invalid cert to DER", function()

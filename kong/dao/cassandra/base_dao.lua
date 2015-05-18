@@ -79,7 +79,7 @@ end
 function BaseDao:_check_foreign(kong_query, t)
   local results, err = self:_execute_kong_query(kong_query, t)
   if err then
-    return false, "Error during FOREIGN check: "..err.message
+    return false, err
   elseif not results or #results == 0 then
     return false
   else
@@ -491,7 +491,7 @@ function BaseDao:update(t)
   local results
   ok, err, results = self:_check_foreign(self._queries.select_one, t)
   if err then
-    return nil, DaoError(err, error_types.DATABASE)
+    return nil, err
   elseif not ok then
     return nil
   else
@@ -584,7 +584,7 @@ end
 function BaseDao:delete(id)
   local exists, err = self:_check_foreign(self._queries.select_one, { id = id })
   if err then
-    return false, DaoError(err, error_types.DATABASE)
+    return false, err
   elseif not exists then
     return false
   end

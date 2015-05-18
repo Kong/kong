@@ -198,5 +198,15 @@ describe("Utils", function()
       end)
 
     end)
+
+    describe("#is_array()", function()
+
+      it("should know when an array ", function()
+        assert.True(utils.is_array({ "a", "b", "c", "d" }))
+        assert.True(utils.is_array({ ["1"] = "a", ["2"] = "b", ["3"] = "c", ["4"] = "d" }))
+        assert.False(utils.is_array({ "a", "b", "c", foo = "d" }))
+      end)
+
+    end)
   end)
 end)

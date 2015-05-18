@@ -21,6 +21,7 @@ describe("Schemas", function()
     local schema = {
       string = { type = "string", required = true, immutable = true },
       table = { type = "table" },
+      number = { type = "number" },
       url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
       date = { default = 123456, immutable = true },
       allowed = { enum = { "hello", "world" }},
@@ -82,6 +83,61 @@ describe("Schemas", function()
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.same("string is not a string", err.string)
+
+      -- Success
+      local values = { string = "foo", number = 10 }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+
+      -- Success
+      local values = { string = "foo", number = "10" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+      assert.are.same("number", type(values.number))
+
+       -- Success
+      local values = { string = "foo", boolean_val = true }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+      assert.are.same("boolean", type(values.boolean_val))
+
+      -- Success
+      local values = { string = "foo", boolean_val = "true" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+    end)
+
+    it("should return error when an invalid boolean value is passed", function()
+      local values = { string = "test", boolean_val = "ciao" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.same("boolean_val is not a boolean", err.boolean_val)
+    end)
+
+    it("should not return an error when a true boolean value is passed", function()
+      local values = { string = "test", boolean_val = true }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+    end)
+
+    it("should not return an error when a false boolean value is passed", function()
+      local values = { string = "test", boolean_val = false }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
     end)
 
     it("should consider id and timestampd as valid types", function()
@@ -232,9 +288,11 @@ describe("Schemas", function()
       local nested_schema = {
         some_required = { required = true },
         sub_schema = {
+          type = "table",
           schema = {
             sub_field_required = { required = true },
             sub_field_default = { default = "abcd" },
+            sub_field_number = { type = "number" },
             error_loading_sub_sub_schema = {},
             sub_sub_schema = { schema = schema_from_function }
           }
@@ -310,38 +368,18 @@ describe("Schemas", function()
         assert.are.same("Error loading the sub-sub-schema", err["sub_schema.sub_sub_schema"])
       end)
 
-      it("should return error when an invalid boolean value is passed", function()
-        local values = { string = "test", boolean_val = "ciao" }
+      it("should not return an error when a number is passed as a string", function()
+        -- Success
+        local values = { some_required = "somestring",
+                         sub_schema = {
+                          sub_field_required = "sub value",
+                          sub_field_number = "10"
+                        }}
 
-        local valid, err = validate(values, schema)
-        assert.falsy(valid)
-        assert.truthy(err)
-        assert.are.same("boolean_val is not a boolean", err.boolean_val)
-      end)
-
-      it("should return error when an invalid boolean value like 'true' is passed", function()
-        local values = { string = "test", boolean_val = "true" }
-
-        local valid, err = validate(values, schema)
-        assert.falsy(valid)
-        assert.truthy(err)
-        assert.are.same("boolean_val is not a boolean", err.boolean_val)
-      end)
-
-      it("should not return an error when a true boolean value is passed", function()
-        local values = { string = "test", boolean_val = true }
-
-        local valid, err = validate(values, schema)
+        local valid, err = validate(values, nested_schema)
         assert.falsy(err)
         assert.truthy(valid)
-      end)
-
-      it("should not return an error when a false boolean value is passed", function()
-        local values = { string = "test", boolean_val = false }
-
-        local valid, err = validate(values, schema)
-        assert.falsy(err)
-        assert.truthy(valid)
+        assert.are.same("number", type(values.sub_schema.sub_field_number))
       end)
 
     end)
