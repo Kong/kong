@@ -6,7 +6,7 @@ local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations
 local function check_custom_id_and_username(value, consumer_t)
   if (consumer_t.custom_id == nil or stringy.strip(consumer_t.custom_id) == "")
     and (consumer_t.username == nil or stringy.strip(consumer_t.username) == "") then
-      return false, "At least a \"custom_id\" or a \"username\" must be specified"
+      return false, "At least a 'custom_id' or a 'username' must be specified"
   end
   return true
 end
@@ -61,7 +61,7 @@ end
 function Consumers:delete(consumer_id)
   local ok, err = Consumers.super.delete(self, consumer_id)
   if not ok then
-    return err
+    return false, err
   end
 
   -- delete all related plugins configurations

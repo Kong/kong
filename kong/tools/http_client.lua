@@ -1,7 +1,7 @@
-local ltn12 = require "ltn12"
-local http = require "socket.http"
 local url = require "socket.url"
-local cjson = require "cjson"
+local http = require "socket.http"
+local json = require "cjson"
+local ltn12 = require "ltn12"
 
 local _M = {}
 
@@ -24,48 +24,63 @@ local function http_call(options)
   return resp[1], code, headers
 end
 
--- GET methpd
-function _M.get(url, querystring, headers)
-  if not headers then headers = {} end
+local function with_body(method)
+  return function(url, body, headers)
+    if not headers then headers = {} end
+    if not body then body = {} end
 
-  if querystring then
-    url = string.format("%s?%s", url, ngx.encode_args(querystring))
+    if headers["content-type"] == "application/json" then
+      if type(body) == "table" then
+        body = json.encode(body)
+      end
+    else
+      headers["content-type"] = "application/x-www-form-urlencoded"
+      if type(body) == "table" then
+        body = ngx.encode_args(body)
+      end
+    end
+
+    headers["content-length"] = string.len(body)
+
+    return http_call {
+      method = method:upper(),
+      url = url,
+      headers = headers,
+      source = ltn12.source.string(body)
+    }
   end
-
-  return http_call {
-    method = "GET",
-    url = url,
-    headers = headers
-  }
 end
 
--- POST methpd
-function _M.post(url, form, headers)
-  if not headers then headers = {} end
-  if not form then form = {} end
+local function without_body(method)
+  return function(url, querystring, headers)
+    if not headers then headers = {} end
 
-  local body = ngx.encode_args(form)
-  headers["content-length"] = string.len(body)
-  if not headers["content-type"] then
-    headers["content-type"] = "application/x-www-form-urlencoded"
+    if querystring then
+      url = string.format("%s?%s", url, ngx.encode_args(querystring))
+    end
+
+    return http_call {
+      method = method:upper(),
+      url = url,
+      headers = headers
+    }
   end
-
-  return http_call {
-    method = "POST",
-    url = url,
-    headers = headers,
-    source = ltn12.source.string(body)
-  }
 end
 
--- POST MULTIPART methpd
+_M.put = with_body("PUT")
+_M.post = with_body("POST")
+_M.patch = with_body("PATCH")
+_M.get = without_body("GET")
+_M.delete = without_body("DELETE")
+_M.options = without_body("OPTIONS")
+
 function _M.post_multipart(url, form, headers)
   if not headers then headers = {} end
   if not form then form = {} end
 
   local boundary = "8fd84e9444e3946c"
   local body = ""
-  for k,v in pairs(form) do
+  for k, v in pairs(form) do
     body = body.."--"..boundary.."\r\nContent-Disposition: form-data; name=\""..k.."\"\r\n\r\n"..v.."\r\n"
   end
 
@@ -83,55 +98,6 @@ function _M.post_multipart(url, form, headers)
     url = url,
     headers = headers,
     source = ltn12.source.string(body)
-  }
-end
-
--- PUT method
-function _M.put(url, table, headers)
-  if not headers then headers = {} end
-  if not table then table = {} end
-  local raw_json = cjson.encode(table)
-
-  headers["content-length"] = string.len(raw_json)
-  if not headers["content-type"] then
-    headers["content-type"] = "application/json"
-  end
-
-  return http_call {
-    method = "PUT",
-    url = url,
-    headers = headers,
-    source = ltn12.source.string(raw_json)
-  }
-end
-
--- DELETE method
-function _M.delete(url, querystring, headers)
-  if not headers then headers = {} end
-
-  if querystring then
-    url = string.format("%s?%s", url, ngx.encode_args(querystring))
-  end
-
-  return http_call {
-    method = "DELETE",
-    url = url,
-    headers = headers
-  }
-end
-
--- OPTIONS method
-function _M.options(url, querystring, headers)
-  if not headers then headers = {} end
-
-  if querystring then
-    url = string.format("%s?%s", url, ngx.encode_args(querystring))
-  end
-
-  return http_call {
-    method = "OPTIONS",
-    url = url,
-    headers = headers
   }
 end
 

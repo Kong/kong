@@ -64,6 +64,15 @@ function _M.array_contains(arr, val)
   return false
 end
 
+function _M.is_array(t)
+  local i = 0
+  for _ in pairs(t) do
+    i = i + 1
+    if t[i] == nil and t[tostring(i)] == nil then return false end
+  end
+  return true
+end
+
 -- Add an error message to a key/value table.
 -- Can accept a nil argument, and if is nil, will initialize the table.
 -- @param `errors`  (Optional) Can be nil. Table to attach the error to. If nil, the table will be created.
