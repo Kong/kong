@@ -9,12 +9,33 @@ describe("Authentication Plugin", function()
 
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        { name = "tests auth 1", public_dns = "test1.com", target_url = "http://mockbin.com" },
+        { name = "tests auth 2", public_dns = "test2.com", target_url = "http://mockbin.com" },
+        { name = "tests auth 3", public_dns = "test3.com", target_url = "http://mockbin.com" }
+      },
+      consumer = {
+        { username = "auth_tests_consuser" }
+      },
+      plugin_configuration = {
+        { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
+        { name = "basicauth", value = {}, __api = 2 },
+        { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 }
+      },
+      keyauth_credential = {
+        { key = "apikey123", __consumer = 1 }
+      },
+      basicauth_credential = {
+        { username = "username", password = "password", __consumer = 1 }
+      }
+    }
+
     spec_helper.start_kong()
   end)
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
 
   describe("Query Authentication", function()
@@ -186,5 +207,4 @@ describe("Authentication Plugin", function()
     end)
 
   end)
-
 end)
