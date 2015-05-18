@@ -13,15 +13,11 @@ source .travis/platform.sh
 LUAJIT_ENABLED="no"
 
 if [ "$PLATFORM" == "macosx" ]; then
-  if [ "$LUA" == "luajit" ]; then
-    LUAJIT_ENABLED="yes";
-  fi
-  if [ "$LUA" == "luajit2.0" ]; then
-    LUAJIT_ENABLED="yes";
-  fi
-  if [ "$LUA" == "luajit2.1" ]; then
-    LUAJIT_ENABLED="yes";
-  fi;
+  case "$LUA" in
+    "luajit" | "luajit2.0" | "luajit2.1")
+      LUAJIT_ENABLED="yes"
+      ;;
+  esac
 elif [ "$(expr substr $LUA 1 6)" == "luajit" ]; then
   LUAJIT_ENABLED="yes";
 fi
@@ -50,16 +46,20 @@ if [ "$LUAJIT_ENABLED" == "yes" ]; then
   fi;
 
 else
-  if [ "$LUA" == "lua5.1" ]; then
-    curl http://www.lua.org/ftp/lua-5.1.5.tar.gz | tar xz
-    cd lua-5.1.5;
-  elif [ "$LUA" == "lua5.2" ]; then
-    curl http://www.lua.org/ftp/lua-5.2.3.tar.gz | tar xz
-    cd lua-5.2.3;
-  elif [ "$LUA" == "lua5.3" ]; then
-    curl http://www.lua.org/ftp/lua-5.3.0.tar.gz | tar xz
-    cd lua-5.3.0;
-  fi
+  case "$LUA" in
+    "lua5.1")
+      curl http://www.lua.org/ftp/lua-5.1.5.tar.gz | tar xz
+      cd lua-5.1.5
+      ;;
+    "lua5.2")
+      curl http://www.lua.org/ftp/lua-5.2.3.tar.gz | tar xz
+      cd lua-5.2.3
+      ;;
+    "lua5.3")
+      curl http://www.lua.org/ftp/lua-5.3.0.tar.gz | tar xz
+      cd lua-5.3.0
+      ;;
+  esac
   sudo make $PLATFORM install;
 fi
 
@@ -74,15 +74,20 @@ cd $LUAROCKS_BASE
 
 git checkout v$LUAROCKS_VERSION
 
-if [ "$LUA" == "luajit" ]; then
-  ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.0;
-elif [ "$LUA" == "luajit2.0" ]; then
-  ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.0;
-elif [ "$LUA" == "luajit2.1" ]; then
-  ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.1;
-else
-  ./configure;
-fi
+case "$LUA" in
+  "luajit")
+    ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.0
+    ;;
+  "luajit2.0")
+    ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.0
+    ;;
+  "luajit2.1")
+    ./configure --lua-suffix=jit --with-lua-include=/usr/local/include/luajit-2.1
+    ;;
+  *)
+    ./configure
+    ;;
+esac
 
 make build && sudo make install
 
@@ -92,10 +97,17 @@ rm -rf $LUAROCKS_BASE
 
 if [ "$LUAJIT_ENABLED" == "yes" ]; then
   rm -rf $LUAJIT_BASE;
-elif [ "$LUA" == "lua5.1" ]; then
-  rm -rf lua-5.1.5;
-elif [ "$LUA" == "lua5.2" ]; then
-  rm -rf lua-5.2.3;
-elif [ "$LUA" == "lua5.3" ]; then
-  rm -rf lua-5.3.0;
+else
+  case "$LUA" in
+    "lua5.1")
+      rm -rf lua-5.1.5
+      ;;
+    "lua5.2")
+      rm -rf lua-5.2.3
+      ;;
+    "lua5.3")
+      rm -rf lua-5.3.0
+      ;;
+  esac
 fi
+
