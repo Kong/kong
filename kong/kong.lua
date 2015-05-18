@@ -191,7 +191,7 @@ function _M.exec_plugins_header_filter()
   ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 
   if not ngx.ctx.stop_phases then
-    ngx.header[constants.HEADERS.VIA] = constants.NAME.."/"..constants.VERSION
+    ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
 
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]

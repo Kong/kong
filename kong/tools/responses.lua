@@ -54,8 +54,8 @@ local function send_response(status_code)
     end
 
     ngx.status = status_code
-    ngx.header[constants.HEADERS.CONTENT_TYPE] = "application/json; charset=utf-8"
-    ngx.header[constants.HEADERS.SERVER] = constants.NAME.."/"..constants.VERSION
+    ngx.header["Content-Type"] = "application/json; charset=utf-8"
+    ngx.header["Server"] = constants.NAME.."/"..constants.VERSION
 
     if type(response_default_content[status_code]) == "function" then
       content = response_default_content[status_code](content)
