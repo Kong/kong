@@ -1,86 +1,61 @@
-local spec_helper = require "spec.spec_helpers"
+local json = require "cjson"
 local http_client = require "kong.tools.http_client"
-local cjson = require "cjson"
+local spec_helper = require "spec.spec_helpers"
 
-local env = spec_helper.get_env()
-local created_ids = {}
-
-local kWebURL = spec_helper.API_URL
+local CREATED_IDS = {}
 local ENDPOINTS = {
   {
     collection = "apis",
-    total = table.getn(env.faker.FIXTURES.api) + 1,
     entity = {
-      public_dns = "api.mockbin.com",
-      name = "mockbin",
-      target_url = "http://mockbin.com"
+      form = {
+        public_dns = "api.mockbin.com",
+        name = "mockbin",
+        target_url = "http://mockbin.com"
+      }
     },
-    update_fields = {
-      public_dns = "newapi.mockbin.com"
-    },
+    update_fields = { public_dns = "newapi.mockbin.com" },
     error_message = '{"public_dns":"public_dns is required","target_url":"target_url is required"}\n'
   },
   {
     collection = "consumers",
-    total = table.getn(env.faker.FIXTURES.consumer) + 1,
-    entity = {
-      custom_id = "123456789"
-    },
-    update_fields = {
-      custom_id = "ABC_custom_ID"
-    },
-    error_message = nil
-  },
-  {
-    collection = "basicauth_credentials",
-    total = table.getn(env.faker.FIXTURES.basicauth_credential) + 1,
-    entity = {
-      username = "username5555",
-      password = "password5555",
-      consumer_id = function()
-        return created_ids.consumers
-      end
-    },
-    update_fields = {
-      username = "upd_username5555",
-      password = "upd_password5555"
-    },
-    error_message = '{"username":"username is required","consumer_id":"consumer_id is required"}\n'
-  },
-  {
-    collection = "keyauth_credentials",
-    total = table.getn(env.faker.FIXTURES.keyauth_credential) + 1,
-    entity = {
-      key = "apikey5555",
-      consumer_id = function()
-        return created_ids.consumers
-      end
-    },
-    update_fields = {
-      key = "upd_apikey5555",
-    },
-    error_message = '{"key":"key is required","consumer_id":"consumer_id is required"}\n'
+    entity = { form = { custom_id = "123456789" }},
+    update_fields = { custom_id = "ABC_custom_ID" },
+    error_message = '{"custom_id":"At least a \'custom_id\' or a \'username\' must be specified","username":"At least a \'custom_id\' or a \'username\' must be specified"}\n'
   },
   {
     collection = "plugins_configurations",
-    total = table.getn(env.faker.FIXTURES.plugin_configuration) + 1,
     entity = {
-      name = "ratelimiting",
-      api_id = function()
-        return created_ids.apis
-      end,
-      consumer_id = function()
-        return created_ids.consumers
-      end,
-      ["value.period"] = "second",
-      ["value.limit"] = 10
+      form = {
+        name = "ratelimiting",
+        api_id = nil,
+        consumer_id = nil,
+        ["value.period"] = "second",
+        ["value.limit"] = 10
+      },
+      json = {
+        name = "ratelimiting",
+        api_id = nil,
+        consumer_id = nil,
+        value = { period = "second", limit = 10 }
+      }
     },
-    update_fields = {
-      enabled = false
-    },
+    update_fields = { enabled = false },
     error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}\n'
   }
 }
+
+local function attach_ids()
+  ENDPOINTS[3].entity.form.api_id = CREATED_IDS.apis
+  ENDPOINTS[3].entity.json.api_id = CREATED_IDS.apis
+  ENDPOINTS[3].entity.form.consumer_id = CREATED_IDS.consumers
+  ENDPOINTS[3].entity.json.consumer_id = CREATED_IDS.consumers
+end
+
+local function test_for_each_endpoint(fn)
+  for _, endpoint in ipairs(ENDPOINTS) do
+    fn(endpoint, spec_helper.API_URL.."/"..endpoint.collection)
+  end
+end
 
 describe("Admin API", function()
 
@@ -91,137 +66,195 @@ describe("Admin API", function()
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
 
   describe("/", function()
     local constants = require "kong.constants"
 
     it("should return Kong's version and a welcome message", function()
-      local response, status = http_client.get(kWebURL)
-      local body = cjson.decode(response)
+      local response, status = http_client.get(spec_helper.API_URL)
       assert.are.equal(200, status)
+      local body = json.decode(response)
       assert.truthy(body.version)
       assert.truthy(body.tagline)
       assert.are.same(constants.VERSION, body.version)
     end)
 
     it("should have a Server header", function()
-      local _, _, headers = http_client.get(kWebURL)
+      local _, status, headers = http_client.get(spec_helper.API_URL)
+      assert.are.same(200, status)
       assert.are.same(string.format("%s/%s", constants.NAME, constants.VERSION), headers.server)
-      -- Via is only set for proxied requests
-      assert.falsy(headers.via)
+      assert.falsy(headers.via) -- Via is only set for proxied requests
     end)
 
   end)
 
   describe("POST", function()
-    for i, v in ipairs(ENDPOINTS) do
-      describe(v.collection.." entity", function()
+    describe("application/x-www-form-urlencoded", function()
+      test_for_each_endpoint(function(endpoint, base_url)
 
-        it("should not create with invalid parameters", function()
-          if v.collection ~= "consumers" then
-            local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", {})
-            assert.are.equal(400, status)
-            assert.are.equal(v.error_message, response)
-          end
+        it("should not create with an invalid application/x-www-form-urlencoded body", function()
+          local response, status = http_client.post(base_url.."/", {})
+          assert.are.equal(400, status)
+          assert.are.equal(endpoint.error_message, response)
         end)
 
-        it("should create an entity from valid paremeters", function()
+        it("should create an entity with an application/x-www-form-urlencoded body", function()
           -- Replace the IDs
-          for k, p in pairs(v.entity) do
-            if type(p) == "function" then
-              v.entity[k] = p()
-            end
-          end
+          attach_ids()
 
-          local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity)
-          local body = cjson.decode(response)
+          local response, status = http_client.post(base_url.."/", endpoint.entity.form)
           assert.are.equal(201, status)
-          assert.truthy(body)
 
           -- Save the ID for later use
-          created_ids[v.collection] = body.id
-        end)
-
-        it("should not create when the content-type is wrong", function()
-          local response, status, headers = http_client.post(kWebURL.."/"..v.collection.."/", v.entity, { ["content-type"] = "application/json"})
-          assert.are.equal(415, status)
-          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/x-www-form-urlencoded\\\".\"}\n", response)
+          local body = json.decode(response)
+          CREATED_IDS[endpoint.collection] = body.id
         end)
 
       end)
-    end
-  end)
+    end)
 
-  describe("GET", function()
-    for i, v in ipairs(ENDPOINTS) do
-      describe(v.collection.." entity", function()
+    describe("application/json", function()
 
-        it("should return not retrieve any entity with an invalid parameter", function()
-          local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection].."blah")
-          local body = cjson.decode(response)
-          assert.are.equal(404, status)
-          assert.truthy(body)
-          assert.are.equal('{"id":"'..created_ids[v.collection]..'blah is an invalid uuid"}\n', response)
+      setup(function()
+        spec_helper.drop_db()
+        CREATED_IDS = {}
+      end)
+
+      test_for_each_endpoint(function(endpoint, base_url)
+
+        it("should not create with invalid body", function()
+          local response, status = http_client.post(base_url.."/", {}, {["content-type"] = "application/json"})
+          assert.are.equal(400, status)
+          assert.are.equal(endpoint.error_message, response)
         end)
 
-        it("should retrieve all entities", function()
-          local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/")
-          local body = cjson.decode(response)
-          assert.are.equal(200, status)
-          assert.truthy(body.data)
-          --assert.truthy(body.total)
-          --assert.are.equal(v.total, body.total)
-          assert.are.equal(v.total, table.getn(body.data))
+        it("should respond 400 to malformed body", function()
+          local response, status = http_client.post(base_url.."/", '{"hello":"world"', {["content-type"] = "application/json"})
+          assert.are.equal(400, status)
+          assert.are.equal('{"message":"Cannot parse JSON body"}\n', response)
         end)
 
-        it("should retrieve one entity", function()
-          local response, status, headers = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
-          local body = cjson.decode(response)
-          assert.are.equal(200, status)
-          assert.truthy(body)
-          assert.are.equal(created_ids[v.collection], body.id)
+        it("should create an entity with a valid body", function()
+          -- Replace the IDs
+          attach_ids()
+
+          local json_entity = endpoint.entity.json and endpoint.entity.json or endpoint.entity.form
+
+          local response, status = http_client.post(base_url.."/", json_entity,
+            { ["content-type"] = "application/json" }
+          )
+          assert.are.equal(201, status)
+
+          -- Save the ID for later use
+          local body = json.decode(response)
+          CREATED_IDS[endpoint.collection] = body.id
         end)
 
       end)
-    end
+    end)
   end)
 
-  describe("PUT", function()
-    for i, v in ipairs(ENDPOINTS) do
-      describe(v.collection.." entity", function()
+  describe("GET all", function()
+    test_for_each_endpoint(function(endpoint, base_url)
 
-        it("should not update when the content-type is wrong", function()
-          local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body, { ["content-type"] = "application/x-www-form-urlencoded"})
-          assert.are.equal(415, status)
-          assert.are.equal("{\"message\":\"Unsupported Content-Type. Use \\\"application\\/json\\\".\"}\n", response)
-        end)
+      it("should retrieve all entities", function()
+        local response, status = http_client.get(base_url.."/")
+        local body = json.decode(response)
+        assert.are.equal(200, status)
+        assert.truthy(body.data)
+        assert.are.equal(1, table.getn(body.data))
+      end)
 
-        it("should update an entity if valid parameters", function()
-          local data = http_client.get(kWebURL.."/"..v.collection.."/"..created_ids[v.collection])
-          local body = cjson.decode(data)
+    end)
+  end)
+
+  describe("GET one", function()
+    test_for_each_endpoint(function(endpoint, base_url)
+
+      it("should respond 404 to non existing entities", function()
+        local response, status = http_client.get(base_url.."/00000000-0000-0000-0000-000000000000")
+        local body = json.decode(response)
+        assert.are.equal(404, status)
+        assert.are.equal('{"message":"Not found"}\n', response)
+      end)
+
+      it("should respond 400 to malformed requests", function()
+        local response, status = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection].."blah")
+        local body = json.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal('{"id":"'..CREATED_IDS[endpoint.collection]..'blah is an invalid uuid"}\n', response)
+      end)
+
+      it("should retrieve one entity", function()
+        local response, status = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+        local body = json.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equal(CREATED_IDS[endpoint.collection], body.id)
+      end)
+
+    end)
+  end)
+
+  describe("PATCH", function()
+    test_for_each_endpoint(function(endpoint, base_url)
+
+      it("should respond 404 to non existing entities", function()
+        local response, status = http_client.patch(base_url.."/00000000-0000-0000-0000-000000000000")
+        local body = json.decode(response)
+        assert.are.equal(404, status)
+        assert.are.equal('{"message":"Not found"}\n', response)
+      end)
+
+      it("should respond 400 to malformed requests", function()
+        local response, status = http_client.patch(base_url.."/"..CREATED_IDS[endpoint.collection].."blah")
+        local body = json.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal('{"id":"'..CREATED_IDS[endpoint.collection]..'blah is an invalid uuid"}\n', response)
+      end)
+
+      describe("application/x-www-form-urlencoded", function()
+
+        it("should update an entity with an application/x-www-form-urlencoded body", function()
+          local data = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+          local body = json.decode(data)
 
           -- Create new body
-          for k,v in pairs(v.update_fields) do
+          for k, v in pairs(endpoint.update_fields) do
             body[k] = v
           end
 
-          local response, status, headers = http_client.put(kWebURL.."/"..v.collection.."/"..created_ids[v.collection], body)
-          local new_body = cjson.decode(response)
+          local response, status = http_client.patch(base_url.."/"..CREATED_IDS[endpoint.collection], body)
           assert.are.equal(200, status)
-          assert.truthy(new_body)
-          assert.are.equal(created_ids[v.collection], new_body.id)
-
-          for k,v in pairs(v.update_fields) do
-            assert.are.equal(v, new_body[k])
-          end
-
-          assert.are.same(body, new_body)
+          local response_body = json.decode(response)
+          assert.are.equal(CREATED_IDS[endpoint.collection], response_body.id)
+          assert.are.same(body, response_body)
         end)
 
       end)
-    end
+
+      describe("application/json", function()
+
+        it("should update an entity with an application/json body", function()
+          local data = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+          local body = json.decode(data)
+
+          -- Create new body
+          for k, v in pairs(endpoint.update_fields) do
+            body[k] = v
+          end
+
+          local response, status = http_client.patch(base_url.."/"..CREATED_IDS[endpoint.collection], body,
+            { ["content-type"] = "application/json" }
+          )
+          local response_body = json.decode(response)
+          assert.are.equal(200, status)
+          assert.are.equal(CREATED_IDS[endpoint.collection], response_body.id)
+          assert.are.same(body, response_body)
+        end)
+
+      end)
+    end)
   end)
 
   -- Tests on DELETE must run in that order:
@@ -229,31 +262,135 @@ describe("Admin API", function()
   --  2. APIs/Consumers
   -- Since deleting APIs and Consumers delete related plugins_configurations.
   describe("DELETE", function()
-    describe("plugins_configurations", function()
+    test_for_each_endpoint(function(endpoint, base_url)
 
-      it("should delete a plugin_configuration", function()
-        local response, status, headers = http_client.delete(kWebURL.."/plugins_configurations/"..created_ids.plugins_configurations)
-        assert.are.equal(204, status)
+      it("should send 404 when trying to delete a non existing entity", function()
+        local response, status = http_client.delete(base_url.."/00000000-0000-0000-0000-000000000000")
+        assert.are.equal(404, status)
+        assert.are.same('{"message":"Not found"}\n', response)
+      end)
+
+      it("should respond 400 to malformed requests", function()
+        local response, status = http_client.delete(base_url.."/"..CREATED_IDS[endpoint.collection].."blah")
+        assert.are.equal(400, status)
+        assert.are.equal('{"id":"'..CREATED_IDS[endpoint.collection]..'blah is an invalid uuid"}\n', response)
       end)
 
     end)
 
-    describe("APIs", function()
-
-      it("should delete an API", function()
-        local response, status, headers = http_client.delete(kWebURL.."/apis/"..created_ids.apis)
-        assert.are.equal(204, status)
-      end)
-
+    it("should delete a plugin_configuration", function()
+      local response, status = http_client.delete(spec_helper.API_URL.."/plugins_configurations/"..CREATED_IDS.plugins_configurations)
+      assert.are.equal(204, status)
+      assert.falsy(response)
     end)
 
-    describe("Consumers", function()
+    it("should delete an API", function()
+      local response, status = http_client.delete(spec_helper.API_URL.."/apis/"..CREATED_IDS.apis)
+      assert.are.equal(204, status)
+      assert.falsy(response)
+    end)
 
-      it("should delete a Consumer", function()
-        local response, status, headers = http_client.delete(kWebURL.."/consumers/"..created_ids.consumers)
-        assert.are.equal(204, status)
+    it("should delete a Consumer", function()
+      local response, status = http_client.delete(spec_helper.API_URL.."/consumers/"..CREATED_IDS.consumers)
+      assert.are.equal(204, status)
+      assert.falsy(response)
+    end)
+
+  end)
+
+  describe("PUT", function()
+    describe("application/x-www-form-urlencoded", function()
+
+      setup(function()
+        spec_helper.drop_db()
+        CREATED_IDS = {}
       end)
 
+      test_for_each_endpoint(function(endpoint, base_url)
+
+        it("should not insert an entity if invalid", function()
+          local response, status = http_client.put(base_url, {})
+          assert.are.equal(400, status)
+          assert.are.equal(endpoint.error_message, response)
+        end)
+
+        it("should insert an entity if valid", function()
+          -- Replace the IDs
+          attach_ids()
+
+          local response, status = http_client.put(base_url, endpoint.entity.form)
+          assert.are.equal(201, status)
+
+          -- Save the ID for later use
+          local response_body = json.decode(response)
+          CREATED_IDS[endpoint.collection] = response_body.id
+        end)
+
+        it("should update the entity if a full body is given", function()
+          local data = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+          local body = json.decode(data)
+
+          -- Create new body
+          for k, v in pairs(endpoint.update_fields) do
+            body[k] = v
+          end
+
+          local response, status = http_client.put(base_url, body)
+          assert.are.equal(200, status)
+          local response_body = json.decode(response)
+          assert.are.equal(CREATED_IDS[endpoint.collection], response_body.id)
+          assert.are.same(body, response_body)
+        end)
+
+      end)
+    end)
+
+    describe("application/json", function()
+
+      setup(function()
+        spec_helper.drop_db()
+        CREATED_IDS = {}
+      end)
+
+      test_for_each_endpoint(function(endpoint, base_url)
+
+        it("should not insert an entity if invalid", function()
+          local response, status = http_client.put(base_url, {}, { ["content-type"] = "application/json" })
+          assert.are.equal(400, status)
+          assert.are.equal(endpoint.error_message, response)
+        end)
+
+        it("should insert an entity if valid", function()
+          -- Replace the IDs
+          attach_ids()
+
+          local json_entity = endpoint.entity.json and endpoint.entity.json or endpoint.entity.form
+
+          local response, status = http_client.put(base_url, json_entity, { ["content-type"] = "application/json" })
+          assert.are.equal(201, status)
+
+          -- Save the ID for later use
+          local response_body = json.decode(response)
+          CREATED_IDS[endpoint.collection] = response_body.id
+        end)
+
+        it("should update the entity if a full body is given", function()
+          local data = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+          local body = json.decode(data)
+
+          -- Create new body
+          for k, v in pairs(endpoint.update_fields) do
+            body[k] = v
+          end
+
+          local response, status = http_client.put(base_url, body, { ["content-type"] = "application/json" })
+          assert.are.equal(200, status)
+          local response_body = json.decode(response)
+          assert.are.equal(CREATED_IDS[endpoint.collection], response_body.id)
+          assert.are.same(body, response_body)
+        end)
+
+      end)
     end)
   end)
 end)
