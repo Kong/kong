@@ -1,126 +1,81 @@
 local base_controller = require "kong.api.routes.base_controller"
-local spec_helper = require "spec.spec_helpers"
 
-local env = spec_helper.get_env()
+require "kong.tools.ngx_stub"
+
+local stub = {
+  req = { headers = {} },
+  add_params = function() end,
+  params = { foo = "bar", number = 10, ["value.nested"] = 1, ["value.nested_2"] = 2 }
+}
 
 describe("Base Controller", function()
+  describe("#parse_params()", function()
 
-  it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.consumers._schema, nil)
-    assert.are.same({}, result)
-  end)
+    it("should normalize nested properties for parsed form-encoded parameters", function()
+      -- Here Lapis already parsed the form-encoded parameters but we are normalizing
+      -- the nested ones (with "." keys)
+      local f = base_controller.parse_params(function(stub)
+        assert.are.same({
+          foo = "bar",
+          number = 10,
+          value = {
+            nested = 1,
+            nested_2 = 2
+          }
+        }, stub.params)
+      end)
+      f(stub)
+    end)
 
-  it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {})
-    assert.are.same({}, result)
-  end)
+    it("should parse a JSON body", function()
+      -- Here we are simply decoding a JSON body (which is a string)
+      ngx.req.get_body_data = function() return '{"foo":"bar","number":10,"value":{"nested":1,"nested_2":2}}' end
+      stub.req.headers["Content-Type"] = "application/json; charset=utf-8"
 
-  it("should not parse params with invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true})
-    assert.are.same({}, result)
-  end)
+      local f = base_controller.parse_params(function(stub)
+        assert.are.same({
+          foo = "bar",
+          number = 10,
+          value = {
+            nested = 1,
+            nested_2 = 2
+          }
+        }, stub.params)
+      end)
+      f(stub)
+    end)
 
-  it("should not parse params with invalid schema", function()
-    local result = base_controller.parse_params({}, {hello = true})
-    assert.are.same({}, result)
-  end)
-
-  it("should not parse params with nil schema", function()
-    local result = base_controller.parse_params(nil, {hello = true})
-    assert.are.same({}, result)
-  end)
-
-  it("should not parse params with empty values", function()
-    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {})
-    assert.are.same({}, result)
-  end)
-
-  it("should not parse params with invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true, wot = 123})
-    assert.are.same({}, result)
-  end)
-
-  it("should parse only existing params", function()
-    local result = base_controller.parse_params(env.dao_factory.consumers._schema, {hello = true, custom_id = 123})
-    assert.are.same({
-      custom_id = 123
-    }, result)
-  end)
-
-  it("should parse tables without invalid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "wot", ["value.key_names"] = "apikey" })
-    assert.are.same({
-      name = "wot",
-      value = {}
-    }, result)
-
-    result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", wot = "query" })
-    assert.are.same({
-      name = "keyauth",
-      value = {}
-    }, result)
-  end)
-  it("should parse tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["value.key_names"] = "apikey" })
-    assert.are.same({
-      name = "keyauth",
-      value = {
-        key_names = { "apikey" }
+    it("should normalize sub-nested properties for parsed form-encoded parameters", function()
+      stub.params = { foo = "bar", number = 10, ["value.nested_1"] = 1, ["value.nested_2"] = 2,
+        ["value.nested.sub-nested"] = "hi"
       }
-    }, result)
-  end)
-  it("should not parse tables with invalid subschema prefix", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["asd.key_names"] = "apikey" })
-    assert.are.same({
-      name = "keyauth",
-      value = {}
-    }, result)
+      local f = base_controller.parse_params(function(stub)
+        assert.are.same({
+          foo = 'bar',
+          number = 10,
+          value = {
+            nested = {
+              ["sub-nested"] = "hi"
+            },
+            nested_1 = 1,
+            nested_2 = 2
+        }}, stub.params)
+      end)
+      f(stub)
+    end)
 
-    result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["key_names"] = "apikey" })
-    assert.are.same({
-      name = "keyauth",
-      value = {}
-    }, result)
-  end)
+    it("should normalize nested properties when they are plain arrays", function()
+      stub.params = { foo = "bar", number = 10, ["value.nested"] = {["1"]="hello", ["2"]="world"}}
+      local f = base_controller.parse_params(function(stub)
+        assert.are.same({
+          foo = 'bar',
+          number = 10,
+          value = {
+            nested = {"hello", "world"},
+        }}, stub.params)
+      end)
+      f(stub)
+    end)
 
-  it("should parse tables with skippig invalid values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {name = "keyauth", ["value.key_names"] = "apikey", ["value.wot"] = "ciao" })
-    assert.are.same({
-      name = "keyauth",
-      value = {
-        key_names = { "apikey" }
-      }
-    }, result)
   end)
-
-  it("should parse reversed-order tables with valid sub-schema values", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {["value.key_names"] = "query", name = "keyauth" })
-    assert.are.same({
-      name = "keyauth",
-      value = {
-        key_names = { "query" }
-      }
-    }, result)
-  end)
-
-  it("should parse arrays with a correct delimitator", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {["value.key_names"] = "wot,wat", name = "keyauth" })
-    assert.are.same({
-      name = "keyauth",
-      value = {
-        key_names = { "wot", "wat" }
-      }
-    }, result)
-  end)
-
-  it("should parse arrays with a incorrect delimitator", function()
-    local result = base_controller.parse_params(env.dao_factory.plugins_configurations._schema, {["value.key_names"] = "wot;wat", name = "keyauth" })
-    assert.are.same({
-      name = "keyauth",
-      value = {
-        key_names = { "wot;wat" }
-      }
-    }, result)
-  end)
-
 end)

@@ -19,6 +19,8 @@ install:
   - sudo make install
   - sudo make dev
 
-script: "busted --coverage spec/"
+script:
+  - "busted --coverage spec/"
+  - "luacheck kong"
 
 after_success: "luacov-coveralls -i kong"
