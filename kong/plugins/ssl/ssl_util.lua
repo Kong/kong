@@ -12,7 +12,7 @@ local function execute_openssl(data, cmd)
   IO.write_to_file(input, data)
 
   -- Execute OpenSSL command
-  local res, code = IO.os_execute(string.format(cmd, input, output))
+  local _, code = IO.os_execute(string.format(cmd, input, output))
   if code == 0 then
     result = IO.read_file(output)
   end

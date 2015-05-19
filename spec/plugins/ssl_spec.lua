@@ -1,12 +1,9 @@
 local spec_helper = require "spec.spec_helpers"
-local http_client = require "kong.tools.http_client"
 local ssl_util = require "kong.plugins.ssl.ssl_util"
-local cjson = require "cjson"
 local url = require "socket.url"
-local utils = require "kong.tools.utils"
 local IO = require "kong.tools.io"
 
-STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
+local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 
 describe("SSL Plugin", function()
 
@@ -117,14 +114,14 @@ IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
 
     it("should return default CERTIFICATE when requesting other APIs", function()
       local parsed_url = url.parse(STUB_GET_SSL_URL)
-      local res, code = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername test4.com")
+      local res = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername test4.com")
       
       assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=localhost"))
     end)
 
     it("should work when requesting a specific API", function()
       local parsed_url = url.parse(STUB_GET_SSL_URL)
-      local res, code = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername ssl1.com")
+      local res = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername ssl1.com")
       
       assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=ssl1.com"))
     end)

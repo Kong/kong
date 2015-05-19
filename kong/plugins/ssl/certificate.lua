@@ -1,4 +1,3 @@
-local ssl_util = require "kong.plugins.ssl.ssl_util"
 local cache = require "kong.tools.database_cache"
 
 local _M = {}
