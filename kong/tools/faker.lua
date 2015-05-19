@@ -33,10 +33,10 @@ Faker.FIXTURES = {
     { name = "API TESTS 7", public_dns = "cors2.com", target_url = "http://mockbin.com" },
     { name = "API TESTS 8 (logging)", public_dns = "logging.com", target_url = "http://mockbin.com" },
 
-    { name = "API TESTS 8 (dns)", public_dns = "dns1.com", target_url = "http://127.0.0.1:7771" },
-    { name = "API TESTS 9 (dns)", public_dns = "dns2.com", target_url = "http://localhost:7771" },
+    { name = "API TESTS 9 (dns)", public_dns = "dns1.com", target_url = "http://127.0.0.1:7771" },
+    { name = "API TESTS 10 (dns)", public_dns = "dns2.com", target_url = "http://localhost:7771" },
 
-    { name = "API TESTS 10 (ssl)", public_dns = "localhost", target_url = "http://mockbin.com" },
+    { name = "API TESTS 11 (ssl)", public_dns = "ssl1.com", target_url = "http://mockbin.com" },
 
     -- DEVELOPMENT APIs. Please do not use those in tests
     { name = "API DEV 1", public_dns = "dev.com", target_url = "http://mockbin.com" },
@@ -80,37 +80,37 @@ Faker.FIXTURES = {
     -- API 10
     { name = "ssl", value = { cert = [[
 -----BEGIN CERTIFICATE-----
-MIICUTCCAboCCQDmzZoyut/faTANBgkqhkiG9w0BAQsFADBtMQswCQYDVQQGEwJV
-UzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNjbzEQ
-MA4GA1UECgwHTWFzaGFwZTELMAkGA1UECwwCSVQxEjAQBgNVBAMMCWxvY2FsaG9z
-dDAeFw0xNTA1MTUwMDA4MzZaFw0xNjA1MTQwMDA4MzZaMG0xCzAJBgNVBAYTAlVT
-MRMwEQYDVQQIDApDYWxpZm9ybmlhMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRAw
-DgYDVQQKDAdNYXNoYXBlMQswCQYDVQQLDAJJVDESMBAGA1UEAwwJbG9jYWxob3N0
-MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDDG3WEFIeL8YWyEaJ0L3QESzR9
-Epg9d2p/y1v0xQgrwkM6sRFX81oNGdXssOeXAHJM6BXmMSbhfC+i3AkRPloltnwl
-yEylOBaGY0GlPehZ9x+UxDiNpnjDakWWqXoFn1vDAU8gLTmduGVIGsQxT32sF0Y9
-pFnbNQ0lU6cRe3/n8wIDAQABMA0GCSqGSIb3DQEBCwUAA4GBAHpVwlC75/LTKepa
-VKHXqpk5H1zYsj2byBhYOY5/+aYbNqfa2DaWE1zwv/J4E7wgKaeQHHgT2XBtYSRM
-ZMG9SgECUHZ+A/OebWgSfZvXbsIZ+PLk46rlZQ0O73kkbAyMTGNRvfEPeDmw0TR2
-DYk+jZoTdElBV6PQAxysILNeJK5n
+MIICSTCCAbICCQDZ7lxm1iUKmDANBgkqhkiG9w0BAQsFADBpMQswCQYDVQQGEwJV
+UzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNjbzEN
+MAsGA1UECgwES29uZzELMAkGA1UECwwCSVQxETAPBgNVBAMMCHNzbDEuY29tMB4X
+DTE1MDUxOTAwNTAzNloXDTE1MDYxODAwNTAzNlowaTELMAkGA1UEBhMCVVMxEzAR
+BgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xDTALBgNV
+BAoMBEtvbmcxCzAJBgNVBAsMAklUMREwDwYDVQQDDAhzc2wxLmNvbTCBnzANBgkq
+hkiG9w0BAQEFAAOBjQAwgYkCgYEAxOixlvURWF+WfMbG4alhrd3JcavYOGxiBcOv
+0qA2v2a89S5JyD43O2uC8TfE6JZc3UT5kjRKRqIA8QDTYn3XGoJwkvYd1w9oXm3R
+sZXXbi05PD0oXABtIIbH+0NllXRucdeODlXLi80mCvhVIIDjHifqDRiukecZGapE
+rvTsPjMCAwEAATANBgkqhkiG9w0BAQsFAAOBgQCVQdpCfTZLJk0XUu5RnenHpamp
+5ZRsdKA+jwE0kwuSWXx/WbsU35GJx1QVrfnmk7qJpwwg/ZbL/KMTUpY21a4ZyITQ
+WKHxfY3Klqh18Ll7oBDa9fhuhPE4G8tIum/xY3Z3mHBuXDmBxARD0bOPEJtJQw+H
+LGenf2mYrZBfL47wZw==
 -----END CERTIFICATE-----
 ]], key = [[
 -----BEGIN RSA PRIVATE KEY-----
-MIICXAIBAAKBgQDDG3WEFIeL8YWyEaJ0L3QESzR9Epg9d2p/y1v0xQgrwkM6sRFX
-81oNGdXssOeXAHJM6BXmMSbhfC+i3AkRPloltnwlyEylOBaGY0GlPehZ9x+UxDiN
-pnjDakWWqXoFn1vDAU8gLTmduGVIGsQxT32sF0Y9pFnbNQ0lU6cRe3/n8wIDAQAB
-AoGAdQQhBShy60Hd16Cv+FMFmBWq02C1ohfe7ep/qlwJvIT0YV0Vc9RmK/lUznKD
-U5NW+j0v9TGBijc7MsgZQBhPY8aQXmwPfgaLq3YXjNJUITGwH0KAZe9WBiLObVZb
-MDoa349PrjSpAkDryyF2wCmRBphUePd9BVeV/CR/a78BvSECQQDrWT2fqHjpSfKl
-rjt9n29fWbj2Sfjkjaa+MK1l4tgDAVrfNLjsf6aXTBbSUWaTfpHG9E6frTMuE5pT
-BcJf3TJJAkEA1DpBjavo8zpzjgmQ5SESrNB3+BYZYH9JRI91eIZYQzIvRgVRP+yG
-vc0Hdhr1xSwN8XiFcVm24s5TEM+uE+bIWwJAQ24BKvJhGi4WuIOQBfEdPst9JAuT
-pSA0qv9VXwC8dTf5KkR3y0LTnzusujuaUR4NdFxg/nzoUgZJzAm1ZDQDCQJBAKmq
-sUG70A60CjHhv+8Ok8mJGIBD2qHk4QRo1Hc4oFOISXbnRV+fjtEqmu52+0lYwQTt
-X3GRUb7dSFdGUVsjw8UCQH1sEtryRFIeCJgLT2p+UPYMNr6f/QYzpiK/M61xe2yf
-IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
+MIICXQIBAAKBgQDE6LGW9RFYX5Z8xsbhqWGt3clxq9g4bGIFw6/SoDa/Zrz1LknI
+Pjc7a4LxN8TollzdRPmSNEpGogDxANNifdcagnCS9h3XD2hebdGxldduLTk8PShc
+AG0ghsf7Q2WVdG5x144OVcuLzSYK+FUggOMeJ+oNGK6R5xkZqkSu9Ow+MwIDAQAB
+AoGAcYkqPLx5j9ct0ixbKGqd475qFJzdQ0tbCa/XhT7T0nDOqyBRcqBNAHnxOlzJ
+sMJiMUNAE8kKusdWe5/aQoQErkVuO9sh1U6sPr7mVD/JWmE08MRzhMwxUVP+HsXM
+EZky0M6TWNyghtvyElUiHTIW8quVdjn8oXQIbR/07VXEVmECQQDj6dHJ4XxXIvE1
+HQ+49EbbM9l7KFd7t2cpmng1+U4yqMGwNVk3MmEVKU8NiI/BVhznPvp0HH3QyLpV
+ShPt9SltAkEA3SzAZ5/UhjycKXgLsgidwDVWOpYweWU7KDsfrr+cSJkmzw7y9WYr
+vshdPYA2iSm83aY1vTzwSRV6udpZfBLiHwJBAJ1HfDie3JmdSWtn1LPEDymyDEEL
+Q+PiWtTA/nfwxV/8ST16c0i+AXUC/sTOGrZG4MdMFLYP+1sbSksVRc+OwbkCQQCy
+DFKfmOUnYyd7oq4XliQYFVfjNgCz2TB0RJROwuV29ANv8GLZ9nQE05tr5QkCBl2K
+OUFNo/7zdp0jfIlI/pKVAkA04q30OSEBIHBj/MmapVVSRaQiYfSMLV176nA4xqhz
+JkHk9MH9WKKGIchn0LvfUFHxTeBFERoREQo2A82B/WpO
 -----END RSA PRIVATE KEY-----
-]] }, __api = 10 }
+]] }, __api = 11 }
   },
   -- TODO: remove plugins from core
   keyauth_credential = {

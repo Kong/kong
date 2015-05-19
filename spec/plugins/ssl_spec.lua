@@ -2,6 +2,9 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local ssl_util = require "kong.plugins.ssl.ssl_util"
 local cjson = require "cjson"
+local url = require "socket.url"
+local utils = require "kong.tools.utils"
+local IO = require "kong.tools.io"
 
 STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 
@@ -16,13 +19,15 @@ describe("SSL Plugin", function()
     spec_helper.stop_kong()
     spec_helper.reset_db()
   end)
+  
+  describe("SSL Util", function()
 
-  it("should not convert an invalid cert to DER", function()
-    assert.falsy(ssl_util.cert_to_der("asd"))
-  end)
+    it("should not convert an invalid cert to DER", function()
+      assert.falsy(ssl_util.cert_to_der("asd"))
+    end)
 
-   it("should convert a valid cert to DER", function()
-    assert.truthy(ssl_util.cert_to_der([[
+     it("should convert a valid cert to DER", function()
+      assert.truthy(ssl_util.cert_to_der([[
 -----BEGIN CERTIFICATE-----
 MIICUTCCAboCCQDmzZoyut/faTANBgkqhkiG9w0BAQsFADBtMQswCQYDVQQGEwJV
 UzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNjbzEQ
@@ -39,14 +44,14 @@ ZMG9SgECUHZ+A/OebWgSfZvXbsIZ+PLk46rlZQ0O73kkbAyMTGNRvfEPeDmw0TR2
 DYk+jZoTdElBV6PQAxysILNeJK5n
 -----END CERTIFICATE-----
 ]]))
-  end)
+    end)
 
-  it("should not convert an invalid key to DER", function()
-    assert.falsy(ssl_util.key_to_der("asd"))
-  end)
+    it("should not convert an invalid key to DER", function()
+      assert.falsy(ssl_util.key_to_der("asd"))
+    end)
 
-  it("should convert a valid key to DER", function()
-    assert.truthy(ssl_util.key_to_der([[
+    it("should convert a valid key to DER", function()
+      assert.truthy(ssl_util.key_to_der([[
 -----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQDDG3WEFIeL8YWyEaJ0L3QESzR9Epg9d2p/y1v0xQgrwkM6sRFX
 81oNGdXssOeXAHJM6BXmMSbhfC+i3AkRPloltnwlyEylOBaGY0GlPehZ9x+UxDiN
@@ -63,6 +68,26 @@ X3GRUb7dSFdGUVsjw8UCQH1sEtryRFIeCJgLT2p+UPYMNr6f/QYzpiK/M61xe2yf
 IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
 -----END RSA PRIVATE KEY-----
 ]]))
+    end)
+
+  end)
+
+  describe("SSL Resolution", function()
+
+    it("should return default CERTIFICATE when requesting other APIs", function()
+      local parsed_url = url.parse(STUB_GET_SSL_URL)
+      local res, code = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername test4.com")
+      
+      assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=localhost"))
+    end)
+
+    it("should work when requesting a specific API", function()
+      local parsed_url = url.parse(STUB_GET_SSL_URL)
+      local res, code = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername ssl1.com")
+      
+      assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=ssl1.com"))
+    end)
+
   end)
 
 end)

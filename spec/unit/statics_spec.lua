@@ -92,7 +92,7 @@ memory_cache_size: 128
 ## Nginx configuration
 nginx: |
   worker_processes auto;
-  error_log logs/error.log debug;
+  error_log logs/error.log error;
   daemon on;
 
   worker_rlimit_nofile {{auto_worker_rlimit_nofile}};
@@ -109,7 +109,7 @@ nginx: |
     charset UTF-8;
 
     access_log logs/access.log;
-    access_log on;
+    access_log off;
 
     # Timeouts
     keepalive_timeout 60s;

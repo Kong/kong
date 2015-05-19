@@ -133,8 +133,8 @@ local function get_ssl_cert_and_key(kong_config)
     ssl_cert_path = kong_config.ssl_cert_path
     ssl_key_path = kong_config.ssl_key_path
   else
-    ssl_cert_path = IO.path:join(get_luarocks_install_dir(), "ssl", "kong.crt")
-    ssl_key_path = IO.path:join(get_luarocks_install_dir(), "ssl", "kong.key")
+    ssl_cert_path = IO.path:join(get_luarocks_install_dir(), "ssl", "kong-default.crt")
+    ssl_key_path = IO.path:join(get_luarocks_install_dir(), "ssl", "kong-default.key")
   end
 
   -- Check that the file exists

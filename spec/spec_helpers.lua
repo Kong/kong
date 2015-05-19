@@ -127,6 +127,19 @@ function _M.start_udp_server(port, ...)
 end
 
 --
+-- General Utils
+--
+
+-- Parses an SSL certificate returned by LuaSec
+function _M.parse_cert(cert)
+  local result = {}
+  for _,v in ipairs(cert:issuer()) do
+    result[v.name] = v.value
+  end
+  return result
+end
+
+--
 -- DAO helpers
 --
 function _M.prepare_db(conf_file)

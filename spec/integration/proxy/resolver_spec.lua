@@ -5,8 +5,11 @@ local cjson = require "cjson"
 local socket = require "socket"
 local url = require "socket.url"
 local stringy = require "stringy"
+local ssl = require "ssl"
+local utils = require "kong.tools.utils"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
+local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 
 describe("Resolver", function()
 
@@ -27,6 +30,52 @@ describe("Resolver", function()
       local body = cjson.decode(response)
       assert.are.equal(404, status)
       assert.are.equal('API not found with Host: foo.com', body.message)
+    end)
+
+  end)
+
+  describe("SSL", function() 
+
+    it("should work when calling SSL port", function()
+      local response, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "test4.com" })
+      assert.are.equal(200, status)
+      assert.truthy(response)
+      local parsed_response = cjson.decode(response)
+      assert.are.same("GET", parsed_response.method)
+    end)
+
+    it("should work when manually triggering the handshake on default route", function()
+      local parsed_url = url.parse(STUB_GET_SSL_URL)
+
+      local conn = socket.tcp()
+      local ok, err = conn:connect(parsed_url.host, parsed_url.port)
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      local params = {
+        mode = "client",
+        protocol = "tlsv1",
+        verify = "none",
+        options = "all",
+      }
+
+      -- TLS/SSL initialization
+      conn = ssl.wrap(conn, params)
+      local ok, err = conn:dohandshake()
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      local cert = spec_helper.parse_cert(conn:getpeercertificate())
+      
+      assert.are.same(6, utils.table_size(cert))
+      assert.are.same("Kong", cert.organizationName)
+      assert.are.same("IT", cert.organizationalUnitName)
+      assert.are.same("US", cert.countryName)
+      assert.are.same("California", cert.stateOrProvinceName)
+      assert.are.same("San Francisco", cert.localityName)
+      assert.are.same("localhost", cert.commonName)
+
+      conn:close()
     end)
 
   end)

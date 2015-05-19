@@ -4,7 +4,6 @@ local _M = {}
 
 function _M.execute(conf)
   local ssl = require "ngx.ssl"
-
   local server_name = ssl.server_name()
   if server_name then -- Only support SNI requests
     local api, err = resolver_util.find_api({server_name})

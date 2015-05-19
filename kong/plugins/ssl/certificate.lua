@@ -25,7 +25,6 @@ function _M.execute(conf)
     ngx.log(ngx.ERR, "failed to set DER private key: ", err)
     return
   end
-
 end
 
 return _M
