@@ -854,9 +854,9 @@ describe("Cassandra DAO", function()
         assert.truthy(res)
 
         assert.are.same(3, #res)
-        assert.truthy(utils.array_contains(res, "keyauth"))
-        assert.truthy(utils.array_contains(res, "ratelimiting"))
-        assert.truthy(utils.array_contains(res, "filelog"))
+        assert.truthy(utils.table_contains(res, "keyauth"))
+        assert.truthy(utils.table_contains(res, "ratelimiting"))
+        assert.truthy(utils.table_contains(res, "filelog"))
       end)
 
       it("should insert a plugin and set the consumer_id to a 'null' uuid if none is specified", function()

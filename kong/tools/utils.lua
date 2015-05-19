@@ -12,21 +12,6 @@ function _M.is_empty(t)
   return next(t) == nil
 end
 
-function _M.deepcopy(orig)
-  local orig_type = type(orig)
-  local copy
-  if orig_type == 'table' then
-    copy = {}
-    for orig_key, orig_value in next, orig, nil do
-      copy[_M.deepcopy(orig_key)] = _M.deepcopy(orig_value)
-    end
-    setmetatable(copy, _M.deepcopy(getmetatable(orig)))
-  else -- number, string, boolean, etc
-    copy = orig
-  end
-  return copy
-end
-
 _M.sort = {
   descending = function(a, b) return a > b end,
   ascending = function(a, b) return a < b end
@@ -55,7 +40,7 @@ function _M.reverse_table(arr)
   return reversed
 end
 
-function _M.array_contains(arr, val)
+function _M.table_contains(arr, val)
   for _, v in pairs(arr) do
     if v == val then
       return true
@@ -92,6 +77,23 @@ function _M.add_error(errors, k, v)
   end
 
   return errors
+end
+
+-- Try to load a module and do not throw an error if the module was not found.
+-- Will throw an error if the loading failed for another reason (ex: syntax error).
+-- @param `module_name` Path of the module to load (ex: kong.plugins.keyauth.api).
+-- @return `loaded`     A boolean indicating wether the module was successfully loaded or not.
+-- @return `module`     The retrieved module (not loaded).
+function _M.load_module_if_exists(module_name)
+  local status, res = pcall(require, module_name)
+  if status then
+    return true, res
+  -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
+  elseif type(res) == "string" and string.find(res, "module '.*' not found") then
+    return false
+  else
+    error(res)
+  end
 end
 
 return _M
