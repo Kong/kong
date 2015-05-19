@@ -6,7 +6,7 @@ local IO = require "kong.tools.io"
 describe("CLI", function()
 
   it("should return the right version", function()
-    local result, exit_code = IO.os_execute(spec_helper.KONG_BIN.." version")
+    local result = IO.os_execute(spec_helper.KONG_BIN.." version")
     assert.are.same("Kong version: "..constants.VERSION, stringy.strip(result))
   end)
 
