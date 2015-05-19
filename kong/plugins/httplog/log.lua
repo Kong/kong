@@ -15,11 +15,11 @@ local function generate_post_payload(method, parsed_url, message)
   return payload
 end
 
--- parse host url  .
+-- Parse host url  .
 -- @param `url`  host url     
 -- @return a table with host details like domain name, port, path etc
-local function parse_url(url)
-  local parsed_url = url.parse(parsed_url)
+local function parse_url(host_url)
+  local parsed_url = url.parse(host_url)
   if not parsed_url.port then
     if parsed_url.scheme == "http" then 
       parsed_url.port = 80
@@ -30,9 +30,9 @@ local function parse_url(url)
   return parsed_url
 end
 
--- Log to a end point.
+-- Log to a Http end point.
 -- @param `premature` 
--- @param `conf`      
+-- @param `conf`     Configuration table 
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
   local ok, err
