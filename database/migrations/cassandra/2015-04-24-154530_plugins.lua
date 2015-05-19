@@ -32,6 +32,15 @@ local Migration = {
         value counter,
         PRIMARY KEY ((api_id, identifier, period_date, period))
       );
+
+      CREATE TABLE IF NOT EXISTS datausage_metrics(
+        api_id uuid,
+        identifier text,
+        period text,
+        period_date timestamp,
+        value counter,
+        PRIMARY KEY ((api_id, identifier, period_date, period))
+      );
     ]]
   end,
 
@@ -40,6 +49,7 @@ local Migration = {
       DROP TABLE basicauth_credentials;
       DROP TABLE keyauth_credentials;
       DROP TABLE ratelimiting_metrics;
+      DROP TABLE datausage_metrics;
     ]]
   end
 }

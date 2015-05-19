@@ -17,6 +17,7 @@ local Migrations = require "kong.dao.cassandra.migrations"
 local BasicAuthCredentials = require "kong.dao.cassandra.basicauth_credentials"
 local RateLimitingMetrics = require "kong.dao.cassandra.ratelimiting_metrics"
 local KeyAuthCredentials = require "kong.dao.cassandra.keyauth_credentials"
+local DataUsageMetrics = require "kong.dao.cassandra.datausage_metrics"
 
 local CassandraFactory = Object:extend()
 
@@ -55,6 +56,7 @@ function CassandraFactory:new(properties)
   self.basicauth_credentials = BasicAuthCredentials(properties)
   self.ratelimiting_metrics = RateLimitingMetrics(properties)
   self.keyauth_credentials = KeyAuthCredentials(properties)
+  self.datausage_metrics = DataUsageMetrics(properties)
 
   self.migrations = Migrations(properties)
 end
@@ -67,6 +69,7 @@ function CassandraFactory:drop()
     TRUNCATE basicauth_credentials;
     TRUNCATE keyauth_credentials;
     TRUNCATE ratelimiting_metrics;
+    TRUNCATE datausage_metrics;
   ]]
 end
 
@@ -100,7 +103,8 @@ function CassandraFactory:prepare()
                                 self.plugins_configurations,
                                 self.ratelimiting_metrics,
                                 self.basicauth_credentials,
-                                self.keyauth_credentials }) do
+                                self.keyauth_credentials,
+                                self.datausage_metrics }) do
     local status, err = pcall(function() prepare_collection(collection) end)
     if not status then
       return err

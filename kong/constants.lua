@@ -34,7 +34,9 @@ return {
     API_TIME = "X-Kong-Api-Time",
     CONSUMER_ID = "X-Consumer-ID",
     RATELIMIT_LIMIT = "X-RateLimit-<duration>-Limit",
-    RATELIMIT_REMAINING = "X-RateLimit-<duration>-Remaining"
+    RATELIMIT_REMAINING = "X-RateLimit-<duration>-Remaining",
+    DATAUSAGE_LIMIT = "X-DataLimit-<duration>-Limit",
+    DATAUSAGE_REMAINING = "X-DataLimit-<duration>-Remaining"
   },
   CACHE = {
     APIS = "apis",
@@ -48,6 +50,16 @@ return {
     HEADER = "header"
   },
   RATELIMIT = {
+    PERIODS = {
+      "second",
+      "minute",
+      "hour",
+      "day",
+      "month",
+      "year"
+    }
+  },
+  DATAUSAGE = {
     PERIODS = {
       "second",
       "minute",

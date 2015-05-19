@@ -78,6 +78,7 @@ build = {
     ["kong.dao.cassandra.ratelimiting_metrics"] = "kong/dao/cassandra/ratelimiting_metrics.lua",
     ["kong.dao.cassandra.basicauth_credentials"] = "kong/dao/cassandra/basicauth_credentials.lua",
     ["kong.dao.cassandra.keyauth_credentials"] = "kong/dao/cassandra/keyauth_credentials.lua",
+    ["kong.dao.cassandra.datausage_metrics"] = "kong/dao/cassandra/datausage_metrics.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -114,6 +115,11 @@ build = {
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.access"] = "kong/plugins/cors/access.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
+
+    ["kong.plugins.datausage.handler"] = "kong/plugins/datausage/handler.lua",
+    ["kong.plugins.datausage.access"] = "kong/plugins/datausage/access.lua",
+    ["kong.plugins.datausage.schema"] = "kong/plugins/datausage/schema.lua",
+    ["kong.plugins.datausage.log"] = "kong/plugins/datausage/log.lua",
 
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
