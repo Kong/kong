@@ -21,6 +21,6 @@ install:
 
 script:
   - "busted --coverage spec/"
-  - "luacheck ."
+  - "luacheck kong/"
 
 after_success: "luacov-coveralls -i kong"
