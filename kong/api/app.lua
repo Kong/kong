@@ -1,4 +1,5 @@
 local lapis = require "lapis"
+local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
@@ -103,10 +104,12 @@ PluginsConfigurations()
 -- Loading plugins routes
 if configuration and configuration.plugins_available then
   for _, v in ipairs(configuration.plugins_available) do
-    local status, res = pcall(require, "kong.plugins."..v..".api")
-    if status then
+    local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
+    if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)
-      res()
+      mod()
+    else
+      ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: "..v)
     end
   end
 end
