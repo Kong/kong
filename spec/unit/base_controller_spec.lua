@@ -1,5 +1,6 @@
 local base_controller = require "kong.api.routes.base_controller"
-local spec_helper = require "spec.spec_helpers" -- ngx stub
+
+require "kong.tools.ngx_stub"
 
 local stub = {
   req = { headers = {} },

@@ -24,7 +24,6 @@ describe("CLI", function()
       os.execute("cp "..TEST_CONF.." "..SERVER_CONF)
       spec_helper.add_env(SERVER_CONF)
       spec_helper.prepare_db(SERVER_CONF)
-      spec_helper.drop_db(SERVER_CONF) -- remove the seed from prepare_db()
     end)
 
     teardown(function()
@@ -34,7 +33,6 @@ describe("CLI", function()
 
     after_each(function()
       pcall(spec_helper.stop_kong, SERVER_CONF)
-      spec_helper.reset_db(SERVER_CONF)
     end)
 
     it("should start with the default configuration", function()
@@ -50,7 +48,7 @@ describe("CLI", function()
     it("should work when no plugins are enabled and the DB is empty", function()
       replace_conf_property("plugins_available", {})
 
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
@@ -65,7 +63,7 @@ describe("CLI", function()
     it("should not fail when an existing plugin is being enabled", function()
       replace_conf_property("plugins_available", {"keyauth"})
 
-      local result, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
@@ -78,9 +76,16 @@ describe("CLI", function()
     end)
 
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
-      replace_conf_property("plugins_available", {"keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer"})
+      spec_helper.get_env(SERVER_CONF).faker:insert_from_table {
+        api = {
+          { name = "tests cli 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
+        },
+        plugin_configuration = {
+          { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
+        }
+      }
 
-      spec_helper.prepare_db(SERVER_CONF)
+      replace_conf_property("plugins_available", {"keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer"})
 
       assert.has_error(function()
         spec_helper.start_kong(SERVER_CONF, true)
@@ -89,8 +94,6 @@ describe("CLI", function()
 
     it("should work the used plugins are enabled", function()
       replace_conf_property("plugins_available", {"ratelimiting", "keyauth", "basicauth", "tcplog", "udplog", "filelog", "request_transformer", "cors"})
-
-      spec_helper.prepare_db(SERVER_CONF)
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)

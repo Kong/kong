@@ -3,7 +3,7 @@ local http_client = require "kong.tools.http_client"
 
 require "kong.tools.ngx_stub"
 
-describe("HTTP Client", function()
+describe("http_client", function()
 
   describe("GET", function()
 
@@ -113,5 +113,4 @@ describe("HTTP Client", function()
     end)
 
   end)
-
 end)
