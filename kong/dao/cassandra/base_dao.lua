@@ -5,10 +5,11 @@
 -- this object to benefit from methods such as `insert`, `update`, schema validations
 -- (including UNIQUE and FOREIGN check), marshalling of some properties, etc...
 
+local validations = require("kong.dao.schemas_validation")
+local validate = validations.validate
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
-local validate = require("kong.dao.schemas_validation").validate
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"
@@ -182,12 +183,6 @@ function BaseDao:_close_session(session)
   end
 end
 
-local digit = "[0-9a-f]"
-local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
-local function is_valid_uuid(uuid)
-  return uuid and uuid:match(uuid_pattern) ~= nil
-end
-
 -- Build the array of arguments to pass to lua-resty-cassandra :execute method.
 -- Note:
 --   Since this method only accepts an ordered list, we build this list from
@@ -206,7 +201,7 @@ local function encode_cassandra_args(schema, t, args_keys)
     local value = t[column]
 
     if schema_field.type == constants.DATABASE_TYPES.ID and value then
-      if is_valid_uuid(value) then
+      if validations.is_valid_uuid(value) then
         value = cassandra.uuid(value)
       else
         errors = utils.add_error(errors, column, value.." is an invalid uuid")
