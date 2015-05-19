@@ -1,4 +1,3 @@
-local json = require "cjson"
 local utils = require "kong.tools.utils"
 local Object = require "classic"
 local stringy = require "stringy"

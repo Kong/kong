@@ -4,7 +4,7 @@ local DaoError = require "kong.dao.error"
 
 describe("Faker", function()
 
-  local ENTITIES_TYPES = { "api", "consumer", "basicauth_credential", "keyauth_credential", "plugin_configuration" }
+  local ENTITIES_TYPES = { "api", "consumer", "plugin_configuration" }
 
   local factory_mock = {}
   local insert_spy
@@ -29,11 +29,6 @@ describe("Faker", function()
     insert_spy:revert()
   end)
 
-  it("should have an 'inserted_entities' property for relations", function()
-    assert.truthy(faker.inserted_entities)
-    assert.are.same("table", type(faker.inserted_entities))
-  end)
-
   describe("#fake_entity()", function()
 
     it("should return a fake entity for each type", function()
@@ -45,10 +40,26 @@ describe("Faker", function()
     end)
 
     it("should throw an error if the type doesn't exist", function()
-      local func_err = function() local t = faker:fake_entity("foo") end
+      local func_err = function() faker:fake_entity("foo") end
       assert.has_error(func_err, "Entity of type foo cannot be generated.")
     end)
 
+  end)
+
+  describe("#insert_from_table()", function()
+    it("should throw a descriptive error if cannot insert an entity", function()
+      local api_t = { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" }
+
+      local printable_mt = require "kong.tools.printable"
+      local entity_to_str = setmetatable(api_t, printable_mt)
+
+      factory_mock.apis.insert = function(self, t)
+                                   return nil, DaoError("cannot insert api error test", "schema")
+                                 end
+      assert.has_error(function()
+        faker:insert_from_table({ api = { api_t } })
+      end, "Faker failed to insert api entity: "..entity_to_str.."\ncannot insert api error test")
+    end)
   end)
 
   describe("#seed()", function()
@@ -67,51 +78,42 @@ describe("Faker", function()
       assert.spy(faker.insert_from_table).was.called(1)
     end)
 
-    it("should populate the inserted_entities table for relations", function()
-      faker:seed()
-
-      for _, v in ipairs(ENTITIES_TYPES) do
-        assert.truthy(faker.inserted_entities[v])
-      end
-    end)
-
-    it("should be possible to add some random entities complementing the default hard-coded ones", function()
-      faker:seed(2000)
-      assert.spy(faker.insert_from_table).was.called(2)
-      assert.spy(insert_spy).was.called(8030) -- 3*2000 + base entities
+    it("should insert some random entities for apis and consumers", function()
+      local fixtures = faker:seed(1)
+      assert.truthy(fixtures.api)
+      assert.truthy(fixtures.consumer)
     end)
 
     it("should create relations between entities_to_insert and inserted entities", function()
-      faker:seed()
+      local fixtures = {
+        api = {
+          { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
+          { name = "tests faker 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
+        },
+        plugin_configuration = {
+          { name = "keyauth", value = {key_names={"apikey"}}, __api = 1 },
+          { name = "keyauth", value = {key_names={"apikey"}}, __api = 2 }
+        }
+      }
 
-      for type, entities in pairs(Faker.FIXTURES) do
+      local inserted_fixtures = faker:insert_from_table(fixtures)
+
+      for type, entities in pairs(inserted_fixtures) do
         for i, entity in ipairs(entities) do
           -- assert object has been inserted
-          local inserted_entity = faker.inserted_entities[type][i]
-          assert.truthy(inserted_entity)
+          local entity = inserted_fixtures[type][i]
+          assert.truthy(entity)
 
           -- discover if this entity had any hard-coded relation
           for _, v in ipairs(ENTITIES_TYPES) do
             local has_relation = entity["__"..v] ~= nil
             if has_relation then
               -- check the relation was respected
-              assert.truthy(inserted_entity[v.."_id"])
+              assert.truthy(entity[v.."_id"])
             end
           end
         end
       end
-    end)
-
-    it("should throw a descriptive error if cannot insert an entity", function()
-      local printable_mt = require "kong.tools.printable"
-      local entity_to_str = setmetatable(Faker.FIXTURES.api[1], printable_mt)
-
-      factory_mock.apis.insert = function(self, t)
-                                   return nil, DaoError("cannot insert api error test", "schema")
-                                 end
-      assert.has_error(function()
-        faker:seed()
-      end, "Faker failed to insert api entity: "..entity_to_str.."\ncannot insert api error test")
     end)
 
   end)

@@ -1,5 +1,4 @@
 local IO = require "kong.tools.io"
-local spec_helper = require "spec.spec_helpers"
 
 local TEST_FILE = "/tmp/test_file"
 

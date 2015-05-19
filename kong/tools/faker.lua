@@ -1,128 +1,12 @@
 local Object = require "classic"
-local utils = require "kong.tools.utils"
 
-math.randomseed(os.time())
-
--- Return a random element from an array.
--- @param `t` Array to get an element from.
--- @return    A random element from the `t` array.
-local function random_from_table(t)
-  if not t then return {} end
-  return t[math.random(#t)]
-end
-
---
--- Faker
---
 local Faker = Object:extend()
 
 function Faker:new(dao_factory)
   self.dao_factory = dao_factory
-  self.inserted_entities = {}
 end
 
-Faker.FIXTURES = {
-  api = {
-    -- TESTS APIs
-    { name = "API TESTS 1", public_dns = "test1.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 2", public_dns = "test2.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 3", public_dns = "test3.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 4", public_dns = "test4.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 5", public_dns = "test5.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 6", public_dns = "cors1.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 7", public_dns = "cors2.com", target_url = "http://mockbin.com" },
-    { name = "API TESTS 8 (logging)", public_dns = "logging.com", target_url = "http://mockbin.com" },
-
-    { name = "API TESTS 9 (dns)", public_dns = "dns1.com", target_url = "http://127.0.0.1:7771" },
-    { name = "API TESTS 10 (dns)", public_dns = "dns2.com", target_url = "http://localhost:7771" },
-
-    { name = "API TESTS 11 (ssl)", public_dns = "ssl1.com", target_url = "http://mockbin.com" },
-
-    -- DEVELOPMENT APIs. Please do not use those in tests
-    { name = "API DEV 1", public_dns = "dev.com", target_url = "http://mockbin.com" },
-  },
-  consumer = {
-    { custom_id = "provider_123" },
-    { custom_id = "provider_124" }
-  },
-  plugin_configuration = {
-    -- API 1
-    { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
-    -- API 2
-    { name = "basicauth", value = {}, __api = 2 },
-    -- API 3
-    { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
-    { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 3 },
-    { name = "ratelimiting", value = {period = "minute", limit = 8}, __api = 3, __consumer = 1 },
-    -- API 4
-    { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 4 },
-    -- API 5
-    { name = "request_transformer", value = {
-      add = { headers = {"x-added:true", "x-added2:true" },
-              querystring = {"newparam:value"},
-              form = {"newformparam:newvalue"} },
-      remove = { headers = { "x-to-remove" },
-                 querystring = { "toremovequery" },
-                 form = { "toremoveform" } } }, __api = 5 },
-    -- API 6
-    { name = "cors", value = {}, __api = 6 },
-    -- API 7
-    { name = "cors", value = { origin = "example.com",
-                               methods = "GET",
-                               headers = "origin, type, accepts",
-                               exposed_headers = "x-auth-token",
-                               max_age = 23,
-                               credentials = true }, __api = 7 },
-    -- API 8
-    { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 8 },
-    { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 8 },
-    { name = "filelog", value = {}, __api = 8 },
-    -- API 10
-    { name = "ssl", value = { cert = [[
------BEGIN CERTIFICATE-----
-MIICSTCCAbICCQDZ7lxm1iUKmDANBgkqhkiG9w0BAQsFADBpMQswCQYDVQQGEwJV
-UzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNjbzEN
-MAsGA1UECgwES29uZzELMAkGA1UECwwCSVQxETAPBgNVBAMMCHNzbDEuY29tMB4X
-DTE1MDUxOTAwNTAzNloXDTE1MDYxODAwNTAzNlowaTELMAkGA1UEBhMCVVMxEzAR
-BgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xDTALBgNV
-BAoMBEtvbmcxCzAJBgNVBAsMAklUMREwDwYDVQQDDAhzc2wxLmNvbTCBnzANBgkq
-hkiG9w0BAQEFAAOBjQAwgYkCgYEAxOixlvURWF+WfMbG4alhrd3JcavYOGxiBcOv
-0qA2v2a89S5JyD43O2uC8TfE6JZc3UT5kjRKRqIA8QDTYn3XGoJwkvYd1w9oXm3R
-sZXXbi05PD0oXABtIIbH+0NllXRucdeODlXLi80mCvhVIIDjHifqDRiukecZGapE
-rvTsPjMCAwEAATANBgkqhkiG9w0BAQsFAAOBgQCVQdpCfTZLJk0XUu5RnenHpamp
-5ZRsdKA+jwE0kwuSWXx/WbsU35GJx1QVrfnmk7qJpwwg/ZbL/KMTUpY21a4ZyITQ
-WKHxfY3Klqh18Ll7oBDa9fhuhPE4G8tIum/xY3Z3mHBuXDmBxARD0bOPEJtJQw+H
-LGenf2mYrZBfL47wZw==
------END CERTIFICATE-----
-]], key = [[
------BEGIN RSA PRIVATE KEY-----
-MIICXQIBAAKBgQDE6LGW9RFYX5Z8xsbhqWGt3clxq9g4bGIFw6/SoDa/Zrz1LknI
-Pjc7a4LxN8TollzdRPmSNEpGogDxANNifdcagnCS9h3XD2hebdGxldduLTk8PShc
-AG0ghsf7Q2WVdG5x144OVcuLzSYK+FUggOMeJ+oNGK6R5xkZqkSu9Ow+MwIDAQAB
-AoGAcYkqPLx5j9ct0ixbKGqd475qFJzdQ0tbCa/XhT7T0nDOqyBRcqBNAHnxOlzJ
-sMJiMUNAE8kKusdWe5/aQoQErkVuO9sh1U6sPr7mVD/JWmE08MRzhMwxUVP+HsXM
-EZky0M6TWNyghtvyElUiHTIW8quVdjn8oXQIbR/07VXEVmECQQDj6dHJ4XxXIvE1
-HQ+49EbbM9l7KFd7t2cpmng1+U4yqMGwNVk3MmEVKU8NiI/BVhznPvp0HH3QyLpV
-ShPt9SltAkEA3SzAZ5/UhjycKXgLsgidwDVWOpYweWU7KDsfrr+cSJkmzw7y9WYr
-vshdPYA2iSm83aY1vTzwSRV6udpZfBLiHwJBAJ1HfDie3JmdSWtn1LPEDymyDEEL
-Q+PiWtTA/nfwxV/8ST16c0i+AXUC/sTOGrZG4MdMFLYP+1sbSksVRc+OwbkCQQCy
-DFKfmOUnYyd7oq4XliQYFVfjNgCz2TB0RJROwuV29ANv8GLZ9nQE05tr5QkCBl2K
-OUFNo/7zdp0jfIlI/pKVAkA04q30OSEBIHBj/MmapVVSRaQiYfSMLV176nA4xqhz
-JkHk9MH9WKKGIchn0LvfUFHxTeBFERoREQo2A82B/WpO
------END RSA PRIVATE KEY-----
-]] }, __api = 11 }
-  },
-  -- TODO: remove plugins from core
-  keyauth_credential = {
-    { key = "apikey122", __consumer = 1 },
-    { key = "apikey123", __consumer = 2 }
-  },
-  basicauth_credential = {
-    { username = "username", password = "password", __consumer = 1 }
-  }
-}
-
--- Generate a fake entity
+-- Generate a fake entity.
 -- @param `type`  Type of the entity to generate.
 -- @return        An valid entity (a table) complying to the defined schema.
 function Faker:fake_entity(type)
@@ -139,117 +23,78 @@ function Faker:fake_entity(type)
       custom_id = "random_custom_id_"..r
     }
   elseif type == "plugin_configuration" then
-    local plugin_type = random_from_table({ "keyauth", "ratelimiting" })
-    local plugin_value
-    if plugin_type == "keyauth" then
-      plugin_value = { key_names = { "apikey"..r }}
-    else
-      plugin_value = { period = "minute", limit = r }
-    end
     return {
-      name = plugin_type,
-      value = plugin_value,
-      api_id = nil,
-      consumer_id = nil
-    }
-    -- TODO: remove plugins from core
-  elseif type == "basicauth_credential" then
-    return {
-      consumer_id = random_from_table(self.inserted_entities.consumer).id,
-      username = "username_random"..r,
-      password = "password_random"..r
-    }
-  elseif type == "keyauth_credential" then
-    return {
-      consumer_id = random_from_table(self.inserted_entities.consumer).id,
-      key = "key_random"..r
+      name = "keyauth",
+      value = { key_names = {"apikey"} }
     }
   else
     error("Entity of type "..type.." cannot be generated.")
   end
 end
 
--- Seed the database with a set of hard-coded entities, and optionally random data
+-- Seed the database with random APIs and Consumers.
 -- @param {number} random_amount The number of random entities to add (apis, consumers, applications)
 function Faker:seed(random_amount)
-  -- reset previously inserted entities
-  self.inserted_entities = {}
+  if not random_amount then random_amount = 0 end
 
-  self:insert_from_table(utils.deepcopy(Faker.FIXTURES), true)
+  local random_entities = {}
 
-  if random_amount then
-    -- If we ask for random entities, add as many random entities to another table
-    -- as the difference between total amount requested and hard-coded ones
-    -- If we ask for 1000 entities, we'll have (1000 - number_of_hard_coded) random entities
-    --
-    -- We don't generate any random plugin configuration
-    local random_entities = {}
-    for type, entities in pairs(Faker.FIXTURES) do
-      random_entities[type] = {}
-      if type ~= "plugin_configuration" then
-        for i = 1, random_amount do
-          table.insert(random_entities[type], self:fake_entity(type))
-        end
-      end
+  for _, type in ipairs({ "api", "consumer" }) do
+    random_entities[type] = {}
+    for i = 1, random_amount do
+      table.insert(random_entities[type], self:fake_entity(type))
     end
-
-    self:insert_from_table(random_entities)
   end
+
+  return self:insert_from_table(random_entities)
 end
 
 -- Insert entities in the DB using the DAO.
 -- @param `entities_to_insert` A table with the same structure as the one defined in `:seed()`
--- @param `pick_relations`     If true, will pick relations from the __ properties (see fixtures)
-function Faker:insert_from_table(entities_to_insert, pick_relations)
+function Faker:insert_from_table(entities_to_insert)
+  local inserted_entities = {}
+
   -- Insert in order (for foreign relashionships)
   -- 1. consumers and APIs
-  -- 2. credentials, which need refereces to inserted apis and consumers
+  -- 2. credentials, which need references to inserted apis and consumers
   for _, type in ipairs({ "api", "consumer", "basicauth_credential", "keyauth_credential", "plugin_configuration" }) do
-    for i, entity in ipairs(entities_to_insert[type]) do
+    if entities_to_insert[type] then
+      for i, entity in ipairs(entities_to_insert[type]) do
 
-      if pick_relations then
-        local foreign_api = entities_to_insert.api[entity.__api]
-        local foreign_consumer = entities_to_insert.consumer[entity.__consumer]
+        if entity.__api or entity.__consumer then
+          local foreign_api = entities_to_insert.api and entities_to_insert.api[entity.__api]
+          local foreign_consumer = entities_to_insert.consumer and entities_to_insert.consumer[entity.__consumer]
 
-        -- Clean this up otherwise won't pass schema validation
-        entity.__api = nil
-        entity.__consumer = nil
+          -- Clean this up otherwise won't pass schema validation
+          entity.__api = nil
+          entity.__consumer = nil
 
-        -- Hard-coded foreign relationships
-        if type == "basicauth_credential" then
-          if foreign_consumer then
-            entity.consumer_id = foreign_consumer.id
-          end
-        elseif type == "keyauth_credential" then
-          if foreign_consumer then
-            entity.consumer_id = foreign_consumer.id
-          end
-        elseif type == "plugin_configuration" then
           if foreign_api then entity.api_id = foreign_api.id end
           if foreign_consumer then entity.consumer_id = foreign_consumer.id end
         end
+
+        -- Insert in DB
+        local dao_type = type=="plugin_configuration" and "plugins_configurations" or type.."s"
+        local res, err = self.dao_factory[dao_type]:insert(entity)
+        if err then
+          local printable_mt = require "kong.tools.printable"
+          setmetatable(entity, printable_mt)
+          error("Faker failed to insert "..type.." entity: "..entity.."\n"..err)
+        end
+
+        -- For other hard-coded entities relashionships
+        entities_to_insert[type][i] = res
+
+        if not inserted_entities[type] then
+          inserted_entities[type] = {}
+        end
+
+        table.insert(inserted_entities[type], res)
       end
-
-      -- Insert in DB
-      local dao_type = type=="plugin_configuration" and "plugins_configurations" or type.."s"
-      local res, err = self.dao_factory[dao_type]:insert(entity)
-      if err then
-        local printable_mt = require "kong.tools.printable"
-        setmetatable(entity, printable_mt)
-        error("Faker failed to insert "..type.." entity: "..entity.."\n"..err)
-      end
-
-      -- For other hard-coded entities relashionships
-      entities_to_insert[type][i] = res
-
-      -- For generated fake_entities to fetch the relations they need
-      if not self.inserted_entities[type] then
-        self.inserted_entities[type] = {}
-      end
-
-      table.insert(self.inserted_entities[type], res)
     end
   end
+
+  return inserted_entities
 end
 
 return Faker
