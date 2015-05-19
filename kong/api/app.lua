@@ -1,40 +1,14 @@
 local lapis = require "lapis"
-local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
 local Apis = require "kong.api.routes.apis"
-local Consumers = require "kong.api.routes.consumers"
-local PluginsConfigurations = require "kong.api.routes.plugins_configurations"
+--local Consumers = require "kong.api.routes.consumers"
+--local PluginsConfigurations = require "kong.api.routes.plugins_configurations"
 
-app = lapis.Application()
+local app = lapis.Application()
 
--- Huge hack to support PATCH methods.
--- This is a copy/pasted and adapted method from Lapis application.lua
--- It registers a method on `app.patch` listening for PATCH requests.
-function app:patch(route_name, path, handler)
-  local lapis_application = require "lapis.application"
-  if handler == nil then
-    handler = path
-    path = route_name
-    route_name = nil
-  end
-  self.responders = self.responders or {}
-  local existing = self.responders[route_name or path]
-  local tbl = { ["PATCH"] = handler }
-  if existing then
-    setmetatable(tbl, {
-      __index = function(self, key)
-        if key:match("%u") then
-          return existing
-        end
-      end
-    })
-  end
-  local responder = lapis_application.respond_to(tbl)
-  self.responders[route_name or path] = responder
-  return self:match(route_name, path, responder)
-end
+local BaseController = require "kong.api.routes.base_controller"
 
 local function get_hostname()
   local f = io.popen ("/bin/hostname")
@@ -97,12 +71,15 @@ app.handle_error = function(self, err, trace)
 end
 
 -- Load controllers
-Apis()
-Consumers()
-PluginsConfigurations()
+--Apis(app, dao)
+--Consumers()
+--PluginsConfigurations()
+
+local kong_app = BaseController(app, dao)
+kong_app:attach(Apis)
 
 -- Loading plugins routes
-if configuration and configuration.plugins_available then
+--[[if configuration and configuration.plugins_available then
   for _, v in ipairs(configuration.plugins_available) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
     if loaded then
@@ -112,6 +89,6 @@ if configuration and configuration.plugins_available then
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: "..v)
     end
   end
-end
+end]]
 
 return app

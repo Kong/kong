@@ -1,23 +1,51 @@
+local Object = require "kong.vendor.classic"
 local utils = require "kong.tools.utils"
-local Object = require "classic"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
-local json_params = require("lapis.application").json_params
+local app_helpers = require "lapis.application"
 
-local BaseController = Object:extend()
+local function return_paginated_set(self, dao_collection)
+  local size = self.params.size and tonumber(self.params.size) or 100
+  local offset = self.params.offset and ngx.decode_base64(self.params.offset) or nil
 
-local function send_dao_error_response(err)
-  if err.database then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
-  elseif err.unique then
-    return responses.send_HTTP_CONFLICT(err.message)
-  elseif err.foreign then
-    return responses.send_HTTP_NOT_FOUND(err.message)
-  elseif err.invalid_type and err.message.id then
-    return responses.send_HTTP_BAD_REQUEST(err.message)
-  else
-    return responses.send_HTTP_BAD_REQUEST(err.message)
+  self.params.size = nil
+  self.params.offset = nil
+
+  local data, err = dao_collection:find_by_keys(self.params, size, offset)
+  if err then
+    return app_helpers.yield_error(err)
   end
+
+  local next_url
+  if data.next_page then
+    next_url = self:build_url(self.req.parsed_url.path, {
+      port = self.req.parsed_url.port,
+      query = ngx.encode_args({
+                offset = ngx.encode_base64(data.next_page),
+                size = size
+              })
+    })
+    data.next_page = nil
+  end
+
+  -- This check is required otherwise the response is going to be a
+  -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
+  -- will not be translated as an empty array by cjson, but as an empty object.
+  local result = #data == 0 and "{\"data\":[]}" or {data=data, ["next"]=next_url}
+
+  return responses.send_HTTP_OK(result, type(result) ~= "table")
+end
+
+local _M = Object:extend()
+
+function _M:new(app, dao_factory)
+  self.app = app
+  self.dao_factory = dao_factory
+  self.helpers = {
+    return_paginated_set = return_paginated_set,
+    responses = responses,
+    yield_error = app_helpers.yield_error
+  }
 end
 
 -- Parses a form value, handling multipart/data values
@@ -70,8 +98,25 @@ local function normalize_nested_params(obj)
   return normalized_obj
 end
 
-local function parse_params(fn)
-  return json_params(function(self, ...)
+local function default_on_error(self)
+  local err = self.errors[1]
+  if type(err) == "table" then
+    if err.database then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
+    elseif err.unique then
+      return responses.send_HTTP_CONFLICT(err.message)
+    elseif err.foreign then
+      return responses.send_HTTP_NOT_FOUND(err.message)
+    elseif err.invalid_type and err.message.id then
+      return responses.send_HTTP_BAD_REQUEST(err.message)
+    else
+      return responses.send_HTTP_BAD_REQUEST(err.message)
+    end
+  end
+end
+
+function _M.parse_params(fn)
+  return app_helpers.json_params(function(self, ...)
     local content_type = self.req.headers["content-type"]
     if content_type and string.find(content_type:lower(), "application/json", nil, true) then
       if not self.json then
@@ -83,105 +128,23 @@ local function parse_params(fn)
   end)
 end
 
--- Expose for children classes and unit testing
-BaseController.parse_params = parse_params
-
-function BaseController:new(dao_collection, collection)
-  app:post("/"..collection, parse_params(function(self)
-    local data, err = dao_collection:insert(self.params)
-    if err then
-      return send_dao_error_response(err)
-    else
-      return responses.send_HTTP_CREATED(data)
+function _M:attach(routes)
+  for route_path, methods in pairs(routes) do
+    if not methods.on_error then
+      methods.on_error = default_on_error
     end
-  end))
 
-  app:put("/"..collection, parse_params(function(self)
-    local data, err
-    if self.params.id then
-      data, err = dao_collection:update(self.params)
-      if not err then
-        return responses.send_HTTP_OK(data)
+    for k, v in pairs(methods) do
+      local dao_factory = self.dao_factory
+      local helpers = self.helpers
+      local method = function(self)
+        return v(self, dao_factory, helpers)
       end
-    else
-      data, err = dao_collection:insert(self.params)
-      if not err then
-        return responses.send_HTTP_CREATED(data)
-      end
+      methods[k] = _M.parse_params(method)
     end
 
-    if err then
-      return send_dao_error_response(err)
-    end
-  end))
-
-  app:get("/"..collection, function(self)
-    local size = self.params.size and tonumber(self.params.size) or 100
-    local offset = self.params.offset and ngx.decode_base64(self.params.offset) or nil
-
-    self.params.size = nil
-    self.params.offset = nil
-
-    local data, err = dao_collection:find_by_keys(self.params, size, offset)
-    if err then
-      return send_dao_error_response(err)
-    end
-
-    local next_url
-    if data.next_page then
-      next_url = self:build_url(self.req.parsed_url.path, {
-        port = self.req.parsed_url.port,
-        query = ngx.encode_args({
-                  offset = ngx.encode_base64(data.next_page),
-                  size = size
-                })
-      })
-      data.next_page = nil
-    end
-
-    -- This check is required otherwise the response is going to be a
-    -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
-    -- will not be translated as an empty array by cjson, but as an empty object.
-    local result = #data == 0 and "{\"data\":[]}" or {data=data, ["next"]=next_url}
-
-    return responses.send_HTTP_OK(result, type(result) ~= "table")
-  end)
-
-  app:get("/"..collection.."/:id", function(self)
-    local data, err = dao_collection:find_one(self.params.id)
-    if err then
-      return send_dao_error_response(err)
-    end
-    if data then
-      return responses.send_HTTP_OK(data)
-    else
-      return responses.send_HTTP_NOT_FOUND()
-    end
-  end)
-
-  app:delete("/"..collection.."/:id", function(self)
-    local ok, err = dao_collection:delete(self.params.id)
-    if not ok then
-      if err then
-        return send_dao_error_response(err)
-      else
-        return responses.send_HTTP_NOT_FOUND()
-      end
-    else
-      return responses.send_HTTP_NO_CONTENT()
-    end
-  end)
-
-  app:patch("/"..collection.."/:id", parse_params(function(self)
-    local data, err = dao_collection:update(self.params)
-    if err then
-      return send_dao_error_response(err)
-    elseif not data then
-      return responses.send_HTTP_NOT_FOUND()
-    else
-      return responses.send_HTTP_OK(data)
-    end
-  end))
+    self.app:match(route_path, route_path, app_helpers.respond_to(methods))
+  end
 end
 
-return BaseController
+return _M
