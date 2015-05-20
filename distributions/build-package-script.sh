@@ -255,7 +255,7 @@ echo \"user=root\" > /etc/dnsmasq.conf" > $post_install_script
 initial_letter="$(echo $KONG_BRANCH | head -c 1)"
 re='^[0-9]+$' # to check it's a number
 if ! [[ $initial_letter =~ $re ]] ; then
-  KONG_VERSION="${rockspec_version%-*}${KONG_BRANCH//[-\/]/_}"
+  KONG_VERSION="${rockspec_version%-*}${KONG_BRANCH//[-\/]/}"
 elif [ $PACKAGE_TYPE == "rpm" ]; then
   KONG_VERSION=${KONG_BRANCH//[-\/]/_}
 else
