@@ -1,8 +1,8 @@
 local url = require("socket.url")
-local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+local resolver_util = require "kong.resolver.resolver_util"
 
 local _M = {}
 
@@ -38,9 +38,8 @@ local function skip_authentication(headers)
   return headers["expect"] and stringy.startswith(headers["expect"], "100")
 end
 
--- Retrieve the API from the Host header that has been requested.
-function _M.execute()
-  -- Search for a Host header in all `Host` and `X-Host-Override` headers
+-- Retrieve the API from the Host that has been requested
+function _M.execute(conf)
   local hosts_headers = {}
   for _, header_name in ipairs({"Host", constants.HEADERS.HOST_OVERRIDE}) do
     local host = ngx.req.get_headers()[header_name]
@@ -53,21 +52,12 @@ function _M.execute()
     end
   end
 
-  -- Find the API from one of the given hosts
-  local api
-  for _, host in ipairs(hosts_headers) do
-    api = cache.get_and_set(cache.api_key(host), function()
-      local apis, err = dao.apis:find_by_keys { public_dns = host }
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif apis and #apis == 1 then
-        return apis[1]
-      end
-    end)
-    if api then break end
-  end
+  -- Find the API
+  local api, err = resolver_util.find_api(hosts_headers)
 
-  if not api then
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  elseif not api then
     return responses.send_HTTP_NOT_FOUND("API not found with Host: "..table.concat(hosts_headers, ","))
   end
 

@@ -150,6 +150,23 @@ function _M.init()
   plugins = init_plugins()
 end
 
+function _M.exec_plugins_certificate()
+  ngx.ctx.plugin_conf = {}
+
+  for _, plugin in ipairs(plugins) do
+    if ngx.ctx.api then
+      ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name)
+    end
+
+    local conf = ngx.ctx.plugin_conf[plugin.name]
+    if not ngx.ctx.stop_phases and (plugin.resolver or conf) then
+      plugin.handler:certificate(conf and conf.value or nil)
+    end
+  end
+
+  return
+end
+
 -- Calls plugins_access() on every loaded plugin
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin

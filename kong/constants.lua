@@ -1,4 +1,4 @@
-local VERSION = "0.2.1"
+local VERSION = "0.3.0"
 
 return {
   NAME = "kong",
@@ -39,7 +39,8 @@ return {
     APIS = "apis",
     PLUGINS_CONFIGURATIONS = "plugins_configurations",
     BASICAUTH_CREDENTIAL = "basicauth_credentials",
-    KEYAUTH_CREDENTIAL = "keyauth_credentials"
+    KEYAUTH_CREDENTIAL = "keyauth_credentials",
+    SSL = "ssl"
   },
   AUTHENTICATION = {
     QUERY = "query",

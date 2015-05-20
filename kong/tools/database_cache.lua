@@ -56,6 +56,10 @@ function _M.keyauth_credential_key(key)
   return constants.CACHE.KEYAUTH_CREDENTIAL.."/"..key
 end
 
+function _M.ssl_data(api_id)
+  return constants.CACHE.SSL.."/"..api_id
+end
+
 function _M.get_and_set(key, cb)
   local val = _M.get(key)
   if not val then

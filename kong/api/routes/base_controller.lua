@@ -20,6 +20,13 @@ local function send_dao_error_response(err)
   end
 end
 
+-- Parses a form value, handling multipart/data values
+-- @param `v` The value object
+-- @return The parsed value
+local function parse_value(v)
+  return type(v) == "table" and v.content or v -- Handle multipart
+end
+
 -- Put nested keys in objects:
 -- Normalize dotted keys in objects.
 -- Example: {["key.value.sub"]=1234} becomes {key = {value = {sub=1234}}
@@ -50,13 +57,13 @@ local function normalize_nested_params(obj)
       table.remove(keys, 1) -- remove the first level
       normalized_obj[k] = nil -- remove it from the object
       if #keys > 0 then -- if we still have some keys, then there are more levels of nestinf
-        normalized_obj[current_level][table.concat(keys, ".")] = v
+        normalized_obj[current_level][table.concat(keys, ".")] = parse_value(v)
         normalized_obj[current_level] = normalize_nested_params(normalized_obj[current_level])
       else
-        normalized_obj[current_level] = v -- latest level of nesting, attaching the value
+        normalized_obj[current_level] = parse_value(v) -- latest level of nesting, attaching the value
       end
     else
-      normalized_obj[k] = v -- nothing special with that key, simply attaching the value
+      normalized_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
     end
   end
 
