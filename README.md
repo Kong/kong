@@ -48,20 +48,24 @@ Over two minutes **117,185** requests with an average latency of **10ms** at **9
 
   This will build and install the `kong` luarock globally.
 
-3. Run `make dev`
+3. Delete the `kong.yml` file in the `/etc/kong` folder: `[sudo] rm -rf /etc/kong`
+
+  This is necessary just in case you have previously installed Kong with a package distribution.
+
+4. Run `make dev`
 
   This will install development dependencies and create your environment configuration files:
 
   - `kong_TESTS.yml`
   - `kong_DEVELOPMENT.yml`
 
-4. Run the tests:
+5. Run the tests:
 
   ```bash
   make test-all
   ```
 
-5. Run Kong with the development configuration file:
+6. Run Kong with the development configuration file:
 
    ```bash
    $ kong start -c kong_DEVELOPMENT.yml
