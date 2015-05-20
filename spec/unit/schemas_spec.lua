@@ -382,6 +382,25 @@ describe("Schemas", function()
         assert.are.same("number", type(values.sub_schema.sub_field_number))
       end)
 
+      it("should instanciate a sub-value if sub-schema has a `default` value and do that before `required`", function()
+        local function validate_value(value)
+          if not value.some_property then
+            return false, "value.some_property must not be empty"
+          end
+          return true
+        end
+
+        local schema = {
+          value = { type = "table", schema = {some_property={default="hello"}}, func = validate_value, required = true }
+        }
+
+        local obj = {}
+        local valid, err = validate(obj, schema)
+        assert.falsy(err)
+        assert.True(valid)
+        assert.are.same("hello", obj.value.some_property)
+      end)
+
     end)
   end)
 end)
