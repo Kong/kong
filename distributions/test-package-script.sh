@@ -72,5 +72,10 @@ if ! [ `curl -s -o /dev/null -w "%{http_code}" -H "Host: $RANDOM_API_NAME.com" h
   exit 1
 fi
 
+if ! [ `curl -s -o /dev/null -w "%{http_code}" -H "Host: $RANDOM_API_NAME.com" https://127.0.0.1:8443/request --insecure` == "200" ]; then
+  echo "Can't invoke API"
+  exit 1
+fi
+
 echo "Test success!"
 exit 0
