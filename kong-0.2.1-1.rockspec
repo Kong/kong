@@ -98,6 +98,10 @@ build = {
     ["kong.plugins.udplog.handler"] = "kong/plugins/udplog/handler.lua",
     ["kong.plugins.udplog.log"] = "kong/plugins/udplog/log.lua",
     ["kong.plugins.udplog.schema"] = "kong/plugins/udplog/schema.lua",
+    
+    ["kong.plugins.httplog.handler"] = "kong/plugins/httplog/handler.lua",
+    ["kong.plugins.httplog.log"] = "kong/plugins/httplog/log.lua",
+    ["kong.plugins.httplog.schema"] = "kong/plugins/httplog/schema.lua",
 
     ["kong.plugins.filelog.handler"] = "kong/plugins/filelog/handler.lua",
     ["kong.plugins.filelog.log"] = "kong/plugins/filelog/log.lua",
