@@ -36,7 +36,7 @@ describe("Responses", function()
   it("should set the correct ngx values and call ngx.say and ngx.exit", function()
     responses.send_HTTP_OK("OK")
     assert.are.same(ngx.status, responses.status_codes.HTTP_OK)
-    assert.are.same(ngx.header[constants.HEADERS.SERVER], constants.NAME.."/"..constants.VERSION)
+    assert.are.same(ngx.header["Server"], constants.NAME.."/"..constants.VERSION)
     assert.stub(ngx.say).was.called() -- set custom content
     assert.stub(ngx.exit).was.called() -- exit nginx (or continue to the next context if 200)
   end)
