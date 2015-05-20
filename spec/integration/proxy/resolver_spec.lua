@@ -104,8 +104,8 @@ describe("Resolver", function()
       assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
     end)
 
-    it("should proxy when the request has no Host header but the X-Override-Host header", function()
-      local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "test4.com"})
+    it("should proxy when the request has no Host header but the X-Host-Override header", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "mocbkin.com"})
       assert.are.equal(200, status)
     end)
 
