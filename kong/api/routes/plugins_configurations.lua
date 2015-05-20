@@ -1,11 +1,42 @@
--- Copyright (C) Mashape, Inc.
+local crud = require "kong.api.crud_helpers"
 
-local BaseController = require "kong.api.routes.base_controller"
+return {
+  ["/plugins_configurations"] = {
+    GET = function(self, dao_factory)
+      crud.paginated_set(self, dao_factory.plugins_configurations)
+    end,
 
-local PluginsConfigurations = BaseController:extend()
+    PUT = function(self, dao_factory)
+      crud.put(self, dao_factory.plugins_configurations)
+    end,
 
-function PluginsConfigurations:new()
-  PluginsConfigurations.super.new(self, dao.plugins_configurations, "plugins_configurations")
-end
+    POST = function(self, dao_factory)
+      crud.post(self, dao_factory.plugins_configurations)
+    end
+  },
 
-return PluginsConfigurations
+  ["/plugins_configurations/:id"] = {
+    before = function(self, dao_factory, helpers)
+      local err
+      self.plugin_conf, err = dao_factory.plugins_configurations:find_one(self.params.id)
+      if err then
+        return helpers.yield_error(err)
+      elseif not self.plugin_conf then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.plugin_conf)
+    end,
+
+    PATCH = function(self, dao_factory)
+      self.params.id = self.plugin_conf.id
+      crud.patch(self.params, dao_factory.plugins_configurations)
+    end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.plugin_conf.id, dao_factory.plugins_configurations)
+    end
+  }
+}
