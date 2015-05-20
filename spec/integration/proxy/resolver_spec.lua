@@ -42,12 +42,12 @@ describe("Resolver", function()
 
   describe("Existing API", function()
 
-    it("should return Success when the API is in Kong", function()
+    it("should proxy when the API is in Kong", function()
       local _, status = http_client.get(STUB_GET_URL, nil, { host = "mocbkin.com"})
       assert.are.equal(200, status)
     end)
 
-    it("should return Success when the Host header is not trimmed", function()
+    it("should proxy when the Host header is not trimmed", function()
       local _, status = http_client.get(STUB_GET_URL, nil, { host = "   mocbkin.com  "})
       assert.are.equal(200, status)
     end)
@@ -66,7 +66,7 @@ describe("Resolver", function()
       assert.falsy(headers.via)
     end)
 
-    it("should return Success when the API is in Kong and one Host headers is being sent via plain TCP", function()
+    it("should proxy when the API is in Kong and one Host header is being sent via plain TCP", function()
       local parsed_url = url.parse(STUB_GET_URL)
       local host = parsed_url.host
       local port = parsed_url.port
@@ -85,7 +85,7 @@ describe("Resolver", function()
       assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
     end)
 
-    it("should return Success when the API is in Kong and multiple Host headers are being sent via plain TCP", function()
+    it("should proxy when the API is in Kong and multiple Host headers are being sent via plain TCP", function()
       local parsed_url = url.parse(STUB_GET_URL)
       local host = parsed_url.host
       local port = parsed_url.port
@@ -104,6 +104,10 @@ describe("Resolver", function()
       assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
     end)
 
-  end)
+    it("should proxy when the request has no Host header but the X-Host-Override header", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "mocbkin.com"})
+      assert.are.equal(200, status)
+    end)
 
+  end)
 end)
