@@ -26,10 +26,9 @@ return {
     ID = "id",
     TIMESTAMP = "timestamp"
   },
+  -- Non standard headers, specific to Kong
   HEADERS = {
-    SERVER = "Server",
-    VIA = "Via",
-    CONTENT_TYPE = "Content-Type",
+    HOST_OVERRIDE = "X-Host-Override",
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
     CONSUMER_ID = "X-Consumer-ID",
