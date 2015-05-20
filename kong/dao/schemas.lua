@@ -48,11 +48,6 @@ function _M.validate(t, schema, is_update)
       errors = utils.add_error(errors, column, column.." cannot be updated")
     end
 
-    -- Check required fields are set
-    if v.required and (t[column] == nil or t[column] == "") then
-      errors = utils.add_error(errors, column, column.." is required")
-    end
-
     -- Check if type is valid boolean and numbers as strings are accepted and converted
     if v.type ~= nil and t[column] ~= nil then
       local valid
@@ -93,16 +88,8 @@ function _M.validate(t, schema, is_update)
       end
     end
 
-    -- Check field against a custom function
-    if v.func and type(v.func) == "function" then
-      local ok, err = v.func(t[column], t)
-      if not ok or err then
-        errors = utils.add_error(errors, column, err)
-      end
-    end
-
     -- validate a subschema
-    if v.schema and t[column] ~= nil then
+    if v.schema then
       local sub_schema, err
       if type(v.schema) == "function" then
         sub_schema, err = v.schema(t)
@@ -113,14 +100,38 @@ function _M.validate(t, schema, is_update)
       if err then
         -- could not retrieve sub schema
         errors = utils.add_error(errors, column, err)
-      else
-        -- validating subschema
-        local s_ok, s_errors = _M.validate(t[column], sub_schema, is_update)
-        if not s_ok then
-          for s_k, s_v in pairs(s_errors) do
-            errors = utils.add_error(errors, column.."."..s_k, s_v)
+      end
+
+      if sub_schema then
+        for k, v in pairs(sub_schema) do
+          if v.default and t[column] == nil then
+            t[column] = {}
+            break
           end
         end
+
+        if t[column] then
+          -- validating subschema
+          local s_ok, s_errors = _M.validate(t[column], sub_schema, is_update)
+          if not s_ok then
+            for s_k, s_v in pairs(s_errors) do
+              errors = utils.add_error(errors, column.."."..s_k, s_v)
+            end
+          end
+        end
+      end
+    end
+
+    -- Check required fields are set
+    if v.required and (t[column] == nil or t[column] == "") then
+      errors = utils.add_error(errors, column, column.." is required")
+    end
+
+    -- Check field against a custom function
+    if v.func and type(v.func) == "function" then
+      local ok, err = v.func(t[column], t)
+      if not ok or err then
+        errors = utils.add_error(errors, column, err)
       end
     end
   end
