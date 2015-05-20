@@ -38,8 +38,9 @@ describe("Static files", function()
       local configuration = IO.read_file(spec_helper.DEFAULT_CONF_FILE)
 
       assert.are.same([[
-# Available plugins on this server
+## Available plugins on this server
 plugins_available:
+  - ssl
   - keyauth
   - basicauth
   - ratelimiting
@@ -49,16 +50,22 @@ plugins_available:
   - cors
   - request_transformer
 
+## The Kong working directory
+## (Make sure you have read and write permissions)
 nginx_working_dir: /usr/local/kong/
 
+## Port configuration
 proxy_port: 8000
+proxy_ssl_port: 8443
 admin_api_port: 8001
+
+## Secondary port configuration
 dnsmasq_port: 8053
 
-# Specify the DAO to use
+## Specify the DAO to use
 database: cassandra
 
-# Databases configuration
+## Databases configuration
 databases_available:
   cassandra:
     properties:
@@ -68,19 +75,24 @@ databases_available:
       keyspace: kong
       keepalive: 60000 # in milliseconds
 
-# Cassandra cache configuration
+## SSL Settings
+## (Uncomment the two properties below to set your own certificate)
+# ssl_cert_path: /path/to/certificate.pem
+# ssl_key_path: /path/to/certificate.key
+
+## Cassandra cache configuration
 database_cache_expiration: 5 # in seconds
 
-# Sends anonymous error reports
+## Sends anonymous error reports
 send_anonymous_reports: true
 
-# In-memory cache size (MB)
+## In-memory cache size (MB)
 memory_cache_size: 128
 
-# Nginx configuration
+## Nginx configuration
 nginx: |
   worker_processes auto;
-  error_log logs/error.log info;
+  error_log logs/error.log error;
   daemon on;
 
   worker_rlimit_nofile {{auto_worker_rlimit_nofile}};
@@ -97,7 +109,7 @@ nginx: |
     charset UTF-8;
 
     access_log logs/access.log;
-    access_log on;
+    access_log off;
 
     # Timeouts
     keepalive_timeout 60s;
@@ -145,7 +157,14 @@ nginx: |
     ';
 
     server {
+      server_name _;
       listen {{proxy_port}};
+      listen {{proxy_ssl_port}} ssl;
+
+      ssl_certificate_by_lua 'kong.exec_plugins_certificate()';
+
+      ssl_certificate {{ssl_cert}};
+      ssl_certificate_key {{ssl_key}};
 
       location / {
         default_type 'text/plain';
@@ -159,6 +178,7 @@ nginx: |
         # Proxy the request
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_pass $backend_url;
         proxy_pass_header Server;
 

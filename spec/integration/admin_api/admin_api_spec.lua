@@ -153,6 +153,36 @@ describe("Admin API", function()
 
       end)
     end)
+
+    describe("multipart/form-data", function()
+
+      setup(function()
+        spec_helper.drop_db()
+        CREATED_IDS = {}
+      end)
+
+      test_for_each_endpoint(function(endpoint, base_url)
+
+        it("should not create with invalid body", function()
+          local response, status = http_client.post_multipart(base_url.."/", {})
+          assert.are.equal(400, status)
+          assert.are.equal(endpoint.error_message, response)
+        end)
+
+        it("should create an entity with a valid body", function()
+          -- Replace the IDs
+          attach_ids()
+
+          local response, status = http_client.post_multipart(base_url.."/", endpoint.entity.form)
+          assert.are.equal(201, status)
+
+          -- Save the ID for later use
+          local body = json.decode(response)
+          CREATED_IDS[endpoint.collection] = body.id
+        end)
+
+      end)
+    end)
   end)
 
   describe("GET all", function()

@@ -1,3 +1,4 @@
+local https = require "ssl.https"
 local url = require "socket.url"
 local http = require "socket.http"
 local json = require "cjson"
@@ -7,8 +8,9 @@ local _M = {}
 
 local function http_call(options)
   -- Set Host header accordingly
+  local parsed_url = url.parse(options.url)
+
   if not options.headers["host"] then
-    local parsed_url = url.parse(options.url)
     local port_segment = ""
     if parsed_url.port then
       port_segment = ":"..parsed_url.port
@@ -20,8 +22,17 @@ local function http_call(options)
   local resp = {}
   options.sink = ltn12.sink.table(resp)
 
-  local _, code, headers = http.request(options)
-  return resp[1], code, headers
+  if parsed_url.scheme == "https" then
+    options.protocol = "tlsv1"
+    options.mode = "client"
+    options.options = "all"
+
+    local _, code, headers = https.request(options)
+    return resp[1], code, headers
+  else
+    local _, code, headers = http.request(options)
+    return resp[1], code, headers
+  end
 end
 
 local function with_body(method)

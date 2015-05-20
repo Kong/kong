@@ -5,6 +5,10 @@ function BasePlugin:new(name)
   self._name = name
 end
 
+function BasePlugin:certificate()
+  ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": certificate")
+end
+
 function BasePlugin:access()
   ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": access")
 end
