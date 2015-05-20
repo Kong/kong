@@ -48,6 +48,7 @@ plugins_available:
   - filelog
   - cors
   - request_transformer
+  - httplog
 
 nginx_working_dir: /usr/local/kong/
 

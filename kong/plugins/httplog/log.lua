@@ -15,9 +15,9 @@ local function generate_post_payload(method, parsed_url, message)
   return payload
 end
 
--- Parse host url  .
+-- Parse host url
 -- @param `url`  host url     
--- @return a table with host details like domain name, port, path etc
+-- @return `parsed_url`  a table with host details like domain name, port, path etc
 local function parse_url(host_url)
   local parsed_url = url.parse(host_url)
   if not parsed_url.port then
@@ -26,6 +26,9 @@ local function parse_url(host_url)
      elseif parsed_url.scheme == "https" then
       parsed_url.port = 443
      end
+  end
+  if not parsed_url.path then
+    parsed_url.path = "/"
   end
   return parsed_url
 end
