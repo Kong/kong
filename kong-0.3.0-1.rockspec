@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.2.1-1"
+version = "0.3.0-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.2.1"
+  tag = "0.3.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -24,6 +24,7 @@ dependencies = {
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
   "ansicolors ~> 1.0.2-3",
+  "lbase64 ~> 20120820-1",
 
   "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
@@ -66,6 +67,8 @@ build = {
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
     ["kong.resolver.access"] = "kong/resolver/access.lua",
     ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
+    ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
+    ["kong.resolver.resolver_util"] = "kong/resolver/resolver_util.lua",
 
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas"] = "kong/dao/schemas.lua",
@@ -119,6 +122,11 @@ build = {
     ["kong.plugins.cors.access"] = "kong/plugins/cors/access.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
 
+    ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
+    ["kong.plugins.ssl.certificate"] = "kong/plugins/ssl/certificate.lua",
+    ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
+    ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
+
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
@@ -129,5 +137,5 @@ build = {
     conf = { "kong.yml" },
     bin = { "bin/kong" }
   },
-  copy_directories = { "database/migrations/" }
+  copy_directories = { "database/migrations/", "ssl" }
 }

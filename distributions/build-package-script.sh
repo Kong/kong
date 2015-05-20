@@ -30,6 +30,7 @@ PCRE_VERSION=8.36
 LUAROCKS_VERSION=2.2.2
 OPENRESTY_VERSION=1.7.10.2rc0
 DNSMASQ_VERSION=2.72
+OPENSSL_VERSION=1.0.2a
 
 # Variables to be used in the build process
 PACKAGE_TYPE=""
@@ -107,6 +108,15 @@ else
   echo "Building Kong: $KONG_BRANCH"
 fi
 
+# Download OpenSSL
+cd $TMP
+wget https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz -O openssl-$OPENSSL_VERSION.tar.gz
+tar xzf openssl-$OPENSSL_VERSION.tar.gz
+if [ "$(uname)" = "Darwin" ]; then # Checking if OS X
+  export KERNEL_BITS=64 # This sets the right OpenSSL variable for OS X
+fi
+OPENRESTY_CONFIGURE="--with-openssl=$TMP/openssl-$OPENSSL_VERSION"
+
 # Install fpm
 gem install fpm
 
@@ -144,18 +154,8 @@ if [ "$(uname)" = "Darwin" ]; then
   cd $OUT
 
   LUAROCKS_CONFIGURE="--with-lua-include=$OUT/usr/local/include"
-  OPENRESTY_CONFIGURE="--with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
+  OPENRESTY_CONFIGURE=$OPENRESTY_CONFIGURE" --with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
 fi
-
-# Install OpenResty
-cd $TMP
-wget http://openresty.org/download/ngx_openresty-$OPENRESTY_VERSION.tar.gz
-tar xzf ngx_openresty-$OPENRESTY_VERSION.tar.gz
-cd ngx_openresty-$OPENRESTY_VERSION
-./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module ${OPENRESTY_CONFIGURE}
-make
-make install DESTDIR=$OUT
-cd $OUT
 
 # Install LuaRocks
 cd $TMP
@@ -176,6 +176,54 @@ rocks_trees = {
 " > $rocks_config
 export LUAROCKS_CONFIG=$rocks_config
 export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
+
+############################################
+######### Install Patched OpenResty ########
+############################################
+cd $TMP
+wget http://openresty.org/download/ngx_openresty-$OPENRESTY_VERSION.tar.gz
+tar xzf ngx_openresty-$OPENRESTY_VERSION.tar.gz
+cd ngx_openresty-$OPENRESTY_VERSION
+# Download and apply nginx patch
+cd bundle/nginx-*
+wget https://raw.githubusercontent.com/openresty/lua-nginx-module/ssl-cert-by-lua/patches/nginx-ssl-cert.patch --no-check-certificate
+patch -p1 < nginx-ssl-cert.patch
+cd ..
+# Download `ssl-cert-by-lua` branch
+wget https://github.com/openresty/lua-nginx-module/archive/ssl-cert-by-lua.tar.gz -O ssl-cert-by-lua.tar.gz --no-check-certificate
+tar xzf ssl-cert-by-lua.tar.gz
+# Replace `ngx_lua-*` with `ssl-cert-by-lua` branch
+NGX_LUA=`ls | grep ngx_lua-*`
+rm -rf $NGX_LUA
+mv lua-nginx-module-ssl-cert-by-lua $NGX_LUA
+# Install ssl.lua
+cd $NGX_LUA/lua
+echo '
+package = "ngxssl"
+version = "0.1-1"
+source = {
+  url = "git://github.com/openresty/lua-nginx-module",
+  branch = "ssl-cert-by-lua"
+}
+dependencies = {
+  "lua >= 5.1"
+}
+build = {
+  type = "builtin",
+  modules = {
+    ["ngx.ssl"] = "ngx/ssl.lua"
+  }
+}
+' > ngxssl-0.1-1.rockspec
+$OUT/usr/local/bin/luarocks make ngxssl-0.1-1.rockspec
+# Configure and install
+cd $TMP/ngx_openresty-$OPENRESTY_VERSION
+./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module ${OPENRESTY_CONFIGURE}
+make
+make install DESTDIR=$OUT
+############################################
+############################################
+############################################
 
 # Install Kong
 cd $TMP
@@ -207,9 +255,9 @@ echo \"user=root\" > /etc/dnsmasq.conf" > $post_install_script
 initial_letter="$(echo $KONG_BRANCH | head -c 1)"
 re='^[0-9]+$' # to check it's a number
 if ! [[ $initial_letter =~ $re ]] ; then
-  KONG_VERSION="${rockspec_version%-*}$KONG_BRANCH"
+  KONG_VERSION="${rockspec_version%-*}${KONG_BRANCH//[-\/]/}"
 elif [ $PACKAGE_TYPE == "rpm" ]; then
-  KONG_VERSION=${KONG_BRANCH//-/_}
+  KONG_VERSION=${KONG_BRANCH//[-\/]/}
 else
   KONG_VERSION=$KONG_BRANCH
 fi

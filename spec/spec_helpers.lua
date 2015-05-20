@@ -13,10 +13,12 @@ local _M = {}
 
 -- Constants
 local TEST_PROXY_URL = "http://localhost:8100"
+local TEST_PROXY_SSL_URL = "https://localhost:8543"
 _M.API_URL = "http://localhost:8101"
 _M.KONG_BIN = "bin/kong"
 _M.PROXY_URL = TEST_PROXY_URL
 _M.STUB_GET_URL = TEST_PROXY_URL.."/request"
+_M.STUB_GET_SSL_URL = TEST_PROXY_SSL_URL.."/request"
 _M.STUB_POST_URL = TEST_PROXY_URL.."/request"
 _M.TEST_CONF_FILE = "kong_TEST.yml"
 _M.DEFAULT_CONF_FILE = "kong.yml"
@@ -150,6 +152,19 @@ function _M.start_udp_server(port, ...)
 
   thread:start(...)
   return thread
+end
+
+--
+-- General Utils
+--
+
+-- Parses an SSL certificate returned by LuaSec
+function _M.parse_cert(cert)
+  local result = {}
+  for _,v in ipairs(cert:issuer()) do
+    result[v.name] = v.value
+  end
+  return result
 end
 
 --
