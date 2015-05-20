@@ -48,7 +48,7 @@ Over two minutes **117,185** requests with an average latency of **10ms** at **9
 
   This will build and install the `kong` luarock globally.
 
-3. Delete the `kong.yml` file in the `/etc/kong` folder: `[sudo] rm -rf /etc/kong`
+3. Delete the `/etc/kong` folder: `[sudo] rm -rf /etc/kong`
 
   This is necessary just in case you have previously installed Kong with a package distribution.
 
