@@ -257,7 +257,7 @@ re='^[0-9]+$' # to check it's a number
 if ! [[ $initial_letter =~ $re ]] ; then
   KONG_VERSION="${rockspec_version%-*}${KONG_BRANCH//[-\/]/}"
 elif [ $PACKAGE_TYPE == "rpm" ]; then
-  KONG_VERSION=${KONG_BRANCH//[-\/]/_}
+  KONG_VERSION=${KONG_BRANCH//[-\/]/}
 else
   KONG_VERSION=$KONG_BRANCH
 fi
