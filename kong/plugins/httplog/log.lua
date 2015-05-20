@@ -36,7 +36,7 @@ end
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
   local ok, err
-  local parsed_url = parse_url(conf.logging_url)
+  local parsed_url = parse_url(conf.http_endpoint)
   local host = parsed_url.host
   local port = tonumber(parsed_url.port)
   
