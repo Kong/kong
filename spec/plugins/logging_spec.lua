@@ -14,6 +14,7 @@ local TEST_CONF = "kong_TEST.yml"
 
 local TCP_PORT = 7777
 local UDP_PORT = 8888
+local HTTP_PORT = 8989
 
 describe("Logging Plugins", function()
 
@@ -26,6 +27,7 @@ describe("Logging Plugins", function()
       plugin_configuration = {
         { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
         { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
+        { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT, method = "POST"}, __api = 1 },
         { name = "filelog", value = {}, __api = 1 }
       }
     }
@@ -70,6 +72,24 @@ describe("Logging Plugins", function()
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
+      assert.are.same("127.0.0.1", log_message.ip)
+    end)
+
+    it("should log to Http", function()
+      local thread = spec_helper.start_http_server(HTTP_PORT) -- Starting the mock TCP server
+
+      -- Making the request
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
+      assert.are.equal(200, status)
+
+      -- Getting back the TCP server input
+      local ok, res = thread:join()
+      assert.truthy(ok)
+      assert.truthy(res)
+
+      -- Making sure it's alright
+      assert.are.same("POST / HTTP/1.1", res[1])
+      local log_message = cjson.decode(res[7])
       assert.are.same("127.0.0.1", log_message.ip)
     end)
 
