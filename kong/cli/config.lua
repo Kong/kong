@@ -27,17 +27,21 @@ local DEFAULT_ENV_VALUES = {
     ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
     ["keyspace: kong"] = "keyspace: kong_tests",
     ["lua_package_path ';;'"] = "lua_package_path './kong/?.lua;;'",
-    ["error_log logs/error.log info"] = "error_log logs/error.log debug",
+    ["error_log logs/error.log error"] = "error_log logs/error.log debug",
     ["proxy_port: 8000"] = "proxy_port: 8100",
-    ["admin_api_port: 8001"] = "admin_api_port: 8101"
+    ["proxy_ssl_port: 8443"] = "proxy_ssl_port: 8543",
+    ["admin_api_port: 8001"] = "admin_api_port: 8101",
+    ["dnsmasq_port: 8053"] = "dnsmasq_port: 8153",
+    ["access_log off"] = "access_log on"
   },
   DEVELOPMENT = {
     ["nginx_working_dir: /usr/local/kong/"] = "nginx_working_dir: nginx_tmp",
     ["send_anonymous_reports: true"] = "send_anonymous_reports: false",
     ["keyspace: kong"] = "keyspace: kong_development",
     ["lua_package_path ';;'"] = "lua_package_path './kong/?.lua;;'",
-    ["error_log logs/error.log info"] = "error_log logs/error.log debug",
-    ["lua_code_cache on"] = "lua_code_cache off"
+    ["error_log logs/error.log error"] = "error_log logs/error.log debug",
+    ["lua_code_cache on"] = "lua_code_cache off",
+    ["access_log off"] = "access_log on"
   }
 }
 

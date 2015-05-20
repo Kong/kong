@@ -5,8 +5,11 @@ local cjson = require "cjson"
 local socket = require "socket"
 local url = require "socket.url"
 local stringy = require "stringy"
+local ssl = require "ssl"
+local utils = require "kong.tools.utils"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
+local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 
 describe("Resolver", function()
 
@@ -40,14 +43,60 @@ describe("Resolver", function()
 
   end)
 
+  describe("SSL", function() 
+
+    it("should work when calling SSL port", function()
+      local response, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "mocbkin.com" })
+      assert.are.equal(200, status)
+      assert.truthy(response)
+      local parsed_response = cjson.decode(response)
+      assert.are.same("GET", parsed_response.method)
+    end)
+
+    it("should work when manually triggering the handshake on default route", function()
+      local parsed_url = url.parse(STUB_GET_SSL_URL)
+
+      local conn = socket.tcp()
+      local ok, err = conn:connect(parsed_url.host, parsed_url.port)
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      local params = {
+        mode = "client",
+        protocol = "tlsv1",
+        verify = "none",
+        options = "all",
+      }
+
+      -- TLS/SSL initialization
+      conn = ssl.wrap(conn, params)
+      local ok, err = conn:dohandshake()
+      assert.truthy(ok)
+      assert.falsy(err)
+
+      local cert = spec_helper.parse_cert(conn:getpeercertificate())
+      
+      assert.are.same(6, utils.table_size(cert))
+      assert.are.same("Kong", cert.organizationName)
+      assert.are.same("IT", cert.organizationalUnitName)
+      assert.are.same("US", cert.countryName)
+      assert.are.same("California", cert.stateOrProvinceName)
+      assert.are.same("San Francisco", cert.localityName)
+      assert.are.same("localhost", cert.commonName)
+
+      conn:close()
+    end)
+
+  end)
+
   describe("Existing API", function()
 
-    it("should return Success when the API is in Kong", function()
+    it("should proxy when the API is in Kong", function()
       local _, status = http_client.get(STUB_GET_URL, nil, { host = "mocbkin.com"})
       assert.are.equal(200, status)
     end)
 
-    it("should return Success when the Host header is not trimmed", function()
+    it("should proxy when the Host header is not trimmed", function()
       local _, status = http_client.get(STUB_GET_URL, nil, { host = "   mocbkin.com  "})
       assert.are.equal(200, status)
     end)
@@ -66,7 +115,7 @@ describe("Resolver", function()
       assert.falsy(headers.via)
     end)
 
-    it("should return Success when the API is in Kong and one Host headers is being sent via plain TCP", function()
+    it("should proxy when the API is in Kong and one Host header is being sent via plain TCP", function()
       local parsed_url = url.parse(STUB_GET_URL)
       local host = parsed_url.host
       local port = parsed_url.port
@@ -85,7 +134,7 @@ describe("Resolver", function()
       assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
     end)
 
-    it("should return Success when the API is in Kong and multiple Host headers are being sent via plain TCP", function()
+    it("should proxy when the API is in Kong and multiple Host headers are being sent via plain TCP", function()
       local parsed_url = url.parse(STUB_GET_URL)
       local host = parsed_url.host
       local port = parsed_url.port
@@ -104,6 +153,10 @@ describe("Resolver", function()
       assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
     end)
 
-  end)
+    it("should proxy when the request has no Host header but the X-Host-Override header", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "mocbkin.com"})
+      assert.are.equal(200, status)
+    end)
 
+  end)
 end)
