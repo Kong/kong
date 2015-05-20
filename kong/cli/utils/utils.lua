@@ -123,6 +123,31 @@ local function get_kong_config_path(args_config)
   return config_path
 end
 
+local function get_ssl_cert_and_key(kong_config)
+  local ssl_cert_path, ssl_key_path
+
+  if (kong_config.ssl_cert and not kong_config.ssl_key) or
+    (kong_config.ssl_key and not kong_config.ssl_cert) then
+    logger:error_exit("Both \"ssl_cert_path\" and \"ssl_key_path\" need to be specified in the configuration, or none of them")
+  elseif kong_config.ssl_cert and kong_config.ssl_key then
+    ssl_cert_path = kong_config.ssl_cert_path
+    ssl_key_path = kong_config.ssl_key_path
+  else
+    ssl_cert_path = IO.path:join(get_luarocks_install_dir(), "ssl", "kong-default.crt")
+    ssl_key_path = IO.path:join(get_luarocks_install_dir(), "ssl", "kong-default.key")
+  end
+
+  -- Check that the file exists
+  if ssl_cert_path and not IO.file_exists(ssl_cert_path) then
+    logger:error_exit("Can't find default Kong SSL certificate at: "..ssl_cert_path)
+  end
+  if ssl_key_path and not IO.file_exists(ssl_key_path) then
+    logger:error_exit("Can't find default Kong SSL key at: "..ssl_key_path)
+  end
+
+  return ssl_cert_path, ssl_key_path
+end
+
 -- Checks if a port is open on localhost
 -- @param `port`  The port to check
 -- @return `open` True if open, false otherwise
@@ -138,6 +163,7 @@ return {
   logger = logger,
   get_kong_infos = get_kong_infos,
   get_kong_config_path = get_kong_config_path,
+  get_ssl_cert_and_key = get_ssl_cert_and_key,
   get_luarocks_install_dir = get_luarocks_install_dir,
   is_port_open = is_port_open
 }
