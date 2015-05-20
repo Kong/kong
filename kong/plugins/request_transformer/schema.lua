@@ -1,14 +1,14 @@
 return {
-  add = { require = "false", type = "table", schema = {
-      form = { required = false, type = "table" },
-      headers = { required = false, type = "table" },
-      querystring = { required = false, type = "table" }
+  add = { type = "table", schema = {
+      form = { type = "table" },
+      headers = { type = "table" },
+      querystring = { type = "table" }
     }
   },
-  remove = { require = "false", type = "table", schema = {
-      form = { required = false, type = "table" },
-      headers = { required = false, type = "table" },
-      querystring = { required = false, type = "table" }
+  remove = { type = "table", schema = {
+      form = { type = "table" },
+      headers = { type = "table" },
+      querystring = { type = "table" }
     }
   }
 }

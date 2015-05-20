@@ -1,16 +1,17 @@
 local constants = require "kong.constants"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
+local utils = require "kong.tools.utils"
 
 local function load_value_schema(plugin_t)
   if plugin_t.name then
-    local status, plugin_schema = pcall(require, "kong.plugins."..plugin_t.name..".schema")
-    if status then
+    local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins."..plugin_t.name..".schema")
+    if loaded then
       return plugin_schema
+    else
+      return nil, "Plugin \""..(plugin_t.name and plugin_t.name or "").."\" not found"
     end
   end
-
-  return nil, "Plugin \""..(plugin_t.name and plugin_t.name or "").."\" not found"
 end
 
 local SCHEMA = {
