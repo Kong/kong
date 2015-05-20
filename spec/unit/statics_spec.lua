@@ -47,9 +47,9 @@ plugins_available:
   - tcplog
   - udplog
   - filelog
+  - httplog
   - cors
   - request_transformer
-  - httplog
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)
