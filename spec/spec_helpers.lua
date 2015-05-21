@@ -113,6 +113,40 @@ function _M.start_tcp_server(port, ...)
   return thread
 end
 
+
+-- Starts a HTTP server
+-- @param `port`    The port where the server will be listening to
+-- @return `thread` A thread object
+function _M.start_http_server(port, ...)
+  local thread = Threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.bind("*", port))
+      local client = server:accept()
+      local lines = {}
+      local count = 1
+      local line, err = nil, nil
+      while true do
+        line, err = client:receive()
+        if not err then
+          lines[count] = line
+          line = nil
+          if count == 7 then
+            client:send("ok" .. "\n")
+            break
+          end
+          count = count + 1;
+        end
+       end
+       client:close()
+       return lines
+      end;
+  }, port)
+
+  thread:start(...)
+  return thread
+end
+
 -- Starts a UDP server
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
