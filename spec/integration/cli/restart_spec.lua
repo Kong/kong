@@ -29,6 +29,7 @@ describe("CLI", function()
 
   it("should restart kong when it's crashed", function()
     os.execute("pkill -9 nginx")
+    os.execute("sleep 0.5") -- Wait for nginx to terminate
     local res, code = spec_helper.restart_kong()
     assert.are.same(0, code)
   end)
