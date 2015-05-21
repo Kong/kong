@@ -2,8 +2,11 @@ local spec_helper = require "spec.spec_helpers"
 local ssl_util = require "kong.plugins.ssl.ssl_util"
 local url = require "socket.url"
 local IO = require "kong.tools.io"
+local http_client = require "kong.tools.http_client"
+local cjson = require "cjson"
 
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
+local STUB_GET_URL = spec_helper.STUB_GET_URL
 
 describe("SSL Plugin", function()
 
@@ -11,7 +14,8 @@ describe("SSL Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "API TESTS 11 (ssl)", public_dns = "ssl1.com", target_url = "http://mockbin.com" }
+        { name = "API TESTS 11 (ssl)", public_dns = "ssl1.com", target_url = "http://mockbin.com" },
+        { name = "API TESTS 12 (ssl)", public_dns = "ssl2.com", target_url = "http://mockbin.com" },
       },
       plugin_configuration = {
             { name = "ssl", value = { cert = [[
@@ -46,7 +50,40 @@ DFKfmOUnYyd7oq4XliQYFVfjNgCz2TB0RJROwuV29ANv8GLZ9nQE05tr5QkCBl2K
 OUFNo/7zdp0jfIlI/pKVAkA04q30OSEBIHBj/MmapVVSRaQiYfSMLV176nA4xqhz
 JkHk9MH9WKKGIchn0LvfUFHxTeBFERoREQo2A82B/WpO
 -----END RSA PRIVATE KEY-----
-]] }, __api = 1 }
+]] }, __api = 1 },
+        { name = "ssl", value = { cert = [[
+-----BEGIN CERTIFICATE-----
+MIICSTCCAbICCQDZ7lxm1iUKmDANBgkqhkiG9w0BAQsFADBpMQswCQYDVQQGEwJV
+UzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNjbzEN
+MAsGA1UECgwES29uZzELMAkGA1UECwwCSVQxETAPBgNVBAMMCHNzbDEuY29tMB4X
+DTE1MDUxOTAwNTAzNloXDTE1MDYxODAwNTAzNlowaTELMAkGA1UEBhMCVVMxEzAR
+BgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xDTALBgNV
+BAoMBEtvbmcxCzAJBgNVBAsMAklUMREwDwYDVQQDDAhzc2wxLmNvbTCBnzANBgkq
+hkiG9w0BAQEFAAOBjQAwgYkCgYEAxOixlvURWF+WfMbG4alhrd3JcavYOGxiBcOv
+0qA2v2a89S5JyD43O2uC8TfE6JZc3UT5kjRKRqIA8QDTYn3XGoJwkvYd1w9oXm3R
+sZXXbi05PD0oXABtIIbH+0NllXRucdeODlXLi80mCvhVIIDjHifqDRiukecZGapE
+rvTsPjMCAwEAATANBgkqhkiG9w0BAQsFAAOBgQCVQdpCfTZLJk0XUu5RnenHpamp
+5ZRsdKA+jwE0kwuSWXx/WbsU35GJx1QVrfnmk7qJpwwg/ZbL/KMTUpY21a4ZyITQ
+WKHxfY3Klqh18Ll7oBDa9fhuhPE4G8tIum/xY3Z3mHBuXDmBxARD0bOPEJtJQw+H
+LGenf2mYrZBfL47wZw==
+-----END CERTIFICATE-----
+]], key = [[
+-----BEGIN RSA PRIVATE KEY-----
+MIICXQIBAAKBgQDE6LGW9RFYX5Z8xsbhqWGt3clxq9g4bGIFw6/SoDa/Zrz1LknI
+Pjc7a4LxN8TollzdRPmSNEpGogDxANNifdcagnCS9h3XD2hebdGxldduLTk8PShc
+AG0ghsf7Q2WVdG5x144OVcuLzSYK+FUggOMeJ+oNGK6R5xkZqkSu9Ow+MwIDAQAB
+AoGAcYkqPLx5j9ct0ixbKGqd475qFJzdQ0tbCa/XhT7T0nDOqyBRcqBNAHnxOlzJ
+sMJiMUNAE8kKusdWe5/aQoQErkVuO9sh1U6sPr7mVD/JWmE08MRzhMwxUVP+HsXM
+EZky0M6TWNyghtvyElUiHTIW8quVdjn8oXQIbR/07VXEVmECQQDj6dHJ4XxXIvE1
+HQ+49EbbM9l7KFd7t2cpmng1+U4yqMGwNVk3MmEVKU8NiI/BVhznPvp0HH3QyLpV
+ShPt9SltAkEA3SzAZ5/UhjycKXgLsgidwDVWOpYweWU7KDsfrr+cSJkmzw7y9WYr
+vshdPYA2iSm83aY1vTzwSRV6udpZfBLiHwJBAJ1HfDie3JmdSWtn1LPEDymyDEEL
+Q+PiWtTA/nfwxV/8ST16c0i+AXUC/sTOGrZG4MdMFLYP+1sbSksVRc+OwbkCQQCy
+DFKfmOUnYyd7oq4XliQYFVfjNgCz2TB0RJROwuV29ANv8GLZ9nQE05tr5QkCBl2K
+OUFNo/7zdp0jfIlI/pKVAkA04q30OSEBIHBj/MmapVVSRaQiYfSMLV176nA4xqhz
+JkHk9MH9WKKGIchn0LvfUFHxTeBFERoREQo2A82B/WpO
+-----END RSA PRIVATE KEY-----
+]], only_https = true }, __api = 2 }
       }
     }
 
@@ -124,6 +161,23 @@ IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
       local res = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername ssl1.com")
       
       assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=ssl1.com"))
+    end)
+
+  end)
+
+  describe("only_https", function()
+
+    it("should block request without https", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, nil, { host = "ssl2.com" })
+      assert.are.equal(426, status)
+      assert.are.same("close, Upgrade", headers.connection)
+      assert.are.same("TLS/1.0, HTTP/1.1", headers.upgrade)
+      assert.are.same("Please use HTTPS protocol", cjson.decode(response).message)
+    end)
+
+    it("should not block request with https", function()
+      local _, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "ssl2.com" })
+      assert.are.equal(200, status)
     end)
 
   end)
