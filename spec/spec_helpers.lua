@@ -12,7 +12,8 @@ require "kong.tools.ngx_stub"
 local _M = {}
 
 -- Constants
-local TEST_PROXY_URL = "http://localhost:8100"
+local TEST_PROXY_PORT=8100
+local TEST_PROXY_URL = "http://localhost:"..tostring(TEST_PROXY_PORT)
 local TEST_PROXY_SSL_URL = "https://localhost:8543"
 _M.API_URL = "http://localhost:8101"
 _M.KONG_BIN = "bin/kong"
@@ -22,6 +23,7 @@ _M.STUB_GET_SSL_URL = TEST_PROXY_SSL_URL.."/request"
 _M.STUB_POST_URL = TEST_PROXY_URL.."/request"
 _M.TEST_CONF_FILE = "kong_TEST.yml"
 _M.DEFAULT_CONF_FILE = "kong.yml"
+_M.TEST_PROXY_PORT = TEST_PROXY_PORT
 _M.envs = {}
 
 -- When dealing with another configuration file for a few tests, this allows to add
@@ -50,32 +52,41 @@ end
 --
 -- OS and bin/kong helpers
 --
-function _M.start_kong(conf_file, skip_wait)
+local function kong_bin(signal, conf_file)
   local env = _M.get_env(conf_file)
-  local result, exit_code = IO.os_execute(_M.KONG_BIN.." start -c "..env.conf_file)
+  local result, exit_code = IO.os_execute(_M.KONG_BIN.." "..signal.." -c "..env.conf_file)
 
   if exit_code ~= 0 then
-    error("spec_helper cannot start kong: \n"..result)
-  end
-
-  if not skip_wait then
-    os.execute("while ! [ -f "..env.configuration.pid_file.." ]; do sleep 0.5; done")
+    error("spec_helper cannot "..signal.." kong: \n"..result)
   end
 
   return result, exit_code
 end
 
-function _M.stop_kong(conf_file)
-  local env = _M.get_env(conf_file)
-  local result, exit_code = IO.os_execute(_M.KONG_BIN.." stop -c "..env.conf_file)
 
-  if exit_code ~= 0 then
-    error("spec_helper cannot stop kong: "..result)
+function _M.start_kong(conf_file, skip_wait)
+  local result, exit_code = kong_bin("start", conf_file, skip_wait)
+  if not skip_wait then
+    local env = _M.get_env(conf_file)
+    os.execute("while ! [ -f "..env.configuration.pid_file.." ]; do sleep 0.5; done")
   end
-
-  os.execute("while [ -f "..env.configuration.pid_file.." ]; do sleep 0.5; done")
-
   return result, exit_code
+end
+
+function _M.stop_kong(conf_file)
+  return kong_bin("stop", conf_file)
+end
+
+function _M.restart_kong(conf_file)
+  return kong_bin("restart", conf_file)
+end
+
+function _M.reload_kong(conf_file)
+  return kong_bin("reload", conf_file)
+end
+
+function _M.quit_kong(conf_file)
+  return kong_bin("quit", conf_file)
 end
 
 --
