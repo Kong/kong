@@ -44,6 +44,10 @@ function _M.api_key(host)
   return constants.CACHE.APIS.."/"..host
 end
 
+function _M.consumer_key(id)
+  return constants.CACHE.CONSUMERS.."/"..id
+end
+
 function _M.plugin_configuration_key(name, api_id, consumer_id)
   return constants.CACHE.PLUGINS_CONFIGURATIONS.."/"..name.."/"..api_id..(consumer_id and "/"..consumer_id or "")
 end
