@@ -47,6 +47,7 @@ plugins_available:
   - tcplog
   - udplog
   - filelog
+  - httplog
   - cors
   - request_transformer
 
