@@ -129,7 +129,7 @@ function BaseDao:_check_all_unique(t, is_updating)
       elseif not unique and k == "self" then
         return false, nil, self._entity.." already exists"
       elseif not unique then
-        errors = utils.add_error(errors, k, k.." already exists with value "..t[k])
+        errors = utils.add_error(errors, k, k.." already exists with value '"..t[k].."'")
       end
     end
   end
