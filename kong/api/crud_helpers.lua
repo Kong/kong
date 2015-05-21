@@ -39,8 +39,10 @@ function _M.put(self, dao_collection)
   local new_entity, err
   if self.params.id then
     new_entity, err = dao_collection:update(self.params)
-    if not err then
+    if not err and new_entity then
       return responses.send_HTTP_OK(new_entity)
+    elseif not new_entity then
+      return responses.send_HTTP_NOT_FOUND()
     end
   else
     new_entity, err = dao_collection:insert(self.params)

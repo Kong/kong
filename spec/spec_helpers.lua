@@ -174,9 +174,9 @@ function _M.drop_db(conf_file)
   end
 end
 
-function _M.seed_db(random_amount, conf_file)
+function _M.seed_db(amount, conf_file)
   local env = _M.get_env(conf_file)
-  return env.faker:seed(random_amount)
+  return env.faker:seed(amount)
 end
 
 function _M.insert_fixtures(fixtures, conf_file)
