@@ -241,19 +241,15 @@ function _M.prepare_kong(args_config, signal)
   kong_config.database,
   tostring(dao_config)))
 
-  if not signal or (signal and signal ~= RELOAD) then
-    -- Check ports
-    local ports = { kong_config.proxy_port, kong_config.proxy_ssl_port, kong_config.admin_api_port, kong_config.dnsmasq_port }
-    for _,port in ipairs(ports) do
-      if cutils.is_port_open(port) then
-        cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
-      end
-    end
-  end
-
   cutils.logger:info("Connecting to the database...")
   prepare_database(args_config)
   prepare_nginx_working_dir(args_config, signal)
+end
+
+local function check_port(port)
+  if cutils.is_port_open(port) then
+    cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
+  end
 end
 
 -- Send a signal to `nginx`. No signal will start the process
@@ -270,6 +266,14 @@ function _M.send_signal(args_config, signal)
   end
 
   local kong_config, kong_config_path = get_kong_config(args_config)
+  if not signal then signal = START end
+
+  if signal == START then
+    local ports = { kong_config.proxy_port, kong_config.proxy_ssl_port, kong_config.admin_api_port }
+    for _,port in ipairs(ports) do
+      check_port(port)
+    end
+  end
 
   -- Build nginx signal command
   local cmd = string.format("KONG_CONF=%s %s -p %s -c %s -g 'pid %s;' %s",
@@ -278,16 +282,14 @@ function _M.send_signal(args_config, signal)
                             kong_config.nginx_working_dir,
                             constants.CLI.NGINX_CONFIG,
                             constants.CLI.NGINX_PID,
-                            signal ~= nil and "-s "..signal or "")
+                            signal == START and "" or "-s "..signal)
 
-  if not signal then signal = START end
-
+  -- dnsmasq start/stop
   if signal == START then
     stop_dnsmasq(kong_config)
+    check_port(kong_config.dnsmasq_port)
     start_dnsmasq(kong_config)
-  end
-
-  if signal == STOP then
+  elseif signal == STOP then
     stop_dnsmasq(kong_config)
   end
 
@@ -299,15 +301,17 @@ function _M.send_signal(args_config, signal)
     end
   end
 
-  -- Check settings for anonymous reports
+  -- Report signal action
   if kong_config.send_anonymous_reports then
     syslog.log({signal=signal})
   end
 
+  -- Start failure handler
   local success = os.execute(cmd) == 0
-  if signal == START and not success then
-    stop_dnsmasq(kong_config)
+  if signal == START and not success then 
+    stop_dnsmasq(kong_config) -- If the start failed, then stop dnsmasq
   end
+
   return success
 end
 
@@ -329,6 +333,7 @@ function _M.is_running(args_config)
     if os.execute("kill -0 "..pid) == 0 then
       return true
     else
+      cutils.logger:warn("It seems like Kong crashed the last time it was started!")
       cutils.logger:info("Removing pid at: "..kong_config.pid_file)
       local _, err = os.remove(kong_config.pid_file)
       if err then
