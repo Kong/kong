@@ -16,7 +16,7 @@ describe("Authentication Plugin", function()
         { name = "tests auth 3", public_dns = "test3.com", target_url = "http://mockbin.com" }
       },
       consumer = {
-        { username = "auth_tests_consuser" }
+        { username = "auth_tests_consumer" }
       },
       plugin_configuration = {
         { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
@@ -87,6 +87,15 @@ describe("Authentication Plugin", function()
       local body = cjson.decode(response)
       assert.are.equal(403, status)
       assert.are.equal("Invalid authentication credentials", body.message)
+    end)
+
+    it("should set right headers", function()
+      local response, status = http_client.post(STUB_POST_URL, {apikey = "apikey123"}, {host = "test1.com"})
+      assert.are.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.truthy(parsed_response.headers["x-consumer-id"])
+      assert.truthy(parsed_response.headers["x-consumer-username"])
+      assert.are.equal("auth_tests_consumer", parsed_response.headers["x-consumer-username"])
     end)
 
     describe("Hide credentials", function()
@@ -204,6 +213,15 @@ describe("Authentication Plugin", function()
       assert.are.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.are.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers.authorization)
+    end)
+
+    it("should set right headers", function()
+      local response, status = http_client.post(STUB_POST_URL, {}, {host = "test2.com", authorization = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
+      assert.are.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.truthy(parsed_response.headers["x-consumer-id"])
+      assert.truthy(parsed_response.headers["x-consumer-username"])
+      assert.are.equal("auth_tests_consumer", parsed_response.headers["x-consumer-username"])
     end)
 
   end)

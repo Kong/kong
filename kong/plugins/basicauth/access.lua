@@ -85,7 +85,18 @@ function _M.execute(conf)
     return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end
 
-  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, credential.consumer_id)
+  -- Retrieve consumer
+  local consumer = cache.get_and_set(cache.consumer_key(credential.consumer_id), function()
+    local result, err = dao.consumers:find_one(credential.consumer_id)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+    return result
+  end)
+
+  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.ctx.authenticated_entity = credential
 end
 
