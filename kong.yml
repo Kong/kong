@@ -35,13 +35,13 @@ databases_available:
       keyspace: kong
       keepalive: 60000 # in milliseconds
 
+## Cassandra cache configuration
+database_cache_expiration: 5 # in seconds
+
 ## SSL Settings
 ## (Uncomment the two properties below to set your own certificate)
 # ssl_cert_path: /path/to/certificate.pem
 # ssl_key_path: /path/to/certificate.key
-
-## Cassandra cache configuration
-database_cache_expiration: 5 # in seconds
 
 ## Sends anonymous error reports
 send_anonymous_reports: true
