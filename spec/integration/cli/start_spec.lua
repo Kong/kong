@@ -81,7 +81,7 @@ describe("CLI", function()
           { name = "tests cli 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
         },
         plugin_configuration = {
-          { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
+          { name = "ratelimiting", value = { limit = { "minute:6" } }, __api = 1 },
         }
       }
 

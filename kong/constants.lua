@@ -32,8 +32,8 @@ return {
     PROXY_TIME = "X-Kong-Proxy-Time",
     API_TIME = "X-Kong-Api-Time",
     CONSUMER_ID = "X-Consumer-ID",
-    RATELIMIT_LIMIT = "X-RateLimit-Limit",
-    RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+    RATELIMIT_LIMIT = "X-RateLimit-<duration>-Limit",
+    RATELIMIT_REMAINING = "X-RateLimit-<duration>-Remaining"
   },
   CACHE = {
     APIS = "apis",
