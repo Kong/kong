@@ -120,6 +120,7 @@ build = {
 
     ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
     ["kong.plugins.ssl.certificate"] = "kong/plugins/ssl/certificate.lua",
+    ["kong.plugins.ssl.access"] = "kong/plugins/ssl/access.lua",
     ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
 

@@ -8,8 +8,8 @@ function _M.execute(conf)
 
   local data = cache.get_and_set(cache.ssl_data(ngx.ctx.api.id), function()
     local result = {
-      cert_der = ngx.decode_base64(conf.cert_der),
-      key_der = ngx.decode_base64(conf.key_der)
+      cert_der = ngx.decode_base64(conf._cert_der_cache),
+      key_der = ngx.decode_base64(conf._key_der_cache)
     }
     return result
   end)

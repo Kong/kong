@@ -4,7 +4,7 @@ local base64 = require "base64"
 local function validate_cert(v)
   local der = ssl_util.cert_to_der(v)
   if der then
-    return true, nil, { cert_der = base64.encode(der) }
+    return true, nil, { _cert_der_cache = base64.encode(der) }
   end
   return false, "Invalid data"
 end
@@ -12,7 +12,7 @@ end
 local function validate_key(v)
   local der = ssl_util.key_to_der(v)
   if der then
-    return true, nil, { key_der = base64.encode(der) }
+    return true, nil, { _key_der_cache = base64.encode(der) }
   end
   return false, "Invalid data"
 end
@@ -20,9 +20,9 @@ end
 return {
   cert = { required = true, type = "string", func = validate_cert },
   key = { required = true, type = "string", func = validate_key },
-  only_ssl = { required = false, type = "boolean", default = false },
+  only_https = { required = false, type = "boolean", default = false },
 
   -- Internal use
-  cert_der = { type = "string", immutable = true },
-  key_der = { type = "string", immutable = true }
+  _cert_der_cache = { type = "string", immutable = true },
+  _key_der_cache = { type = "string", immutable = true }
 }
