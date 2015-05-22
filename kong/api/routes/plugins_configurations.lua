@@ -7,11 +7,11 @@ return {
     end,
 
     PUT = function(self, dao_factory)
-      crud.put(self, dao_factory.plugins_configurations)
+      crud.put(self.params, dao_factory.plugins_configurations)
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self, dao_factory.plugins_configurations)
+      crud.post(self.params, dao_factory.plugins_configurations)
     end
   },
 
