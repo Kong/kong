@@ -33,10 +33,12 @@ end
 
 -- Kill a process by PID and wait until it's terminated
 -- @param `pid` the pid to kill
-function _M.kill_process_by_pid(pid)
-  local res, code = _M.os_execute("kill "..pid)
-  _M.os_execute("wait "..pid)
-  return res, code
+function _M.kill_process_by_pid_file(pid_file, signal)
+  if _M.file_exists(pid_file) then
+    local pid = stringy.strip(_M.read_file(pid_file))
+    local res, code = _M.os_execute("while kill -0 "..pid.." >/dev/null 2>&1; do kill "..(signal and "-"..tostring(signal).." " or "")..pid.."; sleep 0.1; done")
+    return res, code
+  end
 end
 
 function _M.read_file(path)
