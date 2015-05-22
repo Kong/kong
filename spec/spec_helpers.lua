@@ -213,15 +213,6 @@ function _M.insert_fixtures(fixtures, conf_file)
   return env.faker:insert_from_table(fixtures)
 end
 
-function _M.reset_db(conf_file)
-  local env = _M.get_env(conf_file)
-  env.migrations:reset(function(_, err)
-    if err then
-      error(err)
-    end
-  end)
-end
-
 -- Add the default env to our spec_helper
 _M.add_env(_M.TEST_CONF_FILE)
 
