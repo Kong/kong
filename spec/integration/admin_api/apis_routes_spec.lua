@@ -15,7 +15,6 @@ describe("Admin API", function()
   end)
 
   describe("/apis/", function()
-
     local BASE_URL = spec_helper.API_URL.."/apis/"
 
     describe("POST", function()
@@ -51,6 +50,7 @@ describe("Admin API", function()
     end)
 
     describe("PUT", function()
+
       setup(function()
         spec_helper.drop_db()
       end)
@@ -221,7 +221,7 @@ describe("Admin API", function()
 
         it("[FAILURE] should return proper errors", function()
           send_content_types(BASE_URL, "POST", {},
-          400, '{"name":"name is required","value":"value is required"}')
+          400, '{"name":"name is required"}')
         end)
 
         it("[SUCCESS] should create a plugin configuration", function()
@@ -252,7 +252,7 @@ describe("Admin API", function()
 
         it("[FAILURE] should return proper errors", function()
           send_content_types(BASE_URL, "PUT", {},
-          400, '{"name":"name is required","value":"value is required"}')
+          400, '{"name":"name is required"}')
         end)
 
         it("[SUCCESS] should create and update", function()

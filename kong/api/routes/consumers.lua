@@ -1,4 +1,3 @@
-local validations = require("kong.dao.schemas")
 local crud = require "kong.api.crud_helpers"
 
 return {
@@ -8,30 +7,17 @@ return {
     end,
 
     PUT = function(self, dao_factory)
-      crud.put(self, dao_factory.consumers)
+      crud.put(self.params, dao_factory.consumers)
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self, dao_factory.consumers)
+      crud.post(self.params, dao_factory.consumers)
     end
   },
 
   ["/consumers/:username_or_id"] = {
     before = function(self, dao_factory, helpers)
-      local fetch_keys = {
-        [validations.is_valid_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
-      }
-      self.params.username_or_id = nil
-
-      local data, err = dao_factory.consumers:find_by_keys(fetch_keys)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      self.consumer = data[1]
-      if not self.consumer then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     end,
 
     GET = function(self, dao_factory, helpers)

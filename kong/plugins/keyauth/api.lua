@@ -1,18 +1,51 @@
-local base_controller = require "kong.api.routes.base_controller"
+local crud = require "kong.api.crud_helpers"
 
-return function(lapis_app, dao_factory)
-  local inspect = require "inspect"
-  print(inspect(lapis_app))
-  lapis_app:get("api/keyauth", "/apis/:name_or_id", function(self)
-    if is_valid_uuid(self.params.name_or_id) then
-      self.params.id = self.params.name_or_id
-    else
-      self.params.name = self.params.name_or_id
+return {
+  ["/consumers/:username_or_id/keyauth/"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      crud.paginated_set(self, dao_factory.keyauth_credentials)
+    end,
+
+    PUT = function(self, dao_factory)
+      crud.put(self.params, dao_factory.keyauth_credentials)
+    end,
+
+    POST = function(self, dao_factory)
+      crud.post(self.params, dao_factory.keyauth_credentials)
     end
-    self.params.name_or_id = nil
+  },
 
-    base_controller.find_by_keys_paginated(self, dao_factory.apis)
-  end)
+  ["/consumers/:username_or_id/keyauth/:id"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      self.params.consumer_id = self.consumer.id
 
-  base_controller(lapis_app, dao_factory.apis, "apis")
-end
+      local data, err = dao_factory.keyauth_credentials:find_by_keys({ id = self.params.id })
+      if err then
+        return helpers.yield_error(err)
+      end
+
+      self.plugin = data[1]
+      if not self.plugin then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.plugin)
+    end,
+
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.keyauth_credentials)
+    end,
+
+    DELETE = function(self, dao_factory)
+      crud.delete(self.plugin.id, dao_factory.keyauth_credentials)
+    end
+  }
+}

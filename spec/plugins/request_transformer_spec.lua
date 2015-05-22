@@ -5,7 +5,7 @@ local cjson = require "cjson"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_POST_URL = spec_helper.STUB_POST_URL
 
-describe("Request Transformer Plugin #proxy", function()
+describe("Request Transformer Plugin", function()
 
   setup(function()
     spec_helper.prepare_db()

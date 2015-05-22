@@ -78,6 +78,8 @@ local function parse_params(fn)
   end)
 end
 
+app.parse_params = parse_params
+
 app.default_route = function(self)
   local path = self.req.parsed_url.path:match("^(.*)/$")
 
@@ -142,16 +144,16 @@ for _, v in ipairs({"kong", "apis", "consumers", "plugins_configurations"}) do
 end
 
 -- Loading plugins routes
---[[if configuration and configuration.plugins_available then
+if configuration and configuration.plugins_available then
   for _, v in ipairs(configuration.plugins_available) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)
-      mod()
+      attach_routes(mod)
     else
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: "..v)
     end
   end
-end]]
+end
 
 return app

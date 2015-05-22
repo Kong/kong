@@ -1,7 +1,44 @@
 local responses = require "kong.tools.responses"
+local validations = require "kong.dao.schemas_validation"
 local app_helpers = require "lapis.application"
 
 local _M = {}
+
+function _M.find_api_by_name_or_id(self, dao_factory, helpers)
+  local fetch_keys = {
+    [validations.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+  }
+  self.params.name_or_id = nil
+
+  -- TODO: make the base_dao more flexible so we can query find_one with key/values
+  -- https://github.com/Mashape/kong/issues/103
+  local data, err = dao_factory.apis:find_by_keys(fetch_keys)
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.api = data[1]
+  if not self.api then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
+function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
+  local fetch_keys = {
+    [validations.is_valid_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
+  }
+  self.params.username_or_id = nil
+
+  local data, err = dao_factory.consumers:find_by_keys(fetch_keys)
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  self.consumer = data[1]
+  if not self.consumer then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
 
 function _M.paginated_set(self, dao_collection)
   local size = self.params.size and tonumber(self.params.size) or 100
@@ -35,17 +72,17 @@ function _M.paginated_set(self, dao_collection)
   return responses.send_HTTP_OK(result, type(result) ~= "table")
 end
 
-function _M.put(self, dao_collection)
+function _M.put(params, dao_collection)
   local new_entity, err
-  if self.params.id then
-    new_entity, err = dao_collection:update(self.params)
+  if params.id then
+    new_entity, err = dao_collection:update(params)
     if not err and new_entity then
       return responses.send_HTTP_OK(new_entity)
     elseif not new_entity then
       return responses.send_HTTP_NOT_FOUND()
     end
   else
-    new_entity, err = dao_collection:insert(self.params)
+    new_entity, err = dao_collection:insert(params)
     if not err then
       return responses.send_HTTP_CREATED(new_entity)
     end
@@ -56,8 +93,8 @@ function _M.put(self, dao_collection)
   end
 end
 
-function _M.post(self, dao_collection)
-  local data, err = dao_collection:insert(self.params)
+function _M.post(params, dao_collection)
+  local data, err = dao_collection:insert(params)
   if err then
     return app_helpers.yield_error(err)
   else
