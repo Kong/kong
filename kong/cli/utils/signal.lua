@@ -174,17 +174,10 @@ local function prepare_database(args_config)
 end
 
 local function stop_dnsmasq(kong_config)
-  local file_pid = kong_config.nginx_working_dir.."/"..constants.CLI.DNSMASQ_PID
-  if IO.file_exists(file_pid) then
-    local res, code = IO.os_execute("cat "..file_pid)
-    if code == 0 then
-      local _, kill_code = IO.kill_process_by_pid(res)
-      if kill_code and kill_code == 0 then
-        cutils.logger:info("dnsmasq stopped")
-      end
-    else
-      cutils.logger:error_exit(res)
-    end
+  local pid_file = kong_config.nginx_working_dir.."/"..constants.CLI.DNSMASQ_PID
+  local _, code = IO.kill_process_by_pid_file(pid_file)
+  if code and code == 0 then
+    cutils.logger:info("dnsmasq stopped")
   end
 end
 
@@ -275,6 +268,12 @@ function _M.send_signal(args_config, signal)
     end
   end
 
+
+  local nginx_pid
+  if IO.file_exists(kong_config.pid_file) then
+    nginx_pid = stringy.strip(IO.read_file(kong_config.pid_file))
+  end
+
   -- Build nginx signal command
   local cmd = string.format("KONG_CONF=%s %s -p %s -c %s -g 'pid %s;' %s",
                             kong_config_path,
@@ -308,8 +307,13 @@ function _M.send_signal(args_config, signal)
 
   -- Start failure handler
   local success = os.execute(cmd) == 0
+
   if signal == START and not success then 
     stop_dnsmasq(kong_config) -- If the start failed, then stop dnsmasq
+  end
+
+  if success and (signal == STOP or signal == QUIT) and nginx_pid then
+    IO.os_execute("while kill -0 "..nginx_pid.." >/dev/null 2>&1; do sleep 0.1; done")  
   end
 
   return success
