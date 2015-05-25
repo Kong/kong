@@ -92,9 +92,8 @@ JkHk9MH9WKKGIchn0LvfUFHxTeBFERoREQo2A82B/WpO
 
   teardown(function()
     spec_helper.stop_kong()
-    spec_helper.reset_db()
   end)
-  
+
   describe("SSL Util", function()
 
     it("should not convert an invalid cert to DER", function()
@@ -152,14 +151,14 @@ IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
     it("should return default CERTIFICATE when requesting other APIs", function()
       local parsed_url = url.parse(STUB_GET_SSL_URL)
       local res = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername test4.com")
-      
+
       assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=localhost"))
     end)
 
     it("should work when requesting a specific API", function()
       local parsed_url = url.parse(STUB_GET_SSL_URL)
       local res = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername ssl1.com")
-      
+
       assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=ssl1.com"))
     end)
 
