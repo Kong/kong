@@ -6,7 +6,7 @@ describe("CLI Utils", function()
     local PORT = 30000
     assert.falsy(cutils.is_port_open(PORT))
     spec_helper.start_tcp_server(PORT, true, true)
-    os.execute("sleep 0.5") -- Wait for the server to start
+    os.execute("sleep 0") -- Wait for the server to start
     assert.truthy(cutils.is_port_open(PORT))
   end)
 end)

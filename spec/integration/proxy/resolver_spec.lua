@@ -11,6 +11,15 @@ local utils = require "kong.tools.utils"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 
+-- Parses an SSL certificate returned by LuaSec
+local function parse_cert(cert)
+  local result = {}
+  for _, v in ipairs(cert:issuer()) do
+    result[v.name] = v.value
+  end
+  return result
+end
+
 describe("Resolver", function()
 
   setup(function()
@@ -43,7 +52,7 @@ describe("Resolver", function()
 
   end)
 
-  describe("SSL", function() 
+  describe("SSL", function()
 
     it("should work when calling SSL port", function()
       local response, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "mocbkin.com" })
@@ -74,8 +83,8 @@ describe("Resolver", function()
       assert.truthy(ok)
       assert.falsy(err)
 
-      local cert = spec_helper.parse_cert(conn:getpeercertificate())
-      
+      local cert = parse_cert(conn:getpeercertificate())
+
       assert.are.same(6, utils.table_size(cert))
       assert.are.same("Kong", cert.organizationName)
       assert.are.same("IT", cert.organizationalUnitName)
