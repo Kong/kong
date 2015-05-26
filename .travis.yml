@@ -9,11 +9,8 @@ branches:
     - master
 
 before_install:
-  - bash .travis/setup_lua.sh
-  - bash .travis/setup_openresty.sh
-  - export PATH=$PATH:/usr/local/openresty/nginx/sbin
+  - bash .travis/setup_kong.sh
   - bash .travis/setup_cassandra.sh
-  - bash .travis/setup_dnsmasq.sh
 
 install:
   - sudo make install

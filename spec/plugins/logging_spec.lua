@@ -12,9 +12,9 @@ uuid.seed()
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local TEST_CONF = "kong_TEST.yml"
 
-local TCP_PORT = 7777
-local UDP_PORT = 8888
-local HTTP_PORT = 8989
+local TCP_PORT = 20777
+local UDP_PORT = 20778
+local HTTP_PORT = 20779
 
 describe("Logging Plugins", function()
 
@@ -22,13 +22,16 @@ describe("Logging Plugins", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests logging", public_dns = "logging.com", target_url = "http://mockbin.com" }
+        { name = "tests tcp logging", public_dns = "tcp_logging.com", target_url = "http://mockbin.com" },
+        { name = "tests udp logging", public_dns = "udp_logging.com", target_url = "http://mockbin.com" },
+        { name = "tests http logging", public_dns = "http_logging.com", target_url = "http://mockbin.com" },
+        { name = "tests file logging", public_dns = "file_logging.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
-        { name = "tcplog", value = { host = "127.0.0.1", port = 7777 }, __api = 1 },
-        { name = "udplog", value = { host = "127.0.0.1", port = 8888 }, __api = 1 },
-        { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT, method = "POST"}, __api = 1 },
-        { name = "filelog", value = {}, __api = 1 }
+        { name = "tcplog", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
+        { name = "udplog", value = { host = "127.0.0.1", port = UDP_PORT }, __api = 2 },
+        { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT }, __api = 3 },
+        { name = "filelog", value = {}, __api = 4 }
       }
     }
 
@@ -45,7 +48,7 @@ describe("Logging Plugins", function()
       local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
 
       -- Making the request
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "tcp_logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -62,7 +65,7 @@ describe("Logging Plugins", function()
       local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock TCP server
 
       -- Making the request
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "udp_logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -75,11 +78,11 @@ describe("Logging Plugins", function()
       assert.are.same("127.0.0.1", log_message.ip)
     end)
 
-    it("should log to Http", function()
+    it("should log to HTTP", function()
       local thread = spec_helper.start_http_server(HTTP_PORT) -- Starting the mock TCP server
 
       -- Making the request
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging.com" })
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "http_logging.com" })
       assert.are.equal(200, status)
 
       -- Getting back the TCP server input
@@ -98,7 +101,7 @@ describe("Logging Plugins", function()
 
       -- Making the request
       local _, status = http_client.get(STUB_GET_URL, nil,
-        { host = "logging.com", file_log_uuid = uuid }
+        { host = "file_logging.com", file_log_uuid = uuid }
       )
       assert.are.equal(200, status)
 

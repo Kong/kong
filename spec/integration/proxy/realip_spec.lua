@@ -30,7 +30,7 @@ describe("Real IP", function()
   end)
 
   it("should parse the correct IP", function()
-    local uuid,_ = string.gsub(uuid(), "-", "")
+    local uuid = string.gsub(uuid(), "-", "")
 
     -- Making the request
     local _, status = http_client.get(spec_helper.STUB_GET_URL, nil,
