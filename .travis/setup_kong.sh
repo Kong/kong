@@ -3,11 +3,12 @@
 source ./versions.sh
 
 sudo apt-get update
-sudo apt-get install wget curl tar make gcc perl unzip git liblua${LUA_VERSION%.*}-0-dev lsb-release
 
-PLATFORM=`lsb_release -cs`
-wget https://github.com/Mashape/kong/releases/download/0.2.1/kong-0.2.1.${PLATFORM}_all.deb
+# Installing dependencies required to build development rocks
+sudo apt-get install wget curl tar make gcc unzip git liblua5.1-0-dev
 
-# Install Kong
+# Installing dependencies required for Kong
 sudo apt-get install sudo netcat lua5.1 openssl libpcre3 dnsmasq
+
+# Installing Kong
 sudo dpkg -i ./.travis/kong-*.precise_all.deb
