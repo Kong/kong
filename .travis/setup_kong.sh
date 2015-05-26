@@ -3,7 +3,7 @@
 source ./versions.sh
 
 sudo apt-get update
-sudo apt-get install wget curl gnupg tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua${LUA_VERSION%.*} liblua${LUA_VERSION%.*}-0-dev lsb-release ruby ruby-dev
+sudo apt-get install wget curl tar make gcc perl unzip git liblua${LUA_VERSION%.*}-0-dev lsb-release
 
 PLATFORM=`lsb_release -cs`
 wget https://github.com/Mashape/kong/releases/download/0.2.1/kong-0.2.1.${PLATFORM}_all.deb
