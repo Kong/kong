@@ -85,7 +85,11 @@ local function prepare_nginx_working_dir(args_config)
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
 
-   -- Check memory cache
+  -- TODO: this is NOT the place to do this.
+  -- @see https://github.com/Mashape/kong/issues/92 for configuration validation/defaults
+  -- @see https://github.com/Mashape/kong/issues/217 for a better configuration file
+
+  -- Check memory cache
   if kong_config.memory_cache_size then
     if tonumber(kong_config.memory_cache_size) == nil then
       cutils.logger:error_exit("Invalid \"memory_cache_size\" setting")
@@ -96,7 +100,7 @@ local function prepare_nginx_working_dir(args_config)
     kong_config.memory_cache_size = 128 -- Default value
     cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
-  
+
   local ssl_cert_path, ssl_key_path = cutils.get_ssl_cert_and_key(kong_config)
 
   -- Extract nginx config from kong config, replace any needed value
@@ -182,7 +186,7 @@ local function stop_dnsmasq(kong_config)
 end
 
 local function start_dnsmasq(kong_config)
-  local cmd = IO.cmd_exists("dnsmasq") and "dnsmasq" or 
+  local cmd = IO.cmd_exists("dnsmasq") and "dnsmasq" or
                 (IO.cmd_exists("/usr/local/sbin/dnsmasq") and "/usr/local/sbin/dnsmasq" or nil) -- On OS X dnsmasq is at /usr/local/sbin/
   if not cmd then
     cutils.logger:error_exit("Can't find dnsmasq")
@@ -241,7 +245,7 @@ end
 
 local function check_port(port)
   if cutils.is_port_open(port) then
-    cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")  
+    cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")
   end
 end
 
@@ -267,7 +271,6 @@ function _M.send_signal(args_config, signal)
       check_port(port)
     end
   end
-
 
   local nginx_pid
   if IO.file_exists(kong_config.pid_file) then
@@ -308,12 +311,12 @@ function _M.send_signal(args_config, signal)
   -- Start failure handler
   local success = os.execute(cmd) == 0
 
-  if signal == START and not success then 
+  if signal == START and not success then
     stop_dnsmasq(kong_config) -- If the start failed, then stop dnsmasq
   end
 
   if success and (signal == STOP or signal == QUIT) and nginx_pid then
-    IO.os_execute("while kill -0 "..nginx_pid.." >/dev/null 2>&1; do sleep 0.1; done")  
+    IO.os_execute("while kill -0 "..nginx_pid.." >/dev/null 2>&1; do sleep 0.1; done")
   end
 
   return success
