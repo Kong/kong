@@ -18,6 +18,10 @@ end
 
 describe("CLI", function()
 
+  teardown(function()
+    pcall(spec_helper.stop_kong)
+  end)
+
   describe("Startup plugins check", function()
 
     setup(function()
