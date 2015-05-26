@@ -140,6 +140,26 @@ describe("Schemas", function()
       assert.truthy(valid)
     end)
 
+    it("should not return an error when a number is passed as a string", function()
+      -- Success
+      local values = { string = "test", number = "10" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+      assert.are.same("number", type(values.number))
+    end)
+
+    it("should not return an error when a boolean is passed as a string", function()
+      -- Success
+      local values = { string = "test", boolean_val = "false" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(err)
+      assert.truthy(valid)
+      assert.are.same("boolean", type(values.boolean_val))
+    end)
+
     it("should consider id and timestampd as valid types", function()
       local s = { id = { type = "id" } }
 
@@ -293,8 +313,7 @@ describe("Schemas", function()
             sub_field_required = { required = true },
             sub_field_default = { default = "abcd" },
             sub_field_number = { type = "number" },
-            error_loading_sub_sub_schema = {},
-            sub_sub_schema = { schema = schema_from_function }
+            error_loading_sub_sub_schema = {}
           }
         }
       }
@@ -318,6 +337,8 @@ describe("Schemas", function()
       end)
 
       it("should validate a property with a sub-schema from a function", function()
+        nested_schema.sub_schema.schema.sub_sub_schema = { schema = schema_from_function }
+
         -- Success
         local values = { some_required = "somestring", sub_schema = {
                                                         sub_field_required = "sub value",
@@ -368,20 +389,6 @@ describe("Schemas", function()
         assert.are.same("Error loading the sub-sub-schema", err["sub_schema.sub_sub_schema"])
       end)
 
-      it("should not return an error when a number is passed as a string", function()
-        -- Success
-        local values = { some_required = "somestring",
-                         sub_schema = {
-                          sub_field_required = "sub value",
-                          sub_field_number = "10"
-                        }}
-
-        local valid, err = validate(values, nested_schema)
-        assert.falsy(err)
-        assert.truthy(valid)
-        assert.are.same("number", type(values.sub_schema.sub_field_number))
-      end)
-
       it("should instanciate a sub-value if sub-schema has a `default` value and do that before `required`", function()
         local function validate_value(value)
           if not value.some_property then
@@ -399,6 +406,18 @@ describe("Schemas", function()
         assert.falsy(err)
         assert.True(valid)
         assert.are.same("hello", obj.value.some_property)
+      end)
+
+      it("should mark a value required if sub-schema has a `required`", function()
+        local schema = {
+          value = { type = "table", schema = {some_property={required=true}}, func = validate_value }
+        }
+
+        local obj = {}
+        local valid, err = validate(obj, schema)
+        assert.truthy(err)
+        assert.False(valid)
+        --assert.are.same("hello", obj.value.some_property)
       end)
 
     end)
