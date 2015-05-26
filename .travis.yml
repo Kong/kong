@@ -13,6 +13,7 @@ before_install:
   - bash .travis/setup_cassandra.sh
 
 install:
+  - luarocks remove kong --force
   - sudo make install
   - sudo make dev
 
