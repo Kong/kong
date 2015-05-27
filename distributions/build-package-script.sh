@@ -206,26 +206,29 @@ make install DESTDIR=$OUT
 ############################################
 
 # Install Kong
-cd $TMP
-git clone --branch $KONG_BRANCH --depth 1 https://github.com/Mashape/kong.git
-cd kong
-$OUT/usr/local/bin/luarocks make kong-*.rockspec
+#cd $TMP
+#git clone --branch $KONG_BRANCH --depth 1 https://github.com/Mashape/kong.git
+#cd kong
+#$OUT/usr/local/bin/luarocks make kong-*.rockspec
 
 # Extract the version from the rockspec file
-rockspec_filename=`basename $TMP/kong/kong-*.rockspec`
-rockspec_basename=${rockspec_filename%.*}
-rockspec_version=${rockspec_basename#"kong-"}
+#rockspec_filename=`basename $TMP/kong/kong-*.rockspec`
+#rockspec_basename=${rockspec_filename%.*}
+#rockspec_version=${rockspec_basename#"kong-"}
+
+rockspec_version="travis"
 
 # Fix the Kong bin file
-sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
-rm $OUT/usr/local/bin/kong.bak
+#sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
+#rm $OUT/usr/local/bin/kong.bak
 
 # Copy the conf to /etc/kong
 post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
-echo "#!/bin/sh
-mkdir -p /etc/kong
-cp /usr/local/lib/luarocks/rocks/kong/$rockspec_version/conf/kong.yml /etc/kong/kong.yml
-echo \"user=root\" > /etc/dnsmasq.conf" > $post_install_script
+
+#echo "#!/bin/sh
+#mkdir -p /etc/kong
+#cp /usr/local/lib/luarocks/rocks/kong/$rockspec_version/conf/kong.yml /etc/kong/kong.yml
+#echo \"user=root\" > /etc/dnsmasq.conf" > $post_install_script
 
 ##############################################################
 #                      Build the package                     #
