@@ -272,11 +272,6 @@ function _M.send_signal(args_config, signal)
     end
   end
 
-  local nginx_pid
-  if IO.file_exists(kong_config.pid_file) then
-    nginx_pid = stringy.strip(IO.read_file(kong_config.pid_file))
-  end
-
   -- Build nginx signal command
   local cmd = string.format("KONG_CONF=%s %s -p %s -c %s -g 'pid %s;' %s",
                             kong_config_path,
@@ -313,10 +308,6 @@ function _M.send_signal(args_config, signal)
 
   if signal == START and not success then
     stop_dnsmasq(kong_config) -- If the start failed, then stop dnsmasq
-  end
-
-  if success and (signal == STOP or signal == QUIT) and nginx_pid then
-    IO.os_execute("while kill -0 "..nginx_pid.." >/dev/null 2>&1; do sleep 0.1; done")
   end
 
   return success

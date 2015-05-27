@@ -12,9 +12,9 @@ uuid.seed()
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local TEST_CONF = "kong_TEST.yml"
 
-local TCP_PORT = 7777
-local UDP_PORT = 7778
-local HTTP_PORT = 7779
+local TCP_PORT = 20777
+local UDP_PORT = 20778
+local HTTP_PORT = 20779
 
 describe("Logging Plugins", function()
 
@@ -79,10 +79,7 @@ describe("Logging Plugins", function()
     end)
 
     it("should log to HTTP", function()
-      pending()
       local thread = spec_helper.start_http_server(HTTP_PORT) -- Starting the mock TCP server
-
-      --os.execute("sleep 0.5")
 
       -- Making the request
       local _, status = http_client.get(STUB_GET_URL, nil, { host = "http_logging.com" })
