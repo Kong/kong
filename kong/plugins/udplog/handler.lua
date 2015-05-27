@@ -1,8 +1,6 @@
--- Copyright (C) Mashape, Inc.
-
-local basic_serializer = require "kong.plugins.log_serializers.basic"
 local log = require "kong.plugins.udplog.log"
 local BasePlugin = require "kong.plugins.base_plugin"
+local basic_serializer = require "kong.plugins.log_serializers.basic"
 
 local UdpLogHandler = BasePlugin:extend()
 

@@ -2,6 +2,7 @@ local _M = {}
 
 function _M.serialize(ngx)
   return {
+    request = {
       uri = ngx.var.request_uri,
       request_uri = ngx.var.scheme.."://"..ngx.var.host..":"..ngx.var.server_port..ngx.var.request_uri,
       querystring = ngx.req.get_uri_args(), -- parameters, as a table
