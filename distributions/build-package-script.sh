@@ -196,26 +196,6 @@ tar xzf ssl-cert-by-lua.tar.gz
 NGX_LUA=`ls | grep ngx_lua-*`
 rm -rf $NGX_LUA
 mv lua-nginx-module-ssl-cert-by-lua $NGX_LUA
-# Install ssl.lua
-cd $NGX_LUA/lua
-echo '
-package = "ngxssl"
-version = "0.1-1"
-source = {
-  url = "git://github.com/openresty/lua-nginx-module",
-  branch = "ssl-cert-by-lua"
-}
-dependencies = {
-  "lua >= 5.1"
-}
-build = {
-  type = "builtin",
-  modules = {
-    ["ngx.ssl"] = "ngx/ssl.lua"
-  }
-}
-' > ngxssl-0.1-1.rockspec
-$OUT/usr/local/bin/luarocks make ngxssl-0.1-1.rockspec
 # Configure and install
 cd $TMP/ngx_openresty-$OPENRESTY_VERSION
 ./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module ${OPENRESTY_CONFIGURE}
