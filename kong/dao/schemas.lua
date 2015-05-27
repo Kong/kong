@@ -103,10 +103,14 @@ function _M.validate(t, schema, is_update)
       end
 
       if sub_schema then
-        for k, v in pairs(sub_schema) do
-          if v.default and t[column] == nil then
-            t[column] = {}
-            break
+        -- Check for sub-schema defaults and required properties
+        for _, sub_field in pairs(sub_schema) do
+          if t[column] == nil then
+            if sub_field.default then
+              t[column] = {}
+            elseif sub_field.required then -- only check required if field doesn't have a default
+              v.required = true
+            end
           end
         end
 
