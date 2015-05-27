@@ -35,6 +35,13 @@ describe("Timestamp", function()
   end)
 
   it("should give the same timestamps table for the same time", function()
+    -- Wait til the beginning of a new second before starting the test
+    -- to avoid ending up in an edge case when the second is about to end
+    local now = os.time()
+    while os.time() < now + 1 do
+      -- Nothing
+    end
+
     local timestamps_one = timestamp.get_timestamps()
     local timestamps_two = timestamp.get_timestamps(timestamp.get_utc())
     assert.truthy(timestamps_one)

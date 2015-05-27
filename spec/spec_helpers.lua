@@ -107,10 +107,7 @@ function _M.start_http_server(port, ...)
     function(port)
       local socket = require "socket"
       local server = assert(socket.bind("*", port))
-      local client, err = server:accept()
-      if not err then
-        client:settimeout(3)
-      end
+      local client = server:accept()
 
       local lines = {}
       local line
