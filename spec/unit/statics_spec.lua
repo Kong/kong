@@ -106,7 +106,7 @@ nginx: |
   }
 
   http {
-    resolver {{dns_resolver}};
+    resolver {{dns_resolver}} ipv6=off;
     charset UTF-8;
 
     access_log logs/access.log;
