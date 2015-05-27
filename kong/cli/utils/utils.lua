@@ -9,7 +9,6 @@ local constants = require "kong.constants"
 local Object = require "classic"
 local lpath = require "luarocks.path"
 local IO = require "kong.tools.io"
-local socket = require "socket"
 
 --
 -- Colors
