@@ -40,7 +40,7 @@ local ENDPOINTS = {
       }
     },
     update_fields = { enabled = false },
-    error_message = '{"name":"name is required","api_id":"api_id is required","value":"value is required"}\n'
+    error_message = '{"api_id":"api_id is required","name":"name is required"}\n'
   }
 }
 
