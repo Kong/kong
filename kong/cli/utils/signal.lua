@@ -310,6 +310,12 @@ function _M.send_signal(args_config, signal)
     stop_dnsmasq(kong_config) -- If the start failed, then stop dnsmasq
   end
 
+  if signal == STOP and success then
+    if IO.file_exists(kong_config.pid_file) then
+      os.execute("while [ -f "..kong_config.pid_file.." ]; do sleep 0.1; done")
+    end
+  end
+
   return success
 end
 
