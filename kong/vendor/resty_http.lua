@@ -3,8 +3,6 @@ local type     = type
 local tonumber = tonumber
 local tostring = tostring
 local setmetatable = setmetatable
-local encode_args  = ngx.encode_args
-local tcp    = ngx.socket.tcp
 local concat = table.concat
 local insert = table.insert
 local upper  = string.upper
@@ -48,7 +46,7 @@ local function _req_header(conf, opts)
 
   -- Normalize query string
   if type(opts.query) == "table" then
-    opts.query = encode_args(opts.query)
+    opts.query = ngx.encode_args(opts.query)
   end
 
   -- Append query string
@@ -218,7 +216,7 @@ end
 --------------------------------------
 
 function new(self)
-  local sock, err = tcp()
+  local sock, err = ngx.socket.tcp()
   if not sock then
     return nil, err
   end

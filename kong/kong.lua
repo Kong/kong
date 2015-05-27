@@ -30,7 +30,6 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
-local timestamp = require "kong.tools.timestamp"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
@@ -170,7 +169,7 @@ end
 -- Calls plugins_access() on every loaded plugin
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
-  ngx.ctx.started_at = timestamp.get_utc()
+  ngx.ctx.started_at = ngx.req.start_time()
   ngx.ctx.plugin_conf = {}
 
   -- Iterate over all the plugins
@@ -200,12 +199,12 @@ function _M.exec_plugins_access()
   end
   ngx.var.backend_url = final_url
 
-  ngx.ctx.proxy_started_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
+  ngx.ctx.proxy_started_at = ngx.now() -- Setting a property that will be available for every plugin
 end
 
 -- Calls header_filter() on every loaded plugin
 function _M.exec_plugins_header_filter()
-  ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
+  ngx.ctx.proxy_ended_at = ngx.now() -- Setting a property that will be available for every plugin
 
   if not ngx.ctx.stop_phases then
     ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
