@@ -1,6 +1,6 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
-DEV_ROCKS=busted luacov luacov-coveralls luacheck ansicolor
+DEV_ROCKS=busted luacov luacov-coveralls luacheck ansicolors
 
 .PHONY: install dev clean start seed drop lint test coverage test-all
 
