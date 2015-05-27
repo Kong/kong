@@ -10,14 +10,9 @@ local _M = {}
 -- @return `payload` http payload
 local function generate_post_payload(method, parsed_url, message)
   local body = cjson.encode(message);
-  local payload = string.format([[
-%s %s HTTP/1.1
-Host: %s
-Connection: Keep-Alive
-Content-Type: application/json
-Content-Length: %s
-
-%s]], method:upper(), parsed_url.path, parsed_url.host, string.len(body), body)
+  local payload = string.format(
+    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s", 
+    method:upper(), parsed_url.path, parsed_url.host, string.len(body), body)
   return payload
 end
 
