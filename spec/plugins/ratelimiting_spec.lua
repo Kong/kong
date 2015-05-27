@@ -52,7 +52,7 @@ describe("RateLimiting Plugin", function()
       -- Additonal request, while limit is 6/minute
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
       local body = cjson.decode(response)
-      assert.are.equal(428, status)
+      assert.are.equal(429, status)
       assert.are.equal("API rate limit exceeded", body.message)
     end)
 
