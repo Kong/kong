@@ -9,9 +9,9 @@ local _M = {}
 -- @param `message`  Message to be logged
 -- @return `payload` http payload
 local function generate_post_payload(method, parsed_url, message)
-  local body = cjson.encode(message);
+  local body = cjson.encode(message)
   local payload = string.format(
-    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s", 
+    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s",
     method:upper(), parsed_url.path, parsed_url.host, string.len(body), body)
   return payload
 end
@@ -65,8 +65,8 @@ local function log(premature, conf, message)
   end
 end
 
-function _M.execute(conf)
-  local ok, err = ngx.timer.at(0, log, conf, ngx.ctx.log_message)
+function _M.execute(conf, message)
+  local ok, err = ngx.timer.at(0, log, conf, message)
   if not ok then
     ngx.log(ngx.ERR, "[httplog] failed to create timer: ", err)
   end

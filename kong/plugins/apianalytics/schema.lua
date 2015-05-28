@@ -1,4 +1,5 @@
 return {
-  serviceToken = { type = "string", required = true },
-  log_body = { type = "boolean", default = true }
+  service_token = { type = "string", required = true },
+  batch_size = { type = "number", default = 100 },
+  log_body = { type = "boolean", default = false }
 }

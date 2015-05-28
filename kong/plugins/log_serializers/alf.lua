@@ -1,6 +1,18 @@
 -- ALF serializer module.
 -- ALF is the format supported by API Analytics (http://apianalytics.com)
 --
+-- This module represents _one_ ALF entry, which can have multiple requests entries.
+-- # Usage:
+--
+--   ## Create the ALF like so:
+--     local alf = ALFSerializer:new_alf()
+--
+--   ## Add entries:
+--     local n_entries = alf:add_entry(ngx)
+--
+--   ## Output the ALF with all its entries as JSON:
+--     local json_str = alf:to_json_str(service_token)
+--
 -- - ALF specifications: https://github.com/Mashape/api-log-format
 -- - Nginx lua module documentation: http://wiki.nginx.org/HttpLuaModule
 -- - ngx_http_core_module: http://wiki.nginx.org/HttpCoreModule#.24http_HEADER
@@ -12,20 +24,24 @@ local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
 local alf_mt = {}
 alf_mt.__index = alf_mt
 
-local ALF = {
-  version = "1.0.0",
-  serviceToken = "", -- will be filled by to_json_string()
-  har = {
-    log = {
-      version = "1.2",
-      creator = {
-        name = "kong-api-analytics-plugin",
-        version = "0.1"
-      },
-      entries = {}
+function alf_mt:new_alf()
+  local ALF = {
+    version = "1.0.0",
+    serviceToken = "", -- will be filled by to_json_string()
+    har = {
+      log = {
+        version = "1.2",
+        creator = {
+          name = "kong-api-analytics-plugin",
+          version = "0.1"
+        },
+        entries = {}
+      }
     }
   }
-}
+
+  return setmetatable(ALF, self)
+end
 
 -- Transform a key/value lua table into an array of elements with `name`, `value`.
 -- Since Lua won't recognize {} as an empty array but an empty object, we need to force it
@@ -65,6 +81,7 @@ end
 -- Serialize `ngx` into one ALF entry.
 -- For performance reasons, it tries to use the NGINX Lua API instead of
 -- ngx_http_core_module when possible.
+-- Public for unit testing.
 function alf_mt:serialize_entry(ngx)
   -- Extracted data
   local req_headers = ngx.req.get_headers()
@@ -79,10 +96,10 @@ function alf_mt:serialize_entry(ngx)
   -- ALF properties
   -- timers
   local send_time = round(ngx.ctx.proxy_started_at - started_at)
-  local wait_time = round(ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at)
-  local receive_time = round(apianalytics_data.response_received - ngx.ctx.proxy_ended_at)
+  local wait_time = ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at
+  local receive_time = apianalytics_data.response_received - ngx.ctx.proxy_ended_at
   -- headers and headers size
-  local req_headers_str, res_headers_str= "", ""
+  local req_headers_str, res_headers_str = "", ""
   local req_headers_arr = dic_to_array(req_headers, function(k, v) req_headers_str = req_headers_str..k..v end)
   local res_headers_arr = dic_to_array(res_headers, function(k, v) res_headers_str = res_headers_str..k..v end)
   local req_headers_size = string.len(req_headers_str)
@@ -90,12 +107,11 @@ function alf_mt:serialize_entry(ngx)
   -- values extracted from headers
   local alf_req_mimeType = req_headers["Content-Type"] and req_headers["Content-Type"] or "application/octet-stream"
   local alf_res_mimeType = res_headers["Content-Type"] and res_headers["Content-Type"] or "application/octet-stream"
-  local alf_req_bodySize = req_headers["Content-Length"] and req_headers["Content-Length"] or -1
 
   return {
     startedDateTime = os.date("!%Y-%m-%dT%TZ", started_at),
     clientIPAddress = ngx.var.remote_addr,
-    time = send_time + wait_time + receive_time,
+    time = round(send_time + wait_time + receive_time),
     request = {
       method = ngx.req.get_method(),
       url = ngx.var.scheme.."://"..ngx.var.host..ngx.var.uri,
@@ -104,7 +120,7 @@ function alf_mt:serialize_entry(ngx)
       headers = req_headers_arr,
       headersSize = req_headers_size,
       cookies = {EMPTY_ARRAY_PLACEHOLDER},
-      bodySize = tonumber(alf_req_bodySize),
+      bodySize = string.len(req_body),
       postData = {
         mimeType = alf_req_mimeType,
         params = dic_to_array(ngx.req.get_post_args()),
@@ -128,9 +144,9 @@ function alf_mt:serialize_entry(ngx)
     },
     cache = {},
     timings = {
-      send = send_time,
-      wait = wait_time,
-      receive = receive_time,
+      send = round(send_time),
+      wait = round(wait_time),
+      receive = round(receive_time),
       blocked = -1,
       connect = -1,
       dns = -1,
@@ -160,4 +176,4 @@ function alf_mt:flush_entries()
   self.har.log.entries = {}
 end
 
-return setmetatable(ALF, alf_mt)
+return alf_mt

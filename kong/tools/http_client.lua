@@ -26,10 +26,13 @@ local function http_call(options)
     options.protocol = "tlsv1"
     options.mode = "client"
     options.options = "all"
-  end
 
-  local _, code, headers = http.request(options)
-  return resp[1], code, headers
+    local _, code, headers = https.request(options)
+    return resp[1], code, headers
+  else
+    local _, code, headers = http.request(options)
+    return resp[1], code, headers
+  end
 end
 
 local function with_body(method)

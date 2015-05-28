@@ -166,7 +166,7 @@ function _M.exec_plugins_certificate()
   return
 end
 
--- Calls plugins_access() on every loaded plugin
+-- Calls plugins' access() on every loaded plugin
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
   ngx.ctx.started_at = ngx.req.start_time()
