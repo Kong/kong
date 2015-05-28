@@ -126,13 +126,15 @@ function _M.validate(t, schema, is_update)
       end
     end
 
+    local require_satisfied = true
     -- Check required fields are set
     if v.required and (t[column] == nil or t[column] == "") then
       errors = utils.add_error(errors, column, column.." is required")
+      require_satisfied = false
     end
 
-    -- Check field against a custom function
-    if v.func and type(v.func) == "function" then
+    -- Check field against a custom function only if the value requirement has been satisfied
+    if require_satisfied and v.func and type(v.func) == "function" then
       local ok, err, new_fields = v.func(t[column], t)
       if not ok or err then
         errors = utils.add_error(errors, column, err)
