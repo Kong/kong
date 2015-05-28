@@ -11,7 +11,7 @@ local function validate_target_url(value)
       parsed_url.path = parsed_url.path or "/"
       return true, nil, { target_url = url.build(parsed_url)}
     else
-      return false, "Supported protocols are HTTP and HTTPS"    
+      return false, "Supported protocols are HTTP and HTTPS"
     end
   end
 
