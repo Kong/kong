@@ -134,10 +134,11 @@ build = {
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
 
     ["kong.api.app"] = "kong/api/app.lua",
+    ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
+    ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
     ["kong.api.routes.plugins_configurations"] = "kong/api/routes/plugins_configurations.lua",
-    ["kong.api.routes.base_controller"] = "kong/api/routes/base_controller.lua"
   },
   install = {
     conf = { "kong.yml" },

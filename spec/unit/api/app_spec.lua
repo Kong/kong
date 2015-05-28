@@ -1,4 +1,4 @@
-local base_controller = require "kong.api.routes.base_controller"
+local app = require "kong.api.app"
 
 require "kong.tools.ngx_stub"
 
@@ -8,13 +8,13 @@ local stub = {
   params = { foo = "bar", number = 10, ["value.nested"] = 1, ["value.nested_2"] = 2 }
 }
 
-describe("Base Controller", function()
+describe("App", function()
   describe("#parse_params()", function()
 
     it("should normalize nested properties for parsed form-encoded parameters", function()
       -- Here Lapis already parsed the form-encoded parameters but we are normalizing
       -- the nested ones (with "." keys)
-      local f = base_controller.parse_params(function(stub)
+      local f = app.parse_params(function(stub)
         assert.are.same({
           foo = "bar",
           number = 10,
@@ -32,7 +32,7 @@ describe("Base Controller", function()
       ngx.req.get_body_data = function() return '{"foo":"bar","number":10,"value":{"nested":1,"nested_2":2}}' end
       stub.req.headers["Content-Type"] = "application/json; charset=utf-8"
 
-      local f = base_controller.parse_params(function(stub)
+      local f = app.parse_params(function(stub)
         assert.are.same({
           foo = "bar",
           number = 10,
@@ -49,7 +49,7 @@ describe("Base Controller", function()
       stub.params = { foo = "bar", number = 10, ["value.nested_1"] = 1, ["value.nested_2"] = 2,
         ["value.nested.sub-nested"] = "hi"
       }
-      local f = base_controller.parse_params(function(stub)
+      local f = app.parse_params(function(stub)
         assert.are.same({
           foo = 'bar',
           number = 10,
@@ -66,7 +66,7 @@ describe("Base Controller", function()
 
     it("should normalize nested properties when they are plain arrays", function()
       stub.params = { foo = "bar", number = 10, ["value.nested"] = {["1"]="hello", ["2"]="world"}}
-      local f = base_controller.parse_params(function(stub)
+      local f = app.parse_params(function(stub)
         assert.are.same({
           foo = 'bar',
           number = 10,
