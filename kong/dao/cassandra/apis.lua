@@ -1,36 +1,12 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local constants = require "kong.constants"
+local apis_schema = require "kong.dao.schemas.apis"
 local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
-local url = require "socket.url"
-
-local function validate_target_url(value)
-  local parsed_url = url.parse(value)
-  if parsed_url.scheme and parsed_url.host then
-    parsed_url.scheme = parsed_url.scheme:lower()
-    if parsed_url.scheme == "http" or parsed_url.scheme == "https" then
-      parsed_url.path = parsed_url.path or "/"
-      return true, nil, { target_url = url.build(parsed_url)}
-    else
-      return false, "Supported protocols are HTTP and HTTPS"
-    end
-  end
-
-  return false, "Invalid target URL"
-end
-
-local SCHEMA = {
-  id = { type = constants.DATABASE_TYPES.ID },
-  name = { type = "string", unique = true, queryable = true, default = function(api_t) return api_t.public_dns end },
-  public_dns = { type = "string", required = true, unique = true, queryable = true,
-                 regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)" },
-  target_url = { type = "string", required = true, func = validate_target_url },
-  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
-}
 
 local Apis = BaseDao:extend()
 
 function Apis:new(properties)
-  self._schema = SCHEMA
+  self._entity = "API"
+  self._schema = apis_schema
   self._queries = {
     insert = {
       args_keys = { "id", "name", "public_dns", "target_url", "created_at" },

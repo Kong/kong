@@ -73,7 +73,10 @@ build = {
     ["kong.resolver.resolver_util"] = "kong/resolver/resolver_util.lua",
 
     ["kong.dao.error"] = "kong/dao/error.lua",
-    ["kong.dao.schemas"] = "kong/dao/schemas.lua",
+    ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
+    ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
+    ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
+    ["kong.dao.schemas.plugins_configurations"] = "kong/dao/schemas/plugins_configurations.lua",
     ["kong.dao.cassandra.factory"] = "kong/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "kong/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.apis"] = "kong/dao/cassandra/apis.lua",

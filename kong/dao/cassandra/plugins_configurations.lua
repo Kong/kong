@@ -1,34 +1,13 @@
+local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
 local constants = require "kong.constants"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
-local utils = require "kong.tools.utils"
-
-local function load_value_schema(plugin_t)
-  if plugin_t.name then
-    local loaded, plugin_schema = utils.load_module_if_exists("kong.plugins."..plugin_t.name..".schema")
-    if loaded then
-      return plugin_schema
-    else
-      return nil, "Plugin \""..(plugin_t.name and plugin_t.name or "").."\" not found"
-    end
-  end
-end
-
-local SCHEMA = {
-  id = { type = constants.DATABASE_TYPES.ID },
-  api_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
-  consumer_id = { type = constants.DATABASE_TYPES.ID, foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
-  name = { type = "string", required = true, queryable = true, immutable = true },
-  value = { type = "table", schema = load_value_schema },
-  enabled = { type = "boolean", default = true },
-  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
-}
 
 local PluginsConfigurations = BaseDao:extend()
 
 function PluginsConfigurations:new(properties)
-  self._entity = "Plugin"
-  self._schema = SCHEMA
+  self._entity = "Plugin configuration"
+  self._schema = plugins_configurations_schema
   self._queries = {
     insert = {
       args_keys = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },

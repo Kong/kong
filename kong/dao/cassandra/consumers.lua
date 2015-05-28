@@ -1,27 +1,12 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local stringy = require "stringy"
-local constants = require "kong.constants"
+local consumers_schema = require "kong.dao.schemas.consumers"
 local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
-
-local function check_custom_id_and_username(value, consumer_t)
-  if (consumer_t.custom_id == nil or stringy.strip(consumer_t.custom_id) == "")
-    and (consumer_t.username == nil or stringy.strip(consumer_t.username) == "") then
-      return false, "At least a 'custom_id' or a 'username' must be specified"
-  end
-  return true
-end
-
-local SCHEMA = {
-  id = { type = constants.DATABASE_TYPES.ID },
-  custom_id = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username },
-  username = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username },
-  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
-}
 
 local Consumers = BaseDao:extend()
 
 function Consumers:new(properties)
-  self._schema = SCHEMA
+  self._entity = "Consumer"
+  self._schema = consumers_schema
   self._queries = {
     insert = {
       args_keys = { "id", "custom_id", "username", "created_at" },

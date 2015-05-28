@@ -1,4 +1,4 @@
-local schemas = require "kong.dao.schemas"
+local schemas = require "kong.dao.schemas_validation"
 local constants = require "kong.constants"
 local validate = schemas.validate
 

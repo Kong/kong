@@ -289,7 +289,7 @@ describe("Cassandra DAO", function()
           assert.truthy(err)
           assert.is_daoError(err)
           assert.True(err.unique)
-          assert.are.same("Plugin already exists", err.message)
+          assert.are.same("Plugin configuration already exists", err.message)
         end)
 
         it("should not insert a plugin if this plugin doesn't exist (not installed)", function()

@@ -8,7 +8,7 @@
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
-local validate = require("kong.dao.schemas").validate
+local validate = require("kong.dao.schemas_validation").validate
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"
