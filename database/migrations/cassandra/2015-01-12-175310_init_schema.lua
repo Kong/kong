@@ -8,7 +8,7 @@ local Migration = {
       CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
         WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
 
-      USE ]]..options.keyspace..[[;
+      USE "]]..options.keyspace..[[";
 
       CREATE TABLE IF NOT EXISTS schema_migrations(
         id text PRIMARY KEY,
