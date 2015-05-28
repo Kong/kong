@@ -61,7 +61,7 @@ describe("Real IP", function()
     assert.truthy(json_str)
 
     local log_message = cjson.decode(json_str)
-    assert.are.same("4.4.4.4", log_message.ip)
+    assert.are.same("4.4.4.4", log_message.client_ip)
     assert.are.same(uuid, log_message.request.headers.file_log_uuid)
   end)
 

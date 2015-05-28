@@ -58,7 +58,7 @@ describe("Logging Plugins", function()
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
-      assert.are.same("127.0.0.1", log_message.ip)
+      assert.are.same("127.0.0.1", log_message.client_ip)
     end)
 
     it("should log to UDP", function()
@@ -75,7 +75,7 @@ describe("Logging Plugins", function()
 
       -- Making sure it's alright
       local log_message = cjson.decode(res)
-      assert.are.same("127.0.0.1", log_message.ip)
+      assert.are.same("127.0.0.1", log_message.client_ip)
     end)
 
     it("should log to HTTP", function()
@@ -93,7 +93,7 @@ describe("Logging Plugins", function()
       -- Making sure it's alright
       assert.are.same("POST / HTTP/1.1", res[1])
       local log_message = cjson.decode(res[7])
-      assert.are.same("127.0.0.1", log_message.ip)
+      assert.are.same("127.0.0.1", log_message.client_ip)
     end)
 
     it("should log to file", function()
@@ -124,7 +124,7 @@ describe("Logging Plugins", function()
       assert.truthy(json_str)
 
       local log_message = cjson.decode(json_str)
-      assert.are.same("127.0.0.1", log_message.ip)
+      assert.are.same("127.0.0.1", log_message.client_ip)
       assert.are.same(uuid, log_message.request.headers.file_log_uuid)
     end)
 
