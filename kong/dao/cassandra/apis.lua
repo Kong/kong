@@ -9,9 +9,6 @@ local function validate_target_url(value)
     parsed_url.scheme = parsed_url.scheme:lower()
     if parsed_url.scheme == "http" or parsed_url.scheme == "https" then
       parsed_url.path = parsed_url.path or "/"
-
-      print(url.build(parsed_url))
-
       return true, nil, { target_url = url.build(parsed_url)}
     else
       return false, "Supported protocols are HTTP and HTTPS"    

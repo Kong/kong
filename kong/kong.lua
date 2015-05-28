@@ -237,19 +237,22 @@ function _M.exec_plugins_log()
     -- Creating the log variable that will be serialized
     local message = {
       request = {
+        uri = ngx.var.request_uri,
+        request_uri = ngx.var.scheme.."://"..ngx.var.host..":"..ngx.var.server_port..ngx.var.request_uri,
+        querystring = ngx.req.get_uri_args(), -- parameters, as a table
+        method = ngx.req.get_method(), -- http method
         headers = ngx.req.get_headers(),
         size = ngx.var.request_length
       },
       response = {
+        status = ngx.status,
         headers = ngx.resp.get_headers(),
-        size = ngx.var.body_bytes_sent
+        size = ngx.var.bytes_sent
       },
       authenticated_entity = ngx.ctx.authenticated_entity,
       api = ngx.ctx.api,
-      ip = ngx.var.remote_addr,
-      status = ngx.status,
-      url = ngx.var.uri,
-      started_at = ngx.ctx.started_at
+      client_ip = ngx.var.remote_addr,
+      started_at = ngx.req.start_time() * 1000
     }
 
     ngx.ctx.log_message = message
