@@ -67,7 +67,7 @@ end
 function _M.add_error(errors, k, v)
   if not errors then errors = {} end
 
-  if errors and errors[k] and v then
+  if errors and errors[k] then
     local list = {}
     table.insert(list, errors[k])
     table.insert(list, v)

@@ -290,6 +290,17 @@ describe("Schemas", function()
       assert.truthy(valid)
     end)
 
+    it("should not check a custom function if a `required` condition is false already", function()
+      local f = function() error("should not be called") end -- cannot use a spy which changes the type to table
+      local schema = { property = { required = true, func = f } }
+
+      assert.has_no_errors(function()
+        local valid, err = validate({}, schema)
+        assert.False(valid)
+        assert.are.same("property is required", err.property)
+      end)
+    end)
+
     describe("Sub-schemas", function()
       -- To check wether schema_from_function was called, we will simply use booleans because
       -- busted's spy methods create tables and metatable magic, but the validate() function
