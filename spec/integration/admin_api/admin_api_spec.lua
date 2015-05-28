@@ -1,6 +1,7 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
+local cjson = require "cjson"
 
 local CREATED_IDS = {}
 local ENDPOINTS = {
@@ -85,6 +86,58 @@ describe("Admin API", function()
       assert.are.same(200, status)
       assert.are.same(string.format("%s/%s", constants.NAME, constants.VERSION), headers.server)
       assert.falsy(headers.via) -- Via is only set for proxied requests
+    end)
+
+  end)
+
+  describe("APIs Schema", function()
+
+    it("should return error with wrong target_url", function() 
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {
+        public_dns = "hello.com",
+        target_url = "asdasd"
+      })
+
+      assert.are.equal(400, status)
+      assert.are.equal("Invalid target URL", cjson.decode(response).target_url)
+    end)
+
+    it("should return error with wrong target_url protocol", function() 
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {
+        public_dns = "hello.com",
+        target_url = "wot://hello.com/"
+      })
+
+      assert.are.equal(400, status)
+      assert.are.equal("Supported protocols are HTTP and HTTPS", cjson.decode(response).target_url)
+    end)
+
+    it("should work without a path", function() 
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {
+        public_dns = "hello.com",
+        target_url = "http://hello.com"
+      })
+
+      local body = cjson.decode(response)
+      assert.are.equal(201, status)
+      assert.are.equal("http://hello.com/", body.target_url)
+
+      -- Clean up
+      http_client.delete(spec_helper.API_URL.."/apis/"..body.id)
+    end)
+
+    it("should work without upper case protocol", function() 
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {
+        public_dns = "hello2.com",
+        target_url = "HTTP://hello.com/world"
+      })
+
+      local body = cjson.decode(response)
+      assert.are.equal(201, status)
+      assert.are.equal("http://hello.com/world", cjson.decode(response).target_url)
+
+      -- Clean up
+      http_client.delete(spec_helper.API_URL.."/apis/"..body.id)
     end)
 
   end)
@@ -419,4 +472,5 @@ describe("Admin API", function()
       end)
     end)
   end)
+
 end)
