@@ -14,6 +14,11 @@ files["kong/vendor/ssl.lua"] = {
    ignore = {"FFI_DECLINED"}
 }
 
+files["kong/vendor/resty_http.lua"] = {
+  global = false,
+  unused = false
+}
+
 files["spec/"] = {
   globals = {"describe", "it", "before_each", "setup", "after_each", "teardown", "stub", "mock", "spy", "finally"}
 }
