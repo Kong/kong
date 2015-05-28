@@ -23,7 +23,6 @@ function _M.get_type(type_val)
   return alias and alias or type_val
 end
 
-
 -- Validate a table against a given schema
 -- @param {table} t Table to validate
 -- @param {table} schema Schema against which to validate the table
@@ -131,8 +130,8 @@ function _M.validate(t, schema, is_update)
       errors = utils.add_error(errors, column, column.." is required")
     end
 
-    -- Check field against a custom function only if the value requirement has been satisfied
-    if v.func and type(v.func) == "function" and errors == nil then
+    -- Check field against a custom function only if there is no error on that field already
+    if v.func and type(v.func) == "function" and (errors == nil or errors[column] == nil) then
       local ok, err, new_fields = v.func(t[column], t)
       if not ok and err then
         errors = utils.add_error(errors, column, err)
