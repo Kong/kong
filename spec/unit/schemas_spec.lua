@@ -428,7 +428,7 @@ describe("Schemas", function()
         local valid, err = validate(obj, schema)
         assert.truthy(err)
         assert.False(valid)
-        assert.are.same("value is required", err.value)
+        assert.are.same("value.some_property is required", err.value)
       end)
 
     end)

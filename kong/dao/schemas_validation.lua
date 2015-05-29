@@ -103,17 +103,17 @@ function _M.validate(t, schema, is_update)
 
       if sub_schema then
         -- Check for sub-schema defaults and required properties
-        for _, sub_field in pairs(sub_schema) do
+        for sub_field_k, sub_field in pairs(sub_schema) do
           if t[column] == nil then
             if sub_field.default then
               t[column] = {}
             elseif sub_field.required then -- only check required if field doesn't have a default
-              v.required = true
+              errors = utils.add_error(errors, column, column.."."..sub_field_k.." is required")
             end
           end
         end
 
-        if t[column] then
+        if t[column] and type(t[column]) == "table" then
           -- validating subschema
           local s_ok, s_errors = _M.validate(t[column], sub_schema, is_update)
           if not s_ok then
