@@ -9,7 +9,7 @@ local IO = require "kong.tools.io"
 -- This is important to seed the UUID generator
 uuid.seed()
 
-local FILE_LOG_PATH = "/tmp/file_log_spec_output.log"
+local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
 
 describe("Real IP", function()
 
