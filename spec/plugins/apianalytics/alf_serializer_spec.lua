@@ -32,7 +32,7 @@ local function sameEntry(state, arguments)
   fixture_entry.time = nil
   fixture_entry.timings = nil
 
-  assert.same(fixture_entry, entry)
+  assert.are.same(fixture_entry, entry)
   return true
 end
 
@@ -69,7 +69,7 @@ describe("ALF serializer", function()
 
     it("should serialize an ngx GET request/response", function()
       local entry = alf:serialize_entry(fixtures.GET.NGX_STUB)
-      assert.are.same(fixtures.GET.ENTRY, entry)
+      assert.are.sameEntry(fixtures.GET.ENTRY, entry)
     end)
 
   end)
@@ -78,11 +78,11 @@ describe("ALF serializer", function()
 
     it("should add the entry to the serializer entries property", function()
       alf:add_entry(fixtures.GET.NGX_STUB)
-      assert.are.same(1, table.getn(alf.har.log.entries))
+      assert.equal(1, table.getn(alf.har.log.entries))
       assert.are.sameEntry(fixtures.GET.ENTRY, alf.har.log.entries[1])
 
       alf:add_entry(fixtures.GET.NGX_STUB)
-      assert.are.same(2, table.getn(alf.har.log.entries))
+      assert.equal(2, table.getn(alf.har.log.entries))
       assert.are.sameEntry(fixtures.GET.ENTRY, alf.har.log.entries[2])
     end)
 
@@ -102,7 +102,7 @@ describe("ALF serializer", function()
 
     it("should return a JSON string", function()
       local json_str = alf:to_json_string("stub_service_token")
-      assert.are.same("string", type(json_str))
+      assert.equal("string", type(json_str))
     end)
 
   end)
@@ -111,7 +111,7 @@ describe("ALF serializer", function()
 
     it("should remove any existing entry", function()
       alf:flush_entries()
-      assert.are.same(0, table.getn(alf.har.log.entries))
+      assert.equal(0, table.getn(alf.har.log.entries))
     end)
 
   end)

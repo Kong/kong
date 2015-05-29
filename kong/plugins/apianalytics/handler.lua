@@ -9,12 +9,19 @@ local APIANALYTICS_SOCKET = {
 }
 
 local function send_batch(premature, conf, alf)
+  -- Abort the sending if the entries are empty, maybe it was triggered from the delayed
+  -- timer, but already sent because we reached the limit in a request later.
+  if table.getn(alf.har.log.entries) < 1 then
+    return
+  end
+
   local message = alf:to_json_string(conf.service_token)
 
+  local ok, err
   local client = http:new()
   client:set_timeout(50000) -- 5 sec
 
-  local ok, err = client:connect(APIANALYTICS_SOCKET.host, APIANALYTICS_SOCKET.port)
+  ok, err = client:connect(APIANALYTICS_SOCKET.host, APIANALYTICS_SOCKET.port)
   if not ok then
     ngx.log(ngx.ERR, "[apianalytics] failed to connect to the socket: "..err)
     return
@@ -27,7 +34,7 @@ local function send_batch(premature, conf, alf)
 
   -- close connection, or put it into the connection pool
   if res.headers["connection"] == "close" then
-    local ok, err = client:close()
+    ok, err = client:close()
     if not ok then
       ngx.log(ngx.ERR, "[apianalytics] failed to close: "..err)
     end
@@ -100,11 +107,19 @@ function APIAnalyticsHandler:log(conf)
   -- Simply adding the entry to the ALF
   local n_entries = ngx.shared.apianalytics[api_id]:add_entry(ngx)
 
-  -- Batch size reached, let's send the data
   if n_entries >= conf.batch_size then
+    -- Batch size reached, let's send the data
     local ok, err = ngx.timer.at(0, send_batch, conf, ngx.shared.apianalytics[api_id])
     if not ok then
-      ngx.log(ngx.ERR, "[apianalytics] failed to create timer: ", err)
+      ngx.log(ngx.ERR, "[apianalytics] failed to create batch sending timer: ", err)
+    end
+  else
+    -- Batch size not yet reached
+    -- Set a timer sending the data only in case nothing happens for awhile or if the batch_size is taking
+    -- too much time to reach the limit and trigger the flush.
+    local ok, err = ngx.timer.at(conf.delay, send_batch, conf, ngx.shared.apianalytics[api_id])
+    if not ok then
+      ngx.log(ngx.ERR, "[apianalytics] failed to create delayed batch sending timer: ", err)
     end
   end
 end
