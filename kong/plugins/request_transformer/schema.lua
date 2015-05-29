@@ -1,14 +1,16 @@
 return {
-  add = { type = "table", schema = {
-      form = { type = "table" },
-      headers = { type = "table" },
-      querystring = { type = "table" }
+  add = { type = "table",
+    schema = {
+      form = { type = "array" },
+      headers = { type = "array" },
+      querystring = { type = "array" }
     }
   },
-  remove = { type = "table", schema = {
-      form = { type = "table" },
-      headers = { type = "table" },
-      querystring = { type = "table" }
+  remove = { type = "table",
+    schema = {
+      form = { type = "array" },
+      headers = { type = "array" },
+      querystring = { type = "array" }
     }
   }
 }
