@@ -9,6 +9,8 @@ local IO = require "kong.tools.io"
 -- This is important to seed the UUID generator
 uuid.seed()
 
+local FILE_LOG_PATH = "/tmp/file_log_spec_output.log"
+
 describe("Real IP", function()
 
   setup(function()
@@ -18,7 +20,7 @@ describe("Real IP", function()
         { name = "tests realip", public_dns = "realip.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
-        { name = "filelog", value = {}, __api = 1 }
+        { name = "filelog", value = { path = FILE_LOG_PATH }, __api = 1 }
       }
     }
 
@@ -30,6 +32,8 @@ describe("Real IP", function()
   end)
 
   it("should parse the correct IP", function()
+    os.remove(FILE_LOG_PATH)
+
     local uuid = string.gsub(uuid(), "-", "")
 
     -- Making the request
@@ -42,25 +46,12 @@ describe("Real IP", function()
     )
     assert.are.equal(200, status)
 
-    -- Reading the log file and finding the line with the entry
-    local configuration = yaml.load(IO.read_file(spec_helper.TEST_CONF_FILE))
-    assert.truthy(configuration)
-    local error_log = IO.read_file(configuration.nginx_working_dir.."/logs/error.log")
-    local line
-    local lines = stringy.split(error_log, "\n")
-    for _, v in ipairs(lines) do
-      if string.find(v, uuid, nil, true) then
-        line = v
-        break
-      end
+    while not (IO.file_exists(FILE_LOG_PATH) and IO.file_size(FILE_LOG_PATH) > 0) do
+      -- Wait for the file to be created, and for the log to be appended
     end
-    assert.truthy(line)
 
-    -- Retrieve the JSON part of the line
-    local json_str = line:match("(%{.*%})")
-    assert.truthy(json_str)
-
-    local log_message = cjson.decode(json_str)
+    local file_log = IO.read_file(FILE_LOG_PATH)
+    local log_message = cjson.decode(stringy.strip(file_log))
     assert.are.same("4.4.4.4", log_message.client_ip)
     assert.are.same(uuid, log_message.request.headers.file_log_uuid)
   end)
