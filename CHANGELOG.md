@@ -1,5 +1,40 @@
 ## [Unreleased][unreleased]
 
+#### Added
+
+- Support for SSL.
+- Plugins
+  - New HTTP logging plugin. [#226](https://github.com/Mashape/kong/issues/226) [#251](https://github.com/Mashape/kong/pull/251)
+  - New SSL plugin.
+  - Default logging format improvements. [#226](https://github.com/Mashape/kong/issues/226) [#262](https://github.com/Mashape/kong/issues/262)
+  - File logging now logs to a custom file. [#202](https://github.com/Mashape/kong/issues/202)
+  - Keyauth plugin now defaults `key_names` to "apikey".
+- Admin API
+  - RESTful routing. Much nicer Admin API routing. Ex: `/apis/{name_or_id}/plugins`. [#98](https://github.com/Mashape/kong/issues/98) [#257](https://github.com/Mashape/kong/pull/257)
+  - Support `PUT` method for endpoints such as `/apis/`, `/apis/plugins/`, `/consumers/`
+  - Support for `application/json` and `x-www-form-urlencoded` Content Types for all `PUT`, `POST` and `PATCH` endpoints by passing a `Content-Type` header. [#236](https://github.com/Mashape/kong/pull/236)
+- Resolver
+  - Support for `X-Host-Override` as an alternative to `Host` for browsers. [#203](https://github.com/Mashape/kong/issues/203) [#246](https://github.com/Mashape/kong/pull/246)
+- Catch invalid `target_url`s. [#149](https://github.com/Mashape/kong/issues/149)
+
+#### Fixed
+
+- Fix uppercase Cassandra keyspace causing migration failure:. [#249](https://github.com/Mashape/kong/issues/249)
+
+> **internal**
+> - Schemas:
+>   - Schema type: `array`. [#277](https://github.com/Mashape/kong/pull/277)
+>   - Entities schemas now live in their own files and are starting to be unit tested.
+>   - Subfields are handled better: (notify required subfields and auto-vivify is subfield has default values).
+> - Way faster unit tests. Not resetting the DB anymore between tests.
+> - Improved coverage computation (exclude `vendor/`).
+> - Travis now lints `kong/`.
+> - Way faster Travis setup.
+> - Added a new HTTP client for in-nginx usage, using the cosocket API.
+> - Various refactorings.
+> - Fix [#196](https://github.com/Mashape/kong/issues/196).
+> - Disabled ipv6 in resolver.
+
 ## [0.2.1] - 2015/05/12
 
 This is a maintenance release including several bug fixes and usability improvements.
