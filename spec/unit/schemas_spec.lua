@@ -6,15 +6,6 @@ require "kong.tools.ngx_stub"
 
 describe("Schemas", function()
 
-  it("should alias lua types to database types", function()
-    assert.are.same("number", schemas.get_type("number"))
-    assert.are.same("string", schemas.get_type("string"))
-    assert.are.same("boolean", schemas.get_type("boolean"))
-    assert.are.same("table", schemas.get_type("table"))
-    assert.are.same("string", schemas.get_type(constants.DATABASE_TYPES.ID))
-    assert.are.same("number", schemas.get_type(constants.DATABASE_TYPES.TIMESTAMP))
-  end)
-
   -- Ok kids, today we're gonna test a custom validation schema,
   -- grab a pair of glasses, this stuff can literally explode.
   describe("#validate()", function()
@@ -51,16 +42,19 @@ describe("Schemas", function()
       assert.truthy(valid)
     end)
 
-    it("should invalidate entity if required property is missing", function()
-      local values = { url = "mockbin.com" }
+    describe("[required]", function()
+      it("should invalidate entity if required property is missing", function()
+        local values = { url = "mockbin.com" }
 
-      local valid, err = validate(values, schema)
-      assert.falsy(valid)
-      assert.truthy(err)
-      assert.are.same("string is required", err.string)
+        local valid, err = validate(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("string is required", err.string)
+      end)
     end)
 
-    it("should validate the type of a property if it has a type field", function()
+    describe("[type]", function()
+      it("should validate the type of a property if it has a type field", function()
        -- Failure
       local values = { string = "foo", table = "bar" }
 
@@ -140,79 +134,177 @@ describe("Schemas", function()
       assert.truthy(valid)
     end)
 
-    it("should not return an error when a number is passed as a string", function()
-      -- Success
-      local values = { string = "test", number = "10" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-      assert.are.same("number", type(values.number))
-    end)
-
-    it("should not return an error when a boolean is passed as a string", function()
-      -- Success
-      local values = { string = "test", boolean_val = "false" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-      assert.are.same("boolean", type(values.boolean_val))
-    end)
-
-    it("should consider id and timestampd as valid types", function()
+    it("should consider `id` and `timestamp` as types", function()
       local s = { id = { type = "id" } }
 
-      local values = { id = 123 }
+      local values = { id = "123" }
 
       local valid, err = validate(values, s)
       assert.falsy(err)
       assert.truthy(valid)
     end)
 
-    it("should set default values if those are variables or functions specified in the validator", function()
-      -- Variables
-      local values = { string = "mockbin entity", url = "mockbin.com" }
+    it("should consider `array` as a type", function()
+      local s = { array = { type = "array" } }
 
-      local valid, err = validate(values, schema)
+      -- Success
+      local values = { array = {"hello", "world"} }
+
+      local valid, err = validate(values, s)
+      assert.True(valid)
       assert.falsy(err)
-      assert.truthy(valid)
-      assert.are.same(123456, values.date)
 
-      -- Functions
-      local values = { string = "mockbin entity", url = "mockbin.com" }
+      -- Failure
+      local values = { array = {hello="world"} }
 
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-      assert.are.same("default", values.default)
-    end)
-
-    it("should override default values if specified", function()
-      -- Variables
-      local values = { string = "mockbin entity", url = "mockbin.com", date = 654321 }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-      assert.are.same(654321, values.date)
-
-      -- Functions
-      local values = { string = "mockbin entity", url = "mockbin.com", default = "abcdef" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-      assert.are.same("abcdef", values.default)
-    end)
-
-    it("should validate a field against a regex", function()
-      local values = { string = "mockbin entity", url = "mockbin_!" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(valid)
+      local valid, err = validate(values, s)
+      assert.False(valid)
       assert.truthy(err)
-      assert.are.same("url has an invalid value", err.url)
+      assert.equal("array is not a array", err.array)
+    end)
+
+    describe("[aliases]", function()
+      it("should not return an error when a `number` is passed as a string", function()
+        local values = { string = "test", number = "10" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.same("number", type(values.number))
+      end)
+
+      it("should not return an error when a `boolean` is passed as a string", function()
+        local values = { string = "test", boolean_val = "false" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.same("boolean", type(values.boolean_val))
+      end)
+
+      it("should alias a string to `array`", function()
+        local s = { array = { type = "array" } }
+
+        local values = { array = "hello,world" }
+
+        local valid, err = validate(values, s)
+        assert.True(valid)
+        assert.falsy(err)
+        assert.same({"hello", "world"}, values.array)
+      end)
+    end)
+  end)
+
+    describe("[default]", function()
+      it("should set default values if those are variables or functions specified in the validator", function()
+        -- Variables
+        local values = { string = "mockbin entity", url = "mockbin.com" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.are.same(123456, values.date)
+
+        -- Functions
+        local values = { string = "mockbin entity", url = "mockbin.com" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.are.same("default", values.default)
+      end)
+
+      it("should override default values if specified", function()
+        -- Variables
+        local values = { string = "mockbin entity", url = "mockbin.com", date = 654321 }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.are.same(654321, values.date)
+
+        -- Functions
+        local values = { string = "mockbin entity", url = "mockbin.com", default = "abcdef" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.are.same("abcdef", values.default)
+      end)
+    end)
+
+    describe("[regex]", function()
+      it("should validate a field against a regex", function()
+        local values = { string = "mockbin entity", url = "mockbin_!" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("url has an invalid value", err.url)
+      end)
+    end)
+
+    describe("[enum]", function()
+      it("should validate a field against an enum", function()
+        -- Success
+        local values = { string = "somestring", allowed = "hello" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local values = { string = "somestring", allowed = "hello123" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
+      end)
+    end)
+
+    describe("[func]", function()
+      it("should validate a field against a custom function", function()
+        -- Success
+        local values = { string = "somestring", custom = true, default = "test_custom_func" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local values = { string = "somestring", custom = true, default = "not the default :O" }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("Nah", err.custom)
+      end)
+    end)
+
+    describe("[immutable]", function()
+      it("should prevent immutable properties to be changed if validating a schema that will be updated", function()
+        -- Success
+        local values = { string = "somestring", date = 1234 }
+
+        local valid, err = validate(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local valid, err = validate(values, schema, true)
+        assert.falsy(valid)
+        assert.truthy(err)
+        assert.are.same("date cannot be updated", err.date)
+      end)
+
+      it("should ignore required properties if they are immutable and we are updating", function()
+        local values = { string = "somestring" }
+
+        local valid, err = validate(values, schema, true)
+        assert.falsy(err)
+        assert.truthy(valid)
+      end)
     end)
 
     it("should return error when unexpected values are included in the schema", function()
@@ -231,63 +323,6 @@ describe("Schemas", function()
       assert.truthy(err)
       assert.are.same("string is required", err.string)
       assert.are.same("unexpected is an unknown field", err.unexpected)
-    end)
-
-    it("should validate a field against an enum", function()
-      -- Success
-      local values = { string = "somestring", allowed = "hello" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-
-      -- Failure
-      local values = { string = "somestring", allowed = "hello123" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(valid)
-      assert.truthy(err)
-      assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
-    end)
-
-    it("should validate a field against a custom function", function()
-      -- Success
-      local values = { string = "somestring", custom = true, default = "test_custom_func" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-
-      -- Failure
-      local values = { string = "somestring", custom = true, default = "not the default :O" }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(valid)
-      assert.truthy(err)
-      assert.are.same("Nah", err.custom)
-    end)
-
-    it("should prevent immutable properties to be changed if validating a schema that will be updated", function()
-      -- Success
-      local values = { string = "somestring", date = 1234 }
-
-      local valid, err = validate(values, schema)
-      assert.falsy(err)
-      assert.truthy(valid)
-
-      -- Failure
-      local valid, err = validate(values, schema, true)
-      assert.falsy(valid)
-      assert.truthy(err)
-      assert.are.same("date cannot be updated", err.date)
-    end)
-
-    it("should ignore required properties if they are immutable and we are updating", function()
-      local values = { string = "somestring" }
-
-      local valid, err = validate(values, schema, true)
-      assert.falsy(err)
-      assert.truthy(valid)
     end)
 
     it("should not check a custom function if a `required` condition is false already", function()
