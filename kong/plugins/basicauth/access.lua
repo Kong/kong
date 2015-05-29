@@ -5,6 +5,11 @@ local constants = require "kong.constants"
 
 local _M = {}
 
+local function skip_authentication(headers)
+  -- Skip upload request that expect a 100 Continue response
+  return headers["expect"] and stringy.startswith(headers["expect"], "100")
+end
+
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
 -- All methods must respect:
@@ -61,6 +66,7 @@ local function validate_credentials(credential, username, password)
 end
 
 function _M.execute(conf)
+  if not conf or skip_authentication(ngx.req.get_headers()) then return end
   if not conf then return end
 
   local username, password = retrieve_credentials(ngx.req, conf)

@@ -62,6 +62,13 @@ function _M.write_to_file(path, value)
   return true
 end
 
+function _M.file_size(path)
+  local file = io.open(path, "rb")
+  local size = file:seek("end")
+  file:close()
+  return size
+end
+
 function _M.retrieve_files(dir, options)
   local fs = require "luarocks.fs"
   local pattern = options.file_pattern
