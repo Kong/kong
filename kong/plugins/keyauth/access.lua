@@ -11,6 +11,11 @@ local MULTIPART_DATA = "multipart/form-data"
 
 local _M = {}
 
+local function skip_authentication(headers)
+  -- Skip upload request that expect a 100 Continue response
+  return headers["expect"] and stringy.startswith(headers["expect"], "100")
+end
+
 local function get_key_from_query(key_name, request, conf)
   local key, parameters
   local found_in = {}
@@ -111,7 +116,7 @@ local retrieve_credentials = {
 }
 
 function _M.execute(conf)
-  if not conf then return end
+  if not conf or skip_authentication(ngx.req.get_headers()) then return end
 
   local credential
   for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do

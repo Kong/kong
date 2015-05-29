@@ -63,14 +63,9 @@ function _M.execute(conf)
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api)..ngx.var.request_uri
-
   ngx.req.set_header("Host", get_host_from_url(ngx.var.backend_url))
 
-  -- There are some requests whose authentication needs to be skipped
-  if not skip_authentication(ngx.req.get_headers()) then
-    -- Saving these properties for the other plugins handlers
-    ngx.ctx.api = api
-  end
+  ngx.ctx.api = api
 end
 
 return _M

@@ -16,6 +16,8 @@ local TCP_PORT = 20777
 local UDP_PORT = 20778
 local HTTP_PORT = 20779
 
+local FILE_LOG_PATH = "/tmp/file_log_spec_output.log"
+
 describe("Logging Plugins", function()
 
   setup(function()
@@ -31,7 +33,7 @@ describe("Logging Plugins", function()
         { name = "tcplog", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
         { name = "udplog", value = { host = "127.0.0.1", port = UDP_PORT }, __api = 2 },
         { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT }, __api = 3 },
-        { name = "filelog", value = {}, __api = 4 }
+        { name = "filelog", value = { path = FILE_LOG_PATH }, __api = 4 }
       }
     }
 
@@ -97,6 +99,8 @@ describe("Logging Plugins", function()
     end)
 
     it("should log to file", function()
+      os.remove(FILE_LOG_PATH)
+
       local uuid = string.gsub(uuid(), "-", "")
 
       -- Making the request
@@ -105,25 +109,12 @@ describe("Logging Plugins", function()
       )
       assert.are.equal(200, status)
 
-      -- Reading the log file and finding the line with the entry
-      local configuration = yaml.load(IO.read_file(TEST_CONF))
-      assert.truthy(configuration)
-      local error_log = IO.read_file(configuration.nginx_working_dir.."/logs/error.log")
-      local line
-      local lines = stringy.split(error_log, "\n")
-      for _, v in ipairs(lines) do
-        if string.find(v, uuid, nil, true) then
-          line = v
-          break
-        end
+      while not (IO.file_exists(FILE_LOG_PATH) and IO.file_size(FILE_LOG_PATH) > 0) do
+        -- Wait for the file to be created, and for the log to be appended
       end
-      assert.truthy(line)
 
-      -- Retrieve the JSON part of the line
-      local json_str = line:match("(%{.*%})")
-      assert.truthy(json_str)
-
-      local log_message = cjson.decode(json_str)
+      local file_log = IO.read_file(FILE_LOG_PATH)
+      local log_message = cjson.decode(stringy.strip(file_log))
       assert.are.same("127.0.0.1", log_message.client_ip)
       assert.are.same(uuid, log_message.request.headers.file_log_uuid)
     end)
