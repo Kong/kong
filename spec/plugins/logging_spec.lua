@@ -16,7 +16,7 @@ local TCP_PORT = 20777
 local UDP_PORT = 20778
 local HTTP_PORT = 20779
 
-local FILE_LOG_PATH = "/tmp/file_log_spec_output.log"
+local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
 
 describe("Logging Plugins", function()
 
