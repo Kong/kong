@@ -531,7 +531,7 @@ describe("Cassandra DAO", function()
           assert.falsy(err)
 
           _, err = dao_factory.plugins_configurations:insert {
-            name = "filelog", value = {}, api_id = api.id
+            name = "filelog", value = { path = "/tmp/spec.log" }, api_id = api.id
           }
           assert.falsy(err)
 
@@ -544,7 +544,7 @@ describe("Cassandra DAO", function()
           assert.falsy(err)
 
           _, err = dao_factory.plugins_configurations:insert {
-            name = "filelog", value = {}, api_id = untouched_api.id
+            name = "filelog", value = { path = "/tmp/spec.log" }, api_id = untouched_api.id
           }
           assert.falsy(err)
 
@@ -616,7 +616,7 @@ describe("Cassandra DAO", function()
           assert.falsy(err)
 
           _, err = dao_factory.plugins_configurations:insert {
-            name = "filelog", value = {}, api_id = api.id,
+            name = "filelog", value = { path = "/tmp/spec.log" }, api_id = api.id,
             consumer_id = consumer.id
           }
           assert.falsy(err)
@@ -626,7 +626,7 @@ describe("Cassandra DAO", function()
           assert.falsy(err)
 
           _, err = dao_factory.plugins_configurations:insert {
-            name = "filelog", value = {}, api_id = api.id,
+            name = "filelog", value = { path = "/tmp/spec.log" }, api_id = api.id,
             consumer_id = untouched_consumer.id
           }
           assert.falsy(err)
@@ -844,7 +844,7 @@ describe("Cassandra DAO", function()
             { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
             { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
             { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 2 },
-            { name = "filelog", value = {}, __api = 1 }
+            { name = "filelog", value = { path = "/tmp/spec.log" }, __api = 1 }
           }
         }
 
