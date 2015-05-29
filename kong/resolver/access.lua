@@ -1,5 +1,4 @@
-local url = require("socket.url")
-local stringy = require "stringy"
+local url = require "socket.url"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local resolver_util = require "kong.resolver.resolver_util"
@@ -31,11 +30,6 @@ local function get_host_from_url(val)
   end
 
   return parsed_url.host..(port and ":"..port or "")
-end
-
-local function skip_authentication(headers)
-  -- Skip upload request that expect a 100 Continue response
-  return headers["expect"] and stringy.startswith(headers["expect"], "100")
 end
 
 -- Retrieve the API from the Host that has been requested
