@@ -23,7 +23,6 @@ local function get_content_type(request)
   if header_value then
     return stringy.strip(header_value)
   end
-  return nil
 end
 
 function _M.execute(conf)
