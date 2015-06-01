@@ -50,6 +50,7 @@ plugins_available:
   - httplog
   - cors
   - request_transformer
+  - requestsizelimiting
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)
@@ -130,7 +131,7 @@ nginx: |
     real_ip_recursive on;
 
     # Other Settings
-    client_max_body_size 128m;
+    client_max_body_size 0;
     underscores_in_headers on;
     reset_timedout_connection on;
     tcp_nopush on;
