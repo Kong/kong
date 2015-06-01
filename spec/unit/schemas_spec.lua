@@ -456,7 +456,7 @@ describe("Schemas", function()
 
       it("should mark a value required if sub-schema has a `required`", function()
         local schema = {
-          value = { type = "table", schema = {some_property={required=true}}, func = validate_value }
+          value = { type = "table", schema = {some_property={required=true}} }
         }
 
         local obj = {}

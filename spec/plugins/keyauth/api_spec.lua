@@ -78,7 +78,7 @@ describe("Basic Auth Credentials API", function()
     describe("GET", function()
 
       it("should retrieve by id", function()
-        local response, status = http_client.get(BASE_URL..credential.id)
+        local _, status = http_client.get(BASE_URL..credential.id)
         assert.equal(200, status)
       end)
 

@@ -183,7 +183,7 @@ describe("Admin API", function()
         local _, status = http_client.patch(BASE_URL.."hello", {name="patch-updated"})
         assert.equal(404, status)
 
-        response, status = http_client.patch(BASE_URL..api.id, {target_url=""})
+        local response, status = http_client.patch(BASE_URL..api.id, {target_url=""})
         assert.equal(400, status)
         assert.equal('{"target_url":"target_url is not a string"}\n', response)
       end)
