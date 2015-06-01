@@ -1,5 +1,6 @@
 local validate = require("kong.dao.schemas_validation").validate
 local api_schema = require "kong.dao.schemas.apis"
+local consumer_schema = require "kong.dao.schemas.consumers"
 
 require "kong.tools.ngx_stub"
 
@@ -8,38 +9,100 @@ describe("Entities Schemas", function()
 
     it("should return error with wrong target_url", function()
       local valid, errors = validate({
-        public_dns = "hello.com",
+        public_dns = "mockbin.com",
         target_url = "asdasd"
       }, api_schema)
       assert.False(valid)
-      assert.same("Invalid target URL", errors.target_url)
+      assert.equal("Invalid target URL", errors.target_url)
     end)
 
     it("should return error with wrong target_url protocol", function()
       local valid, errors = validate({
-        public_dns = "hello.com",
-        target_url = "wot://hello.com/"
+        public_dns = "mockbin.com",
+        target_url = "wot://mockbin.com/"
       }, api_schema)
       assert.False(valid)
-      assert.same("Supported protocols are HTTP and HTTPS", errors.target_url)
+      assert.equal("Supported protocols are HTTP and HTTPS", errors.target_url)
     end)
 
-    it("should work without a path", function()
+    it("should validate without a path", function()
       local valid, errors = validate({
-        public_dns = "hello.com",
-        target_url = "http://hello.com"
+        public_dns = "mockbin.com",
+        target_url = "http://mockbin.com"
       }, api_schema)
-      assert.True(valid)
       assert.falsy(errors)
+      assert.True(valid)
     end)
 
-    it("should work without upper case protocol", function()
+    it("should validate with upper case protocol", function()
       local valid, errors = validate({
-        public_dns = "hello2.com",
-        target_url = "HTTP://hello.com/world"
+        public_dns = "mockbin.com",
+        target_url = "HTTP://mockbin.com/world"
       }, api_schema)
-      assert.True(valid)
       assert.falsy(errors)
+      assert.True(valid)
+    end)
+
+    it("should complain if missing `public_dns` and `path`", function()
+      local valid, errors = validate({
+        name = "mockbin"
+      }, api_schema)
+      assert.False(valid)
+      assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.path)
+      assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.public_dns)
+
+      local valid, errors = validate({
+        name = "mockbin",
+        path = true
+      }, api_schema)
+      assert.False(valid)
+      assert.equal("path is not a string", errors.path)
+      assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.public_dns)
+    end)
+
+    it("should prefix a `path` with a slash", function()
+      local api_t = {
+        name = "mockbin",
+        path = "status",
+        target_url = "http://mockbin.com"
+      }
+
+      local valid, errors = validate(api_t, api_schema)
+      assert.falsy(errors)
+      assert.True(valid)
+      assert.equal("/status", api_t.path)
+
+      api_t = {
+        name = "mockbin",
+        path = "/status",
+        target_url = "http://mockbin.com"
+      }
+
+      local valid, errors = validate(api_t, api_schema)
+      assert.falsy(errors)
+      assert.True(valid)
+      assert.equal("/status", api_t.path)
+    end)
+
+  end)
+
+  describe("Consumers", function()
+
+    it("should require a `custom_id` or `username`", function()
+      local valid, errors = validate({}, consumer_schema)
+      assert.False(valid)
+      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.username)
+      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
+
+      valid, errors = validate({ username = "" }, consumer_schema)
+      assert.False(valid)
+      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.username)
+      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
+
+      valid, errors = validate({ username = true }, consumer_schema)
+      assert.False(valid)
+      assert.equal("username is not a string", errors.username)
+      assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
     end)
 
   end)

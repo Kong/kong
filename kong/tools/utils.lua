@@ -2,7 +2,7 @@ local _M = {}
 
 function _M.table_size(t)
   local res = 0
-  for _,_ in pairs(t) do
+  for _ in pairs(t) do
     res = res + 1
   end
   return res

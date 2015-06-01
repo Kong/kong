@@ -47,18 +47,23 @@ local function find_api()
   local retrieved_api
 
   -- retrieve all APIs
-  local apis_by_public_dns, err = cache.get_or_set("APIS_BY_PUBLIC_DNS", function()
+  local apis_dics, err = cache.get_or_set("APIS_BY_PUBLIC_DNS", function()
     local apis, err = dao.apis:find_all()
     if err then
       return nil, err
     end
 
-    -- build a dictionnary of public_dns:api for efficient retrieval by Host.
-    local dic = {}
+    -- build dictionnaries of public_dns:api and path:apis for efficient lookup.
+    local dns_dic, path_dic = {}, {}
     for _, api in ipairs(apis) do
-      dic[api.public_dns] = api
+      if api.public_dns then
+        dns_dic[api.public_dns] = api
+      end
+      if api.path then
+        path_dic[api.path] = api
+      end
     end
-    return dic
+    return {dns = dns_dic, path = path_dic}
   end, 60) -- 60 seconds cache
 
   if err then
@@ -76,8 +81,8 @@ local function find_api()
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
         table.insert(all_hosts, host)
-        if apis_by_public_dns[host] then
-          retrieved_api = apis_by_public_dns[host]
+        if apis_dics.dns[host] then
+          retrieved_api = apis_dics.dns[host]
           break
         end
       end
@@ -91,14 +96,12 @@ local function find_api()
 
   -- Otherwise, we look for it by path. We have to loop over all APIs and compare the requested URI.
   local request_uri = ngx.var.request_uri
-  for _, api in pairs(apis_by_public_dns) do
-    if api.path then
-      local m, err = ngx.re.match(request_uri, api.path)
-      if err then
-        ngx.log(ngx.ERR, "[resolver] error matching requested path: "..err)
-      elseif m then
-        retrieved_api = api
-      end
+  for path, api in pairs(apis_dics.path) do
+    local m, err = ngx.re.match(request_uri, path)
+    if err then
+      ngx.log(ngx.ERR, "[resolver] error matching requested path: "..err)
+    elseif m then
+      retrieved_api = api
     end
   end
 

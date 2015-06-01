@@ -1,5 +1,5 @@
 local Migration = {
-  name = "2015-05-22-235608_apis_path",
+  name = "2015-05-22-235608_0.3.0",
 
   up = function(options)
     return [[
