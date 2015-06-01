@@ -15,7 +15,6 @@ describe("Admin API", function()
   end)
 
   describe("/plugins_configurations/", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins_configurations/"
 
     describe("POST", function()
 
@@ -28,10 +27,7 @@ describe("Admin API", function()
           target_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
 
-
-        print(api.id)
-
-        local response, status = http_client.post(BASE_URL, {
+        local response, status = http_client.post(spec_helper.API_URL.."/apis/"..api.id.."/plugins/", {
           api_id = api.id,
           name = "request_transformer",
           ["value.add.headers"] = "x-new-header:some_value, x-another-header:some_value",
@@ -39,7 +35,7 @@ describe("Admin API", function()
           ["value.add.form"] = "new-form-param:some_value, another-form-param:some_value",
           ["value.remove.headers"] = "x-toremove, x-another-one",
           ["value.remove.querystring"] = "param-toremove, param-another-one",
-          ["value.remove.form"] = "formparam-toremove, formparam-another-one"
+          ["value.remove.form"] = "formparam-toremove"
         })
 
         local body = json.decode(response)
@@ -51,7 +47,7 @@ describe("Admin API", function()
         assert.are.equal({ ["form-param"] = "some_value", ["another-form-param"] = "some_value"}, body.value.add.form)
         assert.are.equal({ "x-to-remove", "x-another-one" }, body.value.remove.headers)
         assert.are.equal({ "param-toremove", "param-another-one" }, body.value.remove.querystring)
-        assert.are.equal({ "formparam-toremove", "formparam-another-one" }, body.value.remove.form)
+        assert.are.equal({ "formparam-toremove" }, body.value.remove.form)
 
       end)
     end)
