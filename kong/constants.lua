@@ -37,14 +37,6 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining"
   },
-  CACHE = {
-    APIS = "apis",
-    CONSUMERS = "consumers",
-    PLUGINS_CONFIGURATIONS = "plugins_configurations",
-    BASICAUTH_CREDENTIAL = "basicauth_credentials",
-    KEYAUTH_CREDENTIAL = "keyauth_credentials",
-    SSL = "ssl"
-  },
   AUTHENTICATION = {
     QUERY = "query",
     BASIC = "basic",

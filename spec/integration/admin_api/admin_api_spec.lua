@@ -1,7 +1,6 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
-local cjson = require "cjson"
 
 local CREATED_IDS = {}
 local ENDPOINTS = {

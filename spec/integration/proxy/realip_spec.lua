@@ -2,7 +2,6 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local stringy = require "stringy"
 local cjson = require "cjson"
-local yaml = require "yaml"
 local uuid = require "uuid"
 local IO = require "kong.tools.io"
 
