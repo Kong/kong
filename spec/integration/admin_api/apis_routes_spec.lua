@@ -36,7 +36,7 @@ describe("Admin API", function()
       it("[FAILURE] should return proper errors", function()
         send_content_types(BASE_URL, "POST", {},
         400,
-        '{"public_dns":"public_dns is required","target_url":"target_url is required"}')
+        '{"public_dns":"At least a \'public_dns\' or a \'path\' must be specified","path":"At least a \'public_dns\' or a \'path\' must be specified","target_url":"target_url is required"}')
 
         send_content_types(BASE_URL, "POST", {public_dns="api.mockbin.com"},
         400, '{"target_url":"target_url is required"}')
@@ -74,7 +74,7 @@ describe("Admin API", function()
       it("[FAILURE] should return proper errors", function()
         send_content_types(BASE_URL, "PUT", {},
         400,
-        '{"public_dns":"public_dns is required","target_url":"target_url is required"}')
+        '{"public_dns":"At least a \'public_dns\' or a \'path\' must be specified","path":"At least a \'public_dns\' or a \'path\' must be specified","target_url":"target_url is required"}')
 
         send_content_types(BASE_URL, "PUT", {public_dns="api.mockbin.com"},
         400, '{"target_url":"target_url is required"}')
