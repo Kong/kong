@@ -9,13 +9,13 @@ function Apis:new(properties)
   self._schema = apis_schema
   self._queries = {
     insert = {
-      args_keys = { "id", "name", "public_dns", "target_url", "created_at" },
-      query = [[ INSERT INTO apis(id, name, public_dns, target_url, created_at)
-                  VALUES(?, ?, ?, ?, ?); ]]
+      args_keys = { "id", "name", "public_dns", "path", "target_url", "created_at" },
+      query = [[ INSERT INTO apis(id, name, public_dns, path, target_url, created_at)
+                  VALUES(?, ?, ?, ?, ?, ?); ]]
     },
     update = {
-      args_keys = { "name", "public_dns", "target_url", "id" },
-      query = [[ UPDATE apis SET name = ?, public_dns = ?, target_url = ? WHERE id = ?; ]]
+      args_keys = { "name", "public_dns", "path", "target_url", "id" },
+      query = [[ UPDATE apis SET name = ?, public_dns = ?, path = ?, target_url = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM apis %s; ]]
@@ -33,6 +33,10 @@ function Apis:new(properties)
         args_keys = { "name" },
         query = [[ SELECT id FROM apis WHERE name = ?; ]]
       },
+      path = {
+        args_keys = { "path" },
+        query = [[ SELECT id FROM apis WHERE path = ?; ]]
+      },
       public_dns = {
         args_keys = { "public_dns" },
         query = [[ SELECT id FROM apis WHERE public_dns = ?; ]]
@@ -41,6 +45,21 @@ function Apis:new(properties)
   }
 
   Apis.super.new(self, properties)
+end
+
+function Apis:find_all()
+  local apis = {}
+  for _, rows, page, err in Apis.super._execute_kong_query(self, self._queries.select.query, nil, {auto_paging=true}) do
+    if err then
+      return nil, err
+    end
+
+    for _, row in ipairs(rows) do
+      table.insert(apis, row)
+    end
+  end
+
+  return apis
 end
 
 -- @override

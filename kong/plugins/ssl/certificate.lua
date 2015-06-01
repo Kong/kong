@@ -6,7 +6,7 @@ function _M.execute(conf)
   local ssl = require "ngx.ssl"
   ssl.clear_certs()
 
-  local data = cache.get_and_set(cache.ssl_data(ngx.ctx.api.id), function()
+  local data = cache.get_or_set(cache.ssl_data(ngx.ctx.api.id), function()
     local result = {
       cert_der = ngx.decode_base64(conf._cert_der_cache),
       key_der = ngx.decode_base64(conf._key_der_cache)

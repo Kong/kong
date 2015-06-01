@@ -7,9 +7,9 @@
 -- Executions: 'access', 'header_filter'
 
 local access = require "kong.resolver.access"
+local BasePlugin = require "kong.plugins.base_plugin"
 local certificate = require "kong.resolver.certificate"
 local header_filter = require "kong.resolver.header_filter"
-local BasePlugin = require "kong.plugins.base_plugin"
 
 local ResolverHandler = BasePlugin:extend()
 
