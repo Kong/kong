@@ -40,7 +40,7 @@ local _M = {}
 local function load_plugin_conf(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_configuration_key(plugin_name, api_id, consumer_id)
 
-  local plugin = cache.get_and_set(cache_key, function()
+  local plugin = cache.get_or_set(cache_key, function()
     local rows, err = dao.plugins_configurations:find_by_keys {
         api_id = api_id,
         consumer_id = consumer_id ~= nil and consumer_id or constants.DATABASE_NULL_ID,

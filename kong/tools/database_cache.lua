@@ -10,26 +10,20 @@ function _M.set(key, value, exptime)
 
   local cache = ngx.shared.cache
   if value then
+    ngx.log(ngx.DEBUG, " saving cache key \""..key.."\": "..value)
     value = cjson.encode(value)
   end
-  if ngx then
-    ngx.log(ngx.DEBUG, " saving cache key \""..key.."\": "..value)
-  end
-  local succ, err, forcible = cache:set(key, value, exptime)
-  return succ, err, forcible
+
+  return cache:set(key, value, exptime)
 end
 
 function _M.get(key)
-  if ngx then
-    ngx.log(ngx.DEBUG, " Try to get cache key \""..key.."\"")
-  end
+  ngx.log(ngx.DEBUG, " Try to get cache key \""..key.."\"")
 
   local cache = ngx.shared.cache
   local value, flags = cache:get(key)
   if value then
-    if ngx then
-      ngx.log(ngx.DEBUG, " Found cache value for key \""..key.."\": "..value)
-    end
+    ngx.log(ngx.DEBUG, " Found cache value for key \""..key.."\": "..value)
     value = cjson.decode(value)
   end
   return value, flags
@@ -64,18 +58,23 @@ function _M.ssl_data(api_id)
   return constants.CACHE.SSL.."/"..api_id
 end
 
-function _M.get_and_set(key, cb)
-  local val = _M.get(key)
-  if not val then
-    val = cb()
-    if val then
-      local succ, err = _M.set(key, val)
-      if not succ and ngx then
+function _M.get_or_set(key, cb)
+  local value, err
+  -- Try to get
+  value = _M.get(key)
+  if not value then
+    -- Get from closure
+    value, err = cb()
+    if err then
+      return nil, err
+    elseif value then
+      local ok, err = _M.set(key, val)
+      if not ok then
         ngx.log(ngx.ERR, err)
       end
     end
   end
-  return val
+  return value
 end
 
 return _M

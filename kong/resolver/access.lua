@@ -32,8 +32,7 @@ local function get_host_from_url(val)
   return parsed_url.host..(port and ":"..port or "")
 end
 
--- Retrieve the API from the Host that has been requested
-function _M.execute(conf)
+local function find_by_hosts()
   local hosts_headers = {}
   for _, header_name in ipairs({"Host", constants.HEADERS.HOST_OVERRIDE}) do
     local host = ngx.req.get_headers()[header_name]
@@ -47,12 +46,43 @@ function _M.execute(conf)
   end
 
   -- Find the API
-  local api, err = resolver_util.find_api(hosts_headers)
+  return resolver_util.find_api(hosts_headers)
+end
 
+local function find_by_path()
+  local cache = require "kong.tools.database_cache"
+  local request_uri = ngx.var.request_uri
+  local all_apis = cache.get_or_set("ALL_APIS", function()
+    return dao.apis:find_all()
+  end)
+
+  for _, api in ipairs(all_apis) do
+    if api.path then
+      local m, err = ngx.re.match(request_uri, api.path)
+      if err then
+        ngx.log(ngx.ERR, "[resolver] error matching requested path: "..err)
+        return
+      elseif m then
+        return api
+      end
+    end
+  end
+end
+
+-- Retrieve the API from the Host that has been requested
+function _M.execute(conf)
+  local api, err = find_by_hosts()
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   elseif not api then
-    return responses.send_HTTP_NOT_FOUND("API not found with Host: "..table.concat(hosts_headers, ","))
+    api, err = find_by_path()
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+  end
+
+  if not api then
+    return responses.send_HTTP_NOT_FOUND("API not found")
   end
 
   -- Setting the backend URL for the proxy_pass directive

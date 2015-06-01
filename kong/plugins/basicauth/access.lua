@@ -74,7 +74,7 @@ function _M.execute(conf)
 
   -- Make sure we are not sending an empty table to find_by_keys
   if username then
-    credential = cache.get_and_set(cache.basicauth_credential_key(username), function()
+    credential = cache.get_or_set(cache.basicauth_credential_key(username), function()
       local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result
       if err then
@@ -92,7 +92,7 @@ function _M.execute(conf)
   end
 
   -- Retrieve consumer
-  local consumer = cache.get_and_set(cache.consumer_key(credential.consumer_id), function()
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
     local result, err = dao.consumers:find_one(credential.consumer_id)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
