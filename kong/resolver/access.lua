@@ -39,11 +39,13 @@ end
 -- as a regex to the values set in DB. We keep APIs in the database cache for a longer time than usual.
 -- @see https://github.com/Mashape/kong/issues/15 for an improvement on this.
 --
+-- @param  `request_uri` The URI for this request.
 -- @return `err`         Any error encountered during the retrieval.
 -- @return `api`         The retrieved API, if any.
 -- @return `hosts`       The list of headers values found in Host and X-Host-Override.
 -- @return `request_uri` The URI for this request.
-local function find_api()
+-- @return `by_path`     If the API was retrieved by path, will be true, false if by Host.
+local function find_api(request_uri)
   local retrieved_api
 
   -- retrieve all APIs
@@ -89,13 +91,12 @@ local function find_api()
     end
   end
 
-  -- If it was found by Host, return
+  -- If it was found by Host, return.
   if retrieved_api then
-    return nil, retrieved_api
+    return nil, retrieved_api, all_hosts
   end
 
   -- Otherwise, we look for it by path. We have to loop over all APIs and compare the requested URI.
-  local request_uri = ngx.var.request_uri
   for path, api in pairs(apis_dics.path) do
     local m, err = ngx.re.match(request_uri, "^"..path)
     if err then
@@ -105,12 +106,14 @@ local function find_api()
     end
   end
 
-  return nil, retrieved_api, all_hosts, request_uri
+  -- Return the retrieved_api or nil
+  return nil, retrieved_api, all_hosts, true
 end
 
 -- Retrieve the API from the Host that has been requested
 function _M.execute(conf)
-  local err, api, hosts, request_uri = find_api()
+  local request_uri = ngx.var.request_uri
+  local err, api, hosts, by_path = find_api(request_uri)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   elseif not api then
@@ -121,8 +124,14 @@ function _M.execute(conf)
     }
   end
 
+  -- If API was retrieved by path
+  if by_path and api.strip_path then
+    -- All paths are '/path', so let's replace it with a single '/'
+    request_uri = string.gsub(request_uri, api.path, "/")
+  end
+
   -- Setting the backend URL for the proxy_pass directive
-  ngx.var.backend_url = get_backend_url(api)..ngx.var.request_uri
+  ngx.var.backend_url = get_backend_url(api)..request_uri
   ngx.req.set_header("Host", get_host_from_url(ngx.var.backend_url))
 
   ngx.ctx.api = api

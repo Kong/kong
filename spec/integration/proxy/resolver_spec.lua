@@ -27,7 +27,8 @@ describe("Resolver", function()
       api = {
         { name = "tests host resolver 1", public_dns = "mocbkin.com", target_url = "http://mockbin.com" },
         { name = "tests host resolver 2", public_dns = "mocbkin-auth.com", target_url = "http://mockbin.com" },
-        { name = "tests path resolver", public_dns = "mocbkin-path.com", target_url = "http://mockbin.com", path = "/status/" }
+        { name = "tests path resolver", public_dns = "mocbkin-path.com", target_url = "http://mockbin.com", path = "/status/" },
+        { name = "tests stripped path resolver", public_dns = "mocbkin-stripped-path.com", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true }
       },
       plugin_configuration = {
         { name = "keyauth", value = {key_names = {"apikey"} }, __api = 2 }
@@ -125,6 +126,13 @@ describe("Resolver", function()
 
         local _, status = http_client.get(spec_helper.PROXY_URL.."/status/301")
         assert.are.equal(301, status)
+      end)
+
+      it("should proxy and strip the path if `strip_path` is true", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equal("http://mockbin.com/request", body.url)
       end)
 
       it("should not proxy when the path does not the start of the request_uri", function()

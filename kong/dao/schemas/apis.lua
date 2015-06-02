@@ -39,7 +39,7 @@ local function check_path(path, api_t)
     local has_slash = string.match(path, "^/")
     if not has_slash then api_t.path = "/"..path end
     -- Check if characters are in RFC 3986 unreserved list
-    local is_alphanumeric = string.match(api_t.path, "^/[%w%.%-%_~]*$")
+    local is_alphanumeric = string.match(api_t.path, "^/[%w%.%-%_~]*/?$")
     if not is_alphanumeric then
       return false, "path must only contain alphanumeric and '. -, _, ~' characters"
     end
@@ -55,6 +55,7 @@ return {
                 func = check_public_dns_and_path,
                 regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)" },
   path = { type = "string", queryable = true, unique = true, func = check_path },
+  strip_path = { type = "boolean" },
   target_url = { type = "string", required = true, func = validate_target_url },
   created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
 }

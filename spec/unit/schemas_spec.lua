@@ -1,5 +1,4 @@
 local schemas = require "kong.dao.schemas_validation"
-local constants = require "kong.constants"
 local validate = schemas.validate
 
 require "kong.tools.ngx_stub"

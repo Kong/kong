@@ -1,3 +1,4 @@
+local IO = require "kong.tools.io"
 local spec_helper = require "spec.spec_helpers"
 
 describe("CLI", function()

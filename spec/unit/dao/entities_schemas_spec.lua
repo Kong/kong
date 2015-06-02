@@ -69,7 +69,14 @@ describe("Entities Schemas", function()
       assert.equal("path must only contain alphanumeric and '. -, _, ~' characters", errors.path)
       assert.False(valid)
 
-      valid, errors = validate({
+      valid = validate({
+        name = "mockbin",
+        path = "/status/",
+        target_url = "http://mockbin.com"
+      }, api_schema)
+      assert.True(valid)
+
+      valid = validate({
         name = "mockbin",
         path = "/abcd~user-2",
         target_url = "http://mockbin.com"

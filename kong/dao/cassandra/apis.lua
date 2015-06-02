@@ -9,13 +9,13 @@ function Apis:new(properties)
   self._schema = apis_schema
   self._queries = {
     insert = {
-      args_keys = { "id", "name", "public_dns", "path", "target_url", "created_at" },
-      query = [[ INSERT INTO apis(id, name, public_dns, path, target_url, created_at)
-                  VALUES(?, ?, ?, ?, ?, ?); ]]
+      args_keys = { "id", "name", "public_dns", "path", "strip_path", "target_url", "created_at" },
+      query = [[ INSERT INTO apis(id, name, public_dns, path, strip_path, target_url, created_at)
+                  VALUES(?, ?, ?, ?, ?, ?, ?); ]]
     },
     update = {
-      args_keys = { "name", "public_dns", "path", "target_url", "id" },
-      query = [[ UPDATE apis SET name = ?, public_dns = ?, path = ?, target_url = ? WHERE id = ?; ]]
+      args_keys = { "name", "public_dns", "path", "strip_path", "target_url", "id" },
+      query = [[ UPDATE apis SET name = ?, public_dns = ?, path = ?, strip_path = ?, target_url = ? WHERE id = ?; ]]
     },
     select = {
       query = [[ SELECT * FROM apis %s; ]]
