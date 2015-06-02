@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source ./versions.sh
-
 CASSANDRA_BASE=apache-cassandra-$CASSANDRA_VERSION
 
 sudo rm -rf /var/lib/cassandra/*
