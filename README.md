@@ -39,7 +39,7 @@ We set Kong up on AWS and load tested it to get some performance metrics. The se
 
 Over two minutes **117,185** requests with an average latency of **10ms** at **976 requests a second** or about **84,373,200 requests a day** went through Kong and back with only a single timeout.
 
-![](http://i.imgur.com/aDGRe4G.png)
+![](http://cl.ly/image/3R171b2U2l3k/Image%202015-06-01%20at%205.00.13%20PM.png)
 
 ## Development
 
