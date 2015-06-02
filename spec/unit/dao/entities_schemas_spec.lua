@@ -60,6 +60,23 @@ describe("Entities Schemas", function()
       assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.public_dns)
     end)
 
+    it("should only accept alphanumeric `path`", function()
+      local valid, errors = validate({
+        name = "mockbin",
+        path = "/[a-zA-Z]{3}",
+        target_url = "http://mockbin.com"
+      }, api_schema)
+      assert.equal("path must only contain alphanumeric and '. -, _, ~' characters", errors.path)
+      assert.False(valid)
+
+      valid, errors = validate({
+        name = "mockbin",
+        path = "/abcd~user-2",
+        target_url = "http://mockbin.com"
+      }, api_schema)
+      assert.True(valid)
+    end)
+
     it("should prefix a `path` with a slash", function()
       local api_t = {
         name = "mockbin",

@@ -47,7 +47,7 @@ local function find_api()
   local retrieved_api
 
   -- retrieve all APIs
-  local apis_dics, err = cache.get_or_set("APIS_BY_PUBLIC_DNS", function()
+  local apis_dics, err = cache.get_or_set("ALL_APIS_BY_DIC", function()
     local apis, err = dao.apis:find_all()
     if err then
       return nil, err
@@ -97,7 +97,7 @@ local function find_api()
   -- Otherwise, we look for it by path. We have to loop over all APIs and compare the requested URI.
   local request_uri = ngx.var.request_uri
   for path, api in pairs(apis_dics.path) do
-    local m, err = ngx.re.match(request_uri, path)
+    local m, err = ngx.re.match(request_uri, "^"..path)
     if err then
       ngx.log(ngx.ERR, "[resolver] error matching requested path: "..err)
     elseif m then
