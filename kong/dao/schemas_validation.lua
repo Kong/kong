@@ -55,9 +55,9 @@ function _M.validate(t, schema, is_update)
     if v.type ~= nil and t[column] ~= nil then
       local is_valid_type
 
-      -- ALIASES: number, boolean and array can be passed as strings and will be converted
+      -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
       if type(t[column]) == "string" then
-        if v.type == "number" then
+        if v.type == "number" or v .type == constants.DATABASE_TYPES.TIMESTAMP then
           t[column] = tonumber(t[column])
           is_valid_type = t[column] ~= nil
         elseif v.type == "boolean" then
