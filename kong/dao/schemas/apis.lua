@@ -34,9 +34,15 @@ local function check_path(path, api_t)
     return false, err
   end
 
-  -- Prefix with `/` for the sake of consistency
-  if path and string.sub(path, 0, 1) ~= "/" then
-    api_t.path = "/"..path
+  if path then
+    -- Prefix with `/` for the sake of consistency
+    local has_slash = string.match(path, "^/")
+    if not has_slash then api_t.path = "/"..path end
+    -- Check if characters are in RFC 3986 unreserved list
+    local is_alphanumeric = string.match(api_t.path, "^/[%w%.%-%_~]*$")
+    if not is_alphanumeric then
+      return false, "path must only contain alphanumeric and '. -, _, ~' characters"
+    end
   end
 
   return true

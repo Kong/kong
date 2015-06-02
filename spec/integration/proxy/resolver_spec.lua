@@ -127,6 +127,14 @@ describe("Resolver", function()
         assert.are.equal(301, status)
       end)
 
+      it("should not proxy when the path does not the start of the request_uri", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/somepath/status/200")
+        local body = cjson.decode(response)
+        assert.are.equal("API not found with these values", body.message)
+        assert.are.equal("/somepath/status/200", body.path)
+        assert.are.equal(404, status)
+      end)
+
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
