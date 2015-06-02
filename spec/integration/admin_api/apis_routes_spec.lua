@@ -347,10 +347,6 @@ describe("Admin API", function()
           it("[FAILURE] should return proper errors", function()
             local _, status = http_client.patch(BASE_URL.."hello", {})
             assert.equal(404, status)
-
-            response, status = http_client.patch(BASE_URL..plugin.id, {["value.key_names"]="key_updated-json"})
-            assert.equal(400, status)
-            assert.equal('{"value.key_names":"key_names is not a table"}\n', response)
           end)
 
         end)
