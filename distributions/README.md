@@ -29,7 +29,7 @@ Kong can be distributed to different platforms such as CentOS, Debian, Ubuntu an
 
 Distributions will be placed under the `build-output` folder (should the folder not exist it will be automatically created).
 
-**Warning:** **Do not execute** the `build-package-script.sh` file, it's used internally by the build.
+**Warning:** **Do not execute** the `.build-package-script.sh` file, it's used internally by the build.
 
 ## Supported Platforms
 

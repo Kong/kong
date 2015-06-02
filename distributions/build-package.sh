@@ -103,9 +103,9 @@ for i in "${platforms_to_build[@]}"
 do
   echo "Building for $i"
   if [[ "$i" == "osx" ]]; then
-    /bin/bash $DIR/build-package-script.sh ${KONG_VERSION}
+    /bin/bash $DIR/.build-package-script.sh ${KONG_VERSION}
   else
-    docker run -v $DIR/:/build-data $i /bin/bash -c "/build-data/build-package-script.sh ${KONG_VERSION}"
+    docker run -v $DIR/:/build-data $i /bin/bash -c "/build-data/.build-package-script.sh ${KONG_VERSION}"
   fi
   if [ $? -ne 0 ]; then
     exit 1
@@ -117,9 +117,9 @@ do
     last_file=$(ls -dt $DIR/build-output/* | head -1)
     last_file_name=`basename $last_file`
     if [[ "$i" == "osx" ]]; then
-      /bin/bash $DIR/test-package-script.sh $DIR/build-output/$last_file_name
+      /bin/bash $DIR/.test-package-script.sh $DIR/build-output/$last_file_name
     else
-      docker run -v $DIR/:/build-data $i /bin/bash -c "/build-data/test-package-script.sh /build-data/build-output/$last_file_name"
+      docker run -v $DIR/:/build-data $i /bin/bash -c "/build-data/.test-package-script.sh /build-data/build-output/$last_file_name"
     fi
     if [ $? -ne 0 ]; then
       exit 1

@@ -26,6 +26,7 @@ mkdir -p $TMP
 
 # Load dependencies versions
 LUA_VERSION=5.1.4
+LUAJIT_VERSION=2.0.4
 PCRE_VERSION=8.36
 LUAROCKS_VERSION=2.2.2
 OPENRESTY_VERSION=1.7.10.2rc0
@@ -38,7 +39,6 @@ MKTEMP_LUAROCKS_CONF=""
 MKTEMP_POSTSCRIPT_CONF=""
 LUA_MAKE=""
 OPENRESTY_CONFIGURE=""
-LUAROCKS_CONFIGURE=""
 FPM_PARAMS=""
 FINAL_FILE_NAME=""
 
@@ -153,29 +153,8 @@ if [ "$(uname)" = "Darwin" ]; then
   make install DESTDIR=$OUT
   cd $OUT
 
-  LUAROCKS_CONFIGURE="--with-lua-include=$OUT/usr/local/include"
   OPENRESTY_CONFIGURE=$OPENRESTY_CONFIGURE" --with-cc-opt=-I$OUT/usr/local/include --with-ld-opt=-L$OUT/usr/local/lib"
 fi
-
-# Install LuaRocks
-cd $TMP
-wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
-tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
-cd luarocks-$LUAROCKS_VERSION
-./configure $LUAROCKS_CONFIGURE
-make build
-make install DESTDIR=$OUT
-cd $OUT
-
-# Configure LuaRocks
-rocks_config=$(mktemp $MKTEMP_LUAROCKS_CONF)
-echo "
-rocks_trees = {
-   { name = [[system]], root = [[${OUT}/usr/local]] }
-}
-" > $rocks_config
-export LUAROCKS_CONFIG=$rocks_config
-export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
 ############################################
 ######### Install Patched OpenResty ########
@@ -205,6 +184,34 @@ make install DESTDIR=$OUT
 ############################################
 ############################################
 
+cd $TMP
+wget http://luajit.org/download/LuaJIT-$LUAJIT_VERSION.tar.gz
+tar xzf LuaJIT-$LUAJIT_VERSION.tar.gz
+cd LuaJIT-$LUAJIT_VERSION
+make
+make install DESTDIR=$OUT
+cd $OUT
+
+# Install LuaRocks
+cd $TMP
+wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
+tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
+cd luarocks-$LUAROCKS_VERSION
+./configure --with-lua-include=$OUT/usr/local/include/luajit-2.0 --lua-suffix=jit --lua-version=5.1 --with-lua=$OUT/usr/local
+make build
+make install DESTDIR=$OUT
+cd $OUT
+
+# Configure LuaRocks
+rocks_config=$(mktemp $MKTEMP_LUAROCKS_CONF)
+echo "
+rocks_trees = {
+   { name = [[system]], root = [[${OUT}/usr/local]] }
+}
+" > $rocks_config
+export LUAROCKS_CONFIG=$rocks_config
+export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
+
 # Install Kong
 cd $TMP
 git clone --branch $KONG_BRANCH --depth 1 https://github.com/Mashape/kong.git
@@ -219,6 +226,10 @@ rockspec_version=${rockspec_basename#"kong-"}
 # Fix the Kong bin file
 sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
+
+# Fix the Luarocks bin file
+sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/luarocks
+rm $OUT/usr/local/bin/luarocks.bak
 
 # Copy the conf to /etc/kong
 post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
