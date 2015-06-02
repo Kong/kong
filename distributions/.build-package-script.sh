@@ -190,6 +190,7 @@ tar xzf LuaJIT-$LUAJIT_VERSION.tar.gz
 cd LuaJIT-$LUAJIT_VERSION
 make
 make install DESTDIR=$OUT
+make install # Install also on the build system
 cd $OUT
 
 # Install LuaRocks
@@ -197,7 +198,7 @@ cd $TMP
 wget http://luarocks.org/releases/luarocks-$LUAROCKS_VERSION.tar.gz
 tar xzf luarocks-$LUAROCKS_VERSION.tar.gz
 cd luarocks-$LUAROCKS_VERSION
-./configure --with-lua-include=$OUT/usr/local/include/luajit-2.0 --lua-suffix=jit --lua-version=5.1 --with-lua=$OUT/usr/local
+./configure --with-lua-include=/usr/local/include/luajit-2.0 --lua-suffix=jit --lua-version=5.1 --with-lua=/usr/local
 make build
 make install DESTDIR=$OUT
 cd $OUT
@@ -226,10 +227,6 @@ rockspec_version=${rockspec_basename#"kong-"}
 # Fix the Kong bin file
 sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/kong
 rm $OUT/usr/local/bin/kong.bak
-
-# Fix the Luarocks bin file
-sed -i.bak s@${OUT}@@g $OUT/usr/local/bin/luarocks
-rm $OUT/usr/local/bin/luarocks.bak
 
 # Copy the conf to /etc/kong
 post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
