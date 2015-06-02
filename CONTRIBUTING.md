@@ -25,7 +25,7 @@ If you are submitting an issue about a bug, please include the following:
 - The platform you are running Kong on
 - The version of Kong you are running
 - Steps to reproduce the issue
-- Eventually, logs from your `error.log` file. You can find this file at `<nginx_working_dir>/logs/error.log`
+- Eventually, logs from your `error.log` file. You can find this file at `<kong_working_dir>/logs/error.log`
 
 ### Submitting a Pull Request
 
