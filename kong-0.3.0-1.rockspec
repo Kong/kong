@@ -114,6 +114,7 @@ build = {
     ["kong.plugins.filelog.handler"] = "kong/plugins/filelog/handler.lua",
     ["kong.plugins.filelog.log"] = "kong/plugins/filelog/log.lua",
     ["kong.plugins.filelog.schema"] = "kong/plugins/filelog/schema.lua",
+    ["kong.plugins.filelog.fd_util"] = "kong/plugins/filelog/fd_util.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
