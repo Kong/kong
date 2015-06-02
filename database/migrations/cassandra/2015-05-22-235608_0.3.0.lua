@@ -7,6 +7,7 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS basicauth_consumer_id ON basicauth_credentials(consumer_id);
 
       ALTER TABLE apis ADD path text;
+      ALTER TABLE apis ADD strip_path boolean;
       CREATE INDEX IF NOT EXISTS apis_path ON apis(path);
     ]]
   end,
@@ -15,6 +16,7 @@ local Migration = {
     return [[
       DROP INDEX apis_path;
       ALTER TABLE apis DROP path;
+      ALTER TABLE apis DROP strip_path;
 
       DROP INDEX keyauth_consumer_id;
       DROP INDEX basicauth_consumer_id;
