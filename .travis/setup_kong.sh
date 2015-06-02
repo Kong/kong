@@ -12,3 +12,4 @@ sudo apt-get install sudo netcat lua5.1 openssl libpcre3 dnsmasq
 sudo dpkg -i ./.travis/kong-0.3.0travis.precise_all.deb
 
 sudo luarocks remove kong --force
+sudo rm -rf /etc/kong
