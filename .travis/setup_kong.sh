@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source ./versions.sh
-
 sudo apt-get update
 
 # Installing dependencies required to build development rocks
