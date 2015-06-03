@@ -70,7 +70,6 @@ build = {
     ["kong.resolver.access"] = "kong/resolver/access.lua",
     ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
     ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
-    ["kong.resolver.resolver_util"] = "kong/resolver/resolver_util.lua",
 
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",

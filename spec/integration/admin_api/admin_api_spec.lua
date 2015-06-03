@@ -1,7 +1,6 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
-local cjson = require "cjson"
 
 local CREATED_IDS = {}
 local ENDPOINTS = {
@@ -15,7 +14,7 @@ local ENDPOINTS = {
       }
     },
     update_fields = { public_dns = "newapi.mockbin.com" },
-    error_message = '{"public_dns":"public_dns is required","target_url":"target_url is required"}\n'
+    error_message = '{"public_dns":"At least a \'public_dns\' or a \'path\' must be specified","path":"At least a \'public_dns\' or a \'path\' must be specified","target_url":"target_url is required"}\n'
   },
   {
     collection = "consumers",
