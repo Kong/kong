@@ -1,5 +1,5 @@
 -- ALF serializer module.
--- ALF is the format supported by API Analytics (http://apianalytics.com)
+-- ALF is the format supported by Mashape Analytics (http://apianalytics.com)
 --
 -- This module represents _one_ ALF entry, which can have multiple requests entries.
 -- # Usage:
@@ -32,8 +32,8 @@ function alf_mt:new_alf()
       log = {
         version = "1.2",
         creator = {
-          name = "kong-api-analytics-plugin",
-          version = "0.1"
+          name = "kong-mashape-analytics-plugin",
+          version = "1.0.0"
         },
         entries = {}
       }
@@ -47,8 +47,8 @@ end
 -- Since Lua won't recognize {} as an empty array but an empty object, we need to force it
 -- to be an array, hence we will do "[__empty_array_placeholder__]".
 -- Then once the ALF will be stringified, we will remove the placeholder so the only left element will be "[]".
--- @param `hash` key/value dictionary to serialize.
--- @param `fn`   Some function to execute at each key iteration, with the key and value as parameters.
+-- @param  `hash`  key/value dictionary to serialize.
+-- @param  `fn`    Some function to execute at each key iteration, with the key and value as parameters.
 -- @return `array` an array, or nil
 local function dic_to_array(hash, fn)
   if not fn then fn = function() end end
@@ -83,70 +83,84 @@ end
 -- ngx_http_core_module when possible.
 -- Public for unit testing.
 function alf_mt:serialize_entry(ngx)
-  -- Extracted data
+  -- ALF properties computation. Properties prefixed with 'alf_' will belong to the ALF entry.
+  -- other properties are used to compute the ALF properties.
+
+  -- bodies
+  local analytics_data = ngx.ctx.analytics
+
+  local alf_req_body = analytics_data.req_body
+  local alf_res_body = analytics_data.res_body
+
+  -- timers
+  local proxy_started_at, proxy_ended_at = ngx.ctx.proxy_started_at, ngx.ctx.proxy_ended_at
+
+  local alf_started_at = ngx.ctx.started_at
+  local alf_send_time = proxy_started_at - alf_started_at
+  local alf_wait_time = proxy_ended_at ~= nil and proxy_ended_at - proxy_started_at or -1
+  local alf_receive_time = analytics_data.response_received and analytics_data.response_received - proxy_ended_at or -1
+  -- Compute the total time. If some properties were unavailable
+  -- (because the proxying was aborted), then don't add the value.
+  local alf_time = 0
+  for _, timer in ipairs({alf_send_time, alf_wait_time, alf_receive_time}) do
+    if timer > 0 then
+      alf_time = alf_time + timer
+    end
+  end
+
+  -- headers and headers size
+  local req_headers_str, res_headers_str = "", ""
   local req_headers = ngx.req.get_headers()
   local res_headers = ngx.resp.get_headers()
 
-  local apianalytics_data = ngx.ctx.apianalytics
-  local req_body = apianalytics_data.req_body
-  local res_body = apianalytics_data.res_body
+  local alf_req_headers_arr = dic_to_array(req_headers, function(k, v) req_headers_str = req_headers_str..k..v end)
+  local alf_res_headers_arr = dic_to_array(res_headers, function(k, v) res_headers_str = res_headers_str..k..v end)
+  local alf_req_headers_size = string.len(req_headers_str)
+  local alf_res_headers_size = string.len(res_headers_str)
 
-  local started_at = ngx.ctx.started_at
-
-  -- ALF properties
-  -- timers
-  local send_time = round(ngx.ctx.proxy_started_at - started_at)
-  local wait_time = ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at
-  local receive_time = apianalytics_data.response_received - ngx.ctx.proxy_ended_at
-  -- headers and headers size
-  local req_headers_str, res_headers_str = "", ""
-  local req_headers_arr = dic_to_array(req_headers, function(k, v) req_headers_str = req_headers_str..k..v end)
-  local res_headers_arr = dic_to_array(res_headers, function(k, v) res_headers_str = res_headers_str..k..v end)
-  local req_headers_size = string.len(req_headers_str)
-  local res_headers_size = string.len(res_headers_str)
-  -- values extracted from headers
+  -- mimeType, defaulting to "application/octet-stream"
   local alf_req_mimeType = req_headers["Content-Type"] and req_headers["Content-Type"] or "application/octet-stream"
   local alf_res_mimeType = res_headers["Content-Type"] and res_headers["Content-Type"] or "application/octet-stream"
 
   return {
-    startedDateTime = os.date("!%Y-%m-%dT%TZ", started_at),
+    startedDateTime = os.date("!%Y-%m-%dT%TZ", alf_started_at),
     clientIPAddress = ngx.var.remote_addr,
-    time = round(send_time + wait_time + receive_time),
+    time = round(alf_time),
     request = {
       method = ngx.req.get_method(),
       url = ngx.var.scheme.."://"..ngx.var.host..ngx.var.uri,
       httpVersion = "HTTP/"..ngx.req.http_version(),
       queryString = dic_to_array(ngx.req.get_uri_args()),
-      headers = req_headers_arr,
-      headersSize = req_headers_size,
+      headers = alf_req_headers_arr,
+      headersSize = alf_req_headers_size,
       cookies = {EMPTY_ARRAY_PLACEHOLDER},
-      bodySize = string.len(req_body),
+      bodySize = string.len(alf_req_body),
       postData = {
         mimeType = alf_req_mimeType,
         params = dic_to_array(ngx.req.get_post_args()),
-        text = req_body and req_body or ""
+        text = alf_req_body and alf_req_body or ""
       }
     },
     response = {
       status = ngx.status,
       statusText = "", -- can't find a way to retrieve that
       httpVersion = "", -- can't find a way to retrieve that either
-      headers = res_headers_arr,
-      headersSize = res_headers_size,
+      headers = alf_res_headers_arr,
+      headersSize = alf_res_headers_size,
       cookies = {EMPTY_ARRAY_PLACEHOLDER},
       bodySize = tonumber(ngx.var.body_bytes_sent),
       redirectURL = "",
       content = {
         size = tonumber(ngx.var.body_bytes_sent),
         mimeType = alf_res_mimeType,
-        text = res_body and res_body or ""
+        text = alf_res_body and alf_res_body or ""
       }
     },
     cache = {},
     timings = {
-      send = round(send_time),
-      wait = round(wait_time),
-      receive = round(receive_time),
+      send = round(alf_send_time),
+      wait = round(alf_wait_time),
+      receive = round(alf_receive_time),
       blocked = -1,
       connect = -1,
       dns = -1,
@@ -162,7 +176,7 @@ end
 
 function alf_mt:to_json_string(token)
   if not token then
-    error("API Analytics serviceToken required", 2)
+    error("Mashape Analytics serviceToken required", 2)
   end
 
   -- inject token
