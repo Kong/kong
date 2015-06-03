@@ -11,7 +11,21 @@ local app = lapis.Application()
 -- @param `obj` Object to normalize
 -- @return `normalized_object`
 local function normalize_nested_params(obj)
-  local normalized_obj = {} -- create a copy to not modify obj while it is in a loop.
+  local new_obj = {}
+
+  local function attach_dotted_key(keys, attach_to, value)
+    local current_key = keys[1]
+
+    if #keys > 1 then
+      if not attach_to[current_key] then
+        attach_to[current_key] = {}
+      end
+      table.remove(keys, 1)
+      attach_dotted_key(keys, attach_to[current_key], value)
+    else
+      attach_to[current_key] = value
+    end
+  end
 
   for k, v in pairs(obj) do
     if type(v) == "table" then
@@ -28,24 +42,13 @@ local function normalize_nested_params(obj)
     -- normalize sub-keys with dot notation
     local keys = stringy.split(k, ".")
     if #keys > 1 then -- we have a key containing a dot
-      local current_level = keys[1] -- let's create an empty object for the first level
-      if normalized_obj[current_level] == nil then
-        normalized_obj[current_level] = {}
-      end
-      table.remove(keys, 1) -- remove the first level
-      normalized_obj[k] = nil -- remove it from the object
-      if #keys > 0 then -- if we still have some keys, then there are more levels of nestinf
-        normalized_obj[current_level][table.concat(keys, ".")] = v
-        normalized_obj[current_level] = normalize_nested_params(normalized_obj[current_level])
-      else
-        normalized_obj[current_level] = v -- latest level of nesting, attaching the value
-      end
+      attach_dotted_key(keys, new_obj, v)
     else
-      normalized_obj[k] = v -- nothing special with that key, simply attaching the value
+      new_obj[k] = v -- nothing special with that key, simply attaching the value
     end
   end
 
-  return normalized_obj
+  return new_obj
 end
 
 local function default_on_error(self)
