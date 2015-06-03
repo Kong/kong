@@ -151,7 +151,7 @@ end
 -- @param `port`  The port to check
 -- @return `open` True if open, false otherwise
 local function is_port_open(port)
-  local _, code = IO.os_execute("nc -w 3 127.0.0.1 "..tostring(port).." <<< \"\"")
+  local _, code = IO.os_execute("nc -w 5 -z 127.0.0.1 "..tostring(port))
   return code == 0
 end
 

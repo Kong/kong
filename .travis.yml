@@ -17,6 +17,7 @@ before_install:
 install:
   - sudo make install
   - sudo make dev
+  - sudo sed -i.bak s@/usr/local/bin/luajit@/usr/bin/lua@g /usr/local/bin/busted
 
 script:
   - "busted -o spec/busted-print.lua --coverage spec/ spec/"
