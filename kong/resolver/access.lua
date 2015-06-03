@@ -126,8 +126,12 @@ function _M.execute(conf)
 
   -- If API was retrieved by path
   if by_path and api.strip_path then
-    -- All paths are '/path', so let's replace it with a single '/'
-    request_uri = string.gsub(request_uri, api.path, "/")
+    -- Replace `/path` with `path`, and then prefix with a `/`
+    -- Or replace `/path/foo` with `/foo`, and then do not prefix with `/`.
+    request_uri = string.gsub(request_uri, api.path, "")
+    if string.sub(request_uri, 0, 1) ~= "/" then
+      request_uri = "/"..request_uri
+    end
   end
 
   -- Setting the backend URL for the proxy_pass directive
