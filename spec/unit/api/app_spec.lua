@@ -59,7 +59,8 @@ describe("App", function()
             },
             nested_1 = 1,
             nested_2 = 2
-        }}, stub.params)
+          }
+        }, stub.params)
       end)
       f(stub)
     end)
@@ -73,6 +74,39 @@ describe("App", function()
           value = {
             nested = {"hello", "world"},
         }}, stub.params)
+      end)
+      f(stub)
+    end)
+
+    it("should normalize very complex values", function()
+      stub.params = {
+        api_id = 123,
+        name = "request_transformer",
+        ["value.add.headers"] = "x-new-header:some_value, x-another-header:some_value",
+        ["value.add.querystring"] = "new-param:some_value, another-param:some_value",
+        ["value.add.form"] = "new-form-param:some_value, another-form-param:some_value",
+        ["value.remove.headers"] = "x-toremove, x-another-one",
+        ["value.remove.querystring"] = "param-toremove, param-another-one",
+        ["value.remove.form"] = "formparam-toremove"
+      }
+
+      local f = app.parse_params(function(stub)
+        assert.are.same({
+          api_id = 123,
+          name = "request_transformer",
+          value = {
+            add = {
+              form = "new-form-param:some_value, another-form-param:some_value",
+              headers = "x-new-header:some_value, x-another-header:some_value",
+              querystring = "new-param:some_value, another-param:some_value"
+            },
+            remove = {
+              form = "formparam-toremove",
+              headers = "x-toremove, x-another-one",
+              querystring = "param-toremove, param-another-one"
+            }
+          }
+        }, stub.params)
       end)
       f(stub)
     end)
