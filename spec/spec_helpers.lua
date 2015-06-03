@@ -12,7 +12,7 @@ require "kong.tools.ngx_stub"
 local _M = {}
 
 -- Constants
-local TEST_PROXY_PORT=8100
+local TEST_PROXY_PORT = 8100
 local TEST_PROXY_URL = "http://localhost:"..tostring(TEST_PROXY_PORT)
 local TEST_PROXY_SSL_URL = "https://localhost:8543"
 _M.API_URL = "http://localhost:8101"
@@ -110,8 +110,8 @@ function _M.start_http_server(port, ...)
       local client = server:accept()
 
       local lines = {}
-      local line
-      while #lines < 7 and not err do
+      local line, err
+      while #lines < 7 do
         line, err = client:receive()
         if err then
           break

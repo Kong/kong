@@ -1,7 +1,5 @@
-local spec_helper = require "spec.spec_helpers"
-local constants = require "kong.constants"
-local stringy = require "stringy"
 local IO = require "kong.tools.io"
+local spec_helper = require "spec.spec_helpers"
 
 describe("CLI", function()
 
@@ -14,16 +12,16 @@ describe("CLI", function()
   end)
 
   it("should restart kong when it's not running", function()
-    local res, code = spec_helper.restart_kong()
+    local _, code = spec_helper.restart_kong()
     assert.are.same(0, code)
   end)
 
   it("should restart kong when it's running", function()
-    local res, code = spec_helper.stop_kong()
+    local _, code = spec_helper.stop_kong()
     assert.are.same(0, code)
-    local res, code = spec_helper.start_kong()
+    local _, code = spec_helper.start_kong()
     assert.are.same(0, code)
-    local res, code = spec_helper.restart_kong()
+    local _, code = spec_helper.restart_kong()
     assert.are.same(0, code)
   end)
 

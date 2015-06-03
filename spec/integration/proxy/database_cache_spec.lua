@@ -40,7 +40,7 @@ describe("Database cache", function()
     assert.are.equal(200, status)
 
     -- But waiting after the cache expiration (5 seconds) should block the request
-    os.execute("sleep " .. tonumber(5))
+    os.execute("sleep "..tonumber(5))
 
     local _, status = http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "cache.test"})
     assert.are.equal(403, status)
