@@ -26,7 +26,7 @@ return {
         started_at =  1432844571.623,
         proxy_started_at = 1432844571.719,
         proxy_ended_at = 1432844572.11,
-        apianalytics = {
+        analytics = {
           req_body = "hello=world&hello=earth",
           res_body = "{\"message\":\"response body\"}",
           response_received = 1432844572.11

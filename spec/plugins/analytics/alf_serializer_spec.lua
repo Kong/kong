@@ -1,4 +1,4 @@
-local fixtures = require "spec.plugins.apianalytics.fixtures.requests"
+local fixtures = require "spec.plugins.analytics.fixtures.requests"
 local ALFSerializer = require "kong.plugins.log_serializers.alf"
 
 -- @see http://lua-users.org/wiki/CopyTable
@@ -27,12 +27,25 @@ local function sameEntry(state, arguments)
   -- Compare time property
   assert.True(math.abs(entry.time - fixture_entry.time) < delta)
 
+  -- Compare things that are not computed in the same order depending on the platform
+  assert.are.equal(#(fixture_entry.request.headers), #(entry.request.headers))
+  assert.are.equal(#(fixture_entry.request.queryString), #(entry.request.queryString))
+  assert.are.equal(#(fixture_entry.response.headers), #(entry.response.headers))
+
   entry.time = nil
   entry.timings = nil
   fixture_entry.time = nil
   fixture_entry.timings = nil
 
+  entry.request.headers = nil
+  entry.response.headers = nil
+  entry.request.queryString = nil
+  fixture_entry.request.headers = nil
+  fixture_entry.response.headers = nil
+  fixture_entry.request.queryString = nil
+
   assert.are.same(fixture_entry, entry)
+
   return true
 end
 
@@ -55,7 +68,7 @@ describe("ALF serializer", function()
         har = {
           log = {
             version = "1.2",
-            creator = { name = "kong-api-analytics-plugin", version = "0.1"
+            creator = { name = "kong-mashape-analytics-plugin", version = "1.0.0"
             },
             entries = {}
           }
@@ -97,7 +110,7 @@ describe("ALF serializer", function()
 
     it("should throw an error if no token was given", function()
       assert.has_error(function() alf:to_json_string() end,
-        "API Analytics serviceToken required")
+        "Mashape Analytics serviceToken required")
     end)
 
     it("should return a JSON string", function()

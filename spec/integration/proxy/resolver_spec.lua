@@ -116,7 +116,6 @@ describe("Resolver", function()
         assert.are.equal(200, status)
       end)
 
-<<<<<<< HEAD
     end)
 
     describe("By Path", function()
@@ -131,8 +130,8 @@ describe("Resolver", function()
 
       it("should proxy and strip the path if `strip_path` is true", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
-        local body = cjson.decode(response)
         assert.are.equal(200, status)
+        local body = cjson.decode(response)
         assert.are.equal("http://mockbin.com/request", body.url)
       end)
 
@@ -144,16 +143,6 @@ describe("Resolver", function()
         assert.are.equal(404, status)
       end)
 
-=======
-    it("should proxy when the API is in Kong", function()
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "mockbin.com"})
-      assert.are.equal(200, status)
-    end)
-
-    it("should proxy when the Host header is not trimmed", function()
-      local _, status = http_client.get(STUB_GET_URL, nil, { host = "   mockbin.com  "})
-      assert.are.equal(200, status)
->>>>>>> feat(APIAnalytics) config options + polishing
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
@@ -170,51 +159,5 @@ describe("Resolver", function()
       assert.falsy(headers.via)
     end)
 
-<<<<<<< HEAD
-=======
-    it("should proxy when the API is in Kong and one Host header is being sent via plain TCP", function()
-      local parsed_url = url.parse(STUB_GET_URL)
-      local host = parsed_url.host
-      local port = parsed_url.port
-
-      local tcp = socket.tcp()
-      tcp:connect(host, port)
-      tcp:send("GET "..parsed_url.path.." HTTP/1.0\r\nHost: mockbin.com\r\n\r\n");
-      local response = ""
-      while true do
-        local s, status, partial = tcp:receive()
-        response = response..(s or partial)
-        if status == "closed" then break end
-      end
-      tcp:close()
-
-      assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
-    end)
-
-    it("should proxy when the API is in Kong and multiple Host headers are being sent via plain TCP", function()
-      local parsed_url = url.parse(STUB_GET_URL)
-      local host = parsed_url.host
-      local port = parsed_url.port
-
-      local tcp = socket.tcp()
-      tcp:connect(host, port)
-      tcp:send("GET "..parsed_url.path.." HTTP/1.0\r\nHost: fake.com\r\nHost: mockbin.com\r\n\r\n");
-      local response = ""
-      while true do
-        local s, status, partial = tcp:receive()
-        response = response..(s or partial)
-        if status == "closed" then break end
-      end
-      tcp:close()
-
-      assert.truthy(stringy.startswith(response, "HTTP/1.1 200 OK"))
-    end)
-
-    it("should proxy when the request has no Host header but the X-Host-Override header", function()
-      local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "mockbin.com"})
-      assert.are.equal(200, status)
-    end)
-
->>>>>>> feat(APIAnalytics) config options + polishing
   end)
 end)

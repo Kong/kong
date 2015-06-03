@@ -117,8 +117,8 @@ build = {
     ["kong.plugins.filelog.schema"] = "kong/plugins/filelog/schema.lua",
     ["kong.plugins.filelog.fd_util"] = "kong/plugins/filelog/fd_util.lua",
 
-    ["kong.plugins.apianalytics.handler"] = "kong/plugins/apianalytics/handler.lua",
-    ["kong.plugins.apianalytics.schema"] = "kong/plugins/apianalytics/schema.lua",
+    ["kong.plugins.analytics.handler"] = "kong/plugins/analytics/handler.lua",
+    ["kong.plugins.analytics.schema"] = "kong/plugins/analytics/schema.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
