@@ -1,5 +1,7 @@
 ## [Unreleased][unreleased]
 
+## [0.3.0] - 2015/06/04
+
 #### Added
 
 - Support for SSL.
@@ -7,6 +9,7 @@
   - New HTTP logging plugin. [#226](https://github.com/Mashape/kong/issues/226) [#251](https://github.com/Mashape/kong/pull/251)
   - New SSL plugin.
   - New Analytics plugin. [#272](https://github.com/Mashape/kong/pull/272)
+  - New request size limiting plugin. [#292](https://github.com/Mashape/kong/pull/292)
   - Default logging format improvements. [#226](https://github.com/Mashape/kong/issues/226) [#262](https://github.com/Mashape/kong/issues/262)
   - File logging now logs to a custom file. [#202](https://github.com/Mashape/kong/issues/202)
   - Keyauth plugin now defaults `key_names` to "apikey".
@@ -15,13 +18,15 @@
   - Support `PUT` method for endpoints such as `/apis/`, `/apis/plugins/`, `/consumers/`
   - Support for `application/json` and `x-www-form-urlencoded` Content Types for all `PUT`, `POST` and `PATCH` endpoints by passing a `Content-Type` header. [#236](https://github.com/Mashape/kong/pull/236)
 - Resolver
-  - Support for resolving by Path instead of Header. [#192](https://github.com/Mashape/kong/pull/192) [#282](https://github.com/Mashape/kong/pull/282)
+  - Support resolving APIs by Path as well as by Header. [#192](https://github.com/Mashape/kong/pull/192) [#282](https://github.com/Mashape/kong/pull/282)
   - Support for `X-Host-Override` as an alternative to `Host` for browsers. [#203](https://github.com/Mashape/kong/issues/203) [#246](https://github.com/Mashape/kong/pull/246)
-- Catch invalid `target_url`s. [#149](https://github.com/Mashape/kong/issues/149)
+- Auth plugins now send user informations to your upstream services. [#228](https://github.com/Mashape/kong/issues/228)
+- Invalid `target_url` value are now being catched when creating an API. [#149](https://github.com/Mashape/kong/issues/149)
 
 #### Fixed
 
 - Fix uppercase Cassandra keyspace causing migration failure. [#249](https://github.com/Mashape/kong/issues/249)
+- Guarantee that ratelimiting won't allow requests in case the atomicity of the counter update is not guaranteed. [#289](https://github.com/Mashape/kong/issues/289)
 
 > **internal**
 > - Schemas:
@@ -152,7 +157,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.2.1...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/mashape/kong/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/mashape/kong/compare/0.2.0-2...0.2.1
 [0.2.0-2]: https://github.com/mashape/kong/compare/0.1.1beta-2...0.2.0-2
 [0.1.1beta-2]: https://github.com/mashape/kong/compare/0.1.0beta-3...0.1.1beta-2
