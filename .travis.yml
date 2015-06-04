@@ -15,7 +15,6 @@ before_install:
   - bash .travis/setup_cassandra.sh
 
 install:
-  - sudo make install
   - sudo make dev
   - sudo sed -i.bak s@/usr/local/bin/luajit@/usr/bin/lua@g /usr/local/bin/busted
 
