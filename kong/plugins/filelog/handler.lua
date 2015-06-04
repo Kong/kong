@@ -1,7 +1,5 @@
--- Copyright (C) Mashape, Inc.
-
-local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.filelog.log"
+local BasePlugin = require "kong.plugins.base_plugin"
 
 local FileLogHandler = BasePlugin:extend()
 

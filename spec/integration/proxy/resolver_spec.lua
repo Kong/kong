@@ -25,10 +25,10 @@ describe("Resolver", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests host resolver 1", public_dns = "mocbkin.com", target_url = "http://mockbin.com" },
-        { name = "tests host resolver 2", public_dns = "mocbkin-auth.com", target_url = "http://mockbin.com" },
-        { name = "tests path resolver", public_dns = "mocbkin-path.com", target_url = "http://mockbin.com", path = "/status/" },
-        { name = "tests stripped path resolver", public_dns = "mocbkin-stripped-path.com", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true }
+        { name = "tests host resolver 1", public_dns = "mockbin.com", target_url = "http://mockbin.com" },
+        { name = "tests host resolver 2", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com" },
+        { name = "tests path resolver", public_dns = "mockbin-path.com", target_url = "http://mockbin.com", path = "/status/" },
+        { name = "tests stripped path resolver", public_dns = "mockbin-stripped-path.com", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true }
       },
       plugin_configuration = {
         { name = "keyauth", value = {key_names = {"apikey"} }, __api = 2 }
@@ -55,7 +55,7 @@ describe("Resolver", function()
   describe("SSL", function()
 
     it("should work when calling SSL port", function()
-      local response, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "mocbkin.com" })
+      local response, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "mockbin.com" })
       assert.are.equal(200, status)
       assert.truthy(response)
       local parsed_response = cjson.decode(response)
@@ -102,17 +102,17 @@ describe("Resolver", function()
     describe("By Host", function()
 
       it("should proxy when the API is in Kong", function()
-        local _, status = http_client.get(STUB_GET_URL, nil, { host = "mocbkin.com"})
+        local _, status = http_client.get(STUB_GET_URL, nil, { host = "mockbin.com"})
         assert.are.equal(200, status)
       end)
 
       it("should proxy when the Host header is not trimmed", function()
-        local _, status = http_client.get(STUB_GET_URL, nil, { host = "   mocbkin.com  "})
+        local _, status = http_client.get(STUB_GET_URL, nil, { host = "   mockbin.com  "})
         assert.are.equal(200, status)
       end)
 
       it("should proxy when the request has no Host header but the X-Host-Override header", function()
-        local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "mocbkin.com"})
+        local _, status = http_client.get(STUB_GET_URL, nil, { ["X-Host-Override"] = "mockbin.com"})
         assert.are.equal(200, status)
       end)
 
@@ -130,8 +130,8 @@ describe("Resolver", function()
 
       it("should proxy and strip the path if `strip_path` is true", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
-        local body = cjson.decode(response)
         assert.are.equal(200, status)
+        local body = cjson.decode(response)
         assert.are.equal("http://mockbin.com/request", body.url)
       end)
 
@@ -146,14 +146,14 @@ describe("Resolver", function()
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mocbkin.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin.com"})
       assert.are.equal(200, status)
       assert.are.equal("cloudflare-nginx", headers.server)
       assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.via)
     end)
 
     it("should return the correct Server and no Via header when the request was NOT proxied", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mocbkin-auth.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin-auth.com"})
       assert.are.equal(403, status)
       assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.server)
       assert.falsy(headers.via)
