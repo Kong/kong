@@ -127,6 +127,11 @@ build = {
     ["kong.plugins.request_transformer.access"] = "kong/plugins/request_transformer/access.lua",
     ["kong.plugins.request_transformer.schema"] = "kong/plugins/request_transformer/schema.lua",
 
+    ["kong.plugins.response_transformer.handler"] = "kong/plugins/response_transformer/handler.lua",
+    ["kong.plugins.response_transformer.body_filter"] = "kong/plugins/response_transformer/body_filter.lua",
+    ["kong.plugins.response_transformer.header_filter"] = "kong/plugins/response_transformer/header_filter.lua",
+    ["kong.plugins.response_transformer.schema"] = "kong/plugins/response_transformer/schema.lua",
+
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.access"] = "kong/plugins/cors/access.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",

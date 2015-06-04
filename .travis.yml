@@ -20,7 +20,7 @@ install:
   - sudo sed -i.bak s@/usr/local/bin/luajit@/usr/bin/lua@g /usr/local/bin/busted
 
 script:
-  - "busted -o spec/busted-print.lua --coverage spec/ spec/"
+  - "busted -o spec/busted-print.lua --coverage spec/"
   - "luacheck kong"
 
 after_success: "luacov-coveralls -i kong"

@@ -286,7 +286,7 @@ function _M.send_signal(args_config, signal)
     stop_dnsmasq(kong_config)
     check_port(kong_config.dnsmasq_port)
     start_dnsmasq(kong_config)
-  elseif signal == STOP then
+  elseif signal == STOP or signal == QUIT then
     stop_dnsmasq(kong_config)
   end
 
