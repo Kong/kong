@@ -1,6 +1,7 @@
 local responses = require "kong.tools.responses"
 local validations = require "kong.dao.schemas_validation"
 local app_helpers = require "lapis.application"
+local utils = require "kong.tools.utils"
 
 local _M = {}
 
@@ -93,11 +94,12 @@ function _M.put(params, dao_collection)
   end
 end
 
-function _M.post(params, dao_collection)
+function _M.post(params, dao_collection, success)
   local data, err = dao_collection:insert(params)
   if err then
     return app_helpers.yield_error(err)
   else
+    if success then success(utils.table_copy(data)) end
     return responses.send_HTTP_CREATED(data)
   end
 end

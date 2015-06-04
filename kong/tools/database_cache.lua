@@ -6,30 +6,39 @@ local CACHE_KEYS = {
   PLUGINS_CONFIGURATIONS = "plugins_configurations",
   BASICAUTH_CREDENTIAL = "basicauth_credentials",
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
-  SSL = "ssl"
+  SSL = "ssl",
+  REQUESTS = "requests"
 }
 
 local _M = {}
+
+function _M.rawset(key, value, exptime)
+  local cache = ngx.shared.cache
+  return cache:set(key, value, exptime or 0)
+end
 
 function _M.set(key, value, exptime)
   if exptime == nil then
     exptime = configuration and configuration.database_cache_expiration or 0
   end
 
-  local cache = ngx.shared.cache
   if value then
     value = cjson.encode(value)
     ngx.log(ngx.DEBUG, " saving cache key \""..key.."\": "..value)
   end
 
-  return cache:set(key, value, exptime)
+  return _M.rawset(key, value, exptime)
+end
+
+function _M.rawget(key)
+  ngx.log(ngx.DEBUG, " Try to get cache key \""..key.."\"")
+  local cache = ngx.shared.cache
+  return cache:get(key)
+
 end
 
 function _M.get(key)
-  ngx.log(ngx.DEBUG, " Try to get cache key \""..key.."\"")
-
-  local cache = ngx.shared.cache
-  local value, flags = cache:get(key)
+  local value, flags = _M.rawget(key)
   if value then
     ngx.log(ngx.DEBUG, " Found cache value for key \""..key.."\": "..value)
     value = cjson.decode(value)
@@ -37,9 +46,18 @@ function _M.get(key)
   return value, flags
 end
 
+function _M.incr(key, value)
+  local cache = ngx.shared.cache
+  return cache:incr(key, value)
+end
+
 function _M.delete(key)
   local cache = ngx.shared.cache
   cache:delete(key)
+end
+
+function _M.requests_key()
+  return CACHE_KEYS.REQUESTS
 end
 
 function _M.api_key(host)

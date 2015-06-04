@@ -58,6 +58,21 @@ function _M.is_array(t)
   return true
 end
 
+function _M.table_copy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[_M.table_copy(orig_key)] = _M.table_copy(orig_value)
+        end
+        setmetatable(copy, _M.table_copy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
 -- Add an error message to a key/value table.
 -- Can accept a nil argument, and if is nil, will initialize the table.
 -- @param `errors`  (Optional) Can be nil. Table to attach the error to. If nil, the table will be created.
