@@ -106,6 +106,7 @@ nginx: |
     lua_code_cache on;
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;
+    lua_shared_dict locks 100k;
     lua_shared_dict cache {{memory_cache_size}}m;
     lua_socket_log_errors off;
 
@@ -117,6 +118,8 @@ nginx: |
         os.exit(1)
       end
     ';
+
+    init_worker_by_lua 'kong.exec_plugins_init_worker()';
 
     server {
       server_name _;

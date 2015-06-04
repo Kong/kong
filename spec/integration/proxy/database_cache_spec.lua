@@ -1,5 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local cache = require "kong.tools.database_cache"
 
 local env = spec_helper.get_env()
 

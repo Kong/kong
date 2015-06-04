@@ -19,4 +19,8 @@ describe("Database cache", function()
     assert.are.equal("basicauth_credentials/username", cache.basicauth_credential_key("username"))
   end)
 
+  it("should return a valid requests cache key", function()
+    assert.are.equal("requests", cache.requests_key())
+  end)
+
 end)
