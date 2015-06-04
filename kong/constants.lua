@@ -6,7 +6,8 @@ return {
   ROCK_VERSION = VERSION.."-1",
   SYSLOG = {
     ADDRESS = "kong-hf.mashape.com",
-    PORT = 61828
+    PORT = 61828,
+    API = "api"
   },
   CLI = {
     GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
