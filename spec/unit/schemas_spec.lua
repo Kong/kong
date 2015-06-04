@@ -184,7 +184,8 @@ describe("Schemas", function()
       it("should alias a string to `array`", function()
         local s = { array = { type = "array" } }
 
-        local values = { array = "hello,world" }
+        -- It should also strip the resulting strings
+        local values = { array = "hello, world" }
 
         local valid, err = validate(values, s)
         assert.True(valid)
