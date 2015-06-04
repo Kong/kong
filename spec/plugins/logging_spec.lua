@@ -1,5 +1,4 @@
 local IO = require "kong.tools.io"
-local yaml = require "yaml"
 local uuid = require "uuid"
 local cjson = require "cjson"
 local stringy = require "stringy"

@@ -98,9 +98,6 @@ build = {
     ["kong.plugins.keyauth.schema"] = "kong/plugins/keyauth/schema.lua",
     ["kong.plugins.keyauth.api"] = "kong/plugins/keyauth/api.lua",
 
-    ["kong.plugins.log_serializers.basic"] = "kong/plugins/log_serializers/basic.lua",
-    ["kong.plugins.log_serializers.alf"] = "kong/plugins/log_serializers/alf.lua",
-
     ["kong.plugins.tcplog.handler"] = "kong/plugins/tcplog/handler.lua",
     ["kong.plugins.tcplog.log"] = "kong/plugins/tcplog/log.lua",
     ["kong.plugins.tcplog.schema"] = "kong/plugins/tcplog/schema.lua",
@@ -114,11 +111,9 @@ build = {
     ["kong.plugins.httplog.schema"] = "kong/plugins/httplog/schema.lua",
 
     ["kong.plugins.filelog.handler"] = "kong/plugins/filelog/handler.lua",
+    ["kong.plugins.filelog.log"] = "kong/plugins/filelog/log.lua",
     ["kong.plugins.filelog.schema"] = "kong/plugins/filelog/schema.lua",
     ["kong.plugins.filelog.fd_util"] = "kong/plugins/filelog/fd_util.lua",
-
-    ["kong.plugins.analytics.handler"] = "kong/plugins/analytics/handler.lua",
-    ["kong.plugins.analytics.schema"] = "kong/plugins/analytics/schema.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",

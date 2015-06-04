@@ -2,7 +2,6 @@
 -- since not all files are currently unit tested and the coverage is erroneous.
 
 local IO = require "kong.tools.io"
-require "kong.tools.ngx_stub"
 
 -- Stub DAO for lapis controllers
 _G.dao = {}
