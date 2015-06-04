@@ -50,6 +50,7 @@ plugins_available:
   - httplog
   - cors
   - request_transformer
+  - response_transformer
   - requestsizelimiting
 
 ## The Kong working directory
