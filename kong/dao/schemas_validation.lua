@@ -57,6 +57,7 @@ function _M.validate(t, schema, is_update)
 
       -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
       if type(t[column]) == "string" then
+        t[column] = stringy.strip(t[column])
         if v.type == "number" or v .type == constants.DATABASE_TYPES.TIMESTAMP then
           t[column] = tonumber(t[column])
           is_valid_type = t[column] ~= nil
@@ -66,6 +67,9 @@ function _M.validate(t, schema, is_update)
           t[column] = bool == "true"
         elseif v.type == "array" then
           t[column] = stringy.split(t[column], ",")
+          for arr_k, arr_v in ipairs(t[column]) do
+            t[column][arr_k] = stringy.strip(arr_v)
+          end
           is_valid_type = validate_type(v.type, t[column])
         else -- if string
           is_valid_type = validate_type(v.type, t[column])
