@@ -1,4 +1,6 @@
 local crud = require "kong.api.crud_helpers"
+local syslog = require "kong.tools.syslog"
+local constants = require "kong.constants"
 
 return {
   ["/plugins_configurations"] = {
@@ -11,7 +13,12 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.plugins_configurations)
+      crud.post(self.params, dao_factory.plugins_configurations, function(data)
+        if configuration.send_anonymous_reports then
+          data.signal = constants.SYSLOG.API
+          syslog.log(syslog.format_entity(data))
+        end
+      end)
     end
   },
 

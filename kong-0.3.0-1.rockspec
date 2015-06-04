@@ -71,6 +71,10 @@ build = {
     ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
     ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
 
+    ["kong.reports.handler"] = "kong/reports/handler.lua",
+    ["kong.reports.init_worker"] = "kong/reports/init_worker.lua",
+    ["kong.reports.log"] = "kong/reports/log.lua",
+
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",

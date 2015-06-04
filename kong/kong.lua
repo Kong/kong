@@ -112,6 +112,14 @@ local function init_plugins()
     handler = require("kong.resolver.handler")()
   })
 
+  if configuration.send_anonymous_reports then
+    table.insert(result, {
+      reports = true,
+      name = "reports",
+      handler = require("kong.reports.handler")()
+    })
+  end
+
   -- Add the plugins in a sorted order
   for _, v in utils.sort_table_iter(unsorted_plugins, utils.sort.descending) do -- In descending order
     if v then
@@ -148,6 +156,13 @@ function _M.init()
 
   -- Initializing plugins
   plugins = init_plugins()
+end
+
+function _M.exec_plugins_init_worker()
+   -- Calling the Init handler
+  for _, plugin in ipairs(plugins) do
+    plugin.handler:init_worker()
+  end
 end
 
 function _M.exec_plugins_certificate()
@@ -259,8 +274,8 @@ function _M.exec_plugins_log()
 
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
-      if conf then
-        plugin.handler:log(conf.value)
+      if conf or plugin.reports then
+        plugin.handler:log(conf and conf.value or nil)
       end
     end
   end

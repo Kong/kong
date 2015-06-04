@@ -1,5 +1,6 @@
 local constants = require "kong.constants"
 local IO = require "kong.tools.io"
+local stringy = require "stringy"
 
 local _M = {}
 
@@ -40,7 +41,17 @@ function _M.log(args)
   end
 
   -- Send
-  IO.os_execute("nc -w1 -u "..constants.SYSLOG.ADDRESS.." "..tostring(constants.SYSLOG.PORT).." <<< \"<14>"..info.."\"")
+  IO.os_execute("nc -w1 -u "..constants.SYSLOG.ADDRESS.." "..tostring(constants.SYSLOG.PORT).." <<< \"<14>"..info.."\" &")
+end
+
+function _M.format_entity(t)
+  t.created_at = nil
+  for k, _ in pairs(t) do
+    if stringy.endswith(k, "id") then
+      t[k] = nil
+    end
+  end
+  return t
 end
 
 return _M
