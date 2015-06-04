@@ -1,6 +1,7 @@
-local log = require "kong.plugins.udplog.log"
+-- Copyright (C) Mashape, Inc.
+
 local BasePlugin = require "kong.plugins.base_plugin"
-local basic_serializer = require "kong.plugins.log_serializers.basic"
+local log = require "kong.plugins.udplog.log"
 
 local UdpLogHandler = BasePlugin:extend()
 
@@ -10,9 +11,7 @@ end
 
 function UdpLogHandler:log(conf)
   UdpLogHandler.super.log(self)
-
-  local message = basic_serializer.serialize(ngx)
-  log.execute(conf, message)
+  log.execute(conf)
 end
 
 return UdpLogHandler
