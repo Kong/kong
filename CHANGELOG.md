@@ -8,7 +8,6 @@
 - Plugins
   - New HTTP logging plugin. [#226](https://github.com/Mashape/kong/issues/226) [#251](https://github.com/Mashape/kong/pull/251)
   - New SSL plugin.
-  - New Analytics plugin. [#272](https://github.com/Mashape/kong/pull/272)
   - New request size limiting plugin. [#292](https://github.com/Mashape/kong/pull/292)
   - Default logging format improvements. [#226](https://github.com/Mashape/kong/issues/226) [#262](https://github.com/Mashape/kong/issues/262)
   - File logging now logs to a custom file. [#202](https://github.com/Mashape/kong/issues/202)
