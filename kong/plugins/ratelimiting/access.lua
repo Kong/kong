@@ -27,7 +27,7 @@ function _M.execute(conf)
   ngx.header[constants.HEADERS.RATELIMIT_LIMIT] = conf.limit
   ngx.header[constants.HEADERS.RATELIMIT_REMAINING] = math.max(0, remaining - 1) -- -1 for this current request
 
-  if remaining == 0 then
+  if remaining <= 0 then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send(429, "API rate limit exceeded")
   end
