@@ -7,6 +7,8 @@ local Migrations = Object:extend()
 function Migrations:new(dao, migrations_path)
   local path = migrations_path and migrations_path or "."
 
+  dao:load_daos(require("kong.dao.cassandra.migrations"))
+
   self.dao = dao
   self.options = { keyspace = dao._properties.keyspace }
   self.migrations_path = IO.path:join(path, "database", "migrations")
@@ -48,6 +50,10 @@ return Migration
       callback(interface, file_path, file_name, k)
     end
   end
+end
+
+function Migrations:get_migrations()
+  return self.dao.migrations:get_migrations()
 end
 
 -- Execute all migrations UP

@@ -82,13 +82,10 @@ build = {
     ["kong.dao.schemas.plugins_configurations"] = "kong/dao/schemas/plugins_configurations.lua",
     ["kong.dao.cassandra.factory"] = "kong/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.base_dao"] = "kong/dao/cassandra/base_dao.lua",
+    ["kong.dao.cassandra.migrations"] = "kong/dao/cassandra/migrations.lua",
     ["kong.dao.cassandra.apis"] = "kong/dao/cassandra/apis.lua",
     ["kong.dao.cassandra.consumers"] = "kong/dao/cassandra/consumers.lua",
     ["kong.dao.cassandra.plugins_configurations"] = "kong/dao/cassandra/plugins_configurations.lua",
-    ["kong.dao.cassandra.migrations"] = "kong/dao/cassandra/migrations.lua",
-    ["kong.dao.cassandra.ratelimiting_metrics"] = "kong/dao/cassandra/ratelimiting_metrics.lua",
-    ["kong.dao.cassandra.basicauth_credentials"] = "kong/dao/cassandra/basicauth_credentials.lua",
-    ["kong.dao.cassandra.keyauth_credentials"] = "kong/dao/cassandra/keyauth_credentials.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -96,11 +93,13 @@ build = {
     ["kong.plugins.basicauth.access"] = "kong/plugins/basicauth/access.lua",
     ["kong.plugins.basicauth.schema"] = "kong/plugins/basicauth/schema.lua",
     ["kong.plugins.basicauth.api"] = "kong/plugins/basicauth/api.lua",
+    ["kong.plugins.basicauth.daos"] = "kong/plugins/basicauth/daos.lua",
 
     ["kong.plugins.keyauth.handler"] = "kong/plugins/keyauth/handler.lua",
     ["kong.plugins.keyauth.access"] = "kong/plugins/keyauth/access.lua",
     ["kong.plugins.keyauth.schema"] = "kong/plugins/keyauth/schema.lua",
     ["kong.plugins.keyauth.api"] = "kong/plugins/keyauth/api.lua",
+    ["kong.plugins.keyauth.daos"] = "kong/plugins/keyauth/daos.lua",
 
     ["kong.plugins.tcplog.handler"] = "kong/plugins/tcplog/handler.lua",
     ["kong.plugins.tcplog.log"] = "kong/plugins/tcplog/log.lua",
@@ -122,7 +121,8 @@ build = {
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
     ["kong.plugins.ratelimiting.schema"] = "kong/plugins/ratelimiting/schema.lua",
-    
+    ["kong.plugins.ratelimiting.daos"] = "kong/plugins/ratelimiting/daos.lua",
+
     ["kong.plugins.requestsizelimiting.handler"] = "kong/plugins/requestsizelimiting/handler.lua",
     ["kong.plugins.requestsizelimiting.access"] = "kong/plugins/requestsizelimiting/access.lua",
     ["kong.plugins.requestsizelimiting.schema"] = "kong/plugins/requestsizelimiting/schema.lua",
