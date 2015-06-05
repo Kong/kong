@@ -19,11 +19,12 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
-  - **Logging**: Log requests and responses to your system over TCP, UDP or to disk.
+  - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
+  - **SSL**: Setup a specific SSL certificate for an underlying service or API
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
-  - **Rate-limiting**: Block and throttle requests based on IP or authentication.
-  - **Transformations**: Add, remove or manipulate HTTP params and headers on-the-fly.
+  - **Rate-limiting**: Block and throttle requests based on IP, authentication or body size.
+  - **Transformations**: Add, remove or manipulate HTTP params, headers of requests and responses.
   - **CORS**: Enable cross-origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
 
