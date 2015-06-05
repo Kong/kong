@@ -190,7 +190,7 @@ tar xzf LuaJIT-$LUAJIT_VERSION.tar.gz
 cd LuaJIT-$LUAJIT_VERSION
 make
 make install DESTDIR=$OUT
-make install # Install also on the build system
+sudo make install # Install also on the build system
 cd $OUT
 
 # Install LuaRocks
