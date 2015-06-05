@@ -65,9 +65,10 @@ local function load_plugin_conf(api_id, consumer_id, plugin_name)
 end
 
 local function init_plugins()
-  configuration.plugins_available = configuration.plugins_available and configuration.plugins_available or {}
+  -- TODO: this should be handled with other default config values
+  configuration.plugins_available = configuration.plugins_available or {}
 
-  print("Discovering used plugins. Please wait..")
+  print("Discovering used plugins")
   local db_plugins, err = dao.plugins_configurations:find_distinct()
   if err then
     error(err)
@@ -80,69 +81,57 @@ local function init_plugins()
     end
   end
 
-  local unsorted_plugins = {} -- It's a multivalue table: k1 = {v1, v2, v3}, k2 = {...}
+  local loaded_plugins = {}
 
   for _, v in ipairs(configuration.plugins_available) do
-    local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".handler")
+    local loaded, plugin_handler_mod = utils.load_module_if_exists("kong.plugins."..v..".handler")
     if not loaded then
       error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)
     else
       print("Loading plugin: "..v)
-      local plugin_handler = mod()
-      local priority = plugin_handler.PRIORITY and plugin_handler.PRIORITY or 0
-
-      -- Add plugin to the right priority
-      local list = unsorted_plugins[priority]
-      if not list then list = {} end -- The list is required in case more plugins share the same priority level
-      table.insert(list, {
+      table.insert(loaded_plugins, {
         name = v,
-        handler = plugin_handler
+        handler = plugin_handler_mod()
       })
-      unsorted_plugins[priority] = list
     end
   end
 
-  local result = {}
+  table.sort(loaded_plugins, function(a, b)
+    local priority_a = a.handler.PRIORITY or 0
+    local priority_b = b.handler.PRIORITY or 0
+    return priority_a > priority_b
+  end)
 
-  -- Now construct the final ordered plugin list
   -- resolver is always the first plugin as it is the one retrieving any needed information
-  table.insert(result, {
+  table.insert(loaded_plugins, 1, {
     resolver = true,
     name = "resolver",
     handler = require("kong.resolver.handler")()
   })
 
   if configuration.send_anonymous_reports then
-    table.insert(result, {
+    table.insert(loaded_plugins, 1, {
       reports = true,
       name = "reports",
       handler = require("kong.reports.handler")()
     })
   end
 
-  -- Add the plugins in a sorted order
-  for _, v in utils.sort_table_iter(unsorted_plugins, utils.sort.descending) do -- In descending order
-    if v then
-      for _, p in ipairs(v) do
-        table.insert(result, p)
-      end
-    end
-  end
-
-  return result
+  return loaded_plugins
 end
 
 -- To be called by nginx's init_by_lua directive.
 -- Execution:
---   - load the configuration from the apth computed by the CLI
+--   - load the configuration from the path computed by the CLI
 --   - instanciate the DAO
 --     - prepare the statements
 --   - load the used plugins
 --     - load all plugins if used and installed
---     - load the resolver
 --     - sort the plugins by priority
+--     - load the resolver
 --
--- If any error during the initialization of the DAO or plugins, it will be thrown and needs to be catched in init_by_lua.
+-- If any error during the initialization of the DAO or plugins,
+-- it will be thrown and needs to be catched in init_by_lua.
 function _M.init()
   -- Loading configuration
   configuration, dao = IO.load_configuration_and_dao(os.getenv("KONG_CONF"))
@@ -158,8 +147,8 @@ function _M.init()
   plugins = init_plugins()
 end
 
+-- Calls `init_worker()` on eveyr loaded plugin
 function _M.exec_plugins_init_worker()
-   -- Calling the Init handler
   for _, plugin in ipairs(plugins) do
     plugin.handler:init_worker()
   end
@@ -182,7 +171,7 @@ function _M.exec_plugins_certificate()
   return
 end
 
--- Calls plugins_access() on every loaded plugin
+-- Calls `access()` on every loaded plugin
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
   ngx.ctx.started_at = timestamp.get_utc()
@@ -218,7 +207,7 @@ function _M.exec_plugins_access()
   ngx.ctx.proxy_started_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 end
 
--- Calls header_filter() on every loaded plugin
+-- Calls `header_filter()` on every loaded plugin
 function _M.exec_plugins_header_filter()
   ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
 
@@ -234,7 +223,7 @@ function _M.exec_plugins_header_filter()
   end
 end
 
--- Calls body_filter() on every loaded plugin
+-- Calls `body_filter()` on every loaded plugin
 function _M.exec_plugins_body_filter()
   if not ngx.ctx.stop_phases then
     for _, plugin in ipairs(plugins) do
@@ -246,7 +235,7 @@ function _M.exec_plugins_body_filter()
   end
 end
 
--- Calls log() on every loaded plugin
+-- Calls `log()` on every loaded plugin
 function _M.exec_plugins_log()
   if not ngx.ctx.stop_phases then
     -- Creating the log variable that will be serialized
