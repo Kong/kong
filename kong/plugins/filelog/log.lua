@@ -26,10 +26,10 @@ int fprintf(FILE *stream, const char *format, ...);
 local function log(premature, conf, message)
   local message = cjson.encode(message).."\n"
 
-  local f = fd_util.get_fd()
+  local f = fd_util.get_fd(conf.path)
   if not f then
     f = ffi.C.fopen(conf.path, "a+")
-    fd_util.set_fd(f)
+    fd_util.set_fd(conf.path, f)
   end
 
   ffi.C.fprintf(f, message)
