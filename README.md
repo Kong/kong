@@ -24,7 +24,7 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
   - **Rate-limiting**: Block and throttle requests based on IP, authentication or body size.
-  - **Transformations**: Add, remove or manipulate HTTP params, headers of requests and responses.
+  - **Transformations**: Add/remove or manipulate HTTP params/headers of requests and responses.
   - **CORS**: Enable cross-origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
 
