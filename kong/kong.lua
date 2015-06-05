@@ -123,12 +123,12 @@ end
 -- To be called by nginx's init_by_lua directive.
 -- Execution:
 --   - load the configuration from the path computed by the CLI
---   - instanciate the DAO
---     - prepare the statements
+--   - instanciate the DAO Factory
 --   - load the used plugins
 --     - load all plugins if used and installed
 --     - sort the plugins by priority
 --     - load the resolver
+--   - prepare DB statements
 --
 -- If any error during the initialization of the DAO or plugins,
 -- it will be thrown and needs to be catched in init_by_lua.
@@ -136,15 +136,15 @@ function _M.init()
   -- Loading configuration
   configuration, dao = IO.load_configuration_and_dao(os.getenv("KONG_CONF"))
 
+  -- Initializing plugins
+  plugins = init_plugins()
+
   -- Prepare all collections' statements. Even if optional, this call is useful to check
   -- all statements are valid in advance.
   local err = dao:prepare()
   if err then
     error(err)
   end
-
-  -- Initializing plugins
-  plugins = init_plugins()
 end
 
 -- Calls `init_worker()` on eveyr loaded plugin

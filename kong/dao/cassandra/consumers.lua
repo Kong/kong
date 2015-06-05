@@ -1,6 +1,5 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local consumers_schema = require "kong.dao.schemas.consumers"
-local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 
 local Consumers = BaseDao:extend()
 
@@ -36,7 +35,8 @@ function Consumers:new(properties)
         args_keys = { "username" },
         query = [[ SELECT id FROM consumers WHERE username = ?; ]]
       }
-    }
+    },
+    drop = "TRUNCATE consumers;"
   }
 
   Consumers.super.new(self, properties)
@@ -50,7 +50,7 @@ function Consumers:delete(consumer_id)
   end
 
   -- delete all related plugins configurations
-  local plugins_dao = PluginsConfigurations(self._properties)
+  local plugins_dao = self._factory.plugins_configurations
   local query, args_keys, errors = plugins_dao:_build_where_query(plugins_dao._queries.select.query, {
     consumer_id = consumer_id
   })
@@ -74,4 +74,4 @@ function Consumers:delete(consumer_id)
   return ok
 end
 
-return Consumers
+return { consumers = Consumers }

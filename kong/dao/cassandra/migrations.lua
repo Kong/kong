@@ -62,4 +62,4 @@ function Migrations:delete_migration(migration_name)
     { cassandra.list({ migration_name }) })
 end
 
-return Migrations
+return { migrations = Migrations }

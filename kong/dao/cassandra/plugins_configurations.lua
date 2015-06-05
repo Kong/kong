@@ -44,7 +44,8 @@ function PluginsConfigurations:new(properties)
         args_keys = { "consumer_id" },
         query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
-    }
+    },
+    drop = "TRUNCATE plugins_configurations;"
   }
 
   PluginsConfigurations.super.new(self, properties)
@@ -108,4 +109,4 @@ function PluginsConfigurations:find_distinct()
   return result, nil
 end
 
-return PluginsConfigurations
+return { plugins_configurations = PluginsConfigurations }

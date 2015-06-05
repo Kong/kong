@@ -1,16 +1,15 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local constants = require "kong.constants"
 
 local SCHEMA = {
-  id = { type = constants.DATABASE_TYPES.ID },
-  consumer_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
+  id = { type = "id" },
+  consumer_id = { type = "id", required = true, foreign = true, queryable = true },
   key = { type = "string", required = true, unique = true, queryable = true },
-  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
+  created_at = { type = "timestamp" }
 }
 
-local KeyAuthCredentials = BaseDao:extend()
+local KeyAuth = BaseDao:extend()
 
-function KeyAuthCredentials:new(properties)
+function KeyAuth:new(properties)
   self._schema = SCHEMA
   self._queries = {
     insert = {
@@ -46,10 +45,11 @@ function KeyAuthCredentials:new(properties)
         args_keys = { "key" },
         query = [[ SELECT id FROM keyauth_credentials WHERE key = ?; ]]
       }
-    }
+    },
+    drop = "TRUNCATE keyauth_credentials;"
   }
 
-  KeyAuthCredentials.super.new(self, properties)
+  KeyAuth.super.new(self, properties)
 end
 
-return KeyAuthCredentials
+return { keyauth_credentials = KeyAuth }

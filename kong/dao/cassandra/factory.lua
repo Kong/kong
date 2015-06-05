@@ -9,42 +9,62 @@ local cassandra = require "cassandra"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"
-
-local Apis = require "kong.dao.cassandra.apis"
-local Consumers = require "kong.dao.cassandra.consumers"
-local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
-local Migrations = require "kong.dao.cassandra.migrations"
-local BasicAuthCredentials = require "kong.dao.cassandra.basicauth_credentials"
-local RateLimitingMetrics = require "kong.dao.cassandra.ratelimiting_metrics"
-local KeyAuthCredentials = require "kong.dao.cassandra.keyauth_credentials"
+local utils = require "kong.tools.utils"
 
 local CassandraFactory = Object:extend()
 
--- Instanciate a Cassandra DAO.
--- @param properties Cassandra properties
-function CassandraFactory:new(properties)
-  self.type = "cassandra"
+-- Shorthand for accessing one of the underlying DAOs
+function CassandraFactory:__index(key)
+  if key ~= "daos" and self.daos and self.daos[key] then
+    return self.daos[key]
+  else
+    return CassandraFactory[key]
+  end
+end
+
+-- Instanciate a Cassandra Factory and all its DAOs for various entities
+-- @param `properties` Cassandra properties
+function CassandraFactory:new(properties, plugins)
   self._properties = properties
+  self.type = "cassandra"
+  self.daos = {}
 
-  self.apis = Apis(properties)
-  self.consumers = Consumers(properties)
-  self.plugins_configurations = PluginsConfigurations(properties)
-  self.basicauth_credentials = BasicAuthCredentials(properties)
-  self.ratelimiting_metrics = RateLimitingMetrics(properties)
-  self.keyauth_credentials = KeyAuthCredentials(properties)
+  -- Load core entities DAOs
+  for _, entity in ipairs({"apis", "consumers", "plugins_configurations"}) do
+    self:load_daos(require("kong.dao.cassandra."..entity))
+  end
 
-  self.migrations = Migrations(properties)
+  -- Load plugins DAOs
+  if plugins then
+    for _, v in ipairs(plugins) do
+      local loaded, plugin_daos_mod = utils.load_module_if_exists("kong.plugins."..v..".daos")
+      if loaded then
+        if ngx then
+          ngx.log(ngx.DEBUG, "Loading DAO for plugin: "..v)
+        end
+        self:load_daos(plugin_daos_mod)
+      elseif ngx then
+        ngx.log(ngx.DEBUG, "No DAO loaded for plugin: "..v)
+      end
+    end
+  end
+end
+
+function CassandraFactory:load_daos(plugin_daos)
+  for name, plugin_dao in pairs(plugin_daos) do
+    self.daos[name] = plugin_dao(self._properties)
+    self.daos[name]._factory = self
+  end
 end
 
 function CassandraFactory:drop()
-  return self:execute_queries [[
-    TRUNCATE apis;
-    TRUNCATE consumers;
-    TRUNCATE plugins_configurations;
-    TRUNCATE basicauth_credentials;
-    TRUNCATE keyauth_credentials;
-    TRUNCATE ratelimiting_metrics;
-  ]]
+  local err
+  for _, dao in pairs(self.daos) do
+    err = select(2, dao:drop())
+    if err then
+      return err
+    end
+  end
 end
 
 -- Prepare all statements of collections `._queries` property and put them
@@ -72,12 +92,7 @@ function CassandraFactory:prepare()
     end
   end
 
-  for _, collection in ipairs({ self.apis,
-                                self.consumers,
-                                self.plugins_configurations,
-                                self.ratelimiting_metrics,
-                                self.basicauth_credentials,
-                                self.keyauth_credentials }) do
+  for _, collection in pairs(self.daos) do
     local status, err = pcall(function() prepare_collection(collection) end)
     if not status then
       return err

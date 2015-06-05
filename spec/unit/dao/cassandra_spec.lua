@@ -774,7 +774,7 @@ describe("Cassandra DAO", function()
           assert.falsy(results)
 
           -- All those fields are indeed non queryable
-          for k,v in pairs(err.message) do
+          for k, v in pairs(err.message) do
             assert.is_not_true(dao_factory[collection]._schema[k].queryable)
           end
         end)
@@ -898,10 +898,10 @@ describe("Cassandra DAO", function()
   end) -- describe DAO Collections
 
   --
-  -- KeyAuth plugin collection
+  -- Keyauth plugin collection
   --
 
-  describe("KeyAuthCredentials", function()
+  describe("Keyauth", function()
 
     it("should not insert in DB if consumer does not exist", function()
       -- Without an consumer_id, it's a schema error
