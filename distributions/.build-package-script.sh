@@ -190,7 +190,11 @@ tar xzf LuaJIT-$LUAJIT_VERSION.tar.gz
 cd LuaJIT-$LUAJIT_VERSION
 make
 make install DESTDIR=$OUT
-sudo make install # Install also on the build system
+if [ "$(uname)" = "Darwin" ]; then
+  sudo make install
+else
+  make install # Install also on the build system
+fi
 cd $OUT
 
 # Install LuaRocks

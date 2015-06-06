@@ -13,6 +13,7 @@ describe("Response Transformer Plugin #proxy", function()
     spec_helper.insert_fixtures {
       api = {
         { name = "tests response_transformer", public_dns = "response.com", target_url = "http://httpbin.org" },
+        { name = "tests response_transformer 2", public_dns = "response2.com", target_url = "http://httpbin.org" },
       },
       plugin_configuration = {
         {
@@ -28,6 +29,15 @@ describe("Response Transformer Plugin #proxy", function()
             }
           },
           __api = 1
+        },
+        {
+          name = "response_transformer",
+          value = {
+            add = {
+              headers = {"Cache-Control:max-age=86400"}
+            }
+          },
+          __api = 2
         }
       }
     }
@@ -62,8 +72,14 @@ describe("Response Transformer Plugin #proxy", function()
       assert.are.equal("newvalue", body["newjsonparam"])
     end)
 
+    it("should add new headers", function()
+      local body, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response2.com"})
+      assert.are.equal(200, status)
+      assert.are.equal("max-age=86400", headers["cache-control"])
+    end)
+
   end)
-  
+
   describe("Test removing parameters", function()
     
     it("should remove a header", function()
@@ -80,5 +96,5 @@ describe("Response Transformer Plugin #proxy", function()
     end)
     
   end)
- 
+
 end)
