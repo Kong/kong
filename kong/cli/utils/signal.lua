@@ -312,7 +312,7 @@ function _M.send_signal(args_config, signal)
 
   if signal == STOP and success then
     if IO.file_exists(kong_config.pid_file) then
-      os.execute("while [ -f "..kong_config.pid_file.." ]; do sleep 0.1; done")
+      os.execute("while [ -f "..kong_config.pid_file.." ]; do sleep 0.5; done")
     end
   end
 

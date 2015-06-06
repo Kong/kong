@@ -63,11 +63,11 @@ function _M.execute(conf)
 
   local is_json_body = get_content_type() == APPLICATION_JSON
 
-  if (conf.add.json or conf.remove.json) and is_json_body then
+  if ((conf.add and conf.add.json) or (conf.remove and conf.remove.json)) and is_json_body then
     local json_body = read_json_body()
     if json_body then
 
-      if conf.add.json then
+      if conf.add and conf.add.json then
         iterate_and_exec(conf.add.json, function(name, value)
           local v = cjson.encode(value)
           if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
@@ -77,7 +77,7 @@ function _M.execute(conf)
         end)
       end
 
-      if conf.remove.json then
+      if conf.remove and conf.remove.json then
         iterate_and_exec(conf.remove.json, function(name)
           json_body[name] = nil
         end)
