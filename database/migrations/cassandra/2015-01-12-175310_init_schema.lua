@@ -57,7 +57,7 @@ local Migration = {
 
   down = function(options)
     return [[
-      DROP KEYSPACE ]]..options.keyspace..[[;
+      DROP KEYSPACE "]]..options.keyspace..[[";
     ]]
   end
 }
