@@ -4,7 +4,7 @@
 
 #### Fixed
 
-- Fixed a critical datastore migration bug [#303](https://github.com/Mashape/kong/issues/303)
+- Schema migrations are now automatic, which was missing from previous releases. [#303](https://github.com/Mashape/kong/issues/303)
 
 ## [0.3.0] - 2015/06/04
 
