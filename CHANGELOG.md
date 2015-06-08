@@ -1,5 +1,11 @@
 ## [Unreleased][unreleased]
 
+## [0.3.1] - 2015/06/07
+
+#### Fixed
+
+- Fixed a critical datastore migration bug [#303](https://github.com/Mashape/kong/issues/303)
+
 ## [0.3.0] - 2015/06/04
 
 #### Added
