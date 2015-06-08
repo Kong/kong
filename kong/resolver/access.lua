@@ -1,5 +1,6 @@
 local url = require "socket.url"
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 
@@ -82,6 +83,7 @@ local function find_api(request_uri)
       end
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
+        host = unpack(stringy.split(host, ":"))
         table.insert(all_hosts, host)
         if apis_dics.dns[host] then
           retrieved_api = apis_dics.dns[host]
