@@ -66,7 +66,7 @@ describe("Entities Schemas", function()
         path = "/[a-zA-Z]{3}",
         target_url = "http://mockbin.com"
       }, api_schema)
-      assert.equal("path must only contain alphanumeric and '. -, _, ~' characters", errors.path)
+      assert.equal("path must only contain alphanumeric and '. -, _, ~, /' characters", errors.path)
       assert.False(valid)
 
       valid = validate({
@@ -84,28 +84,45 @@ describe("Entities Schemas", function()
       assert.True(valid)
     end)
 
-    it("should prefix a `path` with a slash", function()
-      local api_t = {
-        name = "mockbin",
-        path = "status",
-        target_url = "http://mockbin.com"
-      }
-
-      local valid, errors = validate(api_t, api_schema)
-      assert.falsy(errors)
-      assert.True(valid)
+    it("should prefix a `path` with a slash and remove trailing slash", function()
+      local api_t = { name = "mockbin", path = "status", target_url = "http://mockbin.com" }
+      validate(api_t, api_schema)
       assert.equal("/status", api_t.path)
 
-      api_t = {
-        name = "mockbin",
-        path = "/status",
-        target_url = "http://mockbin.com"
-      }
-
-      local valid, errors = validate(api_t, api_schema)
-      assert.falsy(errors)
-      assert.True(valid)
+      api_t.path = "/status"
+      validate(api_t, api_schema)
       assert.equal("/status", api_t.path)
+
+      api_t.path = "status/"
+      validate(api_t, api_schema)
+      assert.equal("/status", api_t.path)
+
+      api_t.path = "/status/"
+      validate(api_t, api_schema)
+      assert.equal("/status", api_t.path)
+
+      api_t.path = "/deep/nested/status/"
+      validate(api_t, api_schema)
+      assert.equal("/deep/nested/status", api_t.path)
+
+      api_t.path = "deep/nested/status"
+      validate(api_t, api_schema)
+      assert.equal("/deep/nested/status", api_t.path)
+
+      -- Strip all leading slashes
+      api_t.path = "//deep/nested/status"
+      validate(api_t, api_schema)
+      assert.equal("/deep/nested/status", api_t.path)
+
+      -- Strip all trailing slashes
+      api_t.path = "/deep/nested/status//"
+      validate(api_t, api_schema)
+      assert.equal("/deep/nested/status", api_t.path)
+
+      -- Error if invalid path
+      api_t.path = "/deep//nested/status"
+      local valid, errors = validate(api_t, api_schema)
+      assert.equal("path is invalid: /deep//nested/status", errors.path)
     end)
 
   end)
