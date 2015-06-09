@@ -99,7 +99,7 @@ function _M.post(params, dao_collection, success)
   if err then
     return app_helpers.yield_error(err)
   else
-    if success then success(utils.table_copy(data)) end
+    if success then success(utils.deep_copy(data)) end
     return responses.send_HTTP_CREATED(data)
   end
 end

@@ -1,12 +1,11 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local constants = require "kong.constants"
 
 local SCHEMA = {
-  id = { type = constants.DATABASE_TYPES.ID },
-  consumer_id = { type = constants.DATABASE_TYPES.ID, required = true, foreign = true, queryable = true },
+  id = { type = "id" },
+  consumer_id = { type = "id", required = true, foreign = true, queryable = true },
   username = { type = "string", required = true, unique = true, queryable = true },
   password = { type = "string" },
-  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
+  created_at = { type = "timestamp" }
 }
 
 local BasicAuthCredentials = BaseDao:extend()
@@ -47,10 +46,11 @@ function BasicAuthCredentials:new(properties)
         args_keys = { "username" },
         query = [[ SELECT id FROM basicauth_credentials WHERE username = ?; ]]
       }
-    }
+    },
+    drop = "TRUNCATE basicauth_credentials;"
   }
 
   BasicAuthCredentials.super.new(self, properties)
 end
 
-return BasicAuthCredentials
+return { basicauth_credentials = BasicAuthCredentials }

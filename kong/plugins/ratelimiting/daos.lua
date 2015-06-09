@@ -17,7 +17,8 @@ function RateLimitingMetrics:new(properties)
     delete = [[ DELETE FROM ratelimiting_metrics WHERE api_id = ? AND
                   identifier = ? AND
                   period_date = ? AND
-                  period = ?; ]]
+                  period = ?; ]],
+    drop = "TRUNCATE ratelimiting_metrics;"
   }
 
   RateLimitingMetrics.super.new(self, properties)
@@ -80,4 +81,4 @@ function RateLimitingMetrics:find_by_keys()
   error("ratelimiting_metrics:find_by_keys() not supported", 2)
 end
 
-return RateLimitingMetrics
+return { ratelimiting_metrics = RateLimitingMetrics }

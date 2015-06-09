@@ -587,4 +587,10 @@ function BaseDao:delete(id)
   return self:_execute_kong_query(self._queries.delete, { id = id })
 end
 
+function BaseDao:drop()
+  if self._queries.drop then
+    return self:_execute_kong_query(self._queries.drop)
+  end
+end
+
 return BaseDao
