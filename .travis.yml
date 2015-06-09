@@ -21,6 +21,6 @@ install:
 
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"
-  - "luacheck kong"
+  - "make lint"
 
 after_success: "luacov-coveralls -i kong"
