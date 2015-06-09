@@ -5,9 +5,10 @@ local _M = {}
 
 local CONTENT_LENGTH = "content-length"
 
-local function check_size(length, allowed_size, headers)
+local function check_size(length, allowed_size)
   local allowed_bytes_size = allowed_size * 100000
   if length > allowed_bytes_size then
+    local headers = ngx.req.get_headers()
     if headers.expect and stringy.strip(headers.expect:lower()) == "100-continue" then
       return response.send(417, "Request size limit exceeded")
     else
@@ -26,7 +27,7 @@ function _M.execute(conf)
   if headers[CONTENT_LENGTH] then
     check_size(tonumber(headers[CONTENT_LENGTH]), conf.allowed_payload_size, headers)
   else
-    -- not very good idea
+    -- If the request body is too big, this could consume too much memory (to check)
     ngx.req.read_body()
     local data = ngx.req.get_body_data()
     if data then
