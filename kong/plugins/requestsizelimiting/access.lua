@@ -30,7 +30,7 @@ function _M.execute(conf)
     ngx.req.read_body()
     local data = ngx.req.get_body_data()
     if data then
-      check_size(string.len(data), conf.allowed_payload_size)
+      check_size(string.len(data), conf.allowed_payload_size, headers)
     end
   end
 
