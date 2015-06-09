@@ -4,7 +4,6 @@ local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.PROXY_URL.."/get"
 local STUB_HEADERS_URL = spec_helper.PROXY_URL.."/response-headers"
-local STUB_POST_URL = spec_helper.PROXY_URL.."/post"
 
 describe("Response Transformer Plugin #proxy", function()
 
@@ -50,30 +49,30 @@ describe("Response Transformer Plugin #proxy", function()
   end)
 
   describe("Test adding parameters", function()
-    
+
     it("should add new headers", function()
-      local body, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response.com"})
       assert.are.equal(200, status)
       assert.are.equal("true", headers["x-added"])
       assert.are.equal("true", headers["x-added2"])
     end)
-    
+
     it("should add new parameters on GET", function()
-      local response, status, headers = http_client.get("http://127.0.0.1:8100/get", {}, {host = "response.com"})
+      local response, status = http_client.get("http://127.0.0.1:8100/get", {}, {host = "response.com"})
       assert.are.equal(200, status)
       local body = cjson.decode(response)
       assert.are.equal("newvalue", body["newjsonparam"])
     end)
 
     it("should add new parameters on POST", function()
-      local response, status, headers = http_client.post("http://127.0.0.1:8100/post", {}, {host = "response.com"})
+      local response, status = http_client.post("http://127.0.0.1:8100/post", {}, {host = "response.com"})
       assert.are.equal(200, status)
       local body = cjson.decode(response)
       assert.are.equal("newvalue", body["newjsonparam"])
     end)
 
     it("should add new headers", function()
-      local body, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response2.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response2.com"})
       assert.are.equal(200, status)
       assert.are.equal("max-age=86400", headers["cache-control"])
     end)
@@ -81,7 +80,7 @@ describe("Response Transformer Plugin #proxy", function()
   end)
 
   describe("Test removing parameters", function()
-    
+
     it("should remove a header", function()
       local _, status, headers = http_client.get(STUB_HEADERS_URL, { ["x-to-remove"] = "true"}, {host = "response.com"})
       assert.are.equal(200, status)
@@ -89,12 +88,12 @@ describe("Response Transformer Plugin #proxy", function()
     end)
 
     it("should remove a parameter on GET", function()
-      local response, status, headers = http_client.get("http://127.0.0.1:8100/get", {}, {host = "response.com"})
+      local response, status = http_client.get("http://127.0.0.1:8100/get", {}, {host = "response.com"})
       assert.are.equal(200, status)
       local body = cjson.decode(response)
       assert.falsy(body.origin)
     end)
-    
+
   end)
 
 end)
