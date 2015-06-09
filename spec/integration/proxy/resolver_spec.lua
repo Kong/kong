@@ -27,8 +27,9 @@ describe("Resolver", function()
       api = {
         { name = "tests host resolver 1", public_dns = "mockbin.com", target_url = "http://mockbin.com" },
         { name = "tests host resolver 2", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com" },
-        { name = "tests path resolver", public_dns = "mockbin-path.com", target_url = "http://mockbin.com", path = "/status/" },
-        { name = "tests stripped path resolver", public_dns = "mockbin-stripped-path.com", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true }
+        { name = "tests path resolver", target_url = "http://mockbin.com", path = "/status/" },
+        { name = "tests stripped path resolver", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true },
+        { name = "tests deep path resolver", target_url = "http://mockbin.com", path = "/deep/path/", strip_path = true }
       },
       plugin_configuration = {
         { name = "keyauth", value = {key_names = {"apikey"} }, __api = 2 }
@@ -133,6 +134,14 @@ describe("Resolver", function()
         assert.are.equal(301, status)
       end)
 
+      it("should not proxy when the path does not match the start of the request_uri", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/somepath/status/200")
+        local body = cjson.decode(response)
+        assert.are.equal("API not found with these values", body.message)
+        assert.are.equal("/somepath/status/200", body.path)
+        assert.are.equal(404, status)
+      end)
+
       it("should proxy and strip the path if `strip_path` is true", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
         local body = cjson.decode(response)
@@ -140,12 +149,9 @@ describe("Resolver", function()
         assert.are.equal("http://mockbin.com/request", body.url)
       end)
 
-      it("should not proxy when the path does not the start of the request_uri", function()
-        local response, status = http_client.get(spec_helper.PROXY_URL.."/somepath/status/200")
-        local body = cjson.decode(response)
-        assert.are.equal("API not found with these values", body.message)
-        assert.are.equal("/somepath/status/200", body.path)
-        assert.are.equal(404, status)
+      it("should proxy when the path has a deep level", function()
+        local _, status = http_client.get(spec_helper.PROXY_URL.."/deep/path/status/200")
+        assert.are.equal(200, status)
       end)
 
     end)
