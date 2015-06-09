@@ -228,12 +228,16 @@ function _M.prepare_kong(args_config, signal)
   setmetatable(dao_config, printable_mt)
 
   -- Print important informations
-  cutils.logger:info(string.format([[Proxy port.........%s
+  cutils.logger:info(string.format([[Kong version.......%s
+       Proxy HTTP port....%s
+       Proxy HTTPS port...%s
        Admin API port.....%s
        dnsmasq port.......%s
        Database...........%s %s
   ]],
+  constants.VERSION,
   kong_config.proxy_port,
+  kong_config.proxy_ssl_port,
   kong_config.admin_api_port,
   kong_config.dnsmasq_port,
   kong_config.database,
