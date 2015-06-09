@@ -3,7 +3,7 @@ local response = require "kong.tools.responses"
 
 local _M = {}
 
-local CONTENT_LENGHT = "content-length"
+local CONTENT_LENGTH = "content-length"
 
 local function check_size(length, allowed_size)
   local allowed_bytes_size = allowed_size * 100000
@@ -24,10 +24,10 @@ end
 -- @return `response` contains response code and error message
 function _M.execute(conf)
   local headers = ngx.req.get_headers()
-  if headers[CONTENT_LENGHT] then
-    check_size(tonumber(headers[CONTENT_LENGHT]), conf.allowed_payload_size)
+  if headers[CONTENT_LENGTH] then
+    check_size(tonumber(headers[CONTENT_LENGTH]), conf.allowed_payload_size)
   else
-    -- not very good idea
+    -- If the request body is too big, this could consume too much memory (to check)
     ngx.req.read_body()
     local data = ngx.req.get_body_data()
     if data then
