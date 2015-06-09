@@ -121,7 +121,7 @@ describe("Entities Schemas", function()
 
       -- Error if invalid path
       api_t.path = "/deep//nested/status"
-      local valid, errors = validate(api_t, api_schema)
+      local _, errors = validate(api_t, api_schema)
       assert.equal("path is invalid: /deep//nested/status", errors.path)
     end)
 
