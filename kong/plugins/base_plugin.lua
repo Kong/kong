@@ -6,7 +6,7 @@ function BasePlugin:new(name)
 end
 
 function BasePlugin:init_worker()
-  --ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": init_worker")
+  ngx.log(ngx.DEBUG, " executing plugin \""..self._name.."\": init_worker")
 end
 
 function BasePlugin:certificate()

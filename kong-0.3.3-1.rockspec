@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.3.2-1"
+version = "0.3.3-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.3.2"
+  tag = "0.3.3"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -100,6 +100,12 @@ build = {
     ["kong.plugins.keyauth.schema"] = "kong/plugins/keyauth/schema.lua",
     ["kong.plugins.keyauth.api"] = "kong/plugins/keyauth/api.lua",
     ["kong.plugins.keyauth.daos"] = "kong/plugins/keyauth/daos.lua",
+
+    ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
+    ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
+    ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
+    ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
+    ["kong.plugins.oauth2.api"] = "kong/plugins/oauth2/api.lua",
 
     ["kong.plugins.tcplog.handler"] = "kong/plugins/tcplog/handler.lua",
     ["kong.plugins.tcplog.log"] = "kong/plugins/tcplog/log.lua",

@@ -57,7 +57,7 @@ function Faker:insert_from_table(entities_to_insert)
   -- Insert in order (for foreign relashionships)
   -- 1. consumers and APIs
   -- 2. credentials, which need references to inserted apis and consumers
-  for _, type in ipairs({ "api", "consumer", "basicauth_credential", "keyauth_credential", "plugin_configuration" }) do
+  for _, type in ipairs({ "api", "consumer", "plugin_configuration", "oauth2_credential", "basicauth_credential", "keyauth_credential" }) do
     if entities_to_insert[type] then
       for i, entity in ipairs(entities_to_insert[type]) do
 

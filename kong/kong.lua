@@ -86,7 +86,7 @@ local function init_plugins()
   for _, v in ipairs(configuration.plugins_available) do
     local loaded, plugin_handler_mod = utils.load_module_if_exists("kong.plugins."..v..".handler")
     if not loaded then
-      error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)
+      error("The following plugin has been enabled in the configuration but it is not installed on the system: "..v)
     else
       print("Loading plugin: "..v)
       table.insert(loaded_plugins, {

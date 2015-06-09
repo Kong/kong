@@ -16,6 +16,7 @@ describe("Schemas", function()
       date = { default = 123456, immutable = true },
       allowed = { enum = { "hello", "world" }},
       boolean_val = { type = "boolean" },
+      endpoint = { type = "url" },
       default = { default = function(t)
                               assert.truthy(t)
                               return "default"
@@ -106,6 +107,42 @@ describe("Schemas", function()
       local valid, err = validate(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
+
+      -- Failure
+      local values = { string = "foo",  endpoint = "" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+      assert.are.equal("endpoint is not a url", err.endpoint)
+
+      -- Failure
+      local values = { string = "foo",  endpoint = "asdasd" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+
+      -- Failure
+      local values = { string = "foo",  endpoint = "http://google.com" }
+
+      local valid, err = validate(values, schema)
+      assert.falsy(valid)
+      assert.truthy(err)
+
+      -- Success
+      local values = { string = "foo",  endpoint = "http://google.com/" }
+
+      local valid, err = validate(values, schema)
+      assert.truthy(valid)
+      assert.falsy(err)
+
+      -- Success
+      local values = { string = "foo",  endpoint = "http://google.com/hello/?world=asd" }
+
+      local valid, err = validate(values, schema)
+      assert.truthy(valid)
+      assert.falsy(err)
     end)
 
     it("should return error when an invalid boolean value is passed", function()

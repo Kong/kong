@@ -47,7 +47,7 @@ local function send_response(status_code)
   local constants = require "kong.constants"
   local cjson = require "cjson"
 
-  return function(content, raw)
+  return function(content, raw, headers)
     if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       ngx.log(ngx.ERR, tostring(content))
       ngx.ctx.stop_phases = true -- interrupt other phases of this request
@@ -56,6 +56,12 @@ local function send_response(status_code)
     ngx.status = status_code
     ngx.header["Content-Type"] = "application/json; charset=utf-8"
     ngx.header["Server"] = constants.NAME.."/"..constants.VERSION
+
+    if headers then
+      for k, v in pairs(headers) do
+        ngx.header[k] = v
+      end
+    end
 
     if type(response_default_content[status_code]) == "function" then
       content = response_default_content[status_code](content)
@@ -85,13 +91,13 @@ local closure_cache = {}
 -- Sends any status code as a response. This is useful for plugins which want to
 -- send a response when the status code is not defined in `_M.status_codes` and thus
 -- has no sugar method on `_M`.
-function _M.send(status_code, content, raw)
+function _M.send(status_code, content, raw, headers)
   local res = closure_cache[status_code]
   if not res then
     res = send_response(status_code)
     closure_cache[status_code] = res
   end
-  return res(content, raw)
+  return res(content, raw, headers)
 end
 
 return _M
