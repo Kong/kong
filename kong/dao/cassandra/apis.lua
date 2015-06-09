@@ -1,6 +1,5 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local apis_schema = require "kong.dao.schemas.apis"
-local PluginsConfigurations = require "kong.dao.cassandra.plugins_configurations"
 
 local Apis = BaseDao:extend()
 
@@ -41,7 +40,8 @@ function Apis:new(properties)
         args_keys = { "public_dns" },
         query = [[ SELECT id FROM apis WHERE public_dns = ?; ]]
       }
-    }
+    },
+    drop = "TRUNCATE apis;"
   }
 
   Apis.super.new(self, properties)
@@ -70,7 +70,7 @@ function Apis:delete(api_id)
   end
 
   -- delete all related plugins configurations
-  local plugins_dao = PluginsConfigurations(self._properties)
+  local plugins_dao = self._factory.plugins_configurations
   local query, args_keys, errors = plugins_dao:_build_where_query(plugins_dao._queries.select.query, {
     api_id = api_id
   })
@@ -94,4 +94,4 @@ function Apis:delete(api_id)
   return ok
 end
 
-return Apis
+return { apis = Apis }

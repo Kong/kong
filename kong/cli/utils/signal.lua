@@ -159,16 +159,16 @@ end
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
   local _, _, dao_factory = get_kong_config(args_config)
+  local migrations = require("kong.tools.migrations")(dao_factory, cutils.get_luarocks_install_dir())
 
   -- Migrate the DB if needed and possible
-  local keyspace, err = dao_factory.migrations:get_migrations()
+  local keyspace, err = migrations:get_migrations()
   if err then
     cutils.logger:error_exit(err)
   elseif keyspace == nil then
     cutils.logger:info("Database not initialized. Running migrations...")
   end
 
-  local migrations = require("kong.tools.migrations")(dao_factory, cutils.get_luarocks_install_dir())
   migrations:migrate(function(migration, err)
     if err then
       cutils.logger:error_exit(err)
