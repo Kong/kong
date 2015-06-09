@@ -3,12 +3,11 @@ local response = require "kong.tools.responses"
 
 local _M = {}
 
-local CONTENT_LENGHT = "content-length"
+local CONTENT_LENGTH = "content-length"
 
-local function check_size(length, allowed_size)
+local function check_size(length, allowed_size, headers)
   local allowed_bytes_size = allowed_size * 100000
   if length > allowed_bytes_size then
-    local headers = ngx.req.get_headers()
     if headers.expect and stringy.strip(headers.expect:lower()) == "100-continue" then
       return response.send(417, "Request size limit exceeded")
     else
@@ -24,8 +23,8 @@ end
 -- @return `response` contains response code and error message
 function _M.execute(conf)
   local headers = ngx.req.get_headers()
-  if headers[CONTENT_LENGHT] then
-    check_size(tonumber(headers[CONTENT_LENGHT]), conf.allowed_payload_size)
+  if headers[CONTENT_LENGTH] then
+    check_size(tonumber(headers[CONTENT_LENGTH]), conf.allowed_payload_size, headers)
   else
     -- not very good idea
     ngx.req.read_body()
