@@ -55,13 +55,13 @@ local function check_path(path, api_t)
 end
 
 return {
-  id = { type = "id" },
+  id = { type = "id", dao_insert_value = true },
+  created_at = { type = "timestamp", dao_insert_value = true },
   name = { type = "string", unique = true, queryable = true, default = function(api_t) return api_t.public_dns end },
   public_dns = { type = "string", unique = true, queryable = true,
                 func = check_public_dns_and_path,
                 regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)" },
   path = { type = "string", queryable = true, unique = true, func = check_path },
   strip_path = { type = "boolean" },
-  target_url = { type = "string", required = true, func = validate_target_url },
-  created_at = { type = "timestamp" }
+  target_url = { type = "string", required = true, func = validate_target_url }
 }

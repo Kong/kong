@@ -1,6 +1,10 @@
+local uuid = require "uuid"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 local constants = require "kong.constants"
+local timestamp = require "kong.tools.timestamp"
+
+uuid.seed()
 
 local POSSIBLE_TYPES = {
   id = true,
@@ -13,8 +17,8 @@ local POSSIBLE_TYPES = {
 }
 
 local types_validation = {
-  [constants.DATABASE_TYPES.ID] = function(v) return type(v) == "string" end,
-  [constants.DATABASE_TYPES.TIMESTAMP] = function(v) return type(v) == "number" end,
+  ["id"] = function(v) return type(v) == "string" end,
+  ["timestamp"] = function(v) return type(v) == "number" end,
   ["array"] = function(v) return utils.is_array(v) end
 }
 
@@ -30,10 +34,13 @@ local _M = {}
 -- Validate a table against a given schema
 -- @param  `t`         Entity to validate, as a table.
 -- @param  `schema`    Schema against which to validate the entity.
--- @param  `is_update` For an entity update, check immutable fields. Set to true.
+-- @param  `options`
+--           `dao_insert` A function called foe each field with a `dao_insert_value` property.
+--           `is_update`  For an entity update, check immutable fields. Set to true.
 -- @return `valid`     Success of validation. True or false.
 -- @return `errors`    A list of encountered errors during the validation.
-function _M.validate(t, schema, is_update)
+function _M.validate(t, schema, options)
+  if not options then options = {} end
   local errors
 
   -- Check the given table against a given schema
@@ -47,18 +54,23 @@ function _M.validate(t, schema, is_update)
         t[column] = v.default
       end
     -- [IMMUTABLE] check immutability of a field if updating
-    elseif is_update and t[column] ~= nil and v.immutable and not v.required then
+    elseif options.is_update and t[column] ~= nil and v.immutable and not v.required then
       errors = utils.add_error(errors, column, column.." cannot be updated")
     end
 
-    -- [TYPE] Check if type is valid. Boolean and Numbers as strings are accepted and converted
+    -- [INSERT_VALUE]
+    if v.dao_insert_value and not options.is_update and type(options.dao_insert) == "function" then
+      t[column] = options.dao_insert(v)
+    end
+
     if v.type ~= nil and t[column] ~= nil then
+      -- [TYPE] Check if type is valid. Boolean and Numbers as strings are accepted and converted
       local is_valid_type
 
       -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
       if type(t[column]) == "string" then
         t[column] = stringy.strip(t[column])
-        if v.type == "number" or v .type == constants.DATABASE_TYPES.TIMESTAMP then
+        if v.type == "number" or v .type == "timestamp" then
           t[column] = tonumber(t[column])
           is_valid_type = t[column] ~= nil
         elseif v.type == "boolean" then
@@ -133,7 +145,7 @@ function _M.validate(t, schema, is_update)
 
         if t[column] and type(t[column]) == "table" then
           -- Actually validating the sub-schema
-          local s_ok, s_errors = _M.validate(t[column], sub_schema, is_update)
+          local s_ok, s_errors = _M.validate(t[column], sub_schema, options)
           if not s_ok then
             for s_k, s_v in pairs(s_errors) do
               errors = utils.add_error(errors, column.."."..s_k, s_v)

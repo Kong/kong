@@ -231,6 +231,7 @@ describe("Schemas", function()
         assert.truthy(valid)
         assert.are.same("abcdef", values.default)
       end)
+
     end)
 
     describe("[regex]", function()
@@ -292,7 +293,7 @@ describe("Schemas", function()
         assert.truthy(valid)
 
         -- Failure
-        local valid, err = validate(values, schema, true)
+        local valid, err = validate(values, schema, {is_update = true})
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("date cannot be updated", err.date)
@@ -301,10 +302,47 @@ describe("Schemas", function()
       it("should ignore required properties if they are immutable and we are updating", function()
         local values = { string = "somestring" }
 
-        local valid, err = validate(values, schema, true)
+        local valid, err = validate(values, schema, {is_update = true})
         assert.falsy(err)
         assert.truthy(valid)
       end)
+    end)
+
+    describe("[dao_insert_value]", function()
+      local schema = {
+        string = { type = "string"},
+        id = { type = "id", dao_insert_value = true },
+        timestamp = { type = "timestamp", dao_insert_value = true }
+      }
+
+      it("should call a given function when encountering a field with `dao_insert_value`", function()
+        local values = { string = "hello", id = "0000" }
+
+        local valid, err = validate(values, schema, { dao_insert = function(field)
+          if field.type == "id" then
+            return "1234"
+          elseif field.type == "timestamp" then
+            return 0000
+          end
+        end })
+        assert.falsy(err)
+        assert.True(valid)
+        assert.equal("1234", values.id)
+        assert.equal(0000, values.timestamp)
+        assert.equal("hello", values.string)
+      end)
+
+      it("should not raise any error if the function is not given", function()
+        local values = { string = "hello", id = "0000" }
+
+        local valid, err = validate(values, schema, { dao_insert = true }) -- invalid type
+        assert.falsy(err)
+        assert.True(valid)
+        assert.equal("0000", values.id)
+        assert.equal("hello", values.string)
+        assert.falsy(values.timestamp)
+      end)
+
     end)
 
     it("should return error when unexpected values are included in the schema", function()

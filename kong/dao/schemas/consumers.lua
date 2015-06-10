@@ -1,5 +1,4 @@
 local stringy = require "stringy"
-local constants = require "kong.constants"
 
 local function check_custom_id_and_username(value, consumer_t)
   local username = type(consumer_t.username) == "string" and stringy.strip(consumer_t.username) or ""
@@ -13,8 +12,8 @@ local function check_custom_id_and_username(value, consumer_t)
 end
 
 return {
-  id = { type = constants.DATABASE_TYPES.ID },
+  id = { type = "id", dao_insert_value = true },
+  created_at = { type = "timestamp", dao_insert_value = true },
   custom_id = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username },
-  username = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username },
-  created_at = { type = constants.DATABASE_TYPES.TIMESTAMP }
+  username = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username }
 }
