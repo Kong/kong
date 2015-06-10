@@ -200,13 +200,13 @@ local function encode_cassandra_args(schema, t, args_keys)
     local schema_field = schema[column]
     local value = t[column]
 
-    if schema_field.type == constants.DATABASE_TYPES.ID and value then
+    if schema_field.type == "id" and value then
       if validations.is_valid_uuid(value) then
         value = cassandra.uuid(value)
       else
         errors = utils.add_error(errors, column, value.." is an invalid uuid")
       end
-    elseif schema_field.type == constants.DATABASE_TYPES.TIMESTAMP and value then
+    elseif schema_field.type == "timestamp" and value then
       value = cassandra.timestamp(value)
     elseif value == nil then
       value = cassandra.null
@@ -427,7 +427,6 @@ end
 
 -- Execute the INSERT kong_query of a DAO entity.
 -- Validates the entity's schema + UNIQUE values + FOREIGN KEYS.
--- Generates id and created_at fields.
 -- @param `t`       A table representing the entity to insert
 -- @return `result` Inserted entity or nil
 -- @return `error`  Error if any during the execution
@@ -437,12 +436,14 @@ function BaseDao:insert(t)
     return nil, DaoError("Cannot insert a nil element", error_types.SCHEMA)
   end
 
-  -- Override created_at and id by default value
-  t.created_at = timestamp.get_utc()
-  t.id = uuid()
-
-  -- Validate schema
-  ok, errors = validate(t, self._schema)
+  -- Populate the entity with any default/overriden values and validate it
+  ok, errors = validate(t, self._schema, { dao_insert = function(field)
+    if field.type == "id" then
+      return uuid()
+    elseif field.type == "timestamp" then
+      return timestamp.get_utc()
+    end
+  end })
   if not ok then
     return nil, DaoError(errors, error_types.SCHEMA)
   end
@@ -501,7 +502,7 @@ function BaseDao:update(t)
   end
 
   -- Validate schema
-  ok, errors = validate(t, self._schema, true)
+  ok, errors = validate(t, self._schema, {is_update = true})
   if not ok then
     return nil, DaoError(errors, error_types.SCHEMA)
   end
