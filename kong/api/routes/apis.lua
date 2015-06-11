@@ -29,7 +29,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.api.id, dao_factory.apis)
+      crud.delete({id = self.api.id}, dao_factory.apis)
     end
   },
 
@@ -84,7 +84,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin.id, dao_factory.plugins_configurations)
+      crud.delete({id = self.plugin}, dao_factory.plugins_configurations)
     end
   }
 }

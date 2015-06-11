@@ -5,6 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local RateLimitingMetrics = BaseDao:extend()
 
 function RateLimitingMetrics:new(properties)
+  self._table = "ratelimiting_metrics"
   self._queries = {
     increment_counter = [[ UPDATE ratelimiting_metrics SET value = value + 1 WHERE api_id = ? AND
                             identifier = ? AND

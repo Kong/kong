@@ -43,7 +43,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin_conf.id, dao_factory.plugins_configurations)
+      crud.delete({id = self.plugin_conf}, dao_factory.plugins_configurations)
     end
   }
 }

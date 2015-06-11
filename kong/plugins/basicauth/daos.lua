@@ -11,6 +11,7 @@ local SCHEMA = {
 local BasicAuthCredentials = BaseDao:extend()
 
 function BasicAuthCredentials:new(properties)
+  self._table = "basicauth_credentials"
   self._schema = SCHEMA
   self._queries = {
     insert = {

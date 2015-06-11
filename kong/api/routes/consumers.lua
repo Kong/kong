@@ -30,7 +30,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory, helpers)
-      crud.delete(self.consumer.id, dao_factory.consumers)
+      crud.delete({id = self.consumer.id}, dao_factory.consumers)
     end
   }
 }
