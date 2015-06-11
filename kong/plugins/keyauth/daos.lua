@@ -10,6 +10,7 @@ local SCHEMA = {
 local KeyAuth = BaseDao:extend()
 
 function KeyAuth:new(properties)
+  self._table = "keyauth_credentials"
   self._schema = SCHEMA
   self._queries = {
     insert = {

@@ -113,8 +113,8 @@ function _M.patch(params, dao_collection)
   end
 end
 
-function _M.delete(entity_id, dao_collection)
-  local ok, err = dao_collection:delete(entity_id)
+function _M.delete(where_t, dao_collection)
+  local ok, err = dao_collection:delete(where_t)
   if not ok then
     if err then
       return app_helpers.yield_error(err)

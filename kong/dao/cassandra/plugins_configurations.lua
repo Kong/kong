@@ -1,4 +1,5 @@
 local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
+local query_builder = require "kong.dao.cassandra.query_builder"
 local constants = require "kong.constants"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
@@ -7,28 +8,10 @@ local PluginsConfigurations = BaseDao:extend()
 
 function PluginsConfigurations:new(properties)
   self._entity = "Plugin configuration"
+  self._table = "plugins_configurations"
   self._schema = plugins_configurations_schema
+  self._primary_key = {"id", "name"}
   self._queries = {
-    insert = {
-      args_keys = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },
-      query = [[ INSERT INTO plugins_configurations(id, api_id, consumer_id, name, value, enabled, created_at)
-                  VALUES(?, ?, ?, ?, ?, ?, ?); ]]
-    },
-    update = {
-      args_keys = { "api_id", "consumer_id", "value", "enabled", "created_at", "id", "name" },
-      query = [[ UPDATE plugins_configurations SET api_id = ?, consumer_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
-    },
-    select = {
-      query = [[ SELECT * FROM plugins_configurations %s; ]]
-    },
-    select_one = {
-      args_keys = { "id" },
-      query = [[ SELECT * FROM plugins_configurations WHERE id = ?; ]]
-    },
-    delete = {
-      args_keys = { "id" },
-      query = [[ DELETE FROM plugins_configurations WHERE id = ?; ]]
-    },
     __unique = {
       self = {
         args_keys = { "api_id", "consumer_id", "name" },
@@ -74,6 +57,11 @@ function PluginsConfigurations:_unmarshall(t)
   return t
 end
 
+-- @override
+function PluginsConfigurations:delete(where_t)
+  return PluginsConfigurations.super.delete(self, {id = where_t.id})
+end
+
 function PluginsConfigurations:find_distinct()
   -- Open session
   local session, err = PluginsConfigurations.super._open_session(self)
@@ -81,9 +69,11 @@ function PluginsConfigurations:find_distinct()
     return nil, err
   end
 
+  local select_q = query_builder.select(self._table)
+
   -- Execute query
   local distinct_names = {}
-  for _, rows, page, err in session:execute(string.format(self._queries.select.query, ""), nil, {auto_paging=true}) do
+  for _, rows, page, err in PluginsConfigurations.super._execute_kong_query(self, {query = select_q}, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end

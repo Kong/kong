@@ -1,8 +1,6 @@
 local uuid = require "uuid"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-local constants = require "kong.constants"
-local timestamp = require "kong.tools.timestamp"
 
 uuid.seed()
 

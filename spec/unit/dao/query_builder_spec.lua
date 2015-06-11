@@ -9,13 +9,23 @@ describe("Query Builder", function()
     end)
 
     it("should accept SELECT keys", function()
-      local q = builder.select("apis", nil, {"name", "id"})
+      local q = builder.select("apis", nil, nil, {"name", "id"})
       assert.equal("SELECT name, id FROM apis", q)
     end)
 
     it("should build a WHERE fragment", function()
-      local q = builder.select("apis", {name="mockbin", public_dns="mockbin.com"}, {"name", "id"})
+      local q = builder.select("apis", {name="mockbin", public_dns="mockbin.com"}, nil, {"name", "id"})
       assert.equal("SELECT name, id FROM apis WHERE name = ? AND public_dns = ?", q)
+    end)
+
+    it("should add ALLOW FILTERING if necessary", function()
+      local q = builder.select("apis", {name="mockbin", public_dns="mockbin.com"}, {"id"})
+      assert.equal("SELECT * FROM apis WHERE name = ? AND public_dns = ? ALLOW FILTERING", q)
+    end)
+
+    it("should return the columns of the arguments to bind", function()
+      local _, columns = builder.select("apis", {name="mockbin", public_dns="mockbin.com"}, {"name", "id"})
+      assert.same({"name", "public_dns"}, columns)
     end)
 
     it("should throw an error if no column_family", function()
@@ -26,7 +36,7 @@ describe("Query Builder", function()
 
     it("should return an error if select_columns is not a table", function()
       assert.has_error(function()
-        builder.select("apis", nil, "")
+        builder.select("apis", nil, nil, "")
       end, "select_columns must be a table")
     end)
 
@@ -37,6 +47,11 @@ describe("Query Builder", function()
     it("should build an INSERT query", function()
       local q = builder.insert("apis", {id="123", name="mockbin"})
       assert.equal("INSERT INTO apis(name, id) VALUES(?, ?)", q)
+    end)
+
+    it("should return the columns of the arguments to bind", function()
+      local _, columns = builder.insert("apis", {id="123", name="mockbin"})
+      assert.same({"name", "id"}, columns)
     end)
 
     it("should throw an error if no column_family", function()
@@ -65,6 +80,14 @@ describe("Query Builder", function()
       assert.equal("UPDATE apis SET name = ?, id = ? WHERE name = ? AND id = ?", q)
     end)
 
+    it("should return the columns of the arguments to bind", function()
+      local _, columns = builder.update("apis", {id="1234", name="mockbin"})
+      assert.same({"name", "id"}, columns)
+
+      _, columns = builder.update("apis", {id="1234", name="mockbin"}, {id="1", name="httpbin"})
+      assert.same({"name", "id", "name", "id"}, columns)
+    end)
+
     it("should throw an error if no column_family", function()
       assert.has_error(function()
         builder.update()
@@ -86,9 +109,14 @@ describe("Query Builder", function()
       assert.equal("DELETE FROM apis", q)
     end)
 
-    it("should build w WHERE fragment", function()
+    it("should build a WHERE fragment", function()
       local q = builder.delete("apis", {name="mockbin"})
       assert.equal("DELETE FROM apis WHERE name = ?", q)
+    end)
+
+    it("should return the columns of the arguments to bind", function()
+      local _, columns = builder.delete("apis", {name="mockbin"})
+      assert.same({"name"}, columns)
     end)
 
     it("should throw an error if no column_family", function()
@@ -98,5 +126,4 @@ describe("Query Builder", function()
     end)
 
   end)
-
 end)
