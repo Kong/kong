@@ -146,7 +146,7 @@ function _M.execute(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = dao.consumers:find_one(credential.consumer_id)
+    local result, err = dao.consumers:find_one({ id = credential.consumer_id })
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

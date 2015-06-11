@@ -713,13 +713,13 @@ describe("Cassandra DAO", function()
           assert.truthy(entities)
           assert.True(#entities > 0)
 
-          local result, err = dao_factory[collection]:find_one(entities[1].id)
+          local result, err = dao_factory[collection]:find_one({ id = entities[1].id })
           assert.falsy(err)
           assert.truthy(result)
         end)
 
         it("should handle an invalid uuid value", function()
-          local result, err = dao_factory[collection]:find_one("abcd")
+          local result, err = dao_factory[collection]:find_one({ id = "abcd" })
           assert.falsy(result)
           assert.True(err.invalid_type)
           assert.are.same("abcd is an invalid uuid", err.message.id)
@@ -746,7 +746,7 @@ describe("Cassandra DAO", function()
 
           local plugin_t = plugins_configurations[1]
 
-          local result, err = dao_factory.plugins_configurations:find_one(plugin_t.id)
+          local result, err = dao_factory.plugins_configurations:find_one({ id = plugin_t.id })
           assert.falsy(err)
           assert.truthy(result)
           assert.are.same("table", type(result.value))

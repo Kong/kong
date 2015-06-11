@@ -25,7 +25,7 @@ return {
   ["/plugins_configurations/:id"] = {
     before = function(self, dao_factory, helpers)
       local err
-      self.plugin_conf, err = dao_factory.plugins_configurations:find_one(self.params.id)
+      self.plugin_conf, err = dao_factory.plugins_configurations:find_one({ id = self.params.id })
       if err then
         return helpers.yield_error(err)
       elseif not self.plugin_conf then

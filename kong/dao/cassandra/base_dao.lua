@@ -198,21 +198,21 @@ local function encode_cassandra_args(schema, t, args_keys)
   local errors
   for _, column in ipairs(args_keys) do
     local schema_field = schema[column]
-    local value = t[column]
+    local arg = t[column]
 
-    if schema_field.type == "id" and value then
-      if validations.is_valid_uuid(value) then
-        value = cassandra.uuid(value)
+    if schema_field.type == "id" and arg then
+      if validations.is_valid_uuid(arg) then
+        arg = cassandra.uuid(arg)
       else
-        errors = utils.add_error(errors, column, value.." is an invalid uuid")
+        errors = utils.add_error(errors, column, arg.." is an invalid uuid")
       end
-    elseif schema_field.type == "timestamp" and value then
-      value = cassandra.timestamp(value)
-    elseif value == nil then
-      value = cassandra.null
+    elseif schema_field.type == "timestamp" and arg then
+      arg = cassandra.timestamp(arg)
+    elseif arg == nil then
+      arg = cassandra.null
     end
 
-    table.insert(args_to_bind, value)
+    table.insert(args_to_bind, arg)
   end
 
   return args_to_bind, errors
@@ -531,11 +531,29 @@ function BaseDao:update(t)
   end
 end
 
+local function check_args(args, args_keys)
+  local keys = {}
+  for _, k in ipairs(args_keys) do
+    keys[k] = true
+    if not args[k] then
+      error("Missing key: "..k)
+    end
+  end
+
+  for k, v in pairs(args) do
+    if not keys[k] then
+      error("Unknown key: "..k)
+    end
+  end
+end
+
 -- Execute the SELECT_ONE kong_query of a DAO entity.
--- @param `id`      uuid of the entity to select
--- @return `result` The first row of the _execute_kong_query() return value
-function BaseDao:find_one(id)
-  local data, err = self:_execute_kong_query(self._queries.select_one, { id = id })
+-- @param  `args_keys` Keys to bind to the `select_one` query.
+-- @return `result`    The first row of the _execute_kong_query() return value
+function BaseDao:find_one(args)
+  check_args(args, self._queries.select_one.args_keys)
+
+  local data, err = self:_execute_kong_query(self._queries.select_one, args)
 
   -- Return the 1st and only element of the result set
   if data and utils.table_size(data) > 0 then
