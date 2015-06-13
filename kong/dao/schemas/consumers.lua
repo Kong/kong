@@ -14,6 +14,6 @@ end
 return {
   id = { type = "id", dao_insert_value = true },
   created_at = { type = "timestamp", dao_insert_value = true },
-  custom_id = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username },
-  username = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username }
+  custom_id = { type = "string", unique = true, func = check_custom_id_and_username },
+  username = { type = "string", unique = true, func = check_custom_id_and_username }
 }
