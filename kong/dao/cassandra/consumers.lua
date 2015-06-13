@@ -23,8 +23,7 @@ function Consumers:new(properties)
         args_keys = { "username" },
         query = [[ SELECT id FROM consumers WHERE username = ?; ]]
       }
-    },
-    drop = "TRUNCATE consumers;"
+    }
   }
 
   Consumers.super.new(self, properties)

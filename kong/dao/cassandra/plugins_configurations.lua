@@ -27,8 +27,7 @@ function PluginsConfigurations:new(properties)
         args_keys = { "consumer_id" },
         query = [[ SELECT id FROM consumers WHERE id = ?; ]]
       }
-    },
-    drop = "TRUNCATE plugins_configurations;"
+    }
   }
 
   PluginsConfigurations.super.new(self, properties)
@@ -78,7 +77,7 @@ function PluginsConfigurations:find_distinct()
       return nil, err
     end
     for _, v in ipairs(rows) do
-      -- Rows also contains other properites, so making sure it's a plugin
+      -- Rows also contains other properties, so making sure it's a plugin
       if v.name then
         distinct_names[v.name] = true
       end

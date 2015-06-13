@@ -27,8 +27,7 @@ function Apis:new(properties)
         args_keys = { "public_dns" },
         query = [[ SELECT id FROM apis WHERE public_dns = ?; ]]
       }
-    },
-    drop = "TRUNCATE apis;"
+    }
   }
 
   Apis.super.new(self, properties)

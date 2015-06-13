@@ -4,6 +4,7 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 local Migrations = BaseDao:extend()
 
 function Migrations:new(properties)
+  self._table = "schema_migrations"
   self._queries = {
     add_migration = [[
       UPDATE schema_migrations SET migrations = migrations + ? WHERE id = 'migrations';

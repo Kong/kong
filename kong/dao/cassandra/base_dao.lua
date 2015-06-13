@@ -85,7 +85,7 @@ function BaseDao:_check_foreign(kong_query, t)
   elseif not results or #results == 0 then
     return false
   else
-    return true, nil, results
+    return true, nil
   end
 end
 
@@ -470,21 +470,11 @@ function BaseDao:update(t)
   local unique_q, unique_q_columns = query_builder.select(self._table, t_only_primary_keys)
 
   -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
-  local results
-  ok, err, results = self:_check_foreign({query = unique_q, args_keys = unique_q_columns}, t_only_primary_keys)
+  ok, err = self:_check_foreign({query = unique_q, args_keys = unique_q_columns}, t_only_primary_keys)
   if err then
     return nil, err
   elseif not ok then
     return nil
-  else
-    -- Set UNSET values to prevent cassandra from setting to NULL
-    -- @see Test case
-    -- @see https://issues.apache.org/jira/browse/DATABASE-7304
-    for k, v in pairs(results[1]) do
-      if t[k] == nil then
-        t[k] = v
-      end
-    end
   end
 
   -- Validate schema
@@ -570,24 +560,23 @@ end
 -- @return `success` True if deleted, false if otherwise or not found
 -- @return `error`   Error if any during the query execution
 function BaseDao:delete(where_t)
-  local select_q, where_columns = query_builder.select(self._table, where_t, self._primary_key)
+  local q, where_columns = query_builder.select(self._table, where_t, self._primary_key)
 
-  local exists, err = self:_check_foreign({ query = select_q, args_keys = where_columns }, where_t)
+  local exists, err = self:_check_foreign({ query = q, args_keys = where_columns }, where_t)
   if err then
     return false, err
   elseif not exists then
     return false
   end
 
-  local delete_q, where_columns = query_builder.delete(self._table, where_t, self._primary_key)
+  q, where_columns = query_builder.delete(self._table, where_t, self._primary_key)
 
-  return self:_execute_kong_query({ query = delete_q, args_keys = where_columns }, where_t)
+  return self:_execute_kong_query({ query = q, args_keys = where_columns }, where_t)
 end
 
 function BaseDao:drop()
-  if self._queries.drop then
-    return self:_execute_kong_query(self._queries.drop)
-  end
+  local truncate_q = query_builder.truncate(self._table)
+  return self:_execute_kong_query(truncate_q)
 end
 
 return BaseDao

@@ -298,13 +298,33 @@ describe("Schemas", function()
         assert.truthy(err)
         assert.are.same("date cannot be updated", err.date)
       end)
+    end)
+
+    describe("[is_update]", function()
+      it("should ignore required properties and defaults if we are updating because the entity might be partial", function()
+        local values = {}
+
+        local valid, err = validate(values, schema, {is_update = true})
+        assert.falsy(err)
+        assert.True(valid)
+        assert.falsy(values.default)
+        assert.falsy(values.date)
+      end)
+
+      it("should still validate set properties", function()
+        local values = { string = 123 }
+
+        local valid, err = validate(values, schema, {is_update = true})
+        assert.False(valid)
+        assert.equal("string is not a string", err.string)
+      end)
 
       it("should ignore required properties if they are immutable and we are updating", function()
         local values = { string = "somestring" }
 
         local valid, err = validate(values, schema, {is_update = true})
         assert.falsy(err)
-        assert.truthy(valid)
+        assert.True(valid)
       end)
     end)
 

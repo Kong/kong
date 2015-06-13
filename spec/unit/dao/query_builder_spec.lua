@@ -126,4 +126,19 @@ describe("Query Builder", function()
     end)
 
   end)
+
+  describe("TRUNCATE", function()
+
+    it("should build a TRUNCATE query", function()
+      local q = builder.truncate("apis")
+      assert.equal("TRUNCATE apis", q)
+    end)
+
+    it("should throw an error if no column_family", function()
+      assert.has_error(function()
+        builder.truncate()
+      end, "column_family must be a string")
+    end)
+
+  end)
 end)

@@ -21,17 +21,16 @@ local function insert_fragment(column_family, insert_values)
   assert(type(column_family) == "string", "column_family must be a string")
   assert(type(insert_values) == "table", "insert_values must be a table")
 
-  local columns_names = {}
-  local values_placeholders = {}
+  local values_placeholders, columns = {}, {}
   for column, value in pairs(insert_values) do
     table.insert(values_placeholders, "?")
-    table.insert(columns_names, column)
+    table.insert(columns, column)
   end
 
-  local columns_names_str = table.concat(columns_names, ", ")
+  local columns_names_str = table.concat(columns, ", ")
   values_placeholders = table.concat(values_placeholders, ", ")
 
-  return string.format("INSERT INTO %s(%s) VALUES(%s)", column_family, columns_names_str, values_placeholders), columns_names
+  return string.format("INSERT INTO %s(%s) VALUES(%s)", column_family, columns_names_str, values_placeholders), columns
 end
 
 local function update_fragment(column_family, update_values)
@@ -119,6 +118,11 @@ function _M.delete(column_family, where_t, primary_keys)
   local where_str, columns = where_fragment(where_t, primary_keys)
 
   return trim(string.format("%s %s", delete_str, where_str)), columns
+end
+
+function _M.truncate(column_family)
+  assert(type(column_family) == "string", "column_family must be a string")
+  return "TRUNCATE "..column_family
 end
 
 return _M
