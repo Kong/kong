@@ -15,9 +15,9 @@ end
 return {
   id = { type = "id", dao_insert_value = true },
   created_at = { type = "timestamp", dao_insert_value = true },
-  api_id = { type = "id", required = true, foreign = true, queryable = true },
-  consumer_id = { type = "id", foreign = true, queryable = true, default = constants.DATABASE_NULL_ID },
-  name = { type = "string", required = true, queryable = true, immutable = true },
+  api_id = { type = "id", required = true, foreign = true },
+  consumer_id = { type = "id", foreign = true, default = constants.DATABASE_NULL_ID },
+  name = { type = "string", required = true, immutable = true },
   value = { type = "table", schema = load_value_schema },
   enabled = { type = "boolean", default = true }
 }

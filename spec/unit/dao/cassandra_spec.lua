@@ -759,27 +759,6 @@ describe("Cassandra DAO", function()
 
       describe_core_collections(function(type, collection)
 
-        it("should refuse non queryable keys", function()
-          pending()
-          local results, err = session:execute("SELECT * FROM "..collection)
-          assert.falsy(err)
-          assert.truthy(results)
-          assert.True(#results > 0)
-
-          local t = results[1]
-
-          local results, err = dao_factory[collection]:find_by_keys(t)
-          assert.truthy(err)
-          assert.is_daoError(err)
-          assert.True(err.schema)
-          assert.falsy(results)
-
-          -- All those fields are indeed non queryable
-          for k, v in pairs(err.message) do
-            assert.is_not_true(dao_factory[collection]._schema[k].queryable)
-          end
-        end)
-
         it("should handle empty search fields", function()
           local results, err = dao_factory[collection]:find_by_keys({})
           assert.falsy(err)

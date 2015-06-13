@@ -63,4 +63,8 @@ function Migrations:delete_migration(migration_name)
     { cassandra.list({ migration_name }) })
 end
 
+function Migrations:drop()
+  -- never drop this
+end
+
 return { migrations = Migrations }
