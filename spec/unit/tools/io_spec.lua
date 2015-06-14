@@ -29,7 +29,7 @@ describe("IO", function()
     assert.are.same(0, code)
     assert.truthy("Hello", res)
 
-    local res, code = IO.os_execute("asdasda \"Hello\"")
+    local res, code = IO.os_execute("LC_ALL=\"C\";asdasda \"Hello\"")
     assert.are.same(127, code)
     assert.are.same("/bin/bash: asdasda: command not found", res)
   end)
