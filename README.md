@@ -5,6 +5,7 @@
 [![Gitter Badge][gitter-badge]][gitter-url]
 
 - Website: [getkong.org][kong-url]
+- Website repo: https://github.com/Mashape/getkong.org
 - Docs: [getkong.org/docs][kong-docs]
 - Mailing List: [Google Groups][google-groups-url]
 
