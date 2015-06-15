@@ -18,7 +18,7 @@ end
 
 -- Createa migration interface for each database available
 function Migrations:create(configuration, name, callback)
-  for k, _ in pairs(configuration.databases_available) do
+  for k in pairs(configuration.databases_available) do
     local date_str = os.date("%Y-%m-%d-%H%M%S")
     local file_path = IO.path:join(self.migrations_path, k)
     local file_name = date_str.."_"..name

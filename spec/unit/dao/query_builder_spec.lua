@@ -104,11 +104,6 @@ describe("Query Builder", function()
 
   describe("DELETE", function()
 
-    it("should build a DELETE query", function()
-      local q = builder.delete("apis")
-      assert.equal("DELETE FROM apis", q)
-    end)
-
     it("should build a WHERE fragment", function()
       local q = builder.delete("apis", {name="mockbin"})
       assert.equal("DELETE FROM apis WHERE name = ?", q)
@@ -123,6 +118,12 @@ describe("Query Builder", function()
       assert.has_error(function()
         builder.delete()
       end, "column_family must be a string")
+    end)
+
+    it("should throw an error if no where_t", function()
+      assert.has_error(function()
+        builder.delete("apis")
+      end, "where_t must be a table")
     end)
 
   end)

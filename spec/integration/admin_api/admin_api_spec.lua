@@ -405,7 +405,8 @@ describe("Admin API", function()
         end)
 
         it("should update the entity if a full body is given", function()
-          local data = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+          local data, status = http_client.get(base_url.."/"..CREATED_IDS[endpoint.collection])
+          assert.are.equal(200, status)
           local body = json.decode(data)
 
           -- Create new body

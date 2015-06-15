@@ -78,7 +78,6 @@ end
 -- @return error if any
 function CassandraFactory:prepare()
   local function prepare_collection(collection, collection_queries)
-    if not collection_queries then collection_queries = collection._queries end
     for stmt_name, collection_query in pairs(collection_queries) do
       if type(collection_query) == "table" and collection_query.query == nil then
         -- Nested queries, let's recurse to prepare them too
@@ -93,9 +92,11 @@ function CassandraFactory:prepare()
   end
 
   for _, collection in pairs(self.daos) do
-    local status, err = pcall(function() prepare_collection(collection) end)
-    if not status then
-      return err
+    if collection._queries then
+      local status, err = pcall(function() prepare_collection(collection, collection._queries) end)
+      if not status then
+        return err
+      end
     end
   end
 end

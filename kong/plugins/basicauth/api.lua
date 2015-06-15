@@ -41,11 +41,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.basicauth_credentials)
+      crud.patch(self.params, self.credential, dao_factory.basicauth_credentials)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.credential.id, dao_factory.basicauth_credentials)
+      crud.delete({id = self.credential.id}, dao_factory.basicauth_credentials)
     end
   }
 }

@@ -7,7 +7,6 @@
 
 local query_builder = require "kong.dao.cassandra.query_builder"
 local validations = require "kong.dao.schemas_validation"
-local validate = validations.validate
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
@@ -42,42 +41,11 @@ function BaseDao:_unmarshall(t)
   return t
 end
 
--- Run a statement checking if a row exists (false if it does).
--- @param `kong_query`  kong_query to execute
--- @param `t`           args to bind to the statement
--- @param `is_updating` If true, will ignore UNIQUE if same entity
--- @return `unique`     true if doesn't exist (UNIQUE), false otherwise
--- @return `error`      Error if any during execution
-function BaseDao:_check_unique(kong_query, t, is_updating)
-  local results, err = self:_execute_kong_query(kong_query, t)
-  if err then
-    return false, "Error during UNIQUE check: "..err.message
-  elseif results and #results > 0 then
-    if not is_updating then
-      return false
-    else
-      -- If we are updating, we ignore UNIQUE values if coming from the same entity
-      local unique = true
-      for k,v in ipairs(results) do
-        if v.id ~= t.id then
-          unique = false
-          break
-        end
-      end
-
-      return unique
-    end
-  else
-    return true
-  end
-end
-
 -- Run a statement checking if a row exists (true if it does).
 -- @param `kong_query` kong_query to execute
 -- @param `t`          args to bind to the statement
 -- @return `exists`    true if the row exists (FOREIGN), false otherwise
 -- @return `error`     Error if any during the query execution
--- @return `results`   Results of the statement if `exists` is true (useful for :update()
 function BaseDao:_check_foreign(kong_query, t)
   local results, err = self:_execute_kong_query(kong_query, t)
   if err then
@@ -85,7 +53,7 @@ function BaseDao:_check_foreign(kong_query, t)
   elseif not results or #results == 0 then
     return false
   else
-    return true, nil
+    return true
   end
 end
 
@@ -95,7 +63,7 @@ end
 -- @return `error`  Error if any during the query execution
 -- @return `errors` A table with the list of not existing foreign entities
 function BaseDao:_check_all_foreign(t)
-  if not self._queries.__foreign then return true end
+  if not self._queries or not self._queries.__foreign then return true end
 
   local errors
   for k, kong_query in pairs(self._queries.__foreign) do
@@ -105,32 +73,6 @@ function BaseDao:_check_all_foreign(t)
         return false, err
       elseif not exists then
         errors = utils.add_error(errors, k, k.." "..t[k].." does not exist")
-      end
-    end
-  end
-
-  return errors == nil, nil, errors
-end
-
--- Run the UNIQUE on all statements in __unique.
--- @param `t`           args to bind to the __unique statements
--- @param `is_updating` If true, will ignore UNIQUE if same entity
--- @return `unique`     true if all results are UNIQUE, false otherwise
--- @return `error`      Error if any during the query  execution
--- @return `errors`     A table with the list of already existing entities
-function BaseDao:_check_all_unique(t, is_updating)
-  if not self._queries.__unique then return true end
-
-  local errors
-  for k, statement in pairs(self._queries.__unique) do
-    if t[k] or k == "self" then
-      local unique, err = self:_check_unique(statement, t, is_updating)
-      if err then
-        return false, err
-      elseif not unique and k == "self" then
-        return false, nil, self._entity.." already exists"
-      elseif not unique then
-        errors = utils.add_error(errors, k, k.." already exists with value '"..t[k].."'")
       end
     end
   end
@@ -198,7 +140,7 @@ local function encode_cassandra_args(schema, t, args_keys)
   local args_to_bind = {}
   local errors
   for _, column in ipairs(args_keys) do
-    local schema_field = schema[column]
+    local schema_field = schema.fields[column]
     local arg = t[column]
 
     if schema_field.type == "id" and arg then
@@ -405,41 +347,31 @@ end
 -- @return `result` Inserted entity or nil
 -- @return `error`  Error if any during the execution
 function BaseDao:insert(t)
+  assert(t ~= nil, "Cannot insert a nil element")
+  assert(type(t) == "table", "Entity to insert must be a table")
+
   local ok, err, errors
-  if not t then
-    return nil, DaoError("Cannot insert a nil element", error_types.SCHEMA)
-  end
 
   -- Populate the entity with any default/overriden values and validate it
-  ok, errors = validate(t, self._schema, { dao_insert = function(field)
-    if field.type == "id" then
-      return uuid()
-    elseif field.type == "timestamp" then
-      return timestamp.get_utc()
+  err = validations.validate(t, self, {
+    dao_insert = function(field)
+      if field.type == "id" then
+        return uuid()
+      elseif field.type == "timestamp" then
+        return timestamp.get_utc()
+      end
     end
-  end })
+  })
+  if err then
+    return nil, err
+  end
+
+  ok, err = validations.on_insert(t, self._schema, self._factory)
   if not ok then
-    return nil, DaoError(errors, error_types.SCHEMA)
-  end
-
-  -- Check UNIQUE values
-  ok, err, errors = self:_check_all_unique(t)
-  if err then
-    return nil, DaoError(err, error_types.DATABASE)
-  elseif not ok then
-    return nil, DaoError(errors, error_types.UNIQUE)
-  end
-
-  -- Check foreign entities EXIST
-  ok, err, errors = self:_check_all_foreign(t)
-  if err then
-    return nil, DaoError(err, error_types.DATABASE)
-  elseif not ok then
-    return nil, DaoError(errors, error_types.FOREIGN)
+    return nil, err
   end
 
   local insert_q, columns = query_builder.insert(self._table, t)
-
   local _, stmt_err = self:_execute_kong_query({ query = insert_q, args_keys = columns }, self:_marshall(t))
   if stmt_err then
     return nil, stmt_err
@@ -454,10 +386,10 @@ end
 -- @return `result` Updated entity or nil
 -- @return `error`  Error if any during the execution
 function BaseDao:update(t)
+  assert(t ~= nil, "Cannot update a nil element")
+  assert(type(t) == "table", "Entity to update must be a table")
+
   local ok, err, errors
-  if not t then
-    return nil, DaoError("Cannot update a nil element", error_types.SCHEMA)
-  end
 
   -- Extract primary keys from the entity
   local t_without_primary_keys = utils.deep_copy(t)
@@ -467,10 +399,9 @@ function BaseDao:update(t)
     t_without_primary_keys[v] = nil
   end
 
-  local unique_q, unique_q_columns = query_builder.select(self._table, t_only_primary_keys)
-
-  -- Check if exists to prevent upsert and manually set UNSET values (pfffff...)
-  ok, err = self:_check_foreign({query = unique_q, args_keys = unique_q_columns}, t_only_primary_keys)
+  -- Check if exists to prevent upsert
+  local exists_q, exists_q_columns = query_builder.select(self._table, t_only_primary_keys)
+  ok, err = self:_check_foreign({query = exists_q, args_keys = exists_q_columns}, t_only_primary_keys)
   if err then
     return nil, err
   elseif not ok then
@@ -478,25 +409,9 @@ function BaseDao:update(t)
   end
 
   -- Validate schema
-  ok, errors = validate(t, self._schema, {is_update = true})
-  if not ok then
-    return nil, DaoError(errors, error_types.SCHEMA)
-  end
-
-  -- Check UNIQUE with update
-  ok, err, errors = self:_check_all_unique(t, true)
+  err = validations.validate(t, self, { is_update = next(t_without_primary_keys) ~= nil}) -- hack
   if err then
-    return nil, DaoError(err, error_types.DATABASE)
-  elseif not ok then
-    return nil, DaoError(errors, error_types.UNIQUE)
-  end
-
-  -- Check FOREIGN entities
-  ok, err, errors = self:_check_all_foreign(t)
-  if err then
-    return nil, DaoError(err, error_types.DATABASE)
-  elseif not ok then
-    return nil, DaoError(errors, error_types.FOREIGN)
+    return nil, err
   end
 
   local update_q, columns = query_builder.update(self._table, t_without_primary_keys, t_only_primary_keys, self._primary_key)
@@ -512,10 +427,21 @@ end
 -- Execute the SELECT_ONE kong_query of a DAO entity.
 -- @param  `args_keys` Keys to bind to the `select_one` query.
 -- @return `result`    The first row of the _execute_kong_query() return value
-function BaseDao:find_one(where_t)
-  local select_q, where_columns = query_builder.select(self._table, where_t)
+function BaseDao:find_by_primary_key(where_t)
+  assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have primary_keys")
 
-  local data, err = self:_execute_kong_query({ query = select_q, args_keys = where_columns }, where_t)
+  local primary_keys = {}
+  for i, k in pairs(self._primary_key) do
+    if i == 1 and not where_t[k] then
+      -- The primary key was not specified, Cassandra won't be able to retrieve anything
+      return nil
+    else
+      primary_keys[k] = where_t[k]
+    end
+  end
+
+  local select_q, where_columns = query_builder.select(self._table, primary_keys)
+  local data, err = self:_execute_kong_query({ query = select_q, args_keys = where_columns }, primary_keys)
 
   -- Return the 1st and only element of the result set
   if data and utils.table_size(data) > 0 then
@@ -555,8 +481,10 @@ end
 -- @return `success` True if deleted, false if otherwise or not found
 -- @return `error`   Error if any during the query execution
 function BaseDao:delete(where_t)
-  local q, where_columns = query_builder.select(self._table, where_t, self._primary_key)
+  assert(where_t ~= nil, "where_t must not be nil")
 
+  -- Test if exists first
+  local q, where_columns = query_builder.select(self._table, where_t, self._primary_key)
   local exists, err = self:_check_foreign({ query = q, args_keys = where_columns }, where_t)
   if err then
     return false, err

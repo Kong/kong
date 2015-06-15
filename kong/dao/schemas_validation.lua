@@ -1,8 +1,8 @@
-local uuid = require "uuid"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-
-uuid.seed()
+local DaoError = require "kong.dao.error"
+local constants = require "kong.constants"
+local error_types = constants.DATABASE_ERROR_TYPES
 
 local POSSIBLE_TYPES = {
   id = true,
@@ -37,13 +37,12 @@ local _M = {}
 --           `is_update`  For an entity update, check immutable fields. Set to true.
 -- @return `valid`     Success of validation. True or false.
 -- @return `errors`    A list of encountered errors during the validation.
-function _M.validate(t, schema, options)
+function _M.validate_fields(t, schema, options)
   if not options then options = {} end
   local errors
 
   -- Check the given table against a given schema
-  for column, v in pairs(schema) do
-
+  for column, v in pairs(schema.fields) do
     if not options.is_update then
       -- [DEFAULT] Set default value for the field if given
       if t[column] == nil and v.default ~= nil then
@@ -132,7 +131,7 @@ function _M.validate(t, schema, options)
 
       if sub_schema then
         -- Check for sub-schema defaults and required properties in advance
-        for sub_field_k, sub_field in pairs(sub_schema) do
+        for sub_field_k, sub_field in pairs(sub_schema.fields) do
           if t[column] == nil then
             if sub_field.default then -- Sub-value has a default, be polite and pre-assign the sub-value
               t[column] = {}
@@ -144,7 +143,7 @@ function _M.validate(t, schema, options)
 
         if t[column] and type(t[column]) == "table" then
           -- Actually validating the sub-schema
-          local s_ok, s_errors = _M.validate(t[column], sub_schema, options)
+          local s_ok, s_errors = _M.validate_fields(t[column], sub_schema, options)
           if not s_ok then
             for s_k, s_v in pairs(s_errors) do
               errors = utils.add_error(errors, column.."."..s_k, s_v)
@@ -178,14 +177,92 @@ function _M.validate(t, schema, options)
   end
 
   -- Check for unexpected fields in the entity
-  for k, v in pairs(t) do
-    if schema[k] == nil then
+  for k in pairs(t) do
+    if schema.fields[k] == nil then
       errors = utils.add_error(errors, k, k.." is an unknown field")
     end
   end
 
   return errors == nil, errors
 end
+
+function _M.on_insert(t, schema, dao)
+  if schema.on_insert and type(schema.on_insert) == "function" then
+    local valid, err = schema.on_insert(t, dao)
+    if not valid or err then
+      return false, err
+    else
+      return true
+    end
+  else
+    return true
+  end
+end
+
+local function check_unique_fields(t, dao)
+  local errors
+
+  for k, field in pairs(dao._schema.fields) do
+    if field.unique and t[k] ~= nil then
+      local res, err = dao:find_by_keys {[k] = t[k]}
+      if err then
+        return false, nil, "Error during UNIQUE check: "..err.message
+      elseif res and #res > 0 then
+        errors = utils.add_error(errors, k, k.." already exists with value '"..t[k].."'")
+      end
+    end
+  end
+
+  return errors == nil, errors
+end
+
+local function check_foreign_fields(t, schema, dao_factory)
+  local errors, foreign_type, foreign_field, res, err
+
+  for k, field in pairs(schema.fields) do
+    if field.foreign ~= nil and type(field.foreign) == "string" then
+      foreign_type, foreign_field = unpack(stringy.split(field.foreign, ":"))
+      if foreign_type and foreign_field and dao_factory[foreign_type] and t[k] ~= nil and t[k] ~= constants.DATABASE_NULL_ID then
+        res, err = dao_factory[foreign_type]:find_by_keys {[foreign_field] = t[k]}
+        if err then
+          return false, nil, "Error during FOREIGN check: "..err.message
+        elseif not res or #res == 0 then
+          errors = utils.add_error(errors, k, k.." "..t[k].." does not exist")
+        end
+      end
+    end
+  end
+
+  return errors == nil, errors
+end
+
+function _M.validate(t, dao, options)
+  local ok, errors, db_err
+
+  ok, errors = _M.validate_fields(t, dao._schema, options)
+  if not ok then
+    return DaoError(errors, error_types.SCHEMA)
+  end
+
+  ok, errors, db_err = check_unique_fields(t, dao)
+  if db_err then
+    return DaoError(db_err, error_types.DATABASE)
+  elseif not ok then
+    return DaoError(errors, error_types.UNIQUE)
+  end
+
+  ok, errors, db_err = check_foreign_fields(t, dao._schema, dao._factory)
+  if db_err then
+    return DaoError(db_err, error_types.DATABASE)
+  elseif not ok then
+    return DaoError(errors, error_types.FOREIGN)
+  end
+end
+
+
+
+
+
 
 local digit = "[0-9a-f]"
 local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"

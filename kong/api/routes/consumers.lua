@@ -25,8 +25,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      self.params.id = self.consumer.id
-      crud.patch(self.params, dao_factory.consumers)
+      crud.patch(self.params, self.consumer, dao_factory.consumers)
     end,
 
     DELETE = function(self, dao_factory, helpers)
