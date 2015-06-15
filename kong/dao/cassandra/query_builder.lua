@@ -5,8 +5,6 @@ local function trim(s)
 end
 
 local function select_fragment(column_family, select_columns)
-  assert(type(column_family) == "string", "column_family must be a string")
-
   if select_columns then
     assert(type(select_columns) == "table", "select_columns must be a table")
     select_columns = table.concat(select_columns, ", ")
@@ -18,9 +16,6 @@ local function select_fragment(column_family, select_columns)
 end
 
 local function insert_fragment(column_family, insert_values)
-  assert(type(column_family) == "string", "column_family must be a string")
-  assert(type(insert_values) == "table", "insert_values must be a table")
-
   local values_placeholders, columns = {}, {}
   for column, value in pairs(insert_values) do
     table.insert(values_placeholders, "?")
@@ -34,9 +29,6 @@ local function insert_fragment(column_family, insert_values)
 end
 
 local function update_fragment(column_family, update_values)
-  assert(type(column_family) == "string", "column_family must be a string")
-  assert(type(update_values) == "table", "update_values must be a table")
-
   local placeholders, update_columns = {}, {}
   for column in pairs(update_values) do
     table.insert(update_columns, column)
@@ -49,13 +41,11 @@ local function update_fragment(column_family, update_values)
 end
 
 local function delete_fragment(column_family)
-  assert(type(column_family) == "string", "column_family must be a string")
-
   return string.format("DELETE FROM %s", column_family)
 end
 
 local function where_fragment(where_t, primary_keys)
-  if not where_t or not next(where_t) then
+  if not where_t or next(where_t) == nil then
     return ""
   else
     assert(type(where_t) == "table", "where_t must be a table")
@@ -86,6 +76,8 @@ local function where_fragment(where_t, primary_keys)
 end
 
 function _M.select(column_family, where_t, primary_keys, select_columns)
+  assert(type(column_family) == "string", "column_family must be a string")
+
   local select_str = select_fragment(column_family, select_columns)
   local where_str, columns = where_fragment(where_t, primary_keys)
 
@@ -93,10 +85,18 @@ function _M.select(column_family, where_t, primary_keys, select_columns)
 end
 
 function _M.insert(column_family, insert_values)
+  assert(type(column_family) == "string", "column_family must be a string")
+  assert(type(insert_values) == "table", "insert_values must be a table")
+  assert(next(insert_values) ~= nil, "insert_values cannot be empty")
+
   return insert_fragment(column_family, insert_values)
 end
 
 function _M.update(column_family, update_values, where_t, primary_keys)
+  assert(type(column_family) == "string", "column_family must be a string")
+  assert(type(update_values) == "table", "update_values must be a table")
+  assert(next(update_values) ~= nil, "update_values cannot be empty")
+
   local update_str, update_columns = update_fragment(column_family, update_values)
   local where_str, where_columns = where_fragment(where_t, primary_keys)
 
@@ -114,6 +114,10 @@ function _M.update(column_family, update_values, where_t, primary_keys)
 end
 
 function _M.delete(column_family, where_t, primary_keys)
+  assert(type(column_family) == "string", "column_family must be a string")
+  assert(type(where_t) == "table", "where_t must be a table")
+  assert(next(where_t) ~= nil, "where_t cannot be empty")
+
   local delete_str = delete_fragment(column_family)
   local where_str, columns = where_fragment(where_t, primary_keys)
 
@@ -122,6 +126,7 @@ end
 
 function _M.truncate(column_family)
   assert(type(column_family) == "string", "column_family must be a string")
+
   return "TRUNCATE "..column_family
 end
 

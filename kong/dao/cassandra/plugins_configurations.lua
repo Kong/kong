@@ -12,12 +12,6 @@ function PluginsConfigurations:new(properties)
   self._schema = plugins_configurations_schema
   self._primary_key = {"id", "name"}
   self._queries = {
-    __unique = {
-      self = {
-        args_keys = { "api_id", "consumer_id", "name" },
-        query = [[ SELECT * FROM plugins_configurations WHERE api_id = ? AND consumer_id = ? AND name = ? ALLOW FILTERING; ]]
-      }
-    },
     __foreign = {
       api_id = {
         args_keys = { "api_id" },
@@ -57,8 +51,11 @@ function PluginsConfigurations:_unmarshall(t)
 end
 
 -- @override
-function PluginsConfigurations:delete(where_t)
-  return PluginsConfigurations.super.delete(self, {id = where_t.id})
+function PluginsConfigurations:update(t)
+  if not t.consumer_id then
+    t.consumer_id = constants.DATABASE_NULL_ID
+  end
+  return PluginsConfigurations.super.update(self, t)
 end
 
 function PluginsConfigurations:find_distinct()

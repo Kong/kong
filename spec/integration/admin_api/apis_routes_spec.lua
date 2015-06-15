@@ -232,7 +232,7 @@ describe("Admin API", function()
           assert.equal(201, status)
           local body = json.decode(response)
 
-          local _, err = dao_plugins:delete(body.id)
+          local _, err = dao_plugins:delete({id = body.id, name = body.name})
           assert.falsy(err)
 
           response, status = http_client.post(BASE_URL, {
@@ -242,7 +242,7 @@ describe("Admin API", function()
           assert.equal(201, status)
           body = json.decode(response)
 
-          _, err = dao_plugins:delete(body.id)
+          _, err = dao_plugins:delete({id = body.id, name = body.name})
           assert.falsy(err)
         end)
 
@@ -263,7 +263,7 @@ describe("Admin API", function()
           assert.equal(201, status)
           local body = json.decode(response)
 
-          local _, err = dao_plugins:delete(body.id)
+          local _, err = dao_plugins:delete({id = body.id, name = body.name})
           assert.falsy(err)
 
           response, status = http_client.put(BASE_URL, {
@@ -274,7 +274,7 @@ describe("Admin API", function()
           body = json.decode(response)
 
           response, status = http_client.put(BASE_URL, {
-            id=body.id,
+            id = body.id,
             name = "keyauth",
             value = {key_names={"updated_apikey"}}
           }, {["content-type"]="application/json"})
@@ -358,7 +358,7 @@ describe("Admin API", function()
             assert.equal(404, status)
           end)
 
-          it("[SUCCESS] should delete an API", function()
+          it("[SUCCESS] should delete a plugin configuration", function()
             local response, status = http_client.delete(BASE_URL..plugin.id)
             assert.equal(204, status)
             assert.falsy(response)

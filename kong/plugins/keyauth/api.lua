@@ -30,22 +30,22 @@ return {
         return helpers.yield_error(err)
       end
 
-      self.plugin = data[1]
-      if not self.plugin then
+      self.credential = data[1]
+      if not self.credential then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.plugin)
+      return helpers.responses.send_HTTP_OK(self.credential)
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.keyauth_credentials)
+      crud.patch(self.params, self.credential, dao_factory.keyauth_credentials)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin.id, dao_factory.keyauth_credentials)
+      crud.delete({id = self.credential.id}, dao_factory.keyauth_credentials)
     end
   }
 }

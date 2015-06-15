@@ -9,28 +9,30 @@ describe("Schemas", function()
   -- grab a pair of glasses, this stuff can literally explode.
   describe("#validate()", function()
     local schema = {
-      string = { type = "string", required = true, immutable = true },
-      table = { type = "table" },
-      number = { type = "number" },
-      url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
-      date = { default = 123456, immutable = true },
-      allowed = { enum = { "hello", "world" }},
-      boolean_val = { type = "boolean" },
-      default = { default = function(t)
-                              assert.truthy(t)
-                              return "default"
-                            end },
-      custom = { func = function(v, t)
-                          if v then
-                            if t.default == "test_custom_func" then
-                              return true
+      fields = {
+        string = { type = "string", required = true, immutable = true },
+        table = { type = "table" },
+        number = { type = "number" },
+        url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
+        date = { default = 123456, immutable = true },
+        allowed = { enum = { "hello", "world" }},
+        boolean_val = { type = "boolean" },
+        default = { default = function(t)
+                                assert.truthy(t)
+                                return "default"
+                              end },
+        custom = { func = function(v, t)
+                            if v then
+                              if t.default == "test_custom_func" then
+                                return true
+                              else
+                                return false, "Nah"
+                              end
                             else
-                              return false, "Nah"
+                              return true
                             end
-                          else
-                            return true
-                          end
-                        end }
+                          end }
+      }
     }
 
     it("should confirm a valid entity is valid", function()
@@ -134,7 +136,11 @@ describe("Schemas", function()
     end)
 
     it("should consider `id` and `timestamp` as types", function()
-      local s = { id = { type = "id" } }
+      local s = {
+        fields = {
+          id = { type = "id" }
+        }
+      }
 
       local values = { id = "123" }
 
@@ -144,7 +150,11 @@ describe("Schemas", function()
     end)
 
     it("should consider `array` as a type", function()
-      local s = { array = { type = "array" } }
+      local s = {
+        fields = {
+          array = { type = "array" }
+        }
+      }
 
       -- Success
       local values = { array = {"hello", "world"} }
@@ -182,7 +192,11 @@ describe("Schemas", function()
       end)
 
       it("should alias a string to `array`", function()
-        local s = { array = { type = "array" } }
+        local s = {
+          fields = {
+            array = { type = "array" }
+          }
+        }
 
         -- It should also strip the resulting strings
         local values = { array = "hello, world" }
@@ -330,9 +344,11 @@ describe("Schemas", function()
 
     describe("[dao_insert_value]", function()
       local schema = {
-        string = { type = "string"},
-        id = { type = "id", dao_insert_value = true },
-        timestamp = { type = "timestamp", dao_insert_value = true }
+        fields = {
+          string = { type = "string"},
+          id = { type = "id", dao_insert_value = true },
+          timestamp = { type = "timestamp", dao_insert_value = true }
+        }
       }
 
       it("should call a given function when encountering a field with `dao_insert_value`", function()
@@ -385,7 +401,11 @@ describe("Schemas", function()
 
     it("should not check a custom function if a `required` condition is false already", function()
       local f = function() error("should not be called") end -- cannot use a spy which changes the type to table
-      local schema = { property = { required = true, func = f } }
+      local schema = {
+        fields = {
+          property = { required = true, func = f }
+        }
+      }
 
       assert.has_no_errors(function()
         local valid, err = validate({}, schema)
@@ -407,17 +427,21 @@ describe("Schemas", function()
                                        return nil, "Error loading the sub-sub-schema"
                                      end
 
-                                     return { sub_sub_field_required = { required = true } }
+                                     return { fields = {sub_sub_field_required = { required = true }} }
                                    end
       local nested_schema = {
-        some_required = { required = true },
-        sub_schema = {
-          type = "table",
-          schema = {
-            sub_field_required = { required = true },
-            sub_field_default = { default = "abcd" },
-            sub_field_number = { type = "number" },
-            error_loading_sub_sub_schema = {}
+        fields = {
+          some_required = { required = true },
+          sub_schema = {
+            type = "table",
+            schema = {
+              fields = {
+                sub_field_required = { required = true },
+                sub_field_default = { default = "abcd" },
+                sub_field_number = { type = "number" },
+                error_loading_sub_sub_schema = {}
+              }
+            }
           }
         }
       }
@@ -441,7 +465,7 @@ describe("Schemas", function()
       end)
 
       it("should validate a property with a sub-schema from a function", function()
-        nested_schema.sub_schema.schema.sub_sub_schema = { schema = schema_from_function }
+        nested_schema.fields.sub_schema.schema.fields.sub_sub_schema = { schema = schema_from_function }
 
         -- Success
         local values = { some_required = "somestring", sub_schema = {
@@ -502,7 +526,9 @@ describe("Schemas", function()
         end
 
         local schema = {
-          value = { type = "table", schema = {some_property={default="hello"}}, func = validate_value, required = true }
+          fields = {
+            value = { type = "table", schema = { fields = {some_property={default="hello"}}}, func = validate_value, required = true }
+          }
         }
 
         local obj = {}
@@ -514,7 +540,9 @@ describe("Schemas", function()
 
       it("should mark a value required if sub-schema has a `required`", function()
         local schema = {
-          value = { type = "table", schema = {some_property={required=true}} }
+          fields = {
+            value = { type = "table", schema = {fields = {some_property={required=true}}} }
+          }
         }
 
         local obj = {}

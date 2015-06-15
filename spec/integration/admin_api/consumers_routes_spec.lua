@@ -157,9 +157,9 @@ describe("Admin API", function()
           local _, status = http_client.patch(BASE_URL.."hello", {username="patch-updated"})
           assert.equal(404, status)
 
-          local response, status = http_client.patch(BASE_URL..consumer.id, {username=""})
+          local response, status = http_client.patch(BASE_URL..consumer.id, {username=" "})
           assert.equal(400, status)
-          assert.equal('{"custom_id":"At least a \'custom_id\' or a \'username\' must be specified","username":"username is not a string"}\n', response)
+          assert.equal('{"username":"At least a \'custom_id\' or a \'username\' must be specified"}\n', response)
         end)
       end)
 

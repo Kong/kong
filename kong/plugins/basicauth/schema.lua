@@ -1,3 +1,5 @@
 return {
-  hide_credentials = { type = "boolean", default = false }
+  fields = {
+    hide_credentials = { type = "boolean", default = false }
+  }
 }
