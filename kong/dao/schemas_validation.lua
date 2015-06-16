@@ -199,70 +199,14 @@ function _M.on_insert(t, schema, dao)
   end
 end
 
-local function check_unique_fields(t, dao)
-  local errors
-
-  for k, field in pairs(dao._schema.fields) do
-    if field.unique and t[k] ~= nil then
-      local res, err = dao:find_by_keys {[k] = t[k]}
-      if err then
-        return false, nil, "Error during UNIQUE check: "..err.message
-      elseif res and #res > 0 then
-        errors = utils.add_error(errors, k, k.." already exists with value '"..t[k].."'")
-      end
-    end
-  end
-
-  return errors == nil, errors
-end
-
-local function check_foreign_fields(t, schema, dao_factory)
-  local errors, foreign_type, foreign_field, res, err
-
-  for k, field in pairs(schema.fields) do
-    if field.foreign ~= nil and type(field.foreign) == "string" then
-      foreign_type, foreign_field = unpack(stringy.split(field.foreign, ":"))
-      if foreign_type and foreign_field and dao_factory[foreign_type] and t[k] ~= nil and t[k] ~= constants.DATABASE_NULL_ID then
-        res, err = dao_factory[foreign_type]:find_by_keys {[foreign_field] = t[k]}
-        if err then
-          return false, nil, "Error during FOREIGN check: "..err.message
-        elseif not res or #res == 0 then
-          errors = utils.add_error(errors, k, k.." "..t[k].." does not exist")
-        end
-      end
-    end
-  end
-
-  return errors == nil, errors
-end
-
 function _M.validate(t, dao, options)
-  local ok, errors, db_err
+  local ok, errors 
 
   ok, errors = _M.validate_fields(t, dao._schema, options)
   if not ok then
     return DaoError(errors, error_types.SCHEMA)
   end
-
-  ok, errors, db_err = check_unique_fields(t, dao)
-  if db_err then
-    return DaoError(db_err, error_types.DATABASE)
-  elseif not ok then
-    return DaoError(errors, error_types.UNIQUE)
-  end
-
-  ok, errors, db_err = check_foreign_fields(t, dao._schema, dao._factory)
-  if db_err then
-    return DaoError(db_err, error_types.DATABASE)
-  elseif not ok then
-    return DaoError(errors, error_types.FOREIGN)
-  end
 end
-
-
-
-
-
 
 local digit = "[0-9a-f]"
 local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
