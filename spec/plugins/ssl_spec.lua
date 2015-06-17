@@ -184,7 +184,7 @@ IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
   end)
   
   describe("should work with curl", function()
-    local response, status = http_client.get(API_URL.."/apis/", {public_dns="ssl3.com"})
+    local response = http_client.get(API_URL.."/apis/", {public_dns="ssl3.com"})
     local api_id = cjson.decode(response).data[1].id
     local current_path = IO.os_execute("pwd")
     local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"value.cert=@"..current_path.."/ssl/kong-default.crt\" --form \"value.key=@"..current_path.."/ssl/kong-default.key\"")
