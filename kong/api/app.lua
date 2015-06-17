@@ -5,6 +5,13 @@ local responses = require "kong.tools.responses"
 local app_helpers = require "lapis.application"
 local app = lapis.Application()
 
+-- Parses a form value, handling multipart/data values
+-- @param `v` The value object
+-- @return The parsed value
+local function parse_value(v)
+  return type(v) == "table" and v.content or v -- Handle multipart
+end
+
 -- Put nested keys in objects:
 -- Normalize dotted keys in objects.
 -- Example: {["key.value.sub"]=1234} becomes {key = {value = {sub=1234}}
@@ -42,9 +49,9 @@ local function normalize_nested_params(obj)
     -- normalize sub-keys with dot notation
     local keys = stringy.split(k, ".")
     if #keys > 1 then -- we have a key containing a dot
-      attach_dotted_key(keys, new_obj, v)
+      attach_dotted_key(keys, new_obj, parse_value(v))
     else
-      new_obj[k] = v -- nothing special with that key, simply attaching the value
+      new_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
     end
   end
 
