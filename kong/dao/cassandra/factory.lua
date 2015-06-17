@@ -83,7 +83,7 @@ function CassandraFactory:prepare()
         -- Nested queries, let's recurse to prepare them too
         prepare_collection(collection, collection_query)
       else
-        local _, err = collection:prepare_kong_statement(collection_query)
+        local _, err = collection:prepare(collection_query)
         if err then
           error(err)
         end

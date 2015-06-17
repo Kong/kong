@@ -15,7 +15,7 @@ end
 function Apis:find_all()
   local apis = {}
   local select_q = query_builder.select(self._table)
-  for _, rows, page, err in Apis.super._execute_kong_query(self, {query = select_q}, nil, {auto_paging=true}) do
+  for _, rows, page, err in Apis.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end
@@ -39,7 +39,7 @@ function Apis:delete(where_t)
   local plugins_dao = self._factory.plugins_configurations
   local select_q, columns = query_builder.select(plugins_dao._table, {api_id = where_t.id}, self._primary_key)
 
-  for _, rows, page, err in plugins_dao:_execute_kong_query({query = select_q, args_keys = columns}, {api_id=where_t.id}, {auto_paging=true}) do
+  for _, rows, page, err in plugins_dao:execute(select_q, columns, {api_id=where_t.id}, {auto_paging=true}) do
     if err then
       return nil, err
     end
