@@ -7,6 +7,7 @@ local cjson = require "cjson"
 
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 local STUB_GET_URL = spec_helper.STUB_GET_URL
+local API_URL = spec_helper.API_URL
 
 describe("SSL Plugin", function()
 
@@ -16,6 +17,7 @@ describe("SSL Plugin", function()
       api = {
         { name = "API TESTS 11 (ssl)", public_dns = "ssl1.com", target_url = "http://mockbin.com" },
         { name = "API TESTS 12 (ssl)", public_dns = "ssl2.com", target_url = "http://mockbin.com" },
+        { name = "API TESTS 13 (ssl)", public_dns = "ssl3.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
             { name = "ssl", value = { cert = [[
@@ -179,6 +181,14 @@ IN2a44ptbkUjN8U0WeTGMBP/XfK3SvV6wAKAE3cDB2c=
       assert.are.equal(200, status)
     end)
 
+  end)
+  
+  describe("should work with curl", function()
+    local response, status = http_client.get(API_URL.."/apis/", {public_dns="ssl3.com"})
+    local api_id = cjson.decode(response).data[1].id
+    local current_path = IO.os_execute("pwd")
+    local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"value.cert=@"..current_path.."/ssl/kong-default.crt\" --form \"value.key=@"..current_path.."/ssl/kong-default.key\"")
+    assert.are.equal("201", res)
   end)
 
 end)

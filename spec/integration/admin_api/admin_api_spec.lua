@@ -1,6 +1,8 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
+local IO = require "kong.tools.io"
+local stringy = require "stringy"
 
 local CREATED_IDS = {}
 local ENDPOINTS = {
@@ -167,6 +169,27 @@ describe("Admin API", function()
           local response, status = http_client.post_multipart(base_url.."/", {})
           assert.are.equal(400, status)
           assert.are.equal(endpoint.error_message, response)
+        end)
+
+        it("should create an entity with a valid body with curl multipart", function()
+          -- Replace the IDs
+          attach_ids()
+
+          local curl_str = "curl -s "..base_url.."/"
+          for k, v in pairs(endpoint.entity.form) do
+            local tmp = os.tmpname()
+            IO.write_to_file(tmp, v)
+            curl_str = curl_str.." --form \""..k.."=@"..tmp.."\""
+          end
+
+          local res = IO.os_execute(curl_str)
+          local body = json.decode(res)
+          assert.truthy(body)
+          assert.truthy(body.id)
+
+          http_client.delete(base_url.."/"..body.id)
+
+          CREATED_IDS[endpoint.collection] = body.id
         end)
 
         it("should create an entity with a valid body", function()

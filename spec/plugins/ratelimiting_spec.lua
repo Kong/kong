@@ -4,6 +4,15 @@ local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
+local function wait()
+  -- Wait til the beginning of a new second before starting the test
+  -- to avoid ending up in an edge case when the second is about to end
+  local now = os.time()
+  while os.time() < now + 1 do
+    -- Nothing
+  end
+end
+
 describe("RateLimiting Plugin", function()
 
   setup(function()
@@ -39,6 +48,8 @@ describe("RateLimiting Plugin", function()
   describe("Without authentication (IP address)", function()
 
     it("should get blocked if exceeding limit", function()
+      wait()
+
       -- Default ratelimiting plugin for this API says 6/minute
       local limit = 6
 
@@ -63,6 +74,8 @@ describe("RateLimiting Plugin", function()
     describe("Default plugin", function()
 
       it("should get blocked if exceeding limit", function()
+        wait()
+        
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
@@ -85,6 +98,8 @@ describe("RateLimiting Plugin", function()
     describe("Plugin customized for specific consumer", function()
 
       it("should get blocked if exceeding limit", function()
+        wait()
+
         -- This plugin says this consumer can make 4 requests/minute, not 6 like the default
         local limit = 8
 
