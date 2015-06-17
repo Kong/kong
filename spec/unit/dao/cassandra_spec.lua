@@ -116,6 +116,7 @@ describe("Cassandra DAO", function()
       end)
 
       it("should raise an error if cannot connect to Cassandra", function()
+        pending()
         local new_factory = CassandraFactory({ hosts = "127.0.0.1",
                                                port = 45678,
                                                timeout = 1000,

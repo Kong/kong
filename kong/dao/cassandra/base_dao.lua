@@ -128,23 +128,20 @@ end
 -- @return `statement` The prepared cassandra statement
 -- @return `cache_key` The cache key used to store it into the cache
 -- @return `error`     Error if any during the query preparation
-function BaseDao:_get_or_prepare(kong_query)
-  local query
-  if type(kong_query) == "string" then
-    query = kong_query
-  elseif kong_query.query then
-    query = kong_query.query
+function BaseDao:get_or_prepare_stmt(query)
+  if type(query) == "string" then
+    query = stringy.strip(query)
   else
     -- Cannot be prepared (probably a BatchStatement)
-    return kong_query
+    return query
   end
 
   local statement, err
   -- Retrieve the prepared statement from cache or prepare and cache
-  if self._statements_cache[kong_query.query] then
-    statement = self._statements_cache[kong_query.query].statement
+  if self._statements_cache[query] then
+    statement = self._statements_cache[query].statement
   else
-    statement, err = self:prepare_kong_statement(kong_query)
+    statement, err = self:prepare(query)
     if err then
       return nil, query, err
     end
@@ -217,18 +214,18 @@ end
 -- @param `args_to_bind` Key/value table of arguments to bind
 -- @param `options`      Options to pass to lua-resty-cassandra :execute()
 -- @return :_execute()
-function BaseDao:_execute_kong_query(operation, args_to_bind, options)
+function BaseDao:execute(query, columns, args_to_bind, options)
   -- Prepare query and cache the prepared statement for later call
-  local statement, cache_key, err = self:_get_or_prepare(operation)
+  local statement, cache_key, err = self:get_or_prepare_stmt(query)
   if err then
     return nil, err
   end
 
   -- Build args array if operation has some
   local args
-  if operation.args_keys and args_to_bind then
+  if columns and args_to_bind then
     local errors
-    args, errors = encode_cassandra_args(self._schema, args_to_bind, operation.args_keys)
+    args, errors = encode_cassandra_args(self._schema, args_to_bind, columns)
     if errors then
       return nil, DaoError(errors, error_types.INVALID_TYPE)
     end
@@ -242,7 +239,7 @@ function BaseDao:_execute_kong_query(operation, args_to_bind, options)
     end
     -- If the statement was declared unprepared, clear it from the cache, and try again.
     self._statements_cache[cache_key] = nil
-    return self:_execute_kong_query(operation, args_to_bind, options)
+    return self:execute(query, columns, args_to_bind, options)
   end
 
   return results, err
@@ -257,29 +254,20 @@ end
 --   Since lua-resty-cassandra doesn't support binding by name yet, we need
 --   to keep a record of properties to bind for each statement. Thus, a "kong query"
 --   is an object made of a prepared statement and an array of columns to bind.
---   See :_execute_kong_query() for the usage of this args_keys array doing the binding.
+--   See :execute() for the usage of this args_keys array doing the binding.
 -- @param `kong_query` The kong_query to prepare and insert into the cache.
 -- @return `statement` The prepared statement, ready to be used by lua-resty-cassandra.
 -- @return `error`     Error if any during the preparation of the statement
-function BaseDao:prepare_kong_statement(kong_query)
-  -- _queries can contain strings or tables with string + keys of arguments to bind
-  local query
-  if type(kong_query) == "string" then
-    query = kong_query
-  elseif kong_query.query then
-    query = kong_query.query
-  end
-
-  -- handle SELECT queries with %s for dynamic select by keys
-  local query_to_prepare = string.format(query, "")
-  query_to_prepare = stringy.strip(query_to_prepare)
+function BaseDao:prepare(query)
+  assert(type(query) == "string", "Query to prepare must be a string")
+  query = stringy.strip(query)
 
   local session, err = self:_open_session()
   if err then
     return nil, err
   end
 
-  local prepared_stmt, prepare_err = session:prepare(query_to_prepare)
+  local prepared_stmt, prepare_err = session:prepare(query)
 
   local err = self:_close_session(session)
   if err then
@@ -291,8 +279,6 @@ function BaseDao:prepare_kong_statement(kong_query)
   else
     -- cache key is the non-striped/non-formatted query from _queries
     self._statements_cache[query] = {
-      query = query,
-      args_keys = kong_query.args_keys,
       statement = prepared_stmt
     }
 
@@ -313,8 +299,8 @@ function BaseDao:check_unique_fields(t, is_update)
         if is_update then
           -- If update, check if the retrieved entity is not the entity itself
           res = res[1]
-          for key_k, key_v in ipairs(self._primary_key) do
-            if t[key_k] ~= res[key_k] then
+          for _, key in ipairs(self._primary_key) do
+            if t[key] ~= res[key] then
               is_self = false
               break
             end
@@ -396,9 +382,9 @@ function BaseDao:insert(t)
   elseif not ok then
     return nil, DaoError(errors, error_types.FOREIGN)
   end
-  
+
   local insert_q, columns = query_builder.insert(self._table, t)
-  local _, stmt_err = self:_execute_kong_query({ query = insert_q, args_keys = columns }, self:_marshall(t))
+  local _, stmt_err = self:execute(insert_q, columns, self:_marshall(t))
   if stmt_err then
     return nil, stmt_err
   else
@@ -455,7 +441,7 @@ function BaseDao:update(t)
 
   local update_q, columns = query_builder.update(self._table, t_without_primary_keys, t_only_primary_keys, self._primary_key)
 
-  local _, stmt_err = self:_execute_kong_query({query = update_q, args_keys = columns}, self:_marshall(t))
+  local _, stmt_err = self:execute(update_q, columns, self:_marshall(t))
   if stmt_err then
     return nil, stmt_err
   else
@@ -465,7 +451,7 @@ end
 
 -- Execute the SELECT_ONE kong_query of a DAO entity.
 -- @param  `args_keys` Keys to bind to the `select_one` query.
--- @return `result`    The first row of the _execute_kong_query() return value
+-- @return `result`    The first row of the execute() return value
 function BaseDao:find_by_primary_key(where_t)
   assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have primary_keys")
 
@@ -480,7 +466,7 @@ function BaseDao:find_by_primary_key(where_t)
   end
 
   local select_q, where_columns = query_builder.select(self._table, primary_keys)
-  local data, err = self:_execute_kong_query({ query = select_q, args_keys = where_columns }, primary_keys)
+  local data, err = self:execute(select_q, where_columns, primary_keys)
 
   -- Return the 1st and only element of the result set
   if data and utils.table_size(data) > 0 then
@@ -497,11 +483,11 @@ end
 -- @param `t`            (Optional) Keys by which to find an entity.
 -- @param `page_size`    Size of the page to retrieve (number of rows).
 -- @param `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
--- @return _execute_kong_query()
+-- @return execute()
 function BaseDao:find_by_keys(where_t, page_size, paging_state)
   local select_q, where_columns = query_builder.select(self._table, where_t, self._primary_key)
 
-  return self:_execute_kong_query({ query = select_q, args_keys = where_columns }, where_t, {
+  return self:execute(select_q, where_columns, where_t, {
     page_size = page_size,
     paging_state = paging_state
   })
@@ -531,12 +517,12 @@ function BaseDao:delete(where_t)
   end
 
   local delete_q, where_columns = query_builder.delete(self._table, where_t, self._primary_key)
-  return self:_execute_kong_query({ query = delete_q, args_keys = where_columns }, where_t)
+  return self:execute(delete_q, where_columns, where_t)
 end
 
 function BaseDao:drop()
   local truncate_q = query_builder.truncate(self._table)
-  return self:_execute_kong_query(truncate_q)
+  return self:execute(truncate_q)
 end
 
 return BaseDao

@@ -11,18 +11,6 @@ function PluginsConfigurations:new(properties)
   self._table = "plugins_configurations"
   self._schema = plugins_configurations_schema
   self._primary_key = {"id", "name"}
-  self._queries = {
-    __foreign = {
-      api_id = {
-        args_keys = { "api_id" },
-        query = [[ SELECT id FROM apis WHERE id = ?; ]]
-      },
-      consumer_id = {
-        args_keys = { "consumer_id" },
-        query = [[ SELECT id FROM consumers WHERE id = ?; ]]
-      }
-    }
-  }
 
   PluginsConfigurations.super.new(self, properties)
 end
@@ -69,7 +57,7 @@ function PluginsConfigurations:find_distinct()
 
   -- Execute query
   local distinct_names = {}
-  for _, rows, page, err in PluginsConfigurations.super._execute_kong_query(self, {query = select_q}, nil, {auto_paging=true}) do
+  for _, rows, page, err in PluginsConfigurations.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end
