@@ -3,6 +3,8 @@ local url = require "socket.url"
 
 local _M = {}
 
+local HTTPS = "https"
+
 -- Generates http payload .
 -- @param `method` http method to be used to send data
 -- @param `parsed_url` contains the host details
@@ -24,7 +26,7 @@ local function parse_url(host_url)
   if not parsed_url.port then
     if parsed_url.scheme == "http" then
       parsed_url.port = 80
-     elseif parsed_url.scheme == "https" then
+     elseif parsed_url.scheme == HTTPS then
       parsed_url.port = 443
      end
   end
@@ -51,6 +53,13 @@ local function log(premature, conf, message)
   if not ok then
     ngx.log(ngx.ERR, "[httplog] failed to connect to "..host..":"..tostring(port)..": ", err)
     return
+  end
+  
+  if parsed_url.scheme == HTTPS then
+    local _, err = sock:sslhandshake(true, host, false)
+    if err then
+      ngx.log(ngx.ERR, "[httplog] failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
+    end
   end
 
   ok, err = sock:send(generate_post_payload(conf.method, parsed_url, message).."\r\n")

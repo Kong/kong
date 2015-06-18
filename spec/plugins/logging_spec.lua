@@ -16,6 +16,14 @@ local HTTP_PORT = 20779
 
 local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
 
+local function create_mock_bin()
+  local res, status = http_client.post("http://mockbin.org/bin/create", '{ "status": 200, "statusText": "OK", "httpVersion": "HTTP/1.1", "headers": [], "cookies": [], "content": { "mimeType" : "application/json" }, "redirectURL": "", "headersSize": 0, "bodySize": 0 }', { ["content-type"] = "application/json" })
+  assert.are.equal(201, status)
+  return res:sub(2, res:len() - 1)
+end
+
+local mock_bin = create_mock_bin()
+
 describe("Logging Plugins", function()
 
   setup(function()
@@ -25,13 +33,15 @@ describe("Logging Plugins", function()
         { name = "tests tcp logging", public_dns = "tcp_logging.com", target_url = "http://mockbin.com" },
         { name = "tests udp logging", public_dns = "udp_logging.com", target_url = "http://mockbin.com" },
         { name = "tests http logging", public_dns = "http_logging.com", target_url = "http://mockbin.com" },
+        { name = "tests https logging", public_dns = "https_logging.com", target_url = "http://mockbin.com" },
         { name = "tests file logging", public_dns = "file_logging.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
         { name = "tcplog", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
         { name = "udplog", value = { host = "127.0.0.1", port = UDP_PORT }, __api = 2 },
         { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT }, __api = 3 },
-        { name = "filelog", value = { path = FILE_LOG_PATH }, __api = 4 }
+        { name = "httplog", value = { http_endpoint = "https://mockbin.org/bin/"..mock_bin }, __api = 4 },
+        { name = "filelog", value = { path = FILE_LOG_PATH }, __api = 5 }
       }
     }
 
@@ -91,6 +101,26 @@ describe("Logging Plugins", function()
     -- Making sure it's alright
     assert.are.same("POST / HTTP/1.1", res[1])
     local log_message = cjson.decode(res[7])
+    assert.are.same("127.0.0.1", log_message.client_ip)
+  end)
+
+  it("should log to HTTPs", function()
+    -- Making the request
+    local _, status = http_client.get(STUB_GET_URL, nil, { host = "https_logging.com" })
+    assert.are.equal(200, status)
+
+    local res, status, body
+    repeat
+      res, status = http_client.get("http://mockbin.org/bin/"..mock_bin.."/log", nil, { accept = "application/json" })
+      assert.are.equal(200, status)
+      body = cjson.decode(res)
+      os.execute("sleep 0.2")
+    until(#body.log.entries > 0)
+
+    assert.are.equal(1, #body.log.entries)
+    local log_message = cjson.decode(body.log.entries[1].request.postData.text)
+
+    -- Making sure it's alright
     assert.are.same("127.0.0.1", log_message.client_ip)
   end)
 
