@@ -5,10 +5,8 @@ local query_builder = require "kong.dao.cassandra.query_builder"
 local Apis = BaseDao:extend()
 
 function Apis:new(properties)
-  self._entity = "API"
   self._table = "apis"
   self._schema = apis_schema
-  self._primary_key = {"id"}
   Apis.super.new(self, properties)
 end
 
@@ -37,9 +35,9 @@ function Apis:delete(where_t)
 
   -- delete all related plugins configurations
   local plugins_dao = self._factory.plugins_configurations
-  local select_q, columns = query_builder.select(plugins_dao._table, {api_id = where_t.id}, self._primary_key)
+  local select_q, columns = query_builder.select(plugins_dao._table, {api_id = where_t.id}, plugins_dao._column_family_details)
 
-  for _, rows, page, err in plugins_dao:execute(select_q, columns, {api_id=where_t.id}, {auto_paging=true}) do
+  for _, rows, page, err in plugins_dao:execute(select_q, columns, {api_id = where_t.id}, {auto_paging = true}) do
     if err then
       return nil, err
     end

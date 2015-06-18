@@ -7,10 +7,8 @@ local cjson = require "cjson"
 local PluginsConfigurations = BaseDao:extend()
 
 function PluginsConfigurations:new(properties)
-  self._entity = "Plugin configuration"
   self._table = "plugins_configurations"
   self._schema = plugins_configurations_schema
-  self._primary_key = {"id", "name"}
 
   PluginsConfigurations.super.new(self, properties)
 end

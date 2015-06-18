@@ -25,6 +25,23 @@ local BaseDao = Object:extend()
 uuid.seed()
 
 function BaseDao:new(properties)
+  if self._schema then
+    self._primary_key = self._schema.primary_key
+    self._clustering_key = self._schema.clustering_key
+    local indexes = {}
+    for field_k, field_v in pairs(self._schema.fields) do
+      if field_v.queryable then
+        indexes[field_k] = true
+      end
+    end
+
+    self._column_family_details = {
+      primary_key = self._primary_key,
+      clustering_key = self._clustering_key,
+      indexes = indexes
+    }
+  end
+
   self._properties = properties
   self._statements_cache = {}
 end
@@ -100,6 +117,7 @@ end
 local function encode_cassandra_args(schema, t, args_keys)
   local args_to_bind = {}
   local errors
+
   for _, column in ipairs(args_keys) do
     local schema_field = schema.fields[column]
     local arg = t[column]
@@ -139,7 +157,7 @@ function BaseDao:get_or_prepare_stmt(query)
   local statement, err
   -- Retrieve the prepared statement from cache or prepare and cache
   if self._statements_cache[query] then
-    statement = self._statements_cache[query].statement
+    statement = self._statements_cache[query]
   else
     statement, err = self:prepare(query)
     if err then
@@ -275,13 +293,10 @@ function BaseDao:prepare(query)
   end
 
   if prepare_err then
-    return nil, DaoError("Failed to prepare statement: \""..query_to_prepare.."\". "..prepare_err, error_types.DATABASE)
+    return nil, DaoError("Failed to prepare statement: \""..query.."\". "..prepare_err, error_types.DATABASE)
   else
     -- cache key is the non-striped/non-formatted query from _queries
-    self._statements_cache[query] = {
-      statement = prepared_stmt
-    }
-
+    self._statements_cache[query] = prepared_stmt
     return prepared_stmt
   end
 end
@@ -392,6 +407,22 @@ function BaseDao:insert(t)
   end
 end
 
+local function extract_primary_key(t, primary_key, clustering_key)
+  local t_no_primary_key = utils.deep_copy(t)
+  local t_primary_key  = {}
+  for _, key in ipairs(primary_key) do
+    t_primary_key[key] = t[key]
+    t_no_primary_key[key] = nil
+  end
+  if clustering_key then
+    for _, key in ipairs(clustering_key) do
+      t_primary_key[key] = t[key]
+      t_no_primary_key[key] = nil
+    end
+  end
+  return t_primary_key, t_no_primary_key
+end
+
 -- Execute the UPDATE kong_query of a DAO entity.
 -- Validate entity's schema + UNIQUE values + FOREIGN KEYS.
 -- @param `t`       A table representing the entity to insert
@@ -403,24 +434,16 @@ function BaseDao:update(t)
 
   local ok, db_err, errors
 
-  -- Extract primary keys from the entity
-  local t_without_primary_keys = utils.deep_copy(t)
-  local t_only_primary_keys = {}
-  for _, v in ipairs(self._primary_key) do
-    t_only_primary_keys[v] = t[v]
-    t_without_primary_keys[v] = nil
-  end
-
   -- Check if exists to prevent upsert
-  local res, err = self:find_by_keys(t_only_primary_keys)
+  local res, err = self:find_by_primary_key(t)
   if err then
     return false, err
-  elseif not res or #res == 0 then
+  elseif not res then
     return false
   end
 
   -- Validate schema
-  errors = validations.validate(t, self, { is_update = next(t_without_primary_keys) ~= nil, primary_key = t_only_primary_keys}) -- hack
+  errors = validations.validate(t, self, {is_update = true})
   if errors then
     return nil, errors
   end
@@ -439,7 +462,9 @@ function BaseDao:update(t)
     return nil, DaoError(errors, error_types.FOREIGN)
   end
 
-  local update_q, columns = query_builder.update(self._table, t_without_primary_keys, t_only_primary_keys, self._primary_key)
+  -- Extract primary key from the entity
+  local t_primary_key, t_no_primary_key = extract_primary_key(t, self._primary_key, self._clustering_key)
+  local update_q, columns = query_builder.update(self._table, t_no_primary_key, t_primary_key)
 
   local _, stmt_err = self:execute(update_q, columns, self:_marshall(t))
   if stmt_err then
@@ -453,20 +478,17 @@ end
 -- @param  `args_keys` Keys to bind to the `select_one` query.
 -- @return `result`    The first row of the execute() return value
 function BaseDao:find_by_primary_key(where_t)
-  assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have primary_keys")
+  assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
+  assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
 
-  local primary_keys = {}
-  for i, k in pairs(self._primary_key) do
-    if i == 1 and not where_t[k] then
-      -- The primary key was not specified, Cassandra won't be able to retrieve anything
-      return nil
-    else
-      primary_keys[k] = where_t[k]
-    end
+  local t_primary_key = extract_primary_key(where_t, self._primary_key)
+
+  if next(t_primary_key) == nil then
+    return nil
   end
 
-  local select_q, where_columns = query_builder.select(self._table, primary_keys)
-  local data, err = self:execute(select_q, where_columns, primary_keys)
+  local select_q, where_columns = query_builder.select(self._table, t_primary_key, self._column_family_details, nil, true)
+  local data, err = self:execute(select_q, where_columns, t_primary_key)
 
   -- Return the 1st and only element of the result set
   if data and utils.table_size(data) > 0 then
@@ -485,8 +507,7 @@ end
 -- @param `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
 -- @return execute()
 function BaseDao:find_by_keys(where_t, page_size, paging_state)
-  local select_q, where_columns = query_builder.select(self._table, where_t, self._primary_key)
-
+  local select_q, where_columns = query_builder.select(self._table, where_t, self._column_family_details)
   return self:execute(select_q, where_columns, where_t, {
     page_size = page_size,
     paging_state = paging_state
@@ -506,7 +527,8 @@ end
 -- @return `success` True if deleted, false if otherwise or not found
 -- @return `error`   Error if any during the query execution
 function BaseDao:delete(where_t)
-  assert(where_t ~= nil, "where_t must not be nil")
+  assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
+  assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
 
   -- Test if exists first
   local res, err = self:find_by_keys(where_t)
@@ -516,7 +538,8 @@ function BaseDao:delete(where_t)
     return false
   end
 
-  local delete_q, where_columns = query_builder.delete(self._table, where_t, self._primary_key)
+  local t_primary_key = extract_primary_key(where_t, self._primary_key, self._clustering_key)
+  local delete_q, where_columns = query_builder.delete(self._table, t_primary_key)
   return self:execute(delete_q, where_columns, where_t)
 end
 
