@@ -87,7 +87,11 @@ function Migrations:migrate(callback)
   -- Execute all new migrations, in order
   for _, file_path in ipairs(diff_migrations) do
     -- Load our migration script
-    local migration = loadfile(file_path)()
+    local migration_file = loadfile(file_path)
+    if not migration_file then
+      error("Migration failed: cannot load file at "..file_path)
+    end
+    local migration = migration_file()
 
     -- Generate UP query from string + options
     local up_query = migration.up(self.options)

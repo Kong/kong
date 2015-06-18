@@ -64,25 +64,6 @@ describe("Cassandra DAO", function()
     end
   end)
 
-  describe("Collections schemas", function()
-
-    describe_core_collections(function(type, collection)
-
-      it("should have statements for all unique and foreign schema fields", function()
-        pending()
-        for column, schema_field in pairs(dao_factory[collection]._schema.fields) do
-          if schema_field.unique then
-            assert.truthy(dao_factory[collection]._queries.__unique[column])
-          end
-          if schema_field.foreign then
-            assert.truthy(dao_factory[collection]._queries.__foreign[column])
-          end
-        end
-      end)
-
-    end)
-  end)
-
   describe("Factory", function()
 
     describe(":prepare()", function()

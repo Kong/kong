@@ -15,12 +15,14 @@ end
 
 return {
   name = "Plugin configuration",
+  primary_key = {"id"},
+  clustering_key = {"name"},
   fields = {
     id = { type = "id", dao_insert_value = true },
     created_at = { type = "timestamp", dao_insert_value = true },
-    api_id = { type = "id", required = true, foreign = "apis:id" },
-    consumer_id = { type = "id", foreign = "consumers:id", default = constants.DATABASE_NULL_ID },
-    name = { type = "string", required = true, immutable = true },
+    api_id = { type = "id", required = true, foreign = "apis:id", queryable = true },
+    consumer_id = { type = "id", foreign = "consumers:id", queryable = true, default = constants.DATABASE_NULL_ID },
+    name = { type = "string", required = true, immutable = true, queryable = true },
     value = { type = "table", schema = load_value_schema },
     enabled = { type = "boolean", default = true }
   },
