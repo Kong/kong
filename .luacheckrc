@@ -20,5 +20,5 @@ files["kong/vendor/resty_http.lua"] = {
 }
 
 files["spec/"] = {
-  globals = {"describe", "it", "before_each", "setup", "after_each", "teardown", "stub", "mock", "spy", "finally"}
+  globals = {"describe", "it", "before_each", "setup", "after_each", "teardown", "stub", "mock", "spy", "finally", "pending"}
 }
