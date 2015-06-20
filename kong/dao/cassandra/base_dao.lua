@@ -507,11 +507,13 @@ end
 -- @param `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
 -- @return execute()
 function BaseDao:find_by_keys(where_t, page_size, paging_state)
-  local select_q, where_columns = query_builder.select(self._table, where_t, self._column_family_details)
-  return self:execute(select_q, where_columns, where_t, {
+  local select_q, where_columns, needs_filtering = query_builder.select(self._table, where_t, self._column_family_details)
+  local res, err = self:execute(select_q, where_columns, where_t, {
     page_size = page_size,
     paging_state = paging_state
   })
+
+  return res, err, needs_filtering
 end
 
 -- Execute the SELECT kong_query of a DAO entity.

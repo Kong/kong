@@ -51,7 +51,7 @@ local mt = {
 
     -- Cassandra server error
     if err_type == constants.DATABASE_ERROR_TYPES.DATABASE then
-      t.message = "Cassandra error: "..t.message
+      t.message = "Cassandra error: "..t.message -- TODO remove once cassandra driver has nicer error messages
       t.cassandra_err_code = err.code
     end
 

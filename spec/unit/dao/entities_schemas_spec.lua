@@ -1,5 +1,6 @@
 local api_schema = require "kong.dao.schemas.apis"
 local consumer_schema = require "kong.dao.schemas.consumers"
+local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
 local validate_fields = require("kong.dao.schemas_validation").validate_fields
 
 require "kong.tools.ngx_stub"
@@ -58,6 +59,15 @@ describe("Entities Schemas", function()
       assert.False(valid)
       assert.equal("path is not a string", errors.path)
       assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.public_dns)
+    end)
+
+    it("should set the name from public_dns if not set", function()
+      local t = { public_dns = "mockbin.com", target_url = "http://mockbin.com" }
+
+      local valid, errors = validate_fields(t, api_schema)
+      assert.falsy(errors)
+      assert.True(valid)
+      assert.equal("mockbin.com", t.name)
     end)
 
     it("should only accept alphanumeric `path`", function()
@@ -144,6 +154,31 @@ describe("Entities Schemas", function()
       assert.False(valid)
       assert.equal("username is not a string", errors.username)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
+    end)
+
+  end)
+
+  describe("Plugins Configurations", function()
+
+    it("should not validate if the plugin doesn't exist (not installed)", function()
+      local valid, errors = validate_fields({name = "world domination"}, plugins_configurations_schema)
+      assert.False(valid)
+      assert.equal("Plugin \"world domination\" not found", errors.value)
+    end)
+
+    it("should validate a plugin configuration's `value` field", function()
+      -- Success
+      local plugin = {name = "keyauth", api_id = "stub", value = {key_names = {"x-kong-key"}}}
+      local valid, errors = validate_fields(plugin, plugins_configurations_schema)
+      assert.True(valid)
+
+      -- Failure
+      plugin = {name = "ratelimiting", api_id = "stub", value = {period = "hello"}}
+
+      valid, errors = validate_fields(plugin, plugins_configurations_schema)
+      assert.False(valid)
+      assert.equal("limit is required", errors["value.limit"])
+      assert.equal("\"hello\" is not allowed. Allowed values are: \"second\", \"minute\", \"hour\", \"day\", \"month\", \"year\"", errors["value.period"])
     end)
 
   end)

@@ -113,20 +113,22 @@ local function where_fragment(where_t, column_family_details, no_filtering_check
 
   if needs_filtering then
     filtering = " ALLOW FILTERING"
+  else
+    needs_filtering = false
   end
 
   where_parts = table.concat(where_parts, " AND ")
 
-  return string.format("WHERE %s%s", where_parts, filtering), columns
+  return string.format("WHERE %s%s", where_parts, filtering), columns, needs_filtering
 end
 
 function _M.select(column_family, where_t, column_family_details, select_columns)
   assert(type(column_family) == "string", "column_family must be a string")
 
   local select_str = select_fragment(column_family, select_columns)
-  local where_str, columns = where_fragment(where_t, column_family_details)
+  local where_str, columns, needed_filtering = where_fragment(where_t, column_family_details)
 
-  return trim(string.format("%s %s", select_str, where_str)), columns
+  return trim(string.format("%s %s", select_str, where_str)), columns, needed_filtering
 end
 
 function _M.insert(column_family, insert_values)

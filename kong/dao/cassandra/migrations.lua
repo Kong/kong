@@ -5,7 +5,7 @@ local Migrations = BaseDao:extend()
 
 function Migrations:new(properties)
   self._table = "schema_migrations"
-  self._queries = {
+  self.queries = {
     add_migration = [[
       UPDATE schema_migrations SET migrations = migrations + ? WHERE id = 'migrations';
     ]],
@@ -28,7 +28,7 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:add_migration(migration_name)
-  return Migrations.super._execute(self, self._queries.add_migration,
+  return Migrations.super._execute(self, self.queries.add_migration,
     { cassandra.list({ migration_name }) })
 end
 
@@ -38,7 +38,7 @@ end
 function Migrations:get_migrations()
   local rows, err
 
-  rows, err = Migrations.super._execute(self, self._queries.get_keyspace,
+  rows, err = Migrations.super._execute(self, self.queries.get_keyspace,
     { self._properties.keyspace }, nil, "system")
   if err then
     return nil, err
@@ -47,7 +47,7 @@ function Migrations:get_migrations()
     return nil
   end
 
-  rows, err = Migrations.super._execute(self, self._queries.get_migrations)
+  rows, err = Migrations.super._execute(self, self.queries.get_migrations)
   if err then
     return nil, err
   elseif rows and #rows > 0 then
@@ -59,7 +59,7 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:delete_migration(migration_name)
-  return Migrations.super._execute(self, self._queries.delete_migration,
+  return Migrations.super._execute(self, self.queries.delete_migration,
     { cassandra.list({ migration_name }) })
 end
 
