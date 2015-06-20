@@ -169,13 +169,13 @@ describe("Entities Schemas", function()
     it("should validate a plugin configuration's `value` field", function()
       -- Success
       local plugin = {name = "keyauth", api_id = "stub", value = {key_names = {"x-kong-key"}}}
-      local valid, errors = validate_fields(plugin, plugins_configurations_schema)
+      local valid = validate_fields(plugin, plugins_configurations_schema)
       assert.True(valid)
 
       -- Failure
       plugin = {name = "ratelimiting", api_id = "stub", value = {period = "hello"}}
 
-      valid, errors = validate_fields(plugin, plugins_configurations_schema)
+      local valid, errors = validate_fields(plugin, plugins_configurations_schema)
       assert.False(valid)
       assert.equal("limit is required", errors["value.limit"])
       assert.equal("\"hello\" is not allowed. Allowed values are: \"second\", \"minute\", \"hour\", \"day\", \"month\", \"year\"", errors["value.period"])

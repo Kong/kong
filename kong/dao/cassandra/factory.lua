@@ -87,6 +87,16 @@ function CassandraFactory:prepare()
     end
   end
 
+  -- Check cassandra is accessible
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+  local ok, co_err = session:connect(self._properties.hosts, self._properties.port)
+  session:close()
+
+  if not ok then
+    return DaoError(co_err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  end
+
   for _, collection in pairs(self.daos) do
     if collection.queries then
       local status, err = pcall(function() prepare_collection(collection, collection.queries) end)

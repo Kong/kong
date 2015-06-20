@@ -1,4 +1,3 @@
-local CassandraFactory = require "kong.dao.cassandra.factory"
 local spec_helper = require "spec.spec_helpers"
 local cassandra = require "cassandra"
 local constants = require "kong.constants"
@@ -62,60 +61,6 @@ describe("Cassandra", function()
       assert.falsy(err)
     end
   end)
-
-  describe("Factory", function()
-
---    describe(":prepare()", function()
---
---      it("should prepare all queries in collection's _queries", function()
---        pending()
---        local new_factory = CassandraFactory({ hosts = "127.0.0.1",
---                                               port = 9042,
---                                               timeout = 1000,
---                                               keyspace = configuration.cassandra.keyspace
---        })
---
---        local err = new_factory:prepare()
---        assert.falsy(err)
---
---        -- assert collections have prepared statements
---        for _, collection in ipairs({ "apis", "consumers" }) do
---          for k, v in pairs(new_factory[collection]._queries) do
---            local cache_key
---            if type(v) == "string" then
---              cache_key = v
---            elseif v.query then
---              cache_key = v.query
---            end
---
---            if cache_key then
---              assert.truthy(new_factory[collection]._statements_cache[cache_key])
---            end
---          end
---        end
---      end)
---
---      it("should raise an error if cannot connect to Cassandra", function()
---        pending()
---        local new_factory = CassandraFactory({ hosts = "127.0.0.1",
---                                               port = 45678,
---                                               timeout = 1000,
---                                               keyspace = configuration.cassandra.keyspace
---        })
---
---        local err = new_factory:prepare()
---        assert.truthy(err)
---        assert.is_daoError(err)
---        assert.True(err.database)
---        assert.are.same("Cassandra error: connection refused", err.message)
---      end)
---
---    end)
-  end) -- describe Factory
-
-  --
-  -- Core DAO Collections (consumers, apis, plugins_configurations)
-  --
 
   describe("Base DAO", function()
     describe(":insert()", function()
@@ -637,11 +582,28 @@ describe("Cassandra", function()
     end) -- describe :delete()
 
     --
+    -- APIs additional behaviour
+    --
+
+    describe("APIs", function()
+
+      setup(function()
+        spec_helper.seed_db(100)
+      end)
+
+      describe(":find_all()", function()
+        local apis, err = dao_factory.apis:find_all()
+        assert.falsy(err)
+        assert.truthy(apis)
+        assert.equal(100, #apis)
+      end)
+    end)
+
+    --
     -- Plugins configuration additional behaviour
     --
 
     describe("plugin_configurations", function()
-
       describe(":find_distinct()", function()
         it("should find distinct plugins configurations", function()
           faker:insert_from_table {
