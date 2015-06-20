@@ -5,9 +5,8 @@ local timestamp = require "kong.tools.timestamp"
 local RateLimitingMetrics = BaseDao:extend()
 
 function RateLimitingMetrics:new(properties)
-  self._entity = "Ratelimiting Metric"
   self._table = "ratelimiting_metrics"
-  self._queries = {
+  self.queries = {
     increment_counter = [[ UPDATE ratelimiting_metrics SET value = value + 1 WHERE api_id = ? AND
                             identifier = ? AND
                             period_date = ? AND
@@ -30,7 +29,7 @@ function RateLimitingMetrics:increment(api_id, identifier, current_timestamp)
   local batch = cassandra.BatchStatement(cassandra.batch_types.COUNTER)
 
   for period, period_date in pairs(periods) do
-    batch:add(self._queries.increment_counter, {
+    batch:add(self.queries.increment_counter, {
       cassandra.uuid(api_id),
       identifier,
       cassandra.timestamp(period_date),
@@ -44,7 +43,7 @@ end
 function RateLimitingMetrics:find_one(api_id, identifier, current_timestamp, period)
   local periods = timestamp.get_timestamps(current_timestamp)
 
-  local metric, err = RateLimitingMetrics.super._execute(self, self._queries.select_one, {
+  local metric, err = RateLimitingMetrics.super._execute(self, self.queries.select_one, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.timestamp(periods[period]),
