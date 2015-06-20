@@ -5,13 +5,13 @@
 [![Gitter Badge][gitter-badge]][gitter-url]
 
 - Website: [getkong.org][kong-url]
-- Website repo: https://github.com/Mashape/getkong.org
+- Website Repo: [github.com/getkong.org][kong-website] 
 - Docs: [getkong.org/docs][kong-docs]
 - Mailing List: [Google Groups][google-groups-url]
 
 [![][kong-logo]][kong-url]
 
-Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of NGINX and Cassandra with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] handling billions of requests to over ten thousand APIs.
+Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** and Cassandra with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] handling billions of requests to over ten thousand APIs.
 
 ## Core Features
 
@@ -102,6 +102,7 @@ Complete & versioned documentation is available at [GetKong.org][kong-url]:
 - [API Reference](http://getkong.org/docs/latest/admin-api)
 
 [kong-url]: http://getkong.org/
+[kong-website]: https://github.com/Mashape/getkong.org
 [kong-docs]: http://getkong.org/docs/
 
 [kong-contrib]: https://github.com/Mashape/kong/blob/master/CONTRIBUTING.md
