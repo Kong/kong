@@ -21,8 +21,8 @@ describe("Admin API", function()
 
       it("[SUCCESS] should create a Consumer", function()
         send_content_types(BASE_URL, "POST", {
-          username="consumer POST tests"
-        }, 201, nil, {drop_db=true})
+          username = "consumer POST tests"
+        }, 201, nil, {drop_db = true})
       end)
 
       it("[FAILURE] should return proper errors", function()
@@ -31,7 +31,7 @@ describe("Admin API", function()
         '{"custom_id":"At least a \'custom_id\' or a \'username\' must be specified","username":"At least a \'custom_id\' or a \'username\' must be specified"}')
 
         send_content_types(BASE_URL, "POST", {
-          username="consumer POST tests"
+          username = "consumer POST tests"
         }, 409, '{"username":"username already exists with value \'consumer POST tests\'"}')
       end)
 
@@ -41,12 +41,12 @@ describe("Admin API", function()
 
       it("[SUCCESS] should create and update", function()
         local consumer = send_content_types(BASE_URL, "PUT", {
-          username="consumer PUT tests"
+          username = "consumer PUT tests"
         }, 201, nil, {drop_db=true})
 
         consumer = send_content_types(BASE_URL, "PUT", {
-          id=consumer.id,
-          username="consumer PUT tests updated",
+          id = consumer.id,
+          username = "consumer PUT tests updated",
         }, 200)
         assert.equal("consumer PUT tests updated", consumer.username)
       end)
@@ -57,7 +57,7 @@ describe("Admin API", function()
         '{"custom_id":"At least a \'custom_id\' or a \'username\' must be specified","username":"At least a \'custom_id\' or a \'username\' must be specified"}')
 
         send_content_types(BASE_URL, "PUT", {
-          username="consumer PUT tests updated",
+          username = "consumer PUT tests updated",
         }, 409, '{"username":"username already exists with value \'consumer PUT tests updated\'"}')
       end)
 
@@ -112,7 +112,7 @@ describe("Admin API", function()
       setup(function()
         spec_helper.drop_db()
         local fixtures = spec_helper.insert_fixtures {
-          consumer = {{ username="get_consumer_tests" }}
+          consumer = {{username = "get_consumer_tests"}}
         }
         consumer = fixtures.consumer[1]
       end)

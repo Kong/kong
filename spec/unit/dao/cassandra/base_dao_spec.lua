@@ -290,6 +290,51 @@ describe("Cassandra", function()
         assert.equal("public_dns already exists with value '"..api_t.public_dns.."'", err.message.public_dns)
       end)
 
+      describe("full", function()
+
+        it("should set to NULL if a field is not specified", function()
+          local api_t = faker:fake_entity("api")
+          api_t.path = "/path"
+
+          local api, err = dao_factory.apis:insert(api_t)
+          assert.falsy(err)
+          assert.truthy(api_t.path)
+
+          -- Update
+          api.path = nil
+          api, err = dao_factory.apis:update(api, true)
+          assert.falsy(err)
+          assert.truthy(api)
+          assert.falsy(api.path)
+
+          -- Check update
+          api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
+          assert.falsy(err)
+          assert.falsy(api.path)
+        end)
+
+        it("should still check the validity of the schema", function()
+          local api_t = faker:fake_entity("api")
+
+          local api, err = dao_factory.apis:insert(api_t)
+          assert.falsy(err)
+          assert.truthy(api_t)
+
+          -- Update
+          api.public_dns = nil
+
+          local nil_api, err = dao_factory.apis:update(api, true)
+          assert.truthy(err)
+          assert.falsy(nil_api)
+
+          -- Check update failed
+          api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
+          assert.falsy(err)
+          assert.truthy(api[1].name)
+          assert.truthy(api[1].public_dns)
+        end)
+
+      end)
     end) -- describe :update()
 
     describe(":find_by_keys()", function()

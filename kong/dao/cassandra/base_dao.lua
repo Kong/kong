@@ -428,7 +428,7 @@ end
 -- @param `t`       A table representing the entity to insert
 -- @return `result` Updated entity or nil
 -- @return `error`  Error if any during the execution
-function BaseDao:update(t)
+function BaseDao:update(t, full)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
 
@@ -443,7 +443,7 @@ function BaseDao:update(t)
   end
 
   -- Validate schema
-  errors = validations.validate(t, self, {is_update = true})
+  errors = validations.validate(t, self, {partial_update = not full, full_update = full})
   if errors then
     return nil, errors
   end
@@ -464,6 +464,16 @@ function BaseDao:update(t)
 
   -- Extract primary key from the entity
   local t_primary_key, t_no_primary_key = extract_primary_key(t, self._primary_key, self._clustering_key)
+
+  -- If full, add `null` values to the SET part of the query for nil columns
+  if full then
+    for k, v in pairs(self._schema.fields) do
+      if not t[k] and not v.immutable then
+        t_no_primary_key[k] = cassandra.null
+      end
+    end
+  end
+
   local update_q, columns = query_builder.update(self._table, t_no_primary_key, t_primary_key)
 
   local _, stmt_err = self:execute(update_q, columns, self:_marshall(t))
