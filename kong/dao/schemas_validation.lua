@@ -41,9 +41,8 @@ function _M.validate_fields(t, schema, options)
   if not options then options = {} end
   local errors
 
-  -- Check the given table against a given schema
-  for column, v in pairs(schema.fields) do
-    if not options.is_update then
+  if not options.partial_update and not options.full_update then
+    for column, v in pairs(schema.fields) do
       -- [DEFAULT] Set default value for the field if given
       if t[column] == nil and v.default ~= nil then
         if type(v.default) == "function" then
@@ -52,16 +51,18 @@ function _M.validate_fields(t, schema, options)
           t[column] = v.default
         end
       end
-
       -- [INSERT_VALUE]
       if v.dao_insert_value and type(options.dao_insert) == "function" then
         t[column] = options.dao_insert(v)
       end
-    else
-      -- [IMMUTABLE] check immutability of a field if updating
-      if options.is_update and t[column] ~= nil and v.immutable and not v.required then
-        errors = utils.add_error(errors, column, column.." cannot be updated")
-      end
+    end
+  end
+
+  -- Check the given table against a given schema
+  for column, v in pairs(schema.fields) do
+    -- [IMMUTABLE] check immutability of a field if updating
+    if (options.partial_update or options.full_update) and t[column] ~= nil and v.immutable and not v.required then
+      errors = utils.add_error(errors, column, column.." cannot be updated")
     end
 
     -- [TYPE] Check if type is valid. Boolean and Numbers as strings are accepted and converted
@@ -153,17 +154,16 @@ function _M.validate_fields(t, schema, options)
       end
     end
 
-    if not options.is_update then
-      -- [REQUIRED] Check that required fields are set. Now that default and most other checks
-      -- have been run.
+    if not options.partial_update or t[column] ~= nil then
+      -- [REQUIRED] Check that required fields are set.
+      -- Now that default and most other checks have been run.
       if v.required and (t[column] == nil or t[column] == "") then
         errors = utils.add_error(errors, column, column.." is required")
       end
-    end
 
-    if (options.is_update and t[column] ~= nil) or not options.is_update then
-      -- [FUNC] Check field against a custom function only if there is no error on that field already
-      if v.func and type(v.func) == "function" and (errors == nil or errors[column] == nil) then
+      if type(v.func) == "function" and (errors == nil or errors[column] == nil) then
+        -- [FUNC] Check field against a custom function
+        -- only if there is no error on that field already.
         local ok, err, new_fields = v.func(t[column], t)
         if not ok and err then
           errors = utils.add_error(errors, column, err)
@@ -200,7 +200,7 @@ function _M.on_insert(t, schema, dao)
 end
 
 function _M.validate(t, dao, options)
-  local ok, errors 
+  local ok, errors
 
   ok, errors = _M.validate_fields(t, dao._schema, options)
   if not ok then

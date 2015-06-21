@@ -6,6 +6,22 @@ local validate_fields = require("kong.dao.schemas_validation").validate_fields
 require "kong.tools.ngx_stub"
 
 describe("Entities Schemas", function()
+
+  for k, schema in pairs({api = api_schema,
+                          consumer = consumer_schema,
+                          plugins_configurations = plugins_configurations_schema}) do
+    it(k.." schema should have some required properties", function()
+      assert.truthy(schema.name)
+      assert.equal("string", type(schema.name))
+
+      assert.truthy(schema.primary_key)
+      assert.equal("table", type(schema.primary_key))
+
+      assert.truthy(schema.fields)
+      assert.equal("table", type(schema.fields))
+    end)
+  end
+
   describe("APIs", function()
 
     it("should return error with wrong target_url", function()

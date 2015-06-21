@@ -10,18 +10,18 @@ describe("Schemas", function()
   describe("#validate_fields()", function()
     local schema = {
       fields = {
-        string = { type = "string", required = true, immutable = true },
-        table = { type = "table" },
-        number = { type = "number" },
-        url = { regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])" },
-        date = { default = 123456, immutable = true },
-        allowed = { enum = { "hello", "world" }},
-        boolean_val = { type = "boolean" },
-        default = { default = function(t)
+        string = { type = "string", required = true, immutable = true},
+        table = {type = "table"},
+        number = {type = "number"},
+        url = {regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])"},
+        date = {default = 123456, immutable = true},
+        allowed = {enum = {"hello", "world"}},
+        boolean_val = {type = "boolean"},
+        default = {default = function(t)
                                 assert.truthy(t)
                                 return "default"
-                              end },
-        custom = { func = function(v, t)
+                              end},
+        custom = {func = function(v, t)
                             if v then
                               if t.default == "test_custom_func" then
                                 return true
@@ -31,16 +31,16 @@ describe("Schemas", function()
                             else
                               return true
                             end
-                          end }
+                          end}
       }
     }
 
     it("should confirm a valid entity is valid", function()
-      local values = { string = "mockbin entity", url = "mockbin.com" }
+      local values = {string = "mockbin entity", url = "mockbin.com"}
 
       local valid, err = validate_fields(values, schema)
       assert.falsy(err)
-      assert.truthy(valid)
+      assert.True(valid)
     end)
 
     describe("[required]", function()
@@ -48,7 +48,7 @@ describe("Schemas", function()
         local values = { url = "mockbin.com" }
 
         local valid, err = validate_fields(values, schema)
-        assert.falsy(valid)
+        assert.False(valid)
         assert.truthy(err)
         assert.are.same("string is required", err.string)
       end)
@@ -60,7 +60,7 @@ describe("Schemas", function()
       local values = { string = "foo", table = "bar" }
 
       local valid, err = validate_fields(values, schema)
-      assert.falsy(valid)
+      assert.False(valid)
       assert.truthy(err)
       assert.are.same("table is not a table", err.table)
 
@@ -69,13 +69,13 @@ describe("Schemas", function()
 
       local valid, err = validate_fields(values, schema)
       assert.falsy(err)
-      assert.truthy(valid)
+      assert.True(valid)
 
       -- Failure
       local values = { string = 1, table = { foo = "bar" }}
 
       local valid, err = validate_fields(values, schema)
-      assert.falsy(valid)
+      assert.False(valid)
       assert.truthy(err)
       assert.are.same("string is not a string", err.string)
 
@@ -84,7 +84,7 @@ describe("Schemas", function()
 
       local valid, err = validate_fields(values, schema)
       assert.falsy(err)
-      assert.truthy(valid)
+      assert.True(valid)
 
       -- Success
       local values = { string = "foo", number = "10" }
@@ -297,51 +297,6 @@ describe("Schemas", function()
       end)
     end)
 
-    describe("[immutable]", function()
-      it("should prevent immutable properties to be changed if validating a schema that will be updated", function()
-        -- Success
-        local values = { string = "somestring", date = 1234 }
-
-        local valid, err = validate_fields(values, schema)
-        assert.falsy(err)
-        assert.truthy(valid)
-
-        -- Failure
-        local valid, err = validate_fields(values, schema, {is_update = true})
-        assert.falsy(valid)
-        assert.truthy(err)
-        assert.are.same("date cannot be updated", err.date)
-      end)
-    end)
-
-    describe("[is_update]", function()
-      it("should ignore required properties and defaults if we are updating because the entity might be partial", function()
-        local values = {}
-
-        local valid, err = validate_fields(values, schema, {is_update = true})
-        assert.falsy(err)
-        assert.True(valid)
-        assert.falsy(values.default)
-        assert.falsy(values.date)
-      end)
-
-      it("should still validate set properties", function()
-        local values = { string = 123 }
-
-        local valid, err = validate_fields(values, schema, {is_update = true})
-        assert.False(valid)
-        assert.equal("string is not a string", err.string)
-      end)
-
-      it("should ignore required properties if they are immutable and we are updating", function()
-        local values = { string = "somestring" }
-
-        local valid, err = validate_fields(values, schema, {is_update = true})
-        assert.falsy(err)
-        assert.True(valid)
-      end)
-    end)
-
     describe("[dao_insert_value]", function()
       local schema = {
         fields = {
@@ -352,15 +307,15 @@ describe("Schemas", function()
       }
 
       it("should call a given function when encountering a field with `dao_insert_value`", function()
-        local values = { string = "hello", id = "0000" }
+        local values = {string = "hello", id = "0000"}
 
-        local valid, err = validate_fields(values, schema, { dao_insert = function(field)
+        local valid, err = validate_fields(values, schema, {dao_insert = function(field)
           if field.type == "id" then
             return "1234"
           elseif field.type == "timestamp" then
             return 0000
           end
-        end })
+        end})
         assert.falsy(err)
         assert.True(valid)
         assert.equal("1234", values.id)
@@ -378,7 +333,6 @@ describe("Schemas", function()
         assert.equal("hello", values.string)
         assert.falsy(values.timestamp)
       end)
-
     end)
 
     it("should return error when unexpected values are included in the schema", function()
@@ -541,7 +495,7 @@ describe("Schemas", function()
       it("should mark a value required if sub-schema has a `required`", function()
         local schema = {
           fields = {
-            value = { type = "table", schema = {fields = {some_property={required=true}}} }
+            value = {type = "table", schema = {fields = {some_property={required=true}}}}
           }
         }
 
@@ -553,5 +507,61 @@ describe("Schemas", function()
       end)
 
     end)
+
+    describe("[partial_update]", function()
+      it("should ignore required properties and defaults if we are updating because the entity might be partial", function()
+        local values = {}
+
+        local valid, err = validate_fields(values, schema, {partial_update = true})
+        assert.falsy(err)
+        assert.True(valid)
+        assert.falsy(values.default)
+        assert.falsy(values.date)
+      end)
+
+      it("should still validate set properties", function()
+        local values = { string = 123 }
+
+        local valid, err = validate_fields(values, schema, {partial_update = true})
+        assert.False(valid)
+        assert.equal("string is not a string", err.string)
+      end)
+
+      it("should ignore immutable fields if they are required", function()
+        local values = { string = "somestring" }
+
+        local valid, err = validate_fields(values, schema, {partial_update = true})
+        assert.falsy(err)
+        assert.True(valid)
+      end)
+
+      it("should prevent immutable fields to be changed", function()
+        -- Success
+        local values = {string = "somestring", date = 1234}
+
+        local valid, err = validate_fields(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local valid, err = validate_fields(values, schema, {partial_update = true})
+        assert.False(valid)
+        assert.truthy(err)
+        assert.equal("date cannot be updated", err.date)
+      end)
+    end)
+
+    describe("[full_update]", function()
+      it("should not ignore required properties and ignore defaults", function()
+        local values = {}
+
+        local valid, err = validate_fields(values, schema, {full_update = true})
+        assert.False(valid)
+        assert.truthy(err)
+        assert.equal("string is required", err.string)
+        assert.falsy(values.default)
+      end)
+    end)
+
   end)
 end)
