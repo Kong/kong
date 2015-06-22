@@ -80,7 +80,7 @@ function CassandraFactory:prepare()
   local function prepare_collection(collection, collection_queries)
     local err
     for stmt_name, collection_query in pairs(collection_queries) do
-      err = select(2, collection:prepare(collection_query))
+      err = select(2, collection:prepare_stmt(collection_query))
       if err then
         error(err)
       end
