@@ -57,22 +57,12 @@ local function where_fragment(where_t, column_family_details, no_filtering_check
     end
   end
 
-  if column_family_details.primary_key then
-    assert(type(column_family_details.primary_key) == "table", "primary_key must be a table")
-  else
-    column_family_details.primary_key = {}
-  end
-
-  if column_family_details.clustering_key then
-    assert(type(column_family_details.clustering_key) == "table", "clustering_key must be a table")
-  else
-    column_family_details.clustering_key= {}
-  end
-
-  if column_family_details.indexes then
-    assert(type(column_family_details.indexes) == "table", "indexes must be a table")
-  else
-    column_family_details.indexes = {}
+  for _, prop in ipairs({"primary_key", "clustering_key", "indexes"}) do
+    if column_family_details[prop] then
+      assert(type(column_family_details[prop]) == "table", prop.." must be a table")
+    else
+      column_family_details[prop] = {}
+    end
   end
 
   local where_parts, columns = {}, {}
