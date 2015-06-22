@@ -2,7 +2,7 @@ language: erlang
 
 env:
   global:
-    - CASSANDRA_VERSION=2.1.5
+    - CASSANDRA_VERSION=2.1.6
   matrix:
     - LUA=lua5.1
 
@@ -17,7 +17,6 @@ before_install:
 install:
   - sudo make install
   - sudo make dev
-  - bash .travis/patch_busted.sh
 
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"
