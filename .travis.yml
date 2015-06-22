@@ -17,7 +17,6 @@ before_install:
 install:
   - sudo make install
   - sudo make dev
-  - bash .travis/patch_busted.sh
 
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"
