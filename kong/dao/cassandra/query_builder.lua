@@ -122,6 +122,14 @@ local function where_fragment(where_t, column_family_details, no_filtering_check
   return string.format("WHERE %s%s", where_parts, filtering), columns, needs_filtering
 end
 
+-- Generate a SELECT query with an optional WHERE instruction.
+-- If building a WHERE instruction, we need some additional informations about the column family.
+-- @param `column_family`         Name of the column family
+-- @param `column_family_details` Additional infos about the column family (partition key, clustering key, indexes)
+-- @param `select_columns`        A list of columns to retrieve
+-- @return `query`                The SELECT query
+-- @return `columns`              An list of columns to bind for the query, in the order of the placeholder markers (?)
+-- @return `needs_filtering`      A boolean indicating if ALLOW FILTERING was added to this query or not
 function _M.select(column_family, where_t, column_family_details, select_columns)
   assert(type(column_family) == "string", "column_family must be a string")
 
@@ -131,6 +139,11 @@ function _M.select(column_family, where_t, column_family_details, select_columns
   return trim(string.format("%s %s", select_str, where_str)), columns, needed_filtering
 end
 
+-- Generate an INSERT query.
+-- @param `column_family` Name of the column family
+-- @param `insert_values` A columns/values table of values to insert
+-- @return `query`                The INSERT query
+-- @return `needs_filtering`      A boolean indicating if ALLOW FILTERING was added to this query or not
 function _M.insert(column_family, insert_values)
   assert(type(column_family) == "string", "column_family must be a string")
   assert(type(insert_values) == "table", "insert_values must be a table")
@@ -139,6 +152,12 @@ function _M.insert(column_family, insert_values)
   return insert_fragment(column_family, insert_values)
 end
 
+-- Generate an UPDATE query with update values (SET part) and a mandatory WHERE instruction.
+-- @param `column_family` Name of the column family
+-- @param `update_values` A columns/values table of values to update
+-- @param `where_t`       A columns/values table to select the row to update
+-- @return `query`        The UPDATE query
+-- @return `columns`      An list of columns to bind for the query, in the order of the placeholder markers (?)
 function _M.update(column_family, update_values, where_t)
   assert(type(column_family) == "string", "column_family must be a string")
   assert(type(update_values) == "table", "update_values must be a table")
@@ -161,6 +180,10 @@ function _M.update(column_family, update_values, where_t)
   return trim(string.format("%s %s", update_str, where_str)), columns
 end
 
+-- Generate a DELETE QUERY with a mandatory WHERE instruction.
+-- @param `column_family` Name of the column family
+-- @param `where_t`       A columns/values table to select the row to DELETE
+-- @return `columns`      An list of columns to bind for the query, in the order of the placeholder markers (?)
 function _M.delete(column_family, where_t)
   assert(type(column_family) == "string", "column_family must be a string")
 
@@ -170,6 +193,9 @@ function _M.delete(column_family, where_t)
   return trim(string.format("%s %s", delete_str, where_str)), where_columns
 end
 
+-- Generate a TRUNCATE query
+-- @param `column_family` Name of the column family
+-- @return `query`
 function _M.truncate(column_family)
   assert(type(column_family) == "string", "column_family must be a string")
 
