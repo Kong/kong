@@ -258,7 +258,7 @@ function BaseDao:execute(query, columns, args_to_bind, options)
   return results, err
 end
 
--- Check all fields marked a `unique` in the schema do not already exist.
+-- Check all fields marked with a `unique` in the schema do not already exist.
 function BaseDao:check_unique_fields(t, is_update)
   local errors
 
@@ -535,10 +535,10 @@ function BaseDao:delete(where_t)
   assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
 
   -- Test if exists first
-  local res, err = self:find_by_keys(where_t)
+  local res, err = self:find_by_primary_key(where_t)
   if err then
     return false, err
-  elseif not res or #res == 0 then
+  elseif not res then
     return false
   end
 
