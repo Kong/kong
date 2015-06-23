@@ -43,7 +43,7 @@ describe("Basic Auth Credentials API", function()
 
     describe("PUT", function()
       setup(function()
-        spec_helper.get_env().dao_factory.keyauth_credentials:delete(credential.id)
+        spec_helper.get_env().dao_factory.keyauth_credentials:delete({id = credential.id})
       end)
 
       it("[SUCCESS] should create and update", function()

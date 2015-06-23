@@ -9,10 +9,12 @@ local function validate_file(value)
   if not exists then
     os.remove(value) -- Remove the created file if it didn't exist before
   end
-  
+
   return true
 end
 
 return {
-  path = { required = true, type = "string", func = validate_file }
+  fields = {
+    path = { required = true, type = "string", func = validate_file }
+  }
 }

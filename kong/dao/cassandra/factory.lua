@@ -67,7 +67,7 @@ function CassandraFactory:drop()
   end
 end
 
--- Prepare all statements of collections `._queries` property and put them
+-- Prepare all statements of collections `queries` property and put them
 -- in a statements cache
 --
 -- Note:
@@ -78,24 +78,31 @@ end
 -- @return error if any
 function CassandraFactory:prepare()
   local function prepare_collection(collection, collection_queries)
-    if not collection_queries then collection_queries = collection._queries end
+    local err
     for stmt_name, collection_query in pairs(collection_queries) do
-      if type(collection_query) == "table" and collection_query.query == nil then
-        -- Nested queries, let's recurse to prepare them too
-        prepare_collection(collection, collection_query)
-      else
-        local _, err = collection:prepare_kong_statement(collection_query)
-        if err then
-          error(err)
-        end
+      err = select(2, collection:prepare_stmt(collection_query))
+      if err then
+        error(err)
       end
     end
   end
 
+  -- Check cassandra is accessible
+  local session = cassandra.new()
+  session:set_timeout(self._properties.timeout)
+  local ok, co_err = session:connect(self._properties.hosts, self._properties.port)
+  session:close()
+
+  if not ok then
+    return DaoError(co_err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  end
+
   for _, collection in pairs(self.daos) do
-    local status, err = pcall(function() prepare_collection(collection) end)
-    if not status then
-      return err
+    if collection.queries then
+      local status, err = pcall(function() prepare_collection(collection, collection.queries) end)
+      if not status then
+        return err
+      end
     end
   end
 end
