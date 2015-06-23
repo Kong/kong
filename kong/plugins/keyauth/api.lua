@@ -45,7 +45,7 @@ return {
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete({id = self.credential.id}, dao_factory.keyauth_credentials)
+      crud.delete(self.credential, dao_factory.keyauth_credentials)
     end
   }
 }
