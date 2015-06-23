@@ -1,4 +1,5 @@
 local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
+local query_builder = require "kong.dao.cassandra.query_builder"
 local constants = require "kong.constants"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
@@ -6,47 +7,8 @@ local cjson = require "cjson"
 local PluginsConfigurations = BaseDao:extend()
 
 function PluginsConfigurations:new(properties)
-  self._entity = "Plugin configuration"
+  self._table = "plugins_configurations"
   self._schema = plugins_configurations_schema
-  self._queries = {
-    insert = {
-      args_keys = { "id", "api_id", "consumer_id", "name", "value", "enabled", "created_at" },
-      query = [[ INSERT INTO plugins_configurations(id, api_id, consumer_id, name, value, enabled, created_at)
-                  VALUES(?, ?, ?, ?, ?, ?, ?); ]]
-    },
-    update = {
-      args_keys = { "api_id", "consumer_id", "value", "enabled", "created_at", "id", "name" },
-      query = [[ UPDATE plugins_configurations SET api_id = ?, consumer_id = ?, value = ?, enabled = ?, created_at = ? WHERE id = ? AND name = ?; ]]
-    },
-    select = {
-      query = [[ SELECT * FROM plugins_configurations %s; ]]
-    },
-    select_one = {
-      args_keys = { "id" },
-      query = [[ SELECT * FROM plugins_configurations WHERE id = ?; ]]
-    },
-    delete = {
-      args_keys = { "id" },
-      query = [[ DELETE FROM plugins_configurations WHERE id = ?; ]]
-    },
-    __unique = {
-      self = {
-        args_keys = { "api_id", "consumer_id", "name" },
-        query = [[ SELECT * FROM plugins_configurations WHERE api_id = ? AND consumer_id = ? AND name = ? ALLOW FILTERING; ]]
-      }
-    },
-    __foreign = {
-      api_id = {
-        args_keys = { "api_id" },
-        query = [[ SELECT id FROM apis WHERE id = ?; ]]
-      },
-      consumer_id = {
-        args_keys = { "consumer_id" },
-        query = [[ SELECT id FROM consumers WHERE id = ?; ]]
-      }
-    },
-    drop = "TRUNCATE plugins_configurations;"
-  }
 
   PluginsConfigurations.super.new(self, properties)
 end
@@ -74,6 +36,14 @@ function PluginsConfigurations:_unmarshall(t)
   return t
 end
 
+-- @override
+function PluginsConfigurations:update(t)
+  if not t.consumer_id then
+    t.consumer_id = constants.DATABASE_NULL_ID
+  end
+  return PluginsConfigurations.super.update(self, t)
+end
+
 function PluginsConfigurations:find_distinct()
   -- Open session
   local session, err = PluginsConfigurations.super._open_session(self)
@@ -81,14 +51,16 @@ function PluginsConfigurations:find_distinct()
     return nil, err
   end
 
+  local select_q = query_builder.select(self._table)
+
   -- Execute query
   local distinct_names = {}
-  for _, rows, page, err in session:execute(string.format(self._queries.select.query, ""), nil, {auto_paging=true}) do
+  for _, rows, page, err in PluginsConfigurations.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end
     for _, v in ipairs(rows) do
-      -- Rows also contains other properites, so making sure it's a plugin
+      -- Rows also contains other properties, so making sure it's a plugin
       if v.name then
         distinct_names[v.name] = true
       end

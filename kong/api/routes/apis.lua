@@ -24,12 +24,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      self.params.id = self.api.id
-      crud.patch(self.params, dao_factory.apis)
+      crud.patch(self.params, self.api, dao_factory.apis)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.api.id, dao_factory.apis)
+      crud.delete(self.api, dao_factory.apis)
     end
   },
 
@@ -79,12 +78,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      self.params.id = self.plugin.id
-      crud.patch(self.params, dao_factory.plugins_configurations)
+      crud.patch(self.params, self.plugin, dao_factory.plugins_configurations)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin.id, dao_factory.plugins_configurations)
+      crud.delete(self.plugin, dao_factory.plugins_configurations)
     end
   }
 }

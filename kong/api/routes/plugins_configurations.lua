@@ -25,7 +25,7 @@ return {
   ["/plugins_configurations/:id"] = {
     before = function(self, dao_factory, helpers)
       local err
-      self.plugin_conf, err = dao_factory.plugins_configurations:find_one(self.params.id)
+      self.plugin_conf, err = dao_factory.plugins_configurations:find_by_primary_key({ id = self.params.id })
       if err then
         return helpers.yield_error(err)
       elseif not self.plugin_conf then
@@ -38,12 +38,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      self.params.id = self.plugin_conf.id
-      crud.patch(self.params, dao_factory.plugins_configurations)
+      crud.patch(self.params, self.plugin_conf, dao_factory.plugins_configurations)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin_conf.id, dao_factory.plugins_configurations)
+      crud.delete(self.plugin_conf, dao_factory.plugins_configurations)
     end
   }
 }

@@ -19,16 +19,16 @@ describe("CLI", function()
   it("should restart kong when it's running", function()
     local _, code = spec_helper.stop_kong()
     assert.are.same(0, code)
-    local _, code = spec_helper.start_kong()
+    _, code = spec_helper.start_kong()
     assert.are.same(0, code)
-    local _, code = spec_helper.restart_kong()
+    _, code = spec_helper.restart_kong()
     assert.are.same(0, code)
   end)
 
   it("should restart kong when it's crashed", function()
     local kong_pid = IO.read_file(spec_helper.get_env().configuration.pid_file)
     os.execute("pkill -9 nginx")
-    while os.execute("kill -0 "..kong_pid) == 0 do
+    while os.execute("kill -0 "..kong_pid.." ") == 0 do
       -- Wait till it's really over
     end
 
