@@ -30,12 +30,15 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
-local timestamp = require "kong.tools.timestamp"
 
 -- Define the plugins to load here, in the appropriate order
 local plugins = {}
 
 local _M = {}
+
+local function get_now()
+  return ngx.now() * 1000
+end
 
 local function load_plugin_conf(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_configuration_key(plugin_name, api_id, consumer_id)
@@ -86,7 +89,7 @@ local function init_plugins()
   for _, v in ipairs(configuration.plugins_available) do
     local loaded, plugin_handler_mod = utils.load_module_if_exists("kong.plugins."..v..".handler")
     if not loaded then
-      error("The following plugin has been enabled in the configuration but is not installed on the system: "..v)
+      error("The following plugin has been enabled in the configuration but it is not installed on the system: "..v)
     else
       print("Loading plugin: "..v)
       table.insert(loaded_plugins, {
@@ -145,6 +148,7 @@ function _M.init()
   if err then
     error(err)
   end
+  ngx.update_time()
 end
 
 -- Calls `init_worker()` on eveyr loaded plugin
@@ -174,7 +178,7 @@ end
 -- Calls `access()` on every loaded plugin
 function _M.exec_plugins_access()
   -- Setting a property that will be available for every plugin
-  ngx.ctx.started_at = timestamp.get_utc()
+  ngx.ctx.started_at = get_now()
   ngx.ctx.plugin_conf = {}
 
   -- Iterate over all the plugins
@@ -189,13 +193,11 @@ function _M.exec_plugins_access()
         end
       end
     end
-
     local conf = ngx.ctx.plugin_conf[plugin.name]
     if not ngx.ctx.stop_phases and (plugin.resolver or conf) then
       plugin.handler:access(conf and conf.value or nil)
     end
   end
-
   -- Append any modified querystring parameters
   local parts = stringy.split(ngx.var.backend_url, "?")
   local final_url = parts[1]
@@ -203,13 +205,12 @@ function _M.exec_plugins_access()
     final_url = final_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
   end
   ngx.var.backend_url = final_url
-
-  ngx.ctx.proxy_started_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
+  ngx.ctx.proxy_started_at = get_now()
 end
 
 -- Calls `header_filter()` on every loaded plugin
 function _M.exec_plugins_header_filter()
-  ngx.ctx.proxy_ended_at = timestamp.get_utc() -- Setting a property that will be available for every plugin
+  ngx.ctx.proxy_ended_at = get_now()
 
   if not ngx.ctx.stop_phases then
     ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
@@ -233,6 +234,7 @@ function _M.exec_plugins_body_filter()
       end
     end
   end
+  ngx.ctx.ended_at = get_now()
 end
 
 -- Calls `log()` on every loaded plugin
@@ -253,10 +255,15 @@ function _M.exec_plugins_log()
         headers = ngx.resp.get_headers(),
         size = ngx.var.bytes_sent
       },
+      latencies = {
+        kong = (ngx.ctx.ended_at - ngx.ctx.started_at) - (ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at),
+        proxy = ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at,
+        total = ngx.ctx.ended_at - ngx.ctx.started_at
+      },
       authenticated_entity = ngx.ctx.authenticated_entity,
       api = ngx.ctx.api,
       client_ip = ngx.var.remote_addr,
-      started_at = ngx.req.start_time() * 1000
+      started_at = ngx.ctx.started_at
     }
 
     ngx.ctx.log_message = message
