@@ -31,7 +31,7 @@ describe("Logging Plugins", function()
     spec_helper.insert_fixtures {
       api = {
         { name = "tests tcp logging", public_dns = "tcp_logging.com", target_url = "http://mockbin.com" },
-        { name = "tests tcp logging2", public_dns = "tcp_logging2.com", target_url = "https://httpbin.org/" },
+        { name = "tests tcp logging2", public_dns = "tcp_logging2.com", target_url = "http://localhost:"..HTTP_PORT },
         { name = "tests udp logging", public_dns = "udp_logging.com", target_url = "http://mockbin.com" },
         { name = "tests http logging", public_dns = "http_logging.com", target_url = "http://mockbin.com" },
         { name = "tests https logging", public_dns = "https_logging.com", target_url = "http://mockbin.com" },
@@ -70,24 +70,28 @@ describe("Logging Plugins", function()
     local log_message = cjson.decode(res)
     assert.are.same("127.0.0.1", log_message.client_ip)
   end)
-
+  
   it("should log proper latencies", function()
-    local thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
+    local http_thread = spec_helper.start_http_server(HTTP_PORT) -- Starting the mock TCP server
+    local tcp_thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
 
     -- Making the request
-    local _, status = http_client.get(spec_helper.PROXY_URL.."/delay/2", nil, { host = "tcp_logging2.com" })
+    local _, status = http_client.get(spec_helper.PROXY_URL.."/delay", nil, { host = "tcp_logging2.com" })
     assert.are.equal(200, status)
 
     -- Getting back the TCP server input
-    local ok, res = thread:join()
+    local ok, res = tcp_thread:join()
     assert.truthy(ok)
     assert.truthy(res)
 
     -- Making sure it's alright
     local log_message = cjson.decode(res)
+
     assert.truthy(log_message.latencies.proxy < 3000)
     assert.truthy(log_message.latencies.kong < 20)
-    assert.are.same(log_message.latencies.total, log_message.latencies.kong + log_message.latencies.proxy)
+    assert.truthy(log_message.latencies.request >= log_message.latencies.kong + log_message.latencies.proxy)
+
+    http_thread:join()
   end)
 
   it("should log to UDP", function()
@@ -165,5 +169,5 @@ describe("Logging Plugins", function()
     assert.are.same("127.0.0.1", log_message.client_ip)
     assert.are.same(uuid, log_message.request.headers.file_log_uuid)
   end)
-  
+
 end)
