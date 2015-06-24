@@ -177,8 +177,8 @@ end
 
 -- Calls `access()` on every loaded plugin
 function _M.exec_plugins_access()
-  -- Setting a property that will be available for every plugin
-  ngx.ctx.started_at = get_now()
+  local start = get_now()
+
   ngx.ctx.plugin_conf = {}
 
   -- Iterate over all the plugins
@@ -205,13 +205,12 @@ function _M.exec_plugins_access()
     final_url = final_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
   end
   ngx.var.backend_url = final_url
-  ngx.ctx.proxy_started_at = get_now()
+  ngx.ctx.kong_processing_access = get_now() - start
 end
 
 -- Calls `header_filter()` on every loaded plugin
 function _M.exec_plugins_header_filter()
-  ngx.ctx.proxy_ended_at = get_now()
-
+  local start = get_now()
   if not ngx.ctx.stop_phases then
     ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
 
@@ -222,10 +221,12 @@ function _M.exec_plugins_header_filter()
       end
     end
   end
+  ngx.ctx.kong_processing_header_filter = get_now() - start
 end
 
 -- Calls `body_filter()` on every loaded plugin
 function _M.exec_plugins_body_filter()
+  local start = get_now()
   if not ngx.ctx.stop_phases then
     for _, plugin in ipairs(plugins) do
       local conf = ngx.ctx.plugin_conf[plugin.name]
@@ -234,7 +235,7 @@ function _M.exec_plugins_body_filter()
       end
     end
   end
-  ngx.ctx.ended_at = get_now()
+  ngx.ctx.kong_processing_body_filter = get_now() - start
 end
 
 -- Calls `log()` on every loaded plugin
@@ -256,14 +257,14 @@ function _M.exec_plugins_log()
         size = ngx.var.bytes_sent
       },
       latencies = {
-        kong = (ngx.ctx.ended_at - ngx.ctx.started_at) - (ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at),
-        proxy = ngx.ctx.proxy_ended_at - ngx.ctx.proxy_started_at,
-        total = ngx.ctx.ended_at - ngx.ctx.started_at
+        kong = (ngx.ctx.kong_processing_access + ngx.ctx.kong_processing_header_filter + ngx.ctx.kong_processing_body_filter),
+        proxy = ngx.var.upstream_response_time * 1000,
+        request = ngx.var.request_time * 1000
       },
       authenticated_entity = ngx.ctx.authenticated_entity,
       api = ngx.ctx.api,
       client_ip = ngx.var.remote_addr,
-      started_at = ngx.ctx.started_at
+      started_at = ngx.req.start_time() * 1000
     }
 
     ngx.ctx.log_message = message
