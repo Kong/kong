@@ -28,11 +28,12 @@ function alf_mt:new_alf()
   local ALF = {
     version = "1.0.0",
     serviceToken = "", -- will be filled by to_json_string()
+    environment = "",
     har = {
       log = {
         version = "1.2",
         creator = {
-          name = "kong-mashape-analytics-plugin",
+          name = "mashape-analytics-agent-kong",
           version = "1.0.0"
         },
         entries = {}
@@ -175,13 +176,15 @@ function alf_mt:add_entry(ngx)
   return table.getn(self.har.log.entries)
 end
 
-function alf_mt:to_json_string(token)
+function alf_mt:to_json_string(token, environment)
   if not token then
     error("Mashape Analytics serviceToken required", 2)
   end
 
   -- inject token
   self.serviceToken = token
+  -- inject environment (left empty if nil)
+  self.environment = environment
 
   local str = json.encode(self)
   return str:gsub("\""..EMPTY_ARRAY_PLACEHOLDER.."\"", ""):gsub("\\/", "/")

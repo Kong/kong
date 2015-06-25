@@ -22,9 +22,9 @@ local DELAYED_LOCK = false -- careful: this will only work when lua_code_cache i
 local LATEST_CALL
 
 local ANALYTICS_SOCKET = {
-  host = "localhost", -- socket.analytics.mashape.com
-  port = 58000,
-  path = "/alf_1.0.0"
+  host = "socket.analytics.mashape.com",
+  port = 80,
+  path = "/1.0.0/single"
 }
 
 local function send_batch(premature, conf, alf)
@@ -34,7 +34,7 @@ local function send_batch(premature, conf, alf)
     return
   end
 
-  local message = alf:to_json_string(conf.service_token)
+  local message = alf:to_json_string(conf.service_token, conf.environment)
 
   local ok, err
   local client = http:new()
