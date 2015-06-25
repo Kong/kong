@@ -1,5 +1,4 @@
 local IO = require "kong.tools.io"
-local yaml = require "yaml"
 local uuid = require "uuid"
 local cjson = require "cjson"
 local stringy = require "stringy"
@@ -72,7 +71,7 @@ describe("Logging Plugins", function()
     local log_message = cjson.decode(res)
     assert.are.same("127.0.0.1", log_message.client_ip)
   end)
-  
+
   it("should log proper latencies", function()
     local http_thread = spec_helper.start_http_server(HTTP_DELAY_PORT) -- Starting the mock TCP server
     local tcp_thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
