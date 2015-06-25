@@ -1,4 +1,5 @@
 language: erlang
+sudo: false
 
 env:
   global:
@@ -15,8 +16,8 @@ before_install:
   - bash .travis/setup_cassandra.sh
 
 install:
-  - sudo make install
-  - sudo make dev
+  - make install
+  - make dev
 
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"
