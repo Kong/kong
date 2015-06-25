@@ -235,7 +235,7 @@ function _M.exec_plugins_body_filter()
       end
     end
   end
-  ngx.ctx.kong_processing_body_filter = get_now() - start
+  ngx.ctx.kong_processing_body_filter = (ngx.ctx.kong_processing_body_filter or 0) + (get_now() - start)
 end
 
 -- Calls `log()` on every loaded plugin
