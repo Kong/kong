@@ -249,6 +249,7 @@ describe("Admin API", function()
       end)
 
       describe("PUT", function()
+        local plugin_id
 
         it("[FAILURE] should return proper errors", function()
           send_content_types(BASE_URL, "PUT", {},
@@ -268,19 +269,42 @@ describe("Admin API", function()
 
           response, status = http_client.put(BASE_URL, {
             name = "keyauth",
-            value = {key_names={"apikey"}}
-          }, {["content-type"]="application/json"})
+            value = {key_names = {"apikey"}}
+          }, {["content-type"] = "application/json"})
           assert.equal(201, status)
           body = json.decode(response)
 
+          plugin_id = body.id
+
           response, status = http_client.put(BASE_URL, {
-            id = body.id,
+            id = plugin_id,
             name = "keyauth",
-            value = {key_names={"updated_apikey"}}
-          }, {["content-type"]="application/json"})
+            value = {key_names = {"updated_apikey"}}
+          }, {["content-type"] = "application/json"})
           assert.equal(200, status)
           body = json.decode(response)
           assert.equal("updated_apikey", body.value.key_names[1])
+        end)
+
+        it("should override a plugin's `value` if partial", function()
+          local response, status = http_client.put(BASE_URL, {
+            id = plugin_id,
+            name = "keyauth",
+            ["value.key_names"] = {"api_key"},
+            ["value.hide_credentials"] = true
+          })
+          assert.equal(200, status)
+          assert.truthy(response)
+
+          response, status = http_client.put(BASE_URL, {
+            id = plugin_id,
+            name = "keyauth",
+            ["value.key_names"] = {"api_key_updated"}
+          })
+          assert.equal(200, status)
+          local body = json.decode(response)
+          assert.same({"api_key_updated"}, body.value.key_names)
+          assert.falsy(body.hide_credentials)
         end)
 
       end)
@@ -347,6 +371,23 @@ describe("Admin API", function()
           it("[FAILURE] should return proper errors", function()
             local _, status = http_client.patch(BASE_URL.."hello", {})
             assert.equal(404, status)
+          end)
+
+          it("should not override a plugin's `value` if partial", function()
+            -- This is delicate since a plugin's `value` is a text field in a DB like Cassandra
+            local response, status = http_client.patch(BASE_URL..plugin.name, {
+              ["value.key_names"] = {"key_set_null_test"},
+              ["value.hide_credentials"] = true
+            })
+            assert.equal(200, status)
+
+            response, status = http_client.patch(BASE_URL..plugin.name, {
+              ["value.key_names"] = {"key_set_null_test_updated"}
+            })
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.same({"key_set_null_test_updated"}, body.value.key_names)
+            assert.equal(true, body.value.hide_credentials)
           end)
 
         end)
