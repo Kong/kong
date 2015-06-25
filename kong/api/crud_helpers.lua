@@ -106,8 +106,8 @@ function _M.post(params, dao_collection, success)
   end
 end
 
-function _M.patch(new_entity, old_entity, dao_collection)
-  for k, v in pairs(new_entity) do
+function _M.patch(params, old_entity, dao_collection)
+  for k, v in pairs(params) do
     old_entity[k] = v
   end
 
