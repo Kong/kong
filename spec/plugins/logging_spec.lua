@@ -13,6 +13,7 @@ local STUB_GET_URL = spec_helper.STUB_GET_URL
 local TCP_PORT = 20777
 local UDP_PORT = 20778
 local HTTP_PORT = 20779
+local HTTP_DELAY_PORT = 20780
 
 local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
 
@@ -31,7 +32,7 @@ describe("Logging Plugins", function()
     spec_helper.insert_fixtures {
       api = {
         { name = "tests tcp logging", public_dns = "tcp_logging.com", target_url = "http://mockbin.com" },
-        { name = "tests tcp logging2", public_dns = "tcp_logging2.com", target_url = "http://localhost:"..HTTP_PORT },
+        { name = "tests tcp logging2", public_dns = "tcp_logging2.com", target_url = "http://localhost:"..HTTP_DELAY_PORT },
         { name = "tests udp logging", public_dns = "udp_logging.com", target_url = "http://mockbin.com" },
         { name = "tests http logging", public_dns = "http_logging.com", target_url = "http://mockbin.com" },
         { name = "tests https logging", public_dns = "https_logging.com", target_url = "http://mockbin.com" },
@@ -72,7 +73,7 @@ describe("Logging Plugins", function()
   end)
   
   it("should log proper latencies", function()
-    local http_thread = spec_helper.start_http_server(HTTP_PORT) -- Starting the mock TCP server
+    local http_thread = spec_helper.start_http_server(HTTP_DELAY_PORT) -- Starting the mock TCP server
     local tcp_thread = spec_helper.start_tcp_server(TCP_PORT) -- Starting the mock TCP server
 
     -- Making the request
@@ -88,7 +89,7 @@ describe("Logging Plugins", function()
     local log_message = cjson.decode(res)
 
     assert.truthy(log_message.latencies.proxy < 3000)
-    assert.truthy(log_message.latencies.kong < 20)
+    assert.truthy(log_message.latencies.kong < 100)
     assert.truthy(log_message.latencies.request >= log_message.latencies.kong + log_message.latencies.proxy)
 
     http_thread:join()
