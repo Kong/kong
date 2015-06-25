@@ -1,7 +1,9 @@
 -- Copyright (C) Mashape, Inc.
-local cjson = require "cjson"
+
 local ffi = require "ffi"
+local cjson = require "cjson"
 local fd_util = require "kong.plugins.filelog.fd_util"
+local basic_serializer = require "kong.plugins.log_serializers.basic"
 
 ffi.cdef[[
 typedef struct {
@@ -24,7 +26,7 @@ int fprintf(FILE *stream, const char *format, ...);
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
-  local message = cjson.encode(message).."\n"
+  message = cjson.encode(message).."\n"
 
   local f = fd_util.get_fd(conf.path)
   if not f then
@@ -39,7 +41,9 @@ end
 local _M = {}
 
 function _M.execute(conf)
-  local ok, err = ngx.timer.at(0, log, conf, ngx.ctx.log_message)
+  local message = basic_serializer.serialize(ngx)
+
+  local ok, err = ngx.timer.at(0, log, conf, message)
   if not ok then
     ngx.log(ngx.ERR, "[filelog] failed to create timer: ", err)
   end

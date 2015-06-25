@@ -1,3 +1,4 @@
+local basic_serializer = require "kong.plugins.log_serializers.basic"
 local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.httplog.log"
 
@@ -9,7 +10,9 @@ end
 
 function HttpLogHandler:log(conf)
   HttpLogHandler.super.log(self)
-  log.execute(conf)
+
+  local message = basic_serializer.serialize(ngx)
+  log.execute(conf, message)
 end
 
 return HttpLogHandler
