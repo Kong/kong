@@ -24,7 +24,6 @@ local function get_kong_config(args_config)
   -- Get configuration from default or given path
   if not kong_config_path then
     kong_config_path = cutils.get_kong_config_path(args_config)
-    cutils.logger:info("Using configuration: "..kong_config_path)
   end
   if not kong_config then
     kong_config, dao_factory = IO.load_configuration_and_dao(kong_config_path)

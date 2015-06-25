@@ -119,6 +119,8 @@ local function get_kong_config_path(args_config)
     logger:error_exit("Could not find a configuration file.")
   end
 
+  logger:info("Using configuration: "..config_path)
+
   return config_path
 end
 
