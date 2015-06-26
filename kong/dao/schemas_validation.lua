@@ -134,7 +134,7 @@ function _M.validate_fields(t, schema, options)
         -- Check for sub-schema defaults and required properties in advance
         for sub_field_k, sub_field in pairs(sub_schema.fields) do
           if t[column] == nil then
-            if sub_field.default then -- Sub-value has a default, be polite and pre-assign the sub-value
+            if sub_field.default ~= nil then -- Sub-value has a default, be polite and pre-assign the sub-value
               t[column] = {}
             elseif sub_field.required then -- Only check required if field doesn't have a default
               errors = utils.add_error(errors, column, column.."."..sub_field_k.." is required")
