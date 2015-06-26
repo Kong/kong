@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.3.3-1"
+version = "0.4.0-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.3.3"
+  tag = "0.4.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -124,6 +124,7 @@ build = {
 
     ["kong.plugins.filelog.handler"] = "kong/plugins/filelog/handler.lua",
     ["kong.plugins.filelog.schema"] = "kong/plugins/filelog/schema.lua",
+    ["kong.plugins.filelog.log"] = "kong/plugins/filelog/log.lua",
     ["kong.plugins.filelog.fd_util"] = "kong/plugins/filelog/fd_util.lua",
 
     ["kong.plugins.analytics.handler"] = "kong/plugins/analytics/handler.lua",
