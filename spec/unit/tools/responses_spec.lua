@@ -71,8 +71,11 @@ describe("Responses", function()
     assert.falsy(ngx.ctx.stop_phases)
 
     responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    assert.stub(ngx.log).was.called()
+    assert.stub(ngx.log).was_not_called()
     assert.True(ngx.ctx.stop_phases)
+
+    responses.send_HTTP_INTERNAL_SERVER_ERROR("error")
+    assert.stub(ngx.log).was_called()
   end)
 
   describe("default content rules for some status codes", function()
