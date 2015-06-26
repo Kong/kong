@@ -95,7 +95,7 @@ elseif args.command == "reset" then
   ))
 
   if input.confirm("Are you sure? You will lose all of your data, this operation is irreversible.") then
-    local res, err = dao_factory.migrations:drop_keyspace(keyspace)
+    local _, err = dao_factory.migrations:drop_keyspace(keyspace)
     if err then
       cutils.logger:error_exit(err)
     else
