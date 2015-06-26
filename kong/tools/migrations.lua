@@ -153,18 +153,4 @@ function Migrations:rollback(callback)
   callback(migration_to_rollback)
 end
 
--- Execute all migrations DOWN
--- @param {function} callback A function to execute on each migration (ie: for logging)
-function Migrations:reset(callback)
-  local done = false
-  while not done do
-    self:rollback(function(migration, err)
-      if not migration and not err then
-        done = true
-      end
-      callback(migration, err)
-    end)
-  end
-end
-
 return Migrations

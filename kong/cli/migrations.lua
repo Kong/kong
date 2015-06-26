@@ -3,8 +3,9 @@
 local Migrations = require "kong.tools.migrations"
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
+local input = require "kong.cli.utils.input"
 local IO = require "kong.tools.io"
-local lapp = require("lapp")
+local lapp = require "lapp"
 local args = lapp(string.format([[
 Kong datastore migrations.
 
@@ -50,7 +51,7 @@ if args.command == "list" then
 elseif args.command == "up" then
 
   cutils.logger:info(string.format(
-    "Migrating %s keyspace: %s",
+    "Migrating %s keyspace \"%s\"",
     cutils.colors.yellow(dao_factory.type),
     cutils.colors.yellow(dao_factory._properties.keyspace))
   )
@@ -68,7 +69,7 @@ elseif args.command == "up" then
 elseif args.command == "down" then
 
   cutils.logger:info(string.format(
-    "Rolling back %s keyspace: %s",
+    "Rollbacking %s keyspace \"%s\"",
     cutils.colors.yellow(dao_factory.type),
     cutils.colors.yellow(dao_factory._properties.keyspace)
   ))
@@ -85,22 +86,22 @@ elseif args.command == "down" then
 
 elseif args.command == "reset" then
 
-  cutils.logger:info(string.format(
-    "Reseting %s keyspace: %s",
-    cutils.colors.yellow(dao_factory.type),
-    cutils.colors.yellow(dao_factory._properties.keyspace))
-  )
+  local keyspace = dao_factory._properties.keyspace
 
-  migrations:reset(function(migration, err)
+  cutils.logger:info(string.format(
+    "Resetting %s keyspace \"%s\"",
+    cutils.colors.yellow(dao_factory.type),
+    cutils.colors.yellow(keyspace)
+  ))
+
+  if input.confirm("Are you sure? You will lose all of your data, this operation is irreversible.") then
+    local res, err = dao_factory.migrations:drop_keyspace(keyspace)
     if err then
       cutils.logger:error_exit(err)
-    elseif migration then
-      cutils.logger:success("Rollbacked: "..cutils.colors.yellow(migration.name))
     else
-      cutils.logger:success("Schema reseted")
+      cutils.logger:success("Keyspace successfully reset")
     end
-  end)
-
+  end
 else
   lapp.quit("Invalid command: "..args.command)
 end
