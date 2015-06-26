@@ -144,8 +144,8 @@ describe("Resolver", function()
 
       it("should proxy and strip the path if `strip_path` is true", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
-        local body = cjson.decode(response)
         assert.are.equal(200, status)
+        local body = cjson.decode(response)
         assert.are.equal("http://mockbin.com/request", body.url)
       end)
 
