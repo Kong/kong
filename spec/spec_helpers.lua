@@ -120,10 +120,15 @@ function _M.start_http_server(port, ...)
         end
       end
 
+      if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
+        os.execute("sleep 2")
+      end
+
       if err then
         error(err)
       end
-      client:send("ok\n")
+      
+      client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
       return lines
     end;

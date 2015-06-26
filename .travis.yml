@@ -2,7 +2,7 @@ language: erlang
 
 env:
   global:
-    - CASSANDRA_VERSION=2.1.6
+    - CASSANDRA_VERSION=2.1.7
   matrix:
     - LUA=lua5.1
 

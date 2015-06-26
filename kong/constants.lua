@@ -23,10 +23,6 @@ return {
     UNIQUE = "unique",
     FOREIGN = "foreign"
   },
-  DATABASE_TYPES = {
-    ID = "id",
-    TIMESTAMP = "timestamp"
-  },
   -- Non standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",

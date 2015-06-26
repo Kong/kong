@@ -74,7 +74,7 @@ function Faker:insert_from_table(entities_to_insert)
         end
 
         -- Insert in DB
-        local dao_type = type=="plugin_configuration" and "plugins_configurations" or type.."s"
+        local dao_type = type == "plugin_configuration" and "plugins_configurations" or type.."s"
         local res, err = self.dao_factory[dao_type]:insert(entity)
         if err then
           local printable_mt = require "kong.tools.printable"

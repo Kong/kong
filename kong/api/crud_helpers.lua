@@ -11,8 +11,6 @@ function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   }
   self.params.name_or_id = nil
 
-  -- TODO: make the base_dao more flexible so we can query find_one with key/values
-  -- https://github.com/Mashape/kong/issues/103
   local data, err = dao_factory.apis:find_by_keys(fetch_keys)
   if err then
     return helpers.yield_error(err)
@@ -74,13 +72,17 @@ function _M.paginated_set(self, dao_collection)
 end
 
 function _M.put(params, dao_collection)
-  local new_entity, err
-  if params.id then
-    new_entity, err = dao_collection:update(params)
-    if not err and new_entity then
+  local res, new_entity, err
+
+  res, err = dao_collection:find_by_primary_key(params)
+  if err then
+    return app_helpers.yield_error(err)
+  end
+
+  if res then
+    new_entity, err = dao_collection:update(params, true)
+    if not err then
       return responses.send_HTTP_OK(new_entity)
-    elseif not new_entity then
-      return responses.send_HTTP_NOT_FOUND()
     end
   else
     new_entity, err = dao_collection:insert(params)
@@ -104,17 +106,21 @@ function _M.post(params, dao_collection, success)
   end
 end
 
-function _M.patch(params, dao_collection)
-  local new_entity, err = dao_collection:update(params)
+function _M.patch(new_entity, old_entity, dao_collection)
+  for k, v in pairs(new_entity) do
+    old_entity[k] = v
+  end
+
+  local updated_entity, err = dao_collection:update(old_entity)
   if err then
     return app_helpers.yield_error(err)
   else
-    return responses.send_HTTP_OK(new_entity)
+    return responses.send_HTTP_OK(updated_entity)
   end
 end
 
-function _M.delete(entity_id, dao_collection)
-  local ok, err = dao_collection:delete(entity_id)
+function _M.delete(where_t, dao_collection)
+  local ok, err = dao_collection:delete(where_t)
   if not ok then
     if err then
       return app_helpers.yield_error(err)
