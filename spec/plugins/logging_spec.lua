@@ -1,12 +1,10 @@
 local IO = require "kong.tools.io"
-local uuid = require "uuid"
+local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local stringy = require "stringy"
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 
--- This is important to seed the UUID generator
-uuid.seed()
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
@@ -42,7 +40,7 @@ describe("Logging Plugins", function()
         { name = "tcplog", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
         { name = "tcplog", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 2 },
         { name = "udplog", value = { host = "127.0.0.1", port = UDP_PORT }, __api = 3 },
-        { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT }, __api = 4 },
+        { name = "httplog", value = { http_endpoint = "http://localhost:"..HTTP_PORT.."/" }, __api = 4 },
         { name = "httplog", value = { http_endpoint = "https://mockbin.org/bin/"..mock_bin }, __api = 5 },
         { name = "filelog", value = { path = FILE_LOG_PATH }, __api = 6 }
       }
@@ -135,12 +133,16 @@ describe("Logging Plugins", function()
     local _, status = http_client.get(STUB_GET_URL, nil, { host = "https_logging.com" })
     assert.are.equal(200, status)
 
+    local total_time = 0
     local res, status, body
     repeat
+      assert.truthy(total_time <= 10) -- Fail after 10 seconds
       res, status = http_client.get("http://mockbin.org/bin/"..mock_bin.."/log", nil, { accept = "application/json" })
       assert.are.equal(200, status)
       body = cjson.decode(res)
-      os.execute("sleep 0.2")
+      local wait = 1
+      os.execute("sleep "..tostring(wait))
+      total_time = total_time + wait
     until(#body.log.entries > 0)
 
     assert.are.equal(1, #body.log.entries)
@@ -153,7 +155,7 @@ describe("Logging Plugins", function()
   it("should log to file", function()
     os.remove(FILE_LOG_PATH)
 
-    local uuid = string.gsub(uuid(), "-", "")
+    local uuid = utils.random_string()
 
     -- Making the request
     local _, status = http_client.get(STUB_GET_URL, nil,

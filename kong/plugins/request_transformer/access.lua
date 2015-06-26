@@ -50,7 +50,6 @@ function _M.execute(conf)
       local content_type = get_content_type()
       if content_type and stringy.startswith(content_type, FORM_URLENCODED) then
         -- Call ngx.req.read_body to read the request body first
-        -- or turn on the lua_need_request_body directive to avoid errors.
         ngx.req.read_body()
 
         local parameters = ngx.req.get_post_args()
@@ -62,7 +61,6 @@ function _M.execute(conf)
         ngx.req.set_body_data(encoded_args)
       elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
         -- Call ngx.req.read_body to read the request body first
-        -- or turn on the lua_need_request_body directive to avoid errors.
         ngx.req.read_body()
 
         local body = ngx.req.get_body_data()
@@ -109,7 +107,6 @@ function _M.execute(conf)
         ngx.req.set_body_data(encoded_args)
       elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
         -- Call ngx.req.read_body to read the request body first
-        -- or turn on the lua_need_request_body directive to avoid errors.
         ngx.req.read_body()
 
         local body = ngx.req.get_body_data()

@@ -1,6 +1,15 @@
 local utils = require "kong.tools.utils"
 
 describe("Utils", function()
+
+  describe("strings", function() 
+    local first = utils.random_string()
+    assert.truthy(first)
+    assert.falsy(first:find("-"))
+    local second = utils.random_string()
+    assert.falsy(first == second)
+  end)
+
   describe("tables", function()
     describe("#table_size()", function()
 

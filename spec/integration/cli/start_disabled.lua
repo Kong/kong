@@ -57,7 +57,7 @@ describe("CLI", function()
 
       assert.has_error(function()
         spec_helper.start_kong(SERVER_CONF, true)
-      end, "The following plugin has been enabled in the configuration but is not installed on the system: wot-wat")
+      end, "The following plugin has been enabled in the configuration but it is not installed on the system: wot-wat")
     end)
 
     it("should not fail when an existing plugin is being enabled", function()
@@ -72,7 +72,7 @@ describe("CLI", function()
 
       assert.has_error(function()
         spec_helper.start_kong(SERVER_CONF, true)
-      end, "The following plugin has been enabled in the configuration but is not installed on the system: wot-wat")
+      end, "The following plugin has been enabled in the configuration but it is not installed on the system: wot-wat")
     end)
 
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
@@ -85,7 +85,7 @@ describe("CLI", function()
         }
       }
 
-      replace_conf_property("plugins_available", {"ssl", "keyauth", "basicauth", "tcplog", "udplog", "filelog", "httplog", "request_transformer"})
+      replace_conf_property("plugins_available", {"ssl", "keyauth", "basicauth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "cors"})
 
       assert.has_error(function()
         spec_helper.start_kong(SERVER_CONF, true)
@@ -93,7 +93,7 @@ describe("CLI", function()
     end)
 
     it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ssl", "keyauth", "basicauth", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "ratelimiting", "cors"})
+      replace_conf_property("plugins_available", {"ssl", "keyauth", "basicauth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "ratelimiting", "cors"})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
