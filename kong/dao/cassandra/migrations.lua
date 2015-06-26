@@ -1,4 +1,5 @@
 local cassandra = require "cassandra"
+local stringy = require "stringy"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local Migrations = BaseDao:extend()
@@ -48,7 +49,9 @@ function Migrations:get_migrations()
   end
 
   rows, err = Migrations.super._execute(self, self.queries.get_migrations)
-  if err then
+  if err and stringy.find(err.message, "unconfigured columnfamily schema_migrations") ~= nil then
+    return nil, "Missing mandatory column family \"schema_migrations\" in configured keyspace. Please consider running \"kong migrations reset\" to fix this."
+  elseif err then
     return nil, err
   elseif rows and #rows > 0 then
     return rows[1].migrations
@@ -61,6 +64,13 @@ end
 function Migrations:delete_migration(migration_name)
   return Migrations.super._execute(self, self.queries.delete_migration,
     { cassandra.list({ migration_name }) })
+end
+
+-- Drop the entire keyspace
+-- @param `keyspace` Name of the keyspace to drop
+-- @return query result
+function Migrations:drop_keyspace(keyspace)
+  return Migrations.super._execute(self, string.format("DROP keyspace \"%s\"", keyspace))
 end
 
 function Migrations:drop()
