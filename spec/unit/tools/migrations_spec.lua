@@ -299,41 +299,5 @@ describe("Migrations", function()
 
     end)
 
-    describe(db_type.." #reset()", function()
-
-      local old_migrations = {}
-
-      setup(function()
-        for _, f_name in ipairs(migrations_names) do
-          table.insert(old_migrations, f_name:sub(0, -5))
-        end
-      end)
-
-      it("should rollback all migrations at once", function()
-        local i = 0
-        local expected_rollbacks = #old_migrations
-        env.dao_factory.migrations.get_migrations = spy.new(function()
-                                                          return old_migrations
-                                                        end)
-        migrations:reset(function(migration, err)
-          assert.falsy(err)
-          if i < expected_rollbacks then
-            assert.are.same(old_migrations[#old_migrations], migration.name)
-            table.remove(old_migrations, #old_migrations)
-          else
-            -- Last call to cb when all migrations are done
-            assert.falsy(migration)
-            assert.falsy(err)
-          end
-          i = i + 1
-        end)
-
-        assert.are.same(expected_rollbacks + 1, i)
-        assert.spy(env.dao_factory.migrations.get_migrations).was.called(expected_rollbacks + 1) -- becaue also run one last time to check if any more migrations
-        assert.spy(env.dao_factory.execute_queries).was.called(expected_rollbacks)
-        assert.spy(env.dao_factory.migrations.delete_migration).was.called(expected_rollbacks - 1) -- because doesn't run for ini migration
-      end)
-
-    end)
   end
 end)
