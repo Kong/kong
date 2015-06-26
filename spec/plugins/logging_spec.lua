@@ -23,8 +23,6 @@ end
 
 local mock_bin = create_mock_bin()
 
-print(mock_bin)
-
 describe("Logging Plugins", function()
 
   setup(function()
@@ -140,8 +138,6 @@ describe("Logging Plugins", function()
     repeat
       assert.truthy(total_time <= 10) -- Fail after 10 seconds
       res, status = http_client.get("http://mockbin.org/bin/"..mock_bin.."/log", nil, { accept = "application/json" })
-      print(res)
-      print(status)
       assert.are.equal(200, status)
       body = cjson.decode(res)
       local wait = 1
