@@ -29,12 +29,14 @@ local AUTHORIZE_URL = "^%s/oauth2/authorize/?$"
 local TOKEN_URL = "^%s/oauth2/token/?$"
 
 -- TODO: Expire token (using TTL ?)
-local function generate_token(conf, credential, authenticated_username, authenticated_userid, scope, state)
+local function generate_token(conf, credential, authenticated_username, authenticated_userid, scope, state, expiration)
+  local token_expiration = expiration or conf.token_expiration
+
   local token, err = dao.oauth2_tokens:insert({
     credential_id = credential.id,
     authenticated_username = authenticated_username,
     authenticated_userid = authenticated_userid,
-    expires_in = conf.token_expiration,
+    expires_in = token_expiration,
     scope = scope
   })
 
@@ -45,8 +47,8 @@ local function generate_token(conf, credential, authenticated_username, authenti
   return {
     access_token = token.access_token,
     token_type = "bearer",
-    expires_in = conf.token_expiration > 0 and token.expires_in or nil,
-    refresh_token = conf.token_expiration > 0 and token.refresh_token or nil,
+    expires_in = token_expiration > 0 and token.expires_in or nil,
+    refresh_token = token_expiration > 0 and token.refresh_token or nil,
     state = state -- If state is nil, this value won't be added
   }
 end
@@ -132,7 +134,8 @@ local function authorize(conf)
           code = authorization_code.code,
         }
       else
-        response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERNAME], parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state)
+        -- Implicit grant, override expiration to zero
+        response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERNAME], parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, 0)
       end
     end
   end

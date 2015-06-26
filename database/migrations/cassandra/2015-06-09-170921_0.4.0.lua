@@ -1,5 +1,5 @@
 local Migration = {
-  name = "2015-06-09-170921_0.3.3",
+  name = "2015-06-09-170921_0.4.0",
 
   up = function(options)
     return [[

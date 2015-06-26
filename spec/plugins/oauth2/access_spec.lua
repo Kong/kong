@@ -201,7 +201,7 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?refresh_token=[\\w]{32,32}&token_type=bearer&access_token=[\\w]{32,32}&expires_in=5$"))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=[\\w]{32,32}$"))
 
         -- Checking headers
         assert.are.equal("no-store", headers["cache-control"])
@@ -212,7 +212,7 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?refresh_token=[\\w]{32,32}&token_type=bearer&state=wot&access_token=[\\w]{32,32}&expires_in=5$"))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&state=wot&access_token=[\\w]{32,32}$"))
       end)
 
       it("should return success and store authenticated user properties", function()
@@ -220,9 +220,9 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?refresh_token=[\\w]{32,32}&token_type=bearer&access_token=[\\w]{32,32}&expires_in=5$"))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=[\\w]{32,32}$"))
 
-        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?refresh_token=[\\w]{32,32}&token_type=bearer&access_token=([\\w]{32,32})&expires_in=5$")
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=([\\w]{32,32})$")
         local access_token 
         for line in matches do
           access_token = line
@@ -234,6 +234,10 @@ describe("Authentication Plugin", function()
         assert.are.equal("user123", data[1].authenticated_username)
         assert.are.equal("userid123", data[1].authenticated_userid)
         assert.are.equal("email profile", data[1].scope)
+
+        -- Checking that there is no refresh token since it's an implicit grant
+        assert.are.equal(0, data[1].expires_in)
+        assert.falsy(data[1].refresh_token)
       end)
 
     end)

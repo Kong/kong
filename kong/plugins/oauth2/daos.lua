@@ -9,6 +9,13 @@ local function generate_if_missing(v, t, column)
   return true
 end
 
+local function generate_refresh_token(v, t, column)
+  if t.expires_in > 0 then
+    return generate_if_missing(v, t, column)
+  end
+  return true
+end
+
 local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
   fields = {
@@ -42,7 +49,7 @@ local OAUTH2_TOKENS_SCHEMA = {
     credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     token_type = { type = "string", required = true, enum = { BEARER }, default = BEARER },
     access_token = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
-    refresh_token = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
+    refresh_token = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_refresh_token },
     expires_in = { type = "number", required = true },
     authenticated_username = { type = "string", required = false },
     authenticated_userid = { type = "string", required = false },
