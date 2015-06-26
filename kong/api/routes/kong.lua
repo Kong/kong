@@ -8,6 +8,8 @@ local function get_hostname()
   return hostname
 end
 
+local METHOD_NOT_ALLOWED_MESSAGE = { message = "Method not allowed" }
+
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
@@ -26,6 +28,18 @@ return {
         },
         lua_version = jit and jit.version or _VERSION
       })
+    end,
+    POST = function(self, dao, helpers)
+      return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED(METHOD_NOT_ALLOWED_MESSAGE)
+    end,
+    PUT = function(self, dao, helpers)
+      return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED(METHOD_NOT_ALLOWED_MESSAGE)
+    end,
+    PATCH = function(self, dao, helpers)
+      return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED(METHOD_NOT_ALLOWED_MESSAGE)
+    end,
+    DELETE = function(self, dao, helpers)
+      return helpers.responses.send_HTTP_METHOD_NOT_ALLOWED(METHOD_NOT_ALLOWED_MESSAGE)
     end
   }
 }

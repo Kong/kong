@@ -33,6 +33,24 @@ describe("Admin API", function()
         assert.falsy(headers.via) -- Via is only set for proxied requests
       end)
 
+      it("should return method not allowed", function()
+        local res, status = http_client.post(spec_helper.API_URL)
+        assert.are.same(405, status)
+        assert.are.same("Method not allowed", json.decode(res).message)
+
+        local res, status = http_client.delete(spec_helper.API_URL)
+        assert.are.same(405, status)
+        assert.are.same("Method not allowed", json.decode(res).message)
+
+        local res, status = http_client.put(spec_helper.API_URL)
+        assert.are.same(405, status)
+        assert.are.same("Method not allowed", json.decode(res).message)
+
+        local res, status = http_client.patch(spec_helper.API_URL)
+        assert.are.same(405, status)
+        assert.are.same("Method not allowed", json.decode(res).message)
+      end)
+
     end)
   end)
 end)
