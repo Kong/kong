@@ -53,6 +53,7 @@ plugins_available:
   - request_transformer
   - response_transformer
   - requestsizelimiting
+  - analytics
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)

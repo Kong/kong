@@ -1,5 +1,6 @@
-local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.tcplog.log"
+local BasePlugin = require "kong.plugins.base_plugin"
+local basic_serializer = require "kong.plugins.log_serializers.basic"
 
 local TcpLogHandler = BasePlugin:extend()
 
@@ -9,7 +10,9 @@ end
 
 function TcpLogHandler:log(conf)
   TcpLogHandler.super.log(self)
-  log.execute(conf)
+
+  local message = basic_serializer.serialize(ngx)
+  log.execute(conf, message)
 end
 
 return TcpLogHandler

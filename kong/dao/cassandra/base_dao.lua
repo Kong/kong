@@ -411,6 +411,24 @@ local function extract_primary_key(t, primary_key, clustering_key)
   return t_primary_key, t_no_primary_key
 end
 
+-- When updating a row that has a json-as-text column (ex: plugin_configuration.value),
+-- we want to avoid overriding it with a partial value.
+-- Ex: value.key_name + value.hide_credential, if we update only one field,
+-- the other should be preserved. Of course this only applies in partial update.
+local function fix_tables(t, old_t, schema)
+  for k, v in pairs(schema.fields) do
+    if v.schema then
+      local s = type(v.schema) == "function" and v.schema(t) or v.schema
+      for s_k, s_v in pairs(s.fields) do
+        if not t[k][s_k] and old_t[k] then
+          t[k][s_k] = old_t[k][s_k]
+        end
+      end
+      fix_tables(t[k], old_t[k], s)
+    end
+  end
+end
+
 -- Update a row: find the row with the given PRIMARY KEY and update the other values
 -- If `full`, sets to NULL values that are not included in the schema.
 -- Performs schema validation, UNIQUE and FOREIGN checks.
@@ -430,6 +448,10 @@ function BaseDao:update(t, full)
     return false, err
   elseif not res then
     return false
+  end
+
+  if not full then
+    fix_tables(t, res, self._schema)
   end
 
   -- Validate schema

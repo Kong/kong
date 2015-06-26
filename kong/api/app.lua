@@ -107,23 +107,14 @@ app.handle_404 = function(self)
 end
 
 app.handle_error = function(self, err, trace)
-  ngx.log(ngx.ERR, err.."\n"..trace)
-
-  local iterator, iter_err = ngx.re.gmatch(err, ".+:\\d+:\\s*(.+)")
-  if iter_err then
-    ngx.log(ngx.ERR, iter_err)
-  end
-
-  local m, iter_err = iterator()
-  if iter_err then
-    ngx.log(ngx.ERR, iter_err)
-  end
-
-  if m and table.getn(m) > 0 then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(m[1])
+  if stringy.find(err, "don't know how to respond to") ~= nil then
+    return responses.send_HTTP_METHOD_NOT_ALLOWED()
   else
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    ngx.log(ngx.ERR, err.."\n"..trace)
   end
+
+  -- We just logged the error so no need to give it to responses and log it twice
+  return responses.send_HTTP_INTERNAL_SERVER_ERROR()
 end
 
 local handler_helpers = {
