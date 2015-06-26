@@ -375,13 +375,13 @@ describe("Admin API", function()
 
           it("should not override a plugin's `value` if partial", function()
             -- This is delicate since a plugin's `value` is a text field in a DB like Cassandra
-            local response, status = http_client.patch(BASE_URL..plugin.name, {
+            local _, status = http_client.patch(BASE_URL..plugin.name, {
               ["value.key_names"] = {"key_set_null_test"},
               ["value.hide_credentials"] = true
             })
             assert.equal(200, status)
 
-            response, status = http_client.patch(BASE_URL..plugin.name, {
+            local response, status = http_client.patch(BASE_URL..plugin.name, {
               ["value.key_names"] = {"key_set_null_test_updated"}
             })
             assert.equal(200, status)

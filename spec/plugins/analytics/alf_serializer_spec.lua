@@ -68,7 +68,7 @@ describe("ALF serializer", function()
         har = {
           log = {
             version = "1.2",
-            creator = { name = "kong-mashape-analytics-plugin", version = "1.0.0"
+            creator = { name = "mashape-analytics-agent-kong", version = "1.0.0"
             },
             entries = {}
           }
@@ -118,6 +118,13 @@ describe("ALF serializer", function()
       assert.equal("string", type(json_str))
     end)
 
+    it("should add an environment property", function()
+      local json = require "cjson"
+      local json_str = alf:to_json_string("stub_service_token", "test")
+      assert.equal("string", type(json_str))
+      local json_alf = json.decode(json_str)
+      assert.equal(json_alf.environment, "test")
+    end)
   end)
 
   describe("#flush_entries()", function()
