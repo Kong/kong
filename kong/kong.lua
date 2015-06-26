@@ -257,7 +257,9 @@ function _M.exec_plugins_log()
         size = ngx.var.bytes_sent
       },
       latencies = {
-        kong = (ngx.ctx.kong_processing_access + ngx.ctx.kong_processing_header_filter + ngx.ctx.kong_processing_body_filter),
+        kong = (ngx.ctx.kong_processing_access or 0) + 
+               (ngx.ctx.kong_processing_header_filter or 0) + 
+               (ngx.ctx.kong_processing_body_filter or 0),
         proxy = ngx.var.upstream_response_time * 1000,
         request = ngx.var.request_time * 1000
       },
