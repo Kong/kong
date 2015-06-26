@@ -31,6 +31,9 @@ local response_default_content = {
   end,
   [_M.status_codes.HTTP_INTERNAL_SERVER_ERROR] = function(content)
     return "An unexpected error occurred"
+  end,
+  [_M.status_codes.HTTP_METHOD_NOT_ALLOWED] = function(content)
+    return "Method not allowed"
   end
 }
 
@@ -50,7 +53,9 @@ local function send_response(status_code)
 
   return function(content, raw)
     if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
-      ngx.log(ngx.ERR, tostring(content))
+      if content then
+        ngx.log(ngx.ERR, tostring(content))
+      end
       ngx.ctx.stop_phases = true -- interrupt other phases of this request
     end
 
