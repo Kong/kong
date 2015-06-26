@@ -28,7 +28,7 @@ function alf_mt:new_alf()
   local ALF = {
     version = "1.0.0",
     serviceToken = "", -- will be filled by to_json_string()
-    environment = "",
+    environment = nil, -- stub
     har = {
       log = {
         version = "1.2",
