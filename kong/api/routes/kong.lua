@@ -8,6 +8,8 @@ local function get_hostname()
   return hostname
 end
 
+local METHOD_NOT_ALLOWED_MESSAGE = { message = "Method not allowed" }
+
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
