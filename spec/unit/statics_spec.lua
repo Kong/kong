@@ -43,6 +43,7 @@ plugins_available:
   - ssl
   - keyauth
   - basicauth
+  - oauth2
   - ratelimiting
   - tcplog
   - udplog

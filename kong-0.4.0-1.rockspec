@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.3.2-1"
+version = "0.4.0-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.3.2"
+  tag = "0.4.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -101,6 +101,12 @@ build = {
     ["kong.plugins.keyauth.api"] = "kong/plugins/keyauth/api.lua",
     ["kong.plugins.keyauth.daos"] = "kong/plugins/keyauth/daos.lua",
 
+    ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
+    ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
+    ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
+    ["kong.plugins.oauth2.daos"] = "kong/plugins/oauth2/daos.lua",
+    ["kong.plugins.oauth2.api"] = "kong/plugins/oauth2/api.lua",
+
     ["kong.plugins.log_serializers.basic"] = "kong/plugins/log_serializers/basic.lua",
     ["kong.plugins.log_serializers.alf"] = "kong/plugins/log_serializers/alf.lua",
 
@@ -118,6 +124,7 @@ build = {
 
     ["kong.plugins.filelog.handler"] = "kong/plugins/filelog/handler.lua",
     ["kong.plugins.filelog.schema"] = "kong/plugins/filelog/schema.lua",
+    ["kong.plugins.filelog.log"] = "kong/plugins/filelog/log.lua",
     ["kong.plugins.filelog.fd_util"] = "kong/plugins/filelog/fd_util.lua",
 
     ["kong.plugins.analytics.handler"] = "kong/plugins/analytics/handler.lua",

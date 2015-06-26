@@ -2,11 +2,8 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local stringy = require "stringy"
 local cjson = require "cjson"
-local uuid = require "uuid"
+local utils = require "kong.tools.utils"
 local IO = require "kong.tools.io"
-
--- This is important to seed the UUID generator
-uuid.seed()
 
 local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
 
@@ -33,7 +30,7 @@ describe("Real IP", function()
   it("should parse the correct IP", function()
     os.remove(FILE_LOG_PATH)
 
-    local uuid = string.gsub(uuid(), "-", "")
+    local uuid = utils.random_string()
 
     -- Making the request
     local _, status = http_client.get(spec_helper.STUB_GET_URL, nil,
