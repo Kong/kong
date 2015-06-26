@@ -12,23 +12,25 @@ end
 local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
   fields = {
+    id = { type = "id", dao_insert_value = true },
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
     name = { type = "string", required = true },
     client_id = { type = "string", required = false, unique = true, queryable = true, func = generate_if_missing },
     client_secret = { type = "string", required = false, unique = true, func = generate_if_missing },
     redirect_uri = { type = "url", required = true },
-    created_at = { type = "timestamp" }
+    created_at = { type = "timestamp", dao_insert_value = true }
   }
 }
 
 local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   primary_key = {"id"},
   fields = {
+    id = { type = "id", dao_insert_value = true },
     code = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
     authenticated_username = { type = "string", required = false },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
-    created_at = { type = "timestamp" }
+    created_at = { type = "timestamp", dao_insert_value = true }
   }
 }
 
@@ -36,6 +38,7 @@ local BEARER = "bearer"
 local OAUTH2_TOKENS_SCHEMA = {
   primary_key = {"id"},
   fields = {
+    id = { type = "id", dao_insert_value = true },
     credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     token_type = { type = "string", required = true, enum = { BEARER }, default = BEARER },
     access_token = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
@@ -44,7 +47,7 @@ local OAUTH2_TOKENS_SCHEMA = {
     authenticated_username = { type = "string", required = false },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
-    created_at = { type = "timestamp" }
+    created_at = { type = "timestamp", dao_insert_value = true }
   }
 }
 

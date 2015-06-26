@@ -22,7 +22,7 @@ return {
 
   ["/consumers/:username_or_id/oauth2/:id"] = {
     before = function(self, dao_factory, helpers)
-      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+     crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
       local data, err = dao_factory.oauth2_credentials:find_by_keys({ id = self.params.id })
@@ -30,8 +30,8 @@ return {
         return helpers.yield_error(err)
       end
 
-      self.plugin = data[1]
-      if not self.plugin then
+      self.credential = data[1]
+      if not self.credential then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
     end,
@@ -41,11 +41,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.oauth2_credentials)
+      crud.patch(self.params, self.credential, dao_factory.oauth2_credentials)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin.id, dao_factory.oauth2_credentials)
+      crud.delete(self.credential, dao_factory.oauth2_credentials)
     end
   }
 }

@@ -192,7 +192,7 @@ local function issue_token(conf)
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
       else
         response_params = generate_token(conf, client, token.authenticated_username, token.authenticated_userid, token.scope, state)
-        dao.oauth2_tokens:delete(token.id) -- Delete old token
+        dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
       end
     end
   end
@@ -298,7 +298,7 @@ function _M.execute(conf)
 
   -- Retrive the credential from the token
   local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), function()
-    local result, err = dao.oauth2_credentials:find_one(token.credential_id)
+    local result, err = dao.oauth2_credentials:find_by_primary_key({id = token.credential_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -307,7 +307,7 @@ function _M.execute(conf)
 
   -- Retrive the consumer from the credential
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = dao.consumers:find_one(credential.consumer_id)
+    local result, err = dao.consumers:find_by_primary_key({id = credential.consumer_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

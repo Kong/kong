@@ -422,7 +422,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(200, status)
 
       local id = dao_factory.oauth2_tokens:find_by_keys({access_token = token.access_token })[1].id
-      assert.truthy(dao_factory.oauth2_tokens:find_one(id))
+      assert.truthy(dao_factory.oauth2_tokens:find_by_primary_key({id=id}))
 
       -- But waiting after the cache expiration (5 seconds) should block the request
       os.execute("sleep "..tonumber(6))
@@ -447,7 +447,7 @@ describe("Authentication Plugin", function()
       assert.falsy(token.access_token == body.access_token)
       assert.falsy(token.refresh_token == body.refresh_token)
 
-      assert.falsy(dao_factory.oauth2_tokens:find_one(id))
+      assert.falsy(dao_factory.oauth2_tokens:find_by_primary_key({id=id}))
     end)
 
   end)
