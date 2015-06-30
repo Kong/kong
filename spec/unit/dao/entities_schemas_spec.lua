@@ -1,7 +1,8 @@
 local api_schema = require "kong.dao.schemas.apis"
 local consumer_schema = require "kong.dao.schemas.consumers"
 local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
-local validate_fields = require("kong.dao.schemas_validation").validate_fields
+local validations = require "kong.dao.schemas_validation"
+local validate_fields = validations.validate_fields
 
 require "kong.tools.ngx_stub"
 
@@ -197,5 +198,35 @@ describe("Entities Schemas", function()
       assert.equal("\"hello\" is not allowed. Allowed values are: \"second\", \"minute\", \"hour\", \"day\", \"month\", \"year\"", errors["value.period"])
     end)
 
+    describe("on_insert", function()
+      it("should refuse `consumer_id` if specified in the value schema", function()
+        local stub_value_schema = {
+          no_consumer = true,
+          fields = {
+            string = {type = "string", required = true}
+          }
+        }
+
+        plugins_configurations_schema.fields.value.schema = function()
+          return stub_value_schema
+        end
+
+        local valid, err = validations.on_insert({name = "stub", api_id = "0000", consumer_id = "0000", value = {string = "foo"}}, plugins_configurations_schema)
+        assert.False(valid)
+        assert.equal("No consumer can be configured for that plugin", err.message)
+
+        local dao_stub = {
+          plugins_configurations = {
+            find_by_keys = function()
+              return nil
+            end
+          }
+        }
+
+        valid, err = validations.on_insert({name = "stub", api_id = "0000", value = {string = "foo"}}, plugins_configurations_schema, dao_stub)
+        assert.True(valid)
+        assert.falsy(err)
+      end)
+    end)
   end)
 end)
