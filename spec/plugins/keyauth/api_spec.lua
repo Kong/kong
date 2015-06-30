@@ -34,7 +34,7 @@ describe("Key Auth Credentials API", function()
       end)
 
       it("[SUCCESS] should create a keyauth credential auto-generating the key", function()
-        local response, status = http_client.post(BASE_URL, {})
+        local _, status = http_client.post(BASE_URL, {})
         assert.equal(201, status)
       end)
 
@@ -53,7 +53,7 @@ describe("Key Auth Credentials API", function()
       end)
 
       it("[SUCCESS] should create a keyauth credential auto-generating the key", function()
-        local response, status = http_client.put(BASE_URL, {})
+        local _, status = http_client.put(BASE_URL, {})
         assert.equal(201, status)
       end)
 
