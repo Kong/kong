@@ -116,7 +116,7 @@ local retrieve_credentials = {
 }
 
 function _M.execute(conf)
-  if not conf or skip_authentication(ngx.req.get_headers()) then return end
+  if skip_authentication(ngx.req.get_headers()) then return end
 
   local credential
   for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do

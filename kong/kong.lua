@@ -168,7 +168,7 @@ function _M.exec_plugins_certificate()
 
     local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
     if not ngx.ctx.stop_phases and (plugin.resolver or plugin_conf) then
-      plugin.handler:certificate(plugin_conf and plugin_conf.value or nil)
+      plugin.handler:certificate(plugin_conf and plugin_conf.value or {})
     end
   end
 
@@ -195,7 +195,7 @@ function _M.exec_plugins_access()
 
     local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
     if not ngx.ctx.stop_phases and (plugin.resolver or plugin_conf) then
-      plugin.handler:access(plugin_conf and plugin_conf.value or nil)
+      plugin.handler:access(plugin_conf and plugin_conf.value or {})
     end
   end
   -- Append any modified querystring parameters
@@ -224,7 +224,7 @@ function _M.exec_plugins_header_filter()
     for _, plugin in ipairs(plugins) do
       local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
       if plugin_conf then
-        plugin.handler:header_filter(plugin_conf and plugin_conf.value or nil)
+        plugin.handler:header_filter(plugin_conf and plugin_conf.value or {})
       end
     end
   end
@@ -238,7 +238,7 @@ function _M.exec_plugins_body_filter()
     for _, plugin in ipairs(plugins) do
       local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
       if plugin_conf then
-        plugin.handler:body_filter(plugin_conf and plugin_conf.value or nil)
+        plugin.handler:body_filter(plugin_conf and plugin_conf.value or {})
       end
     end
   end
@@ -251,7 +251,7 @@ function _M.exec_plugins_log()
     for _, plugin in ipairs(plugins) do
       local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
       if plugin_conf then
-        plugin.handler:log(plugin_conf and plugin_conf.value or nil)
+        plugin.handler:log(plugin_conf and plugin_conf.value or {})
       end
     end
   end
