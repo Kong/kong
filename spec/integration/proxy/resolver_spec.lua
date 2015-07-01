@@ -165,7 +165,7 @@ describe("Resolver", function()
 
     it("should return the correct Server and no Via header when the request was NOT proxied", function()
       local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin-auth.com"})
-      assert.are.equal(403, status)
+      assert.are.equal(401, status)
       assert.are.equal(constants.NAME.."/"..constants.VERSION, headers.server)
       assert.falsy(headers.via)
     end)
