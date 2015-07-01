@@ -11,18 +11,18 @@ describe("Authentication Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests auth 1", public_dns = "keyauth1.com", target_url = "http://mockbin.com" },
-        { name = "tests auth 2", public_dns = "keyauth2.com", target_url = "http://mockbin.com" }
+        {name = "tests auth 1", public_dns = "keyauth1.com", target_url = "http://mockbin.com"},
+        {name = "tests auth 2", public_dns = "keyauth2.com", target_url = "http://mockbin.com"}
       },
       consumer = {
-        { username = "auth_tests_consumer" }
+        {username = "auth_tests_consumer"}
       },
       plugin_configuration = {
-        { name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 },
-        { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 2 }
+        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 1},
+        {name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 2}
       },
       keyauth_credential = {
-        { key = "apikey123", __consumer = 1 }
+        {key = "apikey123", __consumer = 1}
       }
     }
 
@@ -38,119 +38,126 @@ describe("Authentication Plugin", function()
     it("should return invalid credentials when the credential value is wrong", function()
       local response, status = http_client.get(STUB_GET_URL, {apikey = "asd"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Invalid authentication credentials", body.message)
+      assert.equal(403, status)
+      assert.equal("Invalid authentication credentials", body.message)
     end)
 
-    it("should return invalid credentials when the credential parameter name is wrong in GET", function()
+    it("should reply 401 when the credential parameter is missing", function()
       local response, status = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Invalid authentication credentials", body.message)
+      assert.equal(401, status)
+      assert.equal("No API key found in headers or querystring", body.message)
     end)
 
-    it("should return invalid credentials when the credential parameter name is wrong in POST", function()
+    it("should reply 401 when the credential parameter name is wrong in GET", function()
+      local response, status = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
+      local body = cjson.decode(response)
+      assert.equal(401, status)
+      assert.equal("No API key found in headers or querystring", body.message)
+    end)
+
+    it("should reply 401 when the credential parameter name is wrong in POST", function()
       local response, status = http_client.post(STUB_POST_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Invalid authentication credentials", body.message)
+      assert.equal(401, status)
+      assert.equal("No API key found in headers or querystring", body.message)
     end)
 
     it("should pass with GET", function()
       local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "keyauth1.com"})
-      assert.are.equal(200, status)
+      assert.equal(200, status)
       local parsed_response = cjson.decode(response)
-      assert.are.equal("apikey123", parsed_response.queryString.apikey)
+      assert.equal("apikey123", parsed_response.queryString.apikey)
     end)
 
     it("should pass with POST", function()
       local response, status = http_client.post(STUB_POST_URL, {apikey = "apikey123"}, {host = "keyauth1.com"})
-      assert.are.equal(200, status)
+      assert.equal(200, status)
       local parsed_response = cjson.decode(response)
-      assert.are.equal("apikey123", parsed_response.postData.params.apikey)
+      assert.equal("apikey123", parsed_response.postData.params.apikey)
     end)
 
-    it("should return invalid credentials when the credential parameter name is wrong in GET header", function()
+    it("should reply 401 when the credential parameter name is wrong in GET header", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Invalid authentication credentials", body.message)
+      assert.equal(401, status)
+      assert.equal("No API key found in headers or querystring", body.message)
     end)
 
-    it("should return invalid credentials when the credential parameter name is wrong in POST header", function()
+    it("should reply 401 when the credential parameter name is wrong in POST header", function()
       local response, status = http_client.post(STUB_POST_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
-      assert.are.equal(403, status)
-      assert.are.equal("Invalid authentication credentials", body.message)
+      assert.equal(401, status)
+      assert.equal("No API key found in headers or querystring", body.message)
     end)
 
     it("should set right headers", function()
       local response, status = http_client.post(STUB_POST_URL, {apikey = "apikey123"}, {host = "keyauth1.com"})
-      assert.are.equal(200, status)
+      assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.truthy(parsed_response.headers["x-consumer-id"])
       assert.truthy(parsed_response.headers["x-consumer-username"])
-      assert.are.equal("auth_tests_consumer", parsed_response.headers["x-consumer-username"])
+      assert.equal("auth_tests_consumer", parsed_response.headers["x-consumer-username"])
     end)
 
     describe("Hide credentials", function()
 
       it("should pass with POST and hide credentials", function()
         local response, status = http_client.post(STUB_POST_URL, {apikey = "apikey123", wot = "wat"}, {host = "keyauth2.com"})
-        assert.are.equal(200, status)
+        assert.equal(200, status)
         local parsed_response = cjson.decode(response)
         assert.falsy(parsed_response.postData.params.apikey)
-        assert.are.equal("wat", parsed_response.postData.params.wot)
+        assert.equal("wat", parsed_response.postData.params.wot)
       end)
 
       it("should pass with POST multipart and hide credentials", function()
         local response, status = http_client.post_multipart(STUB_POST_URL, {apikey = "apikey123", wot = "wat"}, {host = "keyauth2.com"})
-        assert.are.equal(200, status)
+        assert.equal(200, status)
         local parsed_response = cjson.decode(response)
         assert.falsy(parsed_response.postData.params.apikey)
-        assert.are.equal("wat", parsed_response.postData.params.wot)
+        assert.equal("wat", parsed_response.postData.params.wot)
       end)
 
       it("should pass with GET and hide credentials", function()
         local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth2.com", apikey = "apikey123"})
-        assert.are.equal(200, status)
+        assert.equal(200, status)
         local parsed_response = cjson.decode(response)
         assert.falsy(parsed_response.headers.apikey)
       end)
 
       it("should pass with GET and hide credentials and another param", function()
         local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth2.com", apikey = "apikey123", foo = "bar"})
-        assert.are.equal(200, status)
+        assert.equal(200, status)
         local parsed_response = cjson.decode(response)
         assert.falsy(parsed_response.headers.apikey)
-        assert.are.equal("bar", parsed_response.headers.foo)
+        assert.equal("bar", parsed_response.headers.foo)
       end)
 
       it("should not pass with GET and hide credentials", function()
         local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth2.com", apikey = "apikey123123"})
         local body = cjson.decode(response)
-        assert.are.equal(403, status)
-        assert.are.equal("Invalid authentication credentials", body.message)
+        assert.equal(403, status)
+        assert.equal("Invalid authentication credentials", body.message)
       end)
 
       it("should pass with GET and hide credentials and another param", function()
         local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth2.com", apikey = "apikey123", wot = "wat"})
-        assert.are.equal(200, status)
+        assert.equal(200, status)
         local parsed_response = cjson.decode(response)
         assert.falsy(parsed_response.headers.apikey)
-        assert.are.equal("wat", parsed_response.headers.wot)
+        assert.equal("wat", parsed_response.headers.wot)
       end)
 
       it("should not pass with GET and hide credentials", function()
         local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth2.com", apikey = "apikey123123"})
         local body = cjson.decode(response)
-        assert.are.equal(403, status)
-        assert.are.equal("Invalid authentication credentials", body.message)
+        assert.equal(403, status)
+        assert.equal("Invalid authentication credentials", body.message)
       end)
 
       it("should pass with GET and hide credentials in querystring", function()
         local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "keyauth2.com"})
-        assert.are.equal(200, status)
+        assert.equal(200, status)
         local parsed_response = cjson.decode(response)
         assert.falsy(parsed_response.queryString.apikey)
       end)
