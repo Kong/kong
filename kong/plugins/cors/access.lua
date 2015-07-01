@@ -46,8 +46,6 @@ local function configure_max_age(ngx, conf)
 end
 
 function _M.execute(conf)
-  if not conf then conf = {} end
-  
   local request = ngx.req
   local method = request.get_method()
   local headers = request.get_headers()
