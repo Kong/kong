@@ -11,6 +11,7 @@ local _M = {
     HTTP_CREATED = 201,
     HTTP_NO_CONTENT = 204,
     HTTP_BAD_REQUEST = 400,
+    HTTP_UNAUTHORIZED = 401,
     HTTP_FORBIDDEN = 403,
     HTTP_NOT_FOUND = 404,
     HTTP_METHOD_NOT_ALLOWED = 405,
@@ -23,11 +24,14 @@ local _M = {
 -- Define some rules that will ALWAYS be applied to some status codes.
 -- Ex: 204 must not have content, but if 404 has no content then "Not found" will be set.
 local response_default_content = {
-  [_M.status_codes.HTTP_NOT_FOUND] = function(content)
-    return content and content or "Not found"
+  [_M.status_codes.HTTP_UNAUTHORIZED] = function(content)
+    return content or "Unauthorized"
   end,
   [_M.status_codes.HTTP_NO_CONTENT] = function(content)
     return nil
+  end,
+  [_M.status_codes.HTTP_NOT_FOUND] = function(content)
+    return content or "Not found"
   end,
   [_M.status_codes.HTTP_INTERNAL_SERVER_ERROR] = function(content)
     return "An unexpected error occurred"
