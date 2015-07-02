@@ -22,19 +22,17 @@ local GRANT_TYPE = "grant_type"
 local GRANT_AUTHORIZATION_CODE = "authorization_code"
 local GRANT_REFRESH_TOKEN = "refresh_token"
 local ERROR = "error"
-local AUTHENTICATED_USERNAME = "authenticated_username"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
 local AUTHORIZE_URL = "^%s/oauth2/authorize/?$"
 local TOKEN_URL = "^%s/oauth2/token/?$"
 
 -- TODO: Expire token (using TTL ?)
-local function generate_token(conf, credential, authenticated_username, authenticated_userid, scope, state, expiration)
+local function generate_token(conf, credential, authenticated_userid, scope, state, expiration)
   local token_expiration = expiration or conf.token_expiration
 
   local token, err = dao.oauth2_tokens:insert({
     credential_id = credential.id,
-    authenticated_username = authenticated_username,
     authenticated_userid = authenticated_userid,
     expires_in = token_expiration,
     scope = scope
@@ -86,6 +84,8 @@ local function authorize(conf)
 
   if conf.provision_key ~= parameters.provision_key then
     response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+  elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+    response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
   else
     local response_type = parameters[RESPONSE_TYPE]
     -- Check response_type
@@ -121,7 +121,6 @@ local function authorize(conf)
     if not response_params[ERROR] then
       if response_type == CODE then
         local authorization_code, err = dao.oauth2_authorization_codes:insert({
-          authenticated_username = parameters[AUTHENTICATED_USERNAME],
           authenticated_userid = parameters[AUTHENTICATED_USERID],
           scope = table.concat(scopes, " ")
         })
@@ -135,7 +134,7 @@ local function authorize(conf)
         }
       else
         -- Implicit grant, override expiration to zero
-        response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERNAME], parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, 0)
+        response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, 0)
       end
     end
   end
@@ -186,7 +185,7 @@ local function issue_token(conf)
       if not authorization_code then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
       else
-        response_params = generate_token(conf, client, authorization_code.authenticated_username, authorization_code.authenticated_userid, authorization_code.scope, state)
+        response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
       end
     elseif grant_type == GRANT_REFRESH_TOKEN then
       local refresh_token = parameters[REFRESH_TOKEN]
@@ -194,7 +193,7 @@ local function issue_token(conf)
       if not token then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
       else
-        response_params = generate_token(conf, client, token.authenticated_username, token.authenticated_userid, token.scope, state)
+        response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state)
         dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
       end
     end
@@ -321,7 +320,6 @@ function _M.execute(conf)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.req.set_header("x-authenticated-scope", token.scope)
-  ngx.req.set_header("x-authenticated-username", token.authenticated_username)
   ngx.req.set_header("x-authenticated-userid", token.authenticated_userid)
   ngx.ctx.authenticated_entity = credential
 end

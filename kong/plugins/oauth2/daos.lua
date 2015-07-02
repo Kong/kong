@@ -34,7 +34,6 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   fields = {
     id = { type = "id", dao_insert_value = true },
     code = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
-    authenticated_username = { type = "string", required = false },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
     created_at = { type = "timestamp", dao_insert_value = true }
@@ -51,7 +50,6 @@ local OAUTH2_TOKENS_SCHEMA = {
     access_token = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
     refresh_token = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_refresh_token },
     expires_in = { type = "number", required = true },
-    authenticated_username = { type = "string", required = false },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
     created_at = { type = "timestamp", dao_insert_value = true }
