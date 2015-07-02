@@ -18,6 +18,7 @@ local function validate_key(v)
 end
 
 return {
+  no_consumer = true,
   fields = {
     cert = { required = true, type = "string", func = validate_cert },
     key = { required = true, type = "string", func = validate_key },

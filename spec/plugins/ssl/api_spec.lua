@@ -1,0 +1,36 @@
+local json = require "cjson"
+local http_client = require "kong.tools.http_client"
+local spec_helper = require "spec.spec_helpers"
+local ssl_fixtures = require "spec.plugins.ssl.fixtures"
+
+describe("SSL API", function()
+  local BASE_URL
+
+  setup(function()
+    spec_helper.prepare_db()
+    spec_helper.start_kong()
+    spec_helper.insert_fixtures {
+      api = {
+        {name = "mockbin", public_dns = "mockbin.com", target_url = "http://mockbin.com"}
+      }
+    }
+    BASE_URL = spec_helper.API_URL.."/apis/mockbin/plugins/"
+  end)
+
+  teardown(function()
+    spec_helper.stop_kong()
+  end)
+
+  describe("/apis/:api/plugins", function()
+
+    it("should refuse to set a `consumer_id` if asked to", function()
+      local response, status = http_client.post_multipart(BASE_URL,
+        {name = "ssl", consumer_id = "0000", ["value.cert"] = ssl_fixtures.cert, ["value.key"] = ssl_fixtures.key}
+      )
+      assert.equal(400, status)
+      local body = json.decode(response)
+      assert.equal("No consumer can be configured for that plugin", body.message)
+    end)
+
+  end)
+end)

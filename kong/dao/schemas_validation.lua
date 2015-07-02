@@ -195,7 +195,7 @@ end
 
 function _M.on_insert(t, schema, dao)
   if schema.on_insert and type(schema.on_insert) == "function" then
-    local valid, err = schema.on_insert(t, dao)
+    local valid, err = schema.on_insert(t, dao, schema)
     if not valid or err then
       return false, err
     else

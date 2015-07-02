@@ -26,7 +26,18 @@ return {
     value = { type = "table", schema = load_value_schema },
     enabled = { type = "boolean", default = true }
   },
-  on_insert = function(plugin_t, dao)
+  on_insert = function(plugin_t, dao, schema)
+    -- Load the value schema
+    local value_schema, err = schema.fields.value.schema(plugin_t)
+    if err then
+      return false, err
+    end
+
+    -- Check if the schema has a `no_consumer` field
+    if value_schema.no_consumer and plugin_t.consumer_id ~= nil and plugin_t.consumer_id ~= constants.DATABASE_NULL_ID then
+      return false, DaoError("No consumer can be configured for that plugin", constants.DATABASE_ERROR_TYPES.SCHEMA)
+    end
+
     local res, err = dao.plugins_configurations:find_by_keys({
       name = plugin_t.name,
       api_id = plugin_t.api_id,
