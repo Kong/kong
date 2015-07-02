@@ -21,7 +21,6 @@ local Migration = {
       CREATE TABLE IF NOT EXISTS oauth2_authorization_codes(
         id uuid,
         code text,
-        authenticated_username text,
         authenticated_userid text,
         scope text,
         created_at timestamp,
@@ -29,6 +28,7 @@ local Migration = {
       ) WITH default_time_to_live = 300;
 
       CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(code);
+      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(authenticated_userid);
 
       CREATE TABLE IF NOT EXISTS oauth2_tokens(
         id uuid,
@@ -37,7 +37,6 @@ local Migration = {
         token_type text,
         refresh_token text,
         expires_in int,
-        authenticated_username text,
         authenticated_userid text,
         scope text,
         created_at timestamp,
@@ -46,6 +45,7 @@ local Migration = {
 
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(access_token);
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(refresh_token);
+      CREATE INDEX IF NOT EXISTS ON oauth2_tokens(authenticated_userid);
 
     ]]
   end,
