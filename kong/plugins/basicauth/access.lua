@@ -41,6 +41,9 @@ local function retrieve_credentials(request, conf)
       username = basic_parts[1]
       password = basic_parts[2]
     end
+  else
+    ngx.ctx.stop_phases = true
+    return responses.send_HTTP_UNAUTHORIZED()
   end
 
   if conf.hide_credentials then

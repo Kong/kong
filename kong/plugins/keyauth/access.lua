@@ -118,14 +118,13 @@ local retrieve_credentials = {
 function _M.execute(conf)
   if skip_authentication(ngx.req.get_headers()) then return end
 
-  local credential
+  local key, key_found, credential
   for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do
-    local key = retrieve_credentials[v](ngx.req, conf)
-
-    -- Make sure we are not sending an empty table to find_by_keys
+    key = retrieve_credentials[v](ngx.req, conf)
     if key then
+      key_found = true
       credential = cache.get_or_set(cache.keyauth_credential_key(key), function()
-        local credentials, err = dao.keyauth_credentials:find_by_keys { key = key }
+        local credentials, err = dao.keyauth_credentials:find_by_keys {key = key}
         local result
         if err then
           return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -134,11 +133,17 @@ function _M.execute(conf)
         end
         return result
       end)
+      if credential then break end
     end
-
-    if credential then break end
   end
 
+  -- No key found in the request's headers or parameters
+  if not key_found then
+    ngx.ctx.stop_phases = true
+    return responses.send_HTTP_UNAUTHORIZED("No API key found in headers or querystring")
+  end
+
+  -- No key found in the DB, this credential is invalid
   if not credential then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
@@ -146,7 +151,7 @@ function _M.execute(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = dao.consumers:find_by_primary_key({ id = credential.consumer_id })
+    local result, err = dao.consumers:find_by_primary_key({id = credential.consumer_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
