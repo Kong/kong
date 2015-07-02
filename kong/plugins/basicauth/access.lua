@@ -67,10 +67,6 @@ end
 
 function _M.execute(conf)
   if skip_authentication(ngx.req.get_headers()) then return end
-  if not conf then
-    -- Print the error in logs and signal this is a server error to the client
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR("[basicauth] missing configuration")
-  end
 
   local username, password = retrieve_credentials(ngx.req, conf)
   local credential

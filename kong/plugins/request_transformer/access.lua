@@ -26,8 +26,6 @@ local function get_content_type()
 end
 
 function _M.execute(conf)
-  if not conf then return end
-
   if conf.add then
 
     -- Add headers
