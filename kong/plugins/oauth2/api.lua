@@ -1,6 +1,12 @@
 local crud = require "kong.api.crud_helpers"
 
 return {
+  ["/oauth2/"] = {
+    GET = function(self, dao_factory, helpers)
+      crud.paginated_set(self, dao_factory.oauth2_credentials)
+    end
+  },
+
   ["/consumers/:username_or_id/oauth2/"] = {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
