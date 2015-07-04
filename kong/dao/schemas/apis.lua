@@ -24,12 +24,30 @@ local function check_public_dns_and_path(value, api_t)
     return false, "At least a 'public_dns' or a 'path' must be specified"
   end
 
-  return true
+  -- Validate wildcard public_dns
+  if public_dns then
+    local _, count = public_dns:gsub("%*", "")
+    if count > 1 then
+      return false, "Only one wildcard is allowed: "..public_dns
+    elseif count > 0 then
+      local pos = public_dns:find("%*")
+      local valid
+      if pos == 1 then
+        valid = public_dns:match("^%*%.") ~= nil
+      elseif pos == string.len(public_dns) then
+        valid = public_dns:match(".%.%*$") ~= nil
+      end
+
+      if not valid then
+        return false, "Invalid wildcard placement: "..public_dns
+      end
+    end
+  end
 end
 
 local function check_path(path, api_t)
   local valid, err = check_public_dns_and_path(path, api_t)
-  if not valid then
+  if valid == false then
     return false, err
   end
 
