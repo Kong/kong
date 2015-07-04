@@ -351,10 +351,11 @@ function BaseDao:insert(t)
   assert(t ~= nil, "Cannot insert a nil element")
   assert(type(t) == "table", "Entity to insert must be a table")
 
-  local ok, db_err, errors
+  local ok, db_err, errors, self_err
 
   -- Populate the entity with any default/overriden values and validate it
-  errors = validations.validate(t, self, {
+  ok, errors, self_err = validations.validate_entity(t, self._schema, {
+    dao = self._factory,
     dao_insert = function(field)
       if field.type == "id" then
         return uuid()
@@ -363,13 +364,10 @@ function BaseDao:insert(t)
       end
     end
   })
-  if errors then
-    return nil, errors
-  end
-
-  ok, errors = validations.on_insert(t, self._schema, self._factory)
-  if not ok then
-    return nil, errors
+  if self_err then
+    return nil, self_err
+  elseif not ok then
+    return nil, DaoError(errors, error_types.SCHEMA)
   end
 
   ok, errors, db_err = self:check_unique_fields(t)
@@ -440,7 +438,7 @@ function BaseDao:update(t, full)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
 
-  local ok, db_err, errors
+  local ok, db_err, errors, self_err
 
   -- Check if exists to prevent upsert
   local res, err = self:find_by_primary_key(t)
@@ -455,9 +453,15 @@ function BaseDao:update(t, full)
   end
 
   -- Validate schema
-  errors = validations.validate(t, self, {partial_update = not full, full_update = full})
-  if errors then
-    return nil, errors
+  ok, errors, self_err = validations.validate_entity(t, self._schema, {
+    partial_update = not full,
+    full_update = full,
+    dao = self._factory
+  })
+  if self_err then
+    return nil, self_err
+  elseif not ok then
+    return nil, DaoError(errors, error_types.SCHEMA)
   end
 
   ok, errors, db_err = self:check_unique_fields(t, true)
