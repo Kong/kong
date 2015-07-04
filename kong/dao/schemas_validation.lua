@@ -1,8 +1,5 @@
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-local DaoError = require "kong.dao.error"
-local constants = require "kong.constants"
-local error_types = constants.DATABASE_ERROR_TYPES
 
 local POSSIBLE_TYPES = {
   id = true,
@@ -172,7 +169,7 @@ function _M.validate_entity(t, schema, options)
         -- [FUNC] Check field against a custom function
         -- only if there is no error on that field already.
         local ok, err, new_fields = v.func(t[column], t, column)
-        if not ok and err then
+        if ok == false and err then
           errors = utils.add_error(errors, column, err)
         elseif new_fields then
           for k, v in pairs(new_fields) do

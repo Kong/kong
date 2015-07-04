@@ -87,6 +87,46 @@ describe("Entities Schemas", function()
       assert.equal("mockbin.com", t.name)
     end)
 
+    it("should accept valid wildcard public_dns", function()
+      local valid, errors = validate_entity({
+        name = "mockbin",
+        public_dns = "*.mockbin.org",
+        target_url = "http://mockbin.com"
+      }, api_schema)
+      assert.True(valid)
+      assert.falsy(errors)
+
+      valid, errors = validate_entity({
+        name = "mockbin",
+        public_dns = "mockbin.*",
+        target_url = "http://mockbin.com"
+      }, api_schema)
+      assert.True(valid)
+      assert.falsy(errors)
+    end)
+
+    it("should refuse invalid wildcard public_dns", function()
+      local api_t = {
+        name = "mockbin",
+        public_dns = "*.mockbin.*",
+        target_url = "http://mockbin.com"
+      }
+
+      local valid, errors = validate_entity(api_t, api_schema)
+      assert.False(valid)
+      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.public_dns)
+
+      api_t.public_dns = "*mockbin.com"
+      valid, errors = validate_entity(api_t, api_schema)
+      assert.False(valid)
+      assert.equal("Invalid wildcard placement: *mockbin.com", errors.public_dns)
+
+      api_t.public_dns = "www.mockbin*"
+      valid, errors = validate_entity(api_t, api_schema)
+      assert.False(valid)
+      assert.equal("Invalid wildcard placement: www.mockbin*", errors.public_dns)
+    end)
+
     it("should only accept alphanumeric `path`", function()
       local valid, errors = validate_entity({
         name = "mockbin",
@@ -206,7 +246,7 @@ describe("Entities Schemas", function()
       assert.equal("\"hello\" is not allowed. Allowed values are: \"second\", \"minute\", \"hour\", \"day\", \"month\", \"year\"", errors["value.period"])
     end)
 
-    describe("on_insert", function()
+    describe("self_check", function()
       it("should refuse `consumer_id` if specified in the value schema", function()
         local stub_value_schema = {
           no_consumer = true,
@@ -219,7 +259,7 @@ describe("Entities Schemas", function()
           return stub_value_schema
         end
 
-        local valid, errors, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", value = {string = "foo"}}, plugins_configurations_schema)
+        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", value = {string = "foo"}}, plugins_configurations_schema)
         assert.False(valid)
         assert.equal("No consumer can be configured for that plugin", err.message)
 
