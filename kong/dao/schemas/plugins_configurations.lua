@@ -26,11 +26,11 @@ return {
     value = { type = "table", schema = load_value_schema },
     enabled = { type = "boolean", default = true }
   },
-  on_insert = function(plugin_t, dao, schema)
+  self_check = function(self, plugin_t, dao, is_update)
     -- Load the value schema
-    local value_schema, err = schema.fields.value.schema(plugin_t)
+    local value_schema, err = self.fields.value.schema(plugin_t)
     if err then
-      return false, err
+      return false, DaoError(err, constants.DATABASE_ERROR_TYPES.SCHEMA)
     end
 
     -- Check if the schema has a `no_consumer` field
@@ -38,20 +38,20 @@ return {
       return false, DaoError("No consumer can be configured for that plugin", constants.DATABASE_ERROR_TYPES.SCHEMA)
     end
 
-    local res, err = dao.plugins_configurations:find_by_keys({
-      name = plugin_t.name,
-      api_id = plugin_t.api_id,
-      consumer_id = plugin_t.consumer_id
-    })
+    if not is_update then
+      local res, err = dao.plugins_configurations:find_by_keys({
+        name = plugin_t.name,
+        api_id = plugin_t.api_id,
+        consumer_id = plugin_t.consumer_id
+      })
 
-    if err then
-      return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
-    end
+      if err then
+        return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+      end
 
-    if res and #res > 0 then
-      return false, DaoError("Plugin configuration already exists", constants.DATABASE_ERROR_TYPES.UNIQUE)
-    else
-      return true
+      if res and #res > 0 then
+        return false, DaoError("Plugin configuration already exists", constants.DATABASE_ERROR_TYPES.UNIQUE)
+      end
     end
   end
 }
