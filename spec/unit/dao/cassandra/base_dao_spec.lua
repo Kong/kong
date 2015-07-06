@@ -537,7 +537,7 @@ describe("Cassandra", function()
             },
             plugin_configuration = {
               {name = "keyauth", __api = 1},
-              {name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1},
+              {name = "ratelimiting", value = { minute = 6}, __api = 1},
               {name = "filelog", value = {path = "/tmp/spec.log" }, __api = 1},
 
               {name = "keyauth", __api = 2}
@@ -590,7 +590,7 @@ describe("Cassandra", function()
             },
             plugin_configuration = {
               {name = "keyauth", __api = 1, __consumer = 1},
-              {name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1, __consumer = 1},
+              {name = "ratelimiting", value = { minute = 6}, __api = 1, __consumer = 1},
               {name = "filelog", value = {path = "/tmp/spec.log" }, __api = 1, __consumer = 1},
 
               {name = "keyauth", __api = 1, __consumer = 2}
@@ -658,8 +658,8 @@ describe("Cassandra", function()
             },
             plugin_configuration = {
               { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
-              { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
-              { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 2 },
+              { name = "ratelimiting", value = { minute = 6}, __api = 1 },
+              { name = "ratelimiting", value = { minute = 6}, __api = 2 },
               { name = "filelog", value = { path = "/tmp/spec.log" }, __api = 1 }
             }
           }

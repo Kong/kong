@@ -20,7 +20,9 @@ describe("RateLimiting Plugin", function()
     spec_helper.insert_fixtures {
       api = {
         { name = "tests ratelimiting 1", public_dns = "test3.com", target_url = "http://mockbin.com" },
-        { name = "tests ratelimiting 2", public_dns = "test4.com", target_url = "http://mockbin.com" }
+        { name = "tests ratelimiting 2", public_dns = "test4.com", target_url = "http://mockbin.com" },
+        { name = "tests ratelimiting 3", public_dns = "test5.com", target_url = "http://mockbin.com" },
+        { name = "tests ratelimiting 4", public_dns = "test6.com", target_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
@@ -28,15 +30,36 @@ describe("RateLimiting Plugin", function()
       },
       plugin_configuration = {
         { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
-        { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 1 },
-        { name = "ratelimiting", value = {period = "minute", limit = 8}, __api = 1, __consumer = 1 },
-        { name = "ratelimiting", value = {period = "minute", limit = 6}, __api = 2 },
+        { name = "ratelimiting", value = { minute = 6 }, __api = 1 },
+        { name = "ratelimiting", value = { minute = 8 }, __api = 1, __consumer = 1 },
+        { name = "ratelimiting", value = { minute = 6 }, __api = 2 },
+        { name = "ratelimiting", value = { minute = 3, hour = 5 }, __api = 3 },
+        { name = "ratelimiting", value = { minute = 33 }, __api = 4 }
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
         { key = "apikey123", __consumer = 2 }
       }
     }
+
+    -- Updating API test6.com with old plugin value, to check retrocompatibility
+    local dao_factory = spec_helper.get_env().dao_factory
+    -- Find API
+    local res, err = dao_factory.apis:find_by_keys({public_dns = 'test6.com'})
+    if err then error(err) end
+    -- Find Plugin Configuration
+    local res, err = dao_factory.plugins_configurations:find_by_keys({api_id = res[1].id})
+    if err then error(err) end
+    -- Set old value
+    local plugin_configuration = res[1]
+    plugin_configuration.value = {
+      period = "minute",
+      limit = 6
+    }
+    -- Update plugin configuration
+    local _, err = dao_factory.plugins_configurations:execute(
+      "update plugins_configurations SET value = '{\"limit\":6, \"period\":\"minute\"}' WHERE id = "..plugin_configuration.id.." and name = 'ratelimiting'")
+    if err then error(err) end
 
     spec_helper.start_kong()
   end)
@@ -56,8 +79,8 @@ describe("RateLimiting Plugin", function()
       for i = 1, limit do
         local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test4.com"})
         assert.are.equal(200, status)
-        assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-        assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
+        assert.are.same(tostring(limit), headers["x-ratelimit-limit-minute"])
+        assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining-minute"])
       end
 
       -- Additonal request, while limit is 6/minute
@@ -67,10 +90,60 @@ describe("RateLimiting Plugin", function()
       assert.are.equal("API rate limit exceeded", body.message)
     end)
 
-  end)
+    it("should handle multiple limits", function()
+      local limits = {
+        minute = 3,
+        hour = 5
+      }
 
+      wait()
+
+      for i = 1, 3 do
+        local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
+        assert.are.equal(200, status)
+
+        assert.are.same(tostring(limits.minute), headers["x-ratelimit-limit-minute"])
+        assert.are.same(tostring(limits.minute - i), headers["x-ratelimit-remaining-minute"])
+        assert.are.same(tostring(limits.hour), headers["x-ratelimit-limit-hour"])
+        assert.are.same(tostring(limits.hour - i), headers["x-ratelimit-remaining-hour"])
+      end
+
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
+      assert.are.equal("2", headers["x-ratelimit-remaining-hour"])
+      assert.are.equal("0", headers["x-ratelimit-remaining-minute"])
+      local body = cjson.decode(response)
+      assert.are.equal(429, status)
+      assert.are.equal("API rate limit exceeded", body.message)
+    end)
+    
+  end)
+  
   describe("With authentication", function()
 
+    describe("Old plugin format", function()     
+
+      it("should get blocked if exceeding limit", function()
+        wait()
+        
+        -- Default ratelimiting plugin for this API says 6/minute
+        local limit = 6
+
+        for i = 1, limit do
+          local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
+          assert.are.equal(200, status)
+          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
+        end
+
+        -- Third query, while limit is 2/minute
+        local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(429, status)
+        assert.are.equal("API rate limit exceeded", body.message)
+      end)
+
+    end)
+    
     describe("Default plugin", function()
 
       it("should get blocked if exceeding limit", function()
@@ -82,8 +155,8 @@ describe("RateLimiting Plugin", function()
         for i = 1, limit do
           local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test3.com"})
           assert.are.equal(200, status)
-          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
+          assert.are.same(tostring(limit), headers["x-ratelimit-limit-minute"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining-minute"])
         end
 
         -- Third query, while limit is 2/minute
@@ -106,8 +179,8 @@ describe("RateLimiting Plugin", function()
         for i = 1, limit do
           local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test3.com"})
           assert.are.equal(200, status)
-          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
+          assert.are.same(tostring(limit), headers["x-ratelimit-limit-minute"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining-minute"])
         end
 
         local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test3.com"})
@@ -117,5 +190,7 @@ describe("RateLimiting Plugin", function()
       end)
 
     end)
+    
   end)
+
 end)
