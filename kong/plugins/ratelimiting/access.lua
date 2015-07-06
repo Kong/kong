@@ -15,19 +15,50 @@ function _M.execute(conf)
     identifier = ngx.var.remote_addr
   end
 
-  -- Load current metric for configured period
-  local current_metric, err = dao.ratelimiting_metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, conf.period)
-  if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  local usage = {}
+  local stop
+
+  -- Handle previous version of the rate-limiting plugin
+  local old_format = false
+  if conf.period and conf.limit then
+    old_format = true
+    conf[conf.period] = conf.limit -- Adapt to new format
+
+    -- Delete old properties
+    conf.period = nil
+    conf.limit = nil
   end
 
-  -- What is the current usage for the configured period?
-  local current_usage = current_metric and current_metric.value or 0
-  local remaining = conf.limit - current_usage
-  ngx.header[constants.HEADERS.RATELIMIT_LIMIT] = conf.limit
-  ngx.header[constants.HEADERS.RATELIMIT_REMAINING] = math.max(0, remaining - 1) -- -1 for this current request
+  -- Load current metric for configured period
+  for period, limit in pairs(conf) do
+    local current_metric, err = dao.ratelimiting_metrics:find_one(ngx.ctx.api.id, identifier, current_timestamp, period)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
 
-  if remaining <= 0 then
+    -- What is the current usage for the configured period?
+    local current_usage = current_metric and current_metric.value or 0
+    local remaining = limit - current_usage
+
+    -- Recording usage
+    usage[period] = {
+      limit = limit,
+      remaining = remaining
+    }
+
+    if remaining <= 0 then
+      stop = period
+    end
+  end
+
+  -- Adding headers
+  for k,v in pairs(usage) do
+    ngx.header[constants.HEADERS.RATELIMIT_LIMIT..(old_format and "" or "-"..k)] = v.limit
+    ngx.header[constants.HEADERS.RATELIMIT_REMAINING..(old_format and "" or "-"..k)] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -1 for this current request
+  end
+
+  -- If limit is exceeded, terminate the request
+  if stop then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send(429, "API rate limit exceeded")
   end
@@ -37,6 +68,7 @@ function _M.execute(conf)
   if stmt_err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(stmt_err)
   end
+  
 end
 
 return _M
