@@ -1,6 +1,7 @@
 local constants = require "kong.constants"
 local IO = require "kong.tools.io"
 local stringy = require "stringy"
+local cjson = require "cjson"
 
 local _M = {}
 
@@ -46,9 +47,12 @@ end
 
 function _M.format_entity(t)
   t.created_at = nil
-  for k, _ in pairs(t) do
+  for k, v in pairs(t) do
     if stringy.endswith(k, "id") then
       t[k] = nil
+    end
+    if type(v) == "table" then
+      t[k] = cjson.encode(v)
     end
   end
   return t
