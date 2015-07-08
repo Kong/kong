@@ -130,8 +130,8 @@ build = {
     ["kong.plugins.filelog.log"] = "kong/plugins/filelog/log.lua",
     ["kong.plugins.filelog.fd_util"] = "kong/plugins/filelog/fd_util.lua",
 
-    ["kong.plugins.analytics.handler"] = "kong/plugins/analytics/handler.lua",
-    ["kong.plugins.analytics.schema"] = "kong/plugins/analytics/schema.lua",
+    ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
+    ["kong.plugins.mashape-analytics.schema"] = "kong/plugins/mashape-analytics/schema.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",

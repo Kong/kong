@@ -42,20 +42,20 @@ local function send_batch(premature, conf, alf)
 
   ok, err = client:connect(ANALYTICS_SOCKET.host, ANALYTICS_SOCKET.port)
   if not ok then
-    ngx.log(ngx.ERR, "[analytics] failed to connect to the socket: "..err)
+    ngx.log(ngx.ERR, "[mashape-analytics] failed to connect to the socket: "..err)
     return
   end
 
   local res, err = client:request({ path = ANALYTICS_SOCKET.path, body = message })
   if not res then
-    ngx.log(ngx.ERR, "[analytics] failed to send batch: "..err)
+    ngx.log(ngx.ERR, "[mashape-analytics] failed to send batch: "..err)
   end
 
   -- close connection, or put it into the connection pool
   if res.headers["connection"] == "close" then
     ok, err = client:close()
     if not ok then
-      ngx.log(ngx.ERR, "[analytics] failed to close: "..err)
+      ngx.log(ngx.ERR, "[mashape-analytics] failed to close: "..err)
     end
   else
     client:set_keepalive()
@@ -63,9 +63,9 @@ local function send_batch(premature, conf, alf)
 
   if res.status == 200 then
     alf:flush_entries()
-    ngx.log(ngx.DEBUG, "[analytics] successfully saved the batch")
+    ngx.log(ngx.DEBUG, "[mashape-analytics] successfully saved the batch")
   else
-    ngx.log(ngx.ERR, "[analytics] socket refused the batch: "..res.body)
+    ngx.log(ngx.ERR, "[mashape-analytics] socket refused the batch: "..res.body)
   end
 end
 
@@ -79,7 +79,7 @@ delayed_send_handler = function(premature, conf, alf)
   if ngx.now() - LATEST_CALL < conf.delay then
     local ok, err = ngx.timer.at(conf.delay, delayed_send_handler, conf, alf)
     if not ok then
-      ngx.log(ngx.ERR, "[analytics] failed to create delayed batch sending timer: ", err)
+      ngx.log(ngx.ERR, "[mashape-analytics] failed to create delayed batch sending timer: ", err)
     end
   else
     DELAYED_LOCK = false -- re-enable creation of a delayed-timer
@@ -94,7 +94,7 @@ end
 local AnalyticsHandler = BasePlugin:extend()
 
 function AnalyticsHandler:new()
-  AnalyticsHandler.super.new(self, "analytics")
+  AnalyticsHandler.super.new(self, "mashape-analytics")
 end
 
 function AnalyticsHandler:access(conf)
@@ -146,7 +146,7 @@ function AnalyticsHandler:log(conf)
     -- Batch size reached, let's send the data
     local ok, err = ngx.timer.at(0, send_batch, conf, ALF_BUFFER[api_id])
     if not ok then
-      ngx.log(ngx.ERR, "[analytics] failed to create batch sending timer: ", err)
+      ngx.log(ngx.ERR, "[mashape-analytics] failed to create batch sending timer: ", err)
     end
   elseif not DELAYED_LOCK then
     DELAYED_LOCK = true -- Make sure only one delayed timer is ever pending
@@ -155,7 +155,7 @@ function AnalyticsHandler:log(conf)
     -- too much time to reach the limit and trigger the flush.
     local ok, err = ngx.timer.at(conf.delay, delayed_send_handler, conf, ALF_BUFFER[api_id])
     if not ok then
-      ngx.log(ngx.ERR, "[analytics] failed to create delayed batch sending timer: ", err)
+      ngx.log(ngx.ERR, "[mashape-analytics] failed to create delayed batch sending timer: ", err)
     end
   end
 end
