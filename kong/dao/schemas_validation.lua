@@ -83,7 +83,7 @@ function _M.validate_entity(t, schema, options)
           is_valid_type = bool == "true" or bool == "false"
           t[column] = bool == "true"
         elseif v.type == "array" then
-          t[column] = stringy.split(t[column], ",")
+          t[column] = stringy.strip(t[column]) == "" and {} or stringy.split(t[column], ",") -- Handling empty arrays
           for arr_k, arr_v in ipairs(t[column]) do
             t[column][arr_k] = stringy.strip(arr_v)
           end

@@ -19,6 +19,11 @@ files["kong/vendor/resty_http.lua"] = {
   unused = false
 }
 
+files["kong/vendor/resty-lrucache/lib/resty/"] = {
+  global = false,
+  unused = false
+}
+
 files["spec/"] = {
   globals = {"describe", "it", "before_each", "setup", "after_each", "teardown", "stub", "mock", "spy", "finally", "pending"}
 }
