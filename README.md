@@ -109,7 +109,7 @@ Complete & versioned documentation is available at [GetKong.org][kong-url]:
 [kong-changelog]: https://github.com/Mashape/kong/blob/master/CHANGELOG.md
 
 [kong-logo]: http://i.imgur.com/4jyQQAZ.png
-[kong-benefits]: http://i.imgur.com/2hg4orF.png
+[kong-benefits]: http://cl.ly/image/1B3J3b3h1H1c/Image%202015-07-07%20at%206.57.25%20PM.png
 
 [mashape-url]: https://www.mashape.com
 
