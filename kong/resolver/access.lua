@@ -6,6 +6,49 @@ local responses = require "kong.tools.responses"
 
 local _M = {}
 
+-- Take a public_dns and make it a pattern for wildcard matching.
+-- Only do so if the public_dns actually has a wildcard.
+local function create_wildcard_pattern(public_dns)
+  if string.find(public_dns, "*", 1, true) then
+    local pattern = string.gsub(public_dns, "%.", "%%.")
+    pattern = string.gsub(pattern, "*", ".+")
+    pattern = string.format("^%s$", pattern)
+    return pattern
+  end
+end
+
+-- Load all APIs in memory.
+-- Sort the data for faster lookup: dictionary per public_dns, host,
+-- and an array of wildcard public_dns.
+local function load_apis_in_memory()
+  local apis, err = dao.apis:find_all()
+  if err then
+    return nil, err
+  end
+
+  -- build dictionnaries of public_dns:api and path:apis for efficient O(1) lookup.
+  -- we only do O(n) lookup for wildcard public_dns that are in an array.
+  local dns_dic, dns_wildcard, path_dic = {}, {}, {}
+  for _, api in ipairs(apis) do
+    if api.public_dns then
+      local pattern = create_wildcard_pattern(api.public_dns)
+      if pattern then
+        -- If the public_dns is a wildcard, we have a pattern and we can
+        -- store it in an array for later lookup.
+        table.insert(dns_wildcard, {pattern = pattern, api = api})
+      else
+        -- Keep non-wildcard public_dns in a dictionary for faster lookup.
+        dns_dic[api.public_dns] = api
+      end
+    end
+    if api.path then
+      path_dic[api.path] = api
+    end
+  end
+
+  return {by_dns = dns_dic, wildcard_dns = dns_wildcard, by_path = path_dic}
+end
+
 local function get_backend_url(api)
   local result = api.target_url
 
@@ -37,7 +80,8 @@ end
 -- matching the API's `public_dns`, either from the `request_uri` matching the API's `path`.
 --
 -- To perform this, we need to query _ALL_ APIs in memory. It is the only way to compare the `request_uri`
--- as a regex to the values set in DB. We keep APIs in the database cache for a longer time than usual.
+-- as a regex to the values set in DB, as well as matching wildcard dns.
+-- We keep APIs in the database cache for a longer time than usual.
 -- @see https://github.com/Mashape/kong/issues/15 for an improvement on this.
 --
 -- @param  `request_uri` The URI for this request.
@@ -49,31 +93,14 @@ end
 local function find_api(request_uri)
   local retrieved_api
 
-  -- retrieve all APIs
-  local apis_dics, err = cache.get_or_set("ALL_APIS_BY_DIC", function()
-    local apis, err = dao.apis:find_all()
-    if err then
-      return nil, err
-    end
-
-    -- build dictionnaries of public_dns:api and path:apis for efficient lookup.
-    local dns_dic, path_dic = {}, {}
-    for _, api in ipairs(apis) do
-      if api.public_dns then
-        dns_dic[api.public_dns] = api
-      end
-      if api.path then
-        path_dic[api.path] = api
-      end
-    end
-    return {dns = dns_dic, path = path_dic}
-  end, 60) -- 60 seconds cache
+  -- Retrieve all APIs
+  local apis_dics, err = cache.get_or_set("ALL_APIS_BY_DIC", load_apis_in_memory, 60) -- 60 seconds cache, longer than usual
 
   if err then
     return err
   end
 
-  -- find by Host header
+  -- Find by Host header
   local all_hosts = {}
   for _, header_name in ipairs({"Host", constants.HEADERS.HOST_OVERRIDE}) do
     local hosts = ngx.req.get_headers()[header_name]
@@ -85,9 +112,18 @@ local function find_api(request_uri)
       for _, host in ipairs(hosts) do
         host = unpack(stringy.split(host, ":"))
         table.insert(all_hosts, host)
-        if apis_dics.dns[host] then
-          retrieved_api = apis_dics.dns[host]
-          break
+        if apis_dics.by_dns[host] then
+          retrieved_api = apis_dics.by_dns[host]
+          --break
+        else
+          -- If the API was not found in the dictionary, maybe it is a wildcard public_dns.
+          -- In that case, we need to loop over all of them.
+          for _, wildcard_dns in ipairs(apis_dics.wildcard_dns) do
+            if string.match(host, wildcard_dns.pattern) then
+              retrieved_api = wildcard_dns.api
+              break
+            end
+          end
         end
       end
     end
@@ -99,7 +135,7 @@ local function find_api(request_uri)
   end
 
   -- Otherwise, we look for it by path. We have to loop over all APIs and compare the requested URI.
-  for path, api in pairs(apis_dics.path) do
+  for path, api in pairs(apis_dics.by_path) do
     local m, err = ngx.re.match(request_uri, "^"..path)
     if err then
       ngx.log(ngx.ERR, "[resolver] error matching requested path: "..err)

@@ -1,8 +1,5 @@
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-local DaoError = require "kong.dao.error"
-local constants = require "kong.constants"
-local error_types = constants.DATABASE_ERROR_TYPES
 
 local POSSIBLE_TYPES = {
   id = true,
@@ -44,7 +41,7 @@ local _M = {}
 --           `is_update`  For an entity update, check immutable fields. Set to true.
 -- @return `valid`     Success of validation. True or false.
 -- @return `errors`    A list of encountered errors during the validation.
-function _M.validate_fields(t, schema, options)
+function _M.validate_entity(t, schema, options)
   if not options then options = {} end
   local errors
 
@@ -151,7 +148,7 @@ function _M.validate_fields(t, schema, options)
 
         if t[column] and type(t[column]) == "table" then
           -- Actually validating the sub-schema
-          local s_ok, s_errors = _M.validate_fields(t[column], sub_schema, options)
+          local s_ok, s_errors = _M.validate_entity(t[column], sub_schema, options)
           if not s_ok then
             for s_k, s_v in pairs(s_errors) do
               errors = utils.add_error(errors, column.."."..s_k, s_v)
@@ -172,7 +169,7 @@ function _M.validate_fields(t, schema, options)
         -- [FUNC] Check field against a custom function
         -- only if there is no error on that field already.
         local ok, err, new_fields = v.func(t[column], t, column)
-        if not ok and err then
+        if ok == false and err then
           errors = utils.add_error(errors, column, err)
         elseif new_fields then
           for k, v in pairs(new_fields) do
@@ -190,29 +187,14 @@ function _M.validate_fields(t, schema, options)
     end
   end
 
-  return errors == nil, errors
-end
-
-function _M.on_insert(t, schema, dao)
-  if schema.on_insert and type(schema.on_insert) == "function" then
-    local valid, err = schema.on_insert(t, dao, schema)
-    if not valid or err then
-      return false, err
-    else
-      return true
+  if errors == nil and type(schema.self_check) == "function" then
+    local ok, err = schema.self_check(schema, t, options.dao, (options.partial_update or options.full_update))
+    if ok == false then
+      return false, nil, err
     end
-  else
-    return true
   end
-end
 
-function _M.validate(t, dao, options)
-  local ok, errors
-
-  ok, errors = _M.validate_fields(t, dao._schema, options)
-  if not ok then
-    return DaoError(errors, error_types.SCHEMA)
-  end
+  return errors == nil, errors
 end
 
 local digit = "[0-9a-f]"
