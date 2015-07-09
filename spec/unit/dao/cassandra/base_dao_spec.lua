@@ -161,7 +161,7 @@ describe("Cassandra", function()
         assert.are.same("consumer_id "..plugin_t.consumer_id.." does not exist", err.message.consumer_id)
       end)
 
-      it("should do insert checks for entities with `on_insert`", function()
+      it("should do insert checks for entities with `self_check`", function()
         local api, err = dao_factory.apis:insert(faker:fake_entity("api"))
         assert.falsy(err)
         assert.truthy(api.id)

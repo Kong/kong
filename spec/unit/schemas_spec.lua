@@ -1,5 +1,5 @@
 local schemas = require "kong.dao.schemas_validation"
-local validate_fields = schemas.validate_fields
+local validate_entity = schemas.validate_entity
 
 require "kong.tools.ngx_stub"
 
@@ -7,7 +7,7 @@ describe("Schemas", function()
 
   -- Ok kids, today we're gonna test a custom validation schema,
   -- grab a pair of glasses, this stuff can literally explode.
-  describe("#validate_fields()", function()
+  describe("#validate_entity()", function()
     local schema = {
       fields = {
         string = { type = "string", required = true, immutable = true},
@@ -39,7 +39,7 @@ describe("Schemas", function()
     it("should confirm a valid entity is valid", function()
       local values = {string = "mockbin entity", url = "mockbin.com"}
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.True(valid)
     end)
@@ -48,7 +48,7 @@ describe("Schemas", function()
       it("should invalidate entity if required property is missing", function()
         local values = { url = "mockbin.com" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.False(valid)
         assert.truthy(err)
         assert.are.same("string is required", err.string)
@@ -60,7 +60,7 @@ describe("Schemas", function()
        -- Failure
       local values = { string = "foo", table = "bar" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.False(valid)
       assert.truthy(err)
       assert.are.same("table is not a table", err.table)
@@ -68,14 +68,14 @@ describe("Schemas", function()
       -- Success
       local values = { string = "foo", table = { foo = "bar" }}
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.True(valid)
 
       -- Failure
       local values = { string = 1, table = { foo = "bar" }}
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.False(valid)
       assert.truthy(err)
       assert.are.same("string is not a string", err.string)
@@ -83,14 +83,14 @@ describe("Schemas", function()
       -- Success
       local values = { string = "foo", number = 10 }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.True(valid)
 
       -- Success
       local values = { string = "foo", number = "10" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
       assert.are.same("number", type(values.number))
@@ -98,7 +98,7 @@ describe("Schemas", function()
        -- Success
       local values = { string = "foo", boolean_val = true }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
       assert.are.same("boolean", type(values.boolean_val))
@@ -106,14 +106,14 @@ describe("Schemas", function()
       -- Success
       local values = { string = "foo", boolean_val = "true" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
 
       -- Failure
       local values = { string = "foo",  endpoint = "" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.equal("endpoint is not a url", err.endpoint)
@@ -121,28 +121,28 @@ describe("Schemas", function()
       -- Failure
       local values = { string = "foo",  endpoint = "asdasd" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
 
       -- Failure
       local values = { string = "foo",  endpoint = "http://google.com" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
 
       -- Success
       local values = { string = "foo",  endpoint = "http://google.com/" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.truthy(valid)
       assert.falsy(err)
 
       -- Success
       local values = { string = "foo",  endpoint = "http://google.com/hello/?world=asd" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.truthy(valid)
       assert.falsy(err)
     end)
@@ -150,7 +150,7 @@ describe("Schemas", function()
     it("should return error when an invalid boolean value is passed", function()
       local values = { string = "test", boolean_val = "ciao" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.same("boolean_val is not a boolean", err.boolean_val)
@@ -159,7 +159,7 @@ describe("Schemas", function()
     it("should not return an error when a true boolean value is passed", function()
       local values = { string = "test", boolean_val = true }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
     end)
@@ -167,7 +167,7 @@ describe("Schemas", function()
     it("should not return an error when a false boolean value is passed", function()
       local values = { string = "test", boolean_val = false }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(err)
       assert.truthy(valid)
     end)
@@ -181,7 +181,7 @@ describe("Schemas", function()
 
       local values = { id = "123" }
 
-      local valid, err = validate_fields(values, s)
+      local valid, err = validate_entity(values, s)
       assert.falsy(err)
       assert.truthy(valid)
     end)
@@ -196,14 +196,14 @@ describe("Schemas", function()
       -- Success
       local values = { array = {"hello", "world"} }
 
-      local valid, err = validate_fields(values, s)
+      local valid, err = validate_entity(values, s)
       assert.True(valid)
       assert.falsy(err)
 
       -- Failure
       local values = { array = {hello="world"} }
 
-      local valid, err = validate_fields(values, s)
+      local valid, err = validate_entity(values, s)
       assert.False(valid)
       assert.truthy(err)
       assert.equal("array is not a array", err.array)
@@ -213,7 +213,7 @@ describe("Schemas", function()
       it("should not return an error when a `number` is passed as a string", function()
         local values = { string = "test", number = "10" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.same("number", type(values.number))
@@ -222,7 +222,7 @@ describe("Schemas", function()
       it("should not return an error when a `boolean` is passed as a string", function()
         local values = { string = "test", boolean_val = "false" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.same("boolean", type(values.boolean_val))
@@ -238,7 +238,7 @@ describe("Schemas", function()
         -- It should also strip the resulting strings
         local values = { array = "hello, world" }
 
-        local valid, err = validate_fields(values, s)
+        local valid, err = validate_entity(values, s)
         assert.True(valid)
         assert.falsy(err)
         assert.same({"hello", "world"}, values.array)
@@ -251,7 +251,7 @@ describe("Schemas", function()
         -- Variables
         local values = { string = "mockbin entity", url = "mockbin.com" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.are.same(123456, values.date)
@@ -259,7 +259,7 @@ describe("Schemas", function()
         -- Functions
         local values = { string = "mockbin entity", url = "mockbin.com" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.are.same("default", values.default)
@@ -269,7 +269,7 @@ describe("Schemas", function()
         -- Variables
         local values = { string = "mockbin entity", url = "mockbin.com", date = 654321 }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.are.same(654321, values.date)
@@ -277,7 +277,7 @@ describe("Schemas", function()
         -- Functions
         local values = { string = "mockbin entity", url = "mockbin.com", default = "abcdef" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.are.same("abcdef", values.default)
@@ -289,7 +289,7 @@ describe("Schemas", function()
       it("should validate a field against a regex", function()
         local values = { string = "mockbin entity", url = "mockbin_!" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("url has an invalid value", err.url)
@@ -301,14 +301,14 @@ describe("Schemas", function()
         -- Success
         local values = { string = "somestring", allowed = "hello" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
 
         -- Failure
         local values = { string = "somestring", allowed = "hello123" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
@@ -320,14 +320,14 @@ describe("Schemas", function()
         -- Success
         local values = { string = "somestring", custom = true, default = "test_custom_func" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
 
         -- Failure
         local values = { string = "somestring", custom = true, default = "not the default :O" }
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("Nah", err.custom)
@@ -346,7 +346,7 @@ describe("Schemas", function()
       it("should call a given function when encountering a field with `dao_insert_value`", function()
         local values = {string = "hello", id = "0000"}
 
-        local valid, err = validate_fields(values, schema, {dao_insert = function(field)
+        local valid, err = validate_entity(values, schema, {dao_insert = function(field)
           if field.type == "id" then
             return "1234"
           elseif field.type == "timestamp" then
@@ -363,7 +363,7 @@ describe("Schemas", function()
       it("should not raise any error if the function is not given", function()
         local values = { string = "hello", id = "0000" }
 
-        local valid, err = validate_fields(values, schema, { dao_insert = true }) -- invalid type
+        local valid, err = validate_entity(values, schema, { dao_insert = true }) -- invalid type
         assert.falsy(err)
         assert.True(valid)
         assert.equal("0000", values.id)
@@ -375,7 +375,7 @@ describe("Schemas", function()
     it("should return error when unexpected values are included in the schema", function()
       local values = { string = "mockbin entity", url = "mockbin.com", unexpected = "abcdef" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
     end)
@@ -383,7 +383,7 @@ describe("Schemas", function()
     it("should be able to return multiple errors at once", function()
       local values = { url = "mockbin.com", unexpected = "abcdef" }
 
-      local valid, err = validate_fields(values, schema)
+      local valid, err = validate_entity(values, schema)
       assert.falsy(valid)
       assert.truthy(err)
       assert.are.same("string is required", err.string)
@@ -399,7 +399,7 @@ describe("Schemas", function()
       }
 
       assert.has_no_errors(function()
-        local valid, err = validate_fields({}, schema)
+        local valid, err = validate_entity({}, schema)
         assert.False(valid)
         assert.are.same("property is required", err.property)
       end)
@@ -407,7 +407,7 @@ describe("Schemas", function()
 
     describe("Sub-schemas", function()
       -- To check wether schema_from_function was called, we will simply use booleans because
-      -- busted's spy methods create tables and metatable magic, but the validate_fields() function
+      -- busted's spy methods create tables and metatable magic, but the validate_entity() function
       -- only callse v.schema if the type is a function. Which is not the case with a busted spy.
       local called, called_with
       local schema_from_function = function(t)
@@ -441,7 +441,7 @@ describe("Schemas", function()
         -- Success
         local values = { some_required = "somestring", sub_schema = { sub_field_required = "sub value" }}
 
-        local valid, err = validate_fields(values, nested_schema)
+        local valid, err = validate_entity(values, nested_schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.are.same("abcd", values.sub_schema.sub_field_default)
@@ -449,7 +449,7 @@ describe("Schemas", function()
         -- Failure
         local values = { some_required = "somestring", sub_schema = { sub_field_default = "" }}
 
-        local valid, err = validate_fields(values, nested_schema)
+        local valid, err = validate_entity(values, nested_schema)
         assert.truthy(err)
         assert.falsy(valid)
         assert.are.same("sub_field_required is required", err["sub_schema.sub_field_required"])
@@ -464,7 +464,7 @@ describe("Schemas", function()
                                                         sub_sub_schema = { sub_sub_field_required = "test" }
                                                        }}
 
-        local valid, err = validate_fields(values, nested_schema)
+        local valid, err = validate_entity(values, nested_schema)
         assert.falsy(err)
         assert.truthy(valid)
 
@@ -474,7 +474,7 @@ describe("Schemas", function()
                                                         sub_sub_schema = {}
                                                        }}
 
-        local valid, err = validate_fields(values, nested_schema)
+        local valid, err = validate_entity(values, nested_schema)
         assert.truthy(err)
         assert.falsy(valid)
         assert.are.same("sub_sub_field_required is required", err["sub_schema.sub_sub_schema.sub_sub_field_required"])
@@ -487,7 +487,7 @@ describe("Schemas", function()
                                                         sub_sub_schema = { sub_sub_field_required = "test" }
                                                       }}
 
-        local valid, err = validate_fields(values, nested_schema)
+        local valid, err = validate_entity(values, nested_schema)
         assert.falsy(err)
         assert.truthy(valid)
         assert.True(called)
@@ -502,7 +502,7 @@ describe("Schemas", function()
                                                         sub_sub_schema = { sub_sub_field_required = "test" }
                                                       }}
 
-        local valid, err = validate_fields(values, nested_schema)
+        local valid, err = validate_entity(values, nested_schema)
         assert.truthy(err)
         assert.falsy(valid)
         assert.are.same("Error loading the sub-sub-schema", err["sub_schema.sub_sub_schema"])
@@ -523,7 +523,7 @@ describe("Schemas", function()
         }
 
         local obj = {}
-        local valid, err = validate_fields(obj, schema)
+        local valid, err = validate_entity(obj, schema)
         assert.falsy(err)
         assert.True(valid)
         assert.are.same("hello", obj.value.some_property)
@@ -537,7 +537,7 @@ describe("Schemas", function()
         }
 
         local obj = {}
-        local valid, err = validate_fields(obj, schema)
+        local valid, err = validate_entity(obj, schema)
         assert.truthy(err)
         assert.False(valid)
         assert.are.same("value.some_property is required", err.value)
@@ -549,7 +549,7 @@ describe("Schemas", function()
       it("should ignore required properties and defaults if we are updating because the entity might be partial", function()
         local values = {}
 
-        local valid, err = validate_fields(values, schema, {partial_update = true})
+        local valid, err = validate_entity(values, schema, {partial_update = true})
         assert.falsy(err)
         assert.True(valid)
         assert.falsy(values.default)
@@ -559,7 +559,7 @@ describe("Schemas", function()
       it("should still validate set properties", function()
         local values = { string = 123 }
 
-        local valid, err = validate_fields(values, schema, {partial_update = true})
+        local valid, err = validate_entity(values, schema, {partial_update = true})
         assert.False(valid)
         assert.equal("string is not a string", err.string)
       end)
@@ -567,7 +567,7 @@ describe("Schemas", function()
       it("should ignore immutable fields if they are required", function()
         local values = { string = "somestring" }
 
-        local valid, err = validate_fields(values, schema, {partial_update = true})
+        local valid, err = validate_entity(values, schema, {partial_update = true})
         assert.falsy(err)
         assert.True(valid)
       end)
@@ -576,12 +576,12 @@ describe("Schemas", function()
         -- Success
         local values = {string = "somestring", date = 1234}
 
-        local valid, err = validate_fields(values, schema)
+        local valid, err = validate_entity(values, schema)
         assert.falsy(err)
         assert.truthy(valid)
 
         -- Failure
-        local valid, err = validate_fields(values, schema, {partial_update = true})
+        local valid, err = validate_entity(values, schema, {partial_update = true})
         assert.False(valid)
         assert.truthy(err)
         assert.equal("date cannot be updated", err.date)
@@ -592,7 +592,7 @@ describe("Schemas", function()
       it("should not ignore required properties and ignore defaults", function()
         local values = {}
 
-        local valid, err = validate_fields(values, schema, {full_update = true})
+        local valid, err = validate_entity(values, schema, {full_update = true})
         assert.False(valid)
         assert.truthy(err)
         assert.equal("string is required", err.string)
