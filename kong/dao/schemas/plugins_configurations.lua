@@ -38,6 +38,13 @@ return {
       return false, DaoError("No consumer can be configured for that plugin", constants.DATABASE_ERROR_TYPES.SCHEMA)
     end
 
+    if value_schema.self_check and type(value_schema.self_check) == "function" then
+      local ok, err = value_schema.self_check(value_schema, plugin_t.value and plugin_t.value or {}, dao, is_update)
+      if not ok then
+        return false, err
+      end
+    end
+
     if not is_update then
       local res, err = dao.plugins_configurations:find_by_keys({
         name = plugin_t.name,
