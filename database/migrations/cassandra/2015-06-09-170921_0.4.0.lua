@@ -3,6 +3,7 @@ local Migration = {
 
   up = function(options)
     return [[
+
       CREATE TABLE IF NOT EXISTS oauth2_credentials(
         id uuid,
         name text,
