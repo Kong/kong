@@ -415,7 +415,7 @@ end
 -- the other should be preserved. Of course this only applies in partial update.
 local function fix_tables(t, old_t, schema)
   for k, v in pairs(schema.fields) do
-    if v.schema then
+    if t[k] ~= nil and v.schema then
       local s = type(v.schema) == "function" and v.schema(t) or v.schema
       for s_k, s_v in pairs(s.fields) do
         if not t[k][s_k] and old_t[k] then
