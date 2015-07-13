@@ -1,6 +1,6 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
-DEV_ROCKS="busted 2.0.rc9-0" "luacov" "luacov-coveralls" "luacheck"
+DEV_ROCKS="busted" "luacov" "luacov-coveralls" "luacheck"
 
 .PHONY: install dev clean start seed drop lint test coverage test-all
 
