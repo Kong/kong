@@ -177,7 +177,7 @@ rm -rf $NGX_LUA
 mv lua-nginx-module-ssl-cert-by-lua $NGX_LUA
 # Configure and install
 cd $TMP/ngx_openresty-$OPENRESTY_VERSION
-./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module --with-lua_resty_lrucache ${OPENRESTY_CONFIGURE}
+./configure --with-pcre-jit --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-http_stub_status_module ${OPENRESTY_CONFIGURE}
 make
 make install DESTDIR=$OUT
 ############################################
