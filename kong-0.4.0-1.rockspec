@@ -40,7 +40,6 @@ build = {
     ["lapp"] = "kong/vendor/lapp.lua",
     ["ngx.ssl"] = "kong/vendor/ssl.lua",
     ["resty_http"] = "kong/vendor/resty_http.lua",
-    ["resty.lrucache"] = "kong/vendor/resty-lrucache/lib/resty/lrucache.lua",
 
     ["kong.constants"] = "kong/constants.lua",
 
