@@ -85,7 +85,7 @@ databases_available:
 database_cache_expiration: 5 # in seconds
 
 ## SSL Settings
-## (Uncomment the two properties below to set your own certificate)
+## (Uncomment the two properties below to set your own default certificate)
 # ssl_cert_path: /path/to/certificate.pem
 # ssl_key_path: /path/to/certificate.key
 
