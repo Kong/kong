@@ -62,18 +62,24 @@ if ! [ `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8001/` == "200" 
 fi
 
 RANDOM_API_NAME=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1`
-if ! [ `curl -s -o /dev/null -w "%{http_code}" -d "name=$RANDOM_API_NAME&public_dns=$RANDOM_API_NAME.com&target_url=http://mockbin.org/" http://127.0.0.1:8001/apis/` == "201" ]; then
+RESPONSE=`curl -s -o /dev/null -w "%{http_code}" -d "name=$RANDOM_API_NAME&public_dns=$RANDOM_API_NAME.com&target_url=http://mockbin.org/" http://127.0.0.1:8001/apis/`
+if ! [ $RESPONSE == "201" ]; then
   echo "Can't create API"
+  cat /usr/local/kong/logs/error.log
   exit 1
 fi
 
-if ! [ `curl -s -o /dev/null -w "%{http_code}" -H "Host: $RANDOM_API_NAME.com" http://127.0.0.1:8000/request` == "200" ]; then
-  echo "Can't invoke API"
+RESPONSE=`curl -s -o /dev/null -w "%{http_code}" -H "Host: $RANDOM_API_NAME.com" http://127.0.0.1:8000/request`
+if ! [ $RESPONSE == "200" ]; then
+  echo "Can't invoke API on HTTP"
+  cat /usr/local/kong/logs/error.log
   exit 1
 fi
 
-if ! [ `curl -s -o /dev/null -w "%{http_code}" -H "Host: $RANDOM_API_NAME.com" https://127.0.0.1:8443/request --insecure` == "200" ]; then
-  echo "Can't invoke API"
+RESPONSE=`curl -s -o /dev/null -w "%{http_code}" -H "Host: $RANDOM_API_NAME.com" https://127.0.0.1:8443/request --insecure`
+if ! [ $RESPONSE == "200" ]; then
+  echo "Can't invoke API on HTTPS"
+  cat /usr/local/kong/logs/error.log
   exit 1
 fi
 
