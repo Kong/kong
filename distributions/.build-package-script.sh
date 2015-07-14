@@ -214,6 +214,7 @@ rocks_trees = {
    { name = [[system]], root = [[${OUT}/usr/local]] }
 }
 " > $rocks_config
+
 export LUAROCKS_CONFIG=$rocks_config
 export LUA_PATH=${OUT}/usr/local/share/lua/5.1/?.lua
 
@@ -242,7 +243,9 @@ post_install_script=$(mktemp $MKTEMP_POSTSCRIPT_CONF)
 echo "#!/bin/sh
 mkdir -p /etc/kong
 cp /usr/local/lib/luarocks/rocks/kong/$rockspec_version/conf/kong.yml /etc/kong/kong.yml
-echo \"user=root\" > /etc/dnsmasq.conf" > $post_install_script
+echo \"user=root\" > /etc/dnsmasq.conf
+chmod -R 777 /usr/local/kong/
+" > $post_install_script
 
 ##############################################################
 #                      Build the package                     #

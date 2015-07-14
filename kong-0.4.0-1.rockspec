@@ -25,7 +25,7 @@ dependencies = {
   "lua-cjson ~> 2.1.0-1",
   "ansicolors ~> 1.0.2-3",
   "lbase64 ~> 20120820-1",
-  "lua-resty-iputils ~> 0.1.0-1",
+  "lua-resty-iputils ~> 0.2.0-1",
 
   "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
@@ -40,7 +40,6 @@ build = {
     ["lapp"] = "kong/vendor/lapp.lua",
     ["ngx.ssl"] = "kong/vendor/ssl.lua",
     ["resty_http"] = "kong/vendor/resty_http.lua",
-    ["resty.lrucache"] = "kong/vendor/resty-lrucache/lib/resty/lrucache.lua",
 
     ["kong.constants"] = "kong/constants.lua",
 
@@ -162,10 +161,10 @@ build = {
     ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
 
-    ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",
-    ["kong.plugins.ip-restriction.init_worker"] = "kong/plugins/ip-restriction/init_worker.lua",
-    ["kong.plugins.ip-restriction.access"] = "kong/plugins/ip-restriction/access.lua",
-    ["kong.plugins.ip-restriction.schema"] = "kong/plugins/ip-restriction/schema.lua",
+    ["kong.plugins.ip_restriction.handler"] = "kong/plugins/ip_restriction/handler.lua",
+    ["kong.plugins.ip_restriction.init_worker"] = "kong/plugins/ip_restriction/init_worker.lua",
+    ["kong.plugins.ip_restriction.access"] = "kong/plugins/ip_restriction/access.lua",
+    ["kong.plugins.ip_restriction.schema"] = "kong/plugins/ip_restriction/schema.lua",
 
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",

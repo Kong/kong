@@ -20,14 +20,14 @@ describe("IP Restriction", function()
         { name = "iprestriction8", public_dns = "test8.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
-        { name = "ip-restriction", value = { blacklist = { "127.0.0.1" }}, __api = 1 },
-        { name = "ip-restriction", value = { blacklist = { "127.0.0.2" }}, __api = 2 },
-        { name = "ip-restriction", value = { whitelist = { "127.0.0.2" }}, __api = 3 },
-        { name = "ip-restriction", value = { whitelist = { "127.0.0.1" }}, __api = 4 },
-        { name = "ip-restriction", value = { blacklist = { "127.0.0.1" }, whitelist = { "127.0.0.1" }}, __api = 5 },
-        { name = "ip-restriction", value = { blacklist = { "127.0.0.0/24" }, whitelist = { "127.0.0.1" }}, __api = 6 },
-        { name = "ip-restriction", value = { blacklist = { "127.0.0.0/24" }}, __api = 7 },
-        { name = "ip-restriction", value = { whitelist = { "127.0.0.1", "127.0.0.2" }}, __api = 8 },
+        { name = "ip_restriction", value = { blacklist = { "127.0.0.1" }}, __api = 1 },
+        { name = "ip_restriction", value = { blacklist = { "127.0.0.2" }}, __api = 2 },
+        { name = "ip_restriction", value = { whitelist = { "127.0.0.2" }}, __api = 3 },
+        { name = "ip_restriction", value = { whitelist = { "127.0.0.1" }}, __api = 4 },
+        { name = "ip_restriction", value = { blacklist = { "127.0.0.1" }, whitelist = { "127.0.0.1" }}, __api = 5 },
+        { name = "ip_restriction", value = { blacklist = { "127.0.0.0/24" }, whitelist = { "127.0.0.1" }}, __api = 6 },
+        { name = "ip_restriction", value = { blacklist = { "127.0.0.0/24" }}, __api = 7 },
+        { name = "ip_restriction", value = { whitelist = { "127.0.0.1", "127.0.0.2" }}, __api = 8 },
       }
     }
 
