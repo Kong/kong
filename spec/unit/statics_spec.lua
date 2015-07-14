@@ -54,7 +54,7 @@ plugins_available:
   - response_transformer
   - requestsizelimiting
   - analytics
-  - ip-restriction
+  - ip_restriction
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)

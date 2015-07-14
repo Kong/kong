@@ -1,11 +1,11 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local init_worker = require "kong.plugins.ip-restriction.init_worker"
-local access = require "kong.plugins.ip-restriction.access"
+local init_worker = require "kong.plugins.ip_restriction.init_worker"
+local access = require "kong.plugins.ip_restriction.access"
 
 local IpRestrictionHandler = BasePlugin:extend()
 
 function IpRestrictionHandler:new()
-  IpRestrictionHandler.super.new(self, "ip-restriction")
+  IpRestrictionHandler.super.new(self, "ip_restriction")
 end
 
 function IpRestrictionHandler:init_worker()

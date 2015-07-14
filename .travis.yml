@@ -11,11 +11,11 @@ branches:
     - master
 
 before_install:
-  - bash .travis/setup_kong.sh
-  - bash .travis/setup_cassandra.sh
+  - "bash .travis/setup_kong.sh"
+  - "bash .travis/setup_cassandra.sh"
 
 install:
-  - sudo make dev
+  - "sudo make dev"
 
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"

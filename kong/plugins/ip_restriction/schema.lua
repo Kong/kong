@@ -1,4 +1,4 @@
-local iputils = require "resty.iputils" 
+local iputils = require "resty.iputils"
 
 local function validate_ips(v, t, column)
   local new_fields
