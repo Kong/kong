@@ -231,6 +231,11 @@ nginx: |
         ';
       }
 
+      location /nginx_status {
+        internal;
+        stub_status;
+      }
+
       location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
       }

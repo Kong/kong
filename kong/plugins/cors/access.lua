@@ -19,23 +19,23 @@ end
 
 local function configure_headers(ngx, conf, headers)
   if conf.headers == nil then
-    ngx.header["Access-Control-Allow-Headers"] = headers['access-control-request-headers'] or ""
+    ngx.header["Access-Control-Allow-Headers"] = headers["access-control-request-headers"] or ""
   else
-    ngx.header["Access-Control-Allow-Headers"] = conf.headers
+    ngx.header["Access-Control-Allow-Headers"] = table.concat(conf.headers, ",")
   end
 end
 
 local function configure_exposed_headers(ngx, conf)
   if conf.exposed_headers ~= nil then
-    ngx.header["Access-Control-Expose-Headers"] = conf.exposed_headers
+    ngx.header["Access-Control-Expose-Headers"] = table.concat(conf.exposed_headers, ",")
   end
 end
 
 local function configure_methods(ngx, conf)
-  if conf.methods ~= nil then
-    ngx.header["Access-Control-Allow-Methods"] = conf.methods
-  else
+  if conf.methods == nil then
     ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
+  else
+    ngx.header["Access-Control-Allow-Methods"] = table.concat(conf.methods, ",")
   end
 end
 
@@ -46,22 +46,18 @@ local function configure_max_age(ngx, conf)
 end
 
 function _M.execute(conf)
-  local request = ngx.req
-  local method = request.get_method()
-  local headers = request.get_headers()
-
   configure_origin(ngx, conf)
   configure_credentials(ngx, conf)
 
-  if method == "OPTIONS" then
-    -- Preflight
-    configure_headers(ngx, conf, headers)
+  if ngx.req.get_method() == "OPTIONS" then -- Preflight request
+    configure_headers(ngx, conf, ngx.req.get_headers())
     configure_methods(ngx, conf)
     configure_max_age(ngx, conf)
 
-    if not conf.preflight_continue then
+    if not conf.preflight_continue then -- Check if the preflight request should end here, or be proxied
       return responses.send_HTTP_NO_CONTENT()
     end
+
   else
     configure_exposed_headers(ngx, conf)
   end

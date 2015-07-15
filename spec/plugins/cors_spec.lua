@@ -15,9 +15,9 @@ describe("CORS Plugin", function()
       plugin_configuration = {
         { name = "cors", value = {}, __api = 1 },
         { name = "cors", value = { origin = "example.com",
-                                   methods = "GET",
-                                   headers = "origin, type, accepts",
-                                   exposed_headers = "x-auth-token",
+                                   methods = { "GET" },
+                                   headers = { "origin", "type", "accepts" },
+                                   exposed_headers = { "x-auth-token" },
                                    max_age = 23,
                                    credentials = true }, __api = 2 }
       }
@@ -52,7 +52,7 @@ describe("CORS Plugin", function()
       -- assertions
       assert.are.equal(204, status)
       assert.are.equal("example.com", headers["access-control-allow-origin"])
-      assert.are.equal("origin, type, accepts", headers["access-control-allow-headers"])
+      assert.are.equal("origin,type,accepts", headers["access-control-allow-headers"])
       assert.are.equal(nil, headers["access-control-expose-headers"])
       assert.are.equal("GET", headers["access-control-allow-methods"])
       assert.are.equal(tostring(23), headers["access-control-max-age"])

@@ -18,6 +18,7 @@ describe("Schemas", function()
         allowed = {enum = {"hello", "world"}},
         boolean_val = {type = "boolean"},
         endpoint = { type = "url" },
+        enum_array = { type = "array", enum = { "hello", "world" }},
         default = {default = function(t)
                                 assert.truthy(t)
                                 return "default"
@@ -312,6 +313,50 @@ describe("Schemas", function()
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("\"hello123\" is not allowed. Allowed values are: \"hello\", \"world\"", err.allowed)
+      end)
+
+      it("should validate an enum into an array", function()
+        -- Failure
+        local values = { string = "somestring", enum_array = "hello1" }
+
+        local valid, err = validate_entity(values, schema)
+        assert.truthy(err)
+        assert.are.same("\"hello1\" is not allowed. Allowed values are: \"hello\", \"world\"", err.enum_array)
+
+        -- Failure
+        local values = { string = "somestring", enum_array = { "hello1" } }
+
+        local valid, err = validate_entity(values, schema)
+        assert.truthy(err)
+        assert.are.same("\"hello1\" is not allowed. Allowed values are: \"hello\", \"world\"", err.enum_array)
+
+        -- Success
+        local values = { string = "somestring", enum_array = { "hello" } }
+        
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Success
+        local values = { string = "somestring", enum_array = { "hello", "world" } }
+        
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+
+        -- Failure
+        local values = { string = "somestring", enum_array = { "hello", "world", "another" } }
+
+        local valid, err = validate_entity(values, schema)
+        assert.truthy(err)
+        assert.are.same("\"another\" is not allowed. Allowed values are: \"hello\", \"world\"", err.enum_array)
+
+        -- Success
+        local values = { string = "somestring", enum_array = { } }
+        
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
       end)
     end)
 

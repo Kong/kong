@@ -1,6 +1,7 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
+local utils = require "kong.tools.utils"
 
 describe("Admin API", function()
 
@@ -50,6 +51,24 @@ describe("Admin API", function()
         assert.are.same(405, status)
         assert.are.same("Method not allowed", json.decode(res).message)
       end)
+    end)
+  end)
+
+  describe("/status", function()
+    it("should return status information", function()
+      local response, status = http_client.get(spec_helper.API_URL.."/status")
+      assert.are.equal(200, status)
+      local body = json.decode(response)
+      assert.truthy(body)
+
+      assert.are.equal(7, utils.table_size(body))
+      assert.truthy(body.connections_accepted)
+      assert.truthy(body.connections_active)
+      assert.truthy(body.connections_handled)
+      assert.truthy(body.connections_reading)
+      assert.truthy(body.connections_writing)
+      assert.truthy(body.connections_waiting)
+      assert.truthy(body.total_requests)
     end)
   end)
 end)

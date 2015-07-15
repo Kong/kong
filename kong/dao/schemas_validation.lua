@@ -102,16 +102,22 @@ function _M.validate_entity(t, schema, options)
 
     -- [ENUM] Check if the value is allowed in the enum.
     if t[column] ~= nil and v.enum then
-      local found = false
-      for _, allowed in ipairs(v.enum) do
-        if allowed == t[column] then
-          found = true
-          break
+      local found = true
+      local wrong_value = t[column]
+      if v.type == "array" then
+        for _, array_value in ipairs(t[column]) do
+          if not utils.table_contains(v.enum, array_value) then
+            found = false
+            wrong_value = array_value
+            break
+          end
         end
+      else
+        found = utils.table_contains(v.enum, t[column])
       end
 
       if not found then
-        errors = utils.add_error(errors, column, string.format("\"%s\" is not allowed. Allowed values are: \"%s\"", t[column], table.concat(v.enum, "\", \"")))
+        errors = utils.add_error(errors, column, string.format("\"%s\" is not allowed. Allowed values are: \"%s\"", wrong_value, table.concat(v.enum, "\", \"")))
       end
     end
 
