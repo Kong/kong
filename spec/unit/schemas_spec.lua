@@ -321,6 +321,7 @@ describe("Schemas", function()
 
         local valid, err = validate_entity(values, schema)
         assert.truthy(err)
+        assert.falsy(valid)
         assert.are.same("\"hello1\" is not allowed. Allowed values are: \"hello\", \"world\"", err.enum_array)
 
         -- Failure
@@ -328,6 +329,7 @@ describe("Schemas", function()
 
         local valid, err = validate_entity(values, schema)
         assert.truthy(err)
+        assert.falsy(valid)
         assert.are.same("\"hello1\" is not allowed. Allowed values are: \"hello\", \"world\"", err.enum_array)
 
         -- Success
@@ -349,6 +351,7 @@ describe("Schemas", function()
 
         local valid, err = validate_entity(values, schema)
         assert.truthy(err)
+        assert.falsy(valid)
         assert.are.same("\"another\" is not allowed. Allowed values are: \"hello\", \"world\"", err.enum_array)
 
         -- Success
