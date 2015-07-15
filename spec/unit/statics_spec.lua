@@ -55,6 +55,7 @@ plugins_available:
   - requestsizelimiting
   - analytics
   - ip_restriction
+  - jwtauth
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)
