@@ -53,8 +53,8 @@ plugins_available:
   - request_transformer
   - response_transformer
   - requestsizelimiting
-  - analytics
   - ip_restriction
+  - mashape-analytics
   - jwtauth
 
 ## The Kong working directory

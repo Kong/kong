@@ -1,4 +1,4 @@
-local fixtures = require "spec.plugins.analytics.fixtures.requests"
+local fixtures = require "spec.plugins.mashape-analytics.fixtures.requests"
 local ALFSerializer = require "kong.plugins.log_serializers.alf"
 
 -- @see http://lua-users.org/wiki/CopyTable
