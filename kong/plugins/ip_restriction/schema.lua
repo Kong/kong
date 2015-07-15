@@ -1,5 +1,6 @@
+local iputils = require "resty.iputils"
+
 local function validate_ips(v, t, column)
-  local iputils = require "resty.iputils"
   local new_fields
   if v and type(v) == "table" then
     for _, ip in ipairs(v) do
