@@ -1,8 +1,7 @@
-local iputils = require "resty.iputils"
-
 local _M = {}
 
 function _M.execute()
+  local iputils = require "resty.iputils"
   iputils.enable_lrucache()
 end
 
