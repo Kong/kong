@@ -250,7 +250,7 @@ function _M.exec_plugins_log()
   if not ngx.ctx.stop_phases then
     for _, plugin in ipairs(plugins) do
       local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
-      if plugin_conf then
+      if plugin_conf or plugin.reports then
         plugin.handler:log(plugin_conf and plugin_conf.value or {})
       end
     end
