@@ -13,7 +13,7 @@ end
 function Apis:find_all()
   local apis = {}
   local select_q = query_builder.select(self._table)
-  for _, rows, page, err in Apis.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
+  for rows, err in Apis.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end
@@ -37,7 +37,7 @@ function Apis:delete(where_t)
   local plugins_dao = self._factory.plugins_configurations
   local select_q, columns = query_builder.select(plugins_dao._table, {api_id = where_t.id}, plugins_dao._column_family_details)
 
-  for _, rows, page, err in plugins_dao:execute(select_q, columns, {api_id = where_t.id}, {auto_paging = true}) do
+  for rows, err in plugins_dao:execute(select_q, columns, {api_id = where_t.id}, {auto_paging = true}) do
     if err then
       return nil, err
     end

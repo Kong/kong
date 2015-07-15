@@ -55,7 +55,7 @@ function PluginsConfigurations:find_distinct()
 
   -- Execute query
   local distinct_names = {}
-  for _, rows, page, err in PluginsConfigurations.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
+  for rows, err in PluginsConfigurations.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end

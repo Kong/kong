@@ -55,9 +55,6 @@ end
 
 function Logger:error_exit(str)
   self:error(str)
-  -- Optional stacktrace
-  --print("")
-  --error("", 2)
   os.exit(1)
 end
 

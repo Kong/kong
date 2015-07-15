@@ -112,7 +112,8 @@ local function prepare_nginx_working_dir(args_config)
     dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
     memory_cache_size = kong_config.memory_cache_size,
     ssl_cert = ssl_cert_path,
-    ssl_key = ssl_key_path
+    ssl_key = ssl_key_path,
+    lua_ssl_trusted_certificate = kong_config.databases_available[kong_config.database].properties.ssl_certificate or "no"
   }
 
   -- Auto-tune
