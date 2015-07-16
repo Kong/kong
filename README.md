@@ -55,7 +55,7 @@ Over two minutes **117,185** requests with an average latency of **10ms** at **9
 
 4. Delete the `/etc/kong` folder: `[sudo] rm -rf /etc/kong`
 
-  This is necessary just in case you have previously installed Kong with a package distribution.
+  This is necessary to remove the configuration file of the previous Kong installation at step 1.
 
 5. Run `make dev`
 
