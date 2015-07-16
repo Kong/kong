@@ -1,10 +1,51 @@
 ## [Unreleased][unreleased]
 
+## [0.4.0] - 2015/07/15
+
+#### Added
+
+- Implement wildcard subdomains for APIs' `public_dns`. [#381](https://github.com/Mashape/kong/pull/381) [#297](https://github.com/Mashape/kong/pull/297)
+- Plugins
+  - **New OAuth 2.0 plugin.** [#341](https://github.com/Mashape/kong/pull/341) [#169](https://github.com/Mashape/kong/pull/169)
+  - **New Mashape Analyics plugin.** [#360](https://github.com/Mashape/kong/pull/360) [#272](https://github.com/Mashape/kong/pull/272)
+  - **New IP whitelisting/blacklisting plugin.** [#379](https://github.com/Mashape/kong/pull/379)
+  - Ratelimiting: support for multiple limits. [#382](https://github.com/Mashape/kong/pull/382) [#205](https://github.com/Mashape/kong/pull/205)
+  - HTTP logging: support for HTTPS endpoint. [#342](https://github.com/Mashape/kong/issues/342)
+  - Logging plugins: new properties for logs timing. [#351](https://github.com/Mashape/kong/issues/351)
+  - Key authentication: now auto-generates a key if none is specified. [#48](https://github.com/Mashape/kong/pull/48)
+- Resolver
+  - `path` property now accepts arbitrary depth. [#310](https://github.com/Mashape/kong/issues/310)
+- Admin API
+  - Enable CORS by default. [#371](https://github.com/Mashape/kong/pull/371)
+  - Expose a new endpoint to get a plugin configuration's schema. [#376](https://github.com/Mashape/kong/pull/376) [#309](https://github.com/Mashape/kong/pull/309)
+  - Expose a new endpoint to retrieve a node's status. [417c137](https://github.com/Mashape/kong/commit/417c1376c08d3562bebe0c0816c6b54df045f515)
+- CLI
+  - `$ kong migrations reset` now asks for confirmation. [#365](https://github.com/Mashape/kong/pull/365)
+
+#### Fixed
+
+- Plugins
+  - Basic authentication not being executed if added to an API with default configuration. [6d732cd](https://github.com/Mashape/kong/commit/6d732cd8b0ec92ef328faa843215d8264f50fb75)
+  - SSL plugin configuration parsing. [#353](https://github.com/Mashape/kong/pull/353)
+  - SSL plugin doesn't accept a `consumer_id` anymore, as this wouldn't make sense. [#372](https://github.com/Mashape/kong/pull/372) [#322](https://github.com/Mashape/kong/pull/322)
+  - Authentication plugins now return `401` when missing credentials. [#375](https://github.com/Mashape/kong/pull/375) [#354](https://github.com/Mashape/kong/pull/354)
+- Admin API
+  - Non supported HTTP methods now return `405` instead of `500`. [38f1b7f](https://github.com/Mashape/kong/commit/38f1b7fa9f45f60c4130ef5ff9fe2c850a2ba586)
+  - Prevent PATCH requests from overriding a plugin's configuration if partially updated. [9a7388d](https://github.com/Mashape/kong/commit/9a7388d695c9de105917cde23a684a7d6722a3ca)
+- Handle occasionally missing `schema_migrations` table. [#365](https://github.com/Mashape/kong/pull/365) [#250](https://github.com/Mashape/kong/pull/250)
+
+> **internal**
+> - DAO:
+>   - Complete refactor. No more need for hard-coded queries. [#346](https://github.com/Mashape/kong/pull/346)
+> - Schemas:
+>   - New `self_check` test for schema definitions. [5bfa7ca](https://github.com/Mashape/kong/commit/5bfa7ca13561173161781f872244d1340e4152c1)
+
 ## [0.3.2] - 2015/06/08
 
 #### Fixed
 
 - Fix uppercase Cassandra keyspace bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
+- Multipart requests not properly parsed in the admin API. [#344](https://github.com/Mashape/kong/issues/344)
 
 ## [0.3.1] - 2015/06/07
 
@@ -168,7 +209,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.3.0...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/mashape/kong/compare/0.3.2...0.4.0
 [0.3.2]: https://github.com/mashape/kong/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/mashape/kong/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/mashape/kong/compare/0.2.1...0.3.0
