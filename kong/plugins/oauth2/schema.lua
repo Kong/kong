@@ -16,6 +16,7 @@ local function check_mandatory_scope(v, t)
 end
 
 return {
+  no_consumer = true,
   fields = {
     scopes = { required = false, type = "array" },
     mandatory_scope = { required = true, type = "boolean", default = false, func = check_mandatory_scope },
