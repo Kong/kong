@@ -20,7 +20,10 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
+  - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs. 
   - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
+  - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
+  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Mashape Analytics](https://apianalytics.com).
   - **SSL**: Setup a specific SSL certificate for an underlying service or API
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
