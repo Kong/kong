@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 
 describe("Utils", function()
 
-  describe("strings", function() 
+  describe("strings", function()
     local first = utils.random_string()
     assert.truthy(first)
     assert.falsy(first:find("-"))
@@ -83,7 +83,7 @@ describe("Utils", function()
       it("should throw an error if the module is invalid", function()
         local loaded, mod
         assert.has.errors(function()
-          loaded, mod = utils.load_module_if_exists("spec.fixtures.invalid-module")
+          loaded, mod = utils.load_module_if_exists("spec.unit.fixtures.invalid-module")
         end)
         assert.falsy(loaded)
         assert.falsy(mod)
@@ -92,7 +92,7 @@ describe("Utils", function()
       it("should load a module if it was found and valid", function()
         local loaded, mod
         assert.has_no.errors(function()
-          loaded, mod = utils.load_module_if_exists("spec.fixtures.valid-module")
+          loaded, mod = utils.load_module_if_exists("spec.unit.fixtures.valid-module")
         end)
         assert.True(loaded)
         assert.truthy(mod)

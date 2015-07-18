@@ -5,7 +5,7 @@
 [![Gitter Badge][gitter-badge]][gitter-url]
 
 - Website: [getkong.org][kong-url]
-- Website Repo: [github.com/getkong.org][kong-website] 
+- Website Repo: [github.com/getkong.org][kong-website]
 - Docs: [getkong.org/docs][kong-docs]
 - Mailing List: [Google Groups][google-groups-url]
 
@@ -88,10 +88,12 @@ When developing, use the `Makefile` for doing the following operations:
 | `start`       | Start the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)             |
 | `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
 | `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
-| `lint`        | Lint Lua files in `kong/`                                                |
-| `coverage`    | Run unit tests + coverage report                                         |
+| `lint`        | Lint Lua files in `kong/` and `spec/`                                    |
 | `test`        | Run the unit tests                                                       |
+| `test-integration | Run the integration tests (Kong + DAO)                              |
+| `test-plugins | Run unit + integration tests of all plugins                              |
 | `test-all`    | Run all unit + integration tests at once                                 |
+| `coverage`    | Run all tests + coverage report                                          |
 
 ## Documentation
 
