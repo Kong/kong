@@ -1,4 +1,5 @@
 return {
+  no_consumer = true,
   fields = {
     origin = { type = "string" },
     headers = { type = "array" },
