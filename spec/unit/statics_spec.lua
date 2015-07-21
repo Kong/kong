@@ -153,6 +153,7 @@ nginx: |
     lua_shared_dict locks 100k;
     lua_shared_dict cache {{memory_cache_size}}m;
     lua_socket_log_errors off;
+    {{lua_ssl_trusted_certificate}}
 
     init_by_lua '
       kong = require "kong"
