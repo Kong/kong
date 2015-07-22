@@ -24,8 +24,8 @@ function Faker:fake_entity(type)
     }
   elseif type == "plugin_configuration" then
     return {
-      name = "keyauth",
-      value = { key_names = {"apikey"} }
+      name = "ratelimiting",
+      value = { second = 10 }
     }
   else
     error("Entity of type "..type.." cannot be generated.")
