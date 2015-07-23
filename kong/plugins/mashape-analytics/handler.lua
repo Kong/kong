@@ -42,30 +42,28 @@ local function send_batch(premature, conf, alf)
 
   ok, err = client:connect(ANALYTICS_SOCKET.host, ANALYTICS_SOCKET.port)
   if not ok then
-    ngx.log(ngx.ERR, "[mashape-analytics] failed to connect to the socket: "..err)
+    ngx.log(ngx.ERR, "[mashape-analytics] failed to connect to the socket server: "..err)
     return
   end
 
-  local res, err = client:request({ path = ANALYTICS_SOCKET.path, body = message })
+  local res, err = client:request({path = ANALYTICS_SOCKET.path, body = message})
   if not res then
     ngx.log(ngx.ERR, "[mashape-analytics] failed to send batch: "..err)
+  elseif res.status == 200 then
+    alf:flush_entries()
+    ngx.log(ngx.DEBUG, string.format("[mashape-analytics] successfully saved the batch. (%s)", res.body))
+  else
+    ngx.log(ngx.ERR, string.format("[mashape-analytics] socket server refused the batch. Status: (%s) Error: (%s)", res.status, res.body))
   end
 
   -- close connection, or put it into the connection pool
-  if res.headers["connection"] == "close" then
+  if not res or res.headers["connection"] == "close" then
     ok, err = client:close()
     if not ok then
-      ngx.log(ngx.ERR, "[mashape-analytics] failed to close: "..err)
+      ngx.log(ngx.ERR, "[mashape-analytics] failed to close socket: "..err)
     end
   else
     client:set_keepalive()
-  end
-
-  if res.status == 200 then
-    alf:flush_entries()
-    ngx.log(ngx.DEBUG, "[mashape-analytics] successfully saved the batch")
-  else
-    ngx.log(ngx.ERR, "[mashape-analytics] socket refused the batch: "..res.body)
   end
 end
 
