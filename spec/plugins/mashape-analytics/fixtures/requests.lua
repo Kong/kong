@@ -173,7 +173,7 @@ return {
         statusText = ""
       },
       startedDateTime = "2015-05-28T20:22:51Z",
-      time = 219,
+      time = 60564,
       timings = {
         blocked = -1,
         connect = -1,
@@ -181,7 +181,7 @@ return {
         receive = 0,
         send = 96,
         ssl = -1,
-        wait = 123
+        wait = 60468
       }
     }
   }

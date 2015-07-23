@@ -107,7 +107,7 @@ describe("ALF serializer", function()
       alf:add_entry(fixtures.MULTIPLE_UPSTREAMS.NGX_STUB)
       assert.equal(3, table.getn(alf.har.log.entries))
       assert.are.sameEntry(fixtures.MULTIPLE_UPSTREAMS.ENTRY, alf.har.log.entries[3])
-      assert.equal(123, alf.har.log.entries[3].timings.wait)
+      assert.equal(60468, alf.har.log.entries[3].timings.wait)
     end)
 
   end)
