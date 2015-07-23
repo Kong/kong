@@ -97,8 +97,11 @@ function alf_mt:serialize_entry(ngx)
   local alf_send_time = proxy_started_at - alf_started_at * 1000
 
   -- Time waiting for the upstream response
+  local upstream_response_time = 0
   local upstream_response_times = stringy.split(ngx.var.upstream_response_time, ", ")
-  local upstream_response_time = upstream_response_times[#upstream_response_times]
+  for _, val in ipairs(upstream_response_times) do
+    upstream_response_time = upstream_response_time + val
+  end
   local alf_wait_time = upstream_response_time * 1000
 
   -- upstream response fully received - upstream response 1 byte received
