@@ -6,8 +6,8 @@ local IO = require "kong.tools.io"
 local cutils = require "kong.cli.utils"
 local constants = require "kong.constants"
 local syslog = require "kong.tools.syslog"
-local stringy = require "stringy"
 local socket = require "socket"
+local dnsmasq = require "kong.cli.utils.dnsmasq"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
@@ -178,31 +178,6 @@ local function prepare_database(args_config)
   end)
 end
 
-local function stop_dnsmasq(kong_config)
-  local pid_file = kong_config.nginx_working_dir.."/"..constants.CLI.DNSMASQ_PID
-  local _, code = IO.kill_process_by_pid_file(pid_file)
-  if code and code == 0 then
-    cutils.logger:info("dnsmasq stopped")
-  end
-end
-
-local function start_dnsmasq(kong_config)
-  local cmd = IO.cmd_exists("dnsmasq") and "dnsmasq" or
-                (IO.cmd_exists("/usr/local/sbin/dnsmasq") and "/usr/local/sbin/dnsmasq" or nil) -- On OS X dnsmasq is at /usr/local/sbin/
-  if not cmd then
-    cutils.logger:error_exit("Can't find dnsmasq")
-  end
-
-  -- Start the dnsmasq
-  local file_pid = kong_config.nginx_working_dir..(stringy.endswith(kong_config.nginx_working_dir, "/") and "" or "/")..constants.CLI.DNSMASQ_PID
-  local res, code = IO.os_execute(cmd.." -p "..kong_config.dnsmasq_port.." --pid-file="..file_pid)
-  if code ~= 0 then
-    cutils.logger:error_exit(res)
-  else
-    cutils.logger:info("dnsmasq started")
-  end
-end
-
 --
 -- PUBLIC
 --
@@ -288,11 +263,11 @@ function _M.send_signal(args_config, signal)
 
   -- dnsmasq start/stop
   if signal == START then
-    stop_dnsmasq(kong_config)
+    dnsmasq.stop(kong_config)
     check_port(kong_config.dnsmasq_port)
-    start_dnsmasq(kong_config)
+    dnsmasq.start(kong_config)
   elseif signal == STOP or signal == QUIT then
-    stop_dnsmasq(kong_config)
+    dnsmasq.stop(kong_config)
   end
 
   -- Check ulimit value
@@ -312,7 +287,7 @@ function _M.send_signal(args_config, signal)
   local success = os.execute(cmd) == 0
 
   if signal == START and not success then
-    stop_dnsmasq(kong_config) -- If the start failed, then stop dnsmasq
+    dnsmasq.stop(kong_config) -- If the start failed, then stop dnsmasq
   end
 
   if signal == STOP and success then

@@ -108,11 +108,10 @@ describe("Cassandra", function()
         assert.equal(consumer.id, consumers[1].id)
 
         -- Plugin configuration
-        local plugin_t = { name = "keyauth", api_id = api.id, consumer_id = consumer.id }
+        local plugin_t = {name = "keyauth", api_id = api.id}
         local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
-        assert.truthy(plugin.consumer_id)
         local plugins, err = session:execute("SELECT * FROM plugins_configurations")
         assert.falsy(err)
         assert.True(#plugins > 0)
@@ -150,7 +149,6 @@ describe("Cassandra", function()
         -- Plugin configuration
         local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.api_id = uuid()
-        plugin_t.consumer_id = uuid()
 
         local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(plugin)
@@ -158,7 +156,6 @@ describe("Cassandra", function()
         assert.is_daoError(err)
         assert.True(err.foreign)
         assert.are.same("api_id "..plugin_t.api_id.." does not exist", err.message.api_id)
-        assert.are.same("consumer_id "..plugin_t.consumer_id.." does not exist", err.message.consumer_id)
       end)
 
       it("should do insert checks for entities with `self_check`", function()
@@ -166,13 +163,8 @@ describe("Cassandra", function()
         assert.falsy(err)
         assert.truthy(api.id)
 
-        local consumer, err = dao_factory.consumers:insert(faker:fake_entity("consumer"))
-        assert.falsy(err)
-        assert.truthy(consumer.id)
-
         local plugin_t = faker:fake_entity("plugin_configuration")
         plugin_t.api_id = api.id
-        plugin_t.consumer_id = consumer.id
 
         -- Success: plugin doesn't exist yet
         local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
@@ -589,11 +581,11 @@ describe("Cassandra", function()
               {username = "untouched consumer"}
             },
             plugin_configuration = {
-              {name = "keyauth", __api = 1, __consumer = 1},
               {name = "ratelimiting", value = { minute = 6}, __api = 1, __consumer = 1},
+              {name = "response_transformer", __api = 1, __consumer = 1},
               {name = "filelog", value = {path = "/tmp/spec.log" }, __api = 1, __consumer = 1},
 
-              {name = "keyauth", __api = 1, __consumer = 2}
+              {name = "request_transformer", __api = 1, __consumer = 2}
             }
           }
           consumer = fixtures.consumer[1]
