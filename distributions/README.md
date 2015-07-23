@@ -18,7 +18,7 @@ Kong can be distributed to different platforms such as CentOS, Debian, Ubuntu an
 - Building for every platform:
 
 ```shell
-./build-package.sh -k [KONG_TAG_OR_BRANCH] -p [PLATFORM] [-t]
+./build-package.sh -k [KONG_TAG_OR_BRANCH] -p all [-t]
 ```
 
 - Building for specific platforms:
