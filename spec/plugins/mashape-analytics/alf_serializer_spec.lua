@@ -68,8 +68,7 @@ describe("ALF serializer", function()
         har = {
           log = {
             version = "1.2",
-            creator = { name = "mashape-analytics-agent-kong", version = "1.0.0"
-            },
+            creator = {name = "mashape-analytics-agent-kong", version = "1.0.0"},
             entries = {}
           }
         }
@@ -102,6 +101,13 @@ describe("ALF serializer", function()
     it("#new_alf() should instanciate a new ALF that has nothing to do with the existing one", function()
       local other_alf = ALFSerializer:new_alf()
       assert.are_not_same(alf, other_alf)
+    end)
+
+    it("should handle timing calculation if multiple upstreams were called", function()
+      alf:add_entry(fixtures.MULTIPLE_UPSTREAMS.NGX_STUB)
+      assert.equal(3, table.getn(alf.har.log.entries))
+      assert.are.sameEntry(fixtures.MULTIPLE_UPSTREAMS.ENTRY, alf.har.log.entries[3])
+      assert.equal(123, alf.har.log.entries[3].timings.wait)
     end)
 
   end)

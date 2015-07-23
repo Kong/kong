@@ -18,6 +18,7 @@
 -- - ngx_http_core_module: http://wiki.nginx.org/HttpCoreModule#.24http_HEADER
 
 local json = require "cjson"
+local stringy = require "stringy"
 
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
 
@@ -84,8 +85,8 @@ function alf_mt:serialize_entry(ngx)
   -- bodies
   local analytics_data = ngx.ctx.analytics
 
-  local alf_req_body = analytics_data.req_body
-  local alf_res_body = analytics_data.res_body
+  local alf_req_body = analytics_data.req_body or ""
+  local alf_res_body = analytics_data.res_body or ""
 
   -- timers
   local proxy_started_at, proxy_ended_at = ngx.ctx.proxy_started_at, ngx.ctx.proxy_ended_at
@@ -96,7 +97,9 @@ function alf_mt:serialize_entry(ngx)
   local alf_send_time = proxy_started_at - alf_started_at * 1000
 
   -- Time waiting for the upstream response
-  local alf_wait_time = ngx.var.upstream_response_time * 1000
+  local upstream_response_times = stringy.split(ngx.var.upstream_response_time, ", ")
+  local upstream_response_time = upstream_response_times[#upstream_response_times]
+  local alf_wait_time = upstream_response_time * 1000
 
   -- upstream response fully received - upstream response 1 byte received
   local alf_receive_time = analytics_data.response_received and analytics_data.response_received - proxy_ended_at or -1
@@ -140,7 +143,7 @@ function alf_mt:serialize_entry(ngx)
       postData = {
         mimeType = alf_req_mimeType,
         params = dic_to_array(ngx.req.get_post_args()),
-        text = alf_req_body and alf_req_body or ""
+        text = alf_req_body
       }
     },
     response = {
@@ -155,7 +158,7 @@ function alf_mt:serialize_entry(ngx)
       content = {
         size = tonumber(ngx.var.body_bytes_sent),
         mimeType = alf_res_mimeType,
-        text = alf_res_body and alf_res_body or ""
+        text = alf_res_body
       }
     },
     cache = {},
