@@ -29,7 +29,7 @@ end
 
 function _M.execute()
   cache.rawset(cache.requests_key(), 0, 0) -- Initializing the counter
-  create_timer(0, send_ping)
+  create_timer(INTERVAL, send_ping)
 end
 
 return _M
