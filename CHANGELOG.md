@@ -1,5 +1,12 @@
 ## [Unreleased][unreleased]
 
+## [0.4.1] - 2015/07/23
+
+#### Fixed
+
+- Fix issues with the Mashape Analytics plugin. [#425](https://github.com/Mashape/kong/pull/425)
+- Handle hyphens when executing path routing with `strip_path` option enabled. [#431](https://github.com/Mashape/kong/pull/431)
+
 ## [0.4.0] - 2015/07/15
 
 #### Added
@@ -209,7 +216,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.4.0...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/mashape/kong/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/mashape/kong/compare/0.3.2...0.4.0
 [0.3.2]: https://github.com/mashape/kong/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/mashape/kong/compare/0.3.0...0.3.1
