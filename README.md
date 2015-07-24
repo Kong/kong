@@ -20,7 +20,7 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
-  - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs. 
+  - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs.
   - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Analytics**: Visualize, Inspect and Monitor API traffic with [Mashape Analytics](https://apianalytics.com).
@@ -89,11 +89,12 @@ When developing, use the `Makefile` for doing the following operations:
 | `dev`         | Setup your development environment                                       |
 | `clean`       | Clean your development environment                                       |
 | `start`       | Start the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)             |
+| `restart`     | Restart the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)           |
 | `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
 | `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
 | `lint`        | Lint Lua files in `kong/` and `spec/`                                    |
 | `test`        | Run the unit tests                                                       |
-| `test-integration | Run the integration tests (Kong + DAO)                              |
+| `test-integration | Run the integration tests (Kong + DAO)                               |
 | `test-plugins | Run unit + integration tests of all plugins                              |
 | `test-all`    | Run all unit + integration tests at once                                 |
 | `coverage`    | Run all tests + coverage report                                          |

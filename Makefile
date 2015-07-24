@@ -2,7 +2,7 @@ TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
 DEV_ROCKS=busted luacov luacov-coveralls luacheck
 
-.PHONY: install dev clean start seed drop lint test test-integration test-plugins test-all coverage
+.PHONY: install dev clean start restart seed drop lint test test-integration test-plugins test-all coverage
 
 install:
 	@if [ `uname` = "Darwin" ]; then \
@@ -37,6 +37,9 @@ start:
 
 stop:
 	@bin/kong stop -c $(DEVELOPMENT_CONF)
+
+restart:
+	@bin/kong restart -c $(DEVELOPMENT_CONF)
 
 seed:
 	@bin/kong db -c $(DEVELOPMENT_CONF) seed
