@@ -1,49 +1,23 @@
 -- ALF serializer module.
 -- ALF is the format supported by Mashape Analytics (http://apianalytics.com)
 --
--- This module represents _one_ ALF entry, which can have multiple requests entries.
+-- This module represents _one_ ALF, zhich has _one_ ALF entry.
+-- It used to be a representation of one ALF with several entries, but ALF
+-- had its `clientIPAddress` moved to the root level of ALF, hence breaking
+-- this implementation.
+--
 -- # Usage:
 --
 --   ## Create the ALF like so:
---     local alf = ALFSerializer:new_alf()
---
---   ## Add entries:
---     local n_entries = alf:add_entry(ngx)
---
---   ## Output the ALF with all its entries as JSON:
---     local json_str = alf:to_json_str(service_token)
+--     local alf = ALFSerializer:new_alf(ngx, serviceToken, environment)
 --
 -- - ALF specifications: https://github.com/Mashape/api-log-format
 -- - Nginx lua module documentation: http://wiki.nginx.org/HttpLuaModule
 -- - ngx_http_core_module: http://wiki.nginx.org/HttpCoreModule#.24http_HEADER
 
-local json = require "cjson"
 local stringy = require "stringy"
 
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
-
-local alf_mt = {}
-alf_mt.__index = alf_mt
-
-function alf_mt:new_alf()
-  local ALF = {
-    version = "1.0.0",
-    serviceToken = "", -- will be filled by to_json_string()
-    environment = nil, -- stub
-    har = {
-      log = {
-        version = "1.2",
-        creator = {
-          name = "mashape-analytics-agent-kong",
-          version = "1.0.0"
-        },
-        entries = {}
-      }
-    }
-  }
-
-  return setmetatable(ALF, self)
-end
 
 -- Transform a key/value lua table into an array of elements with `name`, `value`.
 -- Since Lua won't recognize {} as an empty array but an empty object, we need to force it
@@ -62,7 +36,7 @@ local function dic_to_array(hash, fn)
       v = {v}
     end
     for _, val in ipairs(v) do
-      table.insert(arr, { name = k, value = val })
+      table.insert(arr, {name = k, value = val})
       fn(k, val)
     end
   end
@@ -74,11 +48,13 @@ local function dic_to_array(hash, fn)
   end
 end
 
+local _M = {}
+
 -- Serialize `ngx` into one ALF entry.
 -- For performance reasons, it tries to use the NGINX Lua API instead of
 -- ngx_http_core_module when possible.
 -- Public for unit testing.
-function alf_mt:serialize_entry(ngx)
+function _M.serialize_entry(ngx)
   -- ALF properties computation. Properties prefixed with 'alf_' will belong to the ALF entry.
   -- other properties are used to compute the ALF properties.
 
@@ -132,7 +108,6 @@ function alf_mt:serialize_entry(ngx)
 
   return {
     startedDateTime = os.date("!%Y-%m-%dT%TZ", alf_started_at),
-    clientIPAddress = ngx.var.remote_addr,
     time = alf_time,
     request = {
       method = ngx.req.get_method(),
@@ -177,27 +152,29 @@ function alf_mt:serialize_entry(ngx)
   } -- end of entry
 end
 
-function alf_mt:add_entry(ngx)
-  table.insert(self.har.log.entries, self:serialize_entry(ngx))
-  return table.getn(self.har.log.entries)
-end
-
-function alf_mt:to_json_string(token, environment)
-  if not token then
+function _M.new_alf(ngx, token, environment)
+  if not ngx then
+    error("Missing ngx context", 2)
+  elseif not token then
     error("Mashape Analytics serviceToken required", 2)
   end
 
-  -- inject token
-  self.serviceToken = token
-  -- inject environment (left empty if nil)
-  self.environment = environment
-
-  local str = json.encode(self)
-  return str:gsub("\""..EMPTY_ARRAY_PLACEHOLDER.."\"", ""):gsub("\\/", "/")
+  return {
+    version = "1.0.0",
+    serviceToken = token,
+    environment = environment,
+    clientIPAddress = ngx.var.remote_addr,
+    har = {
+      log = {
+        version = "1.2",
+        creator = {
+          name = "mashape-analytics-agent-kong",
+          version = "1.0.1"
+        },
+        entries = {_M.serialize_entry(ngx)}
+      }
+    }
+  }
 end
 
-function alf_mt:flush_entries()
-  self.har.log.entries = {}
-end
-
-return alf_mt
+return _M
