@@ -13,75 +13,28 @@
 -- If no requests are made during a certain period of time (the `delay` configuration value), the
 -- delayed timer will fire and send the batch + flush the data, not waiting for the buffer to be full.
 
-local http = require "resty_http"
+local ALFBuffer = require "kong.plugins.mashape-analytics.buffer"
 local BasePlugin = require "kong.plugins.base_plugin"
 local ALFSerializer = require "kong.plugins.log_serializers.alf"
 
-local ALF_BUFFER = {}
-local DELAYED_LOCK = false -- careful: this will only work when lua_code_cache is on
-local LATEST_CALL
-
-local ANALYTICS_SOCKET = {
-  host = "socket.analytics.mashape.com",
-  port = 80,
-  path = "/1.0.0/single"
-}
-
-local function send_batch(premature, conf, alf)
-  -- Abort the sending if the entries are empty, maybe it was triggered from the delayed
-  -- timer, but already sent because we reached the limit in a request later.
-  if table.getn(alf.har.log.entries) < 1 then
-    return
-  end
-
-  local message = alf:to_json_string(conf.service_token, conf.environment)
-
-  local ok, err
-  local client = http:new()
-  client:set_timeout(50000) -- 5 sec
-
-  ok, err = client:connect(ANALYTICS_SOCKET.host, ANALYTICS_SOCKET.port)
-  if not ok then
-    ngx.log(ngx.ERR, "[mashape-analytics] failed to connect to the socket server: "..err)
-    return
-  end
-
-  local res, err = client:request({path = ANALYTICS_SOCKET.path, body = message})
-  if not res then
-    ngx.log(ngx.ERR, "[mashape-analytics] failed to send batch: "..err)
-  elseif res.status == 200 then
-    alf:flush_entries()
-    ngx.log(ngx.DEBUG, string.format("[mashape-analytics] successfully saved the batch. (%s)", res.body))
-  else
-    ngx.log(ngx.ERR, string.format("[mashape-analytics] socket server refused the batch. Status: (%s) Error: (%s)", res.status, res.body))
-  end
-
-  -- close connection, or put it into the connection pool
-  if not res or res.headers["connection"] == "close" then
-    ok, err = client:close()
-    if not ok then
-      ngx.log(ngx.ERR, "[mashape-analytics] failed to close socket: "..err)
-    end
-  else
-    client:set_keepalive()
-  end
-end
+local ALF_BUFFERS = {} -- buffers per-api
 
 -- A handler for delayed batch sending. When no call have been made for X seconds
 -- (X being conf.delay), we send the batch to keep analytics as close to real-time
 -- as possible.
 local delayed_send_handler
-delayed_send_handler = function(premature, conf, alf)
+delayed_send_handler = function(premature, conf, buffer)
   -- If the latest call was received during the wait delay, abort the delayed send and
   -- report it for X more seconds.
-  if ngx.now() - LATEST_CALL < conf.delay then
-    local ok, err = ngx.timer.at(conf.delay, delayed_send_handler, conf, alf)
+  if ngx.now() - buffer.latest_call < conf.delay then
+    local ok, err = ngx.timer.at(conf.delay, delayed_send_handler, conf, buffer)
     if not ok then
+      buffer.delayed = false -- re-enable creation of a delayed-timer for this buffer
       ngx.log(ngx.ERR, "[mashape-analytics] failed to create delayed batch sending timer: ", err)
     end
   else
-    DELAYED_LOCK = false -- re-enable creation of a delayed-timer
-    send_batch(premature, conf, alf)
+    buffer.delayed = false
+    buffer.send_batch(nil, buffer)
   end
 end
 
@@ -129,30 +82,36 @@ function AnalyticsHandler:log(conf)
 
   local api_id = ngx.ctx.api.id
 
-  -- Create the ALF if not existing for this API
-  if not ALF_BUFFER[api_id] then
-    ALF_BUFFER[api_id] = ALFSerializer:new_alf()
+  -- Create the ALF buffer if not existing for this API
+  if not ALF_BUFFERS[api_id] then
+    ALF_BUFFERS[api_id] = ALFBuffer.new()
   end
 
-  -- Simply adding the entry to the ALF
-  local n_entries = ALF_BUFFER[api_id]:add_entry(ngx)
+  local buffer = ALF_BUFFERS[api_id]
+
+  -- Creating the ALF
+  local alf = ALFSerializer.new_alf(ngx, conf.service_token, conf.environment)
+
+  -- Simply adding the ALF to the buffer
+  local buffer_size = buffer:add_alf(alf)
 
   -- Keep track of the latest call for the delayed timer
-  LATEST_CALL = ngx.now()
+  buffer.latest_call = ngx.now()
 
-  if n_entries >= conf.batch_size then
+  if buffer_size >= conf.batch_size then
     -- Batch size reached, let's send the data
-    local ok, err = ngx.timer.at(0, send_batch, conf, ALF_BUFFER[api_id])
+    local ok, err = ngx.timer.at(0, buffer.send_batch, buffer)
     if not ok then
       ngx.log(ngx.ERR, "[mashape-analytics] failed to create batch sending timer: ", err)
     end
-  elseif not DELAYED_LOCK then
-    DELAYED_LOCK = true -- Make sure only one delayed timer is ever pending
+  elseif not buffer.delayed then
     -- Batch size not yet reached.
     -- Set a timer sending the data only in case nothing happens for awhile or if the batch_size is taking
     -- too much time to reach the limit and trigger the flush.
-    local ok, err = ngx.timer.at(conf.delay, delayed_send_handler, conf, ALF_BUFFER[api_id])
-    if not ok then
+    local ok, err = ngx.timer.at(conf.delay, delayed_send_handler, conf, buffer)
+    if ok then
+      buffer.delayed = true -- Make sure only one delayed timer is ever pending for a given buffer
+    else
       ngx.log(ngx.ERR, "[mashape-analytics] failed to create delayed batch sending timer: ", err)
     end
   end

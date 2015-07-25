@@ -36,7 +36,6 @@ return {
     },
     ["ENTRY"] = {
       cache = {},
-      clientIPAddress = "127.0.0.1",
       request = {
         bodySize = 23,
         cookies = {EMPTY_ARRAY_PLACEHOLDER},
@@ -128,7 +127,6 @@ return {
     },
     ["ENTRY"] = {
       cache = {},
-      clientIPAddress = "127.0.0.1",
       request = {
         bodySize = 23,
         cookies = {EMPTY_ARRAY_PLACEHOLDER},
