@@ -30,7 +30,7 @@ local function log(premature, conf, message)
 
   local f = fd_util.get_fd(conf.path)
   if not f then
-    f = ffi.C.fopen(conf.path, "a+")
+    f = ffi.C.fopen(conf.path, "a")
     fd_util.set_fd(conf.path, f)
   end
 
