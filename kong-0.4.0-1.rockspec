@@ -29,7 +29,9 @@ dependencies = {
 
   "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
-  "lua-llthreads2 ~> 0.1.3-1"
+  "lua-llthreads2 ~> 0.1.3-1",
+  "luajwt ~> 1.3-2",
+  "basexx ~> 0.1.1-1"
 }
 build = {
   type = "builtin",
@@ -161,6 +163,12 @@ build = {
     ["kong.plugins.ssl.access"] = "kong/plugins/ssl/access.lua",
     ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
+
+    ["kong.plugins.jwtauth.daos"] = "kong/plugins/jwtauth/daos.lua",
+    ["kong.plugins.jwtauth.access"] = "kong/plugins/jwtauth/access.lua",
+    ["kong.plugins.jwtauth.api"] = "kong/plugins/jwtauth/api.lua",
+    ["kong.plugins.jwtauth.schema"] = "kong/plugins/jwtauth/schema.lua",
+    ["kong.plugins.jwtauth.handler"] = "kong/plugins/jwtauth/handler.lua",
 
     ["kong.plugins.ip_restriction.handler"] = "kong/plugins/ip_restriction/handler.lua",
     ["kong.plugins.ip_restriction.init_worker"] = "kong/plugins/ip_restriction/init_worker.lua",

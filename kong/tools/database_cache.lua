@@ -8,6 +8,7 @@ local CACHE_KEYS = {
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
   OAUTH2_CREDENTIAL = "oauth2_credentials",
   OAUTH2_TOKEN = "oauth2_token",
+  JWTAUTH_CREDENTIAL = "jwtauth_credentials",
   SSL = "ssl",
   REQUESTS = "requests"
 }
@@ -88,6 +89,10 @@ end
 
 function _M.keyauth_credential_key(key)
   return CACHE_KEYS.KEYAUTH_CREDENTIAL.."/"..key
+end
+
+function _M.jwtauth_credential_key(id)
+  return CACHE_KEYS.JWTAUTH_CREDENTIAL.."/"..id
 end
 
 function _M.ssl_data(api_id)
