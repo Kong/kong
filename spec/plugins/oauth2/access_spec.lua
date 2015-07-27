@@ -41,7 +41,8 @@ describe("Authentication Plugin", function()
       api = {
         { name = "tests oauth2", public_dns = "oauth2.com", target_url = "http://mockbin.com" },
         { name = "tests oauth2 with path", public_dns = "mockbin-path.com", target_url = "http://mockbin.com", path = "/somepath/" },
-        { name = "tests oauth2 with hide credentials", public_dns = "oauth2_3.com", target_url = "http://mockbin.com" }
+        { name = "tests oauth2 with hide credentials", public_dns = "oauth2_3.com", target_url = "http://mockbin.com" },
+        { name = "tests oauth2 client credentials", public_dns = "oauth2_4.com", target_url = "http://mockbin.com" },
       },
       consumer = {
         { username = "auth_tests_consumer" }
@@ -49,7 +50,8 @@ describe("Authentication Plugin", function()
       plugin_configuration = {
         { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
         { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 }
+        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
+        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
       },
       oauth2_credential = {
         { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 }
@@ -252,6 +254,59 @@ describe("Authentication Plugin", function()
       end)
 
     end)
+
+    describe("Client Credentials", function()
+
+      it("should return an error when client_secret is not sent", function()
+        local response, status, headers = http_client.post(PROXY_URL.."/oauth2/token", { client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2_4.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_request", body.error)
+        assert.are.equal("Invalid client_secret", body.error_description)
+      end)
+
+      it("should return an error when client_secret is not sent", function()
+        local response, status, headers = http_client.post(PROXY_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", response_type = "token" }, {host = "oauth2_4.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_request", body.error)
+        assert.are.equal("Invalid grant_type", body.error_description)
+      end)
+
+      it("should return success", function()
+        local response, status, headers = http_client.post(PROXY_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials" }, {host = "oauth2_4.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equals(4, utils.table_size(body))
+        assert.truthy(body.refresh_token)
+        assert.truthy(body.access_token)
+        assert.are.equal("bearer", body.token_type)
+        assert.are.equal(5, body.expires_in)
+      end)
+
+      it("should return success with authorization header", function()
+        local response, status, headers = http_client.post(PROXY_URL.."/oauth2/token", { scope = "email", grant_type = "client_credentials" }, {host = "oauth2_4.com", authorization = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"})
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equals(4, utils.table_size(body))
+        assert.truthy(body.refresh_token)
+        assert.truthy(body.access_token)
+        assert.are.equal("bearer", body.token_type)
+        assert.are.equal(5, body.expires_in)
+      end)
+
+      it("should return an error with a wrong authorization header", function()
+        local response, status, headers = http_client.post(PROXY_URL.."/oauth2/token", { scope = "email", grant_type = "client_credentials" }, {host = "oauth2_4.com", authorization = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTI0"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_request", body.error)
+        assert.are.equal("Invalid client_secret", body.error_description)
+      end)
+
+    end)
   end)
 
   describe("OAuth2 Access Token", function()
@@ -262,7 +317,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(400, status)
       assert.are.equal(2, utils.table_size(body))
       assert.are.equal("invalid_request", body.error)
-      assert.are.equal("Invalid client_secret", body.error_description)
+      assert.are.equal("Invalid client_id", body.error_description)
 
       -- Checking headers
       assert.are.equal("no-store", headers["cache-control"])
@@ -277,7 +332,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(400, status)
       assert.are.equal(2, utils.table_size(body))
       assert.are.equal("invalid_request", body.error)
-      assert.are.equal("Invalid client_secret", body.error_description)
+      assert.are.equal("Invalid client_id", body.error_description)
 
       -- Checking headers
       assert.are.equal("no-store", headers["cache-control"])
