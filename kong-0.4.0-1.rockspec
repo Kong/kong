@@ -28,7 +28,7 @@ dependencies = {
   "lua-resty-iputils ~> 0.2.0-1",
 
   "luasocket ~> 2.0.2-6",
-  "lrexlib-pcre ~> 2.8.0-1",
+  "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1"
 }
 build = {
