@@ -4,8 +4,12 @@
 
 #### Fixed
 
-- Fix issues with the Mashape Analytics plugin. [#425](https://github.com/Mashape/kong/pull/425)
+- Issues with the Mashape Analytics plugin. [#425](https://github.com/Mashape/kong/pull/425)
 - Handle hyphens when executing path routing with `strip_path` option enabled. [#431](https://github.com/Mashape/kong/pull/431)
+- Adding the Client Credentials OAuth 2.0 flow. [#430](https://github.com/Mashape/kong/issues/430)
+- A bug that prevented "dnsmasq" from being started on some systems, including Debian. [f7da790](https://github.com/Mashape/kong/commit/f7da79057ce29c7d1f6d90f4bc160cc3d9c8611f)
+- File Log plugin: optimizations by avoiding the buffered I/O layer. [20bb478](https://github.com/Mashape/kong/commit/20bb478952846faefec6091905bd852db24a0289)
+- Some entities fields were not immutable when they should have been. [#432](https://github.com/Mashape/kong/pull/432)
 
 ## [0.4.0] - 2015/07/15
 
@@ -51,7 +55,7 @@
 
 #### Fixed
 
-- Fix uppercase Cassandra keyspace bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
+- Uppercase Cassandra keyspace bug that prevented Kong to work with [kongdb.org](http://kongdb.org/)
 - Multipart requests not properly parsed in the admin API. [#344](https://github.com/Mashape/kong/issues/344)
 
 ## [0.3.1] - 2015/06/07
@@ -84,7 +88,7 @@
 
 #### Fixed
 
-- Fix uppercase Cassandra keyspace causing migration failure. [#249](https://github.com/Mashape/kong/issues/249)
+- Uppercase Cassandra keyspace causing migration failure. [#249](https://github.com/Mashape/kong/issues/249)
 - Guarantee that ratelimiting won't allow requests in case the atomicity of the counter update is not guaranteed. [#289](https://github.com/Mashape/kong/issues/289)
 
 > **internal**
