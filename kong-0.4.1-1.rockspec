@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.4.0-1"
+version = "0.4.1-1"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.4.0"
+  tag = "0.4.1"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -16,8 +16,8 @@ dependencies = {
 
   "uuid ~> 0.2-1",
   "luatz ~> 0.3-1",
-  "yaml ~> 1.1.2-1",
-  "lapis ~> 1.3.0-1",
+  "yaml ~> 1.1.1-1",
+  "lapis ~> 1.1.0-1",
   "stringy ~> 0.4-1",
   "kong-cassandra ~> 0.5-8",
   "multipart ~> 0.1-3",
@@ -27,7 +27,7 @@ dependencies = {
   "lbase64 ~> 20120820-1",
   "lua-resty-iputils ~> 0.2.0-1",
 
-  "luasocket ~> 2.0.2-6",
+  "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1"
 }
