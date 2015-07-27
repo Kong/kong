@@ -20,6 +20,7 @@ local REDIRECT_URI = "redirect_uri"
 local ACCESS_TOKEN = "access_token"
 local GRANT_TYPE = "grant_type"
 local GRANT_AUTHORIZATION_CODE = "authorization_code"
+local GRANT_CLIENT_CREDENTIALS = "client_credentials"
 local GRANT_REFRESH_TOKEN = "refresh_token"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
@@ -74,6 +75,24 @@ local function retrieve_parameters()
   return utils.table_merge(ngx.req.get_uri_args(), ngx.req.get_post_args())
 end
 
+local function retrieve_scopes(parameters, conf)
+  local scope = parameters[SCOPE]
+  local scopes = {}
+  if conf.scopes and scope then
+    for v in scope:gmatch("%w+") do
+      if not utils.table_contains(conf.scopes, v) then
+        return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
+      else
+        table.insert(scopes, v)
+      end
+    end
+  elseif not scope and conf.mandatory_scope then
+    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+  end
+
+  return true, scopes
+end
+
 local function authorize(conf)
   local response_params = {}
 
@@ -89,24 +108,14 @@ local function authorize(conf)
   else
     local response_type = parameters[RESPONSE_TYPE]
     -- Check response_type
-    if not (response_type == CODE or (conf.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
+    if not ((response_type == CODE and conf.enable_authorization_code) or (conf.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
       response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid "..RESPONSE_TYPE}
     end
 
     -- Check scopes
-    local scope = parameters[SCOPE]
-    local scopes = {}
-    if conf.scopes and scope then
-      for v in scope:gmatch("%w+") do
-        if not utils.table_contains(conf.scopes, v) then
-          response_params = {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
-          break
-        else
-          table.insert(scopes, v)
-        end
-      end
-    elseif not scope and conf.mandatory_scope then
-      response_params = {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+    local ok, scopes = retrieve_scopes(parameters, conf)
+    if not ok then
+      response_params = scopes -- If it's not ok, then this is the error message
     end
 
     -- Check client_id and redirect_uri
@@ -154,6 +163,41 @@ local function authorize(conf)
   })
 end
 
+local function retrieve_client_credentials(parameters)
+  local client_id, client_secret
+  local authorization_header = ngx.req.get_headers()["authorization"]
+  if parameters[CLIENT_ID] then
+    client_id = parameters[CLIENT_ID]
+    client_secret = parameters[CLIENT_SECRET]
+  elseif authorization_header then
+    local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
+    if not iterator then
+      ngx.log(ngx.ERR, iter_err)
+      return
+    end
+
+    local m, err = iterator()
+    if err then
+      ngx.log(ngx.ERR, err)
+      return
+    end
+
+    if m and table.getn(m) > 0 then
+      local decoded_basic = ngx.decode_base64(m[1])
+      if decoded_basic then
+        local basic_parts = stringy.split(decoded_basic, ":")
+        client_id = basic_parts[1]
+        client_secret = basic_parts[2]
+
+        print(client_id)
+        print(client_secret)
+      end
+    end
+  end
+
+  return client_id, client_secret
+end
+
 local function issue_token(conf)
   local response_params = {}
 
@@ -161,20 +205,21 @@ local function issue_token(conf)
   local state = parameters[STATE]
     
   local grant_type = parameters[GRANT_TYPE]
-  if not (grant_type == GRANT_AUTHORIZATION_CODE or grant_type == GRANT_REFRESH_TOKEN) then
+  if not (grant_type == GRANT_AUTHORIZATION_CODE or grant_type == GRANT_REFRESH_TOKEN or (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS)) then
     response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..GRANT_TYPE}
   end
 
+  local client_id, client_secret = retrieve_client_credentials(parameters)
+
   -- Check client_id and redirect_uri
-  local redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
+  local redirect_uri, client = get_redirect_uri(client_id)
   if not redirect_uri then
     response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
   elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
     response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
   end
 
-  local client_secret = parameters[CLIENT_SECRET]
-  if not client_secret or (client and client_secret ~= client.client_secret) then
+  if client and client.client_secret ~= client_secret then
     response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_SECRET}
   end
 
@@ -186,6 +231,14 @@ local function issue_token(conf)
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
       else
         response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+      end
+    elseif grant_type == GRANT_CLIENT_CREDENTIALS then
+      -- Check scopes
+      local ok, scopes = retrieve_scopes(parameters, conf)
+      if not ok then
+        response_params = scopes -- If it's not ok, then this is the error message
+      else
+        response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
       end
     elseif grant_type == GRANT_REFRESH_TOKEN then
       local refresh_token = parameters[REFRESH_TOKEN]

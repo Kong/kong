@@ -37,9 +37,11 @@ local function retrieve_credentials(request, conf)
 
     if m and table.getn(m) > 0 then
       local decoded_basic = ngx.decode_base64(m[1])
-      local basic_parts = stringy.split(decoded_basic, ":")
-      username = basic_parts[1]
-      password = basic_parts[2]
+      if decoded_basic then
+        local basic_parts = stringy.split(decoded_basic, ":")
+        username = basic_parts[1]
+        password = basic_parts[2]
+      end
     end
   else
     ngx.ctx.stop_phases = true
