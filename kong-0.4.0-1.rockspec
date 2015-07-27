@@ -17,7 +17,7 @@ dependencies = {
   "uuid ~> 0.2-1",
   "luatz ~> 0.3-1",
   "yaml ~> 1.1.1-1",
-  "lapis ~> 1.1.0-1",
+  "lapis ~> 1.3.0-1",
   "stringy ~> 0.4-1",
   "kong-cassandra ~> 0.5-8",
   "multipart ~> 0.1-3",
