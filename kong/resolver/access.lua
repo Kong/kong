@@ -166,7 +166,8 @@ function _M.execute(conf)
   if by_path and api.strip_path then
     -- Replace `/path` with `path`, and then prefix with a `/`
     -- Or replace `/path/foo` with `/foo`, and then do not prefix with `/`.
-    request_uri = string.gsub(request_uri, api.path, "")
+    local escaped_path = api.path:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%" .. c end)
+    request_uri = string.gsub(request_uri, escaped_path, "")
     if string.sub(request_uri, 0, 1) ~= "/" then
       request_uri = "/"..request_uri
     end
