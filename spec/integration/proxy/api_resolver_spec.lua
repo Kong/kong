@@ -29,7 +29,7 @@ describe("Resolver", function()
         {name = "tests host resolver 2", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com"},
         {name = "tests path resolver", target_url = "http://mockbin.com", path = "/status/"},
         {name = "tests stripped path resolver", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true},
-        {name = "tests stripped path resolver with magic", target_url = "http://mockbin.com", path = "/mockbin-with-magic/", strip_path = true},
+        {name = "tests stripped path resolver with pattern characters", target_url = "http://mockbin.com", path = "/mockbin-with-pattern/", strip_path = true},
         {name = "tests deep path resolver", target_url = "http://mockbin.com", path = "/deep/path/", strip_path = true},
         {name = "tests wildcard subdomain", target_url = "http://mockbin.com/status/200", public_dns = "*.wildcard.com"},
         {name = "tests wildcard subdomain 2", target_url = "http://mockbin.com/status/201", public_dns = "wildcard.*"}
@@ -163,8 +163,8 @@ describe("Resolver", function()
         assert.equal("http://mockbin.com/request", body.url)
       end)
 
-      it("should proxy and strip the path if `strip_path` is true if path has magic characters", function()
-        local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin-with-magic/request")
+      it("should proxy and strip the path if `strip_path` is true if path has pattern characters", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin-with-pattern/request")
         assert.equal(200, status)
         local body = cjson.decode(response)
         assert.equal("http://mockbin.com/request", body.url)
