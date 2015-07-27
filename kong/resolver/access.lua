@@ -162,10 +162,11 @@ function _M.execute(conf)
     }
   end
 
-  -- If API was retrieved by path
+  -- If API was retrieved by path and the path needs to be stripped
   if by_path and api.strip_path then
     -- Replace `/path` with `path`, and then prefix with a `/`
-    -- Or replace `/path/foo` with `/foo`, and then do not prefix with `/`.
+    -- or replace `/path/foo` with `/foo`, and then do not prefix with `/`.
+    -- Handles pattern-specific characters if any.
     local escaped_path = api.path:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%" .. c end)
     request_uri = string.gsub(request_uri, escaped_path, "")
     if string.sub(request_uri, 0, 1) ~= "/" then
