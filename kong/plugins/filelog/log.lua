@@ -1,25 +1,27 @@
 -- Copyright (C) Mashape, Inc.
 
 local ffi = require "ffi"
+local bit = require "bit"
 local cjson = require "cjson"
 local fd_util = require "kong.plugins.filelog.fd_util"
 local basic_serializer = require "kong.plugins.log_serializers.basic"
 
 ffi.cdef[[
-typedef struct {
-  char *fpos;
-  void *base;
-  unsigned short handle;
-  short flags;
-  short unget;
-  unsigned long alloc;
-  unsigned short buffincrement;
-} FILE;
-
-FILE *fopen(const char *filename, const char *mode);
-int fflush(FILE *stream);
-int fprintf(FILE *stream, const char *format, ...);
+int open(char * filename, int flags, int mode);
+int write(int fd, void * ptr, int numbytes);
 ]]
+
+local O_CREAT = 0x0200
+local O_APPEND = 0x0008
+local O_WRONLY = 0x0001
+
+local S_IWUSR = 0000200
+local S_IRUSR = 0000400
+local S_IROTH = 0000004
+
+local function string_to_char(str)
+  return ffi.cast("uint8_t*", str)
+end
 
 -- Log to a file
 -- @param `premature`
@@ -28,14 +30,13 @@ int fprintf(FILE *stream, const char *format, ...);
 local function log(premature, conf, message)
   message = cjson.encode(message).."\n"
 
-  local f = fd_util.get_fd(conf.path)
-  if not f then
-    f = ffi.C.fopen(conf.path, "a")
-    fd_util.set_fd(conf.path, f)
+  local fd = fd_util.get_fd(conf.path)
+  if not fd then
+    fd = ffi.C.open(string_to_char(conf.path), bit.bor(O_CREAT, O_APPEND, O_WRONLY), bit.bor(S_IWUSR, S_IRUSR, S_IROTH))
+    fd_util.set_fd(conf.path, fd)
   end
 
-  ffi.C.fprintf(f, message)
-  ffi.C.fflush(f)
+  ffi.C.write(fd, string_to_char(message), string.len(message))
 end
 
 local _M = {}
