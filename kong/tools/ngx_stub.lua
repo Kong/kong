@@ -10,7 +10,11 @@ _G.ngx = {
   say = function() end,
   log = function() end,
   socket = { tcp = {} },
+  now = function() return os.time() end,
   time = function() return os.time() end,
+  timer = {
+    at = function() end
+  },
   re = {
     match = reg.match
   },
