@@ -69,9 +69,10 @@ function AnalyticsHandler:log(conf)
 
   -- Creating the ALF
   local alf = ALFSerializer.new_alf(ngx, conf.service_token, conf.environment)
-
-  -- Simply adding the ALF to the buffer, it will decide if it is necessary to flush itself
-  buffer:add_alf(alf)
+  if alf then
+    -- Simply adding the ALF to the buffer, it will decide if it is necessary to flush itself
+    buffer:add_alf(alf)
+  end
 end
 
 return AnalyticsHandler
