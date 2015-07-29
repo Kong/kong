@@ -133,6 +133,7 @@ build = {
 
     ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
     ["kong.plugins.mashape-analytics.schema"] = "kong/plugins/mashape-analytics/schema.lua",
+    ["kong.plugins.mashape-analytics.buffer"] = "kong/plugins/mashape-analytics/buffer.lua",
 
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
