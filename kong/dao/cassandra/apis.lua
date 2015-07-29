@@ -53,4 +53,4 @@ function Apis:delete(where_t)
   return ok
 end
 
-return { apis = Apis }
+return {apis = Apis}
