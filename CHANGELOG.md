@@ -9,7 +9,6 @@
 - Adding the Client Credentials OAuth 2.0 flow. [#430](https://github.com/Mashape/kong/issues/430)
 - A bug that prevented "dnsmasq" from being started on some systems, including Debian. [f7da790](https://github.com/Mashape/kong/commit/f7da79057ce29c7d1f6d90f4bc160cc3d9c8611f)
 - File Log plugin: optimizations by avoiding the buffered I/O layer. [20bb478](https://github.com/Mashape/kong/commit/20bb478952846faefec6091905bd852db24a0289)
-- Some entities fields were not immutable when they should have been. [#432](https://github.com/Mashape/kong/pull/432)
 
 ## [0.4.0] - 2015/07/15
 
