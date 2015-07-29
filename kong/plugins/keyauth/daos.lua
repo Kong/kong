@@ -13,8 +13,8 @@ local SCHEMA = {
   primary_key = {"id"},
   fields = {
     id = { type = "id", dao_insert_value = true },
-    created_at = { type = "timestamp", dao_insert_value = true },
-    consumer_id = { type = "id", required = true, foreign = "consumers:id" },
+    created_at = { type = "timestamp", dao_insert_value = true, immutable = true },
+    consumer_id = { type = "id", required = true, foreign = "consumers:id", immutable = true },
     key = { type = "string", required = false, unique = true, queryable = true, func = generate_if_missing }
   }
 }
