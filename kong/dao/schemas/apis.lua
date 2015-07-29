@@ -77,7 +77,7 @@ return {
   primary_key = {"id"},
   fields = {
     id = { type = "id", dao_insert_value = true },
-    created_at = { type = "timestamp", dao_insert_value = true, immutable = true },
+    created_at = { type = "timestamp", dao_insert_value = true },
     name = { type = "string", unique = true, queryable = true, default = function(api_t) return api_t.public_dns end },
     public_dns = { type = "string", unique = true, queryable = true, func = check_public_dns_and_path,
                   regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)" },
