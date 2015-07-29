@@ -5,7 +5,6 @@
 [![Gitter Badge][gitter-badge]][gitter-url]
 
 - Website: [getkong.org][kong-url]
-- Website Repo: [github.com/getkong.org][kong-website]
 - Docs: [getkong.org/docs][kong-docs]
 - Mailing List: [Google Groups][google-groups-url]
 
@@ -109,6 +108,12 @@ Complete & versioned documentation is available at [GetKong.org][kong-url]:
 - [Configuration](http://getkong.org/docs/latest/configuration/)
 - [CLI Reference](http://getkong.org/docs/latest/cli/)
 - [API Reference](http://getkong.org/docs/latest/admin-api)
+
+
+## Enterprise Support
+
+Support, Demo, Training, API Certifications and Consulting available at http://getkong.org/enterprise
+
 
 [kong-url]: http://getkong.org/
 [kong-website]: https://github.com/Mashape/getkong.org
