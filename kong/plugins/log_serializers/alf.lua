@@ -74,7 +74,13 @@ function _M.serialize_entry(ngx)
 
   -- Time waiting for the upstream response
   local upstream_response_time = 0
-  local upstream_response_times = stringy.split(ngx.var.upstream_response_time, ", ")
+  local upstream_response_times = ngx.var.upstream_response_time
+  if not upstream_response_times or upstream_response_times == "-" then
+    -- client aborted the request
+    return
+  end
+
+  upstream_response_times = stringy.split(upstream_response_times, ", ")
   for _, val in ipairs(upstream_response_times) do
     upstream_response_time = upstream_response_time + val
   end
@@ -157,6 +163,11 @@ function _M.new_alf(ngx, token, environment)
     error("Missing ngx context", 2)
   elseif not token then
     error("Mashape Analytics serviceToken required", 2)
+  end
+
+  local entry = _M.serialize_entry(ngx)
+  if not entry then
+    return
   end
 
   return {
