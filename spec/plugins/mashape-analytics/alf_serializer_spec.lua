@@ -55,84 +55,48 @@ say:set("assertion.sameEntry.negative", "Not the same entries")
 assert:register("assertion", "sameEntry", sameEntry, "assertion.sameEntry.positive", "assertion.sameEntry.negative")
 
 describe("ALF serializer", function()
-
-  local alf
-
-  describe("#new_alf()", function ()
-
-    it("should create a new ALF", function()
-      alf = ALFSerializer:new_alf()
-      assert.same({
-        version = "1.0.0",
-        serviceToken = "",
-        har = {
-          log = {
-            version = "1.2",
-            creator = { name = "mashape-analytics-agent-kong", version = "1.0.0"
-            },
-            entries = {}
-          }
-        }
-      }, alf)
-    end)
-
-  end)
-
   describe("#serialize_entry()", function()
-
     it("should serialize an ngx GET request/response", function()
-      local entry = alf:serialize_entry(fixtures.GET.NGX_STUB)
+      local entry = ALFSerializer.serialize_entry(fixtures.GET.NGX_STUB)
       assert.are.sameEntry(fixtures.GET.ENTRY, entry)
     end)
 
-  end)
-
-  describe("#add_entry()", function()
-
-    it("should add the entry to the serializer entries property", function()
-      alf:add_entry(fixtures.GET.NGX_STUB)
-      assert.equal(1, table.getn(alf.har.log.entries))
-      assert.are.sameEntry(fixtures.GET.ENTRY, alf.har.log.entries[1])
-
-      alf:add_entry(fixtures.GET.NGX_STUB)
-      assert.equal(2, table.getn(alf.har.log.entries))
-      assert.are.sameEntry(fixtures.GET.ENTRY, alf.har.log.entries[2])
-    end)
-
-    it("#new_alf() should instanciate a new ALF that has nothing to do with the existing one", function()
-      local other_alf = ALFSerializer:new_alf()
-      assert.are_not_same(alf, other_alf)
-    end)
-
-  end)
-
-  describe("#to_json_string()", function()
-
-    it("should throw an error if no token was given", function()
-      assert.has_error(function() alf:to_json_string() end,
-        "Mashape Analytics serviceToken required")
-    end)
-
-    it("should return a JSON string", function()
-      local json_str = alf:to_json_string("stub_service_token")
-      assert.equal("string", type(json_str))
-    end)
-
-    it("should add an environment property", function()
-      local json = require "cjson"
-      local json_str = alf:to_json_string("stub_service_token", "test")
-      assert.equal("string", type(json_str))
-      local json_alf = json.decode(json_str)
-      assert.equal(json_alf.environment, "test")
+    it("should handle timing calculation if multiple upstreams were called", function()
+      local entry = ALFSerializer.serialize_entry(fixtures.MULTIPLE_UPSTREAMS.NGX_STUB)
+      assert.are.sameEntry(fixtures.MULTIPLE_UPSTREAMS.ENTRY, entry)
+      assert.equal(60468, entry.timings.wait)
     end)
   end)
 
-  describe("#flush_entries()", function()
+  describe("#new_alf()", function ()
+    it("should require some parameters", function()
+      assert.has_error(function()
+        ALFSerializer.new_alf()
+      end, "Missing ngx context")
 
-    it("should remove any existing entry", function()
-      alf:flush_entries()
-      assert.equal(0, table.getn(alf.har.log.entries))
+      assert.has_error(function()
+        ALFSerializer.new_alf({})
+      end, "Mashape Analytics serviceToken required")
     end)
-
+    it("should return an ALF with one entry", function()
+      local alf = ALFSerializer.new_alf(fixtures.GET.NGX_STUB, "123456")
+      assert.truthy(alf)
+      assert.equal("1.0.0", alf.version)
+      assert.equal("123456", alf.serviceToken)
+      assert.equal("127.0.0.1", alf.clientIPAddress)
+      assert.falsy(alf.environment)
+      assert.truthy(alf.har)
+      assert.truthy(alf.har.log)
+      assert.equal("1.2", alf.har.log.version)
+      assert.truthy(alf.har.log.creator)
+      assert.equal("mashape-analytics-agent-kong", alf.har.log.creator.name)
+      assert.equal("1.0.1", alf.har.log.creator.version)
+      assert.truthy(alf.har.log.entries)
+      assert.equal(1, #(alf.har.log.entries))
+    end)
+    it("should accept an environment parameter", function()
+      local alf = ALFSerializer.new_alf(fixtures.GET.NGX_STUB, "123456", "test")
+      assert.equal("test", alf.environment)
+    end)
   end)
 end)

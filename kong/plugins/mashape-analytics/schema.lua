@@ -4,6 +4,6 @@ return {
     environment = { type = "string" },
     batch_size = { type = "number", default = 100 },
     log_body = { type = "boolean", default = false },
-    delay = { type = "number", default = 10 }
+    delay = { type = "number", default = 2 }
   }
 }
