@@ -63,8 +63,8 @@ elif hash yum 2>/dev/null; then
   CENTOS_VERSION=`cat /etc/redhat-release | grep -oE '[0-9]+\.[0-9]+'`
   FPM_PARAMS="-d 'epel-release' -d 'sudo' -d 'nc' -d 'lua = $LUA_VERSION' -d 'openssl' -d 'pcre' -d 'dnsmasq'"
 
-  # Install Ruby for fpm
   if [[ ${CENTOS_VERSION%.*} == "5" ]]; then
+    # Install Ruby for fpm
     cd $TMP
     wget http://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.2.tar.gz
     tar xvfvz ruby-2.2.2.tar.gz
@@ -82,11 +82,24 @@ elif hash yum 2>/dev/null; then
   LUA_MAKE="linux"
   FINAL_FILE_NAME_SUFFIX=".el${CENTOS_VERSION%.*}.noarch.rpm"
 elif hash apt-get 2>/dev/null; then
-  apt-get update && apt-get -y install wget curl gnupg tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua${LUA_VERSION%.*} liblua${LUA_VERSION%.*}-0-dev lsb-release ruby ruby-dev
+  apt-get update && apt-get -y install wget curl gnupg tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua${LUA_VERSION%.*} liblua${LUA_VERSION%.*}-0-dev lsb-release
 
   DEBIAN_VERSION=`lsb_release -cs`
-  if ! [[ "$DEBIAN_VERSION" == "trusty" ]]; then
-    apt-get -y install rubygems
+  if [[ "$DEBIAN_VERSION" == "squeeze" ]]; then
+    # Install Ruby for fpm
+    cd $TMP
+    wget http://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.2.tar.gz
+    tar xvfvz ruby-2.2.2.tar.gz
+    cd ruby-2.2.2
+    ./configure
+    make
+    make install
+    gem update --system
+  else
+    apt-get install -y ruby ruby-dev
+    if ! [[ "$DEBIAN_VERSION" == "trusty" ]]; then
+      apt-get -y install rubygems
+    fi
   fi
 
   PACKAGE_TYPE="deb"
