@@ -85,7 +85,7 @@ elif hash apt-get 2>/dev/null; then
   apt-get update && apt-get -y install wget curl gnupg tar make gcc libreadline-dev libncurses5-dev libpcre3-dev libssl-dev perl unzip git lua${LUA_VERSION%.*} liblua${LUA_VERSION%.*}-0-dev lsb-release
 
   DEBIAN_VERSION=`lsb_release -cs`
-  if [[ "$DEBIAN_VERSION" == "squeeze" ]]; then
+  if [[ "$DEBIAN_VERSION" == "squeeze" ]] || [[ "$DEBIAN_VERSION" == "precise" ]]; then
     # Install Ruby for fpm
     cd $TMP
     wget http://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.2.tar.gz
