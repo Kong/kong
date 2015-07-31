@@ -1,6 +1,7 @@
 # KONG: Microservice Management Layer
 
 [![Build Status][travis-badge]][travis-url]
+[![Circle CI][circleci-badge]][circleci-url]
 [![License Badge][license-badge]][license-url]
 [![Gitter Badge][gitter-badge]][gitter-url]
 
@@ -126,6 +127,9 @@ Support, Demo, Training, API Certifications and Consulting available at http://g
 
 [travis-url]: https://travis-ci.org/Mashape/kong
 [travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
+
+[circleci-url]: https://circleci.com/gh/Mashape/kong
+[circleci-badge]: https://circleci.com/gh/Mashape/kong.svg?style=svg
 
 [license-url]: https://github.com/Mashape/kong/blob/master/LICENSE
 [license-badge]: https://img.shields.io/github/license/mashape/kong.svg

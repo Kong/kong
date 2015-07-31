@@ -1,0 +1,14 @@
+machine:
+  services:
+    - cassandra
+
+dependencies:
+    pre:
+        - "bash .ci/setup_kong.sh"
+    post:
+        - sudo make dev
+test:
+    override:
+        - busted -o spec/busted-print.lua --coverage spec/
+    post:
+        - make lint
