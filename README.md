@@ -107,8 +107,8 @@ When developing, use the `Makefile` for doing the following operations:
 | `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
 | `lint`        | Lint Lua files in `kong/` and `spec/`                                    |
 | `test`        | Run the unit tests                                                       |
-| `test-integration | Run the integration tests (Kong + DAO)                               |
-| `test-plugins | Run unit + integration tests of all plugins                              |
+| `test-integration` | Run the integration tests (Kong + DAO)                               |
+| `test-plugins` | Run unit + integration tests of all plugins                              |
 | `test-all`    | Run all unit + integration tests at once                                 |
 | `coverage`    | Run all tests + coverage report                                          |
 
