@@ -95,16 +95,16 @@ function _M.find_port(exclude)
   end
 
   -- Finding an available port
-  local server = assert(socket.bind("*", 0))
-  local _, port = server:getsockname()
-  server:close()
+  local handle = io.popen([[(netstat  -atn | awk '{printf "%s\n%s\n", $4, $4}' | grep -oE '[0-9]*$'; seq 32768 61000) | sort -n | uniq -u | head -n 1]])
+  local result = handle:read("*a")
+  handle:close()
 
   -- Closing the opened servers
   for _, v in ipairs(servers) do 
     v:close()
   end
 
-  return port
+  return tonumber(result)
 end
 
 -- Starts a TCP server
