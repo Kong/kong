@@ -5,7 +5,7 @@ local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local IO = require "kong.tools.io"
 
-local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
+local FILE_LOG_PATH = os.tmpname()
 
 describe("Real IP", function()
 
@@ -28,8 +28,6 @@ describe("Real IP", function()
   end)
 
   it("should parse the correct IP", function()
-    os.remove(FILE_LOG_PATH)
-
     local uuid = utils.random_string()
 
     -- Making the request
@@ -50,6 +48,8 @@ describe("Real IP", function()
     local log_message = cjson.decode(stringy.strip(file_log))
     assert.are.same("4.4.4.4", log_message.client_ip)
     assert.are.same(uuid, log_message.request.headers.file_log_uuid)
+
+    os.remove(FILE_LOG_PATH)
   end)
 
 end)

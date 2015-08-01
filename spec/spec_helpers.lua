@@ -7,6 +7,7 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
 
+
 require "kong.tools.ngx_stub"
 
 local _M = {}
@@ -78,6 +79,33 @@ end
 --
 -- TCP/UDP server helpers
 --
+
+-- Finds an available port on the system
+-- @param `exclude` An array with the ports to exclude
+-- @return `number` The port number
+function _M.find_port(exclude)
+  local socket = require "socket"
+  
+  if not exclude then exclude = {} end
+  
+  -- Reserving ports to exclude
+  local servers = {}
+  for _, v in ipairs(exclude) do 
+    table.insert(servers, assert(socket.bind("*", v)))
+  end
+
+  -- Finding an available port
+  local server = assert(socket.bind("*", 0))
+  local _, port = server:getsockname()
+  server:close()
+
+  -- Closing the opened servers
+  for _, v in ipairs(servers) do 
+    v:close()
+  end
+
+  return port
+end
 
 -- Starts a TCP server
 -- @param `port`    The port where the server will be listening to
