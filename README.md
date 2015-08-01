@@ -18,7 +18,7 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
 - [**Feature**](#features)
 - [**Why Kong?**](#why-kong?)
 - [**Benchmarks**](#benchmarks)
-- [**Ressources**](#ressources)
+- [**Resources**](#resources)
 - [**Roadmap**](#roadmap)
 - [**Development**](#development)
 - [**Enterprise Support**](#enterprise-support)
