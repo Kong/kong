@@ -129,7 +129,7 @@ Support, Demo, Training, API Certifications and Consulting available at http://g
 [travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
 
 [circleci-url]: https://circleci.com/gh/Mashape/kong
-[circleci-badge]: https://circleci.com/gh/Mashape/kong.svg?style=svg
+[circleci-badge]: https://circleci.com/gh/Mashape/kong.svg?style=shield
 
 [license-url]: https://github.com/Mashape/kong/blob/master/LICENSE
 [license-badge]: https://img.shields.io/github/license/mashape/kong.svg
