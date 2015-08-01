@@ -7,17 +7,20 @@ local Migrations = BaseDao:extend()
 function Migrations:new(properties)
   self._table = "schema_migrations"
   self.queries = {
-    add_migration = [[
-      UPDATE schema_migrations SET migrations = migrations + ? WHERE id = 'migrations';
-    ]],
     get_keyspace = [[
       SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?;
     ]],
+    add_migration = [[
+      UPDATE schema_migrations SET migrations = migrations + ? WHERE id = ?;
+    ]],
+    get_all_migrations = [[
+      SELECT * FROM schema_migrations;
+    ]],
     get_migrations = [[
-      SELECT migrations FROM schema_migrations WHERE id = 'migrations';
+      SELECT migrations FROM schema_migrations WHERE id = ?;
     ]],
     delete_migration = [[
-      UPDATE schema_migrations SET migrations = migrations - ? WHERE id = 'migrations';
+      UPDATE schema_migrations SET migrations = migrations - ? WHERE id = ?;
     ]]
   }
 
@@ -28,19 +31,18 @@ end
 -- @param migration_name Name of the migration to log
 -- @return query result
 -- @return error if any
-function Migrations:add_migration(migration_name)
-  return Migrations.super._execute(self, self.queries.add_migration,
-    { cassandra.list({ migration_name }) })
+function Migrations:add_migration(migration_name, identifier)
+  return Migrations.super._execute(self, self.queries.add_migration, {cassandra.list({migration_name}), identifier})
 end
 
--- Return all logged migrations if any. Check if keyspace exists before to avoid error during the first migration.
+-- Return all logged migrations with a filter by identifier optionally. Check if keyspace exists before to avoid error during the first migration.
+-- @param identifier Only return migrations for this identifier.
 -- @return A list of previously executed migration (as strings)
 -- @return error if any
-function Migrations:get_migrations()
+function Migrations:get_migrations(identifier)
   local rows, err
 
-  rows, err = Migrations.super._execute(self, self.queries.get_keyspace,
-    { self._properties.keyspace }, nil, "system")
+  rows, err = Migrations.super._execute(self, self.queries.get_keyspace, {self._properties.keyspace}, nil, "system")
   if err then
     return nil, err
   elseif #rows == 0 then
@@ -48,22 +50,30 @@ function Migrations:get_migrations()
     return nil
   end
 
-  rows, err = Migrations.super._execute(self, self.queries.get_migrations)
+  if identifier ~= nil then
+    rows, err = Migrations.super._execute(self, self.queries.get_migrations, {identifier})
+  else
+    rows, err = Migrations.super._execute(self, self.queries.get_all_migrations)
+  end
+
   if err and stringy.find(err.message, "unconfigured columnfamily schema_migrations") ~= nil then
     return nil, "Missing mandatory column family \"schema_migrations\" in configured keyspace. Please consider running \"kong migrations reset\" to fix this."
   elseif err then
     return nil, err
   elseif rows and #rows > 0 then
-    return rows[1].migrations
+    if #rows == 1 then
+      return rows[1].migrations
+    else
+      return rows
+    end
   end
 end
 
 -- Unlog (delete) given migration from the schema_migrations table.
 -- @return query result
 -- @return error if any
-function Migrations:delete_migration(migration_name)
-  return Migrations.super._execute(self, self.queries.delete_migration,
-    { cassandra.list({ migration_name }) })
+function Migrations:delete_migration(migration_name, identifier)
+  return Migrations.super._execute(self, self.queries.delete_migration, {cassandra.list({migration_name}), identifier})
 end
 
 -- Drop the entire keyspace
