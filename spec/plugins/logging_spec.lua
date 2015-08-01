@@ -5,15 +5,14 @@ local stringy = require "stringy"
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 
-
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
-local TCP_PORT = 20777
-local UDP_PORT = 20778
-local HTTP_PORT = 20779
-local HTTP_DELAY_PORT = 20780
+local TCP_PORT = spec_helper.find_port()
+local UDP_PORT = spec_helper.find_port({TCP_PORT})
+local HTTP_PORT = spec_helper.find_port({TCP_PORT, UDP_PORT})
+local HTTP_DELAY_PORT = spec_helper.find_port({TCP_PORT, UDP_PORT, HTTP_PORT})
 
-local FILE_LOG_PATH = spec_helper.get_env().configuration.nginx_working_dir.."/file_log_spec_output.log"
+local FILE_LOG_PATH = os.tmpname()
 
 local function create_mock_bin()
   local res, status = http_client.post("http://mockbin.org/bin/create", '{ "status": 200, "statusText": "OK", "httpVersion": "HTTP/1.1", "headers": [], "cookies": [], "content": { "mimeType" : "application/json" }, "redirectURL": "", "headersSize": 0, "bodySize": 0 }', { ["content-type"] = "application/json" })
@@ -153,8 +152,6 @@ describe("Logging Plugins", function()
   end)
 
   it("should log to file", function()
-    os.remove(FILE_LOG_PATH)
-
     local uuid = utils.random_string()
 
     -- Making the request
@@ -163,14 +160,20 @@ describe("Logging Plugins", function()
     )
     assert.are.equal(200, status)
 
-    while not (IO.file_exists(FILE_LOG_PATH) and IO.file_size(FILE_LOG_PATH) > 0) do
-      -- Wait for the file to be created, and for the log to be appended
+    while not (IO.file_exists(FILE_LOG_PATH)) do
+      -- Wait for the file to be created
+    end
+
+    while not (IO.file_size(FILE_LOG_PATH) > 0) do
+      -- Wait for the log to be appended
     end
 
     local file_log = IO.read_file(FILE_LOG_PATH)
     local log_message = cjson.decode(stringy.strip(file_log))
     assert.are.same("127.0.0.1", log_message.client_ip)
     assert.are.same(uuid, log_message.request.headers.file_log_uuid)
+
+    os.remove(FILE_LOG_PATH)
   end)
 
 end)

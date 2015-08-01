@@ -1,8 +1,9 @@
 language: erlang
 
+services:
+  - cassandra
+
 env:
-  global:
-    - CASSANDRA_VERSION=2.1.8
   matrix:
     - LUA=lua5.1
 
@@ -11,8 +12,7 @@ branches:
     - master
 
 before_install:
-  - "bash .travis/setup_kong.sh"
-  - "bash .travis/setup_cassandra.sh"
+  - "bash .ci/setup_kong.sh"
 
 install:
   - "sudo make dev"
