@@ -37,6 +37,20 @@ function Migrations:rollback(identifier)
   end
 end
 
+function Migrations:migrate_all(config, callback)
+  local err = select(2, self:migrate("core", callback))
+  if err then
+    return err
+  end
+
+  for _, plugin_name in ipairs(config.plugins_available) do
+    local err = select(2, self:migrate(plugin_name, callback))
+    if err then
+      return err
+    end
+  end
+end
+
 --
 -- PRIVATE
 --

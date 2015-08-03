@@ -22,4 +22,3 @@ local Migrations = {
 }
 
 return Migrations
-
