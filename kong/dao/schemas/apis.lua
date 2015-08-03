@@ -83,6 +83,7 @@ return {
                   regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)" },
     path = { type = "string", unique = true, func = check_path },
     strip_path = { type = "boolean" },
-    target_url = { type = "string", required = true, func = validate_target_url }
+    target_url = { type = "string", required = true, func = validate_target_url },
+    preserve_host = { type = "boolean" }
   }
 }
