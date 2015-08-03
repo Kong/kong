@@ -27,6 +27,15 @@ function Migrations:new(properties)
   Migrations.super.new(self, properties)
 end
 
+function Migrations:keyspace_exists(keyspace)
+  local rows, err = Migrations.super._execute(self, self.queries.get_keyspace, {self._properties.keyspace}, nil, "system")
+  if err then
+    return nil, err
+  else
+    return #rows > 0
+  end
+end
+
 -- Log (add) given migration to schema_migrations table.
 -- @param migration_name Name of the migration to log
 -- @return query result
@@ -40,16 +49,15 @@ end
 -- @return A list of previously executed migration (as strings)
 -- @return error if any
 function Migrations:get_migrations(identifier)
-  local rows, err
-
-  rows, err = Migrations.super._execute(self, self.queries.get_keyspace, {self._properties.keyspace}, nil, "system")
+  local keyspace_exists, err = self:keyspace_exists()
   if err then
     return nil, err
-  elseif #rows == 0 then
+  elseif not keyspace_exists then
     -- keyspace is not yet created, this is the first migration
     return nil
   end
 
+  local rows, err
   if identifier ~= nil then
     rows, err = Migrations.super._execute(self, self.queries.get_migrations, {identifier})
   else
