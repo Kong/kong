@@ -177,12 +177,13 @@ local function prepare_database(args_config)
   end
 
   local err = migrations:migrate_all(kong_config, function(identifier, migration)
-    if err then
-      cutils.logger:error_exit(err)
-    elseif migration then
+    if migration then
       cutils.logger:success(string.format("%s migrated up to: %s", identifier, cutils.colors.yellow(migration.name)))
     end
   end)
+  if err then
+    cutils.logger:error_exit(err)
+  end
 end
 
 --

@@ -102,7 +102,9 @@ function Migrations:run_migrations(migrations, identifier, callback)
     end
 
     -- Migration succeeded
-    callback(identifier, migration)
+    if callback then
+      callback(identifier, migration)
+    end
   end
 
   return err

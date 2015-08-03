@@ -32,6 +32,7 @@ local Migrations = {
           name text,
           public_dns text,
           target_url text,
+          preserve_host boolean,
           created_at timestamp,
           PRIMARY KEY (id)
         );
