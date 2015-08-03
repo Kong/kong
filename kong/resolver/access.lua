@@ -176,8 +176,12 @@ function _M.execute(conf)
 
   -- Setting the backend URL for the proxy_pass directive
   ngx.var.backend_url = get_backend_url(api)..request_uri
-  ngx.req.set_header("Host", get_host_from_url(ngx.var.backend_url))
-
+  if api.preserve_host then
+    ngx.var.backend_host = ngx.req.get_headers()["host"]
+  else
+    ngx.var.backend_host = get_host_from_url(ngx.var.backend_url)  
+  end
+  
   ngx.ctx.api = api
 end
 

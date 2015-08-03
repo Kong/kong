@@ -9,6 +9,7 @@ local http_client = require "kong.tools.http_client"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
+local PROXY_URL = spec_helper.PROXY_URL
 
 -- Parses an SSL certificate returned by LuaSec
 local function parse_cert(cert)
@@ -32,7 +33,9 @@ describe("Resolver", function()
         {name = "tests stripped path resolver with pattern characters", target_url = "http://mockbin.com", path = "/mockbin-with-pattern/", strip_path = true},
         {name = "tests deep path resolver", target_url = "http://mockbin.com", path = "/deep/path/", strip_path = true},
         {name = "tests wildcard subdomain", target_url = "http://mockbin.com/status/200", public_dns = "*.wildcard.com"},
-        {name = "tests wildcard subdomain 2", target_url = "http://mockbin.com/status/201", public_dns = "wildcard.*"}
+        {name = "tests wildcard subdomain 2", target_url = "http://mockbin.com/status/201", public_dns = "wildcard.*"},
+        {name = "tests preserve host", public_dns = "httpbin-nopreserve.com", target_url = "http://httpbin.org"},
+        {name = "tests preserve host 2", public_dns = "httpbin-preserve.com", target_url = "http://httpbin.org", preserve_host = true}
       },
       plugin_configuration = {
         { name = "keyauth", value = {key_names = {"apikey"} }, __api = 2 }
@@ -189,6 +192,24 @@ describe("Resolver", function()
       assert.equal(401, status)
       assert.equal(constants.NAME.."/"..constants.VERSION, headers.server)
       assert.falsy(headers.via)
+    end)
+
+  end)
+
+  describe("Preseve Host", function()
+
+    it("should not preserve the host (default behavior)", function()
+      local response, status = http_client.get(PROXY_URL.."/get", nil, { host = "httpbin-nopreserve.com"})
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("httpbin.org", parsed_response.headers["Host"])
+    end)
+
+    it("should preserve the host (default behavior)", function()
+      local response, status = http_client.get(PROXY_URL.."/get", nil, { host = "httpbin-preserve.com"})
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("httpbin-preserve.com", parsed_response.headers["Host"])
     end)
 
   end)

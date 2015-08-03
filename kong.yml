@@ -138,7 +138,8 @@ nginx: |
       location / {
         default_type 'text/plain';
 
-        # This property will be used later by proxy_pass
+        # These properties will be used later by proxy_pass
+        set $backend_host nil;
         set $backend_url nil;
 
         # Authenticate the user and load the API info
@@ -148,6 +149,7 @@ nginx: |
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $backend_host;
         proxy_pass $backend_url;
         proxy_pass_header Server;
 
