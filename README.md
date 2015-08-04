@@ -59,6 +59,7 @@ Kong comes in many shapes. While this repository contains its core's source code
 - [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for running Kong in Docker.
 - [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for provisioning a development ready environment for Kong.
 - [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula for Kong.
+- [Kong AWS](https://github.com/Mashape/kong-dist-cloudformation): Kong CloudFormation stack.
 - [Kong Distributions](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
 
 ## Roadmap
