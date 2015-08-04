@@ -26,7 +26,7 @@ end
 
 function RateLimitingMetrics:increment(api_id, identifier, current_timestamp)
   local periods = timestamp.get_timestamps(current_timestamp)
-  local batch = cassandra.BatchStatement(cassandra.batch_types.COUNTER)
+  local batch = cassandra:BatchStatement(cassandra.batch_types.COUNTER)
 
   for period, period_date in pairs(periods) do
     batch:add(self.queries.increment_counter, {

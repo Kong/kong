@@ -22,7 +22,7 @@ function Consumers:delete(where_t)
   local select_q, columns = query_builder.select(plugins_dao._table, {consumer_id = where_t.id}, plugins_dao._column_family_details)
 
   -- delete all related plugins configurations
-  for _, rows, page, err in plugins_dao:execute(select_q, columns, {consumer_id = where_t.id}, {auto_paging = true}) do
+  for rows, err in plugins_dao:execute(select_q, columns, {consumer_id = where_t.id}, {auto_paging = true}) do
     if err then
       return nil, err
     end
