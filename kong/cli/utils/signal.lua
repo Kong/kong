@@ -102,6 +102,7 @@ local function prepare_nginx_working_dir(args_config)
   end
 
   local ssl_cert_path, ssl_key_path = cutils.get_ssl_cert_and_key(kong_config)
+  local trusted_ssl_cert_path = kong_config.databases_available[kong_config.database].properties.ssl_certificate -- DAO ssl cert
 
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
@@ -112,7 +113,8 @@ local function prepare_nginx_working_dir(args_config)
     dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
     memory_cache_size = kong_config.memory_cache_size,
     ssl_cert = ssl_cert_path,
-    ssl_key = ssl_key_path
+    ssl_key = ssl_key_path,
+    lua_ssl_trusted_certificate = trusted_ssl_cert_path ~= nil and "lua_ssl_trusted_certificate \""..trusted_ssl_cert_path.."\";" or ""
   }
 
   -- Auto-tune

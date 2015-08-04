@@ -12,7 +12,7 @@ local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "uuid"
 
-local cassandra_constants = require "cassandra.constants"
+local cassandra_constants = cassandra.constants
 local error_types = constants.DATABASE_ERROR_TYPES
 
 local BaseDao = Object:extend()
@@ -62,16 +62,18 @@ function BaseDao:_open_session(keyspace)
   local ok, err
 
   -- Start cassandra session
-  local session = cassandra.new()
+  local session = cassandra:new()
   session:set_timeout(self._properties.timeout)
 
-  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  local options = self._factory:get_session_options()
+
+  ok, err = session:connect(self._properties.hosts, self._properties.port, options)
   if not ok then
     return nil, DaoError(err, error_types.DATABASE)
   end
 
   local times, err = session:get_reused_times()
-  if err and err ~= "luasocket does not support reusable sockets" then
+  if err and err.message ~= "luasocket does not support reusable sockets" then
     return nil, DaoError(err, error_types.DATABASE)
   end
 
@@ -92,7 +94,7 @@ end
 function BaseDao:_close_session(session)
   -- Back to the pool or close if using luasocket
   local ok, err = session:set_keepalive(self._properties.keepalive)
-  if not ok and err == "luasocket does not support reusable sockets" then
+  if not ok and err.message == "luasocket does not support reusable sockets" then
     ok, err = session:close()
   end
 

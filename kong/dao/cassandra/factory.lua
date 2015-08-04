@@ -67,6 +67,21 @@ function CassandraFactory:drop()
   end
 end
 
+function CassandraFactory:get_session_options()
+  local options = {
+    ssl = self._properties.ssl,
+    ssl_verify = self._properties.ssl_verify,
+    ca_file = self._properties.ssl_certificate -- in case of using luasocket
+  }
+
+  if self._properties.user and self._properties.password then
+    local PasswordAuthenticator = require "cassandra.authenticators.PasswordAuthenticator"
+    options.authenticator = PasswordAuthenticator(self._properties.user, self._properties.password)
+  end
+
+  return options
+end
+
 -- Prepare all statements of collections `queries` property and put them
 -- in a statements cache
 --
@@ -88,9 +103,12 @@ function CassandraFactory:prepare()
   end
 
   -- Check cassandra is accessible
-  local session = cassandra.new()
+  local session = cassandra:new()
   session:set_timeout(self._properties.timeout)
-  local ok, co_err = session:connect(self._properties.hosts, self._properties.port)
+
+  local options = self:get_session_options()
+
+  local ok, co_err = session:connect(self._properties.hosts, self._properties.port, options)
   session:close()
 
   if not ok then
@@ -114,10 +132,12 @@ end
 -- @return {string} error if any
 function CassandraFactory:execute_queries(queries, no_keyspace)
   local ok, err
-  local session = cassandra.new()
+  local session = cassandra:new()
   session:set_timeout(self._properties.timeout)
 
-  ok, err = session:connect(self._properties.hosts, self._properties.port)
+  local options = self:get_session_options()
+
+  ok, err = session:connect(self._properties.hosts, self._properties.port, options)
   if not ok then
     return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
