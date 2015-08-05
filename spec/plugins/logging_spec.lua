@@ -86,7 +86,6 @@ describe("Logging Plugins", function()
     local log_message = cjson.decode(res)
 
     assert.truthy(log_message.latencies.proxy < 3000)
-    assert.truthy(log_message.latencies.kong < 500) -- Travis can be very slow, hopefully not slower than half a second
     assert.truthy(log_message.latencies.request >= log_message.latencies.kong + log_message.latencies.proxy)
 
     http_thread:join()
