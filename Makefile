@@ -67,4 +67,3 @@ coverage:
 	@busted --coverage spec/
 	@luacov -c spec/.luacov
 	@tail -n 1 luacov.report.out | awk '{ print $$3 }'
-
