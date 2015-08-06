@@ -28,7 +28,11 @@ function Migrations:new(properties)
 end
 
 function Migrations:keyspace_exists(keyspace)
-  local rows, err = Migrations.super._execute(self, self.queries.get_keyspace, {self._properties.keyspace}, nil, "system")
+  local rows, err = Migrations.super._execute(self,
+    self.queries.get_keyspace,
+    {self._properties.keyspace},
+    nil, "system"
+  )
   if err then
     return nil, err
   else
@@ -41,7 +45,11 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:add_migration(migration_name, identifier)
-  return Migrations.super._execute(self, self.queries.add_migration, {cassandra.list({migration_name}), identifier})
+  return Migrations.super._execute(self,
+    self.queries.add_migration,
+    {cassandra.list({migration_name}), identifier},
+    {consistency_level = cassandra.constants.consistency.ALL}
+  )
 end
 
 -- Return all logged migrations with a filter by identifier optionally. Check if keyspace exists before to avoid error during the first migration.
@@ -59,9 +67,17 @@ function Migrations:get_migrations(identifier)
 
   local rows, err
   if identifier ~= nil then
-    rows, err = Migrations.super._execute(self, self.queries.get_migrations, {identifier})
+    rows, err = Migrations.super._execute(self,
+      self.queries.get_migrations,
+      {identifier},
+      {consistency_level = cassandra.constants.consistency.ALL}
+    )
   else
-    rows, err = Migrations.super._execute(self, self.queries.get_all_migrations)
+    rows, err = Migrations.super._execute(self,
+      self.queries.get_all_migrations,
+      nil,
+      {consistency_level = cassandra.constants.consistency.ALL}
+    )
   end
 
   if err and stringy.find(err.message, "unconfigured columnfamily schema_migrations") ~= nil then
@@ -81,7 +97,11 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:delete_migration(migration_name, identifier)
-  return Migrations.super._execute(self, self.queries.delete_migration, {cassandra.list({migration_name}), identifier})
+  return Migrations.super._execute(self,
+    self.queries.delete_migration,
+    {cassandra.list({migration_name}), identifier},
+    {consistency_level = cassandra.constants.consistency.ALL}
+  )
 end
 
 -- Drop the entire keyspace

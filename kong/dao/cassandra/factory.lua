@@ -111,7 +111,7 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
   queries = stringy.split(queries, ";")
   for _, query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
-      local _, stmt_err = session:execute(query)
+      local _, stmt_err = session:execute(query, nil, {consistency_level = cassandra.constants.consistency.ALL})
       if stmt_err then
         return DaoError(stmt_err, constants.DATABASE_ERROR_TYPES.DATABASE)
       end
