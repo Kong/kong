@@ -28,9 +28,9 @@ local function sameEntry(state, arguments)
   assert.True(math.abs(entry.time - fixture_entry.time) < delta)
 
   -- Compare things that are not computed in the same order depending on the platform
-  assert.are.equal(#(fixture_entry.request.headers), #(entry.request.headers))
-  assert.are.equal(#(fixture_entry.request.queryString), #(entry.request.queryString))
-  assert.are.equal(#(fixture_entry.response.headers), #(entry.response.headers))
+  assert.equal(#(fixture_entry.request.headers), #(entry.request.headers))
+  assert.equal(#(fixture_entry.request.queryString), #(entry.request.queryString))
+  assert.equal(#(fixture_entry.response.headers), #(entry.response.headers))
 
   entry.time = nil
   entry.timings = nil
@@ -97,6 +97,13 @@ describe("ALF serializer", function()
     it("should accept an environment parameter", function()
       local alf = ALFSerializer.new_alf(fixtures.GET.NGX_STUB, "123456", "test")
       assert.equal("test", alf.environment)
+    end)
+    -- https://github.com/ahmadnassri/har-validator/blob/8fd21c30edb23a1fed2d50b934d055d1be3dd7c9/lib/schemas/record.json#L12
+    it("should convert all records to strings", function()
+      local alf = ALFSerializer.new_alf(fixtures.GET.NGX_STUB, "123456", "test")
+      for _, record in ipairs(alf.har.log.entries[1].request.queryString) do
+        assert.equal("string", type(record.value))
+      end
     end)
   end)
 end)
