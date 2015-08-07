@@ -22,6 +22,7 @@ local GRANT_TYPE = "grant_type"
 local GRANT_AUTHORIZATION_CODE = "authorization_code"
 local GRANT_CLIENT_CREDENTIALS = "client_credentials"
 local GRANT_REFRESH_TOKEN = "refresh_token"
+local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
@@ -205,7 +206,10 @@ local function issue_token(conf)
   local state = parameters[STATE]
     
   local grant_type = parameters[GRANT_TYPE]
-  if not (grant_type == GRANT_AUTHORIZATION_CODE or grant_type == GRANT_REFRESH_TOKEN or (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS)) then
+  if not (grant_type == GRANT_AUTHORIZATION_CODE or 
+          grant_type == GRANT_REFRESH_TOKEN or 
+          (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or 
+          (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
     response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..GRANT_TYPE}
   end
 
@@ -239,6 +243,21 @@ local function issue_token(conf)
         response_params = scopes -- If it's not ok, then this is the error message
       else
         response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
+      end
+    elseif grant_type == GRANT_PASSWORD then
+      -- Check that it comes from the right client
+      if conf.provision_key ~= parameters.provision_key then
+        response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+      elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+        response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
+      else
+        -- Check scopes
+        local ok, scopes = retrieve_scopes(parameters, conf)
+        if not ok then
+          response_params = scopes -- If it's not ok, then this is the error message
+        else
+          response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
+        end
       end
     elseif grant_type == GRANT_REFRESH_TOKEN then
       local refresh_token = parameters[REFRESH_TOKEN]

@@ -25,6 +25,7 @@ return {
     enable_authorization_code = { required = true, type = "boolean", default = true },
     enable_implicit_grant = { required = true, type = "boolean", default = false },
     enable_client_credentials = { required = true, type = "boolean", default = false },
+    enable_password_grant = { required = true, type = "boolean", default = false },
     hide_credentials = { type = "boolean", default = false }
   }
 }
