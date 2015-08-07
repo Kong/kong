@@ -50,7 +50,7 @@ If you're building for web, mobile or IoT (Internet of Things) you will likely e
 
 ## Benchmarks
 
-See our [benchmark report](http://getkong.org/about/benchmark/).
+We've load tested Kong and Cassandra on AWS; you can see our [benchmark report here](http://getkong.org/about/benchmark/).
 
 ## Resources
 
