@@ -5,6 +5,7 @@ local IO = require "kong.tools.io"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
 local ssl_fixtures = require "spec.plugins.ssl.fixtures"
+local cutils = require "kong.cli.utils"
 
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 local STUB_GET_URL = spec_helper.STUB_GET_URL
@@ -21,7 +22,7 @@ describe("SSL Plugin", function()
         { name = "API TESTS 13 (ssl)", public_dns = "ssl3.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
-            { name = "ssl", value = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
+        { name = "ssl", value = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
         { name = "ssl", value = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true }, __api = 2 }
       }
     }
@@ -32,7 +33,7 @@ describe("SSL Plugin", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-
+  
   describe("SSL Util", function()
 
     it("should not convert an invalid cert to DER", function()
@@ -52,14 +53,14 @@ describe("SSL Plugin", function()
     end)
 
   end)
-
+  
   describe("SSL Resolution", function()
 
     it("should return default CERTIFICATE when requesting other APIs", function()
       local parsed_url = url.parse(STUB_GET_SSL_URL)
       local res = IO.os_execute("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername test4.com")
 
-      assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=localhost"))
+      assert.truthy(res:match("US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost"))
     end)
 
     it("should work when requesting a specific API", function()
@@ -70,7 +71,7 @@ describe("SSL Plugin", function()
     end)
 
   end)
-
+  
   describe("only_https", function()
 
     it("should block request without https", function()
@@ -91,9 +92,12 @@ describe("SSL Plugin", function()
   describe("should work with curl", function()
     local response = http_client.get(API_URL.."/apis/", {public_dns="ssl3.com"})
     local api_id = cjson.decode(response).data[1].id
-    local current_path = IO.os_execute("pwd")
-    local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"value.cert=@"..current_path.."/ssl/kong-default.crt\" --form \"value.key=@"..current_path.."/ssl/kong-default.key\"")
-    assert.are.equal("201", res)
-  end)
+    
+    local ssl_cert_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.crt")
+    local ssl_key_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.key")
 
+    local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"value.cert=@"..ssl_cert_path.."\" --form \"value.key=@"..ssl_key_path.."\"")
+    assert.are.equal(201, tonumber(res))
+  end)
+  
 end)

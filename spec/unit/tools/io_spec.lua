@@ -31,7 +31,7 @@ describe("IO", function()
 
     local res, code = IO.os_execute("LC_ALL=\"C\";asdasda \"Hello\"")
     assert.are.same(127, code)
-    assert.are.same("/bin/bash: asdasda: command not found", res)
+    assert.are.same("asdasda: command not found", res)
   end)
 
 end)
