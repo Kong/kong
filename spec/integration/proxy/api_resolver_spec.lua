@@ -183,7 +183,7 @@ describe("Resolver", function()
     it("should return the correct Server and Via headers when the request was proxied", function()
       local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin.com"})
       assert.equal(200, status)
-      assert.equal("cloudflare-nginx", headers.server)
+      assert.equal("Cowboy", headers.server)
       assert.equal(constants.NAME.."/"..constants.VERSION, headers.via)
     end)
 
