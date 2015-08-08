@@ -40,7 +40,7 @@ function _M.prepare_ssl()
     local file_name = os.tmpname()
     local passphrase = utils.random_string()
 
-    local res, code = IO.os_execute([[
+    IO.os_execute([[
       cd /tmp && \
       openssl genrsa -des3 -out ]]..file_name..[[.key -passout pass:]]..passphrase..[[ 1024 && \
       openssl req -new -key ]]..file_name..[[.key -out ]]..file_name..[[.csr -subj "/C=US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost" -passin pass:]]..passphrase..[[ && \
