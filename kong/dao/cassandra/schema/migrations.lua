@@ -1,9 +1,8 @@
 local Migrations = {
-  -- init schema migration
+  -- skeleton
   {
-    name = "2015-01-12-175310_init_schema",
     init = true,
-
+    name = "2015-01-12-175310_skeleton",
     up = function(options)
       return [[
         CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
@@ -15,7 +14,19 @@ local Migrations = {
           id text PRIMARY KEY,
           migrations list<text>
         );
-
+      ]]
+    end,
+    down = function(options)
+      return [[
+        DROP KEYSPACE "]]..options.keyspace..[[";
+      ]]
+    end
+  },
+  -- init schema migration
+  {
+    name = "2015-01-12-175310_init_schema",
+    up = function(options)
+      return [[
         CREATE TABLE IF NOT EXISTS consumers(
           id uuid,
           custom_id text,
@@ -31,6 +42,8 @@ local Migrations = {
           id uuid,
           name text,
           public_dns text,
+          path text,
+          strip_path boolean,
           target_url text,
           preserve_host boolean,
           created_at timestamp,
@@ -39,6 +52,7 @@ local Migrations = {
 
         CREATE INDEX IF NOT EXISTS ON apis(name);
         CREATE INDEX IF NOT EXISTS ON apis(public_dns);
+        CREATE INDEX IF NOT EXISTS ON apis(path);
 
         CREATE TABLE IF NOT EXISTS plugins_configurations(
           id uuid,
@@ -56,31 +70,11 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON plugins_configurations(consumer_id);
       ]]
     end,
-
     down = function(options)
       return [[
-        DROP KEYSPACE "]]..options.keyspace..[[";
-      ]]
-    end
-  },
-
-  -- 0.3.0
-  {
-    name = "2015-05-22-235608_0.3.0",
-
-    up = function(options)
-      return [[
-        ALTER TABLE apis ADD path text;
-        ALTER TABLE apis ADD strip_path boolean;
-        CREATE INDEX IF NOT EXISTS apis_path ON apis(path);
-      ]]
-    end,
-
-    down = function(options)
-      return [[
-        DROP INDEX apis_path;
-        ALTER TABLE apis DROP path;
-        ALTER TABLE apis DROP strip_path;
+        DROP TABLE consumers;
+        DROP TABLE apis;
+        DROP TABLE plugins_configurations;
       ]]
     end
   }
