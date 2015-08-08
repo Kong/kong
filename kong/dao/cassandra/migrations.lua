@@ -85,11 +85,7 @@ function Migrations:get_migrations(identifier)
   elseif err then
     return nil, err
   elseif rows and #rows > 0 then
-    if #rows == 1 then
-      return rows[1].migrations
-    else
-      return rows
-    end
+    return identifier == nil and rows or rows[1].migrations
   end
 end
 

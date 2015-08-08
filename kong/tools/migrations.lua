@@ -3,10 +3,21 @@ local Object = require "classic"
 
 local Migrations = Object:extend()
 
-function Migrations:new(dao)
+-- Instanciate a migrations runner.
+-- @param `core_migrations` (Optional) If specified, will use those migrations for core instead of the real ones (for testing).
+-- @param `plugins_namespace` (Optional) If specified, will look for plugins there instead of `kong.plugins` (for testing).
+function Migrations:new(dao, core_migrations, plugins_namespace)
   dao:load_daos(require("kong.dao.cassandra.migrations"))
+
+  if core_migrations then
+    self.core_migrations = core_migrations
+  else
+    self.core_migrations = require("kong.dao."..dao.type..".schema.migrations")
+  end
+
   self.dao = dao
   self.options = {keyspace = dao._properties.keyspace}
+  self.plugins_namespace = plugins_namespace and plugins_namespace or "kong.plugins"
 end
 
 function Migrations:get_migrations(identifier)
@@ -15,10 +26,9 @@ end
 
 function Migrations:migrate(identifier, callback)
   if identifier == "core" then
-    local core_migrations = require("kong.dao."..self.dao.type..".schema.migrations")
-    return self:run_migrations(core_migrations, identifier, callback)
+    return self:run_migrations(self.core_migrations, identifier, callback)
   else
-    local has_migration, plugin_migrations = utils.load_module_if_exists("kong.plugins."..identifier..".migrations."..self.dao.type)
+    local has_migration, plugin_migrations = utils.load_module_if_exists(self.plugins_namespace.."."..identifier..".migrations."..self.dao.type)
     if has_migration then
       return self:run_migrations(plugin_migrations, identifier, callback)
     end
@@ -27,10 +37,9 @@ end
 
 function Migrations:rollback(identifier)
   if identifier == "core" then
-    local core_migrations = require("kong.dao."..self.dao.type..".schema.migrations")
-    return self:run_rollback(core_migrations, identifier)
+    return self:run_rollback(self.core_migrations, identifier)
   else
-    local has_migration, plugin_migrations = utils.load_module_if_exists("kong.plugins."..identifier..".migrations."..self.dao.type)
+    local has_migration, plugin_migrations = utils.load_module_if_exists(self.plugins_namespace.."."..identifier..".migrations."..self.dao.type)
     if has_migration then
       return self:run_rollback(plugin_migrations, identifier)
     end
