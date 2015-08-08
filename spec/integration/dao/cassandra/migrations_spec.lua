@@ -108,7 +108,6 @@ local function has_migration(state, arguments)
     error(err)
   end
 
-  local found = false
   for _, record in ipairs(rows) do
     if record.id == identifier then
       for _, migration_record in ipairs(record.migrations) do
