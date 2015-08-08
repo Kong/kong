@@ -35,8 +35,8 @@ database: cassandra
 databases_available:
   cassandra:
     properties:
-      hosts: "localhost"
-      port: 9042
+      hosts:
+        - "localhost:9042"
       timeout: 1000
       keyspace: kong
       keepalive: 60000 # in milliseconds

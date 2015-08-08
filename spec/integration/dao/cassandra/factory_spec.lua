@@ -8,8 +8,7 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 describe(":prepare()", function()
 
   it("should return an error if cannot connect to Cassandra", function()
-    local new_factory = CassandraFactory({ hosts = "127.0.0.1",
-                                           port = 45678,
+    local new_factory = CassandraFactory({ hosts = "127.0.0.1:45678",
                                            timeout = 1000,
                                            keyspace = configuration.cassandra.keyspace
     })
