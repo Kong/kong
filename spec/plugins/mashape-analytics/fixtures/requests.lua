@@ -8,7 +8,7 @@ return {
         get_method = function() return "GET" end,
         http_version = function() return 1.1 end,
         get_headers = function() return {["Accept"] = "/*/", ["Host"] = "mockbin.com"} end,
-        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar"} end,
+        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar", ["number"] = 2} end,
         get_post_args = function() return {["hello"] = {"world", "earth"}} end
       },
       resp = {
@@ -56,7 +56,8 @@ return {
         },
         queryString = {
           {name = "foo", value = "bar"},
-          {name = "hello", value = "world"}
+          {name = "hello", value = "world"},
+          {name = "hello", value = "2"}
         },
         url = "http://mockbin.com/request"
       },

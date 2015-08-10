@@ -36,6 +36,8 @@ local function dic_to_array(hash, fn)
       v = {v}
     end
     for _, val in ipairs(v) do
+      k = tostring(k)
+      val = tostring(val)
       table.insert(arr, {name = k, value = val})
       fn(k, val)
     end
