@@ -6,6 +6,14 @@ local ltn12 = require "ltn12"
 
 local _M = {}
 
+local function get_response(resp)
+  if #resp == 0 then
+    return nil
+  else
+    return table.concat(resp, "")
+  end
+end
+
 local function http_call(options)
   -- Set Host header accordingly
   local parsed_url = url.parse(options.url)
@@ -28,10 +36,10 @@ local function http_call(options)
     options.options = "all"
 
     local _, code, headers = https.request(options)
-    return resp[1], code, headers
+    return get_response(resp), code, headers
   else
     local _, code, headers = http.request(options)
-    return resp[1], code, headers
+    return get_response(resp), code, headers
   end
 end
 

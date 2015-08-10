@@ -45,6 +45,7 @@ build = {
 
     ["kong.cli.utils"] = "kong/cli/utils/utils.lua",
     ["kong.cli.utils.dnsmasq"] = "kong/cli/utils/dnsmasq.lua",
+    ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",
     ["kong.cli.utils.signal"] = "kong/cli/utils/signal.lua",
     ["kong.cli.utils.input"] = "kong/cli/utils/input.lua",
     ["kong.cli.db"] = "kong/cli/db.lua",
