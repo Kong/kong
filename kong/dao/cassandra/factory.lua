@@ -108,7 +108,7 @@ function CassandraFactory:prepare()
 
   local options = self:get_session_options()
 
-  local ok, co_err = session:connect(self._properties.hosts, self._properties.port, options)
+  local ok, co_err = session:connect(self._properties.hosts, nil, options)
   session:close()
 
   if not ok then
@@ -137,7 +137,7 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
 
   local options = self:get_session_options()
 
-  ok, err = session:connect(self._properties.hosts, self._properties.port, options)
+  ok, err = session:connect(self._properties.hosts, nil, options)
   if not ok then
     return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end

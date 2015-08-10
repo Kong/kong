@@ -54,13 +54,13 @@ test:
 	@busted -v spec/unit
 
 test-integration:
-	@busted spec/integration
+	@busted -v spec/integration
 
 test-plugins:
-	@busted spec/plugins
+	@busted -v spec/plugins
 
 test-all:
-	@busted spec/
+	@busted -v spec/
 
 coverage:
 	@rm -f luacov.*
@@ -68,5 +68,3 @@ coverage:
 	@luacov -c spec/.luacov
 	@tail -n 1 luacov.report.out | awk '{ print $$3 }'
 
-test-all:
-	@busted -v spec/
