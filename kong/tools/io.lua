@@ -19,11 +19,13 @@ end
 
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
-  local exit_code = os.execute("/bin/bash -c '"..command.." > "..n.." 2>&1'")
+  local f = os.tmpname() -- get a temporary file name to store script
+  _M.write_to_file(f, command)
+  local exit_code = os.execute("/bin/bash "..f.." > "..n.." 2>&1")
   local result = _M.read_file(n)
   os.remove(n)
-
-  return string.gsub(result, "[%\r%\n]", ""), exit_code / 256
+  os.remove(f)
+  return string.gsub(string.gsub(result, "^"..f..":[%s%w]+:%s*", ""), "[%\r%\n]", ""), exit_code / 256
 end
 
 function _M.cmd_exists(cmd)

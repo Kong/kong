@@ -94,7 +94,7 @@ describe("Resolver", function()
 
       assert.same(6, utils.table_size(cert))
       assert.same("Kong", cert.organizationName)
-      assert.same("IT", cert.organizationalUnitName)
+      assert.same("IT Department", cert.organizationalUnitName)
       assert.same("US", cert.countryName)
       assert.same("California", cert.stateOrProvinceName)
       assert.same("San Francisco", cert.localityName)
