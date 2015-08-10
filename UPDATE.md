@@ -1,5 +1,25 @@
 This document describes eventual additional steps that might be required to update between two versions of Kong. If nothing is described here for a particular version and platform, then assume the update will go smoothly.
 
+## Update to Kong `0.4.2`
+
+The configuration format for specifying the port of your Cassandra instance changed. Replace:
+
+```yaml
+cassandra:
+  properties:
+    hosts: "localhost"
+    port: 9042
+```
+
+by:
+
+```yaml
+cassandra:
+  properties:
+    hosts:
+      - "localhost:9042"
+```
+
 ## Update to Kong `0.3.x`
 
 Kong now requires a patch on OpenResty for SSL support. On Homebrew you will need to reinstall OpenResty.
