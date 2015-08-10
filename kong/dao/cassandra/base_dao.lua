@@ -20,6 +20,10 @@ local BaseDao = Object:extend()
 -- This is important to seed the UUID generator
 uuid.seed()
 
+local function session_uniq_addr(session)
+  return session.host..":"..session.port
+end
+
 function BaseDao:new(properties)
   if self._schema then
     self._primary_key = self._schema.primary_key
@@ -78,7 +82,7 @@ function BaseDao:_open_session(keyspace)
   end
 
   if times == 0 or not times then
-    ok, err = session:set_keyspace(keyspace and keyspace or self._properties.keyspace)
+    ok, err = session:set_keyspace(keyspace ~= nil and keyspace or self._properties.keyspace)
     if not ok then
       return nil, DaoError(err, error_types.DATABASE)
     end
@@ -145,7 +149,7 @@ end
 -- @return `statement` The prepared cassandra statement
 -- @return `cache_key` The cache key used to store it into the cache
 -- @return `error`     Error if any during the query preparation
-function BaseDao:get_or_prepare_stmt(query)
+function BaseDao:get_or_prepare_stmt(session, query)
   if type(query) ~= "string" then
     -- Cannot be prepared (probably a BatchStatement)
     return query
@@ -153,10 +157,10 @@ function BaseDao:get_or_prepare_stmt(query)
 
   local statement, err
   -- Retrieve the prepared statement from cache or prepare and cache
-  if self._statements_cache[query] then
-    statement = self._statements_cache[query]
+  if self._statements_cache[session_uniq_addr(session)] and self._statements_cache[session_uniq_addr(session)][query] then
+    statement = self._statements_cache[session_uniq_addr(session)][query]
   else
-    statement, err = self:prepare_stmt(query)
+    statement, err = self:prepare_stmt(session, query)
     if err then
       return nil, query, err
     end
@@ -165,17 +169,23 @@ function BaseDao:get_or_prepare_stmt(query)
   return statement, query
 end
 
--- Execute a statement, BatchStatement or even plain string query.
+-- Execute a query, trying to prepare them on a per-host basis.
 -- Opens a socket, execute the statement, puts the socket back into the
 -- socket pool and returns a parsed result.
--- @param `statement` Prepared statement, plain string query or BatchStatement.
+-- @param `query`     Plain string query or BatchStatement.
 -- @param `args`      (Optional) Arguments to the query, simply passed to lua-resty-cassandra's :execute()
 -- @param `options`   (Optional) Options to give to lua-resty-cassandra's :execute()
 -- @param `keyspace`  (Optional) Override the keyspace for this query if specified.
 -- @return `results`  If results set are ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results have a paging_state.
 -- @return `error`    An error if any during the whole execution (sockets/query execution)
-function BaseDao:_execute(statement, args, options, keyspace)
+function BaseDao:_execute(query, args, options, keyspace)
   local session, err = self:_open_session(keyspace)
+  if err then
+    return nil, err
+  end
+
+  -- Prepare query and cache the prepared statement for later call
+  local statement, cache_key, err = self:get_or_prepare_stmt(session, query)
   if err then
     return nil, err
   end
@@ -189,13 +199,21 @@ function BaseDao:_execute(statement, args, options, keyspace)
   end
 
   local results, err = session:execute(statement, args, options)
-  if err then
-    err = DaoError(err, error_types.DATABASE)
-  end
 
+  -- First, close the socket
   local socket_err = self:_close_session(session)
   if socket_err then
     return nil, socket_err
+  end
+
+  -- Handle unprepared queries
+  if err and err.cassandra_err_code == cassandra_constants.error_codes.UNPREPARED then
+    ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
+    -- If the statement was declared unprepared, clear it from the cache, and try again.
+    self._statements_cache[session_uniq_addr(session)][cache_key] = nil
+    return self:_execute(query, args, options)
+  elseif err then
+    err = DaoError(err, error_types.DATABASE)
   end
 
   -- Parse result
@@ -222,20 +240,13 @@ function BaseDao:_execute(statement, args, options, keyspace)
   end
 end
 
--- Execute a query.
--- Will prepare the query before execution and cache the prepared statement.
--- Will create an arguments array for lua-resty-cassandra's :execute()
+-- Bind a table of arguments to a query depending on the entity's schema,
+-- and then execute the query.
 -- @param `query`        The query to execute
 -- @param `args_to_bind` Key/value table of arguments to bind
 -- @param `options`      Options to pass to lua-resty-cassandra :execute()
 -- @return :_execute()
 function BaseDao:execute(query, columns, args_to_bind, options)
-  -- Prepare query and cache the prepared statement for later call
-  local statement, cache_key, err = self:get_or_prepare_stmt(query)
-  if err then
-    return nil, err
-  end
-
   -- Build args array if operation has some
   local args
   if columns and args_to_bind then
@@ -247,15 +258,7 @@ function BaseDao:execute(query, columns, args_to_bind, options)
   end
 
   -- Execute statement
-  local results, err = self:_execute(statement, args, options)
-  if err and err.cassandra_err_code == cassandra_constants.error_codes.UNPREPARED then
-    if ngx then
-      ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
-    end
-    -- If the statement was declared unprepared, clear it from the cache, and try again.
-    self._statements_cache[cache_key] = nil
-    return self:execute(query, columns, args_to_bind, options)
-  end
+  local results, err = self:_execute(query, args, options)
 
   return results, err
 end
@@ -319,27 +322,21 @@ end
 -- @param  `query`     The query to prepare
 -- @return `statement` The prepared statement, ready to be used by lua-resty-cassandra.
 -- @return `error`     Error if any during the preparation of the statement
-function BaseDao:prepare_stmt(query)
+function BaseDao:prepare_stmt(session, query)
   assert(type(query) == "string", "Query to prepare must be a string")
   query = stringy.strip(query)
 
-  local session, err = self:_open_session()
-  if err then
-    return nil, err
-  end
-
   local prepared_stmt, prepare_err = session:prepare(query)
-
-  local err = self:_close_session(session)
-  if err then
-    return nil, err
-  end
-
   if prepare_err then
     return nil, DaoError("Failed to prepare statement: \""..query.."\". "..prepare_err, error_types.DATABASE)
   else
+    -- cache of prepared statements must be specific to each node
+    if not self._statements_cache[session_uniq_addr(session)] then
+      self._statements_cache[session_uniq_addr(session)] = {}
+    end
+
     -- cache key is the non-striped/non-formatted query from _queries
-    self._statements_cache[query] = prepared_stmt
+    self._statements_cache[session_uniq_addr(session)][query] = prepared_stmt
     return prepared_stmt
   end
 end
