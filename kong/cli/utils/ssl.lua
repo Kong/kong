@@ -29,11 +29,6 @@ function _M.get_ssl_cert_and_key(kong_config)
   return ssl_cert_path, ssl_key_path
 end
 
-local function is_sudo()
-  local _, code = IO.os_execute("id -u")
-  return code == 0
-end
-
 function _M.prepare_ssl(kong_config)
   local ssl_cert_path = IO.path:join(kong_config.nginx_working_dir, "ssl", "kong-default.crt")
   local ssl_key_path = IO.path:join(kong_config.nginx_working_dir, "ssl", "kong-default.key")
@@ -44,8 +39,6 @@ function _M.prepare_ssl(kong_config)
 
     local file_name = os.tmpname()
     local passphrase = utils.random_string()
-
-    local sudo = is_sudo() and "sudo" or ""
 
     local res, code = IO.os_execute([[
       cd /tmp && \
