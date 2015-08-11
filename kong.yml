@@ -40,6 +40,11 @@ databases_available:
       timeout: 1000
       keyspace: kong
       keepalive: 60000 # in milliseconds
+      # ssl: false
+      # ssl_verify: false
+      # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
+      # user: cassandra
+      # password: cassandra
 
 ## Cassandra cache configuration
 database_cache_expiration: 5 # in seconds
