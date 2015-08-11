@@ -59,6 +59,9 @@ test-integration:
 test-plugins:
 	@busted -v spec/plugins
 
+test-all:
+	@busted -v spec/
+
 coverage:
 	@rm -f luacov.*
 	@busted --coverage spec/
