@@ -5,7 +5,6 @@ local IO = require "kong.tools.io"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
 local ssl_fixtures = require "spec.plugins.ssl.fixtures"
-local cutils = require "kong.cli.utils"
 
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 local STUB_GET_URL = spec_helper.STUB_GET_URL
@@ -93,8 +92,10 @@ describe("SSL Plugin", function()
     local response = http_client.get(API_URL.."/apis/", {public_dns="ssl3.com"})
     local api_id = cjson.decode(response).data[1].id
     
-    local ssl_cert_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.crt")
-    local ssl_key_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.key")
+    local kong_working_dir = spec_helper.get_env(spec_helper.TEST_CONF_FILE).configuration.nginx_working_dir
+
+    local ssl_cert_path = IO.path:join(kong_working_dir, "ssl", "kong-default.crt")
+    local ssl_key_path = IO.path:join(kong_working_dir, "ssl", "kong-default.key")
 
     local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"value.cert=@"..ssl_cert_path.."\" --form \"value.key=@"..ssl_key_path.."\"")
     assert.are.equal(201, tonumber(res))

@@ -14,8 +14,8 @@ function _M.get_ssl_cert_and_key(kong_config)
     ssl_cert_path = kong_config.ssl_cert_path
     ssl_key_path = kong_config.ssl_key_path
   else
-    ssl_cert_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.crt")
-    ssl_key_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.key")
+    ssl_cert_path = IO.path:join(kong_config.nginx_working_dir, "ssl", "kong-default.crt")
+    ssl_key_path = IO.path:join(kong_config.nginx_working_dir, "ssl", "kong-default.key")
   end
 
   -- Check that the file exists
@@ -29,9 +29,14 @@ function _M.get_ssl_cert_and_key(kong_config)
   return ssl_cert_path, ssl_key_path
 end
 
-function _M.prepare_ssl()
-  local ssl_cert_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.crt")
-  local ssl_key_path = IO.path:join(cutils.get_luarocks_install_dir(), "ssl", "kong-default.key")
+local function is_sudo()
+  local _, code = IO.os_execute("id -u")
+  return code == 0
+end
+
+function _M.prepare_ssl(kong_config)
+  local ssl_cert_path = IO.path:join(kong_config.nginx_working_dir, "ssl", "kong-default.crt")
+  local ssl_key_path = IO.path:join(kong_config.nginx_working_dir, "ssl", "kong-default.key")
 
   if not (IO.file_exists(ssl_cert_path) and IO.file_exists(ssl_key_path)) then
     -- Autogenerating the certificates for the first time
@@ -40,6 +45,8 @@ function _M.prepare_ssl()
     local file_name = os.tmpname()
     local passphrase = utils.random_string()
 
+    local sudo = is_sudo() and "sudo" or ""
+
     local res, code = IO.os_execute([[
       cd /tmp && \
       openssl genrsa -des3 -out ]]..file_name..[[.key -passout pass:]]..passphrase..[[ 1024 && \
@@ -47,8 +54,8 @@ function _M.prepare_ssl()
       cp ]]..file_name..[[.key ]]..file_name..[[.key.org && \
       openssl rsa -in ]]..file_name..[[.key.org -out ]]..file_name..[[.key -passin pass:]]..passphrase..[[ && \
       openssl x509 -req -in ]]..file_name..[[.csr -signkey ]]..file_name..[[.key -out ]]..file_name..[[.crt && \
-      sudo mv ]]..file_name..[[.crt ]]..ssl_cert_path..[[ && \
-      sudo mv ]]..file_name..[[.key ]]..ssl_key_path)
+      mv ]]..file_name..[[.crt ]]..ssl_cert_path..[[ && \
+      mv ]]..file_name..[[.key ]]..ssl_key_path)
 
     if code ~= 0 then
       cutils.logger:error_exit("There was an error when auto-generating the default SSL certificate: "..res)

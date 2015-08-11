@@ -182,5 +182,5 @@ build = {
     conf = { "kong.yml" },
     bin = { "bin/kong" }
   },
-  copy_directories = { "database/migrations/", "ssl" }
+  copy_directories = { "database/migrations/" }
 }
