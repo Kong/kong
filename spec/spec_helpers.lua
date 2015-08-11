@@ -19,6 +19,7 @@ local TEST_PROXY_SSL_URL = "https://localhost:8543"
 _M.API_URL = "http://localhost:8101"
 _M.KONG_BIN = "bin/kong"
 _M.PROXY_URL = TEST_PROXY_URL
+_M.PROXY_SSL_URL = TEST_PROXY_SSL_URL
 _M.STUB_GET_URL = TEST_PROXY_URL.."/request"
 _M.STUB_GET_SSL_URL = TEST_PROXY_SSL_URL.."/request"
 _M.STUB_POST_URL = TEST_PROXY_URL.."/request"

@@ -70,6 +70,10 @@ local function get_redirect_uri(client_id)
   return client and client.redirect_uri or nil, client
 end
 
+local function is_https()
+  return ngx.var.scheme:lower() == "https"
+end
+
 local function retrieve_parameters()
   ngx.req.read_body()
   -- OAuth2 parameters could be in both the querystring or body
@@ -98,53 +102,56 @@ local function authorize(conf)
   local response_params = {}
 
   local parameters = retrieve_parameters()
-
-  local redirect_uri, client
   local state = parameters[STATE]
+  local redirect_uri, client
 
-  if conf.provision_key ~= parameters.provision_key then
-    response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
-  elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
-    response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
+  if not is_https() then
+    response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
   else
-    local response_type = parameters[RESPONSE_TYPE]
-    -- Check response_type
-    if not ((response_type == CODE and conf.enable_authorization_code) or (conf.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
-      response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid "..RESPONSE_TYPE}
-    end
+    if conf.provision_key ~= parameters.provision_key then
+      response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+    elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+      response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
+    else
+      local response_type = parameters[RESPONSE_TYPE]
+      -- Check response_type
+      if not ((response_type == CODE and conf.enable_authorization_code) or (conf.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
+        response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid "..RESPONSE_TYPE}
+      end
 
-    -- Check scopes
-    local ok, scopes = retrieve_scopes(parameters, conf)
-    if not ok then
-      response_params = scopes -- If it's not ok, then this is the error message
-    end
+      -- Check scopes
+      local ok, scopes = retrieve_scopes(parameters, conf)
+      if not ok then
+        response_params = scopes -- If it's not ok, then this is the error message
+      end
 
-    -- Check client_id and redirect_uri
-    redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
-    if not redirect_uri then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
-    elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
-    end
+      -- Check client_id and redirect_uri
+      redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
+      if not redirect_uri then
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
+      elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
+      end
 
-    -- If there are no errors, keep processing the request
-    if not response_params[ERROR] then
-      if response_type == CODE then
-        local authorization_code, err = dao.oauth2_authorization_codes:insert({
-          authenticated_userid = parameters[AUTHENTICATED_USERID],
-          scope = table.concat(scopes, " ")
-        })
+      -- If there are no errors, keep processing the request
+      if not response_params[ERROR] then
+        if response_type == CODE then
+          local authorization_code, err = dao.oauth2_authorization_codes:insert({
+            authenticated_userid = parameters[AUTHENTICATED_USERID],
+            scope = table.concat(scopes, " ")
+          })
 
-        if err then
-          return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+          if err then
+            return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+          end
+
+          response_params = {
+            code = authorization_code.code,
+          }
+        else
+          -- Implicit grant, override expiration to zero
+          response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, 0)
         end
-
-        response_params = {
-          code = authorization_code.code,
-        }
-      else
-        -- Implicit grant, override expiration to zero
-        response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, 0)
       end
     end
   end
@@ -204,53 +211,42 @@ local function issue_token(conf)
 
   local parameters = retrieve_parameters() --TODO: Also from authorization header
   local state = parameters[STATE]
-    
-  local grant_type = parameters[GRANT_TYPE]
-  if not (grant_type == GRANT_AUTHORIZATION_CODE or 
-          grant_type == GRANT_REFRESH_TOKEN or 
-          (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or 
-          (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
-    response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..GRANT_TYPE}
-  end
 
-  local client_id, client_secret = retrieve_client_credentials(parameters)
+  if not is_https() then
+    response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
+  else
+    local grant_type = parameters[GRANT_TYPE]
+    if not (grant_type == GRANT_AUTHORIZATION_CODE or 
+            grant_type == GRANT_REFRESH_TOKEN or 
+            (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or 
+            (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
+      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..GRANT_TYPE}
+    end
 
-  -- Check client_id and redirect_uri
-  local redirect_uri, client = get_redirect_uri(client_id)
-  if not redirect_uri then
-    response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
-  elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
-    response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
-  end
+    local client_id, client_secret = retrieve_client_credentials(parameters)
 
-  if client and client.client_secret ~= client_secret then
-    response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_SECRET}
-  end
+    -- Check client_id and redirect_uri
+    local redirect_uri, client = get_redirect_uri(client_id)
+    if not redirect_uri then
+      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
+    elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
+      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
+    end
 
-  if not response_params[ERROR] then
-    if grant_type == GRANT_AUTHORIZATION_CODE then
-      local code = parameters[CODE]
-      local authorization_code = code and dao.oauth2_authorization_codes:find_by_keys({code = code})[1] or nil
-      if not authorization_code then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
-      else
-        response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
-      end
-    elseif grant_type == GRANT_CLIENT_CREDENTIALS then
-      -- Check scopes
-      local ok, scopes = retrieve_scopes(parameters, conf)
-      if not ok then
-        response_params = scopes -- If it's not ok, then this is the error message
-      else
-        response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
-      end
-    elseif grant_type == GRANT_PASSWORD then
-      -- Check that it comes from the right client
-      if conf.provision_key ~= parameters.provision_key then
-        response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
-      elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
-        response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
-      else
+    if client and client.client_secret ~= client_secret then
+      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_SECRET}
+    end
+
+    if not response_params[ERROR] then
+      if grant_type == GRANT_AUTHORIZATION_CODE then
+        local code = parameters[CODE]
+        local authorization_code = code and dao.oauth2_authorization_codes:find_by_keys({code = code})[1] or nil
+        if not authorization_code then
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+        else
+          response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+        end
+      elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Check scopes
         local ok, scopes = retrieve_scopes(parameters, conf)
         if not ok then
@@ -258,15 +254,30 @@ local function issue_token(conf)
         else
           response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
         end
-      end
-    elseif grant_type == GRANT_REFRESH_TOKEN then
-      local refresh_token = parameters[REFRESH_TOKEN]
-      local token = refresh_token and dao.oauth2_tokens:find_by_keys({refresh_token = refresh_token})[1] or nil
-      if not token then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
-      else
-        response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state)
-        dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+      elseif grant_type == GRANT_PASSWORD then
+        -- Check that it comes from the right client
+        if conf.provision_key ~= parameters.provision_key then
+          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+        elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+          response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
+        else
+          -- Check scopes
+          local ok, scopes = retrieve_scopes(parameters, conf)
+          if not ok then
+            response_params = scopes -- If it's not ok, then this is the error message
+          else
+            response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
+          end
+        end
+      elseif grant_type == GRANT_REFRESH_TOKEN then
+        local refresh_token = parameters[REFRESH_TOKEN]
+        local token = refresh_token and dao.oauth2_tokens:find_by_keys({refresh_token = refresh_token})[1] or nil
+        if not token then
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
+        else
+          response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state)
+          dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+        end
       end
     end
   end

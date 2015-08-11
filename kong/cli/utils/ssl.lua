@@ -40,7 +40,7 @@ function _M.prepare_ssl()
     local file_name = os.tmpname()
     local passphrase = utils.random_string()
 
-    IO.os_execute([[
+    local res, code = IO.os_execute([[
       cd /tmp && \
       openssl genrsa -des3 -out ]]..file_name..[[.key -passout pass:]]..passphrase..[[ 1024 && \
       openssl req -new -key ]]..file_name..[[.key -out ]]..file_name..[[.csr -subj "/C=US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost" -passin pass:]]..passphrase..[[ && \
@@ -49,6 +49,10 @@ function _M.prepare_ssl()
       openssl x509 -req -in ]]..file_name..[[.csr -signkey ]]..file_name..[[.key -out ]]..file_name..[[.crt && \
       sudo mv ]]..file_name..[[.crt ]]..ssl_cert_path..[[ && \
       sudo mv ]]..file_name..[[.key ]]..ssl_key_path)
+
+    if code ~= 0 then
+      cutils.logger:error_exit("There was an error when autogenerating the default SSL certificate: "..res)
+    end
   end
 end
 
