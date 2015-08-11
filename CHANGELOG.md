@@ -1,5 +1,26 @@
 ## [Unreleased][unreleased]
 
+## [0.4.2] - 2015/08/10
+
+#### Added
+
+- Cassandra authentication and SSL encryption. [#405](https://github.com/Mashape/kong/pull/405)
+- `preserve_host` flag on APIs to preserve the Host header when a request is proxied. [#444](https://github.com/Mashape/kong/issues/444)
+- Added the Resource Owner Password Credentials Grant to the OAuth 2.0 Plugin. [#448](https://github.com/Mashape/kong/issues/448)
+- Auto-generation of default SSL certificate. [#453](https://github.com/Mashape/kong/issues/453)
+
+#### Changed
+
+- Remove `cassandra.port` property in configuration. Ports are specified by having `cassandra.hosts` addresses using the `host:port` notation (RFC 3986). [#457](https://github.com/Mashape/kong/pull/457)
+
+#### Fixed
+
+- Better handling of multi-nodes Cassandra clusters. [#450](https://github.com/Mashape/kong/pull/405)
+- mashape-analytics plugin: handling of numerical values in querystrings. [#449](https://github.com/Mashape/kong/pull/405)
+- Path resolver `strip_path` option wrongfully matching the `path` property multiple times in the request URI. [#442](https://github.com/Mashape/kong/issues/442)
+- File Log Plugin bug that prevented the file creation in some environments. [#461](https://github.com/Mashape/kong/issues/461)
+- Clean output of the Kong CLI. [#235](https://github.com/Mashape/kong/issues/235)
+
 ## [0.4.1] - 2015/07/23
 
 #### Fixed
@@ -219,7 +240,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.4.1...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.4.2...HEAD
+[0.4.2]: https://github.com/mashape/kong/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/mashape/kong/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/mashape/kong/compare/0.3.2...0.4.0
 [0.3.2]: https://github.com/mashape/kong/compare/0.3.1...0.3.2
