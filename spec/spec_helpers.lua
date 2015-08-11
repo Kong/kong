@@ -85,12 +85,12 @@ end
 -- @return `number` The port number
 function _M.find_port(exclude)
   local socket = require "socket"
-  
+
   if not exclude then exclude = {} end
-  
+
   -- Reserving ports to exclude
   local servers = {}
-  for _, v in ipairs(exclude) do 
+  for _, v in ipairs(exclude) do
     table.insert(servers, assert(socket.bind("*", v)))
   end
 
@@ -100,7 +100,7 @@ function _M.find_port(exclude)
   handle:close()
 
   -- Closing the opened servers
-  for _, v in ipairs(servers) do 
+  for _, v in ipairs(servers) do
     v:close()
   end
 
@@ -155,7 +155,7 @@ function _M.start_http_server(port, ...)
       if err then
         error(err)
       end
-      
+
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
       return lines
