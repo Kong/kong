@@ -68,7 +68,7 @@ You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape
 
 ## Development
 
-If you are planning on developping on Kong (writting your own plugin or contribute to the core), you'll need a development installation.
+If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation.
 
 #### Vagrant
 
