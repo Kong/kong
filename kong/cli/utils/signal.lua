@@ -85,7 +85,11 @@ local function prepare_nginx_working_dir(args_config)
   -- Create logs files
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
-
+  -- Create SSL folder if needed
+  local _, err = IO.path:mkdir(IO.path:join(kong_config.nginx_working_dir, "ssl"))
+  if err then
+    cutils.logger:error_exit(err)
+  end
   -- TODO: this is NOT the place to do this.
   -- @see https://github.com/Mashape/kong/issues/92 for configuration validation/defaults
   -- @see https://github.com/Mashape/kong/issues/217 for a better configuration file
@@ -102,6 +106,7 @@ local function prepare_nginx_working_dir(args_config)
     cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
   end
 
+  ssl.prepare_ssl(kong_config)
   local ssl_cert_path, ssl_key_path = ssl.get_ssl_cert_and_key(kong_config)
   local trusted_ssl_cert_path = kong_config.databases_available[kong_config.database].properties.ssl_certificate -- DAO ssl cert
 
@@ -223,7 +228,6 @@ function _M.prepare_kong(args_config, signal)
 
   cutils.logger:info("Connecting to the database...")
   prepare_database(args_config)
-  ssl.prepare_ssl()
   prepare_nginx_working_dir(args_config, signal)
 end
 
