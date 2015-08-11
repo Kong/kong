@@ -13,6 +13,7 @@
 
 - Remove `cassandra.port` property in configuration. Ports are specified by having `cassandra.hosts` addresses using the `host:port` notation (RFC 3986). [#457](https://github.com/Mashape/kong/pull/457)
 - Default SSL certificate is now auto-generated and stored in the `nginx_working_dir`.
+- OAuth 2.0 plugin now properly forces HTTPS.
 
 #### Fixed
 
