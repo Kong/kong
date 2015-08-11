@@ -28,10 +28,11 @@ describe("Resolver", function()
       api = {
         {name = "tests host resolver 1", public_dns = "mockbin.com", target_url = "http://mockbin.com"},
         {name = "tests host resolver 2", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com"},
-        {name = "tests path resolver", target_url = "http://mockbin.com", path = "/status/"},
-        {name = "tests stripped path resolver", target_url = "http://mockbin.com", path = "/mockbin/", strip_path = true},
+        {name = "tests path resolver", target_url = "http://mockbin.com", path = "/status"},
+        {name = "tests stripped path resolver", target_url = "http://mockbin.com", path = "/mockbin", strip_path = true},
         {name = "tests stripped path resolver with pattern characters", target_url = "http://mockbin.com", path = "/mockbin-with-pattern/", strip_path = true},
         {name = "tests deep path resolver", target_url = "http://mockbin.com", path = "/deep/path/", strip_path = true},
+        {name = "tests dup path resolver", target_url = "http://mockbin.com", path = "/har", strip_path = true},
         {name = "tests wildcard subdomain", target_url = "http://mockbin.com/status/200", public_dns = "*.wildcard.com"},
         {name = "tests wildcard subdomain 2", target_url = "http://mockbin.com/status/201", public_dns = "wildcard.*"},
         {name = "tests preserve host", public_dns = "httpbin-nopreserve.com", target_url = "http://httpbin.org"},
@@ -52,7 +53,7 @@ describe("Resolver", function()
   describe("Inexistent API", function()
 
     it("should return Not Found when the API is not in Kong", function()
-      local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "foo.com" })
+      local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, {host = "foo.com"})
       assert.equal(404, status)
       assert.equal('{"public_dns":["foo.com"],"message":"API not found with these values","path":"\\/request"}\n', response)
     end)
@@ -62,7 +63,7 @@ describe("Resolver", function()
   describe("SSL", function()
 
     it("should work when calling SSL port", function()
-      local response, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "mockbin.com" })
+      local response, status = http_client.get(STUB_GET_SSL_URL, nil, {host = "mockbin.com"})
       assert.equal(200, status)
       assert.truthy(response)
       local parsed_response = cjson.decode(response)
@@ -149,6 +150,9 @@ describe("Resolver", function()
 
         local _, status = http_client.get(spec_helper.PROXY_URL.."/status/301")
         assert.equal(301, status)
+
+        local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin")
+        assert.equal(200, status)
       end)
 
       it("should not proxy when the path does not match the start of the request_uri", function()
@@ -176,6 +180,14 @@ describe("Resolver", function()
       it("should proxy when the path has a deep level", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/deep/path/status/200")
         assert.equal(200, status)
+      end)
+
+      it("should not strip if the `path` pattern is repeated in the request_uri", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/har/har/of/request")
+        assert.equal(200, status)
+        local body = cjson.decode(response)
+        local upstream_url = body.log.entries[1].request.url
+        assert.equal("http://mockbin.com/har/of/request", upstream_url)
       end)
 
     end)
