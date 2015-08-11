@@ -11,13 +11,15 @@ int open(char * filename, int flags, int mode);
 int write(int fd, void * ptr, int numbytes);
 ]]
 
-local O_CREAT = 0x0200
-local O_APPEND = 0x0008
-local O_WRONLY = 0x0001
+local octal = function(n) return tonumber(n, 8) end
 
-local S_IWUSR = 0000200
-local S_IRUSR = 0000400
-local S_IROTH = 0000004
+local O_CREAT = octal('0100')
+local O_APPEND = octal('02000')
+local O_WRONLY = octal('0001')
+
+local S_IWUSR = octal('00200')
+local S_IRUSR = octal('00400')
+local S_IXUSR = octal('00100')
 
 local function string_to_char(str)
   return ffi.cast("uint8_t*", str)
@@ -32,7 +34,7 @@ local function log(premature, conf, message)
 
   local fd = fd_util.get_fd(conf.path)
   if not fd then
-    fd = ffi.C.open(string_to_char(conf.path), bit.bor(O_CREAT, O_APPEND, O_WRONLY), bit.bor(S_IWUSR, S_IRUSR, S_IROTH))
+    fd = ffi.C.open(string_to_char(conf.path), bit.bor(O_CREAT, O_APPEND, O_WRONLY), bit.bor(S_IWUSR, S_IRUSR, S_IXUSR))
     fd_util.set_fd(conf.path, fd)
   end
 
