@@ -51,7 +51,7 @@ function _M.prepare_ssl()
       sudo mv ]]..file_name..[[.key ]]..ssl_key_path)
 
     if code ~= 0 then
-      cutils.logger:error_exit("There was an error when autogenerating the default SSL certificate: "..res)
+      cutils.logger:error_exit("There was an error when auto-generating the default SSL certificate: "..res)
     end
   end
 end
