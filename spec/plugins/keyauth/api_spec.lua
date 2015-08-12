@@ -81,8 +81,10 @@ describe("Key Auth Credentials API", function()
     describe("GET", function()
 
       it("should retrieve by id", function()
-        local _, status = http_client.get(BASE_URL..credential.id)
+        local response, status = http_client.get(BASE_URL..credential.id)
         assert.equal(200, status)
+        local body = json.decode(response)
+        assert.equals(credential.id, body.id)
       end)
 
     end)
