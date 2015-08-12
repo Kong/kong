@@ -13,7 +13,7 @@ describe("OAuth 2 Credentials API", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-
+  
   describe("/consumers/:consumer/oauth2/", function()
 
     setup(function()
@@ -72,14 +72,16 @@ describe("OAuth 2 Credentials API", function()
 
     end)
   end)
-
+  
   describe("/consumers/:consumer/oauth2/:id", function()
     
     describe("GET", function()
 
       it("should retrieve by id", function()
-        local _, status = http_client.get(BASE_URL..credential.id)
+        local response, status = http_client.get(BASE_URL..credential.id)
         assert.equal(200, status)
+        local body = json.decode(response)
+        assert.equals(credential.id, body.id)
       end)
 
     end)
@@ -117,6 +119,6 @@ describe("OAuth 2 Credentials API", function()
       end)
 
     end)
-    
+
   end)
 end)

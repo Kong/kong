@@ -43,7 +43,7 @@ return {
     end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.plugin)
+      return helpers.responses.send_HTTP_OK(self.credential)
     end,
 
     PATCH = function(self, dao_factory)
