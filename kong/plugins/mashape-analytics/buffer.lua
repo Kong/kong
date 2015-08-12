@@ -1,7 +1,7 @@
 -- ALF buffer module
 --
 -- This module contains a buffered array of ALF objects. When the buffer is full (max number of entries
--- or max payload size), it is converted to a JSON payload and moved to another buffer of payloads to be
+-- or max payload size), it is converted to a JSON payload and moved a queue of payloads to be
 -- sent to the server.
 --
 -- 1 buffer of ALFs (gets flushed once it reached the mmax size)
@@ -30,6 +30,7 @@ local ANALYTICS_SOCKET = {
 
 local buffer_mt = {}
 buffer_mt.__index = buffer_mt
+buffer_mt.MAX_BUFFER_SIZE = MAX_BUFFER_SIZE
 
 -- A handler for delayed batch sending. When no call has been made for X seconds
 -- (X being conf.delay), we send the batch to keep analytics as close to real-time
@@ -85,8 +86,15 @@ function buffer_mt:add_alf(alf)
   local next_n_entries = #self.entries + 1
   local alf_size = string.len(str)
 
+  -- If the alf_size exceeds the payload limit by itself, we have a big problem
+  if alf_size > self.MAX_SIZE then
+    ngx.log(ngx.ERR, string.format("[mashape-analytics] ALF size exceeded the maximum size (%sMB) accepted by the socket server. Dropping it.",
+                                   self.MAX_SIZE / MB))
+    return
+  end
+
   -- If size or entries exceed the max limits
-  local full = next_n_entries > self.MAX_ENTRIES or self:get_size() > self.MAX_SIZE
+  local full = next_n_entries > self.MAX_ENTRIES or (self:get_size() + alf_size) > self.MAX_SIZE
   if full then
     self:flush()
     -- Batch size reached, let's send the data
@@ -129,7 +137,11 @@ end
 -- 3. Empty the buffer and reset the current buffer size
 function buffer_mt:flush()
   local payload = self:payload_string()
-  table.insert(self.sending_queue, payload)
+  table.insert(self.sending_queue, {
+    payload = payload,
+    n_entries = #self.entries,
+    size = self:get_size()
+  })
   self.entries = {}
   self.entries_size = 0
 end
@@ -145,23 +157,29 @@ function buffer_mt.send_batch(premature, self)
     return
   end
 
-  -- Let's send the oldest payload in our buffer
-  local message = self.sending_queue[1]
+  -- Let's send the oldest batch in our queue
+  local batch_to_send = table.remove(self.sending_queue, 1)
 
-  local batch_saved = false
+  local drop_batch = false
   local client = http:new()
   client:set_timeout(50000) -- 5 sec
 
   local ok, err = client:connect(ANALYTICS_SOCKET.host, ANALYTICS_SOCKET.port)
   if ok then
-    local res, err = client:request({path = ANALYTICS_SOCKET.path, body = message})
+    local res, err = client:request({path = ANALYTICS_SOCKET.path, body = batch_to_send.payload})
     if not res then
-      ngx.log(ngx.ERR, "[mashape-analytics] failed to send batch: "..err)
+      ngx.log(ngx.ERR, string.format("[mashape-analytics] failed to send batch (%s ALFs %s bytes): %s",
+                                     batch_to_send.n_entries, batch_to_send.size, err))
     elseif res.status == 200 then
-      batch_saved = true
+      drop_batch = true
       ngx.log(ngx.DEBUG, string.format("[mashape-analytics] successfully saved the batch. (%s)", res.body))
+    elseif res.status == 400 then
+      ngx.log(ngx.ERR, string.format("[mashape-analytics] socket server refused the batch (%s ALFs %s bytes). Dropping batch. Status: (%s) Error: (%s)",
+                                     batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
+      drop_batch = true
     else
-      ngx.log(ngx.ERR, string.format("[mashape-analytics] socket server refused the batch. Status: (%s) Error: (%s)", res.status, res.body))
+      ngx.log(ngx.ERR, string.format("[mashape-analytics] socket server could not save the batch (%s ALFs %s bytes). Status: (%s) Error: (%s)",
+                                     batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
     end
 
     -- close connection, or put it into the connection pool
@@ -177,16 +195,16 @@ function buffer_mt.send_batch(premature, self)
     ngx.log(ngx.ERR, "[mashape-analytics] failed to connect to the socket server: "..err)
   end
 
-  if batch_saved then
-    -- Remove the payload that was sent
-    table.remove(self.sending_queue, 1)
+  if not drop_batch then
+    -- If the batch is not dropped, then add it back to the end of the queue and it will be tried again later
+    table.insert(self.sending_queue, batch_to_send)
   end
 
   self.lock_sending = false
 
-  -- Keep sendind data if the buffer is not yet emptied
+  -- Keep sendind data if the queue is not yet emptied
   if #self.sending_queue > 0 then
-    local ok, err = ngx.timer.at(0, self.send_batch, self)
+    local ok, err = ngx.timer.at(2, self.send_batch, self)
     if not ok then
       ngx.log(ngx.ERR, "[mashape-analytics] failed to create batch retry timer: ", err)
     end

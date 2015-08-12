@@ -182,7 +182,7 @@ function _M.new_alf(ngx, token, environment)
         version = "1.2",
         creator = {
           name = "mashape-analytics-agent-kong",
-          version = "1.0.1"
+          version = "1.0.2"
         },
         entries = {_M.serialize_entry(ngx)}
       }

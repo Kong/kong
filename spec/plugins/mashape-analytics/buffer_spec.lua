@@ -64,11 +64,56 @@ describe("ALFBuffer", function()
         alf_buffer.flush:revert()
       end)
     end)
+    it("should call :flush() when reaching its max size", function()
+      -- How many stubs to reach the limit?
+      local COMMA_LEN = string.len(",")
+      local JSON_ARR_LEN = string.len("[]")
+      local max_n_stubs = math.ceil(ALFBuffer.MAX_BUFFER_SIZE / (STUB_LEN + COMMA_LEN)) -- + the comma after each ALF in the JSON payload
+
+      -- Create a new buffer
+      local buffer = ALFBuffer.new({batch_size = max_n_stubs + 100, delay = 2})
+
+      local s = spy.on(buffer, "flush")
+
+      -- Add max_n_stubs - 1 entries
+      for i = 1, max_n_stubs - 1 do
+        buffer:add_alf(ALF_STUB)
+      end
+
+      assert.spy(s).was_not_called()
+
+      -- We should have `(max_n_stubs - 1) * (STUB_LEN + COMMA_LEN) + JSON_ARR_LEN - COMMA_LEN` because no comma for latest object`
+      -- as our current buffer size.
+      assert.equal((max_n_stubs - 1) * (STUB_LEN + COMMA_LEN) + JSON_ARR_LEN - COMMA_LEN, buffer:get_size())
+
+      -- adding one more entry
+      buffer:add_alf(ALF_STUB)
+      assert.spy(s).was.called()
+    end)
+    it("should drop an ALF if it is too big by itself", function()
+      local str = string.rep(".", ALFBuffer.MAX_BUFFER_SIZE)
+      local huge_alf = {foo = str}
+
+      local buffer = ALFBuffer.new(CONF_STUB)
+
+      local s = spy.on(_G.ngx, "log")
+
+      buffer:add_alf(huge_alf)
+
+      assert.spy(s).was.called()
+      assert.equal(0, buffer.entries_size)
+      assert.equal(0, #buffer.entries)
+
+      finally(function()
+        _G.ngx.log:revert()
+      end)
+    end)
     describe(":flush()", function()
       it("should have emptied the current buffer and added a payload to be sent", function()
         assert.equal(1, #alf_buffer.entries)
         assert.equal(1, #alf_buffer.sending_queue)
-        assert.equal("string", type(alf_buffer.sending_queue[1]))
+        assert.equal("table", type(alf_buffer.sending_queue[1]))
+        assert.equal("string", type(alf_buffer.sending_queue[1].payload))
         assert.equal(STUB_LEN, alf_buffer.entries_size)
       end)
     end)
