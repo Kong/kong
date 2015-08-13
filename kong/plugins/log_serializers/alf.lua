@@ -65,6 +65,7 @@ function _M.serialize_entry(ngx)
 
   local alf_req_body = analytics_data.req_body or ""
   local alf_res_body = analytics_data.res_body or ""
+  local alf_req_post_args = analytics_data.req_post_args or {}
 
   -- timers
   local proxy_started_at, proxy_ended_at = ngx.ctx.proxy_started_at, ngx.ctx.proxy_ended_at
@@ -128,7 +129,7 @@ function _M.serialize_entry(ngx)
       bodySize = string.len(alf_req_body),
       postData = {
         mimeType = alf_req_mimeType,
-        params = dic_to_array(ngx.req.get_post_args()),
+        params = dic_to_array(alf_req_post_args),
         text = alf_req_body
       }
     },
@@ -182,7 +183,7 @@ function _M.new_alf(ngx, token, environment)
         version = "1.2",
         creator = {
           name = "mashape-analytics-agent-kong",
-          version = "1.0.1"
+          version = "1.0.2"
         },
         entries = {_M.serialize_entry(ngx)}
       }

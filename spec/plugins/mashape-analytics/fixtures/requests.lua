@@ -8,8 +8,7 @@ return {
         get_method = function() return "GET" end,
         http_version = function() return 1.1 end,
         get_headers = function() return {["Accept"] = "/*/", ["Host"] = "mockbin.com"} end,
-        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar", ["number"] = 2} end,
-        get_post_args = function() return {["hello"] = {"world", "earth"}} end
+        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar", ["number"] = 2} end
       },
       resp = {
         get_headers = function() return {["Connection"] = "close", ["Content-Type"] = "application/json", ["Content-Length"] = "934"} end
@@ -30,6 +29,7 @@ return {
         analytics = {
           req_body = "hello=world&hello=earth",
           res_body = "{\"message\":\"response body\"}",
+          req_post_args = {["hello"] = {"world", "earth"}},
           response_received = 143284457211
         }
       }
@@ -100,8 +100,7 @@ return {
         get_method = function() return "GET" end,
         http_version = function() return 1.1 end,
         get_headers = function() return {["Accept"] = "/*/", ["Host"] = "mockbin.com"} end,
-        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar"} end,
-        get_post_args = function() return {["hello"] = {"world", "earth"}} end
+        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar"} end
       },
       resp = {
         get_headers = function() return {["Connection"] = "close", ["Content-Type"] = "application/json", ["Content-Length"] = "934"} end
@@ -122,6 +121,7 @@ return {
         analytics = {
           req_body = "hello=world&hello=earth",
           res_body = "{\"message\":\"response body\"}",
+          req_post_args = {["hello"] = {"world", "earth"}},
           response_received = 143284457211
         }
       }
