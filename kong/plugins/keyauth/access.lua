@@ -140,7 +140,7 @@ function _M.execute(conf)
   -- No key found in the request's headers or parameters
   if not key_found then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_UNAUTHORIZED("No API key found in headers or querystring")
+    return responses.send_HTTP_UNAUTHORIZED("No API Key found in headers, body or querystring")
   end
 
   -- No key found in the DB, this credential is invalid

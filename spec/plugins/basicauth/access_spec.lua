@@ -11,7 +11,7 @@ describe("Authentication Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests basicauth", public_dns = "basicauth.com", target_url = "http://mockbin.com"}
+        {name = "tests basicauth", public_dns = "basicauth.com", target_url = "http://mockbin.org"}
       },
       consumer = {
         {username = "basicauth_tests_consuser"}
@@ -33,8 +33,23 @@ describe("Authentication Plugin", function()
 
   describe("Basic Authentication", function()
 
+    it("should return invalid credentials when the credential is missing", function()
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com"})
+      local body = cjson.decode(response)
+      assert.equal(401, status)
+      assert.equal("Unauthorized", body.message)
+    end)
+
     it("should return invalid credentials when the credential value is wrong", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", authorization = "asd"})
+      local body = cjson.decode(response)
+      assert.equal(403, status)
+      assert.equal("Invalid authentication credentials", body.message)
+    end)
+
+    
+    it("should return invalid credentials when the credential value is wrong in proxy-authorization", function()
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", ["proxy-authorization"] = "asd"})
       local body = cjson.decode(response)
       assert.equal(403, status)
       assert.equal("Invalid authentication credentials", body.message)
@@ -62,10 +77,18 @@ describe("Authentication Plugin", function()
     end)
 
     it("should pass with GET", function()
+      print(STUB_GET_URL)
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", authorization = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers.authorization)
+    end)
+
+    it("should pass with GET and proxy-authorization", function()
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", ["proxy-authorization"] = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers["proxy-authorization"])
     end)
 
     it("should pass with POST", function()
@@ -73,6 +96,20 @@ describe("Authentication Plugin", function()
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers.authorization)
+    end)
+
+    it("should pass with GET and valid authorization and wrong proxy-authorization", function()
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", ["proxy-authorization"] = "hello", authorization = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers["proxy-authorization"])
+    end)
+
+    it("should pass with GET and invalid authorization and valid proxy-authorization", function()
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", authorization = "hello", ["proxy-authorization"] = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("Basic dXNlcm5hbWU6cGFzc3dvcmQ=", parsed_response.headers["proxy-authorization"])
     end)
 
   end)

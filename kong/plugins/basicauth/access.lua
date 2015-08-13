@@ -3,6 +3,9 @@ local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
+local AUTHORIZATION = "authorization"
+local PROXY_AUTHORIZATION = "proxy-authorization"
+
 local _M = {}
 
 local function skip_authentication(headers)
@@ -18,9 +21,9 @@ end
 -- @param {table} conf Plugin configuration (value property)
 -- @return {string} public_key
 -- @return {string} private_key
-local function retrieve_credentials(request, conf)
+local function retrieve_credentials(request, header_name, conf)
   local username, password
-  local authorization_header = request.get_headers()["authorization"]
+  local authorization_header = request.get_headers()[header_name]
 
   if authorization_header then
     local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
@@ -43,13 +46,10 @@ local function retrieve_credentials(request, conf)
         password = basic_parts[2]
       end
     end
-  else
-    ngx.ctx.stop_phases = true
-    return responses.send_HTTP_UNAUTHORIZED()
   end
 
   if conf.hide_credentials then
-    request.clear_header("authorization")
+    request.clear_header(header_name)
   end
 
   return username, password
@@ -70,14 +70,9 @@ local function validate_credentials(credential, username, password)
   end
 end
 
-function _M.execute(conf)
-  if skip_authentication(ngx.req.get_headers()) then return end
-
-  local username, password = retrieve_credentials(ngx.req, conf)
+local function load_credential(username)
   local credential
-
-  -- Make sure we are not sending an empty table to find_by_keys
-  if username then
+  if username then 
     credential = cache.get_or_set(cache.basicauth_credential_key(username), function()
       local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result
@@ -88,6 +83,30 @@ function _M.execute(conf)
       end
       return result
     end)
+  end
+
+  return credential
+end
+
+function _M.execute(conf)
+  if skip_authentication(ngx.req.get_headers()) then return end
+
+  -- If both headers are missing, return 401
+  if not (ngx.req.get_headers()[AUTHORIZATION] or ngx.req.get_headers()[PROXY_AUTHORIZATION]) then
+    ngx.ctx.stop_phases = true
+    return responses.send_HTTP_UNAUTHORIZED()
+  end
+
+  local credential
+  local username, password = retrieve_credentials(ngx.req, PROXY_AUTHORIZATION, conf)
+  if username then
+    credential = load_credential(username)
+  end
+
+  -- Try with the authorization header
+  if not credential then
+    username, password = retrieve_credentials(ngx.req, AUTHORIZATION, conf)
+    credential = load_credential(username)
   end
 
   if not validate_credentials(credential, username, password) then
@@ -103,6 +122,9 @@ function _M.execute(conf)
     end
     return result
   end)
+
+  local inspect = require "inspect"
+  print(inspect(ngx.req.get_headers()))
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
