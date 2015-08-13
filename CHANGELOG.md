@@ -1,5 +1,13 @@
 ## [Unreleased][unreleased]
 
+#### Added
+
+- The Basic Authentication plugin now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Mashape/kong/issues/460)
+
+#### Changed
+
+#### Fixed
+
 ## [0.4.2] - 2015/08/10
 
 #### Added
