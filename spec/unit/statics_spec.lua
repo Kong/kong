@@ -45,6 +45,7 @@ plugins_available:
   - basicauth
   - oauth2
   - ratelimiting
+  - response-ratelimiting
   - tcplog
   - udplog
   - filelog

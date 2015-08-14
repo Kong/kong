@@ -109,7 +109,7 @@ describe("Migrations", function()
             assert.are.same(migrations_names[i], migration.name..".lua")
           end)
 
-          assert.are.same(6, i)
+          assert.are.same(7, i)
           assert.spy(env.dao_factory.migrations.get_migrations).was.called(1)
           assert.spy(env.dao_factory.execute_queries).was.called(#migrations_names-1)
           assert.spy(env.dao_factory.migrations.add_migration).was.called(#migrations_names-1)

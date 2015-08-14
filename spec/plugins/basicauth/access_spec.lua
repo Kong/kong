@@ -77,7 +77,6 @@ describe("Authentication Plugin", function()
     end)
 
     it("should pass with GET", function()
-      print(STUB_GET_URL)
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "basicauth.com", authorization = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)

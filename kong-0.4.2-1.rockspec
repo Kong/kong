@@ -141,6 +141,13 @@ build = {
     ["kong.plugins.ratelimiting.schema"] = "kong/plugins/ratelimiting/schema.lua",
     ["kong.plugins.ratelimiting.daos"] = "kong/plugins/ratelimiting/daos.lua",
 
+    ["kong.plugins.response-ratelimiting.handler"] = "kong/plugins/response-ratelimiting/handler.lua",
+    ["kong.plugins.response-ratelimiting.access"] = "kong/plugins/response-ratelimiting/access.lua",
+    ["kong.plugins.response-ratelimiting.header_filter"] = "kong/plugins/response-ratelimiting/header_filter.lua",
+    ["kong.plugins.response-ratelimiting.log"] = "kong/plugins/response-ratelimiting/log.lua",
+    ["kong.plugins.response-ratelimiting.schema"] = "kong/plugins/response-ratelimiting/schema.lua",
+    ["kong.plugins.response-ratelimiting.daos"] = "kong/plugins/response-ratelimiting/daos.lua",
+
     ["kong.plugins.requestsizelimiting.handler"] = "kong/plugins/requestsizelimiting/handler.lua",
     ["kong.plugins.requestsizelimiting.access"] = "kong/plugins/requestsizelimiting/access.lua",
     ["kong.plugins.requestsizelimiting.schema"] = "kong/plugins/requestsizelimiting/schema.lua",
