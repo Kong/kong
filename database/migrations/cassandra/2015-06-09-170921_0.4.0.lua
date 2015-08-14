@@ -3,7 +3,6 @@ local Migration = {
 
   up = function(options)
     return [[
-
       CREATE TABLE IF NOT EXISTS oauth2_credentials(
         id uuid,
         name text,
@@ -47,7 +46,6 @@ local Migration = {
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(access_token);
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(refresh_token);
       CREATE INDEX IF NOT EXISTS ON oauth2_tokens(authenticated_userid);
-
     ]]
   end,
 

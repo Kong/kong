@@ -57,6 +57,7 @@ describe("Schemas", function()
     end)
 
     describe("[type]", function()
+      --[]
       it("should validate the type of a property if it has a type field", function()
        -- Failure
       local values = { string = "foo", table = "bar" }
@@ -591,8 +592,167 @@ describe("Schemas", function()
         assert.are.same("value.some_property is required", err.value)
       end)
 
-    end)
+      it("should work with flexible schemas", function() 
+        local schema = {
+          fields = {
+            flexi = { type = "table", 
+              schema = {
+                flexible = true,
+                fields = {
+                  name = { type = "string" },
+                  age = { type = "number"}
+                }
+              }
+            }
+          }
+        }
 
+        local obj = { 
+          flexi = {
+            somekey = {
+              name = "Mark",
+              age = 12
+            }
+          }
+        }
+
+        local valid, err = validate_entity(obj, schema)
+        assert.falsy(err)
+        assert.True(valid)
+
+        assert.are.same({flexi = {
+          somekey = {
+            name = "Mark",
+            age = 12
+          }
+        }}, obj)
+
+        obj = { 
+          flexi = {
+            somekey = {
+              name = "Mark",
+              age = 12
+            },
+            hello = {
+              name = "Mark2",
+              age = 13
+            }
+          }
+        }
+
+        valid, err = validate_entity(obj, schema)
+        assert.falsy(err)
+        assert.True(valid)
+
+        assert.are.same({flexi = {
+          somekey = {
+            name = "Mark",
+            age = 12
+          },
+          hello = {
+            name = "Mark2",
+            age = 13
+          }
+        }}, obj)
+      end)
+
+      it("should return proper errors with a flexible schema", function() 
+        local schema = {
+          fields = {
+            flexi = { type = "table", 
+              schema = {
+                flexible = true,
+                fields = {
+                  name = { type = "string" },
+                  age = { type = "number"}
+                }
+              }
+            }
+          }
+        }
+
+        local obj = { 
+          flexi = {
+            somekey = {
+              name = "Mark",
+              age = "hello"
+            }
+          }
+        }
+
+        local valid, err = validate_entity(obj, schema)
+        assert.truthy(err)
+        assert.falsy(valid)
+        assert.are.same("age is not a number", err["flexi.somekey.age"])
+      end)
+
+      it("should return proper errors with a flexible schema an an unknown field", function() 
+        local schema = {
+          fields = {
+            flexi = { type = "table", 
+              schema = {
+                flexible = true,
+                fields = {
+                  name = { type = "string" },
+                  age = { type = "number"}
+                }
+              }
+            }
+          }
+        }
+
+        local obj = { 
+          flexi = {
+            somekey = {
+              name = "Mark",
+              age = 12,
+              asd = "hello"
+            }
+          }
+        }
+
+        local valid, err = validate_entity(obj, schema)
+        assert.truthy(err)
+        assert.falsy(valid)
+        assert.are.same("asd is an unknown field", err["flexi.somekey.asd"])
+      end)
+
+      it("should return proper errors with a flexible schema with two keys and an unknown field", function() 
+        local schema = {
+          fields = {
+            flexi = { type = "table", 
+              schema = {
+                flexible = true,
+                fields = {
+                  name = { type = "string" },
+                  age = { type = "number"}
+                }
+              }
+            }
+          }
+        }
+
+        local obj = { 
+          flexi = {
+            somekey = {
+              name = "Mark"
+            },  
+            somekey2 = {
+              name = "Mark",
+              age = 12,
+              asd = "hello"
+            }
+          }
+        }
+
+        local valid, err = validate_entity(obj, schema)
+        assert.truthy(err)
+        assert.falsy(valid)
+        assert.are.same("asd is an unknown field", err["flexi.somekey2.asd"])
+      end)
+
+    end)
+  
     describe("[partial_update]", function()
       it("should ignore required properties and defaults if we are updating because the entity might be partial", function()
         local values = {}

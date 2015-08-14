@@ -16,7 +16,7 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
 ## Summary
 
 - [**Feature**](#features)
-- [**Why Kong?**](#why-kong?)
+- [**Why Kong?**](#why-kong)
 - [**Benchmarks**](#benchmarks)
 - [**Resources**](#resources)
 - [**Roadmap**](#roadmap)
@@ -41,6 +41,8 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
   - **Transformations**: Add, remove or manipulate HTTP requests and responses.
   - **CORS**: Enable cross-origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
+
+For more info about plugins, you can check out the [Plugin Gallery](https://getkong.org/plugins/).
 
 ## Why Kong?
 
