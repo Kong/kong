@@ -266,7 +266,7 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
+            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
           end
         end
       elseif grant_type == GRANT_REFRESH_TOKEN then
