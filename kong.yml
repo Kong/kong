@@ -88,6 +88,9 @@ nginx: |
     client_body_timeout 60s;
     send_timeout 60s;
 
+    # gzip
+    gzip on;
+
     # Proxy Settings
     proxy_buffer_size 128k;
     proxy_buffers 4 256k;
