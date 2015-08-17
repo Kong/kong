@@ -345,13 +345,6 @@ describe("Admin API", function()
             assert.same(plugin, body)
           end)
 
-          it("should retrieve by name", function()
-            local response, status = http_client.get(BASE_URL..plugin.name)
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.same(plugin, body)
-          end)
-
         end)
 
         describe("PATCH", function()
@@ -362,26 +355,26 @@ describe("Admin API", function()
             local body = json.decode(response)
             assert.same("key_updated", body.value.key_names[1])
 
-            response, status = http_client.patch(BASE_URL..plugin.name, {["value.key_names"]={"key_updated-json"}}, {["content-type"]="application/json"})
+            response, status = http_client.patch(BASE_URL..plugin.id, {["value.key_names"]={"key_updated-json"}}, {["content-type"]="application/json"})
             assert.equal(200, status)
             body = json.decode(response)
             assert.same("key_updated-json", body.value.key_names[1])
           end)
 
           it("[FAILURE] should return proper errors", function()
-            local _, status = http_client.patch(BASE_URL.."hello", {})
+            local _, status = http_client.patch(BASE_URL.."b6cca0aa-4537-11e5-af97-23a06d98af51", {})
             assert.equal(404, status)
           end)
 
           it("should not override a plugin's `value` if partial", function()
             -- This is delicate since a plugin's `value` is a text field in a DB like Cassandra
-            local _, status = http_client.patch(BASE_URL..plugin.name, {
+            local _, status = http_client.patch(BASE_URL..plugin.id, {
               ["value.key_names"] = {"key_set_null_test"},
               ["value.hide_credentials"] = true
             })
             assert.equal(200, status)
 
-            local response, status = http_client.patch(BASE_URL..plugin.name, {
+            local response, status = http_client.patch(BASE_URL..plugin.id, {
               ["value.key_names"] = {"key_set_null_test_updated"}
             })
             assert.equal(200, status)
@@ -395,7 +388,7 @@ describe("Admin API", function()
         describe("DELETE", function()
 
           it("[FAILURE] should return proper errors", function()
-            local _, status = http_client.delete(BASE_URL.."hello")
+            local _, status = http_client.delete(BASE_URL.."b6cca0aa-4537-11e5-af97-23a06d98af51")
             assert.equal(404, status)
           end)
 
