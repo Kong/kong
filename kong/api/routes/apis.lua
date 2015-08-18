@@ -58,16 +58,16 @@ return {
     end
   },
 
-  ["/apis/:name_or_id/plugins/:plugin_name_or_id"] = {
+  ["/apis/:name_or_id/plugins/:plugin_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_api_by_name_or_id(self, dao_factory, helpers)
       self.params.api_id = self.api.id
 
       local fetch_keys = {
         api_id = self.api.id,
-        [validations.is_valid_uuid(self.params.plugin_name_or_id) and "id" or "name"] = self.params.plugin_name_or_id
+        id = self.params.plugin_id
       }
-      self.params.plugin_name_or_id = nil
+      self.params.plugin_id = nil
 
       local data, err = dao_factory.plugins_configurations:find_by_keys(fetch_keys)
       if err then
