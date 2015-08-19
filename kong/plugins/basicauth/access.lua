@@ -123,9 +123,6 @@ function _M.execute(conf)
     return result
   end)
 
-  local inspect = require "inspect"
-  print(inspect(ngx.req.get_headers()))
-
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
