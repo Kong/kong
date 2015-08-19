@@ -1,4 +1,3 @@
-local validations = require "kong.dao.schemas_validation"
 local crud = require "kong.api.crud_helpers"
 local syslog = require "kong.tools.syslog"
 local constants = require "kong.constants"
