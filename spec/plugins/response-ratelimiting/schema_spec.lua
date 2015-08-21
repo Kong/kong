@@ -28,14 +28,14 @@ describe("Response Rate Limiting schema", function()
 
   it("should work when the proper value is being set", function()
     local values = { limits = { video = { second = 2, minute = 1 } } }
-    local valid, err, self_check_err = validate_entity(values, plugin_schema)
+    local valid, _, self_check_err = validate_entity(values, plugin_schema)
     assert.falsy(valid)
     assert.are.equal("The value for minute cannot be lower than the value for second", self_check_err.message)
   end)
 
   it("should work when the proper value are being set", function()
     local values = { limits = { video = { second = 1, minute = 2 } } }
-    local valid, err, self_check_err = validate_entity(values, plugin_schema)
+    local valid, err = validate_entity(values, plugin_schema)
     assert.truthy(valid)
     assert.falsy(err)
   end)
