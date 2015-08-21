@@ -15,4 +15,6 @@ function HttpLogHandler:log(conf)
   log.execute(conf, message)
 end
 
+HttpLogHandler.PRIORITY = 1
+
 return HttpLogHandler

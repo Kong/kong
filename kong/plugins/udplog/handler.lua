@@ -15,4 +15,6 @@ function UdpLogHandler:log(conf)
   log.execute(conf, message)
 end
 
+UdpLogHandler.PRIORITY = 1
+
 return UdpLogHandler
