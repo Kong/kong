@@ -19,7 +19,7 @@ dependencies = {
   "yaml ~> 1.1.1-1",
   "lapis ~> 1.1.0-1",
   "stringy ~> 0.4-1",
-  "lua-cassandra ~> 0.3.5-0",
+  "lua-cassandra ~> 0.3.6-0",
   "multipart ~> 0.1-3",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
@@ -79,6 +79,7 @@ build = {
     ["kong.reports.init_worker"] = "kong/reports/init_worker.lua",
     ["kong.reports.log"] = "kong/reports/log.lua",
 
+    ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
@@ -94,18 +95,21 @@ build = {
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
+    ["kong.plugins.basicauth.migrations.cassandra"] = "kong/plugins/basicauth/migrations/cassandra.lua",
     ["kong.plugins.basicauth.handler"] = "kong/plugins/basicauth/handler.lua",
     ["kong.plugins.basicauth.access"] = "kong/plugins/basicauth/access.lua",
     ["kong.plugins.basicauth.schema"] = "kong/plugins/basicauth/schema.lua",
     ["kong.plugins.basicauth.api"] = "kong/plugins/basicauth/api.lua",
     ["kong.plugins.basicauth.daos"] = "kong/plugins/basicauth/daos.lua",
 
+    ["kong.plugins.keyauth.migrations.cassandra"] = "kong/plugins/keyauth/migrations/cassandra.lua",
     ["kong.plugins.keyauth.handler"] = "kong/plugins/keyauth/handler.lua",
     ["kong.plugins.keyauth.access"] = "kong/plugins/keyauth/access.lua",
     ["kong.plugins.keyauth.schema"] = "kong/plugins/keyauth/schema.lua",
     ["kong.plugins.keyauth.api"] = "kong/plugins/keyauth/api.lua",
     ["kong.plugins.keyauth.daos"] = "kong/plugins/keyauth/daos.lua",
 
+    ["kong.plugins.oauth2.migrations.cassandra"] = "kong/plugins/oauth2/migrations/cassandra.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
     ["kong.plugins.oauth2.schema"] = "kong/plugins/oauth2/schema.lua",
@@ -136,6 +140,7 @@ build = {
     ["kong.plugins.mashape-analytics.schema"] = "kong/plugins/mashape-analytics/schema.lua",
     ["kong.plugins.mashape-analytics.buffer"] = "kong/plugins/mashape-analytics/buffer.lua",
 
+    ["kong.plugins.ratelimiting.migrations.cassandra"] = "kong/plugins/ratelimiting/migrations/cassandra.lua",
     ["kong.plugins.ratelimiting.handler"] = "kong/plugins/ratelimiting/handler.lua",
     ["kong.plugins.ratelimiting.access"] = "kong/plugins/ratelimiting/access.lua",
     ["kong.plugins.ratelimiting.schema"] = "kong/plugins/ratelimiting/schema.lua",
@@ -181,6 +186,5 @@ build = {
   install = {
     conf = { "kong.yml" },
     bin = { "bin/kong" }
-  },
-  copy_directories = { "database/migrations/" }
+  }
 }

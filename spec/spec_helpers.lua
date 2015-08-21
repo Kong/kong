@@ -190,11 +190,10 @@ function _M.prepare_db(conf_file)
   local env = _M.get_env(conf_file)
 
   -- 1. Migrate our keyspace
-  env.migrations:migrate(function(_, err)
-    if err then
-      error(err)
-    end
-  end)
+  local err = env.migrations:migrate_all(env.configuration)
+  if err then
+    error(err)
+  end
 
   -- 2. Drop to run tests on a clean DB
   _M.drop_db(conf_file)
