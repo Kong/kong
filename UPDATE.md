@@ -2,14 +2,18 @@ This document describes eventual additional steps that might be required to upda
 
 ## Update to Kong `0.5.0`
 
-It is important that you be running Kong `0.4.2` when executing those steps.
+It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
-The database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed. This Python script will take care of migrating your database schema should you execute the following instructions:
+The database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed. [This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
 
 ```shell
 # First, make sure you are already running Kong 0.4.2
 
-# Download the new version of Kong.
+# clone the Kong git repository if you don't already have it:
+$ git clone git@github.com:Mashape/kong.git
+
+# go to the 'scripts/' folder:
+$ cd kong/scripts
 
 # The script will use your first contact point (the first of the 'hosts' property)
 # so make sure it is valid and has the format 'host:port'.
@@ -19,7 +23,8 @@ $ python migration.py -c /path/to/kong/config
 
 # If everything went well the script should print a success message.
 
-# Then, reload Kong to avoid downtime:
+# You can now update Kong to 0.5.0.
+# After updating, reload Kong to avoid downtime:
 $ kong reload
 ```
 
