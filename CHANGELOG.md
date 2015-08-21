@@ -1,12 +1,15 @@
 ## [Unreleased][unreleased]
 
+This release contains breaking changes.
+
+### Breaking changes
+
+- The database schema has been updated to be future proof and handle the separation of plugins outside of the core repository. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
+
 #### Added
 
+- Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Mashape/kong/pull/443)
 - The Basic Authentication plugin now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Mashape/kong/issues/460)
-
-#### Changed
-
-#### Fixed
 
 ## [0.4.2] - 2015/08/10
 

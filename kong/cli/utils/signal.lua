@@ -166,24 +166,24 @@ end
 -- Prepare the database keyspace if needed (run schema migrations)
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
-  local _, _, dao_factory = get_kong_config(args_config)
-  local migrations = require("kong.tools.migrations")(dao_factory, cutils.get_luarocks_install_dir())
+  local kong_config, _, dao_factory = get_kong_config(args_config)
+  local migrations = require("kong.tools.migrations")(dao_factory)
 
-  -- Migrate the DB if needed and possible
-  local keyspace, err = migrations:get_migrations()
+  local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
   if err then
     cutils.logger:error_exit(err)
-  elseif keyspace == nil then
+  elseif not keyspace_exists then
     cutils.logger:info("Database not initialized. Running migrations...")
   end
 
-  migrations:migrate(function(migration, err)
-    if err then
-      cutils.logger:error_exit(err)
-    elseif migration then
-      cutils.logger:success("Migrated up to: "..cutils.colors.yellow(migration.name))
+  local err = migrations:migrate_all(kong_config, function(identifier, migration)
+    if migration then
+      cutils.logger:success(string.format("%s migrated up to: %s", identifier, cutils.colors.yellow(migration.name)))
     end
   end)
+  if err then
+    cutils.logger:error_exit(err)
+  end
 end
 
 --

@@ -1,5 +1,35 @@
 This document describes eventual additional steps that might be required to update between two versions of Kong. If nothing is described here for a particular version and platform, then assume the update will go smoothly.
 
+## Update to Kong `0.5.0`
+
+It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
+
+The database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed. [This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
+
+```shell
+# First, make sure you are already running Kong 0.4.2
+
+# clone the Kong git repository if you don't already have it:
+$ git clone git@github.com:Mashape/kong.git
+
+# go to the 'scripts/' folder:
+$ cd kong/scripts
+
+# The script will use your first contact point (the first of the 'hosts' property)
+# so make sure it is valid and has the format 'host:port'.
+
+# Execute the migration script:
+$ python migration.py -c /path/to/kong/config
+
+# If everything went well the script should print a success message.
+
+# You can now update Kong to 0.5.0.
+# After updating, reload Kong to avoid downtime:
+$ kong reload
+```
+
+Your cluster should successfully be migrated to Kong `0.5.0`.
+
 ## Update to Kong `0.4.2`
 
 The configuration format for specifying the port of your Cassandra instance changed. Replace:
