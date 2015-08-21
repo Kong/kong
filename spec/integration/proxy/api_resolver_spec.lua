@@ -108,7 +108,6 @@ describe("Resolver", function()
 
   describe("Existing API", function()
     describe("By Host", function()
-
       it("should proxy when the API is in Kong", function()
         local _, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
         assert.equal(200, status)
@@ -138,12 +137,10 @@ describe("Resolver", function()
           _, status = http_client.get(STUB_GET_URL, nil, {host = "wildcard.org"})
           assert.equal(201, status)
         end)
-
       end)
     end)
 
     describe("By Path", function()
-
       it("should proxy when no Host is present but the request_uri matches the API's path", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/status/200")
         assert.equal(200, status)
@@ -154,7 +151,6 @@ describe("Resolver", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin")
         assert.equal(200, status)
       end)
-
       it("should not proxy when the path does not match the start of the request_uri", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/somepath/status/200")
         local body = cjson.decode(response)
@@ -162,26 +158,26 @@ describe("Resolver", function()
         assert.equal("/somepath/status/200", body.path)
         assert.equal(404, status)
       end)
-
       it("should proxy and strip the path if `strip_path` is true", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
         assert.equal(200, status)
         local body = cjson.decode(response)
         assert.equal("http://mockbin.com/request", body.url)
       end)
-
       it("should proxy and strip the path if `strip_path` is true if path has pattern characters", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin-with-pattern/request")
         assert.equal(200, status)
         local body = cjson.decode(response)
         assert.equal("http://mockbin.com/request", body.url)
       end)
-
       it("should proxy when the path has a deep level", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/deep/path/status/200")
         assert.equal(200, status)
       end)
-
+      it("should not care about querystring parameters", function()
+        local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin?foo=bar")
+        assert.equal(200, status)
+      end)
       it("should not strip if the `path` pattern is repeated in the request_uri", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/har/har/of/request")
         assert.equal(200, status)
@@ -189,7 +185,6 @@ describe("Resolver", function()
         local upstream_url = body.log.entries[1].request.url
         assert.equal("http://mockbin.com/har/of/request", upstream_url)
       end)
-
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
@@ -198,18 +193,15 @@ describe("Resolver", function()
       assert.equal("cloudflare-nginx", headers.server)
       assert.equal(constants.NAME.."/"..constants.VERSION, headers.via)
     end)
-
     it("should return the correct Server and no Via header when the request was NOT proxied", function()
       local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin-auth.com"})
       assert.equal(401, status)
       assert.equal(constants.NAME.."/"..constants.VERSION, headers.server)
       assert.falsy(headers.via)
     end)
-
   end)
 
   describe("Preseve Host", function()
-
     it("should not preserve the host (default behavior)", function()
       local response, status = http_client.get(PROXY_URL.."/get", nil, { host = "httpbin-nopreserve.com"})
       assert.equal(200, status)
@@ -223,6 +215,5 @@ describe("Resolver", function()
       local parsed_response = cjson.decode(response)
       assert.equal("httpbin-preserve.com", parsed_response.headers["Host"])
     end)
-
   end)
 end)
