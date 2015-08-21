@@ -1,6 +1,5 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
-local cjson = require "cjson"
 
 local PROXY_URL = spec_helper.PROXY_URL
 local SLEEP_VALUE = "0.5"
@@ -67,7 +66,7 @@ describe("RateLimiting Plugin", function()
       end
 
       -- Additonal request, while limit is 6/minute
-      local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test1.com"})
+      local _, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test1.com"})
       assert.are.equal(429, status)
 
     end)

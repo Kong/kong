@@ -1,4 +1,3 @@
-local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"

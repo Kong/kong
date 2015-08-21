@@ -4,7 +4,7 @@ local function increment(api_id, identifier, current_timestamp, value, name)
   -- Increment metrics for all periods if the request goes through
   local _, stmt_err = dao.response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value, name)
   if stmt_err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(stmt_err)
+    ngx.log(ngx.ERR, stmt_err)
   end
 end
 

@@ -31,10 +31,6 @@ function _M.execute(conf)
   local increments = parse_header(ngx.header[conf.header_name], conf.limits)
   ngx.ctx.increments = increments
 
-  local api_id = ngx.ctx.api.id
-  local identifier = ngx.ctx.identifier
-  local current_timestamp = ngx.ctx.current_timestamp
-
   local usage = ngx.ctx.usage -- Load current usage
 
   local stop
