@@ -33,7 +33,7 @@ describe("RateLimiting Plugin", function()
         { name = "response-ratelimiting", value = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
         { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
         { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 3 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 },
+        { name = "response-ratelimiting", value = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
       },
       keyauth_credential = {
         { key = "apikey123", __consumer = 1 },
