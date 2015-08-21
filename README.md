@@ -76,7 +76,7 @@ You can use a Vagrant box running Kong and Cassandra that you can find at [Masha
 
 #### Source Install
 
-First, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running.
+First, you will need to already have Kong installed. Install Kong by following one of the methods described at [getkong.org/download](http://getkong.org/download). Then, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running. These steps will override your Kong installation with the latest source from the master branch:
 
 ```shell
 $ git clone https://github.com/Mashape/kong
