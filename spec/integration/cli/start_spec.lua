@@ -1,5 +1,4 @@
 local spec_helper = require "spec.spec_helpers"
-local utils = require "kong.tools.utils"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 
@@ -8,9 +7,6 @@ local SERVER_CONF = "kong_TEST_SERVER.yml"
 
 local function replace_conf_property(key, value)
   local yaml_value = yaml.load(IO.read_file(TEST_CONF))
-  if type(value) == "table" and utils.table_size(value) == 0 then
-    value = nil
-  end
   yaml_value[key] = value
   local ok = IO.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
   assert.truthy(ok)
