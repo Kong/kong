@@ -55,6 +55,19 @@ local Migrations = {
         DROP TABLE oauth2_tokens;
       ]]
     end
+  },
+  {
+    name = "2015-08-24-215800_cascade_delete_index",
+    up = function()
+      return [[
+        CREATE INDEX IF NOT EXISTS oauth2_credential_id_idx ON oauth2_tokens(credential_id);
+      ]]
+    end,
+    down = function()
+      return [[
+        DROP INDEX oauth2_credential_id_idx;
+      ]]
+    end
   }
 }
 
