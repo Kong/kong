@@ -9,7 +9,8 @@ local CACHE_KEYS = {
   OAUTH2_CREDENTIAL = "oauth2_credentials",
   OAUTH2_TOKEN = "oauth2_token",
   SSL = "ssl",
-  REQUESTS = "requests"
+  REQUESTS = "requests",
+  TIMERS = "timers"
 }
 
 local _M = {}

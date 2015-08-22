@@ -12,4 +12,6 @@ function FileLogHandler:log(conf)
   log.execute(conf)
 end
 
+FileLogHandler.PRIORITY = 1
+
 return FileLogHandler
