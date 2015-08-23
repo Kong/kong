@@ -9,11 +9,14 @@ The database schema slightly changed to introduce "plugins migrations". Now, eac
 ```shell
 # First, make sure you are already running Kong 0.4.2
 
-# clone the Kong git repository if you don't already have it:
+# Clone the Kong git repository if you don't already have it:
 $ git clone git@github.com:Mashape/kong.git
 
-# go to the 'scripts/' folder:
+# Go to the 'scripts/' folder:
 $ cd kong/scripts
+
+# Install some Python dependencies:
+$ pip install cassandra-driver pyyaml
 
 # The script will use your first contact point (the first of the 'hosts' property)
 # so make sure it is valid and has the format 'host:port'.
