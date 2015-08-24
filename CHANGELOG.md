@@ -11,6 +11,10 @@ This release contains breaking changes.
 - Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Mashape/kong/pull/443)
 - The Basic Authentication plugin now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Mashape/kong/issues/460)
 
+#### Changed
+
+- Basic Authentication and Key Authentication now require authentication parameters even when the `Expect: 100-continue` header is being sent. [#408](https://github.com/Mashape/kong/issues/408)
+
 ## [0.4.2] - 2015/08/10
 
 #### Added

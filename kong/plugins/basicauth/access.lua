@@ -8,11 +8,6 @@ local PROXY_AUTHORIZATION = "proxy-authorization"
 
 local _M = {}
 
-local function skip_authentication(headers)
-  -- Skip upload request that expect a 100 Continue response
-  return headers["expect"] and stringy.startswith(headers["expect"], "100")
-end
-
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
 -- All methods must respect:
@@ -89,8 +84,6 @@ local function load_credential(username)
 end
 
 function _M.execute(conf)
-  if skip_authentication(ngx.req.get_headers()) then return end
-
   -- If both headers are missing, return 401
   if not (ngx.req.get_headers()[AUTHORIZATION] or ngx.req.get_headers()[PROXY_AUTHORIZATION]) then
     ngx.ctx.stop_phases = true
