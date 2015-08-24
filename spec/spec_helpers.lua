@@ -118,6 +118,7 @@ function _M.start_tcp_server(port, ...)
       local server = socket.tcp()
       server:setoption('reuseaddr', true)
       server:bind("*", port)
+      server:listen()
       local client = server:accept()
       local line, err = client:receive()
       if not err then client:send(line .. "\n") end
@@ -141,6 +142,7 @@ function _M.start_http_server(port, ...)
       local server = socket.tcp()
       server:setoption('reuseaddr', true)
       server:bind("*", port)
+      server:listen()
       local client = server:accept()
 
       local lines = {}
