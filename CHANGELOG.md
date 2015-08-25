@@ -15,6 +15,10 @@ This release contains breaking changes.
 
 - Basic Authentication and Key Authentication now require authentication parameters even when the `Expect: 100-continue` header is being sent. [#408](https://github.com/Mashape/kong/issues/408)
 
+#### Fixed
+
+- Proper handling the `/oauth2/authorize` and `/oauth2/token` endpoints in the OAuth 2.0 Plugin when an API with a `path` is being consumed using the `public_dns` instead. [#503](https://github.com/Mashape/kong/issues/503)
+
 ## [0.4.2] - 2015/08/10
 
 #### Added
