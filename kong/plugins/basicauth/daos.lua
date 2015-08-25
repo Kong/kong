@@ -4,7 +4,7 @@ local SCHEMA = {
   primary_key = {"id"},
   fields = {
     id = { type = "id", dao_insert_value = true },
-    created_at = { type = "timestamp", dao_insert_value = true },
+    created_at = { type = "timestamp", dao_insert_value = true, immutable = true },
     consumer_id = { type = "id", required = true, foreign = "consumers:id" },
     username = { type = "string", required = true, unique = true, queryable = true },
     password = { type = "string" }

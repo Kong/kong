@@ -91,17 +91,10 @@ describe("Key Auth Credentials API", function()
 
     describe("PATCH", function()
 
-      it("[SUCCESS] should update a credential", function()
-        local response, status = http_client.patch(BASE_URL..credential.id, { key = "4321" })
-        assert.equal(200, status)
-        credential = json.decode(response)
-        assert.equal("4321", credential.key)
-      end)
-
       it("[FAILURE] should return proper errors", function()
-        local response, status = http_client.patch(BASE_URL..credential.id, { key = "" })
+        local response, status = http_client.patch(BASE_URL..credential.id, { key = "asd" })
         assert.equal(400, status)
-        assert.equal('{"key":"key is not a string"}\n', response)
+        assert.equal('{"key":"key cannot be updated"}\n', response)
       end)
 
     end)
