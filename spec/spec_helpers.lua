@@ -115,10 +115,10 @@ function _M.start_tcp_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require "socket"
-      local server = socket.tcp()
-      server:setoption('reuseaddr', true)
-      server:bind("*", port)
-      server:listen()
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
       local client = server:accept()
       local line, err = client:receive()
       if not err then client:send(line .. "\n") end
@@ -139,10 +139,10 @@ function _M.start_http_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require "socket"
-      local server = socket.tcp()
-      server:setoption('reuseaddr', true)
-      server:bind("*", port)
-      server:listen()
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
       local client = server:accept()
 
       local lines = {}
