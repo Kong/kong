@@ -119,12 +119,19 @@ local function get_kong_config_path(args_config)
   return config_path
 end
 
--- Checks if a port is open on localhost
+-- Checks if a port is available to bind a server to on localhost
 -- @param `port`  The port to check
--- @return `open` True if open, false otherwise
-local function is_port_open(port)
-  local _, code = IO.os_execute("nc -w 5 -z 127.0.0.1 "..tostring(port))
-  return code == 0
+-- @return `open` Truthy if available, falsy otherwise
+local function is_port_bindable(port)
+  local server, success
+  server = socket.tcp()
+  server:setoption('reuseaddr', true)
+  success = server:bind("*", port)
+  if success then 
+    success = server:listen()
+  end
+  server:close()
+  return success
 end
 
 return {
@@ -133,5 +140,5 @@ return {
   get_kong_infos = get_kong_infos,
   get_kong_config_path = get_kong_config_path,
   get_luarocks_install_dir = get_luarocks_install_dir,
-  is_port_open = is_port_open
+  is_port_bindable = is_port_bindable
 }
