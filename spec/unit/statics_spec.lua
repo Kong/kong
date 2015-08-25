@@ -5,9 +5,7 @@ local IO = require "kong.tools.io"
 local fs = require "luarocks.fs"
 
 describe("Static files", function()
-
   describe("Constants", function()
-
     it("version set in constants should match the one in the rockspec", function()
       local rockspec_path
       for _, filename in ipairs(fs.list_dir(".")) do
@@ -30,6 +28,10 @@ describe("Static files", function()
       assert.are.same(constants.VERSION, dash and extracted_version:sub(1, dash - 1) or extracted_version)
     end)
 
+    it("accessing non-existing error code should throw an error", function()
+      assert.has_no_error(function() local _ = constants.DATABASE_ERROR_TYPES.DATABASE end)
+      assert.has_error(function() local _ = constants.DATABASE_ERROR_TYPES.ThIs_TyPe_DoEs_NoT_ExIsT end)
+    end)
   end)
 
   describe("Configuration", function()
