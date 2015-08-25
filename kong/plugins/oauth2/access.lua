@@ -196,9 +196,6 @@ local function retrieve_client_credentials(parameters)
         local basic_parts = stringy.split(decoded_basic, ":")
         client_id = basic_parts[1]
         client_secret = basic_parts[2]
-
-        print(client_id)
-        print(client_secret)
       end
     end
   end
@@ -353,7 +350,8 @@ local function parse_access_token(conf)
 end
 
 function _M.execute(conf)
-  local path_prefix = ngx.ctx.api.path or ""
+  -- Check if the API has a path and if it's being invoked with the path resolver
+  local path_prefix = (ngx.ctx.api.path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.path)) and ngx.ctx.api.path or ""
   if stringy.endswith(path_prefix, "/") then
     path_prefix = path_prefix:sub(1, path_prefix:len() - 1) 
   end

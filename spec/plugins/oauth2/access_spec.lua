@@ -78,7 +78,7 @@ describe("Authentication Plugin", function()
   describe("OAuth2 Authorization", function()
 
     describe("Code Grant", function()
-
+      
       it("should return an error when no provision_key is being sent", function()
         local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { }, {host = "oauth2.com"})
         local body = cjson.decode(response)
@@ -170,6 +170,15 @@ describe("Authentication Plugin", function()
         assert.are.equal(1, utils.table_size(body))
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
       end)
+      
+      it("should fail with a path when using the DNS", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123a", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "mockbin-path.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_provision_key", body.error)
+        assert.are.equal("Invalid Kong provision_key", body.error_description)
+      end)
 
       it("should return success with a path", function()
         local response, status = http_client.post(PROXY_SSL_URL.."/somepath/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "mockbin-path.com"})
@@ -218,9 +227,9 @@ describe("Authentication Plugin", function()
         assert.are.equal("userid123", data[1].authenticated_userid)
         assert.are.equal("email", data[1].scope)
       end)
-
+      
     end)
-
+    
     describe("Implicit Grant", function()
       it("should return success", function()
         local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2.com"})
@@ -408,8 +417,9 @@ describe("Authentication Plugin", function()
       end)
 
     end)
+  
   end)
-
+  
   describe("OAuth2 Access Token", function()
 
     it("should return an error when nothing is being sent", function()
@@ -672,5 +682,5 @@ describe("Authentication Plugin", function()
       assert.falsy(body.headers.authorization)
     end)
   end)
-
+  
 end)
