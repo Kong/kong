@@ -1,9 +1,10 @@
 local cutils = require "kong.cli.utils"
-local spec_helper = require "spec.spec_helpers"
+local socket = require "socket"
 
 describe("CLI Utils", function()
   it("should check if a port is open", function()
-    local PORT, server, success = 30000, nil, nil
+    local PORT = 30000
+    local server, success
     
     -- Check a currently closed port
     assert.truthy(cutils.is_port_bindable(PORT))

@@ -124,7 +124,7 @@ end
 -- @return `open` Truthy if available, falsy otherwise
 local function is_port_bindable(port)
   local server, success
-  server = socket.tcp()
+  server = require("socket").tcp()
   server:setoption('reuseaddr', true)
   success = server:bind("*", port)
   if success then 
