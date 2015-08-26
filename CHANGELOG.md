@@ -4,7 +4,10 @@ This release contains breaking changes.
 
 ### Breaking changes
 
-- The database schema has been updated to be future proof and handle the separation of plugins outside of the core repository. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
+Several breaking changes are introduced. A migration script will take care of updating your database cluster. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
+
+- Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
+- The database schema has been updated to be future proof and handle the separation of plugins outside of the core repository.
 
 #### Added
 

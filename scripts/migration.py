@@ -84,7 +84,7 @@ def migrate_plugins_renaming(session):
 
     :param session: opened cassandra session
     """
-    log.info("Renaming plugins")
+    log.info("Renaming plugins...")
     new_names = {
         "keyauth": "key-auth",
         "basicauth": "basic-auth",
@@ -110,6 +110,8 @@ def migrate_plugins_renaming(session):
             VALUES(%s, %s, %s, %s, %s, %s, %s)
         """, [plugin.id, plugin_name, plugin.api_id, plugin.consumer_id, plugin.created_at, plugin.enabled, plugin.value])
 
+    log.info("Plugins renamed")
+
 def migrate(kong_config):
     """
     Instanciate a Cassandra session and decides if the keyspace needs to be migrated
@@ -133,16 +135,16 @@ def migrate(kong_config):
         log.info("Schema_migrations table needs migration")
         migrate_schema_migrations_table(session)
         migrate_schema_migrations_remove_legacy_row(session)
-        migrate_plugins_renaming(session)
 
     elif len(rows) > 1:
         # apparently kong was restarted without previously running this script
         if any(row.id == "migrations" for row in rows):
             log.info("Already migrated to 0.5.0, but legacy schema found. Purging.")
             migrate_schema_migrations_remove_legacy_row(session)
-            migrate_plugins_renaming(session)
         else:
             return False
+
+    migrate_plugins_renaming(session)
 
     return True
 

@@ -4,7 +4,11 @@ This document describes eventual additional steps that might be required to upda
 
 It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
-The database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed. [This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
+Several changes were introduced in this version: many plugins were renamed and the database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed.
+
+##### 1. Migration script
+
+[This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
 
 ```shell
 # First, make sure you are already running Kong 0.4.2
@@ -15,7 +19,7 @@ $ git clone git@github.com:Mashape/kong.git
 # Go to the 'scripts/' folder:
 $ cd kong/scripts
 
-# Install some Python dependencies:
+# Install the Python script dependencies:
 $ pip install cassandra-driver pyyaml
 
 # The script will use your first contact point (the first of the 'hosts' property)
@@ -25,9 +29,39 @@ $ pip install cassandra-driver pyyaml
 $ python migration.py -c /path/to/kong/config
 
 # If everything went well the script should print a success message.
+```
 
-# You can now update Kong to 0.5.0.
-# After updating, reload Kong to avoid downtime:
+##### 2. Configuration file
+
+You will now need to update your configuration file. Replace the `plugins_available` property with:
+
+```yaml
+plugins_available:
+  - ssl
+  - key-auth
+  - basic-auth
+  - oauth2
+  - rate-limiting
+  - response-ratelimiting
+  - tcp-log
+  - udp-log
+  - file-log
+  - http-log
+  - cors
+  - request-transformer
+  - response-transformer
+  - request-size-limiting
+  - ip-restriction
+  - mashape-analytics
+```
+
+You can still remove plugins you don't use for a lighter Kong.
+
+##### 3. Upgrade without downtime
+
+You can now update Kong to 0.5.0. Proceed as a regular update and install the package of your choice from the website. After updating, reload Kong to avoid downtime:
+
+```shell
 $ kong reload
 ```
 
