@@ -1,5 +1,5 @@
 local fixtures = require "spec.plugins.mashape-analytics.fixtures.requests"
-local ALFSerializer = require "kong.plugins.log_serializers.alf"
+local ALFSerializer = require "kong.plugins.log-serializers.alf"
 
 -- @see http://lua-users.org/wiki/CopyTable
 local function deepcopy(orig)

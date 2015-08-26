@@ -24,7 +24,7 @@ describe("Admin API", function()
   end)
 
   describe("/plugins/:name/schema", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins/keyauth/schema"
+    local BASE_URL = spec_helper.API_URL.."/plugins/key-auth/schema"
 
     it("[SUCCESS] should return the schema of a plugin", function()
       local response, status = http_client.get(BASE_URL)

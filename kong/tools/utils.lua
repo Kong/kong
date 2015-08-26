@@ -105,7 +105,7 @@ function _M.add_error(errors, k, v)
 end
 
 --- Try to load a module.
--- Will not throw an error if the module was not found, but will throw an error if the 
+-- Will not throw an error if the module was not found, but will throw an error if the
 -- loading failed for another reason (eg: syntax error).
 -- @param module_name Path of the module to load (ex: kong.plugins.keyauth.api).
 -- @return success A boolean indicating wether the module was found.

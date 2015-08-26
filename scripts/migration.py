@@ -69,8 +69,8 @@ def migrate_schema_migrations_table(session):
     query = "INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)"
     session.execute(query, ["core", ['2015-01-12-175310_skeleton', '2015-01-12-175310_init_schema']])
     session.execute(query, ["basic-auth", ['2015-08-03-132400_init_basicauth']])
-    session.execute(query, ["keyauth", ['2015-07-31-172400_init_keyauth']])
-    session.execute(query, ["ratelimiting", ['2015-08-03-132400_init_ratelimiting']])
+    session.execute(query, ["key-auth", ['2015-07-31-172400_init_keyauth']])
+    session.execute(query, ["rate-limiting", ['2015-08-03-132400_init_ratelimiting']])
     session.execute(query, ["oauth2", ['2015-08-03-132400_init_oauth2', '2015-08-24-215800_cascade_delete_index']])
     log.info("schema_migrations table migrated")
 

@@ -81,7 +81,7 @@ describe("App", function()
     it("should normalize very complex values", function()
       stub.params = {
         api_id = 123,
-        name = "request_transformer",
+        name = "request-transformer",
         ["value.add.headers"] = "x-new-header:some_value, x-another-header:some_value",
         ["value.add.querystring"] = "new-param:some_value, another-param:some_value",
         ["value.add.form"] = "new-form-param:some_value, another-form-param:some_value",
@@ -93,7 +93,7 @@ describe("App", function()
       local f = app.parse_params(function(stub)
         assert.are.same({
           api_id = 123,
-          name = "request_transformer",
+          name = "request-transformer",
           value = {
             add = {
               form = "new-form-param:some_value, another-form-param:some_value",

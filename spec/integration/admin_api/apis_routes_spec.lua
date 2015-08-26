@@ -226,7 +226,7 @@ describe("Admin API", function()
 
         it("[SUCCESS] should create a plugin configuration", function()
           local response, status = http_client.post(BASE_URL, {
-            name = "keyauth",
+            name = "key-auth",
             ["value.key_names"] = {"apikey"}
           })
           assert.equal(201, status)
@@ -236,7 +236,7 @@ describe("Admin API", function()
           assert.falsy(err)
 
           response, status = http_client.post(BASE_URL, {
-            name = "keyauth",
+            name = "key-auth",
             value = {key_names={"apikey"}}
           }, {["content-type"]="application/json"})
           assert.equal(201, status)
@@ -258,7 +258,7 @@ describe("Admin API", function()
 
         it("[SUCCESS] should create and update", function()
           local response, status = http_client.put(BASE_URL, {
-            name = "keyauth",
+            name = "key-auth",
             ["value.key_names"] = {"apikey"}
           })
           assert.equal(201, status)
@@ -268,7 +268,7 @@ describe("Admin API", function()
           assert.falsy(err)
 
           response, status = http_client.put(BASE_URL, {
-            name = "keyauth",
+            name = "key-auth",
             value = {key_names = {"apikey"}}
           }, {["content-type"] = "application/json"})
           assert.equal(201, status)
@@ -278,7 +278,7 @@ describe("Admin API", function()
 
           response, status = http_client.put(BASE_URL, {
             id = plugin_id,
-            name = "keyauth",
+            name = "key-auth",
             value = {key_names = {"updated_apikey"}}
           }, {["content-type"] = "application/json"})
           assert.equal(200, status)
@@ -289,7 +289,7 @@ describe("Admin API", function()
         it("should override a plugin's `value` if partial", function()
           local response, status = http_client.put(BASE_URL, {
             id = plugin_id,
-            name = "keyauth",
+            name = "key-auth",
             ["value.key_names"] = {"api_key"},
             ["value.hide_credentials"] = true
           })
@@ -298,7 +298,7 @@ describe("Admin API", function()
 
           response, status = http_client.put(BASE_URL, {
             id = plugin_id,
-            name = "keyauth",
+            name = "key-auth",
             ["value.key_names"] = {"api_key_updated"}
           })
           assert.equal(200, status)
@@ -329,7 +329,7 @@ describe("Admin API", function()
           spec_helper.drop_db()
           local fixtures = spec_helper.insert_fixtures {
             api = {{ public_dns="mockbin.com", target_url="http://mockbin.com" }},
-            plugin_configuration = {{ name = "keyauth", value = { key_names = { "apikey" }}, __api = 1 }}
+            plugin_configuration = {{ name = "key-auth", value = { key_names = { "apikey" }}, __api = 1 }}
           }
           api = fixtures.api[1]
           plugin = fixtures.plugin_configuration[1]

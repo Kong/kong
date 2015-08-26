@@ -57,14 +57,14 @@ describe("CLI", function()
     end)
 
     it("should not fail when an existing plugin is being enabled", function()
-      replace_conf_property("plugins_available", {"keyauth"})
+      replace_conf_property("plugins_available", {"key-auth"})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
     it("should not work when an unexisting plugin is being enabled along with an existing one", function()
-      replace_conf_property("plugins_available", {"keyauth", "wot-wat"})
+      replace_conf_property("plugins_available", {"key-auth", "wot-wat"})
 
       assert.error_matches(function()
         spec_helper.start_kong(SERVER_CONF, true)
@@ -77,19 +77,19 @@ describe("CLI", function()
           {name = "tests cli 1", public_dns = "foo.com", target_url = "http://mockbin.com"},
         },
         plugin_configuration = {
-          {name = "ratelimiting", value = {minute = 6}, __api = 1},
+          {name = "rate-limiting", value = {minute = 6}, __api = 1},
         }
       }
 
-      replace_conf_property("plugins_available", {"ssl", "keyauth", "basic-auth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "cors"})
+      replace_conf_property("plugins_available", {"ssl", "key-auth", "basic-auth", "oauth2", "tcp-log", "udp-log", "file-log", "http-log", "request-transformer", "cors"})
 
       assert.error_matches(function()
         spec_helper.start_kong(SERVER_CONF, true)
-      end, "You are using a plugin that has not been enabled in the configuration: ratelimiting")
+      end, "You are using a plugin that has not been enabled in the configuration: rate-limiting", nil, true)
     end)
 
     it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ssl", "keyauth", "basic-auth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "ratelimiting", "cors"})
+      replace_conf_property("plugins_available", {"ssl", "key-auth", "basic-auth", "oauth2", "tcp-log", "udp-log", "file-log", "http-log", "request-transformer", "rate-limiting", "cors"})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)

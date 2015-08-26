@@ -108,7 +108,7 @@ describe("Cassandra", function()
         assert.equal(consumer.id, consumers[1].id)
 
         -- Plugin configuration
-        local plugin_t = {name = "keyauth", api_id = api.id}
+        local plugin_t = {name = "key-auth", api_id = api.id}
         local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
@@ -454,7 +454,7 @@ describe("Cassandra", function()
           local fixtures = spec_helper.seed_db(1)
           faker:insert_from_table {
             plugin_configuration = {
-              { name = "keyauth", value = {key_names = {"apikey"}}, api_id = fixtures.api[1].id }
+              { name = "key-auth", value = {key_names = {"apikey"}}, api_id = fixtures.api[1].id }
             }
           }
         end)
@@ -516,7 +516,6 @@ describe("Cassandra", function()
         end)
 
       end)
-    end) -- describe :delete()
 
     --
     -- APIs additional behaviour
@@ -549,10 +548,10 @@ describe("Cassandra", function()
               { name = "tests distinct 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
             },
             plugin_configuration = {
-              { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
-              { name = "ratelimiting", value = { minute = 6}, __api = 1 },
-              { name = "ratelimiting", value = { minute = 6}, __api = 2 },
-              { name = "filelog", value = { path = "/tmp/spec.log" }, __api = 1 }
+              { name = "key-auth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
+              { name = "rate-limiting", value = { minute = 6}, __api = 1 },
+              { name = "rate-limiting", value = { minute = 6}, __api = 2 },
+              { name = "file-log", value = { path = "/tmp/spec.log" }, __api = 1 }
             }
           }
 
@@ -562,9 +561,9 @@ describe("Cassandra", function()
           assert.truthy(res)
 
           assert.are.same(3, #res)
-          assert.truthy(utils.table_contains(res, "keyauth"))
-          assert.truthy(utils.table_contains(res, "ratelimiting"))
-          assert.truthy(utils.table_contains(res, "filelog"))
+          assert.truthy(utils.table_contains(res, "key-auth"))
+          assert.truthy(utils.table_contains(res, "rate-limiting"))
+          assert.truthy(utils.table_contains(res, "file-log"))
         end)
       end)
 

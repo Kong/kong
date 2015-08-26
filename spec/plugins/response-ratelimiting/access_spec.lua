@@ -31,7 +31,7 @@ describe("RateLimiting Plugin", function()
       plugin_configuration = {
         { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 1 },
         { name = "response-ratelimiting", value = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
-        { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
+        { name = "key-auth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
         { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 3 },
         { name = "response-ratelimiting", value = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
       },
@@ -94,17 +94,17 @@ describe("RateLimiting Plugin", function()
       assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
       assert.are.equal("4", headers["x-ratelimit-remaining-video-hour"])
       assert.are.equal("1", headers["x-ratelimit-remaining-image-minute"])
-    end)  
+    end)
 
   end)
 
   describe("With authentication", function()
-    
+
     describe("Default plugin", function()
 
       it("should get blocked if exceeding limit and a per consumer setting", function()
         wait()
-        
+
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 2
 
@@ -125,7 +125,7 @@ describe("RateLimiting Plugin", function()
 
       it("should not get blocked if the last request doesn't increment", function()
         wait()
-        
+
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
@@ -146,7 +146,7 @@ describe("RateLimiting Plugin", function()
 
       it("should get blocked if exceeding limit", function()
         wait()
-        
+
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
