@@ -67,6 +67,20 @@ $ kong reload
 
 Your cluster should successfully be migrated to Kong `0.5.0`.
 
+##### Other changes
+
+The Key authentication and Basic authentication plugins routes have changed:
+
+```
+Old route                             New route
+/consumers/:consumer/keyauth       -> /consumers/:consumer/key-auth
+/consumers/:consumer/keyauth/:id   -> /consumers/:consumer/key-auth/:id
+/consumers/:consumer/basicauth     -> /consumers/:consumer/basic-auth
+/consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
+```
+
+The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
+
 ## Update to Kong `0.4.2`
 
 The configuration format for specifying the port of your Cassandra instance changed. Replace:

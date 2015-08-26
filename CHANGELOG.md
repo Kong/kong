@@ -4,10 +4,22 @@ This release contains breaking changes.
 
 ### Breaking changes
 
-Several breaking changes are introduced. A migration script will take care of updating your database cluster. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
+Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
 
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
 - The database schema has been updated to be future proof and handle the separation of plugins outside of the core repository.
+
+The Key authentication and Basic authentication plugins routes have changed:
+
+```
+Old route                             New route
+/consumers/:consumer/keyauth       -> /consumers/:consumer/key-auth
+/consumers/:consumer/keyauth/:id   -> /consumers/:consumer/key-auth/:id
+/consumers/:consumer/basicauth     -> /consumers/:consumer/basic-auth
+/consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
+```
+
+The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
 
 #### Added
 
