@@ -44,7 +44,7 @@ describe("Static files", function()
 plugins_available:
   - ssl
   - keyauth
-  - basicauth
+  - basic-auth
   - oauth2
   - ratelimiting
   - response-ratelimiting

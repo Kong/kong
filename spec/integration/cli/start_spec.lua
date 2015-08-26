@@ -81,7 +81,7 @@ describe("CLI", function()
         }
       }
 
-      replace_conf_property("plugins_available", {"ssl", "keyauth", "basicauth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "cors"})
+      replace_conf_property("plugins_available", {"ssl", "keyauth", "basic-auth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "cors"})
 
       assert.error_matches(function()
         spec_helper.start_kong(SERVER_CONF, true)
@@ -89,7 +89,7 @@ describe("CLI", function()
     end)
 
     it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ssl", "keyauth", "basicauth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "ratelimiting", "cors"})
+      replace_conf_property("plugins_available", {"ssl", "keyauth", "basic-auth", "oauth2", "tcplog", "udplog", "filelog", "httplog", "request_transformer", "ratelimiting", "cors"})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)

@@ -68,15 +68,47 @@ def migrate_schema_migrations_table(session):
     """
     query = "INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)"
     session.execute(query, ["core", ['2015-01-12-175310_skeleton', '2015-01-12-175310_init_schema']])
-    session.execute(query, ["basicauth", ['2015-08-03-132400_init_basicauth']])
+    session.execute(query, ["basic-auth", ['2015-08-03-132400_init_basicauth']])
     session.execute(query, ["keyauth", ['2015-07-31-172400_init_keyauth']])
     session.execute(query, ["ratelimiting", ['2015-08-03-132400_init_ratelimiting']])
-    session.execute(query, ["oauth2", ['2015-08-03-132400_init_oauth2']])
+    session.execute(query, ["oauth2", ['2015-08-03-132400_init_oauth2', '2015-08-24-215800_cascade_delete_index']])
     log.info("schema_migrations table migrated")
 
 def migrate_schema_migrations_remove_legacy_row(session):
     session.execute("DELETE FROM schema_migrations WHERE id = 'migrations'")
     log.info("Legacy values removed from schema_migrations table")
+
+def migrate_plugins_renaming(session):
+    """
+    Migrate the plugins_configurations table by renaming all plugins whose name changed.
+
+    :param session: opened cassandra session
+    """
+    log.info("Renaming plugins")
+    new_names = {
+        "keyauth": "key-auth",
+        "basicauth": "basic-auth",
+        "ratelimiting": "rate-limiting",
+        "tcplog": "tcp-log",
+        "udplog": "udp-log",
+        "filelog": "file-log",
+        "httplog": "http-log",
+        "request_transformer": "request-transformer",
+        "response_transfomer": "response-transfomer",
+        "requestsizelimiting": "request-size-limiting",
+        "ip_restriction": "ip-restriction"
+    }
+
+    for plugin in session.execute("SELECT * FROM plugins_configurations"):
+        plugin_name = plugin.name
+        if plugin.name in new_names:
+            plugin_name = new_names[plugin.name]
+
+        session.execute("DELETE FROM plugins_configurations WHERE id = %s", [plugin.id])
+        session.execute("""
+            INSERT INTO plugins_configurations(id, name, api_id, consumer_id, created_at, enabled, value)
+            VALUES(%s, %s, %s, %s, %s, %s, %s)
+        """, [plugin.id, plugin_name, plugin.api_id, plugin.consumer_id, plugin.created_at, plugin.enabled, plugin.value])
 
 def migrate(kong_config):
     """
@@ -101,12 +133,14 @@ def migrate(kong_config):
         log.info("Schema_migrations table needs migration")
         migrate_schema_migrations_table(session)
         migrate_schema_migrations_remove_legacy_row(session)
+        migrate_plugins_renaming(session)
 
     elif len(rows) > 1:
         # apparently kong was restarted without previously running this script
         if any(row.id == "migrations" for row in rows):
             log.info("Already migrated to 0.5.0, but legacy schema found. Purging.")
             migrate_schema_migrations_remove_legacy_row(session)
+            migrate_plugins_renaming(session)
         else:
             return False
 

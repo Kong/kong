@@ -95,12 +95,12 @@ build = {
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
-    ["kong.plugins.basicauth.migrations.cassandra"] = "kong/plugins/basicauth/migrations/cassandra.lua",
-    ["kong.plugins.basicauth.handler"] = "kong/plugins/basicauth/handler.lua",
-    ["kong.plugins.basicauth.access"] = "kong/plugins/basicauth/access.lua",
-    ["kong.plugins.basicauth.schema"] = "kong/plugins/basicauth/schema.lua",
-    ["kong.plugins.basicauth.api"] = "kong/plugins/basicauth/api.lua",
-    ["kong.plugins.basicauth.daos"] = "kong/plugins/basicauth/daos.lua",
+    ["kong.plugins.basic-auth.migrations.cassandra"] = "kong/plugins/basic-auth/migrations/cassandra.lua",
+    ["kong.plugins.basic-auth.handler"] = "kong/plugins/basic-auth/handler.lua",
+    ["kong.plugins.basic-auth.access"] = "kong/plugins/basic-auth/access.lua",
+    ["kong.plugins.basic-auth.schema"] = "kong/plugins/basic-auth/schema.lua",
+    ["kong.plugins.basic-auth.api"] = "kong/plugins/basic-auth/api.lua",
+    ["kong.plugins.basic-auth.daos"] = "kong/plugins/basic-auth/daos.lua",
 
     ["kong.plugins.keyauth.migrations.cassandra"] = "kong/plugins/keyauth/migrations/cassandra.lua",
     ["kong.plugins.keyauth.handler"] = "kong/plugins/keyauth/handler.lua",

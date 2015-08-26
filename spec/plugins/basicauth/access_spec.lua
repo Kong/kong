@@ -16,7 +16,7 @@ describe("Authentication Plugin", function()
         {username = "basicauth_tests_consuser"}
       },
       plugin_configuration = {
-        {name = "basicauth", value = {}, __api = 1}
+        {name = "basic-auth", value = {}, __api = 1}
       },
       basicauth_credential = {
         {username = "username", password = "password", __consumer = 1}
@@ -46,7 +46,7 @@ describe("Authentication Plugin", function()
       assert.equal("Invalid authentication credentials", body.message)
     end)
 
-    
+
     it("should return invalid credentials when the credential value is wrong in proxy-authorization", function()
       local response, status = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com", ["proxy-authorization"] = "asd"})
       local body = cjson.decode(response)
