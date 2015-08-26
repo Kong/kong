@@ -182,6 +182,13 @@ build = {
     ["kong.plugins.ip_restriction.access"] = "kong/plugins/ip_restriction/access.lua",
     ["kong.plugins.ip_restriction.schema"] = "kong/plugins/ip_restriction/schema.lua",
 
+    ["kong.plugins.acl.migrations.cassandra"] = "kong/plugins/acl/migrations/cassandra.lua",
+    ["kong.plugins.acl.handler"] = "kong/plugins/acl/handler.lua",
+    ["kong.plugins.acl.access"] = "kong/plugins/acl/access.lua",
+    ["kong.plugins.acl.schema"] = "kong/plugins/acl/schema.lua",
+    ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
+    ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
+
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
     ["kong.api.route_helpers"] = "kong/api/route_helpers.lua",
