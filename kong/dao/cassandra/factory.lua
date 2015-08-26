@@ -36,24 +36,53 @@ function CassandraFactory:new(properties, plugins)
 
   -- Load plugins DAOs
   if plugins then
-    for _, v in ipairs(plugins) do
-      local loaded, plugin_daos_mod = utils.load_module_if_exists("kong.plugins."..v..".daos")
-      if loaded then
-        if ngx then
-          ngx.log(ngx.DEBUG, "Loading DAO for plugin: "..v)
-        end
-        self:load_daos(plugin_daos_mod)
-      elseif ngx then
-        ngx.log(ngx.DEBUG, "No DAO loaded for plugin: "..v)
+    self:load_plugins(plugins)
+  end
+end
+
+-- Load an array of plugins (array of plugins names). If any of those plugins have DAOs,
+-- they will be loaded into the factory.
+-- @param plugins Array of plugins names
+function CassandraFactory:load_plugins(plugins)
+  for _, v in ipairs(plugins) do
+    local loaded, plugin_daos_mod = utils.load_module_if_exists("kong.plugins."..v..".daos")
+    if loaded then
+      if ngx then
+        ngx.log(ngx.DEBUG, "Loading DAO for plugin: "..v)
       end
+      self:load_daos(plugin_daos_mod)
+    elseif ngx then
+      ngx.log(ngx.DEBUG, "No DAO loaded for plugin: "..v)
     end
   end
 end
 
+-- Load a plugin's DAOs (plugins can have more than one DAO) in the factory and create cascade delete hooks.
+-- Cascade delete hooks are triggered when a parent of a foreign row is deleted.
+-- @param plugin_daos A table with key/values representing daos names and instances.
 function CassandraFactory:load_daos(plugin_daos)
+  local dao
   for name, plugin_dao in pairs(plugin_daos) do
-    self.daos[name] = plugin_dao(self._properties)
-    self.daos[name]._factory = self
+    dao = plugin_dao(self._properties)
+    dao._factory = self
+    self.daos[name] = dao
+    if dao._schema then
+      -- Check for any foreign relations to trigger cascade deletes
+      for field_name, field in pairs(dao._schema.fields) do
+        if field.foreign ~= nil then
+          -- Foreign key columns need to be queryable, hence they need to have an index
+          assert(field.queryable, "Foreign property "..field_name.." of shema "..name.." must be queryable (have an index)")
+
+          local parent_dao_name, parent_column = unpack(stringy.split(field.foreign, ":"))
+          assert(parent_dao_name ~= nil, "Foreign property "..field_name.." of schema "..name.." must contain 'parent_dao:parent_column")
+          assert(parent_column ~= nil, "Foreign property "..field_name.." of schema "..name.." must contain 'parent_dao:parent_column")
+
+          -- Add delete hook to the parent DAO
+          local parent_dao = self[parent_dao_name]
+          parent_dao:add_delete_hook(name, field_name, parent_column)
+        end
+      end
+    end
   end
 end
 

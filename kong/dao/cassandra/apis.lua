@@ -26,31 +26,4 @@ function Apis:find_all()
   return apis
 end
 
--- @override
-function Apis:delete(where_t)
-  local ok, err = Apis.super.delete(self, where_t)
-  if not ok then
-    return false, err
-  end
-
-  -- delete all related plugins configurations
-  local plugins_dao = self._factory.plugins_configurations
-  local select_q, columns = query_builder.select(plugins_dao._table, {api_id = where_t.id}, plugins_dao._column_family_details)
-
-  for rows, err in plugins_dao:execute(select_q, columns, {api_id = where_t.id}, {auto_paging = true}) do
-    if err then
-      return nil, err
-    end
-
-    for _, row in ipairs(rows) do
-      local ok_del_plugin, err = plugins_dao:delete({id = row.id})
-      if not ok_del_plugin then
-        return nil, err
-      end
-    end
-  end
-
-  return ok
-end
-
 return {apis = Apis}
