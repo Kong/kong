@@ -516,6 +516,7 @@ describe("Cassandra", function()
         end)
 
       end)
+    end)
 
     --
     -- APIs additional behaviour
