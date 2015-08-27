@@ -1,4 +1,4 @@
--- Kong's Cassandra base DAO entity. Provides basic functionnalities on top of
+-- Kong's Cassandra base DAO entity. Provides basic functionalities on top of
 -- lua-resty-cassandra (https://github.com/jbochi/lua-resty-cassandra)
 
 local query_builder = require "kong.dao.cassandra.query_builder"

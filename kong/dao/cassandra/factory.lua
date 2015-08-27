@@ -1,5 +1,5 @@
 -- Kong's cassandra Factory DAO. Entry-point for retrieving DAO objects that allow
--- interations with the database for entities (APIs, Consumers...).
+-- interactions with the database for entities (APIs, Consumers...).
 --
 -- Also provides helper methods for preparing queries among the DAOs, migrating the
 -- database and dropping it.
@@ -22,7 +22,7 @@ function CassandraFactory:__index(key)
   end
 end
 
--- Instanciate a Cassandra Factory and all its DAOs for various entities
+-- Instantiate a Cassandra Factory and all its DAOs for various entities
 -- @param `properties` Cassandra properties
 function CassandraFactory:new(properties, plugins)
   self._properties = properties

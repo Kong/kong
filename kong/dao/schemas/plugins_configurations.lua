@@ -8,7 +8,7 @@ local function load_value_schema(plugin_t)
     if loaded then
       return plugin_schema
     else
-      return nil, "Plugin \""..(plugin_t.name and plugin_t.name or "").."\" not found"
+      return nil, 'Plugin "'..tostring(plugin_t.name)..'" not found'
     end
   end
 end
@@ -18,13 +18,33 @@ return {
   primary_key = {"id"},
   clustering_key = {"name"},
   fields = {
-    id = { type = "id", dao_insert_value = true },
-    created_at = { type = "timestamp", dao_insert_value = true },
-    api_id = { type = "id", required = true, foreign = "apis:id", queryable = true },
-    consumer_id = { type = "id", foreign = "consumers:id", queryable = true, default = constants.DATABASE_NULL_ID },
-    name = { type = "string", required = true, immutable = true, queryable = true },
-    value = { type = "table", schema = load_value_schema },
-    enabled = { type = "boolean", default = true }
+    id = { 
+        type = "id", 
+        dao_insert_value = true },
+    created_at = { 
+        type = "timestamp", 
+        dao_insert_value = true },
+    api_id = { 
+        type = "id", 
+        required = true, 
+        foreign = "apis:id", 
+        queryable = true },
+    consumer_id = { 
+        type = "id", 
+        foreign = "consumers:id", 
+        queryable = true, 
+        default = constants.DATABASE_NULL_ID },
+    name = { 
+        type = "string", 
+        required = true, 
+        immutable = true, 
+        queryable = true },
+    value = { 
+        type = "table", 
+        schema = load_value_schema },
+    enabled = { 
+        type = "boolean", 
+        default = true }
   },
   self_check = function(self, plugin_t, dao, is_update)
     -- Load the value schema

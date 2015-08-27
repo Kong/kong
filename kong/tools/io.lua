@@ -1,3 +1,7 @@
+---
+-- IO related utility functions
+--
+
 local yaml = require "yaml"
 local path = require("path").new("/")
 local stringy = require "stringy"
@@ -7,6 +11,10 @@ local _M = {}
 
 _M.path = path
 
+---
+-- Checks existence of a file.
+-- @param path path/file to check
+-- @return `true` if found, `false` + error message otherwise
 function _M.file_exists(path)
   local f, err = io.open(path, "r")
   if f ~= nil then
@@ -17,6 +25,11 @@ function _M.file_exists(path)
   end
 end
 
+---
+-- Execute an OS command and catch the output.
+-- @param command OS command to execute
+-- @return string containing command output (both stdout and stderr)
+-- @return exitcode
 function _M.os_execute(command)
   local n = os.tmpname() -- get a temporary file name to store output
   local f = os.tmpname() -- get a temporary file name to store script
@@ -28,21 +41,30 @@ function _M.os_execute(command)
   return string.gsub(string.gsub(result, "^"..f..":[%s%w]+:%s*", ""), "[%\r%\n]", ""), exit_code / 256
 end
 
+---
+-- Check existence of a command.
+-- @param cmd command being searched for
+-- @return `true` of found, `false` otherwise
 function _M.cmd_exists(cmd)
   local _, code = _M.os_execute("hash "..cmd)
   return code == 0
 end
 
--- Kill a process by PID and wait until it's terminated
--- @param `pid` the pid to kill
+--- Kill a process by PID.
+-- Kills the process and waits until it's terminated
+-- @param pid_file the file containing the pid to kill
+-- @param signal the signal to use
+-- @return `os_execute` results, see os_execute.
 function _M.kill_process_by_pid_file(pid_file, signal)
   if _M.file_exists(pid_file) then
     local pid = stringy.strip(_M.read_file(pid_file))
-    local res, code = _M.os_execute("while kill -0 "..pid.." >/dev/null 2>&1; do kill "..(signal and "-"..tostring(signal).." " or "")..pid.."; sleep 0.1; done")
-    return res, code
+    return _M.os_execute("while kill -0 "..pid.." >/dev/null 2>&1; do kill "..(signal and "-"..tostring(signal).." " or "")..pid.."; sleep 0.1; done")
   end
 end
 
+--- Read file contents.
+-- @param path filepath to read
+-- @return file contents as string, or `nil` if not succesful
 function _M.read_file(path)
   local contents = nil
   local file = io.open(path, "rb")
@@ -53,6 +75,9 @@ function _M.read_file(path)
   return contents
 end
 
+--- Write file contents.
+-- @param path filepath to write to
+-- @return `true` upon success, or `false` + error message on failure
 function _M.write_to_file(path, value)
   local file, err = io.open(path, "w")
   if err then
@@ -64,14 +89,21 @@ function _M.write_to_file(path, value)
   return true
 end
 
+--- Get the filesize.
+-- @param path path to file to check
+-- @return size of file, or `nil` on failure
 function _M.file_size(path)
+  local size
   local file = io.open(path, "rb")
-  local size = file:seek("end")
-  file:close()
+  if file then
+    size = file:seek("end")
+    file:close()
+  end
   return size
 end
 
 function _M.retrieve_files(dir, options)
+-- TODO : this function is dead code, remove?
   local fs = require "luarocks.fs"
   local pattern = options.file_pattern
   local exclude_dir_patterns = options.exclude_dir_patterns
@@ -105,18 +137,24 @@ function _M.retrieve_files(dir, options)
   return files
 end
 
+--- Load a yaml configuration file.
+-- The return config will get 2 extra fields; `pid_file` of the nginx process 
+-- and `dao_config` as a shortcut to the dao configuration
+-- @param configuration_path path to configuration file to load
+-- @return config Loaded configuration table
+-- @return dao_factory the accompanying DAO factory
 function _M.load_configuration_and_dao(configuration_path)
   local configuration_file = _M.read_file(configuration_path)
   if not configuration_file then
     error("No configuration file at: "..configuration_path)
   end
 
-  -- Configuraiton should already be validated by the CLI at this point
+  -- Configuration should already be validated by the CLI at this point
   local configuration = yaml.load(configuration_file)
 
   local dao_config = configuration.databases_available[configuration.database]
   if dao_config == nil then
-    error("No \""..configuration.database.."\" dao defined")
+    error('No "'..configuration.database..'" dao defined')
   end
 
   -- Adding computed properties to the configuration
@@ -132,7 +170,7 @@ function _M.load_configuration_and_dao(configuration_path)
     configuration.nginx_working_dir = fs.current_dir().."/"..configuration.nginx_working_dir
   end
 
-  -- Instanciate the DAO Factory along with the configuration
+  -- Instantiate the DAO Factory along with the configuration
   local DaoFactory = require("kong.dao."..configuration.database..".factory")
   local dao_factory = DaoFactory(dao_config.properties, configuration.plugins_available)
 
