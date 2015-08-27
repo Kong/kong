@@ -120,7 +120,7 @@ function _M.serialize_entry(ngx)
     time = alf_time,
     request = {
       method = ngx.req.get_method(),
-      url = ngx.var.scheme.."://"..ngx.var.host..ngx.var.uri,
+      url = ngx.var.scheme.."://"..ngx.var.host..ngx.var.request_uri,
       httpVersion = "HTTP/"..ngx.req.http_version(),
       queryString = dic_to_array(ngx.req.get_uri_args()),
       headers = alf_req_headers_arr,
