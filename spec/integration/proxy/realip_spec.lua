@@ -16,7 +16,7 @@ describe("Real IP", function()
         { name = "tests realip", public_dns = "realip.com", target_url = "http://mockbin.com" }
       },
       plugin_configuration = {
-        { name = "filelog", value = { path = FILE_LOG_PATH }, __api = 1 }
+        { name = "file-log", value = { path = FILE_LOG_PATH }, __api = 1 }
       }
     }
 

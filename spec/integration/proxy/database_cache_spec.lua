@@ -27,7 +27,7 @@ describe("Database cache", function()
 
     -- Let's add the authentication plugin configuration
     local _, err = env.dao_factory.plugins_configurations:insert {
-      name = "keyauth",
+      name = "key-auth",
       api_id = fixtures.api[1].id,
       value = {
         key_names = {"x-key"}

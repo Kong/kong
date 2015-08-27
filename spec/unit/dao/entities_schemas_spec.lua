@@ -233,12 +233,12 @@ describe("Entities Schemas", function()
 
     it("should validate a plugin configuration's `value` field", function()
       -- Success
-      local plugin = {name = "keyauth", api_id = "stub", value = {key_names = {"x-kong-key"}}}
+      local plugin = {name = "key-auth", api_id = "stub", value = {key_names = {"x-kong-key"}}}
       local valid = validate_entity(plugin, plugins_configurations_schema, {dao = dao_stub})
       assert.True(valid)
 
       -- Failure
-      plugin = {name = "ratelimiting", api_id = "stub", value = { second = "hello" }}
+      plugin = {name = "rate-limiting", api_id = "stub", value = { second = "hello" }}
 
       local valid, errors = validate_entity(plugin, plugins_configurations_schema, {dao = dao_stub})
       assert.False(valid)

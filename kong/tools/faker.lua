@@ -24,7 +24,7 @@ function Faker:fake_entity(type)
     }
   elseif type == "plugin_configuration" then
     return {
-      name = "ratelimiting",
+      name = "rate-limiting",
       value = { second = 10 }
     }
   else

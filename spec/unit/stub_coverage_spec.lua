@@ -41,8 +41,7 @@ local function retrieve_files(dir, options)
   return files
 end
 
-
-local lua_sources = retrieve_files("./kong", { exclude_dir_patterns = {"cli", "vendor", "filelog", "reports"}, file_pattern = ".lua$" })
+local lua_sources = retrieve_files("./kong", { exclude_dir_patterns = {"cli", "vendor", "file-log", "reports"}, file_pattern = ".lua$" })
 
 for _, source_link in ipairs(lua_sources) do
   dofile(source_link)

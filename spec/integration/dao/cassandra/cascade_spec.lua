@@ -25,10 +25,10 @@ describe("Cassandra cascade delete", function()
            target_url = "http://mockbin.com"}
         },
         plugin_configuration = {
-          {name = "keyauth",                                   __api = 1},
-          {name = "ratelimiting", value = {minute = 6},        __api = 1},
-          {name = "filelog", value = {path = "/tmp/spec.log"}, __api = 1},
-          {name = "keyauth",                                   __api = 2}
+          {name = "key-auth",                                   __api = 1},
+          {name = "rate-limiting", value = {minute = 6},        __api = 1},
+          {name = "file-log", value = {path = "/tmp/spec.log"}, __api = 1},
+          {name = "key-auth",                                   __api = 2}
         }
       }
       api = fixtures.api[1]
@@ -75,10 +75,10 @@ describe("Cassandra cascade delete", function()
           {username = "untouched consumer"}
         },
         plugin_configuration = {
-          {name = "ratelimiting", value = {minute = 6},        __api = 1, __consumer = 1},
-          {name = "response_transformer",                      __api = 1, __consumer = 1},
-          {name = "filelog", value = {path = "/tmp/spec.log"}, __api = 1, __consumer = 1},
-          {name = "request_transformer",                       __api = 1, __consumer = 2}
+          {name = "rate-limiting", value = {minute = 6},        __api = 1, __consumer = 1},
+          {name = "response-transformer",                      __api = 1, __consumer = 1},
+          {name = "file-log", value = {path = "/tmp/spec.log"}, __api = 1, __consumer = 1},
+          {name = "request-transformer",                       __api = 1, __consumer = 2}
         }
       }
       consumer = fixtures.consumer[1]

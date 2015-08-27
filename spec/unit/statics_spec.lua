@@ -43,20 +43,20 @@ describe("Static files", function()
 ## Available plugins on this server
 plugins_available:
   - ssl
-  - keyauth
-  - basicauth
+  - key-auth
+  - basic-auth
   - oauth2
-  - ratelimiting
+  - rate-limiting
   - response-ratelimiting
-  - tcplog
-  - udplog
-  - filelog
-  - httplog
+  - tcp-log
+  - udp-log
+  - file-log
+  - http-log
   - cors
-  - request_transformer
-  - response_transformer
-  - requestsizelimiting
-  - ip_restriction
+  - request-transformer
+  - response-transformer
+  - request-size-limiting
+  - ip-restriction
   - mashape-analytics
 
 ## The Kong working directory

@@ -16,7 +16,7 @@
 
 local ALFBuffer = require "kong.plugins.mashape-analytics.buffer"
 local BasePlugin = require "kong.plugins.base_plugin"
-local ALFSerializer = require "kong.plugins.log_serializers.alf"
+local ALFSerializer = require "kong.plugins.log-serializers.alf"
 
 local ALF_BUFFERS = {} -- buffers per-api
 

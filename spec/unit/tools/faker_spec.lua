@@ -91,8 +91,8 @@ describe("Faker", function()
           { name = "tests faker 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
         },
         plugin_configuration = {
-          { name = "keyauth", value = {key_names={"apikey"}}, __api = 1 },
-          { name = "keyauth", value = {key_names={"apikey"}}, __api = 2 }
+          { name = "key-auth", value = {key_names={"apikey"}}, __api = 1 },
+          { name = "key-auth", value = {key_names={"apikey"}}, __api = 2 }
         }
       }
 

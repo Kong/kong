@@ -39,7 +39,7 @@ describe("Resolver", function()
         {name = "tests preserve host 2", public_dns = "httpbin-preserve.com", target_url = "http://httpbin.org", preserve_host = true}
       },
       plugin_configuration = {
-        {name = "keyauth", value = {key_names = {"apikey"} }, __api = 2}
+        {name = "key-auth", value = {key_names = {"apikey"} }, __api = 2}
       }
     }
 
