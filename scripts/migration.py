@@ -22,6 +22,8 @@ log.addHandler(handler)
 try:
     import yaml
     from cassandra.cluster import Cluster
+    from cassandra import ConsistencyLevel
+    from cassandra.query import SimpleStatement
 except ImportError as err:
     log.error(err)
     log.info("""This script requires cassandra-driver and PyYAML:
@@ -66,7 +68,7 @@ def migrate_schema_migrations_table(session):
 
     :param session: opened cassandra session
     """
-    query = "INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)"
+    query = SimpleStatement("INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)", consistency_level=ConsistencyLevel.ALL)
     session.execute(query, ["core", ['2015-01-12-175310_skeleton', '2015-01-12-175310_init_schema']])
     session.execute(query, ["basic-auth", ['2015-08-03-132400_init_basicauth']])
     session.execute(query, ["key-auth", ['2015-07-31-172400_init_keyauth']])
@@ -104,11 +106,13 @@ def migrate_plugins_renaming(session):
         if plugin.name in new_names:
             plugin_name = new_names[plugin.name]
 
-        session.execute("DELETE FROM plugins_configurations WHERE id = %s", [plugin.id])
-        session.execute("""
+        delete_query = SimpleStatement("DELETE FROM plugins_configurations WHERE id = %s", consistency_level=ConsistencyLevel.ALL)
+        insert_query = SimpleStatement("""
             INSERT INTO plugins_configurations(id, name, api_id, consumer_id, created_at, enabled, value)
-            VALUES(%s, %s, %s, %s, %s, %s, %s)
-        """, [plugin.id, plugin_name, plugin.api_id, plugin.consumer_id, plugin.created_at, plugin.enabled, plugin.value])
+            VALUES(%s, %s, %s, %s, %s, %s, %s)""", consistency_level=ConsistencyLevel.ALL)
+
+        session.execute(delete_query, [plugin.id])
+        session.execute(insert_query, [plugin.id, plugin_name, plugin.api_id, plugin.consumer_id, plugin.created_at, plugin.enabled, plugin.value])
 
     log.info("Plugins renamed")
 
@@ -125,7 +129,8 @@ def migrate_rate_limiting_value(session):
         if "limit" in conf:
             new_conf = {}
             new_conf[conf["period"]] = conf["limit"]
-            session.execute("UPDATE plugins_configurations SET value = %s WHERE id = %s AND name = %s", [json.dumps(new_conf), plugin.id, plugin.name])
+            update_query = SimpleStatement("UPDATE plugins_configurations SET value = %s WHERE id = %s AND name = %s", consistency_level=ConsistencyLevel.ALL)
+            session.execute(update_query, [json.dumps(new_conf), plugin.id, plugin.name])
 
     log.info("rate-limiting values migrated")
 
