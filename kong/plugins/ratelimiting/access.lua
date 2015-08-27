@@ -2,7 +2,26 @@ local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
 
+local string_format = string.format
+
 local _M = {}
+
+function _M.retrive_metrics(usage, old_format)
+  local response_data = { rate = {} }
+  local no_limit_value = constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE
+
+  if ngx.var.uri ~= constants.RATELIMIT.RETRIVE_METRICS.URI then
+    return
+  end
+
+  for k, field_name in ipairs(constants.RATELIMIT.PERIODS) do
+    usage_for_field = usage[field_name] or {}
+    response_data.rate[string_format("limit-%s", field_name)] = usage_for_field.limit or no_limit_value
+    response_data.rate[string_format("remaining-%s", field_name)] = usage_for_field.remaining or no_limit_value
+  end
+
+  return response_data
+end
 
 local function get_identifier()
   local identifier
@@ -74,6 +93,11 @@ function _M.execute(conf)
 
   -- Load current metric for configured period
   local usage, stop = get_usage(api_id, identifier, current_timestamp, conf)
+
+  local metrics_status = _M.retrive_metrics(usage, old_format)
+  if metrics_status then
+    return responses.send(200, metrics_status)
+  end
 
   -- Adding headers
   for k, v in pairs(usage) do
