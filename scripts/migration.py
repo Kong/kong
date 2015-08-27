@@ -11,7 +11,7 @@ Flags:
   -h             print help
 '''
 
-import getopt, sys, os.path, logging
+import getopt, sys, os.path, logging, json
 
 log = logging.getLogger()
 log.setLevel("INFO")
@@ -112,6 +112,24 @@ def migrate_plugins_renaming(session):
 
     log.info("Plugins renamed")
 
+def migrate_rate_limiting_value(session):
+    """
+    Update all old `values` of rate-limiting plugins_configurations to the new schema (supporting multiple limits)
+
+    :param session: opened cassandra session
+    """
+    log.info("Migrating rate-limiting values")
+
+    for plugin in session.execute("SELECT * FROM plugins_configurations WHERE name = 'rate-limiting'"):
+        conf = json.loads(plugin.value)
+        if "limit" in conf:
+            new_conf = {}
+            new_conf[conf["period"]] = conf["limit"]
+            session.execute("UPDATE plugins_configurations SET value = %s WHERE id = %s AND name = %s", [json.dumps(new_conf), plugin.id, plugin.name])
+
+    log.info("rate-limiting values migrated")
+
+
 def migrate(kong_config):
     """
     Instanciate a Cassandra session and decides if the keyspace needs to be migrated
@@ -141,12 +159,9 @@ def migrate(kong_config):
         if any(row.id == "migrations" for row in rows):
             log.info("Already migrated to 0.5.0, but legacy schema found. Purging.")
             migrate_schema_migrations_remove_legacy_row(session)
-        else:
-            return False
 
     migrate_plugins_renaming(session)
-
-    return True
+    migrate_rate_limiting_value(session)
 
 def parse_arguments(argv):
     """
@@ -179,10 +194,8 @@ def parse_arguments(argv):
 def main(argv):
     try:
         config = parse_arguments(argv)
-        if migrate(config):
-            log.info("Schema migrated to Kong 0.5.0.")
-        else:
-            log.info("Schema already migrated to Kong 0.5.0.")
+        migrate(config)
+        log.info("Schema migrated to Kong 0.5.0.")
         shutdown_exit(0)
     except getopt.GetoptError as err:
         log.error(err)
