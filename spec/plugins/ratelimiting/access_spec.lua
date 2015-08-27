@@ -1,6 +1,9 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
+local constants = require "kong.constants"
+
+local string_format = string.format
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
@@ -22,7 +25,8 @@ describe("RateLimiting Plugin", function()
         { name = "tests ratelimiting 1", public_dns = "test3.com", target_url = "http://mockbin.com" },
         { name = "tests ratelimiting 2", public_dns = "test4.com", target_url = "http://mockbin.com" },
         { name = "tests ratelimiting 3", public_dns = "test5.com", target_url = "http://mockbin.com" },
-        { name = "tests ratelimiting 4", public_dns = "test6.com", target_url = "http://mockbin.com" }
+        { name = "tests ratelimiting 4", public_dns = "test6.com", target_url = "http://mockbin.com" },
+        { name = "tests ratelimiting 5", public_dns = "test7.com", target_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
@@ -34,11 +38,14 @@ describe("RateLimiting Plugin", function()
         { name = "ratelimiting", value = { minute = 8 }, __api = 1, __consumer = 1 },
         { name = "ratelimiting", value = { minute = 6 }, __api = 2 },
         { name = "ratelimiting", value = { minute = 3, hour = 5 }, __api = 3 },
-        { name = "ratelimiting", value = { minute = 33 }, __api = 4 }
+        { name = "ratelimiting", value = { minute = 33 }, __api = 4 },
+        { name = "ratelimiting", value = { minute = 12, hour = 16 }, __api = 5 },
+        
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
-        { key = "apikey123", __consumer = 2 }
+        { key = "apikey123", __consumer = 2 },
+
       }
     }
 
@@ -190,7 +197,37 @@ describe("RateLimiting Plugin", function()
       end)
 
     end)
-    
+  end)
+
+  describe("Rate limit matrics", function()
+    it("should return json with current rate limit matrics", function()
+      -- set matrics for second.
+      local get_matrics_url = string_format("%s%s", spec_helper.PROXY_URL, constants.RATELIMIT.RETRIVE_METRICS.URI)
+
+      -- make 2 requests to the api
+      local response_json, status = http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
+      local response_json, status = http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
+
+      -- get current status
+      local response_json, status = http_client.get(get_matrics_url, {}, {host = "test7.com"})
+      local response = cjson.decode(response_json)
+
+      assert.are.equal(constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE, response.rate["limit-second"])
+      assert.are.equal(constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE, response.rate["remaining-second"])
+
+      assert.are.equal(12, response.rate["limit-minute"])
+      assert.are.equal(10, response.rate["remaining-minute"])
+
+      assert.are.equal(16, response.rate["limit-hour"])
+      assert.are.equal(14, response.rate["remaining-hour"])
+
+      assert.are.equal(constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE, response.rate["limit-day"])
+      assert.are.equal(constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE, response.rate["remaining-day"])
+
+      assert.are.equal(constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE, response.rate["limit-month"])
+      assert.are.equal(constants.RATELIMIT.RETRIVE_METRICS.NO_LIMIT_VALUE, response.rate["remaining-month"])
+
+    end)
   end)
 
 end)

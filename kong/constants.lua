@@ -54,6 +54,10 @@ return {
       "day",
       "month",
       "year"
+    },
+    RETRIVE_METRICS = {
+      URI = "/v1/retrive_metrics",
+      NO_LIMIT_VALUE = "unlimited"
     }
   }
 }
