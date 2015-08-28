@@ -41,17 +41,17 @@ local Migrations = {
         CREATE TABLE IF NOT EXISTS apis(
           id uuid,
           name text,
-          public_dns text,
+          inbound_dns text,
           path text,
           strip_path boolean,
-          target_url text,
+          upstream_url text,
           preserve_host boolean,
           created_at timestamp,
           PRIMARY KEY (id)
         );
 
         CREATE INDEX IF NOT EXISTS ON apis(name);
-        CREATE INDEX IF NOT EXISTS ON apis(public_dns);
+        CREATE INDEX IF NOT EXISTS ON apis(inbound_dns);
         CREATE INDEX IF NOT EXISTS ON apis(path);
 
         CREATE TABLE IF NOT EXISTS plugins(

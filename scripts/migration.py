@@ -22,7 +22,7 @@ log.addHandler(handler)
 try:
     import yaml
     from cassandra.cluster import Cluster
-    from cassandra import ConsistencyLevel
+    from cassandra import ConsistencyLevel, InvalidRequest
     from cassandra.query import SimpleStatement
 except ImportError as err:
     log.error(err)
@@ -136,7 +136,9 @@ def migrate_rate_limiting_value(session):
 
 def migrate_rename_plugins_configurations(session):
     """
+    Migrate all rows in the `plugins_configurations` table to `plugins`
 
+    :param session: opened cassandra session
     """
     log.info("Renaming 'plugins_configurations' to 'plugins'...")
 
@@ -162,8 +164,25 @@ def migrate_rename_plugins_configurations(session):
         session.execute(insert_query, [plugin.id, plugin.api_id, plugin.consumer_id, plugin.name, plugin.value, plugin.enabled, plugin.created_at])
 
     session.execute("DROP TABLE plugins_configurations")
-
     log.info("Plugins moved to table 'plugins'")
+
+def migrate_rename_apis_properties(sessions):
+    """
+
+    """
+    log.info("Renaming some properties for APIs...")
+
+    session.execute("ALTER TABLE apis ADD inbound_dns text")
+    session.execute("ALTER TABLE apis ADD upstream_url text")
+
+    select_query = SimpleStatement("SELECT * FROM apis", consistency_level=ConsistencyLevel.ALL)
+
+    for api in session.execute(select_query):
+        session.execute("UPDATE apis SET inbound_dns = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.target_url, api.id])
+
+    session.execute("ALTER TABLE apis DROP public_dns")
+    session.execute("ALTER TABLE apis DROP target_url")
+    log.info("APIs properties renamed")
 
 def migrate(kong_config):
     """
@@ -178,6 +197,12 @@ def migrate(kong_config):
     global session
     session = cluster.connect(keyspace)
 
+    """
+    1. schema_migrations
+    Check if the 'schema_migrations' table has been migrated yet or not.
+
+    ** Also Check if Kong is in 0.4.2 or else stops the script. **
+    """
     rows = session.execute("SELECT * FROM schema_migrations")
     if len(rows) == 1 and rows[0].id == "migrations":
         last_executed_migration = rows[0].migrations[-1]
@@ -192,12 +217,34 @@ def migrate(kong_config):
     elif len(rows) > 1:
         # apparently kong was restarted without previously running this script
         if any(row.id == "migrations" for row in rows):
-            log.info("Already migrated to 0.5.0, but legacy schema found. Purging.")
+            log.info("Already migrated to 0.5.0, but legacy value found. Purging.")
             migrate_schema_migrations_remove_legacy_row(session)
 
-    migrate_plugins_renaming(session)
-    migrate_rate_limiting_value(session)
-    migrate_rename_plugins_configurations(session)
+    """
+    2. Plugins
+    Check if plugins_configurations have been migrated yet, if not, migrate
+        a. Rename some plugins
+        b. Migrate the old rate-limit config schema to the new one
+        c. Migrate all rows into a new table 'plugins' and drop the old one
+    """
+    columnfamilies = session.execute("SELECT columnfamily_name FROM system.schema_columnfamilies WHERE keyspace_name = %s", [keyspace])
+    if any(row.columnfamily_name == "plugins_configurations" for row in columnfamilies):
+        migrate_plugins_renaming(session)
+        migrate_rate_limiting_value(session)
+        migrate_rename_plugins_configurations(session)
+    else:
+        log.info("Plugins already migrated")
+
+    """
+    3. APIs
+    Check if APIs have been migrated yet (properties renaming)
+    """
+    try:
+        session.execute("SELECT upstream_url FROM apis")
+        log.info("APIs properties already migrated")
+    except InvalidRequest as err:
+        # If this column doesn't exit yet, apis have not been migrated
+        migrate_rename_apis_properties(session)
 
 def parse_arguments(argv):
     """
@@ -231,7 +278,7 @@ def main(argv):
     try:
         config = parse_arguments(argv)
         migrate(config)
-        log.info("Schema migrated to Kong 0.5.0.")
+        log.info("Cassandra migrated to Kong 0.5.0.")
         shutdown_exit(0)
     except getopt.GetoptError as err:
         log.error(err)
