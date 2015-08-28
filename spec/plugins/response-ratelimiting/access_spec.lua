@@ -19,9 +19,9 @@ describe("RateLimiting Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests response-ratelimiting 1", public_dns = "test1.com", target_url = "http://httpbin.org/" },
-        { name = "tests response-ratelimiting 2", public_dns = "test2.com", target_url = "http://httpbin.org/" },
-        { name = "tests response-ratelimiting 3", public_dns = "test3.com", target_url = "http://httpbin.org/" }
+        { name = "tests response-ratelimiting 1", inbound_dns = "test1.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests response-ratelimiting 2", inbound_dns = "test2.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests response-ratelimiting 3", inbound_dns = "test3.com", upstream_url = "http://httpbin.org/" }
       },
       consumer = {
         { custom_id = "consumer_123" },

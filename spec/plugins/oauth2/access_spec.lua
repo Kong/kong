@@ -40,11 +40,11 @@ describe("Authentication Plugin", function()
     spec_helper.drop_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests oauth2", public_dns = "oauth2.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 with path", public_dns = "mockbin-path.com", target_url = "http://mockbin.com", path = "/somepath/" },
-        { name = "tests oauth2 with hide credentials", public_dns = "oauth2_3.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 client credentials", public_dns = "oauth2_4.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 password grant", public_dns = "oauth2_5.com", target_url = "http://mockbin.com" }
+        { name = "tests oauth2", inbound_dns = "oauth2.com", upstream_url = "http://mockbin.com" },
+        { name = "tests oauth2 with path", inbound_dns = "mockbin-path.com", upstream_url = "http://mockbin.com", path = "/somepath/" },
+        { name = "tests oauth2 with hide credentials", inbound_dns = "oauth2_3.com", upstream_url = "http://mockbin.com" },
+        { name = "tests oauth2 client credentials", inbound_dns = "oauth2_4.com", upstream_url = "http://mockbin.com" },
+        { name = "tests oauth2 password grant", inbound_dns = "oauth2_5.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { username = "auth_tests_consumer" }

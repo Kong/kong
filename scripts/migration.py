@@ -174,6 +174,7 @@ def migrate_rename_apis_properties(sessions):
 
     session.execute("ALTER TABLE apis ADD inbound_dns text")
     session.execute("ALTER TABLE apis ADD upstream_url text")
+    session.execute("CREATE INDEX IF NOT EXISTS ON apis(inbound_dns)")
 
     select_query = SimpleStatement("SELECT * FROM apis", consistency_level=ConsistencyLevel.ALL)
 

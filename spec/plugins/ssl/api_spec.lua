@@ -11,7 +11,7 @@ describe("SSL API", function()
     spec_helper.start_kong()
     spec_helper.insert_fixtures {
       api = {
-        {name = "mockbin", public_dns = "mockbin.com", target_url = "http://mockbin.com"}
+        {name = "mockbin", inbound_dns = "mockbin.com", upstream_url = "http://mockbin.com"}
       }
     }
     BASE_URL = spec_helper.API_URL.."/apis/mockbin/plugins/"

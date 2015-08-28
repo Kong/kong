@@ -18,11 +18,11 @@ describe("Cassandra cascade delete", function()
       local fixtures = spec_helper.insert_fixtures {
         api = {
           {name = "cascade delete",
-           public_dns = "mockbin.com",
-           target_url = "http://mockbin.com"},
+           inbound_dns = "mockbin.com",
+           upstream_url = "http://mockbin.com"},
           {name = "untouched cascade delete",
-           public_dns = "untouched.com",
-           target_url = "http://mockbin.com"}
+           inbound_dns = "untouched.com",
+           upstream_url = "http://mockbin.com"}
         },
         plugin = {
           {name = "key-auth",                                    __api = 1},
@@ -67,8 +67,8 @@ describe("Cassandra cascade delete", function()
       local fixtures = spec_helper.insert_fixtures {
         api = {
           {name = "cascade delete",
-           public_dns = "mockbin.com",
-           target_url = "http://mockbin.com"}
+           inbound_dns = "mockbin.com",
+           upstream_url = "http://mockbin.com"}
         },
         consumer = {
           {username = "king kong"},

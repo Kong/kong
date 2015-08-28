@@ -15,8 +15,8 @@ function Faker:fake_entity(type)
   if type == "api" then
     return {
       name = "random"..r,
-      public_dns = "random"..r..".com",
-      target_url = "http://random"..r..".com"
+      inbound_dns = "random"..r..".com",
+      upstream_url = "http://random"..r..".com"
     }
   elseif type == "consumer" then
     return {

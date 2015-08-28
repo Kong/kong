@@ -26,17 +26,17 @@ describe("Resolver", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests host resolver 1", public_dns = "mockbin.com", target_url = "http://mockbin.com"},
-        {name = "tests host resolver 2", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com"},
-        {name = "tests path resolver", target_url = "http://mockbin.com", path = "/status"},
-        {name = "tests stripped path resolver", target_url = "http://mockbin.com", path = "/mockbin", strip_path = true},
-        {name = "tests stripped path resolver with pattern characters", target_url = "http://mockbin.com", path = "/mockbin-with-pattern/", strip_path = true},
-        {name = "tests deep path resolver", target_url = "http://mockbin.com", path = "/deep/path/", strip_path = true},
-        {name = "tests dup path resolver", target_url = "http://mockbin.com", path = "/har", strip_path = true},
-        {name = "tests wildcard subdomain", target_url = "http://mockbin.com/status/200", public_dns = "*.wildcard.com"},
-        {name = "tests wildcard subdomain 2", target_url = "http://mockbin.com/status/201", public_dns = "wildcard.*"},
-        {name = "tests preserve host", public_dns = "httpbin-nopreserve.com", target_url = "http://httpbin.org"},
-        {name = "tests preserve host 2", public_dns = "httpbin-preserve.com", target_url = "http://httpbin.org", preserve_host = true}
+        {name = "tests host resolver 1", inbound_dns = "mockbin.com", upstream_url = "http://mockbin.com"},
+        {name = "tests host resolver 2", inbound_dns = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
+        {name = "tests path resolver", upstream_url = "http://mockbin.com", path = "/status"},
+        {name = "tests stripped path resolver", upstream_url = "http://mockbin.com", path = "/mockbin", strip_path = true},
+        {name = "tests stripped path resolver with pattern characters", upstream_url = "http://mockbin.com", path = "/mockbin-with-pattern/", strip_path = true},
+        {name = "tests deep path resolver", upstream_url = "http://mockbin.com", path = "/deep/path/", strip_path = true},
+        {name = "tests dup path resolver", upstream_url = "http://mockbin.com", path = "/har", strip_path = true},
+        {name = "tests wildcard subdomain", upstream_url = "http://mockbin.com/status/200", inbound_dns = "*.wildcard.com"},
+        {name = "tests wildcard subdomain 2", upstream_url = "http://mockbin.com/status/201", inbound_dns = "wildcard.*"},
+        {name = "tests preserve host", inbound_dns = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
+        {name = "tests preserve host 2", inbound_dns = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -55,7 +55,7 @@ describe("Resolver", function()
     it("should return Not Found when the API is not in Kong", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, {host = "foo.com"})
       assert.equal(404, status)
-      assert.equal('{"public_dns":["foo.com"],"message":"API not found with these values","path":"\\/request"}\n', response)
+      assert.equal('{"path":"\\/request","message":"API not found with these values","inbound_dns":["foo.com"]}\n', response)
     end)
 
   end)
@@ -130,7 +130,7 @@ describe("Resolver", function()
 
       describe("with wildcard subdomain", function()
 
-        it("should proxy when the public_dns is a wildcard subdomain", function()
+        it("should proxy when the inbound_dns is a wildcard subdomain", function()
           local _, status = http_client.get(STUB_GET_URL, nil, {host = "subdomain.wildcard.com"})
           assert.equal(200, status)
 

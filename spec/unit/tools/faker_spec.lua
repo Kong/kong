@@ -48,7 +48,7 @@ describe("Faker", function()
 
   describe("#insert_from_table()", function()
     it("should throw a descriptive error if cannot insert an entity", function()
-      local api_t = { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" }
+      local api_t = { name = "tests faker 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" }
 
       local printable_mt = require "kong.tools.printable"
       local entity_to_str = setmetatable(api_t, printable_mt)
@@ -87,8 +87,8 @@ describe("Faker", function()
     it("should create relations between entities_to_insert and inserted entities", function()
       local fixtures = {
         api = {
-          { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
-          { name = "tests faker 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
+          { name = "tests faker 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" },
+          { name = "tests faker 2", inbound_dns = "bar.com", upstream_url = "http://mockbin.com" }
         },
         plugin = {
           { name = "key-auth", config = {key_names={"apikey"}}, __api = 1 },

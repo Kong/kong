@@ -89,8 +89,8 @@ describe("Cassandra", function()
 
         -- API
         api, err = dao_factory.apis:insert {
-          public_dns = "test.com",
-          target_url = "http://mockbin.com"
+          inbound_dns = "test.com",
+          upstream_url = "http://mockbin.com"
         }
         assert.falsy(err)
         assert.truthy(api.name)
@@ -228,8 +228,8 @@ describe("Cassandra", function()
         assert.equal(1, #apis)
         assert.equal(api_t.id, apis[1].id)
         assert.equal(api_t.name, apis[1].name)
-        assert.equal(api_t.public_dns, apis[1].public_dns)
-        assert.equal(api_t.target_url, apis[1].target_url)
+        assert.equal(api_t.inbound_dns, apis[1].inbound_dns)
+        assert.equal(api_t.upstream_url, apis[1].upstream_url)
 
         -- Consumer
         local consumers, err = session:execute("SELECT * FROM consumers")
@@ -271,15 +271,15 @@ describe("Cassandra", function()
         assert.True(#apis > 0)
 
         local api_t = apis[1]
-        -- Should not work because we're reusing a public_dns
-        api_t.public_dns = apis[2].public_dns
+        -- Should not work because we're reusing a inbound_dns
+        api_t.inbound_dns = apis[2].inbound_dns
 
         local api, err = dao_factory.apis:update(api_t)
         assert.truthy(err)
         assert.falsy(api)
         assert.is_daoError(err)
         assert.True(err.unique)
-        assert.equal("public_dns already exists with value '"..api_t.public_dns.."'", err.message.public_dns)
+        assert.equal("inbound_dns already exists with value '"..api_t.inbound_dns.."'", err.message.inbound_dns)
       end)
 
       describe("full", function()
@@ -313,7 +313,7 @@ describe("Cassandra", function()
           assert.truthy(api_t)
 
           -- Update
-          api.public_dns = nil
+          api.inbound_dns = nil
 
           local nil_api, err = dao_factory.apis:update(api, true)
           assert.truthy(err)
@@ -323,7 +323,7 @@ describe("Cassandra", function()
           api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
           assert.falsy(err)
           assert.truthy(api[1].name)
-          assert.truthy(api[1].public_dns)
+          assert.truthy(api[1].inbound_dns)
         end)
 
       end)
@@ -366,7 +366,7 @@ describe("Cassandra", function()
         assert.True(needs_filtering)
 
         -- No Filtering needed
-        apis, err, needs_filtering = dao_factory.apis:find_by_keys {public_dns = api_t.public_dns}
+        apis, err, needs_filtering = dao_factory.apis:find_by_keys {inbound_dns = api_t.inbound_dns}
         assert.falsy(err)
         assert.same(api_t, apis[1])
         assert.False(needs_filtering)
@@ -545,8 +545,8 @@ describe("Cassandra", function()
         it("should find distinct plugins configurations", function()
           faker:insert_from_table {
             api = {
-              { name = "tests distinct 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
-              { name = "tests distinct 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
+              { name = "tests distinct 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" },
+              { name = "tests distinct 2", inbound_dns = "bar.com", upstream_url = "http://mockbin.com" }
             },
             plugin = {
               { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
