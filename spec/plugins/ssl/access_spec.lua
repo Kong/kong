@@ -20,9 +20,9 @@ describe("SSL Plugin", function()
         { name = "API TESTS 12 (ssl)", public_dns = "ssl2.com", target_url = "http://mockbin.com" },
         { name = "API TESTS 13 (ssl)", public_dns = "ssl3.com", target_url = "http://mockbin.com" }
       },
-      plugin_configuration = {
-        { name = "ssl", value = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
-        { name = "ssl", value = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true }, __api = 2 }
+      plugin = {
+        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
+        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true }, __api = 2 }
       }
     }
 
@@ -32,7 +32,7 @@ describe("SSL Plugin", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-  
+
   describe("SSL Util", function()
 
     it("should not convert an invalid cert to DER", function()
@@ -52,7 +52,7 @@ describe("SSL Plugin", function()
     end)
 
   end)
-  
+
   describe("SSL Resolution", function()
 
     it("should return default CERTIFICATE when requesting other APIs", function()
@@ -70,7 +70,7 @@ describe("SSL Plugin", function()
     end)
 
   end)
-  
+
   describe("only_https", function()
 
     it("should block request without https", function()
@@ -91,14 +91,14 @@ describe("SSL Plugin", function()
   describe("should work with curl", function()
     local response = http_client.get(API_URL.."/apis/", {public_dns="ssl3.com"})
     local api_id = cjson.decode(response).data[1].id
-    
+
     local kong_working_dir = spec_helper.get_env(spec_helper.TEST_CONF_FILE).configuration.nginx_working_dir
 
     local ssl_cert_path = IO.path:join(kong_working_dir, "ssl", "kong-default.crt")
     local ssl_key_path = IO.path:join(kong_working_dir, "ssl", "kong-default.key")
 
-    local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"value.cert=@"..ssl_cert_path.."\" --form \"value.key=@"..ssl_key_path.."\"")
+    local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"config.cert=@"..ssl_cert_path.."\" --form \"config.key=@"..ssl_key_path.."\"")
     assert.are.equal(201, tonumber(res))
   end)
-  
+
 end)

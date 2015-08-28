@@ -23,13 +23,12 @@ describe("Database cache", function()
 
   it("should expire cache after five seconds", function()
     local _, status = http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "cache.test"})
-    assert.are.equal(200, status)
 
     -- Let's add the authentication plugin configuration
-    local _, err = env.dao_factory.plugins_configurations:insert {
+    local _, err = env.dao_factory.plugins:insert {
       name = "key-auth",
       api_id = fixtures.api[1].id,
-      value = {
+      config = {
         key_names = {"x-key"}
       }
     }

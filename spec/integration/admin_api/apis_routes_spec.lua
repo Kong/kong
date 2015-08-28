@@ -206,7 +206,7 @@ describe("Admin API", function()
     end)
 
     describe("/apis/:api/plugins/", function()
-      local dao_plugins = spec_helper.get_env().dao_factory.plugins_configurations
+      local dao_plugins = spec_helper.get_env().dao_factory.plugins
 
       setup(function()
         spec_helper.drop_db()
@@ -227,7 +227,7 @@ describe("Admin API", function()
         it("[SUCCESS] should create a plugin configuration", function()
           local response, status = http_client.post(BASE_URL, {
             name = "key-auth",
-            ["value.key_names"] = {"apikey"}
+            ["config.key_names"] = {"apikey"}
           })
           assert.equal(201, status)
           local body = json.decode(response)
@@ -237,7 +237,7 @@ describe("Admin API", function()
 
           response, status = http_client.post(BASE_URL, {
             name = "key-auth",
-            value = {key_names={"apikey"}}
+            config = {key_names={"apikey"}}
           }, {["content-type"]="application/json"})
           assert.equal(201, status)
           body = json.decode(response)
@@ -259,7 +259,7 @@ describe("Admin API", function()
         it("[SUCCESS] should create and update", function()
           local response, status = http_client.put(BASE_URL, {
             name = "key-auth",
-            ["value.key_names"] = {"apikey"}
+            ["config.key_names"] = {"apikey"}
           })
           assert.equal(201, status)
           local body = json.decode(response)
@@ -269,7 +269,7 @@ describe("Admin API", function()
 
           response, status = http_client.put(BASE_URL, {
             name = "key-auth",
-            value = {key_names = {"apikey"}}
+            config = {key_names = {"apikey"}}
           }, {["content-type"] = "application/json"})
           assert.equal(201, status)
           body = json.decode(response)
@@ -279,19 +279,19 @@ describe("Admin API", function()
           response, status = http_client.put(BASE_URL, {
             id = plugin_id,
             name = "key-auth",
-            value = {key_names = {"updated_apikey"}}
+            config = {key_names = {"updated_apikey"}}
           }, {["content-type"] = "application/json"})
           assert.equal(200, status)
           body = json.decode(response)
-          assert.equal("updated_apikey", body.value.key_names[1])
+          assert.equal("updated_apikey", body.config.key_names[1])
         end)
 
-        it("should override a plugin's `value` if partial", function()
+        it("should override a plugin's `config` if partial", function()
           local response, status = http_client.put(BASE_URL, {
             id = plugin_id,
             name = "key-auth",
-            ["value.key_names"] = {"api_key"},
-            ["value.hide_credentials"] = true
+            ["config.key_names"] = {"api_key"},
+            ["config.hide_credentials"] = true
           })
           assert.equal(200, status)
           assert.truthy(response)
@@ -299,11 +299,11 @@ describe("Admin API", function()
           response, status = http_client.put(BASE_URL, {
             id = plugin_id,
             name = "key-auth",
-            ["value.key_names"] = {"api_key_updated"}
+            ["config.key_names"] = {"api_key_updated"}
           })
           assert.equal(200, status)
           local body = json.decode(response)
-          assert.same({"api_key_updated"}, body.value.key_names)
+          assert.same({"api_key_updated"}, body.config.key_names)
           assert.falsy(body.hide_credentials)
         end)
 
@@ -329,10 +329,10 @@ describe("Admin API", function()
           spec_helper.drop_db()
           local fixtures = spec_helper.insert_fixtures {
             api = {{ public_dns="mockbin.com", target_url="http://mockbin.com" }},
-            plugin_configuration = {{ name = "key-auth", value = { key_names = { "apikey" }}, __api = 1 }}
+            plugin = {{ name = "key-auth", config = { key_names = { "apikey" }}, __api = 1 }}
           }
           api = fixtures.api[1]
-          plugin = fixtures.plugin_configuration[1]
+          plugin = fixtures.plugin[1]
           BASE_URL = BASE_URL..api.id.."/plugins/"
         end)
 
@@ -350,15 +350,15 @@ describe("Admin API", function()
         describe("PATCH", function()
 
           it("[SUCCESS] should update a plugin", function()
-            local response, status = http_client.patch(BASE_URL..plugin.id, {["value.key_names"]={"key_updated"}})
+            local response, status = http_client.patch(BASE_URL..plugin.id, {["config.key_names"]={"key_updated"}})
             assert.equal(200, status)
             local body = json.decode(response)
-            assert.same("key_updated", body.value.key_names[1])
+            assert.same("key_updated", body.config.key_names[1])
 
-            response, status = http_client.patch(BASE_URL..plugin.id, {["value.key_names"]={"key_updated-json"}}, {["content-type"]="application/json"})
+            response, status = http_client.patch(BASE_URL..plugin.id, {["config.key_names"]={"key_updated-json"}}, {["content-type"]="application/json"})
             assert.equal(200, status)
             body = json.decode(response)
-            assert.same("key_updated-json", body.value.key_names[1])
+            assert.same("key_updated-json", body.config.key_names[1])
           end)
 
           it("[FAILURE] should return proper errors", function()
@@ -366,21 +366,21 @@ describe("Admin API", function()
             assert.equal(404, status)
           end)
 
-          it("should not override a plugin's `value` if partial", function()
-            -- This is delicate since a plugin's `value` is a text field in a DB like Cassandra
+          it("should not override a plugin's `config` if partial", function()
+            -- This is delicate since a plugin's `config` is a text field in a DB like Cassandra
             local _, status = http_client.patch(BASE_URL..plugin.id, {
-              ["value.key_names"] = {"key_set_null_test"},
-              ["value.hide_credentials"] = true
+              ["config.key_names"] = {"key_set_null_test"},
+              ["config.hide_credentials"] = true
             })
             assert.equal(200, status)
 
             local response, status = http_client.patch(BASE_URL..plugin.id, {
-              ["value.key_names"] = {"key_set_null_test_updated"}
+              ["config.key_names"] = {"key_set_null_test_updated"}
             })
             assert.equal(200, status)
             local body = json.decode(response)
-            assert.same({"key_set_null_test_updated"}, body.value.key_names)
-            assert.equal(true, body.value.hide_credentials)
+            assert.same({"key_set_null_test_updated"}, body.config.key_names)
+            assert.equal(true, body.config.hide_credentials)
           end)
 
         end)

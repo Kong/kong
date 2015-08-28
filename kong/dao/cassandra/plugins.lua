@@ -1,32 +1,32 @@
-local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
+local plugins_schema = require "kong.dao.schemas.plugins"
 local query_builder = require "kong.dao.cassandra.query_builder"
 local constants = require "kong.constants"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
 
-local PluginsConfigurations = BaseDao:extend()
+local Plugins = BaseDao:extend()
 
-function PluginsConfigurations:new(properties)
-  self._table = "plugins_configurations"
-  self._schema = plugins_configurations_schema
+function Plugins:new(properties)
+  self._table = "plugins"
+  self._schema = plugins_schema
 
-  PluginsConfigurations.super.new(self, properties)
+  Plugins.super.new(self, properties)
 end
 
 -- @override
-function PluginsConfigurations:_marshall(t)
-  if type(t.value) == "table" then
-    t.value = cjson.encode(t.value)
+function Plugins:_marshall(t)
+  if type(t.config) == "table" then
+    t.config = cjson.encode(t.config)
   end
 
   return t
 end
 
 -- @override
-function PluginsConfigurations:_unmarshall(t)
-  -- deserialize values (tables) string to json
-  if type(t.value) == "string" then
-    t.value = cjson.decode(t.value)
+function Plugins:_unmarshall(t)
+  -- deserialize configs (tables) string to json
+  if type(t.config) == "string" then
+    t.config = cjson.decode(t.config)
   end
   -- remove consumer_id if null uuid
   if t.consumer_id == constants.DATABASE_NULL_ID then
@@ -37,16 +37,16 @@ function PluginsConfigurations:_unmarshall(t)
 end
 
 -- @override
-function PluginsConfigurations:update(t)
+function Plugins:update(t)
   if not t.consumer_id then
     t.consumer_id = constants.DATABASE_NULL_ID
   end
-  return PluginsConfigurations.super.update(self, t)
+  return Plugins.super.update(self, t)
 end
 
-function PluginsConfigurations:find_distinct()
+function Plugins:find_distinct()
   -- Open session
-  local session, err = PluginsConfigurations.super._open_session(self)
+  local session, err = Plugins.super._open_session(self)
   if err then
     return nil, err
   end
@@ -55,7 +55,7 @@ function PluginsConfigurations:find_distinct()
 
   -- Execute query
   local distinct_names = {}
-  for rows, err in PluginsConfigurations.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
+  for rows, err in Plugins.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
     if err then
       return nil, err
     end
@@ -68,7 +68,7 @@ function PluginsConfigurations:find_distinct()
   end
 
   -- Close session
-  local socket_err = PluginsConfigurations.super._close_session(self, session)
+  local socket_err = Plugins.super._close_session(self, session)
   if socket_err then
     return nil, socket_err
   end
@@ -81,4 +81,4 @@ function PluginsConfigurations:find_distinct()
   return result, nil
 end
 
-return { plugins_configurations = PluginsConfigurations }
+return {plugins = Plugins}

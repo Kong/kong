@@ -28,12 +28,12 @@ describe("RateLimiting Plugin", function()
         { custom_id = "consumer_124" },
         { custom_id = "consumer_125" }
       },
-      plugin_configuration = {
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 1 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
-        { name = "key-auth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 3 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
+      plugin = {
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6 } } }, __api = 1 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
+        { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6 } } }, __api = 3 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
       },
       keyauth_credential = {
         { key = "apikey123", __consumer = 1 },

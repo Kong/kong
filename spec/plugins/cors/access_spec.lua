@@ -12,9 +12,9 @@ describe("CORS Plugin", function()
         { name = "tests cors 1", public_dns = "cors1.com", target_url = "http://mockbin.com" },
         { name = "tests cors 2", public_dns = "cors2.com", target_url = "http://mockbin.com" }
       },
-      plugin_configuration = {
-        { name = "cors", value = {}, __api = 1 },
-        { name = "cors", value = { origin = "example.com",
+      plugin = {
+        { name = "cors", config = {}, __api = 1 },
+        { name = "cors", config = { origin = "example.com",
                                    methods = { "GET" },
                                    headers = { "origin", "type", "accepts" },
                                    exposed_headers = { "x-auth-token" },

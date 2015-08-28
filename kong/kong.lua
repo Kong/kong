@@ -40,11 +40,11 @@ local function get_now()
   return ngx.now() * 1000
 end
 
-local function load_plugin_conf(api_id, consumer_id, plugin_name)
-  local cache_key = cache.plugin_configuration_key(plugin_name, api_id, consumer_id)
+local function load_plugin(api_id, consumer_id, plugin_name)
+  local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
 
   local plugin = cache.get_or_set(cache_key, function()
-    local rows, err = dao.plugins_configurations:find_by_keys {
+    local rows, err = dao.plugins:find_by_keys {
         api_id = api_id,
         consumer_id = consumer_id ~= nil and consumer_id or constants.DATABASE_NULL_ID,
         name = plugin_name
@@ -68,11 +68,11 @@ local function load_plugin_conf(api_id, consumer_id, plugin_name)
 end
 
 local function init_plugins()
-  -- TODO: this should be handled with other default config values
+  -- TODO: this should be handled with other default configs
   configuration.plugins_available = configuration.plugins_available or {}
 
   print("Discovering used plugins")
-  local db_plugins, err = dao.plugins_configurations:find_distinct()
+  local db_plugins, err = dao.plugins:find_distinct()
   if err then
     error(err)
   end
@@ -146,22 +146,22 @@ end
 
 -- Calls `init_worker()` on eveyr loaded plugin
 function _M.exec_plugins_init_worker()
-  for _, plugin in ipairs(plugins) do
-    plugin.handler:init_worker()
+  for _, plugin_t in ipairs(plugins) do
+    plugin_t.handler:init_worker()
   end
 end
 
 function _M.exec_plugins_certificate()
-  ngx.ctx.plugin_conf = {}
+  ngx.ctx.plugin = {}
 
-  for _, plugin in ipairs(plugins) do
+  for _, plugin_t in ipairs(plugins) do
     if ngx.ctx.api then
-      ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name)
+      ngx.ctx.plugin[plugin_t.name] = load_plugin(ngx.ctx.api.id, nil, plugin_t.name)
     end
 
-    local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
-    if not ngx.ctx.stop_phases and (plugin.resolver or plugin_conf) then
-      plugin.handler:certificate(plugin_conf and plugin_conf.value or {})
+    local plugin = ngx.ctx.plugin[plugin_t.name]
+    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
+      plugin_t.handler:certificate(plugin and plugin.config or {})
     end
   end
 
@@ -171,24 +171,24 @@ end
 -- Calls `access()` on every loaded plugin
 function _M.exec_plugins_access()
   local start = get_now()
-  ngx.ctx.plugin_conf = {}
+  ngx.ctx.plugin = {}
 
   -- Iterate over all the plugins
-  for _, plugin in ipairs(plugins) do
+  for _, plugin_t in ipairs(plugins) do
     if ngx.ctx.api then
-      ngx.ctx.plugin_conf[plugin.name] = load_plugin_conf(ngx.ctx.api.id, nil, plugin.name)
+      ngx.ctx.plugin[plugin_t.name] = load_plugin(ngx.ctx.api.id, nil, plugin_t.name)
       local consumer_id = ngx.ctx.authenticated_entity and ngx.ctx.authenticated_entity.consumer_id or nil
       if consumer_id then
-        local app_plugin_conf = load_plugin_conf(ngx.ctx.api.id, consumer_id, plugin.name)
-        if app_plugin_conf then
-          ngx.ctx.plugin_conf[plugin.name] = app_plugin_conf
+        local app_plugin = load_plugin(ngx.ctx.api.id, consumer_id, plugin_t.name)
+        if app_plugin then
+          ngx.ctx.plugin[plugin_t.name] = app_plugin
         end
       end
     end
 
-    local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
-    if not ngx.ctx.stop_phases and (plugin.resolver or plugin_conf) then
-      plugin.handler:access(plugin_conf and plugin_conf.value or {})
+    local plugin = ngx.ctx.plugin[plugin_t.name]
+    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
+      plugin_t.handler:access(plugin and plugin.config or {})
     end
   end
   -- Append any modified querystring parameters
@@ -214,10 +214,10 @@ function _M.exec_plugins_header_filter()
   if not ngx.ctx.stop_phases then
     ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
 
-    for _, plugin in ipairs(plugins) do
-      local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
-      if plugin_conf then
-        plugin.handler:header_filter(plugin_conf and plugin_conf.value or {})
+    for _, plugin_t in ipairs(plugins) do
+      local plugin = ngx.ctx.plugin[plugin_t.name]
+      if plugin then
+        plugin_t.handler:header_filter(plugin and plugin.config or {})
       end
     end
   end
@@ -228,10 +228,10 @@ end
 function _M.exec_plugins_body_filter()
   local start = get_now()
   if not ngx.ctx.stop_phases then
-    for _, plugin in ipairs(plugins) do
-      local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
-      if plugin_conf then
-        plugin.handler:body_filter(plugin_conf and plugin_conf.value or {})
+    for _, plugin_t in ipairs(plugins) do
+      local plugin = ngx.ctx.plugin[plugin_t.name]
+      if plugin then
+        plugin_t.handler:body_filter(plugin and plugin.config or {})
       end
     end
   end
@@ -241,10 +241,10 @@ end
 -- Calls `log()` on every loaded plugin
 function _M.exec_plugins_log()
   if not ngx.ctx.stop_phases then
-    for _, plugin in ipairs(plugins) do
-      local plugin_conf = ngx.ctx.plugin_conf[plugin.name]
-      if plugin_conf or plugin.reports then
-        plugin.handler:log(plugin_conf and plugin_conf.value or {})
+    for _, plugin_t in ipairs(plugins) do
+      local plugin = ngx.ctx.plugin[plugin_t.name]
+      if plugin or plugin_t.reports then
+        plugin_t.handler:log(plugin and plugin.config or {})
       end
     end
   end

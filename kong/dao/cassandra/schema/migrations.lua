@@ -54,27 +54,27 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON apis(public_dns);
         CREATE INDEX IF NOT EXISTS ON apis(path);
 
-        CREATE TABLE IF NOT EXISTS plugins_configurations(
+        CREATE TABLE IF NOT EXISTS plugins(
           id uuid,
           api_id uuid,
           consumer_id uuid,
           name text,
-          value text, -- serialized plugin data
+          config text, -- serialized plugin configuration
           enabled boolean,
           created_at timestamp,
           PRIMARY KEY (id, name)
         );
 
-        CREATE INDEX IF NOT EXISTS ON plugins_configurations(name);
-        CREATE INDEX IF NOT EXISTS ON plugins_configurations(api_id);
-        CREATE INDEX IF NOT EXISTS ON plugins_configurations(consumer_id);
+        CREATE INDEX IF NOT EXISTS ON plugins(name);
+        CREATE INDEX IF NOT EXISTS ON plugins(api_id);
+        CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
       ]]
     end,
     down = function(options)
       return [[
         DROP TABLE consumers;
         DROP TABLE apis;
-        DROP TABLE plugins_configurations;
+        DROP TABLE plugins;
       ]]
     end
   }

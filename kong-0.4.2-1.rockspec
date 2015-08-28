@@ -84,14 +84,14 @@ build = {
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
-    ["kong.dao.schemas.plugins_configurations"] = "kong/dao/schemas/plugins_configurations.lua",
+    ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
     ["kong.dao.cassandra.factory"] = "kong/dao/cassandra/factory.lua",
     ["kong.dao.cassandra.query_builder"] = "kong/dao/cassandra/query_builder.lua",
     ["kong.dao.cassandra.base_dao"] = "kong/dao/cassandra/base_dao.lua",
     ["kong.dao.cassandra.migrations"] = "kong/dao/cassandra/migrations.lua",
     ["kong.dao.cassandra.apis"] = "kong/dao/cassandra/apis.lua",
     ["kong.dao.cassandra.consumers"] = "kong/dao/cassandra/consumers.lua",
-    ["kong.dao.cassandra.plugins_configurations"] = "kong/dao/cassandra/plugins_configurations.lua",
+    ["kong.dao.cassandra.plugins"] = "kong/dao/cassandra/plugins.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -189,7 +189,7 @@ build = {
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
-    ["kong.api.routes.plugins_configurations"] = "kong/api/routes/plugins_configurations.lua",
+    ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
   },
   install = {
     conf = { "kong.yml" },

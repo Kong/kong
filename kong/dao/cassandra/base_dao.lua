@@ -407,9 +407,9 @@ local function extract_primary_key(t, primary_key, clustering_key)
   return t_primary_key, t_no_primary_key
 end
 
--- When updating a row that has a json-as-text column (ex: plugin_configuration.value),
+-- When updating a row that has a json-as-text column (ex: plugin.config),
 -- we want to avoid overriding it with a partial value.
--- Ex: value.key_name + value.hide_credential, if we update only one field,
+-- Ex: config.key_name + config.hide_credential, if we update only one field,
 -- the other should be preserved. Of course this only applies in partial update.
 local function fix_tables(t, old_t, schema)
   for k, v in pairs(schema.fields) do

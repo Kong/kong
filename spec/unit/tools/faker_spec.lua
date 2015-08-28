@@ -4,7 +4,7 @@ local DaoError = require "kong.dao.error"
 
 describe("Faker", function()
 
-  local ENTITIES_TYPES = { "api", "consumer", "plugin_configuration" }
+  local ENTITIES_TYPES = { "api", "consumer", "plugin" }
 
   local factory_mock = {}
   local insert_spy
@@ -17,7 +17,7 @@ describe("Faker", function()
                         end)
 
     for _, v in ipairs(ENTITIES_TYPES) do
-      factory_mock[v=="plugin_configuration" and "plugins_configurations" or v.."s"] = {
+      factory_mock[v=="plugin" and "plugins" or v.."s"] = {
         insert = insert_spy
       }
     end
@@ -90,9 +90,9 @@ describe("Faker", function()
           { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
           { name = "tests faker 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
         },
-        plugin_configuration = {
-          { name = "key-auth", value = {key_names={"apikey"}}, __api = 1 },
-          { name = "key-auth", value = {key_names={"apikey"}}, __api = 2 }
+        plugin = {
+          { name = "key-auth", config = {key_names={"apikey"}}, __api = 1 },
+          { name = "key-auth", config = {key_names={"apikey"}}, __api = 2 }
         }
       }
 

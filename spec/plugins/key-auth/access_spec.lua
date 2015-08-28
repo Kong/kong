@@ -17,9 +17,9 @@ describe("Authentication Plugin", function()
       consumer = {
         {username = "auth_tests_consumer"}
       },
-      plugin_configuration = {
-        {name = "key-auth", value = {key_names = {"apikey"}}, __api = 1},
-        {name = "key-auth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 2}
+      plugin = {
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 1},
+        {name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 2}
       },
       keyauth_credential = {
         {key = "apikey123", __consumer = 1}

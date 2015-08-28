@@ -11,8 +11,8 @@ describe("RequestSizeLimiting Plugin", function()
       api = {
         { name = "tests request-size-limiting 1", public_dns = "test3.com", target_url = "http://mockbin.com/request" }
       },
-      plugin_configuration = {
-        { name = "request-size-limiting", value = {allowed_payload_size = 10}, __api = 1 }
+      plugin = {
+        { name = "request-size-limiting", config = {allowed_payload_size = 10}, __api = 1 }
       }
     }
 

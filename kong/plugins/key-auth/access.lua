@@ -73,7 +73,7 @@ end
 -- All methods must respect:
 --
 -- @param request ngx request object
--- @param {table} conf Plugin configuration (value property)
+-- @param {table} conf Plugin config
 -- @return {string} public_key
 -- @return {string} private_key
 local retrieve_credentials = {

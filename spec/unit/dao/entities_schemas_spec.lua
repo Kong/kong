@@ -1,6 +1,6 @@
 local api_schema = require "kong.dao.schemas.apis"
 local consumer_schema = require "kong.dao.schemas.consumers"
-local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
+local plugins_schema = require "kong.dao.schemas.plugins"
 local validations = require "kong.dao.schemas_validation"
 local validate_entity = validations.validate_entity
 
@@ -10,7 +10,7 @@ describe("Entities Schemas", function()
 
   for k, schema in pairs({api = api_schema,
                           consumer = consumer_schema,
-                          plugins_configurations = plugins_configurations_schema}) do
+                          plugins = plugins_schema}) do
     it(k.." schema should have some required properties", function()
       assert.truthy(schema.name)
       assert.equal("string", type(schema.name))
@@ -218,7 +218,7 @@ describe("Entities Schemas", function()
   describe("Plugins Configurations", function()
 
     local dao_stub = {
-      plugins_configurations = {
+      plugins = {
         find_by_keys = function()
           return nil
         end
@@ -226,43 +226,43 @@ describe("Entities Schemas", function()
     }
 
     it("should not validate if the plugin doesn't exist (not installed)", function()
-      local valid, errors = validate_entity({name = "world domination"}, plugins_configurations_schema)
+      local valid, errors = validate_entity({name = "world domination"}, plugins_schema)
       assert.False(valid)
-      assert.equal("Plugin \"world domination\" not found", errors.value)
+      assert.equal("Plugin \"world domination\" not found", errors.config)
     end)
 
-    it("should validate a plugin configuration's `value` field", function()
+    it("should validate a plugin configuration's `config` field", function()
       -- Success
-      local plugin = {name = "key-auth", api_id = "stub", value = {key_names = {"x-kong-key"}}}
-      local valid = validate_entity(plugin, plugins_configurations_schema, {dao = dao_stub})
+      local plugin = {name = "key-auth", api_id = "stub", config = {key_names = {"x-kong-key"}}}
+      local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.True(valid)
 
       -- Failure
-      plugin = {name = "rate-limiting", api_id = "stub", value = { second = "hello" }}
+      plugin = {name = "rate-limiting", api_id = "stub", config = { second = "hello" }}
 
-      local valid, errors = validate_entity(plugin, plugins_configurations_schema, {dao = dao_stub})
+      local valid, errors = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.False(valid)
-      assert.equal("second is not a number", errors["value.second"])
+      assert.equal("second is not a number", errors["config.second"])
     end)
 
     describe("self_check", function()
-      it("should refuse `consumer_id` if specified in the value schema", function()
-        local stub_value_schema = {
+      it("should refuse `consumer_id` if specified in the config schema", function()
+        local stub_config_schema = {
           no_consumer = true,
           fields = {
             string = {type = "string", required = true}
           }
         }
 
-        plugins_configurations_schema.fields.value.schema = function()
-          return stub_value_schema
+        plugins_schema.fields.config.schema = function()
+          return stub_config_schema
         end
 
-        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", value = {string = "foo"}}, plugins_configurations_schema)
+        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema)
         assert.False(valid)
         assert.equal("No consumer can be configured for that plugin", err.message)
 
-        valid, err = validate_entity({name = "stub", api_id = "0000", value = {string = "foo"}}, plugins_configurations_schema, {dao = dao_stub})
+        valid, err = validate_entity({name = "stub", api_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
         assert.True(valid)
         assert.falsy(err)
       end)

@@ -14,10 +14,10 @@ describe("Response Transformer Plugin #proxy", function()
         { name = "tests response-transformer", public_dns = "response.com", target_url = "http://httpbin.org" },
         { name = "tests response-transformer 2", public_dns = "response2.com", target_url = "http://httpbin.org" },
       },
-      plugin_configuration = {
+      plugin = {
         {
           name = "response-transformer",
-          value = {
+          config = {
             add = {
               headers = {"x-added:true", "x-added2:true" },
               json = {"newjsonparam:newvalue"}
@@ -31,7 +31,7 @@ describe("Response Transformer Plugin #proxy", function()
         },
         {
           name = "response-transformer",
-          value = {
+          config = {
             add = {
               headers = {"Cache-Control:max-age=86400"}
             }

@@ -13,10 +13,10 @@ describe("Request Transformer", function()
       api = {
         { name = "tests request-transformer", public_dns = "test5.com", target_url = "http://mockbin.com" },
       },
-      plugin_configuration = {
+      plugin = {
         {
           name = "request-transformer",
-          value = {
+          config = {
             add = {
               headers = {"x-added:true", "x-added2:true" },
               querystring = {"newparam:value"},

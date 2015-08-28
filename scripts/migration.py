@@ -122,7 +122,7 @@ def migrate_rate_limiting_value(session):
 
     :param session: opened cassandra session
     """
-    log.info("Migrating rate-limiting values")
+    log.info("Migrating rate-limiting values...")
 
     for plugin in session.execute("SELECT * FROM plugins_configurations WHERE name = 'rate-limiting'"):
         conf = json.loads(plugin.value)
@@ -134,6 +134,36 @@ def migrate_rate_limiting_value(session):
 
     log.info("rate-limiting values migrated")
 
+def migrate_rename_plugins_configurations(session):
+    """
+
+    """
+    log.info("Renaming 'plugins_configurations' to 'plugins'...")
+
+    session.execute("""
+       create table if not exists plugins(
+          id uuid,
+          api_id uuid,
+          consumer_id uuid,
+          name text,
+          config text,
+          enabled boolean,
+          created_at timestamp,
+          primary key (id, name)
+        )""")
+    session.execute("create index if not exists on plugins(name)")
+    session.execute("create index if not exists on plugins(api_id)")
+    session.execute("create index if not exists on plugins(consumer_id)")
+
+    for plugin in session.execute("SELECT * FROM plugins_configurations"):
+        insert_query = SimpleStatement("""
+            INSERT INTO plugins(id, api_id, consumer_id, name, config, enabled, created_at)
+            VALUES(%s, %s, %s, %s, %s, %s, %s)""", consistency_level=ConsistencyLevel.ALL)
+        session.execute(insert_query, [plugin.id, plugin.api_id, plugin.consumer_id, plugin.name, plugin.value, plugin.enabled, plugin.created_at])
+
+    session.execute("DROP TABLE plugins_configurations")
+
+    log.info("Plugins moved to table 'plugins'")
 
 def migrate(kong_config):
     """
@@ -167,6 +197,7 @@ def migrate(kong_config):
 
     migrate_plugins_renaming(session)
     migrate_rate_limiting_value(session)
+    migrate_rename_plugins_configurations(session)
 
 def parse_arguments(argv):
     """

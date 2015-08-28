@@ -15,8 +15,8 @@ describe("Authentication Plugin", function()
       consumer = {
         {username = "basicauth_tests_consuser"}
       },
-      plugin_configuration = {
-        {name = "basic-auth", value = {}, __api = 1}
+      plugin = {
+        {name = "basic-auth", config = {}, __api = 1}
       },
       basicauth_credential = {
         {username = "username", password = "password", __consumer = 1}
