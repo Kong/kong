@@ -18,7 +18,7 @@ Kong was created to secure, manage and extend Microservices & APIs. Kong is powe
 - [**Feature**](#features)
 - [**Why Kong?**](#why-kong)
 - [**Benchmarks**](#benchmarks)
-- [**Resources**](#resources)
+- [**Resources & Distros**](#resources)
 - [**Roadmap**](#roadmap)
 - [**Development**](#development)
 - [**Enterprise Support**](#enterprise-support)
@@ -61,7 +61,8 @@ Kong comes in many shapes. While this repository contains its core's source code
 - [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for running Kong in Docker.
 - [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for provisioning a development ready environment for Kong.
 - [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula for Kong.
-- [Kong AWS](https://github.com/Mashape/kong-dist-cloudformation): Kong CloudFormation stack.
+- [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation): Kong in a one-click deployment.
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
 - [Kong Distributions](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
 
 ## Roadmap
