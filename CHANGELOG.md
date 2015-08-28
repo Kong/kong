@@ -7,9 +7,10 @@ This release contains breaking changes.
 Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
 
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
-- The database schema has been updated to be future proof and handle the separation of plugins outside of the core repository.
-
-The Key authentication and Basic authentication plugins routes have changed:
+- `public_dns` and `target_url` properties of APIs were respectively renamed to `inbound_dns` and `upstream_url`. [#513](https://github.com/Mashape/kong/issues/513)
+- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
+- The database schema has been updated to handle the separation of plugins outside of the core repository.
+- The Key authentication and Basic authentication plugins routes have changed:
 
 ```
 Old route                             New route
