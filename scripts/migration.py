@@ -2,11 +2,14 @@
 
 '''Kong 0.5.0 Migration Script
 
-Usage: python migration.py --config=/path/to/kong/config
+Usage: python migration.py --config=/path/to/kong/config [--purge]
+
+Run this script first to migrate Kong to the 0.5.0 schema. Once successful, reload Kong
+and run this script again with the --purge option.
 
 Arguments:
   -c, --config   path to your Kong configuration file
-
+  -p, --purge    if already migrated, purge the old values
 Flags:
   -h             print help
 '''
@@ -68,6 +71,7 @@ def migrate_schema_migrations_table(session):
 
     :param session: opened cassandra session
     """
+    log.info("Migrating schema_migrations table...")
     query = SimpleStatement("INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)", consistency_level=ConsistencyLevel.ALL)
     session.execute(query, ["core", ['2015-01-12-175310_skeleton', '2015-01-12-175310_init_schema']])
     session.execute(query, ["basic-auth", ['2015-08-03-132400_init_basicauth']])
@@ -76,17 +80,16 @@ def migrate_schema_migrations_table(session):
     session.execute(query, ["oauth2", ['2015-08-03-132400_init_oauth2', '2015-08-24-215800_cascade_delete_index']])
     log.info("schema_migrations table migrated")
 
-def migrate_schema_migrations_remove_legacy_row(session):
-    session.execute("DELETE FROM schema_migrations WHERE id = 'migrations'")
-    log.info("Legacy values removed from schema_migrations table")
-
-def migrate_plugins_renaming(session):
+def migrate_plugins_configurations(session):
     """
-    Migrate the plugins_configurations table by renaming all plugins whose name changed.
+    Migrate all rows in the `plugins_configurations` table to `plugins`, applying:
+    - renaming of plugins if name changed
+    - conversion of old rate-limiting schema if old schema detected
 
     :param session: opened cassandra session
     """
-    log.info("Renaming plugins...")
+    log.info("Migrating plugins...")
+
     new_names = {
         "keyauth": "key-auth",
         "basicauth": "basic-auth",
@@ -101,47 +104,6 @@ def migrate_plugins_renaming(session):
         "ip_restriction": "ip-restriction"
     }
 
-    for plugin in session.execute("SELECT * FROM plugins_configurations"):
-        plugin_name = plugin.name
-        if plugin.name in new_names:
-            plugin_name = new_names[plugin.name]
-
-        delete_query = SimpleStatement("DELETE FROM plugins_configurations WHERE id = %s", consistency_level=ConsistencyLevel.ALL)
-        insert_query = SimpleStatement("""
-            INSERT INTO plugins_configurations(id, name, api_id, consumer_id, created_at, enabled, value)
-            VALUES(%s, %s, %s, %s, %s, %s, %s)""", consistency_level=ConsistencyLevel.ALL)
-
-        session.execute(delete_query, [plugin.id])
-        session.execute(insert_query, [plugin.id, plugin_name, plugin.api_id, plugin.consumer_id, plugin.created_at, plugin.enabled, plugin.value])
-
-    log.info("Plugins renamed")
-
-def migrate_rate_limiting_value(session):
-    """
-    Update all old `values` of rate-limiting plugins_configurations to the new schema (supporting multiple limits)
-
-    :param session: opened cassandra session
-    """
-    log.info("Migrating rate-limiting values...")
-
-    for plugin in session.execute("SELECT * FROM plugins_configurations WHERE name = 'rate-limiting'"):
-        conf = json.loads(plugin.value)
-        if "limit" in conf:
-            new_conf = {}
-            new_conf[conf["period"]] = conf["limit"]
-            update_query = SimpleStatement("UPDATE plugins_configurations SET value = %s WHERE id = %s AND name = %s", consistency_level=ConsistencyLevel.ALL)
-            session.execute(update_query, [json.dumps(new_conf), plugin.id, plugin.name])
-
-    log.info("rate-limiting values migrated")
-
-def migrate_rename_plugins_configurations(session):
-    """
-    Migrate all rows in the `plugins_configurations` table to `plugins`
-
-    :param session: opened cassandra session
-    """
-    log.info("Renaming 'plugins_configurations' to 'plugins'...")
-
     session.execute("""
        create table if not exists plugins(
           id uuid,
@@ -151,24 +113,38 @@ def migrate_rename_plugins_configurations(session):
           config text,
           enabled boolean,
           created_at timestamp,
-          primary key (id, name)
-        )""")
+          primary key (id, name))""")
     session.execute("create index if not exists on plugins(name)")
     session.execute("create index if not exists on plugins(api_id)")
     session.execute("create index if not exists on plugins(consumer_id)")
 
     for plugin in session.execute("SELECT * FROM plugins_configurations"):
+        # New plugins names
+        plugin_name = plugin.name
+        if plugin.name in new_names:
+            plugin_name = new_names[plugin.name]
+
+        # rate-limiting config
+        plugin_conf = plugin.value
+        if plugin_name == "rate-limiting":
+            conf = json.loads(plugin.value)
+            if "limit" in conf:
+                plugin_conf = {}
+                plugin_conf[conf["period"]] = conf["limit"]
+                plugin_conf = json.dumps(plugin_conf)
+
         insert_query = SimpleStatement("""
             INSERT INTO plugins(id, api_id, consumer_id, name, config, enabled, created_at)
             VALUES(%s, %s, %s, %s, %s, %s, %s)""", consistency_level=ConsistencyLevel.ALL)
-        session.execute(insert_query, [plugin.id, plugin.api_id, plugin.consumer_id, plugin.name, plugin.value, plugin.enabled, plugin.created_at])
+        session.execute(insert_query, [plugin.id, plugin.api_id, plugin.consumer_id, plugin_name, plugin_conf, plugin.enabled, plugin.created_at])
 
-    session.execute("DROP TABLE plugins_configurations")
-    log.info("Plugins moved to table 'plugins'")
+    log.info("Plugins migrated")
 
 def migrate_rename_apis_properties(sessions):
     """
+    Create new columns for the `apis` column family and insert the equivalent values in it
 
+    :param session: opened cassandra session
     """
     log.info("Renaming some properties for APIs...")
 
@@ -181,71 +157,18 @@ def migrate_rename_apis_properties(sessions):
     for api in session.execute(select_query):
         session.execute("UPDATE apis SET inbound_dns = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.target_url, api.id])
 
-    session.execute("ALTER TABLE apis DROP public_dns")
-    session.execute("ALTER TABLE apis DROP target_url")
     log.info("APIs properties renamed")
 
-def migrate(kong_config):
-    """
-    Instanciate a Cassandra session and decides if the keyspace needs to be migrated
-    by looking at what the schema_migrations table contains.
+def purge(session):
+    session.execute("ALTER TABLE apis DROP public_dns")
+    session.execute("ALTER TABLE apis DROP target_url")
+    session.execute("DROP TABLE plugins_configurations")
+    session.execute("DELETE FROM schema_migrations WHERE id = 'migrations'")
 
-    :param kong_config: parsed Kong configuration
-    :return: True if some migrations were ran, False otherwise
-    """
-    host, port, keyspace = load_cassandra_config(kong_config)
-    cluster = Cluster([host], protocol_version=2, port=port)
-    global session
-    session = cluster.connect(keyspace)
-
-    """
-    1. schema_migrations
-    Check if the 'schema_migrations' table has been migrated yet or not.
-
-    ** Also Check if Kong is in 0.4.2 or else stops the script. **
-    """
-    rows = session.execute("SELECT * FROM schema_migrations")
-    if len(rows) == 1 and rows[0].id == "migrations":
-        last_executed_migration = rows[0].migrations[-1]
-        if last_executed_migration != "2015-08-10-813213_0.4.2":
-            log.error("Please migrate your cluster to Kong 0.4.2 before running this script.")
-            shutdown_exit(1)
-
-        log.info("Schema_migrations table needs migration")
-        migrate_schema_migrations_table(session)
-        migrate_schema_migrations_remove_legacy_row(session)
-
-    elif len(rows) > 1:
-        # apparently kong was restarted without previously running this script
-        if any(row.id == "migrations" for row in rows):
-            log.info("Already migrated to 0.5.0, but legacy value found. Purging.")
-            migrate_schema_migrations_remove_legacy_row(session)
-
-    """
-    2. Plugins
-    Check if plugins_configurations have been migrated yet, if not, migrate
-        a. Rename some plugins
-        b. Migrate the old rate-limit config schema to the new one
-        c. Migrate all rows into a new table 'plugins' and drop the old one
-    """
-    columnfamilies = session.execute("SELECT columnfamily_name FROM system.schema_columnfamilies WHERE keyspace_name = %s", [keyspace])
-    if any(row.columnfamily_name == "plugins_configurations" for row in columnfamilies):
-        migrate_plugins_renaming(session)
-        migrate_rate_limiting_value(session)
-        migrate_rename_plugins_configurations(session)
-    else:
-        log.info("Plugins already migrated")
-
-    """
-    3. APIs
-    Check if APIs have been migrated yet (properties renaming)
-    """
-    try:
-        session.execute("SELECT upstream_url FROM apis")
-        log.info("APIs properties already migrated")
-    except InvalidRequest as err:
-        # If this column doesn't exit yet, apis have not been migrated
-        migrate_rename_apis_properties(session)
+def migrate(session):
+    migrate_schema_migrations_table(session)
+    migrate_plugins_configurations(session)
+    migrate_rename_apis_properties(session)
 
 def parse_arguments(argv):
     """
@@ -255,13 +178,16 @@ def parse_arguments(argv):
     :return: parsed kong configuration
     """
     config_path = ""
+    purge = False
 
-    opts, args = getopt.getopt(argv, "hc:", ["config="])
+    opts, args = getopt.getopt(argv, "hc:", ["config=", "purge"])
     for opt, arg in opts:
         if opt == "-h":
             usage()
         elif opt in ("-c", "--config"):
             config_path = arg
+        elif opt in ("--purge"):
+            purge = True
 
     if config_path == "":
         raise ArgumentException("No Kong configuration given")
@@ -273,13 +199,41 @@ def parse_arguments(argv):
     with open(config_path, "r") as stream:
         config = yaml.load(stream)
 
-    return config
+    return (config, purge)
 
 def main(argv):
     try:
-        config = parse_arguments(argv)
-        migrate(config)
-        log.info("Cassandra migrated to Kong 0.5.0.")
+        kong_config, purge_cmd = parse_arguments(argv)
+        host, port, keyspace = load_cassandra_config(kong_config)
+        cluster = Cluster([host], protocol_version=2, port=port)
+        global session
+        session = cluster.connect(keyspace)
+
+        # Find out where the schema is at
+        rows = session.execute("SELECT * FROM schema_migrations")
+        is_migrated = len(rows) > 1 and any(mig.id == "core" for mig in rows)
+        is_0_4_2 = len(rows) == 1 and rows[0].migrations[-1] == "2015-08-10-813213_0.4.2"
+        is_purged = len(session.execute("SELECT * FROM system.schema_columnfamilies WHERE keyspace_name = %s AND columnfamily_name = 'plugins_configurations'", [keyspace])) == 0
+
+        if not is_0_4_2 and not is_migrated:
+            log.error("Please migrate your cluster to Kong 0.4.2 before running this script.")
+            shutdown_exit(1)
+
+        if purge_cmd :
+            if not is_purged and is_migrated:
+                purge(session)
+                log.info("Cassandra purged from <0.5.0 data")
+            elif not is_purged and not is_migrated:
+                log.info("Cassandra not previously migrated. Run this script in migration mode before.")
+                shutdown_exit(1)
+            else:
+                log.info("Cassandra already purged and migrated")
+        elif not is_migrated:
+            migrate(session)
+            log.info("Cassandra migrated to Kong 0.5.0.")
+        else:
+            log.info("Cassandra already migrated to Kong 0.5.0")
+
         shutdown_exit(0)
     except getopt.GetoptError as err:
         log.error(err)

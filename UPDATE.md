@@ -2,9 +2,9 @@ This document describes eventual additional steps that might be required to upda
 
 ## Update to Kong `0.5.0`
 
-It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
+Migrating to 0.5.0 can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
-Several changes were introduced in this version: some plugins and properties were renamed and the database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed.
+> Several changes were introduced in this version: some plugins and properties were renamed and the database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed.
 
 ##### 1. Configuration file
 
@@ -68,7 +68,17 @@ $ kong reload
 
 Your cluster should successfully be migrated to Kong `0.5.0`.
 
-##### Other changes
+##### 4. Purge your Cassandra cluster
+
+Finally, once Kong has restarted in 0.5.0, run the migration script again, with the `--purge` flag:
+
+```shell
+$ python migration.py -c /path/to/kong/config --purge
+```
+
+Your cluster is now fully migrated to 0.5.0.
+
+##### Other changes to acknowledge
 
 Some entities and properties were renamed to avoid confusion:
 

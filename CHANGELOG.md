@@ -4,7 +4,7 @@ This release contains breaking changes.
 
 ### Breaking changes
 
-Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
+Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050) for an update without downtime.
 
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
 - `public_dns` and `target_url` properties of APIs were respectively renamed to `inbound_dns` and `upstream_url`. [#513](https://github.com/Mashape/kong/issues/513)
