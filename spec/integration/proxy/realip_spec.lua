@@ -31,7 +31,7 @@ describe("Real IP", function()
     local uuid = utils.random_string()
 
     -- Making the request
-    local _, status = http_client.get(spec_helper.STUB_GET_URL, nil,
+    local _ = http_client.get(spec_helper.STUB_GET_URL, nil,
       {
         host = "realip.com",
         ["X-Forwarded-For"] = "4.4.4.4, 1.1.1.1, 5.5.5.5",

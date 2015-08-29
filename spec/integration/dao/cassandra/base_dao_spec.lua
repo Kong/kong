@@ -48,7 +48,7 @@ describe("Cassandra", function()
     session = cassandra:new()
     session:set_timeout(configuration.cassandra.timeout)
 
-    local _, err = session:connect(configuration.cassandra.hosts)
+    local _, err = session:connect(configuration.cassandra.contact_points)
     assert.falsy(err)
 
     local _, err = session:set_keyspace("kong_tests")

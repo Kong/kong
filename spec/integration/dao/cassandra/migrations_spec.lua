@@ -134,7 +134,7 @@ describe("Migrations", function()
   local migrations
 
   setup(function()
-    local ok, err = session:connect(test_cassandra_properties.hosts, test_cassandra_properties.port)
+    local ok, err = session:connect(test_cassandra_properties.contact_points, test_cassandra_properties.port)
     if not ok then
       error(err)
     end

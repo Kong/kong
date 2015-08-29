@@ -8,7 +8,7 @@ Migrating to 0.5.0 can be done **without downtime** by following those instructi
 
 ##### 1. Configuration file
 
-You will need to update your configuration file. Replace the `plugins_available` property with:
+You will need to update your configuration file. Replace the `plugins_available` values with:
 
 ```yaml
 plugins_available:
@@ -32,6 +32,18 @@ plugins_available:
 
 You can still remove plugins you don't use for a lighter Kong.
 
+Also replace the Cassandra `hosts` property with `contact_points`:
+
+```yaml
+properties:
+  contact_points:
+    - "..."
+    - "..."
+  timeout: 1000
+  keyspace: kong
+  keepalive: 60000
+```
+
 ##### 2. Migration script
 
 [This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
@@ -48,9 +60,8 @@ $ cd kong/scripts
 # Install the Python script dependencies:
 $ pip install cassandra-driver pyyaml
 
-# The script will use the first Cassandra contact point
-# in your Kong configuration file (the first of the 'hosts' property)
-# so make sure it is valid and has the format 'host:port'.
+# The script will use the first Cassandra contact point in your Kong configuration file
+# (the first of the 'contact_points' property) so make sure it is valid and has the format 'host:port'.
 
 # Run the migration script:
 $ python migration.py -c /path/to/kong/config
@@ -66,8 +77,6 @@ You can now update Kong to 0.5.0. Proceed as a regular update and install the pa
 $ kong reload
 ```
 
-Your cluster should successfully be migrated to Kong `0.5.0`.
-
 ##### 4. Purge your Cassandra cluster
 
 Finally, once Kong has restarted in 0.5.0, run the migration script again, with the `--purge` flag:
@@ -76,7 +85,7 @@ Finally, once Kong has restarted in 0.5.0, run the migration script again, with 
 $ python migration.py -c /path/to/kong/config --purge
 ```
 
-Your cluster is now fully migrated to 0.5.0.
+Your cluster is now fully migrated to `0.5.0`.
 
 ##### Other changes to acknowledge
 

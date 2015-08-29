@@ -22,7 +22,7 @@ describe("Database cache", function()
   end)
 
   it("should expire cache after five seconds", function()
-    local _, status = http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "cache.test"})
+    local _ = http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "cache.test"})
 
     -- Let's add the authentication plugin configuration
     local _, err = env.dao_factory.plugins:insert {

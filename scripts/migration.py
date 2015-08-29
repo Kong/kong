@@ -9,8 +9,8 @@ and run this script again with the --purge option.
 
 Arguments:
   -c, --config   path to your Kong configuration file
-  -p, --purge    if already migrated, purge the old values
 Flags:
+  --purge    if already migrated, purge the old values
   -h             print help
 '''
 
@@ -60,7 +60,7 @@ def load_cassandra_config(kong_config):
     """
     cass_properties = kong_config["databases_available"]["cassandra"]["properties"]
 
-    host, port = cass_properties["hosts"][0].split(":")
+    host, port = cass_properties["contact_points"][0].split(":")
     keyspace = cass_properties["keyspace"]
 
     return (host, port, keyspace)

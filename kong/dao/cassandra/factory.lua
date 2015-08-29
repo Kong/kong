@@ -123,7 +123,7 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
 
   local options = self:get_session_options()
 
-  ok, err = session:connect(self._properties.hosts, nil, options)
+  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
   if not ok then
     return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end

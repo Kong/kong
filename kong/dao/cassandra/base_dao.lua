@@ -72,7 +72,7 @@ function BaseDao:_open_session(keyspace)
 
   local options = self._factory:get_session_options()
 
-  ok, err = session:connect(self._properties.hosts, nil, options)
+  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
   if not ok then
     return nil, DaoError(err, error_types.DATABASE)
   end
