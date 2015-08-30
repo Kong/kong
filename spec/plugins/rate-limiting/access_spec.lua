@@ -42,25 +42,6 @@ describe("RateLimiting Plugin", function()
       }
     }
 
-    -- Updating API test6.com with old plugin value, to check retrocompatibility
-    local dao_factory = spec_helper.get_env().dao_factory
-    -- Find API
-    local res, err = dao_factory.apis:find_by_keys({public_dns = 'test6.com'})
-    if err then error(err) end
-    -- Find Plugin Configuration
-    local res, err = dao_factory.plugins_configurations:find_by_keys({api_id = res[1].id})
-    if err then error(err) end
-    -- Set old value
-    local plugin_configuration = res[1]
-    plugin_configuration.value = {
-      period = "minute",
-      limit = 6
-    }
-    -- Update plugin configuration
-    local _, err = dao_factory.plugins_configurations:execute(
-      "update plugins_configurations SET value = '{\"limit\":6, \"period\":\"minute\"}' WHERE id = "..plugin_configuration.id.." and name = 'rate-limiting'")
-    if err then error(err) end
-
     spec_helper.start_kong()
   end)
 
@@ -119,30 +100,6 @@ describe("RateLimiting Plugin", function()
   end)
 
   describe("With authentication", function()
-
-    describe("Old plugin format", function()
-
-      it("should get blocked if exceeding limit", function()
-        wait()
-
-        -- Default rate-limiting plugin for this API says 6/minute
-        local limit = 6
-
-        for i = 1, limit do
-          local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
-          assert.are.equal(200, status)
-          assert.are.same(tostring(limit), headers["x-ratelimit-limit"])
-          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining"])
-        end
-
-        -- Third query, while limit is 2/minute
-        local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey123"}, {host = "test6.com"})
-        local body = cjson.decode(response)
-        assert.are.equal(429, status)
-        assert.are.equal("API rate limit exceeded", body.message)
-      end)
-
-    end)
 
     describe("Default plugin", function()
 

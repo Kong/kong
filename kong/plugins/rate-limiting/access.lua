@@ -59,17 +59,6 @@ function _M.execute(conf)
   -- Consumer is identified by ip address or authenticated_entity id
   local identifier = get_identifier()
 
-  -- Handle previous version of the rate-limiting plugin
-  local old_format = false
-  if conf.period and conf.limit then
-    old_format = true
-    conf[conf.period] = conf.limit -- Adapt to new format
-
-    -- Delete old properties
-    conf.period = nil
-    conf.limit = nil
-  end
-
   local api_id = ngx.ctx.api.id
 
   -- Load current metric for configured period
@@ -77,8 +66,8 @@ function _M.execute(conf)
 
   -- Adding headers
   for k, v in pairs(usage) do
-    ngx.header[constants.HEADERS.RATELIMIT_LIMIT..(old_format and "" or "-"..k)] = v.limit
-    ngx.header[constants.HEADERS.RATELIMIT_REMAINING..(old_format and "" or "-"..k)] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+    ngx.header[constants.HEADERS.RATELIMIT_LIMIT.."-"..k] = v.limit
+    ngx.header[constants.HEADERS.RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
   end
 
   -- If limit is exceeded, terminate the request
