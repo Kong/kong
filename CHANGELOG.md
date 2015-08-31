@@ -23,6 +23,10 @@ Old route                             New route
 
 The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
 
+- Admin API:
+  - The route to retrieve enabled plugins is now under `/plugins/enabled`.
+  - The route to retrieve a plugin's configuration schema is now under `/plugins/schema/{plugin name}`.
+
 #### Added
 
 - Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Mashape/kong/pull/443)

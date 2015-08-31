@@ -105,6 +105,10 @@ Old route                             New route
 
 The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
 
+- Admin API:
+  - The route to retrieve enabled plugins is now under `/plugins/enabled`.
+  - The route to retrieve a plugin's configuration schema is now under `/plugins/schema/{plugin name}`.
+
 ## Update to Kong `0.4.2`
 
 The configuration format for specifying the port of your Cassandra instance changed. Replace:

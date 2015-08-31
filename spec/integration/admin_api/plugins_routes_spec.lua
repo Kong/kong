@@ -12,6 +12,17 @@ describe("Admin API", function()
     spec_helper.stop_kong()
   end)
 
+  describe("/plugins/enabled", function()
+    local BASE_URL = spec_helper.API_URL.."/plugins/enabled"
+
+    it("should return a list of enabled plugins on this node", function()
+      local response, status = http_client.get(BASE_URL)
+      assert.equal(200, status)
+      local body = json.decode(response)
+      assert.equal("table", type(body.enabled_plugins))
+    end)
+  end)
+
   describe("/plugins/schema/:name", function()
     local BASE_URL = spec_helper.API_URL.."/plugins/schema/key-auth"
 

@@ -36,6 +36,8 @@ return {
     end
   },
 
+
+
   ["/plugins/schema/:name"] = {
     GET = function(self, dao_factory, helpers)
       local ok, plugin_schema = utils.load_module_if_exists("kong.plugins."..self.params.name..".schema")
@@ -71,5 +73,11 @@ return {
     DELETE = function(self, dao_factory)
       crud.delete(self.plugin_conf, dao_factory.plugins)
     end
-  }
+  },  ["/plugins/enabled"] = {
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK {
+        enabled_plugins = configuration.plugins_available
+      }
+    end
+  },
 }
