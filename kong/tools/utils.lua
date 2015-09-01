@@ -82,6 +82,7 @@ function _M.deep_copy(orig)
   return copy
 end
 
+local err_list_mt = {}
 
 --- Add an error message to a key/value table.
 -- If the key already exists, a sub table is created with the original and the new value.
@@ -93,10 +94,11 @@ function _M.add_error(errors, k, v)
   if not errors then errors = {} end
 
   if errors and errors[k] then
-    local list = {}
-    table.insert(list, errors[k])
-    table.insert(list, v)
-    errors[k] = list
+    if getmetatable(errors[k]) ~= err_list_mt then
+      errors[k] = setmetatable({errors[k]}, err_list_mt)
+    end
+
+    table.insert(errors[k], v)
   else
     errors[k] = v
   end
