@@ -13,7 +13,7 @@ local _M = {}
 -- All methods must respect:
 --
 -- @param request ngx request object
--- @param {table} conf Plugin configuration (value property)
+-- @param {table} conf Plugin config
 -- @return {string} public_key
 -- @return {string} private_key
 local function retrieve_credentials(request, header_name, conf)
@@ -67,7 +67,7 @@ end
 
 local function load_credential(username)
   local credential
-  if username then 
+  if username then
     credential = cache.get_or_set(cache.basicauth_credential_key(username), function()
       local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
       local result

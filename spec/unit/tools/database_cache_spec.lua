@@ -7,8 +7,8 @@ describe("Database cache", function()
   end)
 
   it("should return a valid PLUGIN cache key", function()
-    assert.are.equal("plugins_configurations/authentication/api123/app123", cache.plugin_configuration_key("authentication", "api123", "app123"))
-    assert.are.equal("plugins_configurations/authentication/api123", cache.plugin_configuration_key("authentication", "api123"))
+    assert.are.equal("plugins/authentication/api123/app123", cache.plugin_key("authentication", "api123", "app123"))
+    assert.are.equal("plugins/authentication/api123", cache.plugin_key("authentication", "api123"))
   end)
 
   it("should return a valid KeyAuthCredential cache key", function()

@@ -19,7 +19,7 @@ configuration.cassandra = configuration.databases_available[configuration.databa
 local function describe_core_collections(tests_cb)
   for type, dao in pairs({ api = dao_factory.apis,
                            consumer = dao_factory.consumers }) do
-    local collection = type == "plugin_configuration" and "plugins_configurations" or type.."s"
+    local collection = type == "plugin" and "plugins" or type.."s"
     describe(collection, function()
       tests_cb(type, collection)
     end)
@@ -48,7 +48,7 @@ describe("Cassandra", function()
     session = cassandra:new()
     session:set_timeout(configuration.cassandra.timeout)
 
-    local _, err = session:connect(configuration.cassandra.hosts)
+    local _, err = session:connect(configuration.cassandra.contact_points)
     assert.falsy(err)
 
     local _, err = session:set_keyspace("kong_tests")
@@ -89,8 +89,8 @@ describe("Cassandra", function()
 
         -- API
         api, err = dao_factory.apis:insert {
-          public_dns = "test.com",
-          target_url = "http://mockbin.com"
+          inbound_dns = "test.com",
+          upstream_url = "http://mockbin.com"
         }
         assert.falsy(err)
         assert.truthy(api.name)
@@ -109,10 +109,10 @@ describe("Cassandra", function()
 
         -- Plugin configuration
         local plugin_t = {name = "key-auth", api_id = api.id}
-        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
-        local plugins, err = session:execute("SELECT * FROM plugins_configurations")
+        local plugins, err = session:execute("SELECT * FROM plugins")
         assert.falsy(err)
         assert.True(#plugins > 0)
         assert.equal(plugin.id, plugins[1].id)
@@ -120,8 +120,8 @@ describe("Cassandra", function()
 
       it("should let the schema validation return errors and not insert", function()
         -- Without an api_id, it's a schema error
-        local plugin_t = faker:fake_entity("plugin_configuration")
-        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
+        local plugin_t = faker:fake_entity("plugin")
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -147,10 +147,10 @@ describe("Cassandra", function()
 
       it("should ensure fields with `foreign` are existing", function()
         -- Plugin configuration
-        local plugin_t = faker:fake_entity("plugin_configuration")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = uuid()
 
-        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -163,16 +163,16 @@ describe("Cassandra", function()
         assert.falsy(err)
         assert.truthy(api.id)
 
-        local plugin_t = faker:fake_entity("plugin_configuration")
+        local plugin_t = faker:fake_entity("plugin")
         plugin_t.api_id = api.id
 
         -- Success: plugin doesn't exist yet
-        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
 
         -- Failure: the same plugin is already inserted
-        local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
+        local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.is_daoError(err)
@@ -228,8 +228,8 @@ describe("Cassandra", function()
         assert.equal(1, #apis)
         assert.equal(api_t.id, apis[1].id)
         assert.equal(api_t.name, apis[1].name)
-        assert.equal(api_t.public_dns, apis[1].public_dns)
-        assert.equal(api_t.target_url, apis[1].target_url)
+        assert.equal(api_t.inbound_dns, apis[1].inbound_dns)
+        assert.equal(api_t.upstream_url, apis[1].upstream_url)
 
         -- Consumer
         local consumers, err = session:execute("SELECT * FROM consumers")
@@ -249,18 +249,18 @@ describe("Cassandra", function()
         assert.equal(consumer_t.name, consumers[1].name)
 
         -- Plugin Configuration
-        local plugins, err = session:execute("SELECT * FROM plugins_configurations")
+        local plugins, err = session:execute("SELECT * FROM plugins")
         assert.falsy(err)
         assert.True(#plugins > 0)
 
         local plugin_t = plugins[1]
-        plugin_t.value = cjson.decode(plugin_t.value)
+        plugin_t.config = cjson.decode(plugin_t.config)
         plugin_t.enabled = false
-        local plugin, err = dao_factory.plugins_configurations:update(plugin_t)
+        local plugin, err = dao_factory.plugins:update(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
 
-        plugins, err = session:execute("SELECT * FROM plugins_configurations WHERE id = ?", {cassandra.uuid(plugin_t.id)})
+        plugins, err = session:execute("SELECT * FROM plugins WHERE id = ?", {cassandra.uuid(plugin_t.id)})
         assert.falsy(err)
         assert.equal(1, #plugins)
       end)
@@ -271,15 +271,15 @@ describe("Cassandra", function()
         assert.True(#apis > 0)
 
         local api_t = apis[1]
-        -- Should not work because we're reusing a public_dns
-        api_t.public_dns = apis[2].public_dns
+        -- Should not work because we're reusing a inbound_dns
+        api_t.inbound_dns = apis[2].inbound_dns
 
         local api, err = dao_factory.apis:update(api_t)
         assert.truthy(err)
         assert.falsy(api)
         assert.is_daoError(err)
         assert.True(err.unique)
-        assert.equal("public_dns already exists with value '"..api_t.public_dns.."'", err.message.public_dns)
+        assert.equal("inbound_dns already exists with value '"..api_t.inbound_dns.."'", err.message.inbound_dns)
       end)
 
       describe("full", function()
@@ -313,7 +313,7 @@ describe("Cassandra", function()
           assert.truthy(api_t)
 
           -- Update
-          api.public_dns = nil
+          api.inbound_dns = nil
 
           local nil_api, err = dao_factory.apis:update(api, true)
           assert.truthy(err)
@@ -323,7 +323,7 @@ describe("Cassandra", function()
           api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
           assert.falsy(err)
           assert.truthy(api[1].name)
-          assert.truthy(api[1].public_dns)
+          assert.truthy(api[1].inbound_dns)
         end)
 
       end)
@@ -366,7 +366,7 @@ describe("Cassandra", function()
         assert.True(needs_filtering)
 
         -- No Filtering needed
-        apis, err, needs_filtering = dao_factory.apis:find_by_keys {public_dns = api_t.public_dns}
+        apis, err, needs_filtering = dao_factory.apis:find_by_keys {inbound_dns = api_t.inbound_dns}
         assert.falsy(err)
         assert.same(api_t, apis[1])
         assert.False(needs_filtering)
@@ -448,32 +448,32 @@ describe("Cassandra", function()
         assert.equal("abcd is an invalid uuid", err.message.id)
       end)
 
-      describe("plugin_configurations", function()
+      describe("plugins", function()
 
         setup(function()
           local fixtures = spec_helper.seed_db(1)
           faker:insert_from_table {
-            plugin_configuration = {
-              { name = "key-auth", value = {key_names = {"apikey"}}, api_id = fixtures.api[1].id }
+            plugin = {
+              { name = "key-auth", config = {key_names = {"apikey"}}, api_id = fixtures.api[1].id }
             }
           }
         end)
 
-        it("should unmarshall the `value` field", function()
-          local plugins, err = session:execute("SELECT * FROM plugins_configurations")
+        it("should unmarshall the `config` field", function()
+          local plugins, err = session:execute("SELECT * FROM plugins")
           assert.falsy(err)
           assert.truthy(plugins)
           assert.True(#plugins> 0)
 
           local plugin_t = plugins[1]
 
-          local plugin, err = dao_factory.plugins_configurations:find_by_primary_key {
+          local plugin, err = dao_factory.plugins:find_by_primary_key {
             id = plugin_t.id,
             name = plugin_t.name
           }
           assert.falsy(err)
           assert.truthy(plugin)
-          assert.equal("table", type(plugin.value))
+          assert.equal("table", type(plugin.config))
         end)
 
       end)
@@ -540,23 +540,23 @@ describe("Cassandra", function()
     -- Plugins configuration additional behaviour
     --
 
-    describe("plugin_configurations", function()
+    describe("plugins", function()
       describe(":find_distinct()", function()
         it("should find distinct plugins configurations", function()
           faker:insert_from_table {
             api = {
-              { name = "tests distinct 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
-              { name = "tests distinct 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
+              { name = "tests distinct 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" },
+              { name = "tests distinct 2", inbound_dns = "bar.com", upstream_url = "http://mockbin.com" }
             },
-            plugin_configuration = {
-              { name = "key-auth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
-              { name = "rate-limiting", value = { minute = 6}, __api = 1 },
-              { name = "rate-limiting", value = { minute = 6}, __api = 2 },
-              { name = "file-log", value = { path = "/tmp/spec.log" }, __api = 1 }
+            plugin = {
+              { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
+              { name = "rate-limiting", config = { minute = 6}, __api = 1 },
+              { name = "rate-limiting", config = { minute = 6}, __api = 2 },
+              { name = "file-log", config = { path = "/tmp/spec.log" }, __api = 1 }
             }
           }
 
-          local res, err = dao_factory.plugins_configurations:find_distinct()
+          local res, err = dao_factory.plugins:find_distinct()
 
           assert.falsy(err)
           assert.truthy(res)
@@ -580,10 +580,10 @@ describe("Cassandra", function()
           local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(err)
 
-          local plugin_t = faker:fake_entity("plugin_configuration")
+          local plugin_t = faker:fake_entity("plugin")
           plugin_t.api_id = api.id
 
-          local plugin, err = dao_factory.plugins_configurations:insert(plugin_t)
+          local plugin, err = dao_factory.plugins:insert(plugin_t)
           assert.falsy(err)
           assert.truthy(plugin)
           assert.falsy(plugin.consumer_id)
@@ -596,7 +596,7 @@ describe("Cassandra", function()
 
         it("should select a plugin configuration by 'null' uuid consumer_id and remove the column", function()
           -- Now we should be able to select this plugin
-          local rows, err = dao_factory.plugins_configurations:find_by_keys {
+          local rows, err = dao_factory.plugins:find_by_keys {
             api_id = api_id,
             consumer_id = constants.DATABASE_NULL_ID
           }

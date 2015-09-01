@@ -9,7 +9,7 @@ describe("Rate Limiting API", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests rate-limiting 1", public_dns = "test1.com", target_url = "http://mockbin.com" }
+        { name = "tests rate-limiting 1", inbound_dns = "test1.com", upstream_url = "http://mockbin.com" }
       }
     }
     spec_helper.start_kong()
@@ -24,18 +24,18 @@ describe("Rate Limiting API", function()
 
   describe("POST", function()
 
-    it("should not save with empty value", function()
+    it("should not save with empty config", function()
       local response, status = http_client.post(BASE_URL, { name = "rate-limiting" })
       local body = json.decode(response)
       assert.are.equal(400, status)
       assert.are.equal("You need to set at least one limit: second, minute, hour, day, month, year", body.message)
     end)
 
-    it("should save with proper value", function()
-      local response, status = http_client.post(BASE_URL, { name = "rate-limiting", ["value.second"] = 10 })
+    it("should save with proper config", function()
+      local response, status = http_client.post(BASE_URL, { name = "rate-limiting", ["config.second"] = 10 })
       local body = json.decode(response)
       assert.are.equal(201, status)
-      assert.are.equal(10, body.value.second)
+      assert.are.equal(10, body.config.second)
     end)
 
   end)

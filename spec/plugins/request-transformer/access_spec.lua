@@ -11,12 +11,12 @@ describe("Request Transformer", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests request-transformer", public_dns = "test5.com", target_url = "http://mockbin.com" },
+        { name = "tests request-transformer", inbound_dns = "test5.com", upstream_url = "http://mockbin.com" },
       },
-      plugin_configuration = {
+      plugin = {
         {
           name = "request-transformer",
-          value = {
+          config = {
             add = {
               headers = {"x-added:true", "x-added2:true" },
               querystring = {"newparam:value"},

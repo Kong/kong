@@ -10,13 +10,13 @@ describe("Authentication Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests basicauth", public_dns = "basicauth.com", target_url = "http://httpbin.org"}
+        {name = "tests basicauth", inbound_dns = "basicauth.com", upstream_url = "http://httpbin.org"}
       },
       consumer = {
         {username = "basicauth_tests_consuser"}
       },
-      plugin_configuration = {
-        {name = "basic-auth", value = {}, __api = 1}
+      plugin = {
+        {name = "basic-auth", config = {}, __api = 1}
       },
       basicauth_credential = {
         {username = "username", password = "password", __consumer = 1}

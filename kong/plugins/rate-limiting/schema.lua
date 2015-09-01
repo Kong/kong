@@ -24,7 +24,7 @@ return {
         else
           for t = i, #ordered_periods do
             if plugin_t[ordered_periods[t]] and plugin_t[ordered_periods[t]] < plugin_t[v] then
-              invalid_order = "The value for "..ordered_periods[t].." cannot be lower than the value for "..v
+              invalid_order = "The limit for "..ordered_periods[t].." cannot be lower than the limit for "..v
             end
           end
         end

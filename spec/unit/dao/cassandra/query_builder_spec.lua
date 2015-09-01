@@ -5,7 +5,7 @@ describe("Query Builder", function()
   local apis_details = {
     primary_key = {"id"},
     clustering_key = {"cluster_key"},
-    indexes = {public_dns = true, name = true}
+    indexes = {inbound_dns = true, name = true}
   }
 
   describe("SELECT", function()
@@ -21,8 +21,8 @@ describe("Query Builder", function()
     end)
 
     it("should return the columns of the arguments to bind", function()
-      local _, columns = builder.select("apis", {name="mockbin", public_dns="mockbin.com"})
-      assert.same({"name", "public_dns"}, columns)
+      local _, columns = builder.select("apis", {name="mockbin", inbound_dns="mockbin.com"})
+      assert.same({"name", "inbound_dns"}, columns)
     end)
 
     describe("WHERE", function()
@@ -50,8 +50,8 @@ describe("Query Builder", function()
       end)
 
       it("should enable filtering when more than one indexed field is being queried", function()
-        local q, _, needs_filtering = builder.select("apis", {name="mockbin", public_dns="mockbin.com"}, apis_details)
-        assert.equal("SELECT * FROM apis WHERE name = ? AND public_dns = ? ALLOW FILTERING", q)
+        local q, _, needs_filtering = builder.select("apis", {name="mockbin", inbound_dns="mockbin.com"}, apis_details)
+        assert.equal("SELECT * FROM apis WHERE name = ? AND inbound_dns = ? ALLOW FILTERING", q)
         assert.True(needs_filtering)
       end)
     end)
@@ -122,8 +122,8 @@ describe("Query Builder", function()
     end)
 
     it("should return the columns of the arguments to bind", function()
-      local _, columns = builder.update("apis", {public_dns="1234", name="mockbin"}, {id="1"}, apis_details)
-      assert.same({"public_dns", "name", "id"}, columns)
+      local _, columns = builder.update("apis", {inbound_dns="1234", name="mockbin"}, {id="1"}, apis_details)
+      assert.same({"name", "inbound_dns", "id"}, columns)
     end)
 
     it("should throw an error if no column_family", function()

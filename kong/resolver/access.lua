@@ -6,11 +6,11 @@ local responses = require "kong.tools.responses"
 
 local _M = {}
 
--- Take a public_dns and make it a pattern for wildcard matching.
--- Only do so if the public_dns actually has a wildcard.
-local function create_wildcard_pattern(public_dns)
-  if string.find(public_dns, "*", 1, true) then
-    local pattern = string.gsub(public_dns, "%.", "%%.")
+-- Take a inbound_dns and make it a pattern for wildcard matching.
+-- Only do so if the inbound_dns actually has a wildcard.
+local function create_wildcard_pattern(inbound_dns)
+  if string.find(inbound_dns, "*", 1, true) then
+    local pattern = string.gsub(inbound_dns, "%.", "%%.")
     pattern = string.gsub(pattern, "*", ".+")
     pattern = string.format("^%s$", pattern)
     return pattern
@@ -23,7 +23,7 @@ local function create_strip_path_pattern(path)
 end
 
 local function get_backend_url(api)
-  local result = api.target_url
+  local result = api.upstream_url
 
   -- Checking if the target url ends with a final slash
   local len = string.len(result)
@@ -50,26 +50,26 @@ local function get_host_from_url(val)
 end
 
 -- Load all APIs in memory.
--- Sort the data for faster lookup: dictionary per public_dns and an array of wildcard public_dns.
+-- Sort the data for faster lookup: dictionary per inbound_dns and an array of wildcard inbound_dns.
 function _M.load_apis_in_memory()
   local apis, err = dao.apis:find_all()
   if err then
     return nil, err
   end
 
-  -- build dictionnaries of public_dns:api for efficient O(1) lookup.
-  -- we only do O(n) lookup for wildcard public_dns and path that are in arrays.
+  -- build dictionnaries of inbound_dns:api for efficient O(1) lookup.
+  -- we only do O(n) lookup for wildcard inbound_dns and path that are in arrays.
   local dns_dic, dns_wildcard_arr, path_arr = {}, {}, {}
   for _, api in ipairs(apis) do
-    if api.public_dns then
-      local pattern = create_wildcard_pattern(api.public_dns)
+    if api.inbound_dns then
+      local pattern = create_wildcard_pattern(api.inbound_dns)
       if pattern then
-        -- If the public_dns is a wildcard, we have a pattern and we can
+        -- If the inbound_dns is a wildcard, we have a pattern and we can
         -- store it in an array for later lookup.
         table.insert(dns_wildcard_arr, {pattern = pattern, api = api})
       else
-        -- Keep non-wildcard public_dns in a dictionary for faster lookup.
-        dns_dic[api.public_dns] = api
+        -- Keep non-wildcard inbound_dns in a dictionary for faster lookup.
+        dns_dic[api.inbound_dns] = api
       end
     end
     if api.path then
@@ -84,11 +84,11 @@ function _M.load_apis_in_memory()
   return {
     by_dns = dns_dic,
     path_arr = path_arr, -- all APIs with a path
-    wildcard_dns_arr = dns_wildcard_arr -- all APIs with a wildcard public_dns
+    wildcard_dns_arr = dns_wildcard_arr -- all APIs with a wildcard inbound_dns
   }
 end
 
-function _M.find_api_by_public_dns(req_headers, apis_dics)
+function _M.find_api_by_inbound_dns(req_headers, apis_dics)
   local all_hosts = {}
   for _, header_name in ipairs({"Host", constants.HEADERS.HOST_OVERRIDE}) do
     local hosts = req_headers[header_name]
@@ -103,7 +103,7 @@ function _M.find_api_by_public_dns(req_headers, apis_dics)
         if apis_dics.by_dns[host] then
           return apis_dics.by_dns[host]
         else
-          -- If the API was not found in the dictionary, maybe it is a wildcard public_dns.
+          -- If the API was not found in the dictionary, maybe it is a wildcard inbound_dns.
           -- In that case, we need to loop over all of them.
           for _, wildcard_dns in ipairs(apis_dics.wildcard_dns_arr) do
             if string.match(host, wildcard_dns.pattern) then
@@ -158,7 +158,7 @@ function _M.strip_path(uri, strip_path_pattern)
 end
 
 -- Find an API from a request made to nginx. Either from one of the Host or X-Host-Override headers
--- matching the API's `public_dns`, either from the `uri` matching the API's `path`.
+-- matching the API's `inbound_dns`, either from the `uri` matching the API's `path`.
 --
 -- To perform this, we need to query _ALL_ APIs in memory. It is the only way to compare the `uri`
 -- as a regex to the values set in DB, as well as matching wildcard dns.
@@ -180,7 +180,7 @@ local function find_api(uri)
   end
 
   -- Find by Host header
-  api, all_hosts = _M.find_api_by_public_dns(ngx.req.get_headers(), apis_dics)
+  api, all_hosts = _M.find_api_by_inbound_dns(ngx.req.get_headers(), apis_dics)
 
   -- If it was found by Host, return
   if api then
@@ -201,7 +201,7 @@ function _M.execute(conf)
   elseif not api then
     return responses.send_HTTP_NOT_FOUND {
       message = "API not found with these values",
-      public_dns = hosts,
+      inbound_dns = hosts,
       path = uri
     }
   end

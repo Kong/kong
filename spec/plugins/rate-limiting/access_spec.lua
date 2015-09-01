@@ -19,22 +19,22 @@ describe("RateLimiting Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests rate-limiting 1", public_dns = "test3.com", target_url = "http://mockbin.com" },
-        { name = "tests rate-limiting 2", public_dns = "test4.com", target_url = "http://mockbin.com" },
-        { name = "tests rate-limiting 3", public_dns = "test5.com", target_url = "http://mockbin.com" },
-        { name = "tests rate-limiting 4", public_dns = "test6.com", target_url = "http://mockbin.com" }
+        { name = "tests rate-limiting 1", inbound_dns = "test3.com", upstream_url = "http://mockbin.com" },
+        { name = "tests rate-limiting 2", inbound_dns = "test4.com", upstream_url = "http://mockbin.com" },
+        { name = "tests rate-limiting 3", inbound_dns = "test5.com", upstream_url = "http://mockbin.com" },
+        { name = "tests rate-limiting 4", inbound_dns = "test6.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
         { custom_id = "provider_124" }
       },
-      plugin_configuration = {
-        { name = "key-auth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
-        { name = "rate-limiting", value = { minute = 6 }, __api = 1 },
-        { name = "rate-limiting", value = { minute = 8 }, __api = 1, __consumer = 1 },
-        { name = "rate-limiting", value = { minute = 6 }, __api = 2 },
-        { name = "rate-limiting", value = { minute = 3, hour = 5 }, __api = 3 },
-        { name = "rate-limiting", value = { minute = 33 }, __api = 4 }
+      plugin = {
+        { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
+        { name = "rate-limiting", config = { minute = 6 }, __api = 1 },
+        { name = "rate-limiting", config = { minute = 8 }, __api = 1, __consumer = 1 },
+        { name = "rate-limiting", config = { minute = 6 }, __api = 2 },
+        { name = "rate-limiting", config = { minute = 3, hour = 5 }, __api = 3 },
+        { name = "rate-limiting", config = { minute = 33 }, __api = 4 }
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
@@ -147,7 +147,5 @@ describe("RateLimiting Plugin", function()
       end)
 
     end)
-
   end)
-
 end)

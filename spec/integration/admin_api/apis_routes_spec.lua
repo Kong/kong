@@ -22,8 +22,8 @@ describe("Admin API", function()
       it("[SUCCESS] should create an API", function()
         send_content_types(BASE_URL, "POST", {
           name="api POST tests",
-          public_dns="api.mockbin.com",
-          target_url="http://mockbin.com"
+          inbound_dns="api.mockbin.com",
+          upstream_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
       end)
 
@@ -36,15 +36,15 @@ describe("Admin API", function()
       it("[FAILURE] should return proper errors", function()
         send_content_types(BASE_URL, "POST", {},
         400,
-        '{"public_dns":"At least a \'public_dns\' or a \'path\' must be specified","path":"At least a \'public_dns\' or a \'path\' must be specified","target_url":"target_url is required"}')
+        '{"path":"At least an \'inbound_dns\' or a \'path\' must be specified","upstream_url":"upstream_url is required","inbound_dns":"At least an \'inbound_dns\' or a \'path\' must be specified"}')
 
-        send_content_types(BASE_URL, "POST", {public_dns="api.mockbin.com"},
-        400, '{"target_url":"target_url is required"}')
+        send_content_types(BASE_URL, "POST", {inbound_dns="api.mockbin.com"},
+        400, '{"upstream_url":"upstream_url is required"}')
 
         send_content_types(BASE_URL, "POST", {
-          public_dns="api.mockbin.com",
-          target_url="http://mockbin.com"
-        }, 409, '{"public_dns":"public_dns already exists with value \'api.mockbin.com\'"}')
+          inbound_dns="api.mockbin.com",
+          upstream_url="http://mockbin.com"
+        }, 409, '{"inbound_dns":"inbound_dns already exists with value \'api.mockbin.com\'"}')
       end)
 
     end)
@@ -58,15 +58,15 @@ describe("Admin API", function()
       it("[SUCCESS] should create and update", function()
         local api = send_content_types(BASE_URL, "PUT", {
           name="api PUT tests",
-          public_dns="api.mockbin.com",
-          target_url="http://mockbin.com"
+          inbound_dns="api.mockbin.com",
+          upstream_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
 
         api = send_content_types(BASE_URL, "PUT", {
           id=api.id,
           name="api PUT tests updated",
-          public_dns="updated-api.mockbin.com",
-          target_url="http://mockbin.com"
+          inbound_dns="updated-api.mockbin.com",
+          upstream_url="http://mockbin.com"
         }, 200)
         assert.equal("api PUT tests updated", api.name)
       end)
@@ -74,15 +74,15 @@ describe("Admin API", function()
       it("[FAILURE] should return proper errors", function()
         send_content_types(BASE_URL, "PUT", {},
         400,
-        '{"public_dns":"At least a \'public_dns\' or a \'path\' must be specified","path":"At least a \'public_dns\' or a \'path\' must be specified","target_url":"target_url is required"}')
+        '{"path":"At least an \'inbound_dns\' or a \'path\' must be specified","upstream_url":"upstream_url is required","inbound_dns":"At least an \'inbound_dns\' or a \'path\' must be specified"}')
 
-        send_content_types(BASE_URL, "PUT", {public_dns="api.mockbin.com"},
-        400, '{"target_url":"target_url is required"}')
+        send_content_types(BASE_URL, "PUT", {inbound_dns="api.mockbin.com"},
+        400, '{"upstream_url":"upstream_url is required"}')
 
         send_content_types(BASE_URL, "PUT", {
-          public_dns="updated-api.mockbin.com",
-          target_url="http://mockbin.com"
-        }, 409, '{"public_dns":"public_dns already exists with value \'updated-api.mockbin.com\'"}')
+          inbound_dns="updated-api.mockbin.com",
+          upstream_url="http://mockbin.com"
+        }, 409, '{"inbound_dns":"inbound_dns already exists with value \'updated-api.mockbin.com\'"}')
       end)
 
     end)
@@ -138,7 +138,7 @@ describe("Admin API", function()
     setup(function()
       spec_helper.drop_db()
       local fixtures = spec_helper.insert_fixtures {
-        api = {{ public_dns="mockbin.com", target_url="http://mockbin.com" }}
+        api = {{ inbound_dns="mockbin.com", upstream_url="http://mockbin.com" }}
       }
       api = fixtures.api[1]
     end)
@@ -183,9 +183,9 @@ describe("Admin API", function()
         local _, status = http_client.patch(BASE_URL.."hello", {name="patch-updated"})
         assert.equal(404, status)
 
-        local response, status = http_client.patch(BASE_URL..api.id, {target_url=""})
+        local response, status = http_client.patch(BASE_URL..api.id, {upstream_url=""})
         assert.equal(400, status)
-        assert.equal('{"target_url":"target_url is not a string"}\n', response)
+        assert.equal('{"upstream_url":"upstream_url is not a string"}\n', response)
       end)
 
     end)
@@ -206,12 +206,12 @@ describe("Admin API", function()
     end)
 
     describe("/apis/:api/plugins/", function()
-      local dao_plugins = spec_helper.get_env().dao_factory.plugins_configurations
+      local dao_plugins = spec_helper.get_env().dao_factory.plugins
 
       setup(function()
         spec_helper.drop_db()
         local fixtures = spec_helper.insert_fixtures {
-          api = {{ public_dns="mockbin.com", target_url="http://mockbin.com" }}
+          api = {{ inbound_dns="mockbin.com", upstream_url="http://mockbin.com" }}
         }
         api = fixtures.api[1]
         BASE_URL = BASE_URL..api.id.."/plugins/"
@@ -227,7 +227,7 @@ describe("Admin API", function()
         it("[SUCCESS] should create a plugin configuration", function()
           local response, status = http_client.post(BASE_URL, {
             name = "key-auth",
-            ["value.key_names"] = {"apikey"}
+            ["config.key_names"] = {"apikey"}
           })
           assert.equal(201, status)
           local body = json.decode(response)
@@ -237,7 +237,7 @@ describe("Admin API", function()
 
           response, status = http_client.post(BASE_URL, {
             name = "key-auth",
-            value = {key_names={"apikey"}}
+            config = {key_names={"apikey"}}
           }, {["content-type"]="application/json"})
           assert.equal(201, status)
           body = json.decode(response)
@@ -259,7 +259,7 @@ describe("Admin API", function()
         it("[SUCCESS] should create and update", function()
           local response, status = http_client.put(BASE_URL, {
             name = "key-auth",
-            ["value.key_names"] = {"apikey"}
+            ["config.key_names"] = {"apikey"}
           })
           assert.equal(201, status)
           local body = json.decode(response)
@@ -269,7 +269,7 @@ describe("Admin API", function()
 
           response, status = http_client.put(BASE_URL, {
             name = "key-auth",
-            value = {key_names = {"apikey"}}
+            config = {key_names = {"apikey"}}
           }, {["content-type"] = "application/json"})
           assert.equal(201, status)
           body = json.decode(response)
@@ -279,19 +279,19 @@ describe("Admin API", function()
           response, status = http_client.put(BASE_URL, {
             id = plugin_id,
             name = "key-auth",
-            value = {key_names = {"updated_apikey"}}
+            config = {key_names = {"updated_apikey"}}
           }, {["content-type"] = "application/json"})
           assert.equal(200, status)
           body = json.decode(response)
-          assert.equal("updated_apikey", body.value.key_names[1])
+          assert.equal("updated_apikey", body.config.key_names[1])
         end)
 
-        it("should override a plugin's `value` if partial", function()
+        it("should override a plugin's `config` if partial", function()
           local response, status = http_client.put(BASE_URL, {
             id = plugin_id,
             name = "key-auth",
-            ["value.key_names"] = {"api_key"},
-            ["value.hide_credentials"] = true
+            ["config.key_names"] = {"api_key"},
+            ["config.hide_credentials"] = true
           })
           assert.equal(200, status)
           assert.truthy(response)
@@ -299,11 +299,11 @@ describe("Admin API", function()
           response, status = http_client.put(BASE_URL, {
             id = plugin_id,
             name = "key-auth",
-            ["value.key_names"] = {"api_key_updated"}
+            ["config.key_names"] = {"api_key_updated"}
           })
           assert.equal(200, status)
           local body = json.decode(response)
-          assert.same({"api_key_updated"}, body.value.key_names)
+          assert.same({"api_key_updated"}, body.config.key_names)
           assert.falsy(body.hide_credentials)
         end)
 
@@ -328,11 +328,11 @@ describe("Admin API", function()
         setup(function()
           spec_helper.drop_db()
           local fixtures = spec_helper.insert_fixtures {
-            api = {{ public_dns="mockbin.com", target_url="http://mockbin.com" }},
-            plugin_configuration = {{ name = "key-auth", value = { key_names = { "apikey" }}, __api = 1 }}
+            api = {{ inbound_dns="mockbin.com", upstream_url="http://mockbin.com" }},
+            plugin = {{ name = "key-auth", config = { key_names = { "apikey" }}, __api = 1 }}
           }
           api = fixtures.api[1]
-          plugin = fixtures.plugin_configuration[1]
+          plugin = fixtures.plugin[1]
           BASE_URL = BASE_URL..api.id.."/plugins/"
         end)
 
@@ -350,15 +350,15 @@ describe("Admin API", function()
         describe("PATCH", function()
 
           it("[SUCCESS] should update a plugin", function()
-            local response, status = http_client.patch(BASE_URL..plugin.id, {["value.key_names"]={"key_updated"}})
+            local response, status = http_client.patch(BASE_URL..plugin.id, {["config.key_names"]={"key_updated"}})
             assert.equal(200, status)
             local body = json.decode(response)
-            assert.same("key_updated", body.value.key_names[1])
+            assert.same("key_updated", body.config.key_names[1])
 
-            response, status = http_client.patch(BASE_URL..plugin.id, {["value.key_names"]={"key_updated-json"}}, {["content-type"]="application/json"})
+            response, status = http_client.patch(BASE_URL..plugin.id, {["config.key_names"]={"key_updated-json"}}, {["content-type"]="application/json"})
             assert.equal(200, status)
             body = json.decode(response)
-            assert.same("key_updated-json", body.value.key_names[1])
+            assert.same("key_updated-json", body.config.key_names[1])
           end)
 
           it("[FAILURE] should return proper errors", function()
@@ -366,21 +366,21 @@ describe("Admin API", function()
             assert.equal(404, status)
           end)
 
-          it("should not override a plugin's `value` if partial", function()
-            -- This is delicate since a plugin's `value` is a text field in a DB like Cassandra
+          it("should not override a plugin's `config` if partial", function()
+            -- This is delicate since a plugin's `config` is a text field in a DB like Cassandra
             local _, status = http_client.patch(BASE_URL..plugin.id, {
-              ["value.key_names"] = {"key_set_null_test"},
-              ["value.hide_credentials"] = true
+              ["config.key_names"] = {"key_set_null_test"},
+              ["config.hide_credentials"] = true
             })
             assert.equal(200, status)
 
             local response, status = http_client.patch(BASE_URL..plugin.id, {
-              ["value.key_names"] = {"key_set_null_test_updated"}
+              ["config.key_names"] = {"key_set_null_test_updated"}
             })
             assert.equal(200, status)
             local body = json.decode(response)
-            assert.same({"key_set_null_test_updated"}, body.value.key_names)
-            assert.equal(true, body.value.hide_credentials)
+            assert.same({"key_set_null_test_updated"}, body.config.key_names)
+            assert.equal(true, body.config.hide_credentials)
           end)
 
         end)

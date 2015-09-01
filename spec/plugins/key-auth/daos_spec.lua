@@ -13,7 +13,7 @@ describe("DAO key-auth Credentials", function()
 
   it("should not insert in DB if consumer does not exist", function()
     -- Without a consumer_id, it's a schema error
-    local app_t = {name = "key-auth", value = {key_names = {"apikey"}}}
+    local app_t = {name = "key-auth", config = {key_names = {"apikey"}}}
     local app, err = dao_factory.keyauth_credentials:insert(app_t)
     assert.falsy(app)
     assert.truthy(err)

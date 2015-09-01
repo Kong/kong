@@ -11,24 +11,24 @@ describe("Cassandra cascade delete", function()
     spec_helper.prepare_db()
   end)
 
-  describe("API -> plugin_configurations", function()
+  describe("API -> plugins", function()
     local api, untouched_api
 
     setup(function()
       local fixtures = spec_helper.insert_fixtures {
         api = {
           {name = "cascade delete",
-           public_dns = "mockbin.com",
-           target_url = "http://mockbin.com"},
+           inbound_dns = "mockbin.com",
+           upstream_url = "http://mockbin.com"},
           {name = "untouched cascade delete",
-           public_dns = "untouched.com",
-           target_url = "http://mockbin.com"}
+           inbound_dns = "untouched.com",
+           upstream_url = "http://mockbin.com"}
         },
-        plugin_configuration = {
-          {name = "key-auth",                                   __api = 1},
-          {name = "rate-limiting", value = {minute = 6},        __api = 1},
-          {name = "file-log", value = {path = "/tmp/spec.log"}, __api = 1},
-          {name = "key-auth",                                   __api = 2}
+        plugin = {
+          {name = "key-auth",                                    __api = 1},
+          {name = "rate-limiting", config = {minute = 6},        __api = 1},
+          {name = "file-log", config = {path = "/tmp/spec.log"}, __api = 1},
+          {name = "key-auth",                                    __api = 2}
         }
       }
       api = fixtures.api[1]
@@ -39,20 +39,20 @@ describe("Cassandra cascade delete", function()
       spec_helper.drop_db()
     end)
 
-    it("should delete foreign plugins_configurations when deleting an API", function()
+    it("should delete foreign plugins when deleting an API", function()
       local ok, err = dao_factory.apis:delete(api)
       assert.falsy(err)
       assert.True(ok)
 
       -- Make sure we have 0 matches
-      local results, err = dao_factory.plugins_configurations:find_by_keys {
+      local results, err = dao_factory.plugins:find_by_keys {
         api_id = api.id
       }
       assert.falsy(err)
       assert.equal(0, #results)
 
       -- Make sure the untouched API still has its plugins
-      results, err = dao_factory.plugins_configurations:find_by_keys {
+      results, err = dao_factory.plugins:find_by_keys {
         api_id = untouched_api.id
       }
       assert.falsy(err)
@@ -60,25 +60,25 @@ describe("Cassandra cascade delete", function()
     end)
   end)
 
-  describe("Consumer -> plugin_configurations", function()
+  describe("Consumer -> plugins", function()
     local consumer, untouched_consumer
 
     setup(function()
       local fixtures = spec_helper.insert_fixtures {
         api = {
           {name = "cascade delete",
-           public_dns = "mockbin.com",
-           target_url = "http://mockbin.com"}
+           inbound_dns = "mockbin.com",
+           upstream_url = "http://mockbin.com"}
         },
         consumer = {
           {username = "king kong"},
           {username = "untouched consumer"}
         },
-        plugin_configuration = {
-          {name = "rate-limiting", value = {minute = 6},        __api = 1, __consumer = 1},
-          {name = "response-transformer",                      __api = 1, __consumer = 1},
-          {name = "file-log", value = {path = "/tmp/spec.log"}, __api = 1, __consumer = 1},
-          {name = "request-transformer",                       __api = 1, __consumer = 2}
+        plugin = {
+          {name = "rate-limiting", config = {minute = 6},        __api = 1, __consumer = 1},
+          {name = "response-transformer",                        __api = 1, __consumer = 1},
+          {name = "file-log", config = {path = "/tmp/spec.log"}, __api = 1, __consumer = 1},
+          {name = "request-transformer",                         __api = 1, __consumer = 2}
         }
       }
       consumer = fixtures.consumer[1]
@@ -89,19 +89,19 @@ describe("Cassandra cascade delete", function()
       spec_helper.drop_db()
     end)
 
-    it("should delete foreign plugins_configurations when deleting a Consumer", function()
+    it("should delete foreign plugins when deleting a Consumer", function()
       local ok, err = dao_factory.consumers:delete(consumer)
       assert.falsy(err)
       assert.True(ok)
 
-      local results, err = dao_factory.plugins_configurations:find_by_keys {
+      local results, err = dao_factory.plugins:find_by_keys {
         consumer_id = consumer.id
       }
       assert.falsy(err)
       assert.equal(0, #results)
 
       -- Make sure the untouched Consumer still has its plugin
-      results, err = dao_factory.plugins_configurations:find_by_keys {
+      results, err = dao_factory.plugins:find_by_keys {
         consumer_id = untouched_consumer.id
       }
       assert.falsy(err)

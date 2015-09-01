@@ -28,20 +28,20 @@ describe("Logging Plugins", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests tcp logging", public_dns = "tcp_logging.com", target_url = "http://mockbin.com" },
-        { name = "tests tcp logging2", public_dns = "tcp_logging2.com", target_url = "http://localhost:"..HTTP_DELAY_PORT },
-        { name = "tests udp logging", public_dns = "udp_logging.com", target_url = "http://mockbin.com" },
-        { name = "tests http logging", public_dns = "http_logging.com", target_url = "http://mockbin.com" },
-        { name = "tests https logging", public_dns = "https_logging.com", target_url = "http://mockbin.com" },
-        { name = "tests file logging", public_dns = "file_logging.com", target_url = "http://mockbin.com" }
+        { name = "tests tcp logging", inbound_dns = "tcp_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests tcp logging2", inbound_dns = "tcp_logging2.com", upstream_url = "http://localhost:"..HTTP_DELAY_PORT },
+        { name = "tests udp logging", inbound_dns = "udp_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests http logging", inbound_dns = "http_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests https logging", inbound_dns = "https_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests file logging", inbound_dns = "file_logging.com", upstream_url = "http://mockbin.com" }
       },
-      plugin_configuration = {
-        { name = "tcp-log", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
-        { name = "tcp-log", value = { host = "127.0.0.1", port = TCP_PORT }, __api = 2 },
-        { name = "udp-log", value = { host = "127.0.0.1", port = UDP_PORT }, __api = 3 },
-        { name = "http-log", value = { http_endpoint = "http://localhost:"..HTTP_PORT.."/" }, __api = 4 },
-        { name = "http-log", value = { http_endpoint = "https://mockbin.org/bin/"..mock_bin }, __api = 5 },
-        { name = "file-log", value = { path = FILE_LOG_PATH }, __api = 6 }
+      plugin = {
+        { name = "tcp-log", config = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
+        { name = "tcp-log", config = { host = "127.0.0.1", port = TCP_PORT }, __api = 2 },
+        { name = "udp-log", config = { host = "127.0.0.1", port = UDP_PORT }, __api = 3 },
+        { name = "http-log", config = { http_endpoint = "http://localhost:"..HTTP_PORT.."/" }, __api = 4 },
+        { name = "http-log", config = { http_endpoint = "https://mockbin.org/bin/"..mock_bin }, __api = 5 },
+        { name = "file-log", config = { path = FILE_LOG_PATH }, __api = 6 }
       }
     }
 

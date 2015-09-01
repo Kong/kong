@@ -40,21 +40,21 @@ describe("Authentication Plugin", function()
     spec_helper.drop_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests oauth2", public_dns = "oauth2.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 with path", public_dns = "mockbin-path.com", target_url = "http://mockbin.com", path = "/somepath/" },
-        { name = "tests oauth2 with hide credentials", public_dns = "oauth2_3.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 client credentials", public_dns = "oauth2_4.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 password grant", public_dns = "oauth2_5.com", target_url = "http://mockbin.com" }
+        { name = "tests oauth2", inbound_dns = "oauth2.com", upstream_url = "http://mockbin.com" },
+        { name = "tests oauth2 with path", inbound_dns = "mockbin-path.com", upstream_url = "http://mockbin.com", path = "/somepath/" },
+        { name = "tests oauth2 with hide credentials", inbound_dns = "oauth2_3.com", upstream_url = "http://mockbin.com" },
+        { name = "tests oauth2 client credentials", inbound_dns = "oauth2_4.com", upstream_url = "http://mockbin.com" },
+        { name = "tests oauth2 password grant", inbound_dns = "oauth2_5.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { username = "auth_tests_consumer" }
       },
-      plugin_configuration = {
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 }
+      plugin = {
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 }
       },
       oauth2_credential = {
         { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 }
@@ -78,7 +78,7 @@ describe("Authentication Plugin", function()
   describe("OAuth2 Authorization", function()
 
     describe("Code Grant", function()
-      
+
       it("should return an error when no provision_key is being sent", function()
         local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { }, {host = "oauth2.com"})
         local body = cjson.decode(response)
@@ -170,7 +170,7 @@ describe("Authentication Plugin", function()
         assert.are.equal(1, utils.table_size(body))
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
       end)
-      
+
       it("should fail with a path when using the DNS", function()
         local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123a", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "mockbin-path.com"})
         local body = cjson.decode(response)
@@ -216,8 +216,8 @@ describe("Authentication Plugin", function()
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
 
         local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
-        local code 
-        for line in matches do 
+        local code
+        for line in matches do
           code = line
         end
         local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
@@ -227,9 +227,9 @@ describe("Authentication Plugin", function()
         assert.are.equal("userid123", data[1].authenticated_userid)
         assert.are.equal("email", data[1].scope)
       end)
-      
+
     end)
-    
+
     describe("Implicit Grant", function()
       it("should return success", function()
         local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2.com"})
@@ -258,7 +258,7 @@ describe("Authentication Plugin", function()
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=[\\w]{32,32}$"))
 
         local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=([\\w]{32,32})$")
-        local access_token 
+        local access_token
         for line in matches do
           access_token = line
         end
@@ -417,9 +417,9 @@ describe("Authentication Plugin", function()
       end)
 
     end)
-  
+
   end)
-  
+
   describe("OAuth2 Access Token", function()
 
     it("should return an error when nothing is being sent", function()
@@ -596,7 +596,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(5, body.expires_in)
     end)
 
-    it("should expire after 5 seconds", function() 
+    it("should expire after 5 seconds", function()
       local token = provision_token()
       local _, status = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       assert.are.equal(200, status)
@@ -682,5 +682,5 @@ describe("Authentication Plugin", function()
       assert.falsy(body.headers.authorization)
     end)
   end)
-  
+
 end)

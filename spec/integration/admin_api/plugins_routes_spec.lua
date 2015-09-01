@@ -12,8 +12,8 @@ describe("Admin API", function()
     spec_helper.stop_kong()
   end)
 
-  describe("/plugins/", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins/"
+  describe("/plugins/enabled", function()
+    local BASE_URL = spec_helper.API_URL.."/plugins/enabled"
 
     it("should return a list of enabled plugins on this node", function()
       local response, status = http_client.get(BASE_URL)
@@ -23,8 +23,8 @@ describe("Admin API", function()
     end)
   end)
 
-  describe("/plugins/:name/schema", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins/key-auth/schema"
+  describe("/plugins/schema/:name", function()
+    local BASE_URL = spec_helper.API_URL.."/plugins/schema/key-auth"
 
     it("[SUCCESS] should return the schema of a plugin", function()
       local response, status = http_client.get(BASE_URL)
@@ -34,7 +34,7 @@ describe("Admin API", function()
     end)
 
     it("[FAILURE] should return a descriptive error if schema is not found", function()
-      local response, status = http_client.get(spec_helper.API_URL.."/plugins/foo/schema")
+      local response, status = http_client.get(spec_helper.API_URL.."/plugins/schema/foo")
       assert.equal(404, status)
       local body = json.decode(response)
       assert.equal("No plugin named 'foo'", body.message)

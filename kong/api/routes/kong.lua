@@ -4,7 +4,7 @@ local route_helpers = require "kong.api.route_helpers"
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local db_plugins, err = dao.plugins_configurations:find_distinct()
+      local db_plugins, err = dao.plugins:find_distinct()
       if err then
         return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
