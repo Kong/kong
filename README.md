@@ -1,4 +1,4 @@
-# KONG: Microservice Management Layer
+# Microservice & API Management Layer
 
 [![Build Status][travis-badge]][travis-url]
 [![Circle CI][circleci-badge]][circleci-url]
