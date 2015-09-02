@@ -4,13 +4,13 @@
 [![Circle CI][circleci-badge]][circleci-url]
 [![Gitter Badge][gitter-badge]][gitter-url]
 
-- Website: [getkong.org][kong-url]
-- Documentation: [getkong.org/docs][kong-docs]
-- Mailing List: [Google Groups][google-groups-url]
-
 [![][kong-logo]][kong-url]
 
 Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** and Cassandra with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] handling billions of requests to over ten thousand APIs.
+
+- Website: [getkong.org][kong-url]
+- Documentation: [getkong.org/docs][kong-docs]
+- Mailing List: [Google Groups][google-groups-url]
 
 ## Summary
 
