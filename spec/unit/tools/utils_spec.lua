@@ -62,7 +62,7 @@ describe("Utils", function()
       end)
 
       it("should transform previous values to a list if the same key is given again", function()
-        local e
+        local e = nil
 
         e = add_error(e, "key1", "value1")
         e = add_error(e, "key2", "value2")
@@ -79,7 +79,7 @@ describe("Utils", function()
       end)
 
       it("should also list tables pushed as errors", function()
-        local e
+        local e = nil
 
         e = add_error(e, "key1", "value1")
         e = add_error(e, "key2", "value2")
