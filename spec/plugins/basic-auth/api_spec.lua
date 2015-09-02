@@ -120,4 +120,40 @@ describe("Basic Auth Credentials API", function()
 
     end)
   end)
+
+  -- test sha1
+  describe("/consumers/:consumer/basic-auth/ sha1", function()
+    local consumer_id = "asd"
+
+    setup(function()
+      local fixtures = spec_helper.insert_fixtures {
+        consumer = {{ username = "john", custom_id = "asdd" }},
+        api = {
+          { name = "basic-auth", inbound_dns = "test1.com", upstream_url = "http://mockbin.com" },
+        },
+        plugin = {
+          { name = "basic-auth", config = { encryption_method = "sha1" },__api = 1 }
+        },
+      }
+
+      consumer = fixtures.consumer[1]
+      BASE_URL = spec_helper.API_URL.."/consumers/john/basic-auth/"
+    end)
+
+    describe("POST", function()
+
+      it("[SUCCESS] should create a basicauth credential with passowrd hashed using sha1", function()
+        local username, password = "john", "1234"
+        local response, status = http_client.post(BASE_URL, { username = username, password = password })
+
+        assert.equal(201, status)
+
+        credential = json.decode(response)
+        assert.equal(username, credential.username)
+        assert.are_not.equal(password, credential.password)
+        assert.equal(40, #credential.password)
+      end)
+    end)
+  end)
+
 end)
