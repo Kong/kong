@@ -6,7 +6,7 @@
 
 [![][kong-logo]][kong-url]
 
-Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** and Cassandra with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] and many other companies, handling billions of requests per month.
+Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] and many other companies, handling billions of requests/month.
 
 - Website: [getkong.org][kong-url]
 - Documentation: [getkong.org/docs][kong-docs]
