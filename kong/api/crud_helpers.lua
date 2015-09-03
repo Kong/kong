@@ -5,6 +5,23 @@ local utils = require "kong.tools.utils"
 
 local _M = {}
 
+function _M.find_plugin_conf_by_api_id_and_name(self, dao_factory, helpers)
+  local fetch_keys = {
+    ["api_id"] = self.params.api_id,
+    ["name"] = self.params.name,
+  }
+
+  local data, err = dao_factory.plugins:find_by_keys(fetch_keys)
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  if not data[1] then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+  self.plugin = data[1]
+end
+
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local fetch_keys = {
     [validations.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id

@@ -1,6 +1,7 @@
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
+local rate_limit_utils = require "kong.plugins.rate-limiting.utils"
 
 local _M = {}
 
@@ -25,34 +26,6 @@ local function increment(api_id, identifier, current_timestamp, value)
   end
 end
 
-local function get_usage(api_id, identifier, current_timestamp, limits)
-  local usage = {}
-  local stop
-
-  for name, limit in pairs(limits) do
-    local current_metric, err = dao.ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, name)
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-
-    -- What is the current usage for the configured limit name?
-    local current_usage = current_metric and current_metric.value or 0
-    local remaining = limit - current_usage
-
-    -- Recording usage
-    usage[name] = {
-      limit = limit,
-      remaining = remaining
-    }
-
-    if remaining <= 0 then
-      stop = name
-    end
-  end
-
-  return usage, stop
-end
-
 function _M.execute(conf)
   local current_timestamp = timestamp.get_utc()
 
@@ -62,7 +35,7 @@ function _M.execute(conf)
   local api_id = ngx.ctx.api.id
 
   -- Load current metric for configured period
-  local usage, stop = get_usage(api_id, identifier, current_timestamp, conf)
+  local usage, stop = rate_limit_utils.get_usage(api_id, identifier, current_timestamp, conf)
 
   -- Adding headers
   for k, v in pairs(usage) do

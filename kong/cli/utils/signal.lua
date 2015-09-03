@@ -116,6 +116,7 @@ local function prepare_nginx_working_dir(args_config)
     proxy_port = kong_config.proxy_port,
     proxy_ssl_port = kong_config.proxy_ssl_port,
     admin_api_port = kong_config.admin_api_port,
+    consumer_api_port = kong_config.consumer_api_port,
     dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
     memory_cache_size = kong_config.memory_cache_size,
     ssl_cert = ssl_cert_path,
@@ -222,6 +223,7 @@ function _M.prepare_kong(args_config, signal)
   kong_config.proxy_port,
   kong_config.proxy_ssl_port,
   kong_config.admin_api_port,
+  kong_config.consumer_api_port,
   kong_config.dnsmasq_port,
   kong_config.database,
   tostring(dao_config)))
@@ -254,7 +256,7 @@ function _M.send_signal(args_config, signal)
   if not signal then signal = START end
 
   if signal == START then
-    local ports = { kong_config.proxy_port, kong_config.proxy_ssl_port, kong_config.admin_api_port }
+    local ports = { kong_config.proxy_port, kong_config.proxy_ssl_port, kong_config.admin_api_port, kong_config.consumer_api_port }
     for _,port in ipairs(ports) do
       check_port(port)
     end

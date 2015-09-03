@@ -17,6 +17,7 @@ local TEST_PROXY_PORT = 8100
 local TEST_PROXY_URL = "http://localhost:"..tostring(TEST_PROXY_PORT)
 local TEST_PROXY_SSL_URL = "https://localhost:8543"
 _M.API_URL = "http://localhost:8101"
+_M.CONSUMER_API_URL = "http://localhost:8102"
 _M.KONG_BIN = "bin/kong"
 _M.PROXY_URL = TEST_PROXY_URL
 _M.PROXY_SSL_URL = TEST_PROXY_SSL_URL

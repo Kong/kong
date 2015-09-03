@@ -54,6 +54,9 @@ return {
       "day",
       "month",
       "year"
+    },
+    USAGE = {
+      NO_LIMIT_VALUE = "unlimited"
     }
   }
 }
