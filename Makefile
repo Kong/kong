@@ -48,7 +48,7 @@ drop:
 	@bin/kong db -c $(DEVELOPMENT_CONF) drop
 
 lint:
-	@find kong spec -name '*.lua' ! -name 'invalid-module.lua' | xargs luacheck -q
+	@find kong spec -name '*.lua' -not -name 'invalid-module.lua' -not -path 'kong/vendor/*' | xargs luacheck -q
 
 test:
 	@busted -v spec/unit

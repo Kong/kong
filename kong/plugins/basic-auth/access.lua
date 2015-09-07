@@ -2,6 +2,7 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
+local crypto = require "kong.plugins.basic-auth.crypto"
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -50,26 +51,23 @@ local function retrieve_credentials(request, header_name, conf)
   return username, password
 end
 
--- Fast lookup for credential validation depending on the type of the authentication
---
--- All methods must respect:
---
--- @param {table} credential The retrieved credential from the username passed in the request
--- @param {string} username
--- @param {string} password
--- @return {boolean} Success of authentication
-local function validate_credentials(credential, username, password)
-  if credential then
-    -- TODO: No encryption yet
-    return credential.password == password
+--- Validate a credential in the Authorization header against one fetched from the database.
+-- @param credential The retrieved credential from the username passed in the request
+-- @param given_password The password as given in the Authorization header
+-- @return Success of authentication
+local function validate_credentials(credential, given_password)
+  local digest, err = crypto.encrypt({consumer_id = credential.consumer_id, password = given_password})
+  if err then
+    ngx.log(ngx.ERR, "[basic-auth]  "..err)
   end
+  return credential.password == digest
 end
 
-local function load_credential(username)
+local function load_credential_from_db(username)
   local credential
   if username then
     credential = cache.get_or_set(cache.basicauth_credential_key(username), function()
-      local credentials, err = dao.basicauth_credentials:find_by_keys { username = username }
+      local credentials, err = dao.basicauth_credentials:find_by_keys {username = username}
       local result
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -91,18 +89,18 @@ function _M.execute(conf)
   end
 
   local credential
-  local username, password = retrieve_credentials(ngx.req, PROXY_AUTHORIZATION, conf)
-  if username then
-    credential = load_credential(username)
+  local given_username, given_password = retrieve_credentials(ngx.req, PROXY_AUTHORIZATION, conf)
+  if given_username then
+    credential = load_credential_from_db(given_username)
   end
 
   -- Try with the authorization header
   if not credential then
-    username, password = retrieve_credentials(ngx.req, AUTHORIZATION, conf)
-    credential = load_credential(username)
+    given_username, given_password = retrieve_credentials(ngx.req, AUTHORIZATION, conf)
+    credential = load_credential_from_db(given_username)
   end
 
-  if not validate_credentials(credential, username, password) then
+  if not credential or not validate_credentials(credential, given_password) then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end

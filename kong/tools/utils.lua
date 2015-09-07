@@ -121,7 +121,7 @@ function _M.load_module_if_exists(module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and string.find(res, "module '.*' not found") then
+  elseif type(res) == "string" and string.find(res, "module '"..module_name.."' not found", nil, true) then
     return false
   else
     error(res)
