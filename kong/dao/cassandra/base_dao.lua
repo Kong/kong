@@ -188,15 +188,19 @@ function BaseDao:_execute(query, args, options, keyspace)
   -- Prepare query and cache the prepared statement for later call
   local statement, cache_key, err = self:get_or_prepare_stmt(session, query)
   if err then
+    if options and options.auto_paging then
+      -- Allow the iteration to run once and thus catch the error
+      return function() return {}, err end
+    end
     return nil, err
   end
 
   if options and options.auto_paging then
-    local _, rows, page, err = session:execute(statement, args, options)
+    local _, rows, err, page = session:execute(statement, args, options)
     for i, row in ipairs(rows) do
       rows[i] = self:_unmarshall(row)
     end
-    return _, rows, page, err
+    return _, rows, err, page
   end
 
   local results, err = session:execute(statement, args, options)
