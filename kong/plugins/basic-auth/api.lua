@@ -1,9 +1,41 @@
 local crud = require "kong.api.crud_helpers"
+local basic_auth_utils = require "kong.plugins.basic-auth.utils"
+
+local function get_config(dao_factory)
+  -- in case of no conf.
+  local default_config = {
+    hide_credentials = false,
+    encryption_method = "plain",
+  }
+
+  local data, err = dao_factory.plugins:find_by_keys({ name = "basic-auth" })
+  if err then
+    return default_config, err
+  end
+
+  if not data[1] or not data[1].config then
+    return default_config, "basic-auth configuration not found"
+  end
+
+  return data[1].config or default_config
+end
+
+local function prepare_password(self, dao_factory, helpers)
+  local config, err = get_config(dao_factory)
+  if err then
+    ngx.log(ngx.ERR, "Error fetching basic-auth configuration: ", err)
+  end
+
+  local method = config.encryption_method or "plain"
+  local transform_function = basic_auth_utils.encryption_methods[method] or basic_auth_utils.encryption_methods.plain
+  return transform_function(self.params)
+end
 
 local global_route = {
   before = function(self, dao_factory, helpers)
     crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     self.params.consumer_id = self.consumer.id
+    self.params.password = prepare_password(self, dao_factory, helpers)
   end,
 
   GET = function(self, dao_factory, helpers)
@@ -23,6 +55,7 @@ local single_route = {
   before = function(self, dao_factory, helpers)
     crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     self.params.consumer_id = self.consumer.id
+    self.params.password = prepare_password(self, dao_factory, helpers)
 
     local data, err = dao_factory.basicauth_credentials:find_by_keys({ id = self.params.id })
     if err then
