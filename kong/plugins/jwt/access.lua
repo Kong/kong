@@ -59,36 +59,21 @@ function _M.execute(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR("Error while decoding JWT")
   end
 
-  local consumer_username
+  local secret_username
   for _, v in ipairs(conf.username_claims) do
     if claims[v] then
-      consumer_username = claims[v]
+      secret_username = claims[v]
     end
   end
 
-  if not consumer_username then
+  if not secret_username then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_UNAUTHORIZED("No username in claims")
+    return responses.send_HTTP_UNAUTHORIZED(string.format("No %s in claims", conf.username_claims[1]))
   end
 
-  -- Retrieve the consumer
-  local consumer = cache.get_or_set(cache.consumer_key(consumer_username), function()
-    local rows, err = dao.consumers:find_by_keys {username = consumer_username}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    elseif #rows > 0 then
-      return rows[1]
-    end
-  end)
-
-  if not consumer then
-    ngx.ctx.stop_phases = true
-    return responses.send_HTTP_FORBIDDEN("Could not find consumer for value '"..consumer_username.."'")
-  end
-
-  -- Retrieve the secret for this consumer
-  local jwt_secret = cache.get_or_set(jwt_secret_cache_key(consumer.id), function()
-    local rows, err = dao.jwtauth_credentials:find_by_keys {consumer_id = consumer.id}
+  -- Retrieve the secret
+  local jwt_secret = cache.get_or_set(jwt_secret_cache_key(secret_username), function()
+    local rows, err = dao.jwt_secrets:find_by_keys {username = secret_username}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     elseif #rows > 0 then
@@ -97,7 +82,7 @@ function _M.execute(conf)
   end)
 
   -- Now verify the JWT
-  err = select(2, jwt.decode(token, jwt_secret, true))
+  err = select(2, jwt.decode(token, jwt_secret.secret, true))
   if err == "Invalid signature" then
     ngx.ctx.stop_phases = true
     return responses.send_HTTP_FORBIDDEN("Invalid signature")
@@ -105,6 +90,20 @@ function _M.execute(conf)
     ngx.log(ngx.ERR, "[jwt]"..err)
     ngx.ctx.stop_phases = true
     return responses.send_HTTP_INTERNAL_SERVER_ERROR("Error while decoding JWT")
+  end
+
+  -- Retrieve the consumer
+  local consumer = cache.get_or_set(cache.consumer_key(secret_username), function()
+    local consumer, err = dao.consumers:find_by_primary_key {id = jwt_secret.consumer_id}
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+    return consumer
+  end)
+
+  if not consumer then
+    ngx.ctx.stop_phases = true
+    return responses.send_HTTP_FORBIDDEN(string.format("Could not find consumer for '%s=%s'", conf.username_claims[1], secret_username))
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
