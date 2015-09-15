@@ -44,6 +44,7 @@ describe("Static files", function()
 plugins_available:
   - ssl
   - cors
+  - jwt
   - tcp-log
   - udp-log
   - file-log
