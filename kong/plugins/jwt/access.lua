@@ -50,7 +50,7 @@ function _M.execute(conf)
 
   if not token then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_UNAUTHORIZED("No JWT found in querystring or headers")
+    return responses.send_HTTP_UNAUTHORIZED()
   end
 
   -- Decode token to find out who the consumer is
@@ -73,7 +73,7 @@ function _M.execute(conf)
 
   -- Retrieve the secret
   local jwt_secret = cache.get_or_set(jwt_secret_cache_key(jwt_secret_key), function()
-    local rows, err = dao.jwt_secrets:find_by_keys {username = jwt_secret_key}
+    local rows, err = dao.jwt_secrets:find_by_keys {key = jwt_secret_key}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     elseif #rows > 0 then
