@@ -35,7 +35,7 @@ describe("JWT API", function()
       end)
 
       it("[SUCCESS] should create a jwt secret", function()
-        local response, status = http_client.post(BASE_URL, {username = "bob"})
+        local response, status = http_client.post(BASE_URL)
         assert.equal(201, status)
         local body = json.decode(response)
         assert.equal(consumer.id, body.consumer_id)
@@ -43,19 +43,14 @@ describe("JWT API", function()
         jwt1 = body
       end)
 
-      it("[SUCCESS] should override any given `secret` parameter", function()
-        local response, status = http_client.post(BASE_URL, {username = "bob2", secret = "tooshort"})
+      it("[SUCCESS] should override any given `secret` and accept a `key` parameter", function()
+        local response, status = http_client.post(BASE_URL, {key = "bob2", secret = "tooshort"})
         assert.equal(201, status)
         local body = json.decode(response)
+        assert.equal("bob2", body.key)
         assert.not_equal("tooshort", body.secret)
 
         jwt2 = body
-      end)
-
-      it("[FAILURE] should return proper errors", function()
-        local response, status = http_client.post(BASE_URL, {})
-        assert.equal(400, status)
-        assert.equal('{"username":"username is required"}\n', response)
       end)
 
     end)
@@ -63,19 +58,13 @@ describe("JWT API", function()
     describe("PUT", function()
 
       it("[SUCCESS] should create and update", function()
-        local response, status = http_client.put(BASE_URL, {username = "bob"})
+        local response, status = http_client.put(BASE_URL)
         assert.equal(201, status)
         local body = json.decode(response)
         assert.equal(consumer.id, body.consumer_id)
 
         -- For GET tests
         jwt_secret = body
-      end)
-
-      it("[FAILURE] should return proper errors", function()
-        local response, status = http_client.put(BASE_URL, {})
-        assert.equal(400, status)
-        assert.equal('{"username":"username is required"}\n', response)
       end)
 
     end)
@@ -105,11 +94,9 @@ describe("JWT API", function()
 
     describe("PATCH", function()
 
-      it("[SUCCESS] should update a credential", function()
-        local response, status = http_client.patch(BASE_URL..jwt_secret.id, {username = "alice"})
-        assert.equal(200, status)
-        credential = json.decode(response)
-        assert.equal("alice", credential.username)
+      it("[SUCCESS] should not be supported", function()
+        local _, status = http_client.patch(BASE_URL..jwt_secret.id, {key = "alice"})
+        assert.equal(405, status)
       end)
 
     end)

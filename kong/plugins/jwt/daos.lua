@@ -1,8 +1,7 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
-local stringy = require "stringy"
 local utils = require "kong.tools.utils"
 
-local function generate_secret(v, t, column)
+local function random_string(v, t, column)
   return true, nil, {[column] = utils.random_string()}
 end
 
@@ -12,8 +11,8 @@ local SCHEMA = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", dao_insert_value = true},
     consumer_id = {type = "id", required = true, queryable = true, foreign = "consumers:id"},
-    username = {type = "string", required = true, unique = true, queryable = true},
-    secret = {type = "string", unique = true, func = generate_secret}
+    key = {type = "string", unique = true, queryable = true, default = utils.random_string},
+    secret = {type = "string", unique = true, func = random_string}
   }
 }
 

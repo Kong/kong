@@ -7,13 +7,13 @@ local Migration = {
         CREATE TABLE IF NOT EXISTS jwt_secrets(
           id uuid,
           consumer_id uuid,
-          username text,
+          key text,
           secret text,
           created_at timestamp,
           PRIMARY KEY (id)
         );
 
-        CREATE INDEX IF NOT EXISTS ON jwt_secrets(username);
+        CREATE INDEX IF NOT EXISTS ON jwt_secrets(key);
         CREATE INDEX IF NOT EXISTS ON jwt_secrets(secret);
         CREATE INDEX IF NOT EXISTS ON jwt_secrets(consumer_id);
       ]]
