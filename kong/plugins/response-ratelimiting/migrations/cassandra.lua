@@ -1,6 +1,6 @@
 local Migrations = {
   {
-    name = "2015-08-03-132400_init_oauth2",
+    name = "2015-08-21_init_response-rate-limiting",
     up = function(options)
       return [[
         CREATE TABLE IF NOT EXISTS response_ratelimiting_metrics(
