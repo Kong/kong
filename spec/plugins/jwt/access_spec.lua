@@ -6,8 +6,9 @@ local lua_jwt = require "luajwt"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
 local PAYLOAD = {
-  iss = "12345678",
+  iss = nil,
   nbf = os.time(),
+  iat = os.time(),
   exp = os.time() + 3600
 }
 
@@ -26,7 +27,7 @@ describe("JWT access", function()
       },
       plugin = {
         {name = "jwt", config = {}, __api = 1},
-        {name = "jwt", config = {uri_param_names = {"token", "jwt"}, key_claim_names = {"key", "username"}}, __api = 2}
+        {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2}
       },
       jwt_secret = {
         {__consumer = 1}
@@ -52,11 +53,11 @@ describe("JWT access", function()
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
     assert.equal(401, status)
     local body = json.decode(response)
-    assert.equal("No key in claims", body.message)
+    assert.equal("No mandatory 'iss' in claims", body.message)
   end)
 
   it("should return 403 Forbidden if the signature is invalid", function()
-    PAYLOAD.key = jwt_secret.key
+    PAYLOAD.iss = jwt_secret.key
     local jwt = lua_jwt.encode(PAYLOAD, "foo")
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
@@ -66,7 +67,7 @@ describe("JWT access", function()
   end)
 
   it("should proxy the request with token and consumer headers if it was verified", function()
-    PAYLOAD.key = jwt_secret.key
+    PAYLOAD.iss = jwt_secret.key
     local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
@@ -77,33 +78,17 @@ describe("JWT access", function()
   end)
 
   it("should find the JWT if given in URL parameters", function()
-    PAYLOAD.key = jwt_secret.key
+    PAYLOAD.iss = jwt_secret.key
     local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
     local _, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt.com"})
     assert.equal(200, status)
   end)
 
-  describe("Custom parameter and claim names", function()
-
-    it("should find the JWT if given in a custom URL parameter", function()
-      PAYLOAD.key = jwt_secret.key
-      local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
-      local _, status = http_client.get(STUB_GET_URL.."?token="..jwt, nil, {host = "jwt2.com"})
-      assert.equal(200, status)
-    end)
-
-    it("should find the key in the claims if using a custom name", function()
-      PAYLOAD.key = nil
-      PAYLOAD.username = jwt_secret.key
-      local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
-      local _, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt2.com"})
-      assert.equal(200, status)
-    end)
-
-  end)
-
-  describe("JWT specifics", function()
-
+  it("should find the JWT if given in a custom URL parameter", function()
+    PAYLOAD.iss = jwt_secret.key
+    local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
+    local _, status = http_client.get(STUB_GET_URL.."?token="..jwt, nil, {host = "jwt2.com"})
+    assert.equal(200, status)
   end)
 
 end)

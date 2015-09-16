@@ -2,6 +2,10 @@ local jwt = require "luajwt"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
+local string_format = string.format
+local select = select
+local dao = dao
+local re_gmatch = ngx.re.gmatch
 
 local _M = {}
 
@@ -22,7 +26,7 @@ local function retrieve_token(request, conf)
 
   local authorization_header = request.get_headers()["authorization"]
   if authorization_header then
-    local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]earer\\s*(.+)")
+    local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]earer\\s*(.+)")
     if not iterator then
       return nil, iter_err
     end
@@ -59,16 +63,10 @@ function _M.execute(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
-  local jwt_secret_key
-  for _, v in ipairs(conf.key_claim_names) do
-    if claims[v] then
-      jwt_secret_key = claims[v]
-    end
-  end
-
+  local jwt_secret_key = claims.iss
   if not jwt_secret_key then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_UNAUTHORIZED(string.format("No %s in claims", conf.key_claim_names[1]))
+    return responses.send_HTTP_UNAUTHORIZED("No mandatory 'iss' in claims")
   end
 
   -- Retrieve the secret
@@ -102,7 +100,7 @@ function _M.execute(conf)
   -- However this should not happen
   if not consumer then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_FORBIDDEN(string.format("Could not find consumer for '%s=%s'", conf.key_claim_names[1], jwt_secret_key))
+    return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", "iss", jwt_secret_key))
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
