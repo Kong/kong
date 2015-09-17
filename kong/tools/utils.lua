@@ -20,8 +20,10 @@ end
 -- @return number The size
 function _M.table_size(t)
   local res = 0
-  for _ in pairs(t) do
-    res = res + 1
+  if t then
+    for _ in pairs(t) do
+      res = res + 1
+    end
   end
   return res
 end
@@ -43,9 +45,11 @@ end
 -- @param val The value to check
 -- @return Returns `true` if the table contains the value, `false` otherwise
 function _M.table_contains(arr, val)
-  for _, v in pairs(arr) do
-    if v == val then
-      return true
+  if arr then
+    for _, v in pairs(arr) do
+      if v == val then
+        return true
+      end
     end
   end
   return false

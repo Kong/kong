@@ -24,7 +24,8 @@ function _M.execute(conf)
   if not acls then acls = {} end
 
   local block
-  if conf.blacklist and utils.table_size(conf.blacklist) > 0 and utils.table_size(acls) > 0 then
+
+  if utils.table_size(conf.blacklist) > 0 and utils.table_size(acls) > 0 then
     for _, v in ipairs(acls) do
       if utils.table_contains(conf.blacklist, v.group) then
         block = true
@@ -33,7 +34,7 @@ function _M.execute(conf)
     end
   end
 
-  if conf.whitelist and utils.table_size(conf.whitelist) > 0 then
+  if utils.table_size(conf.whitelist) > 0 then
     if utils.table_size(acls) == 0 then
       block = true
     else
