@@ -1,27 +1,27 @@
-# KONG: Microservice Management Layer
+# Microservice & API Management Layer
 
 [![Build Status][travis-badge]][travis-url]
 [![Circle CI][circleci-badge]][circleci-url]
-[![License Badge][license-badge]][license-url]
 [![Gitter Badge][gitter-badge]][gitter-url]
+
+[![][kong-logo]][kong-url]
+
+Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] and many other companies, handling billions of requests/month.
 
 - Website: [getkong.org][kong-url]
 - Documentation: [getkong.org/docs][kong-docs]
 - Mailing List: [Google Groups][google-groups-url]
 
-[![][kong-logo]][kong-url]
-
-Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** and Cassandra with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] handling billions of requests to over ten thousand APIs.
-
 ## Summary
 
-- [**Feature**](#features)
+- [**Features**](#features)
 - [**Why Kong?**](#why-kong)
 - [**Benchmarks**](#benchmarks)
-- [**Resources**](#resources)
+- [**Resources & Distros**](#resources)
 - [**Roadmap**](#roadmap)
 - [**Development**](#development)
 - [**Enterprise Support**](#enterprise-support)
+- [**License**](#license)
 
 ## Features
 
@@ -61,7 +61,8 @@ Kong comes in many shapes. While this repository contains its core's source code
 - [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for running Kong in Docker.
 - [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for provisioning a development ready environment for Kong.
 - [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula for Kong.
-- [Kong AWS](https://github.com/Mashape/kong-dist-cloudformation): Kong CloudFormation stack.
+- [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation): Kong in a one-click deployment.
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
 - [Kong Distributions](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
 
 ## Roadmap
@@ -120,6 +121,24 @@ When developing, use the `Makefile` for doing the following operations:
 
 Support, Demo, Training, API Certifications and Consulting available at http://getkong.org/enterprise.
 
+## License
+
+```
+Copyright 2015 Mashape, Inc
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
 [kong-url]: http://getkong.org/
 [kong-docs]: http://getkong.org/docs/
 
@@ -133,9 +152,6 @@ Support, Demo, Training, API Certifications and Consulting available at http://g
 
 [circleci-url]: https://circleci.com/gh/Mashape/kong
 [circleci-badge]: https://circleci.com/gh/Mashape/kong.svg?style=shield
-
-[license-url]: https://github.com/Mashape/kong/blob/master/LICENSE
-[license-badge]: https://img.shields.io/github/license/mashape/kong.svg
 
 [gitter-url]: https://gitter.im/Mashape/kong
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg

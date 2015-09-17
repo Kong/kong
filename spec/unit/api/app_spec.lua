@@ -5,7 +5,7 @@ require "kong.tools.ngx_stub"
 local stub = {
   req = { headers = {} },
   add_params = function() end,
-  params = { foo = "bar", number = 10, ["value.nested"] = 1, ["value.nested_2"] = 2 }
+  params = { foo = "bar", number = 10, ["config.nested"] = 1, ["config.nested_2"] = 2 }
 }
 
 describe("App", function()
@@ -18,7 +18,7 @@ describe("App", function()
         assert.are.same({
           foo = "bar",
           number = 10,
-          value = {
+          config = {
             nested = 1,
             nested_2 = 2
           }
@@ -29,14 +29,14 @@ describe("App", function()
 
     it("should parse a JSON body", function()
       -- Here we are simply decoding a JSON body (which is a string)
-      ngx.req.get_body_data = function() return '{"foo":"bar","number":10,"value":{"nested":1,"nested_2":2}}' end
+      ngx.req.get_body_data = function() return '{"foo":"bar","number":10,"config":{"nested":1,"nested_2":2}}' end
       stub.req.headers["Content-Type"] = "application/json; charset=utf-8"
 
       local f = app.parse_params(function(stub)
         assert.are.same({
           foo = "bar",
           number = 10,
-          value = {
+          config = {
             nested = 1,
             nested_2 = 2
           }
@@ -46,14 +46,14 @@ describe("App", function()
     end)
 
     it("should normalize sub-nested properties for parsed form-encoded parameters", function()
-      stub.params = { foo = "bar", number = 10, ["value.nested_1"] = 1, ["value.nested_2"] = 2,
-        ["value.nested.sub-nested"] = "hi"
+      stub.params = { foo = "bar", number = 10, ["config.nested_1"] = 1, ["config.nested_2"] = 2,
+        ["config.nested.sub-nested"] = "hi"
       }
       local f = app.parse_params(function(stub)
         assert.are.same({
           foo = 'bar',
           number = 10,
-          value = {
+          config = {
             nested = {
               ["sub-nested"] = "hi"
             },
@@ -66,12 +66,12 @@ describe("App", function()
     end)
 
     it("should normalize nested properties when they are plain arrays", function()
-      stub.params = { foo = "bar", number = 10, ["value.nested"] = {["1"]="hello", ["2"]="world"}}
+      stub.params = { foo = "bar", number = 10, ["config.nested"] = {["1"]="hello", ["2"]="world"}}
       local f = app.parse_params(function(stub)
         assert.are.same({
           foo = 'bar',
           number = 10,
-          value = {
+          config = {
             nested = {"hello", "world"},
         }}, stub.params)
       end)
@@ -81,20 +81,20 @@ describe("App", function()
     it("should normalize very complex values", function()
       stub.params = {
         api_id = 123,
-        name = "request_transformer",
-        ["value.add.headers"] = "x-new-header:some_value, x-another-header:some_value",
-        ["value.add.querystring"] = "new-param:some_value, another-param:some_value",
-        ["value.add.form"] = "new-form-param:some_value, another-form-param:some_value",
-        ["value.remove.headers"] = "x-toremove, x-another-one",
-        ["value.remove.querystring"] = "param-toremove, param-another-one",
-        ["value.remove.form"] = "formparam-toremove"
+        name = "request-transformer",
+        ["config.add.headers"] = "x-new-header:some_value, x-another-header:some_value",
+        ["config.add.querystring"] = "new-param:some_value, another-param:some_value",
+        ["config.add.form"] = "new-form-param:some_value, another-form-param:some_value",
+        ["config.remove.headers"] = "x-toremove, x-another-one",
+        ["config.remove.querystring"] = "param-toremove, param-another-one",
+        ["config.remove.form"] = "formparam-toremove"
       }
 
       local f = app.parse_params(function(stub)
         assert.are.same({
           api_id = 123,
-          name = "request_transformer",
-          value = {
+          name = "request-transformer",
+          config = {
             add = {
               form = "new-form-param:some_value, another-form-param:some_value",
               headers = "x-new-header:some_value, x-another-header:some_value",

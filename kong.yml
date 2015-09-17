@@ -1,21 +1,21 @@
 ## Available plugins on this server
 plugins_available:
   - ssl
-  - keyauth
-  - basicauth
-  - oauth2
-  - ratelimiting
-  - response-ratelimiting
-  - tcplog
-  - udplog
-  - filelog
-  - httplog
   - cors
-  - request_transformer
-  - response_transformer
-  - requestsizelimiting
-  - ip_restriction
+  - tcp-log
+  - udp-log
+  - file-log
+  - http-log
   - mashape-analytics
+  - oauth2
+  - key-auth
+  - basic-auth
+  - ip-restriction
+  - rate-limiting
+  - response-ratelimiting
+  - request-transformer
+  - response-transformer
+  - request-size-limiting
   - acl
 
 ## The Kong working directory
@@ -37,7 +37,7 @@ database: cassandra
 databases_available:
   cassandra:
     properties:
-      hosts:
+      contact_points:
         - "localhost:9042"
       timeout: 1000
       keyspace: kong

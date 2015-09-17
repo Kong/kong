@@ -2,9 +2,51 @@ This document describes eventual additional steps that might be required to upda
 
 ## Update to Kong `0.5.0`
 
-It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
+Migrating to 0.5.0 can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
-The database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed. [This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
+> Several changes were introduced in this version: some plugins and properties were renamed and the database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed.
+
+##### 1. Configuration file
+
+You will need to update your configuration file. Replace the `plugins_available` values with:
+
+```yaml
+plugins_available:
+  - ssl
+  - key-auth
+  - basic-auth
+  - oauth2
+  - rate-limiting
+  - response-ratelimiting
+  - tcp-log
+  - udp-log
+  - file-log
+  - http-log
+  - cors
+  - request-transformer
+  - response-transformer
+  - request-size-limiting
+  - ip-restriction
+  - mashape-analytics
+```
+
+You can still remove plugins you don't use for a lighter Kong.
+
+Also replace the Cassandra `hosts` property with `contact_points`:
+
+```yaml
+properties:
+  contact_points:
+    - "..."
+    - "..."
+  timeout: 1000
+  keyspace: kong
+  keepalive: 60000
+```
+
+##### 2. Migration script
+
+[This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
 
 ```shell
 # First, make sure you are already running Kong 0.4.2
@@ -15,23 +57,57 @@ $ git clone git@github.com:Mashape/kong.git
 # Go to the 'scripts/' folder:
 $ cd kong/scripts
 
-# Install some Python dependencies:
+# Install the Python script dependencies:
 $ pip install cassandra-driver pyyaml
 
-# The script will use your first contact point (the first of the 'hosts' property)
-# so make sure it is valid and has the format 'host:port'.
+# The script will use the first Cassandra contact point in your Kong configuration file
+# (the first of the 'contact_points' property) so make sure it is valid and has the format 'host:port'.
 
-# Execute the migration script:
+# Run the migration script:
 $ python migration.py -c /path/to/kong/config
+```
 
-# If everything went well the script should print a success message.
+If everything went well the script should print a success message.
 
-# You can now update Kong to 0.5.0.
-# After updating, reload Kong to avoid downtime:
+##### 3. Upgrade without downtime
+
+You can now update Kong to 0.5.0. Proceed as a regular update and install the package of your choice from the website. After updating, reload Kong to avoid downtime:
+
+```shell
 $ kong reload
 ```
 
-Your cluster should successfully be migrated to Kong `0.5.0`.
+##### 4. Purge your Cassandra cluster
+
+Finally, once Kong has restarted in 0.5.0, run the migration script again, with the `--purge` flag:
+
+```shell
+$ python migration.py -c /path/to/kong/config --purge
+```
+
+Your cluster is now fully migrated to `0.5.0`.
+
+##### Other changes to acknowledge
+
+Some entities and properties were renamed to avoid confusion:
+
+- `public_dns` and `target_url` properties of APIs were respectively renamed to `inbound_dns` and `upstream_url`.
+- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions.
+- The Key authentication and Basic authentication plugins routes have changed:
+
+```
+Old route                             New route
+/consumers/:consumer/keyauth       -> /consumers/:consumer/key-auth
+/consumers/:consumer/keyauth/:id   -> /consumers/:consumer/key-auth/:id
+/consumers/:consumer/basicauth     -> /consumers/:consumer/basic-auth
+/consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
+```
+
+The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
+
+- Admin API:
+  - The route to retrieve enabled plugins is now under `/plugins/enabled`.
+  - The route to retrieve a plugin's configuration schema is now under `/plugins/schema/{plugin name}`.
 
 ## Update to Kong `0.4.2`
 

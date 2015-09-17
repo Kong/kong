@@ -16,7 +16,7 @@ local function check_ordered_limits(limit_value)
       else
         for t = i, #ordered_periods do
           if limit_value[ordered_periods[t]] and limit_value[ordered_periods[t]] < limit_value[v] then
-            invalid_order = "The value for "..ordered_periods[t].." cannot be lower than the value for "..v
+            invalid_order = "The limit for "..ordered_periods[t].." cannot be lower than the limit for "..v
           end
         end
       end
@@ -37,8 +37,8 @@ end
 return {
   fields = {
     header_name = { type = "string", default = "x-kong-limit" },
-    limits = { type = "table", 
-      schema = { 
+    limits = { type = "table",
+      schema = {
         flexible = true,
         fields = {
           second = { type = "number" },

@@ -47,24 +47,53 @@ describe("Utils", function()
     end)
 
     describe("#add_error()", function()
+      local add_error = utils.add_error
 
       it("should create a table if given `errors` is nil", function()
-        assert.are.same({ hello = "world" }, utils.add_error(nil, "hello", "world"))
+        assert.same({hello = "world"}, add_error(nil, "hello", "world"))
       end)
 
-      it("should add a key/value when given `errors` already exists", function()
-        local errors = { hello = "world" }
-        assert.are.same({
+      it("should add a key/value when the key does not exists", function()
+        local errors = {hello = "world"}
+        assert.same({
           hello = "world",
           foo = "bar"
-        }, utils.add_error(errors, "foo", "bar"))
+        }, add_error(errors, "foo", "bar"))
       end)
 
-      it("should create a list if the same key is given twice", function()
-        local errors = { hello = "world" }
-        assert.are.same({
-          hello = {"world", "universe"}
-        }, utils.add_error(errors, "hello", "universe"))
+      it("should transform previous values to a list if the same key is given again", function()
+        local e = nil
+
+        e = add_error(e, "key1", "value1")
+        e = add_error(e, "key2", "value2")
+        assert.same({key1 = "value1", key2 = "value2"}, e)
+
+        e = add_error(e, "key1", "value3")
+        e = add_error(e, "key1", "value4")
+        assert.same({key1 = {"value1", "value3", "value4"}, key2 = "value2"}, e)
+
+        e = add_error(e, "key1", "value5")
+        e = add_error(e, "key1", "value6")
+        e = add_error(e, "key2", "value7")
+        assert.same({key1 = {"value1", "value3", "value4", "value5", "value6"}, key2 = {"value2", "value7"}}, e)
+      end)
+
+      it("should also list tables pushed as errors", function()
+        local e = nil
+
+        e = add_error(e, "key1", "value1")
+        e = add_error(e, "key2", "value2")
+        e = add_error(e, "key1", "value3")
+        e = add_error(e, "key1", "value4")
+
+        e = add_error(e, "keyO", {message = "some error"})
+        e = add_error(e, "keyO", {message = "another"})
+
+        assert.same({
+          key1 = {"value1", "value3", "value4"},
+          key2 = "value2",
+          keyO = {{message = "some error"}, {message = "another"}}
+        }, e)
       end)
 
     end)

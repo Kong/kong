@@ -16,13 +16,20 @@ return {
     DNSMASQ_PID = "dnsmasq.pid",
   },
   DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
-  DATABASE_ERROR_TYPES = {
+  DATABASE_ERROR_TYPES = setmetatable ({
     SCHEMA = "schema",
     INVALID_TYPE = "invalid_type",
     DATABASE = "database",
     UNIQUE = "unique",
     FOREIGN = "foreign"
-  },
+  }, { __index = function(t, key)
+                    local val = rawget(t, key)
+                    if not val then
+                       error("'"..tostring(key).."' is not a valid errortype", 2)
+                    end
+                    return val
+                 end
+              }),
   -- Non standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",

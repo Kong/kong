@@ -4,7 +4,7 @@ local access = require "kong.plugins.oauth2.access"
 local OAuthHandler = BasePlugin:extend()
 
 function OAuthHandler:new()
-  OAuthHandler.super.new(self, "keyauth")
+  OAuthHandler.super.new(self, "oauth2")
 end
 
 function OAuthHandler:access(conf)

@@ -9,8 +9,8 @@ describe("DNS", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests dns 1", public_dns = "dns1.com", target_url = "http://127.0.0.1:"..TCP_PORT },
-        { name = "tests dns 2", public_dns = "dns2.com", target_url = "http://localhost:"..TCP_PORT }
+        { name = "tests dns 1", inbound_dns = "dns1.com", upstream_url = "http://127.0.0.1:"..TCP_PORT },
+        { name = "tests dns 2", inbound_dns = "dns2.com", upstream_url = "http://localhost:"..TCP_PORT }
       }
     }
 

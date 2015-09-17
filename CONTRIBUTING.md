@@ -10,11 +10,11 @@ We would like to hear about it. Please [submit an issue][new-issue] on GitHub an
 
 ## Want a feature?
 
-Fell free to request a feature by [submitting an issue][new-issue] on GitHub and open the discussion.
+Feel free to request a feature by [submitting an issue][new-issue] on GitHub and open the discussion.
 
 If you'd like to implement a new feature, please consider opening an issue first to talk about it. It may be that somebody is already working on it, or that there are particular issues that you should be aware of before implementing the change. If you are about to open a Pull Request, please make sure to follow the [submissions guidelines][new-pr].
 
-## Submission Guildelines
+## Submission Guidelines
 
 ### Submitting an issue
 

@@ -5,9 +5,7 @@ local IO = require "kong.tools.io"
 local fs = require "luarocks.fs"
 
 describe("Static files", function()
-
   describe("Constants", function()
-
     it("version set in constants should match the one in the rockspec", function()
       local rockspec_path
       for _, filename in ipairs(fs.list_dir(".")) do
@@ -30,6 +28,10 @@ describe("Static files", function()
       assert.are.same(constants.VERSION, dash and extracted_version:sub(1, dash - 1) or extracted_version)
     end)
 
+    it("accessing non-existing error code should throw an error", function()
+      assert.has_no_error(function() local _ = constants.DATABASE_ERROR_TYPES.DATABASE end)
+      assert.has_error(function() local _ = constants.DATABASE_ERROR_TYPES.ThIs_TyPe_DoEs_NoT_ExIsT end)
+    end)
   end)
 
   describe("Configuration", function()
@@ -41,21 +43,21 @@ describe("Static files", function()
 ## Available plugins on this server
 plugins_available:
   - ssl
-  - keyauth
-  - basicauth
-  - oauth2
-  - ratelimiting
-  - response-ratelimiting
-  - tcplog
-  - udplog
-  - filelog
-  - httplog
   - cors
-  - request_transformer
-  - response_transformer
-  - requestsizelimiting
-  - ip_restriction
+  - tcp-log
+  - udp-log
+  - file-log
+  - http-log
   - mashape-analytics
+  - oauth2
+  - key-auth
+  - basic-auth
+  - ip-restriction
+  - rate-limiting
+  - response-ratelimiting
+  - request-transformer
+  - response-transformer
+  - request-size-limiting
   - acl
 
 ## The Kong working directory
@@ -77,7 +79,7 @@ database: cassandra
 databases_available:
   cassandra:
     properties:
-      hosts:
+      contact_points:
         - "localhost:9042"
       timeout: 1000
       keyspace: kong

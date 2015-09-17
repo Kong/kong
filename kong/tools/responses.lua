@@ -1,4 +1,4 @@
--- Kong helper methods to send HTTP responses to clients.
+--- Kong helper methods to send HTTP responses to clients.
 -- Can be used in the proxy, plugins or admin API.
 -- Most used status codes and responses are implemented as helper methods.
 --

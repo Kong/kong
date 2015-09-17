@@ -10,13 +10,13 @@ describe("ACL Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "ACL 1", public_dns = "acl1.com", target_url = "http://mockbin.com"},
-        {name = "ACL 2", public_dns = "acl2.com", target_url = "http://mockbin.com"},
-        {name = "ACL 3", public_dns = "acl3.com", target_url = "http://mockbin.com"},
-        {name = "ACL 4", public_dns = "acl4.com", target_url = "http://mockbin.com"},
-        {name = "ACL 5", public_dns = "acl5.com", target_url = "http://mockbin.com"},
-        {name = "ACL 6", public_dns = "acl6.com", target_url = "http://mockbin.com"},
-        {name = "ACL 7", public_dns = "acl7.com", target_url = "http://mockbin.com"}
+        {name = "ACL 1", inbound_dns = "acl1.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL 2", inbound_dns = "acl2.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL 3", inbound_dns = "acl3.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL 4", inbound_dns = "acl4.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL 5", inbound_dns = "acl5.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL 6", inbound_dns = "acl6.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL 7", inbound_dns = "acl7.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
         {username = "consumer1"},
@@ -24,20 +24,20 @@ describe("ACL Plugin", function()
         {username = "consumer3"},
         {username = "consumer4"}
       },
-      plugin_configuration = {
-        {name = "acl", value = { whitelist = {"admin"}}, __api = 1},
-        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 2},
-        {name = "acl", value = { whitelist = {"admin"}}, __api = 2},
-        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 3},
-        {name = "acl", value = { blacklist = {"admin"}}, __api = 3},
-        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 4},
-        {name = "acl", value = { whitelist = {"admin", "pro"}}, __api = 4},
-        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 5},
-        {name = "acl", value = { blacklist = {"admin", "pro"}}, __api = 5},
-        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 6},
-        {name = "acl", value = { blacklist = {"admin", "pro", "hello"}}, __api = 6},
-        {name = "keyauth", value = {key_names = {"apikey"}}, __api = 7},
-        {name = "acl", value = { whitelist = {"admin", "pro", "hello"}}, __api = 7}
+      plugin = {
+        {name = "acl", config = { whitelist = {"admin"}}, __api = 1},
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 2},
+        {name = "acl", config = { whitelist = {"admin"}}, __api = 2},
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 3},
+        {name = "acl", config = { blacklist = {"admin"}}, __api = 3},
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 4},
+        {name = "acl", config = { whitelist = {"admin", "pro"}}, __api = 4},
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 5},
+        {name = "acl", config = { blacklist = {"admin", "pro"}}, __api = 5},
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 6},
+        {name = "acl", config = { blacklist = {"admin", "pro", "hello"}}, __api = 6},
+        {name = "key-auth", config = {key_names = {"apikey"}}, __api = 7},
+        {name = "acl", config = { whitelist = {"admin", "pro", "hello"}}, __api = 7}
       },
       keyauth_credential = {
         {key = "apikey123", __consumer = 1},

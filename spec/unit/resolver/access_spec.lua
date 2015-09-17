@@ -3,13 +3,13 @@ local resolver_access = require "kong.resolver.access"
 -- Stubs
 require "kong.tools.ngx_stub"
 local APIS_FIXTURES = {
-  {name = "mockbin", public_dns = "mockbin.com", target_url = "http://mockbin.com"},
-  {name = "mockbin", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com"},
-  {name = "mockbin", public_dns = "*.wildcard.com", target_url = "http://mockbin.com"},
-  {name = "mockbin", public_dns = "wildcard.*", target_url = "http://mockbin.com"},
-  {name = "mockbin", path = "/mockbin", target_url = "http://mockbin.com"},
-  {name = "mockbin", path = "/mockbin-with-dashes", target_url = "http://mockbin.com"},
-  {name = "mockbin", path = "/some/deep/url", target_url = "http://mockbin.com"}
+  {name = "mockbin", inbound_dns = "mockbin.com", upstream_url = "http://mockbin.com"},
+  {name = "mockbin", inbound_dns = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
+  {name = "mockbin", inbound_dns = "*.wildcard.com", upstream_url = "http://mockbin.com"},
+  {name = "mockbin", inbound_dns = "wildcard.*", upstream_url = "http://mockbin.com"},
+  {name = "mockbin", path = "/mockbin", upstream_url = "http://mockbin.com"},
+  {name = "mockbin", path = "/mockbin-with-dashes", upstream_url = "http://mockbin.com"},
+  {name = "mockbin", path = "/some/deep/url", upstream_url = "http://mockbin.com"}
 }
 _G.dao = {
   apis = {
@@ -30,7 +30,7 @@ describe("Resolver Access", function()
       assert.truthy(apis_dics.path_arr)
       assert.truthy(apis_dics.wildcard_dns_arr)
     end)
-    it("should return a dictionary of APIs by public_dns", function()
+    it("should return a dictionary of APIs by inbound_dns", function()
       assert.equal("table", type(apis_dics.by_dns["mockbin.com"]))
       assert.equal("table", type(apis_dics.by_dns["mockbin-auth.com"]))
     end)
@@ -45,7 +45,7 @@ describe("Resolver Access", function()
       assert.equal("/mockbin", apis_dics.path_arr[1].strip_path_pattern)
       assert.equal("/mockbin%-with%-dashes", apis_dics.path_arr[2].strip_path_pattern)
     end)
-    it("should return an array of APIs with wildcard public_dns", function()
+    it("should return an array of APIs with wildcard inbound_dns", function()
       assert.equal("table", type(apis_dics.wildcard_dns_arr))
       assert.equal(2, #apis_dics.wildcard_dns_arr)
       for _, item in ipairs(apis_dics.wildcard_dns_arr) do
@@ -78,9 +78,9 @@ describe("Resolver Access", function()
       assert.same(APIS_FIXTURES[7], api)
     end)
   end)
-  describe("find_api_by_public_dns()", function()
+  describe("find_api_by_inbound_dns()", function()
     it("should return nil and a list of all the Host headers in the request when no API was found", function()
-      local api, all_hosts = resolver_access.find_api_by_public_dns({
+      local api, all_hosts = resolver_access.find_api_by_inbound_dns({
         Host = "foo.com",
         ["X-Host-Override"] = {"bar.com", "hello.com"}
       }, apis_dics)
@@ -88,21 +88,21 @@ describe("Resolver Access", function()
       assert.same({"foo.com", "bar.com", "hello.com"}, all_hosts)
     end)
     it("should return an API when one of the Host headers matches", function()
-      local api = resolver_access.find_api_by_public_dns({Host = "mockbin.com"}, apis_dics)
+      local api = resolver_access.find_api_by_inbound_dns({Host = "mockbin.com"}, apis_dics)
       assert.same(APIS_FIXTURES[1], api)
 
-      api = resolver_access.find_api_by_public_dns({Host = "mockbin-auth.com"}, apis_dics)
+      api = resolver_access.find_api_by_inbound_dns({Host = "mockbin-auth.com"}, apis_dics)
       assert.same(APIS_FIXTURES[2], api)
     end)
     it("should return an API when one of the Host headers matches a wildcard dns", function()
-      local api = resolver_access.find_api_by_public_dns({Host = "wildcard.com"}, apis_dics)
+      local api = resolver_access.find_api_by_inbound_dns({Host = "wildcard.com"}, apis_dics)
       assert.same(APIS_FIXTURES[4], api)
-      api = resolver_access.find_api_by_public_dns({Host = "wildcard.fr"}, apis_dics)
+      api = resolver_access.find_api_by_inbound_dns({Host = "wildcard.fr"}, apis_dics)
       assert.same(APIS_FIXTURES[4], api)
 
-      api = resolver_access.find_api_by_public_dns({Host = "foobar.wildcard.com"}, apis_dics)
+      api = resolver_access.find_api_by_inbound_dns({Host = "foobar.wildcard.com"}, apis_dics)
       assert.same(APIS_FIXTURES[3], api)
-      api = resolver_access.find_api_by_public_dns({Host = "barfoo.wildcard.com"}, apis_dics)
+      api = resolver_access.find_api_by_inbound_dns({Host = "barfoo.wildcard.com"}, apis_dics)
       assert.same(APIS_FIXTURES[3], api)
     end)
   end)

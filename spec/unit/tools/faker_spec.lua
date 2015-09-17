@@ -4,7 +4,7 @@ local DaoError = require "kong.dao.error"
 
 describe("Faker", function()
 
-  local ENTITIES_TYPES = { "api", "consumer", "plugin_configuration" }
+  local ENTITIES_TYPES = { "api", "consumer", "plugin" }
 
   local factory_mock = {}
   local insert_spy
@@ -17,7 +17,7 @@ describe("Faker", function()
                         end)
 
     for _, v in ipairs(ENTITIES_TYPES) do
-      factory_mock[v=="plugin_configuration" and "plugins_configurations" or v.."s"] = {
+      factory_mock[v=="plugin" and "plugins" or v.."s"] = {
         insert = insert_spy
       }
     end
@@ -48,7 +48,7 @@ describe("Faker", function()
 
   describe("#insert_from_table()", function()
     it("should throw a descriptive error if cannot insert an entity", function()
-      local api_t = { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" }
+      local api_t = { name = "tests faker 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" }
 
       local printable_mt = require "kong.tools.printable"
       local entity_to_str = setmetatable(api_t, printable_mt)
@@ -87,12 +87,12 @@ describe("Faker", function()
     it("should create relations between entities_to_insert and inserted entities", function()
       local fixtures = {
         api = {
-          { name = "tests faker 1", public_dns = "foo.com", target_url = "http://mockbin.com" },
-          { name = "tests faker 2", public_dns = "bar.com", target_url = "http://mockbin.com" }
+          { name = "tests faker 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" },
+          { name = "tests faker 2", inbound_dns = "bar.com", upstream_url = "http://mockbin.com" }
         },
-        plugin_configuration = {
-          { name = "keyauth", value = {key_names={"apikey"}}, __api = 1 },
-          { name = "keyauth", value = {key_names={"apikey"}}, __api = 2 }
+        plugin = {
+          { name = "key-auth", config = {key_names={"apikey"}}, __api = 1 },
+          { name = "key-auth", config = {key_names={"apikey"}}, __api = 2 }
         }
       }
 

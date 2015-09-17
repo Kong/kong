@@ -213,9 +213,9 @@ local function issue_token(conf)
     response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
   else
     local grant_type = parameters[GRANT_TYPE]
-    if not (grant_type == GRANT_AUTHORIZATION_CODE or 
-            grant_type == GRANT_REFRESH_TOKEN or 
-            (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or 
+    if not (grant_type == GRANT_AUTHORIZATION_CODE or
+            grant_type == GRANT_REFRESH_TOKEN or
+            (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or
             (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
       response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..GRANT_TYPE}
     end
@@ -353,7 +353,7 @@ function _M.execute(conf)
   -- Check if the API has a path and if it's being invoked with the path resolver
   local path_prefix = (ngx.ctx.api.path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.path)) and ngx.ctx.api.path or ""
   if stringy.endswith(path_prefix, "/") then
-    path_prefix = path_prefix:sub(1, path_prefix:len() - 1) 
+    path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
   end
 
   if ngx.req.get_method() == "POST" then

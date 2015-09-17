@@ -13,7 +13,7 @@ describe("OAuth 2 Credentials API", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-  
+
   describe("/consumers/:consumer/oauth2/", function()
 
     setup(function()
@@ -40,7 +40,7 @@ describe("OAuth 2 Credentials API", function()
       end)
 
     end)
-    
+
     describe("PUT", function()
       setup(function()
         spec_helper.get_env().dao_factory.keyauth_credentials:delete({id=credential.id})
@@ -60,7 +60,7 @@ describe("OAuth 2 Credentials API", function()
       end)
 
     end)
-   
+
     describe("GET", function()
 
       it("should retrieve all", function()
@@ -72,9 +72,9 @@ describe("OAuth 2 Credentials API", function()
 
     end)
   end)
-  
+
   describe("/consumers/:consumer/oauth2/:id", function()
-    
+
     describe("GET", function()
 
       it("should retrieve by id", function()

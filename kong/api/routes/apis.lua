@@ -40,11 +40,11 @@ return {
     end,
 
     GET = function(self, dao_factory)
-      crud.paginated_set(self, dao_factory.plugins_configurations)
+      crud.paginated_set(self, dao_factory.plugins)
     end,
 
     POST = function(self, dao_factory, helpers)
-      crud.post(self.params, dao_factory.plugins_configurations, function(data)
+      crud.post(self.params, dao_factory.plugins, function(data)
         if configuration.send_anonymous_reports then
           data.signal = constants.SYSLOG.API
           syslog.log(syslog.format_entity(data))
@@ -53,7 +53,7 @@ return {
     end,
 
     PUT = function(self, dao_factory, helpers)
-      crud.put(self.params, dao_factory.plugins_configurations)
+      crud.put(self.params, dao_factory.plugins)
     end
   },
 
@@ -68,7 +68,7 @@ return {
       }
       self.params.plugin_id = nil
 
-      local data, err = dao_factory.plugins_configurations:find_by_keys(fetch_keys)
+      local data, err = dao_factory.plugins:find_by_keys(fetch_keys)
       if err then
         return helpers.yield_error(err)
       end
@@ -84,11 +84,11 @@ return {
     end,
 
     PATCH = function(self, dao_factory, helpers)
-      crud.patch(self.params, self.plugin, dao_factory.plugins_configurations)
+      crud.patch(self.params, self.plugin, dao_factory.plugins)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin, dao_factory.plugins_configurations)
+      crud.delete(self.plugin, dao_factory.plugins)
     end
   }
 }

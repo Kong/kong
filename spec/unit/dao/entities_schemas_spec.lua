@@ -1,6 +1,6 @@
 local api_schema = require "kong.dao.schemas.apis"
 local consumer_schema = require "kong.dao.schemas.consumers"
-local plugins_configurations_schema = require "kong.dao.schemas.plugins_configurations"
+local plugins_schema = require "kong.dao.schemas.plugins"
 local validations = require "kong.dao.schemas_validation"
 local validate_entity = validations.validate_entity
 
@@ -10,7 +10,7 @@ describe("Entities Schemas", function()
 
   for k, schema in pairs({api = api_schema,
                           consumer = consumer_schema,
-                          plugins_configurations = plugins_configurations_schema}) do
+                          plugins = plugins_schema}) do
     it(k.." schema should have some required properties", function()
       assert.truthy(schema.name)
       assert.equal("string", type(schema.name))
@@ -25,28 +25,28 @@ describe("Entities Schemas", function()
 
   describe("APIs", function()
 
-    it("should return error with wrong target_url", function()
+    it("should return error with wrong upstream_url", function()
       local valid, errors = validate_entity({
-        public_dns = "mockbin.com",
-        target_url = "asdasd"
+        inbound_dns = "mockbin.com",
+        upstream_url = "asdasd"
       }, api_schema)
       assert.False(valid)
-      assert.equal("Invalid target URL", errors.target_url)
+      assert.equal("Invalid target URL", errors.upstream_url)
     end)
 
-    it("should return error with wrong target_url protocol", function()
+    it("should return error with wrong upstream_url protocol", function()
       local valid, errors = validate_entity({
-        public_dns = "mockbin.com",
-        target_url = "wot://mockbin.com/"
+        inbound_dns = "mockbin.com",
+        upstream_url = "wot://mockbin.com/"
       }, api_schema)
       assert.False(valid)
-      assert.equal("Supported protocols are HTTP and HTTPS", errors.target_url)
+      assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
     end)
 
     it("should validate without a path", function()
       local valid, errors = validate_entity({
-        public_dns = "mockbin.com",
-        target_url = "http://mockbin.com"
+        inbound_dns = "mockbin.com",
+        upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.falsy(errors)
       assert.True(valid)
@@ -54,20 +54,20 @@ describe("Entities Schemas", function()
 
     it("should validate with upper case protocol", function()
       local valid, errors = validate_entity({
-        public_dns = "mockbin.com",
-        target_url = "HTTP://mockbin.com/world"
+        inbound_dns = "mockbin.com",
+        upstream_url = "HTTP://mockbin.com/world"
       }, api_schema)
       assert.falsy(errors)
       assert.True(valid)
     end)
 
-    it("should complain if missing `public_dns` and `path`", function()
+    it("should complain if missing `inbound_dns` and `path`", function()
       local valid, errors = validate_entity({
         name = "mockbin"
       }, api_schema)
       assert.False(valid)
-      assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.path)
-      assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.public_dns)
+      assert.equal("At least an 'inbound_dns' or a 'path' must be specified", errors.path)
+      assert.equal("At least an 'inbound_dns' or a 'path' must be specified", errors.inbound_dns)
 
       local valid, errors = validate_entity({
         name = "mockbin",
@@ -75,11 +75,11 @@ describe("Entities Schemas", function()
       }, api_schema)
       assert.False(valid)
       assert.equal("path is not a string", errors.path)
-      assert.equal("At least a 'public_dns' or a 'path' must be specified", errors.public_dns)
+      assert.equal("At least an 'inbound_dns' or a 'path' must be specified", errors.inbound_dns)
     end)
 
-    it("should set the name from public_dns if not set", function()
-      local t = { public_dns = "mockbin.com", target_url = "http://mockbin.com" }
+    it("should set the name from inbound_dns if not set", function()
+      local t = { inbound_dns = "mockbin.com", upstream_url = "http://mockbin.com" }
 
       local valid, errors = validate_entity(t, api_schema)
       assert.falsy(errors)
@@ -87,51 +87,51 @@ describe("Entities Schemas", function()
       assert.equal("mockbin.com", t.name)
     end)
 
-    it("should accept valid wildcard public_dns", function()
+    it("should accept valid wildcard inbound_dns", function()
       local valid, errors = validate_entity({
         name = "mockbin",
-        public_dns = "*.mockbin.org",
-        target_url = "http://mockbin.com"
+        inbound_dns = "*.mockbin.org",
+        upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
       assert.falsy(errors)
 
       valid, errors = validate_entity({
         name = "mockbin",
-        public_dns = "mockbin.*",
-        target_url = "http://mockbin.com"
+        inbound_dns = "mockbin.*",
+        upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
       assert.falsy(errors)
     end)
 
-    it("should refuse invalid wildcard public_dns", function()
+    it("should refuse invalid wildcard inbound_dns", function()
       local api_t = {
         name = "mockbin",
-        public_dns = "*.mockbin.*",
-        target_url = "http://mockbin.com"
+        inbound_dns = "*.mockbin.*",
+        upstream_url = "http://mockbin.com"
       }
 
       local valid, errors = validate_entity(api_t, api_schema)
       assert.False(valid)
-      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.public_dns)
+      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.inbound_dns)
 
-      api_t.public_dns = "*mockbin.com"
+      api_t.inbound_dns = "*mockbin.com"
       valid, errors = validate_entity(api_t, api_schema)
       assert.False(valid)
-      assert.equal("Invalid wildcard placement: *mockbin.com", errors.public_dns)
+      assert.equal("Invalid wildcard placement: *mockbin.com", errors.inbound_dns)
 
-      api_t.public_dns = "www.mockbin*"
+      api_t.inbound_dns = "www.mockbin*"
       valid, errors = validate_entity(api_t, api_schema)
       assert.False(valid)
-      assert.equal("Invalid wildcard placement: www.mockbin*", errors.public_dns)
+      assert.equal("Invalid wildcard placement: www.mockbin*", errors.inbound_dns)
     end)
 
     it("should only accept alphanumeric `path`", function()
       local valid, errors = validate_entity({
         name = "mockbin",
         path = "/[a-zA-Z]{3}",
-        target_url = "http://mockbin.com"
+        upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.equal("path must only contain alphanumeric and '. -, _, ~, /' characters", errors.path)
       assert.False(valid)
@@ -139,20 +139,20 @@ describe("Entities Schemas", function()
       valid = validate_entity({
         name = "mockbin",
         path = "/status/",
-        target_url = "http://mockbin.com"
+        upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
 
       valid = validate_entity({
         name = "mockbin",
         path = "/abcd~user-2",
-        target_url = "http://mockbin.com"
+        upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
     end)
 
     it("should prefix a `path` with a slash and remove trailing slash", function()
-      local api_t = { name = "mockbin", path = "status", target_url = "http://mockbin.com" }
+      local api_t = { name = "mockbin", path = "status", upstream_url = "http://mockbin.com" }
       validate_entity(api_t, api_schema)
       assert.equal("/status", api_t.path)
 
@@ -218,7 +218,7 @@ describe("Entities Schemas", function()
   describe("Plugins Configurations", function()
 
     local dao_stub = {
-      plugins_configurations = {
+      plugins = {
         find_by_keys = function()
           return nil
         end
@@ -226,43 +226,43 @@ describe("Entities Schemas", function()
     }
 
     it("should not validate if the plugin doesn't exist (not installed)", function()
-      local valid, errors = validate_entity({name = "world domination"}, plugins_configurations_schema)
+      local valid, errors = validate_entity({name = "world domination"}, plugins_schema)
       assert.False(valid)
-      assert.equal("Plugin \"world domination\" not found", errors.value)
+      assert.equal("Plugin \"world domination\" not found", errors.config)
     end)
 
-    it("should validate a plugin configuration's `value` field", function()
+    it("should validate a plugin configuration's `config` field", function()
       -- Success
-      local plugin = {name = "keyauth", api_id = "stub", value = {key_names = {"x-kong-key"}}}
-      local valid = validate_entity(plugin, plugins_configurations_schema, {dao = dao_stub})
+      local plugin = {name = "key-auth", api_id = "stub", config = {key_names = {"x-kong-key"}}}
+      local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.True(valid)
 
       -- Failure
-      plugin = {name = "ratelimiting", api_id = "stub", value = { second = "hello" }}
+      plugin = {name = "rate-limiting", api_id = "stub", config = { second = "hello" }}
 
-      local valid, errors = validate_entity(plugin, plugins_configurations_schema, {dao = dao_stub})
+      local valid, errors = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.False(valid)
-      assert.equal("second is not a number", errors["value.second"])
+      assert.equal("second is not a number", errors["config.second"])
     end)
 
     describe("self_check", function()
-      it("should refuse `consumer_id` if specified in the value schema", function()
-        local stub_value_schema = {
+      it("should refuse `consumer_id` if specified in the config schema", function()
+        local stub_config_schema = {
           no_consumer = true,
           fields = {
             string = {type = "string", required = true}
           }
         }
 
-        plugins_configurations_schema.fields.value.schema = function()
-          return stub_value_schema
+        plugins_schema.fields.config.schema = function()
+          return stub_config_schema
         end
 
-        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", value = {string = "foo"}}, plugins_configurations_schema)
+        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema)
         assert.False(valid)
         assert.equal("No consumer can be configured for that plugin", err.message)
 
-        valid, err = validate_entity({name = "stub", api_id = "0000", value = {string = "foo"}}, plugins_configurations_schema, {dao = dao_stub})
+        valid, err = validate_entity({name = "stub", api_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
         assert.True(valid)
         assert.falsy(err)
       end)

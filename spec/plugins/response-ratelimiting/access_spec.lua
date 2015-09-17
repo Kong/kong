@@ -19,21 +19,21 @@ describe("RateLimiting Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests response-ratelimiting 1", public_dns = "test1.com", target_url = "http://httpbin.org/" },
-        { name = "tests response-ratelimiting 2", public_dns = "test2.com", target_url = "http://httpbin.org/" },
-        { name = "tests response-ratelimiting 3", public_dns = "test3.com", target_url = "http://httpbin.org/" }
+        { name = "tests response-ratelimiting 1", inbound_dns = "test1.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests response-ratelimiting 2", inbound_dns = "test2.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests response-ratelimiting 3", inbound_dns = "test3.com", upstream_url = "http://httpbin.org/" }
       },
       consumer = {
         { custom_id = "consumer_123" },
         { custom_id = "consumer_124" },
         { custom_id = "consumer_125" }
       },
-      plugin_configuration = {
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 1 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
-        { name = "keyauth", value = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 6 } } }, __api = 3 },
-        { name = "response-ratelimiting", value = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
+      plugin = {
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6 } } }, __api = 1 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
+        { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6 } } }, __api = 3 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
       },
       keyauth_credential = {
         { key = "apikey123", __consumer = 1 },
@@ -94,17 +94,17 @@ describe("RateLimiting Plugin", function()
       assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
       assert.are.equal("4", headers["x-ratelimit-remaining-video-hour"])
       assert.are.equal("1", headers["x-ratelimit-remaining-image-minute"])
-    end)  
+    end)
 
   end)
 
   describe("With authentication", function()
-    
+
     describe("Default plugin", function()
 
       it("should get blocked if exceeding limit and a per consumer setting", function()
         wait()
-        
+
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 2
 
@@ -125,7 +125,7 @@ describe("RateLimiting Plugin", function()
 
       it("should not get blocked if the last request doesn't increment", function()
         wait()
-        
+
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
@@ -146,7 +146,7 @@ describe("RateLimiting Plugin", function()
 
       it("should get blocked if exceeding limit", function()
         wait()
-        
+
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 

@@ -3,7 +3,7 @@ local cjson = require "cjson"
 local CACHE_KEYS = {
   APIS = "apis",
   CONSUMERS = "consumers",
-  PLUGINS_CONFIGURATIONS = "plugins_configurations",
+  PLUGINS = "plugins",
   BASICAUTH_CREDENTIAL = "basicauth_credentials",
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
   OAUTH2_CREDENTIAL = "oauth2_credentials",
@@ -72,8 +72,8 @@ function _M.consumer_key(id)
   return CACHE_KEYS.CONSUMERS.."/"..id
 end
 
-function _M.plugin_configuration_key(name, api_id, consumer_id)
-  return CACHE_KEYS.PLUGINS_CONFIGURATIONS.."/"..name.."/"..api_id..(consumer_id and "/"..consumer_id or "")
+function _M.plugin_key(name, api_id, consumer_id)
+  return CACHE_KEYS.PLUGINS.."/"..name.."/"..api_id..(consumer_id and "/"..consumer_id or "")
 end
 
 function _M.basicauth_credential_key(username)
