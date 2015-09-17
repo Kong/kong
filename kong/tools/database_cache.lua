@@ -8,6 +8,7 @@ local CACHE_KEYS = {
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
   OAUTH2_CREDENTIAL = "oauth2_credentials",
   OAUTH2_TOKEN = "oauth2_token",
+  ACLS = "acls",
   SSL = "ssl",
   REQUESTS = "requests",
   TIMERS = "timers"
@@ -89,6 +90,10 @@ end
 
 function _M.keyauth_credential_key(key)
   return CACHE_KEYS.KEYAUTH_CREDENTIAL.."/"..key
+end
+
+function _M.acls_key(consumer_id)
+  return CACHE_KEYS.ACLS.."/"..consumer_id
 end
 
 function _M.ssl_data(api_id)

@@ -7,13 +7,13 @@ local _M = {}
 function _M.execute(conf)
   local block = false
 
-  if conf.blacklist and utils.table_size(conf.blacklist) > 0 then
+  if utils.table_size(conf.blacklist) > 0 then
     if iputils.ip_in_cidrs(ngx.var.remote_addr, conf._blacklist_cache) then
       block = true
     end
   end
 
-  if conf.whitelist and utils.table_size(conf.whitelist) > 0 then
+  if utils.table_size(conf.whitelist) > 0 then
     if iputils.ip_in_cidrs(ngx.var.remote_addr, conf._whitelist_cache) then
       block = false
     else

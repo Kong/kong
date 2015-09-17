@@ -1,4 +1,7 @@
 local iputils = require "resty.iputils"
+local DaoError = require "kong.dao.error"
+local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
 
 local function validate_ips(v, t, column)
   local new_fields
@@ -22,5 +25,11 @@ return {
     -- Internal use
     _whitelist_cache = { type = "array" },
     _blacklist_cache = { type = "array" }
-  }
+  },
+  self_check = function(schema, plugin_t, dao, is_update)
+    if utils.table_size(plugin_t.whitelist) > 0 and utils.table_size(plugin_t.blacklist) > 0 then
+      return false, DaoError("You cannot set both a whitelist and a blacklist", constants.DATABASE_ERROR_TYPES.SCHEMA)
+    end
+    return true
+  end
 }

@@ -14,6 +14,7 @@ describe("Utils", function()
     describe("#table_size()", function()
 
       it("should return the size of a table", function()
+        assert.are.same(0, utils.table_size(nil))
         assert.are.same(0, utils.table_size({}))
         assert.are.same(1, utils.table_size({ foo = "bar" }))
         assert.are.same(2, utils.table_size({ foo = "bar", bar = "baz" }))
@@ -24,12 +25,16 @@ describe("Utils", function()
 
     describe("#table_contains()", function()
 
-      it("should return true is a value is contained in a table", function()
+      it("should return false if a value is not contained in a nil table", function()
+        assert.False(utils.table_contains(nil, "foo"))
+      end)
+
+      it("should return true if a value is contained in a table", function()
         local t = { foo = "hello", bar = "world" }
         assert.True(utils.table_contains(t, "hello"))
       end)
 
-      it("should return true is a value is not contained in a table", function()
+      it("should return false if a value is not contained in a table", function()
         local t = { foo = "hello", bar = "world" }
         assert.False(utils.table_contains(t, "foo"))
       end)

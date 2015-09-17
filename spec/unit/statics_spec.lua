@@ -58,6 +58,7 @@ plugins_available:
   - request-transformer
   - response-transformer
   - request-size-limiting
+  - acl
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)
