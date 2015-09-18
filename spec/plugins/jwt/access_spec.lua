@@ -1,7 +1,7 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local json = require "cjson"
-local lua_jwt = require "luajwt"
+local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
@@ -20,14 +20,16 @@ describe("JWT access", function()
     local fixtures = spec_helper.insert_fixtures {
       api = {
         {name = "tests jwt", inbound_dns = "jwt.com", upstream_url = "http://mockbin.com"},
-        {name = "tests jwt2", inbound_dns = "jwt2.com", upstream_url = "http://mockbin.com"}
+        {name = "tests jwt2", inbound_dns = "jwt2.com", upstream_url = "http://mockbin.com"},
+        {name = "tests jwt3", inbound_dns = "jwt3.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
         {username = "jwt_tests_consumer"}
       },
       plugin = {
         {name = "jwt", config = {}, __api = 1},
-        {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2}
+        {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2},
+        {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, __api = 3}
       },
       jwt_secret = {
         {__consumer = 1}
@@ -48,7 +50,7 @@ describe("JWT access", function()
   end)
 
   it("should return return 401 Unauthorized if the claims do not contain the key to identify a secret", function()
-    local jwt = lua_jwt.encode(PAYLOAD, "foo")
+    local jwt = jwt_encoder.encode(PAYLOAD, "foo")
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
     assert.equal(401, status)
@@ -58,7 +60,7 @@ describe("JWT access", function()
 
   it("should return 403 Forbidden if the signature is invalid", function()
     PAYLOAD.iss = jwt_secret.key
-    local jwt = lua_jwt.encode(PAYLOAD, "foo")
+    local jwt = jwt_encoder.encode(PAYLOAD, "foo")
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
     assert.equal(403, status)
@@ -68,7 +70,7 @@ describe("JWT access", function()
 
   it("should proxy the request with token and consumer headers if it was verified", function()
     PAYLOAD.iss = jwt_secret.key
-    local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
+    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
     assert.equal(200, status)
@@ -79,16 +81,41 @@ describe("JWT access", function()
 
   it("should find the JWT if given in URL parameters", function()
     PAYLOAD.iss = jwt_secret.key
-    local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
+    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
     local _, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt.com"})
     assert.equal(200, status)
   end)
 
   it("should find the JWT if given in a custom URL parameter", function()
     PAYLOAD.iss = jwt_secret.key
-    local jwt = lua_jwt.encode(PAYLOAD, jwt_secret.secret)
+    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
     local _, status = http_client.get(STUB_GET_URL.."?token="..jwt, nil, {host = "jwt2.com"})
     assert.equal(200, status)
   end)
 
+  describe("JWT private claims checks", function()
+
+    it("should require the checked fields to be in the claims", function()
+      local payload = {
+        iss = jwt_secret.key
+      }
+      local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+      local res, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt3.com"})
+      assert.equal(403, status)
+      assert.equal('{"nbf":"must be a number","exp":"must be a number"}\n', res)
+    end)
+
+    it("should check if the fields are valid", function()
+      local payload = {
+        iss = jwt_secret.key,
+        exp = os.time() - 10,
+        nbf = os.time() - 10
+      }
+      local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+      local res, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt3.com"})
+      assert.equal(403, status)
+      assert.equal('{"exp":"token expired"}\n', res)
+    end)
+
+  end)
 end)

@@ -1,11 +1,14 @@
-local jwt = require "luajwt"
+local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
+local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+
 local string_format = string.format
 local select = select
 local dao = dao
-local re_gmatch = ngx.re.gmatch
+local ngx_re_gmatch = ngx.re.gmatch
+local ngx_time = ngx.time
 
 local _M = {}
 
@@ -26,7 +29,7 @@ local function retrieve_token(request, conf)
 
   local authorization_header = request.get_headers()["authorization"]
   if authorization_header then
-    local iterator, iter_err = re_gmatch(authorization_header, "\\s*[Bb]earer\\s*(.+)")
+    local iterator, iter_err = ngx_re_gmatch(authorization_header, "\\s*[Bb]earer\\s*(.+)")
     if not iterator then
       return nil, iter_err
     end
@@ -58,10 +61,12 @@ function _M.execute(conf)
   end
 
   -- Decode token to find out who the consumer is
-  local claims, err = jwt.decode(token)
+  local jwt, err = jwt_decoder:new(token)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
+
+  local claims = jwt.claims
 
   local jwt_secret_key = claims.iss
   if not jwt_secret_key then
@@ -79,13 +84,17 @@ function _M.execute(conf)
     end
   end)
 
-  -- Now verify the JWT
-  err = select(2, jwt.decode(token, jwt_secret.secret, true))
-  if err == "Invalid signature" then
+  -- Now verify the JWT signature
+  if not jwt:verify_signature(jwt_secret.secret) then
     ngx.ctx.stop_phases = true
     return responses.send_HTTP_FORBIDDEN("Invalid signature")
-  elseif err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+
+  -- Verify the JWT registered claims
+  local ok_claims, errors = jwt:verify_registered_claims(conf.claims_to_verify)
+  if not ok_claims then
+    ngx.ctx.stop_phases = true
+    return responses.send_HTTP_FORBIDDEN(errors)
   end
 
   -- Retrieve the consumer
