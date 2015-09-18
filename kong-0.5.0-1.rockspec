@@ -29,7 +29,8 @@ dependencies = {
 
   "luasocket ~> 2.0.2-5",
   "lrexlib-pcre ~> 2.7.2-1",
-  "lua-llthreads2 ~> 0.1.3-1"
+  "lua-llthreads2 ~> 0.1.3-1",
+  "sha1 ~> 0.5-1"
 }
 build = {
   type = "builtin",
@@ -204,6 +205,12 @@ build = {
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
+
+    ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
+    ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
+    ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",
+    ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
+    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua"
   },
   install = {
     conf = { "kong.yml" },
