@@ -150,13 +150,13 @@ def migrate_rename_apis_properties(sessions):
     """
     log.info("Renaming some properties for APIs...")
 
-    session.execute("ALTER TABLE apis ADD inbound_dns text")
+    session.execute("ALTER TABLE apis ADD request_host text")
     session.execute("ALTER TABLE apis ADD upstream_url text")
-    session.execute("CREATE INDEX IF NOT EXISTS ON apis(inbound_dns)")
+    session.execute("CREATE INDEX IF NOT EXISTS ON apis(request_host)")
 
     select_query = SimpleStatement("SELECT * FROM apis", consistency_level=ConsistencyLevel.ALL)
     for api in session.execute(select_query):
-        session.execute("UPDATE apis SET inbound_dns = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.target_url, api.id])
+        session.execute("UPDATE apis SET request_host = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.target_url, api.id])
 
     log.info("APIs properties renamed")
 

@@ -10,7 +10,7 @@ describe("Database cache", function()
     spec_helper.prepare_db()
     fixtures = spec_helper.insert_fixtures {
       api = {
-        { name = "tests database cache", inbound_dns = "cache.test", upstream_url = "http://httpbin.org" }
+        { name = "tests database cache", request_host = "cache.test", upstream_url = "http://httpbin.org" }
       }
     }
 

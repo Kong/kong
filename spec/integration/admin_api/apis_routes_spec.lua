@@ -22,7 +22,7 @@ describe("Admin API", function()
       it("[SUCCESS] should create an API", function()
         send_content_types(BASE_URL, "POST", {
           name="api POST tests",
-          inbound_dns="api.mockbin.com",
+          request_host="api.mockbin.com",
           upstream_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
       end)
@@ -36,15 +36,15 @@ describe("Admin API", function()
       it("[FAILURE] should return proper errors", function()
         send_content_types(BASE_URL, "POST", {},
         400,
-        '{"path":"At least an \'inbound_dns\' or a \'path\' must be specified","upstream_url":"upstream_url is required","inbound_dns":"At least an \'inbound_dns\' or a \'path\' must be specified"}')
+        '{"upstream_url":"upstream_url is required","request_path":"At least a \'request_host\' or a \'request_path\' must be specified","request_host":"At least a \'request_host\' or a \'request_path\' must be specified"}')
 
-        send_content_types(BASE_URL, "POST", {inbound_dns="api.mockbin.com"},
+        send_content_types(BASE_URL, "POST", {request_host="api.mockbin.com"},
         400, '{"upstream_url":"upstream_url is required"}')
 
         send_content_types(BASE_URL, "POST", {
-          inbound_dns="api.mockbin.com",
+          request_host="api.mockbin.com",
           upstream_url="http://mockbin.com"
-        }, 409, '{"inbound_dns":"inbound_dns already exists with value \'api.mockbin.com\'"}')
+        }, 409, '{"request_host":"request_host already exists with value \'api.mockbin.com\'"}')
       end)
 
     end)
@@ -58,14 +58,14 @@ describe("Admin API", function()
       it("[SUCCESS] should create and update", function()
         local api = send_content_types(BASE_URL, "PUT", {
           name="api PUT tests",
-          inbound_dns="api.mockbin.com",
+          request_host="api.mockbin.com",
           upstream_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
 
         api = send_content_types(BASE_URL, "PUT", {
           id=api.id,
           name="api PUT tests updated",
-          inbound_dns="updated-api.mockbin.com",
+          request_host="updated-api.mockbin.com",
           upstream_url="http://mockbin.com"
         }, 200)
         assert.equal("api PUT tests updated", api.name)
@@ -74,15 +74,15 @@ describe("Admin API", function()
       it("[FAILURE] should return proper errors", function()
         send_content_types(BASE_URL, "PUT", {},
         400,
-        '{"path":"At least an \'inbound_dns\' or a \'path\' must be specified","upstream_url":"upstream_url is required","inbound_dns":"At least an \'inbound_dns\' or a \'path\' must be specified"}')
+        '{"upstream_url":"upstream_url is required","request_path":"At least a \'request_host\' or a \'request_path\' must be specified","request_host":"At least a \'request_host\' or a \'request_path\' must be specified"}')
 
-        send_content_types(BASE_URL, "PUT", {inbound_dns="api.mockbin.com"},
+        send_content_types(BASE_URL, "PUT", {request_host="api.mockbin.com"},
         400, '{"upstream_url":"upstream_url is required"}')
 
         send_content_types(BASE_URL, "PUT", {
-          inbound_dns="updated-api.mockbin.com",
+          request_host="updated-api.mockbin.com",
           upstream_url="http://mockbin.com"
-        }, 409, '{"inbound_dns":"inbound_dns already exists with value \'updated-api.mockbin.com\'"}')
+        }, 409, '{"request_host":"request_host already exists with value \'updated-api.mockbin.com\'"}')
       end)
 
     end)
@@ -138,7 +138,7 @@ describe("Admin API", function()
     setup(function()
       spec_helper.drop_db()
       local fixtures = spec_helper.insert_fixtures {
-        api = {{ inbound_dns="mockbin.com", upstream_url="http://mockbin.com" }}
+        api = {{ request_host="mockbin.com", upstream_url="http://mockbin.com" }}
       }
       api = fixtures.api[1]
     end)
@@ -211,7 +211,7 @@ describe("Admin API", function()
       setup(function()
         spec_helper.drop_db()
         local fixtures = spec_helper.insert_fixtures {
-          api = {{ inbound_dns="mockbin.com", upstream_url="http://mockbin.com" }}
+          api = {{ request_host="mockbin.com", upstream_url="http://mockbin.com" }}
         }
         api = fixtures.api[1]
         BASE_URL = BASE_URL..api.id.."/plugins/"
@@ -328,7 +328,7 @@ describe("Admin API", function()
         setup(function()
           spec_helper.drop_db()
           local fixtures = spec_helper.insert_fixtures {
-            api = {{ inbound_dns="mockbin.com", upstream_url="http://mockbin.com" }},
+            api = {{ request_host="mockbin.com", upstream_url="http://mockbin.com" }},
             plugin = {{ name = "key-auth", config = { key_names = { "apikey" }}, __api = 1 }}
           }
           api = fixtures.api[1]

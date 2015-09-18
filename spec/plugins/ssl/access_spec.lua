@@ -16,9 +16,9 @@ describe("SSL Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "API TESTS 11 (ssl)", inbound_dns = "ssl1.com", upstream_url = "http://mockbin.com" },
-        { name = "API TESTS 12 (ssl)", inbound_dns = "ssl2.com", upstream_url = "http://mockbin.com" },
-        { name = "API TESTS 13 (ssl)", inbound_dns = "ssl3.com", upstream_url = "http://mockbin.com" }
+        { name = "API TESTS 11 (ssl)", request_host = "ssl1.com", upstream_url = "http://mockbin.com" },
+        { name = "API TESTS 12 (ssl)", request_host = "ssl2.com", upstream_url = "http://mockbin.com" },
+        { name = "API TESTS 13 (ssl)", request_host = "ssl3.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
@@ -89,7 +89,7 @@ describe("SSL Plugin", function()
   end)
 
   describe("should work with curl", function()
-    local response = http_client.get(API_URL.."/apis/", {inbound_dns="ssl3.com"})
+    local response = http_client.get(API_URL.."/apis/", {request_host="ssl3.com"})
     local api_id = cjson.decode(response).data[1].id
 
     local kong_working_dir = spec_helper.get_env(spec_helper.TEST_CONF_FILE).configuration.nginx_working_dir
