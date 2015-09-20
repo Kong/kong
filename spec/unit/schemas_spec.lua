@@ -127,12 +127,12 @@ describe("Schemas", function()
       assert.falsy(valid)
       assert.truthy(err)
 
-      -- Failure
+      -- Success
       local values = { string = "foo",  endpoint = "http://google.com" }
 
       local valid, err = validate_entity(values, schema)
-      assert.falsy(valid)
-      assert.truthy(err)
+      assert.truthy(valid)
+      assert.falsy(err)
 
       -- Success
       local values = { string = "foo",  endpoint = "http://google.com/" }

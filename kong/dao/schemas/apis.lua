@@ -1,19 +1,16 @@
 local url = require "socket.url"
 local stringy = require "stringy"
 
-local function validate_upstream_url(value)
+local function validate_upstream_url_protocol(value)
   local parsed_url = url.parse(value)
   if parsed_url.scheme and parsed_url.host then
     parsed_url.scheme = parsed_url.scheme:lower()
-    if parsed_url.scheme == "http" or parsed_url.scheme == "https" then
-      parsed_url.path = parsed_url.path or "/"
-      return true, nil, { upstream_url = url.build(parsed_url)}
-    else
+    if not (parsed_url.scheme == "http" or parsed_url.scheme == "https") then
       return false, "Supported protocols are HTTP and HTTPS"
     end
   end
 
-  return false, "Invalid target URL"
+  return true
 end
 
 local function check_inbound_dns_and_path(value, api_t)
@@ -83,7 +80,7 @@ return {
                   regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)" },
     path = { type = "string", unique = true, func = check_path },
     strip_path = { type = "boolean" },
-    upstream_url = { type = "string", required = true, func = validate_upstream_url },
+    upstream_url = { type = "url", required = true, func = validate_upstream_url_protocol },
     preserve_host = { type = "boolean" }
   }
 }

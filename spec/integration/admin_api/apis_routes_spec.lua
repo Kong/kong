@@ -185,7 +185,7 @@ describe("Admin API", function()
 
         local response, status = http_client.patch(BASE_URL..api.id, {upstream_url=""})
         assert.equal(400, status)
-        assert.equal('{"upstream_url":"upstream_url is not a string"}\n', response)
+        assert.equal('{"upstream_url":"upstream_url is not a url"}\n', response)
       end)
 
     end)

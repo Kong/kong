@@ -31,7 +31,7 @@ describe("Entities Schemas", function()
         upstream_url = "asdasd"
       }, api_schema)
       assert.False(valid)
-      assert.equal("Invalid target URL", errors.upstream_url)
+      assert.equal("upstream_url is not a url", errors.upstream_url)
     end)
 
     it("should return error with wrong upstream_url protocol", function()

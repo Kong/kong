@@ -18,6 +18,9 @@ local custom_types_validation = {
   ["url"] = function(v)
     if v and type(v) == "string" then
       local parsed_url = require("socket.url").parse(v)
+      if parsed_url and not parsed_url.path then
+        parsed_url.path = "/"
+      end
       return parsed_url and parsed_url.path and parsed_url.host and parsed_url.scheme
     end
   end,
