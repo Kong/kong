@@ -1,6 +1,6 @@
 return {
   no_consumer = true,
   fields = {
-    hide_credentials = { type = "boolean", default = false }
+    hide_credentials = {type = "boolean", default = false}
   }
 }

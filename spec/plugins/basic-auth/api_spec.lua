@@ -3,7 +3,7 @@ local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
 
 describe("Basic Auth Credentials API", function()
-  local BASE_URL, credential, consumer
+  local BASE_URL, credential, consumer, consumer_alice
 
   setup(function()
     spec_helper.prepare_db()
@@ -18,19 +18,41 @@ describe("Basic Auth Credentials API", function()
 
     setup(function()
       local fixtures = spec_helper.insert_fixtures {
-        consumer = {{ username = "bob" }}
+        consumer = {{username = "bob"}, {username = "alice"}}
       }
       consumer = fixtures.consumer[1]
+      consumer_alice = fixtures.consumer[2]
       BASE_URL = spec_helper.API_URL.."/consumers/bob/basic-auth/"
     end)
 
     describe("POST", function()
 
+      teardown(function()
+        local dao = spec_helper.get_env().dao_factory
+        local ok, err = dao.basicauth_credentials:delete(credential)
+        assert.True(ok)
+        assert.falsy(err)
+      end)
+
       it("[SUCCESS] should create a basicauth credential", function()
-        local response, status = http_client.post(BASE_URL, { username = "bob", password = "1234" })
+        local response, status = http_client.post(BASE_URL, {username = "bob", password = "1234"})
         assert.equal(201, status)
         credential = json.decode(response)
         assert.equal(consumer.id, credential.consumer_id)
+      end)
+
+      it("[SUCCESS] should encrypt a password", function()
+        local base_url = spec_helper.API_URL.."/consumers/alice/basic-auth/"
+        local response, status = http_client.post(base_url, {username = "alice", password = "1234"})
+        assert.equal(201, status)
+
+        credential = json.decode(response)
+        assert.equal(consumer_alice.id, credential.consumer_id)
+        assert.not_equal("1234", credential.password)
+
+        local crypto = require "kong.plugins.basic-auth.crypto"
+        local hash = crypto.encrypt({consumer_id = consumer_alice.id, password = "1234"})
+        assert.equal(hash, credential.password)
       end)
 
       it("[FAILURE] should return proper errors", function()
@@ -42,12 +64,9 @@ describe("Basic Auth Credentials API", function()
     end)
 
     describe("PUT", function()
-      setup(function()
-        spec_helper.get_env().dao_factory.basicauth_credentials:delete({id = credential.id})
-      end)
 
       it("[SUCCESS] should create and update", function()
-        local response, status = http_client.put(BASE_URL, { username = "bob", password = "1234" })
+        local response, status = http_client.put(BASE_URL, {username = "alice", password = "1234"})
         assert.equal(201, status)
         credential = json.decode(response)
         assert.equal(consumer.id, credential.consumer_id)
@@ -67,7 +86,7 @@ describe("Basic Auth Credentials API", function()
         local response, status = http_client.get(BASE_URL)
         assert.equal(200, status)
         local body = json.decode(response)
-        assert.equal(1, #(body.data))
+        assert.equal(2, #(body.data))
       end)
 
     end)

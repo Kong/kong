@@ -1,13 +1,19 @@
 local BaseDao = require "kong.dao.cassandra.base_dao"
+local crypto = require "kong.plugins.basic-auth.crypto"
+
+local function encrypt_password(password, credential)
+  credential.password = crypto.encrypt(credential)
+  return true
+end
 
 local SCHEMA = {
   primary_key = {"id"},
   fields = {
-    id = { type = "id", dao_insert_value = true },
-    created_at = { type = "timestamp", dao_insert_value = true },
-    consumer_id = { type = "id", required = true, queryable = true, foreign = "consumers:id" },
-    username = { type = "string", required = true, unique = true, queryable = true },
-    password = { type = "string" }
+    id = {type = "id", dao_insert_value = true},
+    created_at = {type = "timestamp", dao_insert_value = true},
+    consumer_id = {type = "id", required = true, queryable = true, foreign = "consumers:id"},
+    username = {type = "string", required = true, unique = true, queryable = true},
+    password = {type = "string", func = encrypt_password}
   }
 }
 
@@ -20,4 +26,4 @@ function BasicAuthCredentials:new(properties)
   BasicAuthCredentials.super.new(self, properties)
 end
 
-return { basicauth_credentials = BasicAuthCredentials }
+return {basicauth_credentials = BasicAuthCredentials}

@@ -10,11 +10,11 @@ and run this script again with the --purge option.
 Arguments:
   -c, --config   path to your Kong configuration file
 Flags:
-  --purge    if already migrated, purge the old values
+  --purge        if already migrated, purge the old values
   -h             print help
 '''
 
-import getopt, sys, os.path, logging, json
+import getopt, sys, os.path, logging, json, hashlib
 
 log = logging.getLogger()
 log.setLevel("INFO")
@@ -27,6 +27,7 @@ try:
     from cassandra.cluster import Cluster
     from cassandra import ConsistencyLevel, InvalidRequest
     from cassandra.query import SimpleStatement
+    from cassandra import InvalidRequest
 except ImportError as err:
     log.error(err)
     log.info("""This script requires cassandra-driver and PyYAML:
@@ -118,7 +119,8 @@ def migrate_plugins_configurations(session):
     session.execute("create index if not exists on plugins(api_id)")
     session.execute("create index if not exists on plugins(consumer_id)")
 
-    for plugin in session.execute("SELECT * FROM plugins_configurations"):
+    select_query = SimpleStatement("SELECT * FROM plugins_configurations", consistency_level=ConsistencyLevel.ALL)
+    for plugin in session.execute(select_query):
         # New plugins names
         plugin_name = plugin.name
         if plugin.name in new_names:
@@ -153,22 +155,49 @@ def migrate_rename_apis_properties(sessions):
     session.execute("CREATE INDEX IF NOT EXISTS ON apis(inbound_dns)")
 
     select_query = SimpleStatement("SELECT * FROM apis", consistency_level=ConsistencyLevel.ALL)
-
     for api in session.execute(select_query):
         session.execute("UPDATE apis SET inbound_dns = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.target_url, api.id])
 
     log.info("APIs properties renamed")
 
+def migrate_hash_passwords(session):
+    """
+    Hash all passwords in basicauth_credentials using sha1 and the consumer_id as the salt.
+    Also stores the plain passwords in a temporary column in case this script is run multiple times by the user.
+    Temporare column will be dropped on --purge.
+
+    :param session: opened cassandra session
+    """
+    log.info("Hashing basic-auth passwords...")
+
+    first_run = True
+
+    try:
+        session.execute("ALTER TABLE basicauth_credentials ADD plain_password text")
+    except InvalidRequest as err:
+        first_run = False
+
+    select_query = SimpleStatement("SELECT * FROM basicauth_credentials", consistency_level=ConsistencyLevel.ALL)
+    for credential in session.execute(select_query):
+        plain_password = credential.password if first_run else credential.plain_password
+        m = hashlib.sha1()
+        m.update(plain_password)
+        m.update(str(credential.consumer_id))
+        digest = m.hexdigest()
+        session.execute("UPDATE basicauth_credentials SET password = %s, plain_password = %s WHERE id = %s", [digest, plain_password, credential.id])
+
 def purge(session):
     session.execute("ALTER TABLE apis DROP public_dns")
     session.execute("ALTER TABLE apis DROP target_url")
+    session.execute("ALTER TABLE basicauth_credentials DROP plain_password")
     session.execute("DROP TABLE plugins_configurations")
-    session.execute("DELETE FROM schema_migrations WHERE id = 'migrations'")
+    session.execute(SimpleStatement("DELETE FROM schema_migrations WHERE id = 'migrations'", consistency_level=ConsistencyLevel.ALL))
 
 def migrate(session):
     migrate_schema_migrations_table(session)
     migrate_plugins_configurations(session)
     migrate_rename_apis_properties(session)
+    migrate_hash_passwords(session)
 
 def parse_arguments(argv):
     """
@@ -219,20 +248,20 @@ def main(argv):
             log.error("Please migrate your cluster to Kong 0.4.2 before running this script.")
             shutdown_exit(1)
 
-        if purge_cmd :
+        if purge_cmd:
             if not is_purged and is_migrated:
                 purge(session)
-                log.info("Cassandra purged from <0.5.0 data")
+                log.info("Cassandra purged from <0.5.0 data.")
             elif not is_purged and not is_migrated:
                 log.info("Cassandra not previously migrated. Run this script in migration mode before.")
                 shutdown_exit(1)
             else:
-                log.info("Cassandra already purged and migrated")
+                log.info("Cassandra already purged and migrated.")
         elif not is_migrated:
             migrate(session)
-            log.info("Cassandra migrated to Kong 0.5.0.")
+            log.info("Cassandra migrated to Kong 0.5.0. Restart Kong and run this script with '--purge'.")
         else:
-            log.info("Cassandra already migrated to Kong 0.5.0")
+            log.info("Cassandra already migrated to Kong 0.5.0. Restart Kong and run this script with '--purge'.")
 
         shutdown_exit(0)
     except getopt.GetoptError as err:

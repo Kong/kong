@@ -97,6 +97,7 @@ build = {
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
     ["kong.plugins.basic-auth.migrations.cassandra"] = "kong/plugins/basic-auth/migrations/cassandra.lua",
+    ["kong.plugins.basic-auth.crypto"] = "kong/plugins/basic-auth/crypto.lua",
     ["kong.plugins.basic-auth.handler"] = "kong/plugins/basic-auth/handler.lua",
     ["kong.plugins.basic-auth.access"] = "kong/plugins/basic-auth/access.lua",
     ["kong.plugins.basic-auth.schema"] = "kong/plugins/basic-auth/schema.lua",
