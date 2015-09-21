@@ -2,13 +2,7 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 local crypto = require "kong.plugins.basic-auth.crypto"
 
 local function encrypt_password(password, credential)
-  local encrypted, err = crypto.encrypt(credential)
-  if err then
-    return false, err
-  end
-
-  credential.password = encrypted
-
+  credential.password = crypto.encrypt(credential)
   return true
 end
 
