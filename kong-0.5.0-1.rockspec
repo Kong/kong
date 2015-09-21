@@ -207,6 +207,14 @@ build = {
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
 
+    ["kong.plugins.jwt.migrations.cassandra"] = "kong/plugins/jwt/migrations/cassandra.lua",
+    ["kong.plugins.jwt.handler"] = "kong/plugins/jwt/handler.lua",
+    ["kong.plugins.jwt.access"] = "kong/plugins/jwt/access.lua",
+    ["kong.plugins.jwt.schema"] = "kong/plugins/jwt/schema.lua",
+    ["kong.plugins.jwt.api"] = "kong/plugins/jwt/api.lua",
+    ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
+    ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
+
     ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",
