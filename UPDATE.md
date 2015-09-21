@@ -13,21 +13,24 @@ You will need to update your configuration file. Replace the `plugins_available`
 ```yaml
 plugins_available:
   - ssl
-  - key-auth
-  - basic-auth
+  - jwt
+  - acl
+  - cors
   - oauth2
-  - rate-limiting
-  - response-ratelimiting
   - tcp-log
   - udp-log
   - file-log
   - http-log
-  - cors
+  - key-auth
+  - hmac-auth
+  - basic-auth
+  - ip-restriction
+  - mashape-analytics
   - request-transformer
   - response-transformer
   - request-size-limiting
-  - ip-restriction
-  - mashape-analytics
+  - rate-limiting
+  - response-ratelimiting
 ```
 
 You can still remove plugins you don't use for a lighter Kong.
