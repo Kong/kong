@@ -16,7 +16,6 @@ local type = type
 local pcall = pcall
 local ngx_time = ngx.time
 local string_rep = string.rep
-local table_insert = table.insert
 local setmetatable = setmetatable
 
 --- Supported algorithms for signing tokens.
@@ -204,9 +203,9 @@ local registered_claims = {
 function _M:verify_registered_claims(claims_to_verify)
   if not claims_to_verify then claims_to_verify = {} end
   local errors = nil
-  local claim
+  local claim, claim_rules
 
-  for _, claim_name, claim_rules in pairs(claims_to_verify) do
+  for _, claim_name in pairs(claims_to_verify) do
     claim = self.claims[claim_name]
     claim_rules = registered_claims[claim_name]
     if type(claim) ~= claim_rules.type then

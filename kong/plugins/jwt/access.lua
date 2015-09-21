@@ -1,14 +1,11 @@
-local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 
 local string_format = string.format
-local select = select
 local dao = dao
 local ngx_re_gmatch = ngx.re.gmatch
-local ngx_time = ngx.time
 
 local _M = {}
 
