@@ -89,7 +89,7 @@ describe("Cassandra", function()
 
         -- API
         api, err = dao_factory.apis:insert {
-          inbound_dns = "test.com",
+          request_host = "test.com",
           upstream_url = "http://mockbin.com"
         }
         assert.falsy(err)
@@ -228,7 +228,7 @@ describe("Cassandra", function()
         assert.equal(1, #apis)
         assert.equal(api_t.id, apis[1].id)
         assert.equal(api_t.name, apis[1].name)
-        assert.equal(api_t.inbound_dns, apis[1].inbound_dns)
+        assert.equal(api_t.request_host, apis[1].request_host)
         assert.equal(api_t.upstream_url, apis[1].upstream_url)
 
         -- Consumer
@@ -271,38 +271,38 @@ describe("Cassandra", function()
         assert.True(#apis > 0)
 
         local api_t = apis[1]
-        -- Should not work because we're reusing a inbound_dns
-        api_t.inbound_dns = apis[2].inbound_dns
+        -- Should not work because we're reusing a request_host
+        api_t.request_host = apis[2].request_host
 
         local api, err = dao_factory.apis:update(api_t)
         assert.truthy(err)
         assert.falsy(api)
         assert.is_daoError(err)
         assert.True(err.unique)
-        assert.equal("inbound_dns already exists with value '"..api_t.inbound_dns.."'", err.message.inbound_dns)
+        assert.equal("request_host already exists with value '"..api_t.request_host.."'", err.message.request_host)
       end)
 
       describe("full", function()
 
         it("should set to NULL if a field is not specified", function()
           local api_t = faker:fake_entity("api")
-          api_t.path = "/path"
+          api_t.request_path = "/request_path"
 
           local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(err)
-          assert.truthy(api_t.path)
+          assert.truthy(api_t.request_path)
 
           -- Update
-          api.path = nil
+          api.request_path = nil
           api, err = dao_factory.apis:update(api, true)
           assert.falsy(err)
           assert.truthy(api)
-          assert.falsy(api.path)
+          assert.falsy(api.request_path)
 
           -- Check update
           api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
           assert.falsy(err)
-          assert.falsy(api.path)
+          assert.falsy(api.request_path)
         end)
 
         it("should still check the validity of the schema", function()
@@ -313,7 +313,7 @@ describe("Cassandra", function()
           assert.truthy(api_t)
 
           -- Update
-          api.inbound_dns = nil
+          api.request_host = nil
 
           local nil_api, err = dao_factory.apis:update(api, true)
           assert.truthy(err)
@@ -323,7 +323,7 @@ describe("Cassandra", function()
           api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
           assert.falsy(err)
           assert.truthy(api[1].name)
-          assert.truthy(api[1].inbound_dns)
+          assert.truthy(api[1].request_host)
         end)
 
       end)
@@ -366,7 +366,7 @@ describe("Cassandra", function()
         assert.True(needs_filtering)
 
         -- No Filtering needed
-        apis, err, needs_filtering = dao_factory.apis:find_by_keys {inbound_dns = api_t.inbound_dns}
+        apis, err, needs_filtering = dao_factory.apis:find_by_keys {request_host = api_t.request_host}
         assert.falsy(err)
         assert.same(api_t, apis[1])
         assert.False(needs_filtering)
@@ -545,8 +545,8 @@ describe("Cassandra", function()
         it("should find distinct plugins configurations", function()
           faker:insert_from_table {
             api = {
-              { name = "tests distinct 1", inbound_dns = "foo.com", upstream_url = "http://mockbin.com" },
-              { name = "tests distinct 2", inbound_dns = "bar.com", upstream_url = "http://mockbin.com" }
+              { name = "tests distinct 1", request_host = "foo.com", upstream_url = "http://mockbin.com" },
+              { name = "tests distinct 2", request_host = "bar.com", upstream_url = "http://mockbin.com" }
             },
             plugin = {
               { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },

@@ -91,7 +91,7 @@ Your cluster is now fully migrated to `0.5.0`.
 
 Some entities and properties were renamed to avoid confusion:
 
-- `public_dns` and `target_url` properties of APIs were respectively renamed to `inbound_dns` and `upstream_url`.
+- `public_dns` and `target_url` properties of APIs were respectively renamed to `request_host` and `upstream_url`.
 - `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions.
 - The Key authentication and Basic authentication plugins routes have changed:
 

@@ -19,10 +19,10 @@ describe("RateLimiting Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests rate-limiting 1", inbound_dns = "test3.com", upstream_url = "http://mockbin.com" },
-        { name = "tests rate-limiting 2", inbound_dns = "test4.com", upstream_url = "http://mockbin.com" },
-        { name = "tests rate-limiting 3", inbound_dns = "test5.com", upstream_url = "http://mockbin.com" },
-        { name = "tests rate-limiting 4", inbound_dns = "test6.com", upstream_url = "http://mockbin.com" }
+        { name = "tests rate-limiting 1", request_host = "test3.com", upstream_url = "http://mockbin.com" },
+        { name = "tests rate-limiting 2", request_host = "test4.com", upstream_url = "http://mockbin.com" },
+        { name = "tests rate-limiting 3", request_host = "test5.com", upstream_url = "http://mockbin.com" },
+        { name = "tests rate-limiting 4", request_host = "test6.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },

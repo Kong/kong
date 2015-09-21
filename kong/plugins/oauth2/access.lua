@@ -350,8 +350,8 @@ local function parse_access_token(conf)
 end
 
 function _M.execute(conf)
-  -- Check if the API has a path and if it's being invoked with the path resolver
-  local path_prefix = (ngx.ctx.api.path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.path)) and ngx.ctx.api.path or ""
+  -- Check if the API has a request_path and if it's being invoked with the path resolver
+  local path_prefix = (ngx.ctx.api.request_path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
   if stringy.endswith(path_prefix, "/") then
     path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
   end

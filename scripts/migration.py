@@ -150,13 +150,16 @@ def migrate_rename_apis_properties(sessions):
     """
     log.info("Renaming some properties for APIs...")
 
-    session.execute("ALTER TABLE apis ADD inbound_dns text")
+    session.execute("ALTER TABLE apis ADD request_host text")
+    session.execute("ALTER TABLE apis ADD request_path text")
+    session.execute("ALTER TABLE apis ADD strip_request_path boolean")
     session.execute("ALTER TABLE apis ADD upstream_url text")
-    session.execute("CREATE INDEX IF NOT EXISTS ON apis(inbound_dns)")
+    session.execute("CREATE INDEX IF NOT EXISTS ON apis(request_host)")
+    session.execute("CREATE INDEX IF NOT EXISTS ON apis(request_path)")
 
     select_query = SimpleStatement("SELECT * FROM apis", consistency_level=ConsistencyLevel.ALL)
     for api in session.execute(select_query):
-        session.execute("UPDATE apis SET inbound_dns = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.target_url, api.id])
+        session.execute("UPDATE apis SET request_host = %s, request_path = %s, strip_request_path = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.path, api.strip_path, api.target_url, api.id])
 
     log.info("APIs properties renamed")
 
@@ -189,6 +192,8 @@ def migrate_hash_passwords(session):
 def purge(session):
     session.execute("ALTER TABLE apis DROP public_dns")
     session.execute("ALTER TABLE apis DROP target_url")
+    session.execute("ALTER TABLE apis DROP path")
+    session.execute("ALTER TABLE apis DROP strip_path")
     session.execute("ALTER TABLE basicauth_credentials DROP plain_password")
     session.execute("DROP TABLE plugins_configurations")
     session.execute(SimpleStatement("DELETE FROM schema_migrations WHERE id = 'migrations'", consistency_level=ConsistencyLevel.ALL))

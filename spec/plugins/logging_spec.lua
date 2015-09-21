@@ -28,12 +28,12 @@ describe("Logging Plugins", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests tcp logging", inbound_dns = "tcp_logging.com", upstream_url = "http://mockbin.com" },
-        { name = "tests tcp logging2", inbound_dns = "tcp_logging2.com", upstream_url = "http://localhost:"..HTTP_DELAY_PORT },
-        { name = "tests udp logging", inbound_dns = "udp_logging.com", upstream_url = "http://mockbin.com" },
-        { name = "tests http logging", inbound_dns = "http_logging.com", upstream_url = "http://mockbin.com" },
-        { name = "tests https logging", inbound_dns = "https_logging.com", upstream_url = "http://mockbin.com" },
-        { name = "tests file logging", inbound_dns = "file_logging.com", upstream_url = "http://mockbin.com" }
+        { name = "tests tcp logging", request_host = "tcp_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests tcp logging2", request_host = "tcp_logging2.com", upstream_url = "http://localhost:"..HTTP_DELAY_PORT },
+        { name = "tests udp logging", request_host = "udp_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests http logging", request_host = "http_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests https logging", request_host = "https_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "tests file logging", request_host = "file_logging.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "tcp-log", config = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },

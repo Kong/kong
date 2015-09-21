@@ -8,8 +8,11 @@ Several breaking changes are introduced. You will have to slightly change your c
 
 - Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
 - In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Mashape/kong/issues/513)
-- `public_dns` and `target_url` properties of APIs were respectively renamed to `inbound_dns` and `upstream_url`. [#513](https://github.com/Mashape/kong/issues/513)
-- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
+- Properties belonging to APIs entities have been renamed for clarity [#513](https://github.com/Mashape/kong/issues/513)
+  - `public_dns` -> `request_host`
+  - `path` -> `request_path`
+  - `strip_path` -> `strip_request_path`
+  - `target_url` -> `upstream_url`
 - The database schema has been updated to handle the separation of plugins outside of the core repository.
 - The Key authentication and Basic authentication plugins routes have changed:
 

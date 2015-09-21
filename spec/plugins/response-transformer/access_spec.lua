@@ -11,8 +11,8 @@ describe("Response Transformer Plugin #proxy", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests response-transformer", inbound_dns = "response.com", upstream_url = "http://httpbin.org" },
-        { name = "tests response-transformer 2", inbound_dns = "response2.com", upstream_url = "http://httpbin.org" },
+        { name = "tests response-transformer", request_host = "response.com", upstream_url = "http://httpbin.org" },
+        { name = "tests response-transformer 2", request_host = "response2.com", upstream_url = "http://httpbin.org" },
       },
       plugin = {
         {

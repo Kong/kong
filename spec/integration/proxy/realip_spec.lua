@@ -13,7 +13,7 @@ describe("Real IP", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests realip", inbound_dns = "realip.com", upstream_url = "http://mockbin.com" }
+        { name = "tests realip", request_host = "realip.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "file-log", config = { path = FILE_LOG_PATH }, __api = 1 }

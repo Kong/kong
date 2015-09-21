@@ -27,7 +27,7 @@ describe("Entities Schemas", function()
 
     it("should return error with wrong upstream_url", function()
       local valid, errors = validate_entity({
-        inbound_dns = "mockbin.com",
+        request_host = "mockbin.com",
         upstream_url = "asdasd"
       }, api_schema)
       assert.False(valid)
@@ -36,16 +36,16 @@ describe("Entities Schemas", function()
 
     it("should return error with wrong upstream_url protocol", function()
       local valid, errors = validate_entity({
-        inbound_dns = "mockbin.com",
+        request_host = "mockbin.com",
         upstream_url = "wot://mockbin.com/"
       }, api_schema)
       assert.False(valid)
       assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
     end)
 
-    it("should validate without a path", function()
+    it("should validate without a request_path", function()
       local valid, errors = validate_entity({
-        inbound_dns = "mockbin.com",
+        request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.falsy(errors)
@@ -54,32 +54,32 @@ describe("Entities Schemas", function()
 
     it("should validate with upper case protocol", function()
       local valid, errors = validate_entity({
-        inbound_dns = "mockbin.com",
+        request_host = "mockbin.com",
         upstream_url = "HTTP://mockbin.com/world"
       }, api_schema)
       assert.falsy(errors)
       assert.True(valid)
     end)
 
-    it("should complain if missing `inbound_dns` and `path`", function()
+    it("should complain if missing `request_host` and `request_path`", function()
       local valid, errors = validate_entity({
         name = "mockbin"
       }, api_schema)
       assert.False(valid)
-      assert.equal("At least an 'inbound_dns' or a 'path' must be specified", errors.path)
-      assert.equal("At least an 'inbound_dns' or a 'path' must be specified", errors.inbound_dns)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
 
       local valid, errors = validate_entity({
         name = "mockbin",
-        path = true
+        request_path = true
       }, api_schema)
       assert.False(valid)
-      assert.equal("path is not a string", errors.path)
-      assert.equal("At least an 'inbound_dns' or a 'path' must be specified", errors.inbound_dns)
+      assert.equal("request_path is not a string", errors.request_path)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
     end)
 
-    it("should set the name from inbound_dns if not set", function()
-      local t = { inbound_dns = "mockbin.com", upstream_url = "http://mockbin.com" }
+    it("should set the name from request_host if not set", function()
+      local t = { request_host = "mockbin.com", upstream_url = "http://mockbin.com" }
 
       local valid, errors = validate_entity(t, api_schema)
       assert.falsy(errors)
@@ -87,10 +87,10 @@ describe("Entities Schemas", function()
       assert.equal("mockbin.com", t.name)
     end)
 
-    it("should accept valid wildcard inbound_dns", function()
+    it("should accept valid wildcard request_host", function()
       local valid, errors = validate_entity({
         name = "mockbin",
-        inbound_dns = "*.mockbin.org",
+        request_host = "*.mockbin.org",
         upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
@@ -98,98 +98,98 @@ describe("Entities Schemas", function()
 
       valid, errors = validate_entity({
         name = "mockbin",
-        inbound_dns = "mockbin.*",
+        request_host = "mockbin.*",
         upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
       assert.falsy(errors)
     end)
 
-    it("should refuse invalid wildcard inbound_dns", function()
+    it("should refuse invalid wildcard request_host", function()
       local api_t = {
         name = "mockbin",
-        inbound_dns = "*.mockbin.*",
+        request_host = "*.mockbin.*",
         upstream_url = "http://mockbin.com"
       }
 
       local valid, errors = validate_entity(api_t, api_schema)
       assert.False(valid)
-      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.inbound_dns)
+      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.request_host)
 
-      api_t.inbound_dns = "*mockbin.com"
+      api_t.request_host = "*mockbin.com"
       valid, errors = validate_entity(api_t, api_schema)
       assert.False(valid)
-      assert.equal("Invalid wildcard placement: *mockbin.com", errors.inbound_dns)
+      assert.equal("Invalid wildcard placement: *mockbin.com", errors.request_host)
 
-      api_t.inbound_dns = "www.mockbin*"
+      api_t.request_host = "www.mockbin*"
       valid, errors = validate_entity(api_t, api_schema)
       assert.False(valid)
-      assert.equal("Invalid wildcard placement: www.mockbin*", errors.inbound_dns)
+      assert.equal("Invalid wildcard placement: www.mockbin*", errors.request_host)
     end)
 
-    it("should only accept alphanumeric `path`", function()
+    it("should only accept alphanumeric `request_path`", function()
       local valid, errors = validate_entity({
         name = "mockbin",
-        path = "/[a-zA-Z]{3}",
+        request_path = "/[a-zA-Z]{3}",
         upstream_url = "http://mockbin.com"
       }, api_schema)
-      assert.equal("path must only contain alphanumeric and '. -, _, ~, /' characters", errors.path)
+      assert.equal("request_path must only contain alphanumeric and '. -, _, ~, /' characters", errors.request_path)
       assert.False(valid)
 
       valid = validate_entity({
         name = "mockbin",
-        path = "/status/",
+        request_path = "/status/",
         upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
 
       valid = validate_entity({
         name = "mockbin",
-        path = "/abcd~user-2",
+        request_path = "/abcd~user-2",
         upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.True(valid)
     end)
 
-    it("should prefix a `path` with a slash and remove trailing slash", function()
-      local api_t = { name = "mockbin", path = "status", upstream_url = "http://mockbin.com" }
+    it("should prefix a `request_path` with a slash and remove trailing slash", function()
+      local api_t = { name = "mockbin", request_path = "status", upstream_url = "http://mockbin.com" }
       validate_entity(api_t, api_schema)
-      assert.equal("/status", api_t.path)
+      assert.equal("/status", api_t.request_path)
 
-      api_t.path = "/status"
+      api_t.request_path = "/status"
       validate_entity(api_t, api_schema)
-      assert.equal("/status", api_t.path)
+      assert.equal("/status", api_t.request_path)
 
-      api_t.path = "status/"
+      api_t.request_path = "status/"
       validate_entity(api_t, api_schema)
-      assert.equal("/status", api_t.path)
+      assert.equal("/status", api_t.request_path)
 
-      api_t.path = "/status/"
+      api_t.request_path = "/status/"
       validate_entity(api_t, api_schema)
-      assert.equal("/status", api_t.path)
+      assert.equal("/status", api_t.request_path)
 
-      api_t.path = "/deep/nested/status/"
+      api_t.request_path = "/deep/nested/status/"
       validate_entity(api_t, api_schema)
-      assert.equal("/deep/nested/status", api_t.path)
+      assert.equal("/deep/nested/status", api_t.request_path)
 
-      api_t.path = "deep/nested/status"
+      api_t.request_path = "deep/nested/status"
       validate_entity(api_t, api_schema)
-      assert.equal("/deep/nested/status", api_t.path)
+      assert.equal("/deep/nested/status", api_t.request_path)
 
       -- Strip all leading slashes
-      api_t.path = "//deep/nested/status"
+      api_t.request_path = "//deep/nested/status"
       validate_entity(api_t, api_schema)
-      assert.equal("/deep/nested/status", api_t.path)
+      assert.equal("/deep/nested/status", api_t.request_path)
 
       -- Strip all trailing slashes
-      api_t.path = "/deep/nested/status//"
+      api_t.request_path = "/deep/nested/status//"
       validate_entity(api_t, api_schema)
-      assert.equal("/deep/nested/status", api_t.path)
+      assert.equal("/deep/nested/status", api_t.request_path)
 
-      -- Error if invalid path
-      api_t.path = "/deep//nested/status"
+      -- Error if invalid request_path
+      api_t.request_path = "/deep//nested/status"
       local _, errors = validate_entity(api_t, api_schema)
-      assert.equal("path is invalid: /deep//nested/status", errors.path)
+      assert.equal("request_path is invalid: /deep//nested/status", errors.request_path)
     end)
 
   end)

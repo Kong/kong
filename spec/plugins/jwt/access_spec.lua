@@ -19,9 +19,9 @@ describe("JWT access", function()
     spec_helper.prepare_db()
     local fixtures = spec_helper.insert_fixtures {
       api = {
-        {name = "tests jwt", inbound_dns = "jwt.com", upstream_url = "http://mockbin.com"},
-        {name = "tests jwt2", inbound_dns = "jwt2.com", upstream_url = "http://mockbin.com"},
-        {name = "tests jwt3", inbound_dns = "jwt3.com", upstream_url = "http://mockbin.com"}
+        {name = "tests jwt", request_host = "jwt.com", upstream_url = "http://mockbin.com"},
+        {name = "tests jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"},
+        {name = "tests jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
         {username = "jwt_tests_consumer"}

@@ -10,12 +10,12 @@ describe("IP Restriction", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "iprestriction1", inbound_dns = "test1.com", upstream_url = "http://mockbin.com" },
-        { name = "iprestriction2", inbound_dns = "test2.com", upstream_url = "http://mockbin.com" },
-        { name = "iprestriction3", inbound_dns = "test3.com", upstream_url = "http://mockbin.com" },
-        { name = "iprestriction4", inbound_dns = "test4.com", upstream_url = "http://mockbin.com" },
-        { name = "iprestriction7", inbound_dns = "test5.com", upstream_url = "http://mockbin.com" },
-        { name = "iprestriction8", inbound_dns = "test6.com", upstream_url = "http://mockbin.com" }
+        { name = "iprestriction1", request_host = "test1.com", upstream_url = "http://mockbin.com" },
+        { name = "iprestriction2", request_host = "test2.com", upstream_url = "http://mockbin.com" },
+        { name = "iprestriction3", request_host = "test3.com", upstream_url = "http://mockbin.com" },
+        { name = "iprestriction4", request_host = "test4.com", upstream_url = "http://mockbin.com" },
+        { name = "iprestriction5", request_host = "test5.com", upstream_url = "http://mockbin.com" },
+        { name = "iprestriction6", request_host = "test6.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "ip-restriction", config = { blacklist = { "127.0.0.1" }}, __api = 1 },
