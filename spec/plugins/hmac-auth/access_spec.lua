@@ -1,16 +1,18 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
-local sha1 = require "sha1"
+local crypto = require "crypto"
 local base64 = require "base64"
 
 local json_decode = cjson.decode
 local os_date = os.date
-local base64_encode = base64.encode 
+local base64_encode = base64.encode
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_POST_URL = spec_helper.STUB_POST_URL
-local hmac_sha1_binary = sha1.hmac_binary
+local hmac_sha1_binary = function(secret, data)
+  return crypto.hmac.digest("sha1", data, secret, true)
+end
 
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 
@@ -32,7 +34,7 @@ describe("Authentication Plugin", function()
         {username = "username", secret = "secret", __consumer = 1}
       }
     }
-    
+
     spec_helper.start_kong()
   end)
 
