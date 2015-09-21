@@ -68,7 +68,7 @@ function Migrations:run_migrations(migrations, identifier, callback)
   -- Retrieve already executed migrations
   local old_migrations, err = self.dao.migrations:get_migrations(identifier)
   if err then
-    return nil, err
+    return err
   end
 
   -- Determine which migrations have already been run
