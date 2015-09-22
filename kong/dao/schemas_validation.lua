@@ -59,7 +59,7 @@ function _M.validate_entity(tbl, schema, options)
   for tk, t in pairs(key_values) do
     if t ~= nil then
       local error_prefix = ""
-      if stringy.strip(tk) ~= "" then 
+      if stringy.strip(tk) ~= "" then
         error_prefix = tk.."."
       end
 

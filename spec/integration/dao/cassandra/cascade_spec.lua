@@ -17,10 +17,10 @@ describe("Cassandra cascade delete", function()
     setup(function()
       local fixtures = spec_helper.insert_fixtures {
         api = {
-          {name = "cascade delete",
+          {name = "cascade-delete",
            request_host = "mockbin.com",
            upstream_url = "http://mockbin.com"},
-          {name = "untouched cascade delete",
+          {name = "untouched-cascade-delete",
            request_host = "untouched.com",
            upstream_url = "http://mockbin.com"}
         },
@@ -66,7 +66,7 @@ describe("Cassandra cascade delete", function()
     setup(function()
       local fixtures = spec_helper.insert_fixtures {
         api = {
-          {name = "cascade delete",
+          {name = "cascade-delete",
            request_host = "mockbin.com",
            upstream_url = "http://mockbin.com"}
         },

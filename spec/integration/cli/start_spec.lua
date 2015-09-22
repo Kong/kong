@@ -74,7 +74,7 @@ describe("CLI", function()
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
       spec_helper.get_env(SERVER_CONF).faker:insert_from_table {
         api = {
-          {name = "tests cli 1", request_host = "foo.com", upstream_url = "http://mockbin.com"},
+          {name = "tests-cli", request_host = "foo.com", upstream_url = "http://mockbin.com"},
         },
         plugin = {
           {name = "rate-limiting", config = {minute = 6}, __api = 1},

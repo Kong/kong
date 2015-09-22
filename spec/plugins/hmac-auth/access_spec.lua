@@ -22,7 +22,7 @@ describe("Authentication Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests hmac auth", request_host = "hmacauth.com", upstream_url = "http://mockbin.org/"}
+        {name = "tests-hmac-auth", request_host = "hmacauth.com", upstream_url = "http://mockbin.org/"}
       },
       consumer = {
         {username = "hmacauth_tests_consuser"}

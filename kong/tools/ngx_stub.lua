@@ -1,5 +1,5 @@
 --- Stub _G.ngx for unit testing.
--- Creates a stub for `ngx` for use by Kong's modules such as the DAO. It allows to use them 
+-- Creates a stub for `ngx` for use by Kong's modules such as the DAO. It allows to use them
 -- outside of the nginx context such as when using the CLI, or unit testing.
 --
 -- Monkeypatches the global `ngx` table.
@@ -20,7 +20,11 @@ _G.ngx = {
     at = function() end
   },
   re = {
-    match = reg.match
+    match = reg.match,
+    gsub = function(str, pattern, sub)
+      local res_str, _, sub_made = reg.gsub(str, pattern, sub)
+      return res_str, sub_made
+    end
   },
   -- Builds a querystring from a table, separated by `&`
   -- @param `tab`          The key/value parameters
