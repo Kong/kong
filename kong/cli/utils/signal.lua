@@ -134,7 +134,7 @@ local function prepare_nginx_working_dir(args_config)
 
   -- Inject properties
   for k, v in pairs(nginx_inject) do
-    nginx_config = nginx_config:gsub("{{"..k.."}}", v)
+    nginx_config = nginx_config:gsub("{"..k.."}", v)
   end
 
   -- Inject additional configurations
@@ -143,7 +143,7 @@ local function prepare_nginx_working_dir(args_config)
   }
 
   for _, v in pairs(nginx_inject) do
-    nginx_config = nginx_config:gsub("# {{additional_configuration}}", "# {{additional_configuration}}\n    "..v)
+    nginx_config = nginx_config:gsub("# {additional_configuration}", "# {additional_configuration}\n    "..v)
   end
 
   -- Inject anonymous reports
