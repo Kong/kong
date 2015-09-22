@@ -60,6 +60,7 @@ plugins_available:
   - request-size-limiting
   - acl
   - hmac-auth
+  - mm-hmac-auth
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)

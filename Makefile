@@ -59,6 +59,12 @@ test-integration:
 test-plugins:
 	@busted -v spec/plugins
 
+test-mm-auth:
+	@busted -v spec/plugins/mm-hmac-auth
+
+test-auth:
+	@busted -v spec/plugins/hmac-auth
+
 test-all:
 	@busted -v spec/
 

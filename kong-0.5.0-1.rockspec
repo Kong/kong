@@ -210,7 +210,13 @@ build = {
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
-    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua"
+    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
+
+    ["kong.plugins.mm-hmac-auth.handler"] = "kong/plugins/mm-hmac-auth/handler.lua",
+    ["kong.plugins.mm-hmac-auth.access"] = "kong/plugins/mm-hmac-auth/access.lua",
+    ["kong.plugins.mm-hmac-auth.schema"] = "kong/plugins/mm-hmac-auth/schema.lua",
+    ["kong.plugins.mm-hmac-auth.api"] = "kong/plugins/mm-hmac-auth/api.lua",
+    ["kong.plugins.mm-hmac-auth.daos"] = "kong/plugins/mm-hmac-auth/daos.lua"
   },
   install = {
     conf = { "kong.yml" },
