@@ -43,12 +43,12 @@ describe("JWT API", function()
         jwt1 = body
       end)
 
-      it("[SUCCESS] should override any given `secret` and accept a `key` parameter", function()
+      it("[SUCCESS] should accepty any given `secret` and `key` parameters", function()
         local response, status = http_client.post(BASE_URL, {key = "bob2", secret = "tooshort"})
         assert.equal(201, status)
         local body = json.decode(response)
         assert.equal("bob2", body.key)
-        assert.not_equal("tooshort", body.secret)
+        assert.equal("tooshort", body.secret)
 
         jwt2 = body
       end)
