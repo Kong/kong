@@ -25,6 +25,12 @@ describe("Entities Schemas", function()
 
   describe("APIs", function()
 
+    it("should refuse an empty object", function()
+      local valid, errors = validate_entity({}, api_schema)
+      assert.False(valid)
+      assert.truthy(errors)
+    end)
+
     it("should return error with wrong upstream_url", function()
       local valid, errors = validate_entity({
         request_host = "mockbin.com",
@@ -79,12 +85,48 @@ describe("Entities Schemas", function()
     end)
 
     it("should set the name from request_host if not set", function()
-      local t = { request_host = "mockbin.com", upstream_url = "http://mockbin.com" }
+      local t = {request_host = "mockbin.com", upstream_url = "http://mockbin.com"}
 
       local valid, errors = validate_entity(t, api_schema)
       assert.falsy(errors)
       assert.True(valid)
       assert.equal("mockbin.com", t.name)
+    end)
+
+    it("should set the name from request_path if not set", function()
+      local t = {request_path = "/mockbin", upstream_url = "http://mockbin.com"}
+
+      local valid, errors = validate_entity(t, api_schema)
+      assert.falsy(errors)
+      assert.True(valid)
+      assert.equal("mockbin", t.name)
+    end)
+
+    it("should not accept a name with reserved URI characters in it", function()
+      for _, name in ipairs({"mockbin#2", "mockbin/com", "mockbin\"", "mockbin:2", "mockbin?", "[mockbin]"}) do
+        local t = {name = name, upstream_url = "http://mockbin.com", request_host = "mockbin.com"}
+
+        local valid, errors = validate_entity(t, api_schema)
+        assert.False(valid)
+        assert.truthy(errors)
+        assert.equal("name must only contain alphanumeric and '., -, _, ~' characters", errors.name)
+      end
+    end)
+
+    it("should normalize a name for URI if coming from request_host or request_path", function()
+      local t = {upstream_url = "http://mockbin.com", request_host = "mockbin#com"}
+
+      local valid, errors = validate_entity(t, api_schema)
+      assert.True(valid)
+      assert.falsy(errors)
+      assert.equal("mockbin-com", t.name)
+
+      t = {upstream_url = "http://mockbin.com", request_path = "/mockbin/status"}
+
+      valid, errors = validate_entity(t, api_schema)
+      assert.True(valid)
+      assert.falsy(errors)
+      assert.equal("mockbin-status", t.name)
     end)
 
     it("should accept valid wildcard request_host", function()
@@ -133,7 +175,7 @@ describe("Entities Schemas", function()
         request_path = "/[a-zA-Z]{3}",
         upstream_url = "http://mockbin.com"
       }, api_schema)
-      assert.equal("request_path must only contain alphanumeric and '. -, _, ~, /' characters", errors.request_path)
+      assert.equal("request_path must only contain alphanumeric and '., -, _, ~, /' characters", errors.request_path)
       assert.False(valid)
 
       valid = validate_entity({

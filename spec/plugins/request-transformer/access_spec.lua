@@ -11,7 +11,7 @@ describe("Request Transformer", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests request-transformer", request_host = "test5.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-request-transformer", request_host = "test5.com", upstream_url = "http://mockbin.com" },
       },
       plugin = {
         {

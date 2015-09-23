@@ -10,13 +10,13 @@ describe("ACL Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "ACL 1", request_host = "acl1.com", upstream_url = "http://mockbin.com"},
-        {name = "ACL 2", request_host = "acl2.com", upstream_url = "http://mockbin.com"},
-        {name = "ACL 3", request_host = "acl3.com", upstream_url = "http://mockbin.com"},
-        {name = "ACL 4", request_host = "acl4.com", upstream_url = "http://mockbin.com"},
-        {name = "ACL 5", request_host = "acl5.com", upstream_url = "http://mockbin.com"},
-        {name = "ACL 6", request_host = "acl6.com", upstream_url = "http://mockbin.com"},
-        {name = "ACL 7", request_host = "acl7.com", upstream_url = "http://mockbin.com"}
+        {name = "ACL-1", request_host = "acl1.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL-2", request_host = "acl2.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL-3", request_host = "acl3.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL-4", request_host = "acl4.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL-5", request_host = "acl5.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL-6", request_host = "acl6.com", upstream_url = "http://mockbin.com"},
+        {name = "ACL-7", request_host = "acl7.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
         {username = "consumer1"},
