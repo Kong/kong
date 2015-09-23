@@ -5,6 +5,7 @@ machine:
 dependencies:
     pre:
         - "bash .ci/setup_kong.sh"
+        - "while ! cqlsh -e 'exit'; do :; done"
     post:
         - sudo make dev
 test:
