@@ -9,7 +9,7 @@ describe("RequestSizeLimiting Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests request-size-limiting 1", request_host = "test3.com", upstream_url = "http://mockbin.com/request" }
+        { name = "tests-request-size-limiting", request_host = "test3.com", upstream_url = "http://mockbin.com/request" }
       },
       plugin = {
         { name = "request-size-limiting", config = {allowed_payload_size = 10}, __api = 1 }

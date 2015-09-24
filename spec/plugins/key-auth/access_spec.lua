@@ -11,8 +11,8 @@ describe("Authentication Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests auth 1", request_host = "keyauth1.com", upstream_url = "http://mockbin.com"},
-        {name = "tests auth 2", request_host = "keyauth2.com", upstream_url = "http://mockbin.com"}
+        {name = "tests-auth1", request_host = "keyauth1.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-auth2", request_host = "keyauth2.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
         {username = "auth_tests_consumer"}

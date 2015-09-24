@@ -217,7 +217,7 @@ describe("Cassandra", function()
         assert.True(#apis > 0)
 
         local api_t = apis[1]
-        api_t.name = api_t.name.." updated"
+        api_t.name = api_t.name.."-updated"
 
         local api, err = dao_factory.apis:update(api_t)
         assert.falsy(err)
@@ -545,8 +545,8 @@ describe("Cassandra", function()
         it("should find distinct plugins configurations", function()
           faker:insert_from_table {
             api = {
-              { name = "tests distinct 1", request_host = "foo.com", upstream_url = "http://mockbin.com" },
-              { name = "tests distinct 2", request_host = "bar.com", upstream_url = "http://mockbin.com" }
+              { name = "tests-distinct-1", request_host = "foo.com", upstream_url = "http://mockbin.com" },
+              { name = "tests-distinct-2", request_host = "bar.com", upstream_url = "http://mockbin.com" }
             },
             plugin = {
               { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },

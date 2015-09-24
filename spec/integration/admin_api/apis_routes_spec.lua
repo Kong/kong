@@ -21,7 +21,7 @@ describe("Admin API", function()
 
       it("[SUCCESS] should create an API", function()
         send_content_types(BASE_URL, "POST", {
-          name="api POST tests",
+          name="api-POST-tests",
           request_host="api.mockbin.com",
           upstream_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
@@ -57,18 +57,18 @@ describe("Admin API", function()
 
       it("[SUCCESS] should create and update", function()
         local api = send_content_types(BASE_URL, "PUT", {
-          name="api PUT tests",
+          name="api-PUT-tests",
           request_host="api.mockbin.com",
           upstream_url="http://mockbin.com"
         }, 201, nil, {drop_db=true})
 
         api = send_content_types(BASE_URL, "PUT", {
           id=api.id,
-          name="api PUT tests updated",
+          name="api-PUT-tests-updated",
           request_host="updated-api.mockbin.com",
           upstream_url="http://mockbin.com"
         }, 200)
-        assert.equal("api PUT tests updated", api.name)
+        assert.equal("api-PUT-tests-updated", api.name)
       end)
 
       it("[FAILURE] should return proper errors", function()

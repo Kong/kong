@@ -9,8 +9,8 @@ describe("CORS Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests cors 1", request_host = "cors1.com", upstream_url = "http://mockbin.com" },
-        { name = "tests cors 2", request_host = "cors2.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-cors-1", request_host = "cors1.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-cors-2", request_host = "cors2.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "cors", config = {}, __api = 1 },

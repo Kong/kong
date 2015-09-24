@@ -16,9 +16,9 @@ describe("SSL Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "API TESTS 11 (ssl)", request_host = "ssl1.com", upstream_url = "http://mockbin.com" },
-        { name = "API TESTS 12 (ssl)", request_host = "ssl2.com", upstream_url = "http://mockbin.com" },
-        { name = "API TESTS 13 (ssl)", request_host = "ssl3.com", upstream_url = "http://mockbin.com" }
+        { name = "ssl-test", request_host = "ssl1.com", upstream_url = "http://mockbin.com" },
+        { name = "ssl-test2", request_host = "ssl2.com", upstream_url = "http://mockbin.com" },
+        { name = "ssl-test3", request_host = "ssl3.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },

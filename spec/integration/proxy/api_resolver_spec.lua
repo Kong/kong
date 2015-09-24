@@ -26,17 +26,17 @@ describe("Resolver", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests host resolver 1", request_host = "mockbin.com", upstream_url = "http://mockbin.com"},
-        {name = "tests host resolver 2", request_host = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
-        {name = "tests request_path resolver", upstream_url = "http://mockbin.com", request_path = "/status"},
-        {name = "tests stripped request_path resolver", upstream_url = "http://mockbin.com", request_path = "/mockbin", strip_request_path = true},
-        {name = "tests stripped request_path resolver with pattern characters", upstream_url = "http://mockbin.com", request_path = "/mockbin-with-pattern/", strip_request_path = true},
-        {name = "tests deep request_path resolver", upstream_url = "http://mockbin.com", request_path = "/deep/request_path/", strip_request_path = true},
-        {name = "tests dup request_path resolver", upstream_url = "http://mockbin.com", request_path = "/har", strip_request_path = true},
-        {name = "tests wildcard subdomain", upstream_url = "http://mockbin.com/status/200", request_host = "*.wildcard.com"},
-        {name = "tests wildcard subdomain 2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
-        {name = "tests preserve host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
-        {name = "tests preserve host 2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true}
+        {name = "tests-host-resolver-1", request_host = "mockbin.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-host-resolver-2", request_host = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/status"},
+        {name = "tests-stripped-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/mockbin", strip_request_path = true},
+        {name = "tests-stripped-request_path-resolver-with-pattern-characters", upstream_url = "http://mockbin.com", request_path = "/mockbin-with-pattern/", strip_request_path = true},
+        {name = "tests-deep-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/deep/request_path/", strip_request_path = true},
+        {name = "tests-dup-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/har", strip_request_path = true},
+        {name = "tests-wildcard-subdomain", upstream_url = "http://mockbin.com/status/200", request_host = "*.wildcard.com"},
+        {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
+        {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
+        {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}

@@ -9,7 +9,7 @@ describe("Rate Limiting API", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests rate-limiting 1", request_host = "test1.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-rate-limiting1", request_host = "test1.com", upstream_url = "http://mockbin.com" }
       }
     }
     spec_helper.start_kong()
