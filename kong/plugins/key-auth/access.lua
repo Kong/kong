@@ -1,72 +1,8 @@
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
-local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 
-local CONTENT_TYPE = "content-type"
-local CONTENT_LENGTH = "content-length"
-local FORM_URLENCODED = "application/x-www-form-urlencoded"
-local MULTIPART_DATA = "multipart/form-data"
-
 local _M = {}
-
-local function get_key_from_query(key_name, request, conf)
-  local key, parameters
-  local found_in = {}
-
-  -- First, try with querystring
-  parameters = request.get_uri_args()
-
-  -- Find in querystring
-  if parameters[key_name] ~= nil then
-    found_in.querystring = true
-    key = parameters[key_name]
-  -- If missing from querystring, try to get it from the body
-  elseif request.get_headers()[CONTENT_TYPE] then
-    -- Lowercase content-type for easier comparison
-    local content_type = stringy.strip(string.lower(request.get_headers()[CONTENT_TYPE]))
-    if stringy.startswith(content_type, FORM_URLENCODED) then
-      -- Call ngx.req.read_body to read the request body first
-      -- or turn on the lua_need_request_body directive to avoid errors.
-      request.read_body()
-      parameters = request.get_post_args()
-
-      found_in.form = parameters[key_name] ~= nil
-      key = parameters[key_name]
-    elseif stringy.startswith(content_type, MULTIPART_DATA) then
-      -- Call ngx.req.read_body to read the request body first
-      -- or turn on the lua_need_request_body directive to avoid errors.
-      request.read_body()
-
-      local body = request.get_body_data()
-      parameters = Multipart(body, content_type)
-
-      local parameter = parameters:get(key_name)
-      found_in.body = parameter ~= nil
-      key = parameter and parameter.value or nil
-    end
-  end
-
-  if conf.hide_credentials then
-    if found_in.querystring then
-      parameters[key_name] = nil
-      request.set_uri_args(parameters)
-    elseif found_in.form then
-      parameters[key_name] = nil
-      local encoded_args = ngx.encode_args(parameters)
-      request.set_header(CONTENT_LENGTH, string.len(encoded_args))
-      request.set_body_data(encoded_args)
-    elseif found_in.body then
-      parameters:delete(key_name)
-      local new_data = parameters:tostring()
-      request.set_header(CONTENT_LENGTH, string.len(new_data))
-      request.set_body_data(new_data)
-    end
-  end
-
-  return key
-end
 
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
@@ -96,13 +32,16 @@ local retrieve_credentials = {
     end
   end,
   [constants.AUTHENTICATION.QUERY] = function(request, conf)
-    local key
-
     if conf.key_names then
+      local key
+      local uri_params = request.get_uri_args()
       for _, key_name in ipairs(conf.key_names) do
-        key = get_key_from_query(key_name, request, conf)
-
-        if key then
+        key = uri_params[key_name]
+        if key ~= nil then
+          if conf.hide_credentials then
+            uri_params[key_name] = nil
+            request.set_uri_args(uri_params)
+          end
           return key
         end
       end
