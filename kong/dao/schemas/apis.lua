@@ -76,7 +76,7 @@ end
 -- @param api_t Table representing the API
 -- @return default_name Serialized chosen name or nil
 local function default_name(api_t)
-  local default_name, err
+  local default_name, err, _
 
   default_name = api_t.request_host
   if not default_name and api_t.request_path then
