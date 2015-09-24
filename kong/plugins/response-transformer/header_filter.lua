@@ -25,7 +25,7 @@ local function iterate_and_exec(val, cb)
 end
 
 function _M.execute(conf)
-  local is_json_body = get_content_type() == APPLICATION_JSON
+  local is_json_body = stringy.startswith(get_content_type(), APPLICATION_JSON)
 
   if conf.add then
 

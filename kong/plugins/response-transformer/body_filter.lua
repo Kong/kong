@@ -61,7 +61,7 @@ end
 function _M.execute(conf)
   if not conf then return end
 
-  local is_json_body = get_content_type() == APPLICATION_JSON
+  local is_json_body = stringy.startswith(get_content_type(), APPLICATION_JSON)
 
   if ((conf.add and conf.add.json) or (conf.remove and conf.remove.json)) and is_json_body then
     local json_body = read_json_body()
