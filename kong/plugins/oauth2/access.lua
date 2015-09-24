@@ -244,12 +244,17 @@ local function issue_token(conf)
           response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
-        -- Check scopes
-        local ok, scopes = retrieve_scopes(parameters, conf)
-        if not ok then
-          response_params = scopes -- If it's not ok, then this is the error message
+        -- Only check the provision_key if the authenticated_userid is being set
+        if parameters.authenticated_userid and conf.provision_key ~= parameters.provision_key then 
+          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
         else
-          response_params = generate_token(conf, client, nil, table.concat(scopes, " "), state)
+          -- Check scopes
+          local ok, scopes = retrieve_scopes(parameters, conf)
+          if not ok then
+            response_params = scopes -- If it's not ok, then this is the error message
+          else
+            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
+          end
         end
       elseif grant_type == GRANT_PASSWORD then
         -- Check that it comes from the right client
