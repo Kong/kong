@@ -144,6 +144,7 @@ nginx: |
 
       ssl_certificate {{ssl_cert}};
       ssl_certificate_key {{ssl_key}};
+      ssl_protocols TLSv1 TLSv1.1 TLSv1.2;# omit SSLv3 because of POODLE (CVE-2014-3566)
 
       location / {
         default_type 'text/plain';
