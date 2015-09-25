@@ -11,7 +11,8 @@ describe("Request Transformer", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests-request-transformer", request_host = "test5.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-request-transformer-1", request_host = "test1.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-request-transformer-2", request_host = "test2.com", upstream_url = "http://httpbin.org" }
       },
       plugin = {
         {
@@ -29,8 +30,17 @@ describe("Request Transformer", function()
             }
           },
           __api = 1
+        },
+        {
+          name = "request-transformer",
+          config = {
+            add = {
+              headers = { "host:mark" }
+            }
+          },
+          __api = 2
         }
-      }
+      },
     }
 
     spec_helper.start_kong()
@@ -41,9 +51,9 @@ describe("Request Transformer", function()
   end)
 
   describe("Test adding parameters", function()
-
+    
     it("should add new headers", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("true", body.headers["x-added"])
@@ -51,14 +61,14 @@ describe("Request Transformer", function()
     end)
 
     it("should add new parameters on POST", function()
-      local response, status = http_client.post(STUB_POST_URL, {}, {host = "test5.com"})
+      local response, status = http_client.post(STUB_POST_URL, {}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("newvalue", body.postData.params["newformparam"])
     end)
 
     it("should add new parameters on POST when existing params exist", function()
-      local response, status = http_client.post(STUB_POST_URL, { hello = "world" }, {host = "test5.com"})
+      local response, status = http_client.post(STUB_POST_URL, { hello = "world" }, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("world", body.postData.params["hello"])
@@ -66,14 +76,14 @@ describe("Request Transformer", function()
     end)
 
     it("should add new parameters on multipart POST", function()
-      local response, status = http_client.post_multipart(STUB_POST_URL, {}, {host = "test5.com"})
+      local response, status = http_client.post_multipart(STUB_POST_URL, {}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("newvalue", body.postData.params["newformparam"])
     end)
 
     it("should add new parameters on multipart POST when existing params exist", function()
-      local response, status = http_client.post_multipart(STUB_POST_URL, { hello = "world" }, {host = "test5.com"})
+      local response, status = http_client.post_multipart(STUB_POST_URL, { hello = "world" }, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("world", body.postData.params["hello"])
@@ -81,10 +91,17 @@ describe("Request Transformer", function()
     end)
 
     it("should add new parameters on GET", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "test5.com"})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.are.equal("value", body.queryString["newparam"])
+    end)
+    
+    it("should change the host header", function()
+      local response, status = http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "test2.com"})
+      local body = cjson.decode(response)
+      assert.are.equal(200, status)
+      assert.are.equal("mark", body.headers["Host"])
     end)
 
   end)
@@ -92,14 +109,14 @@ describe("Request Transformer", function()
   describe("Test removing parameters", function()
 
     it("should remove a header", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "test5.com", ["x-to-remove"] = "true"})
+      local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com", ["x-to-remove"] = "true"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.falsy(body.headers["x-to-remove"])
     end)
 
     it("should remove parameters on POST", function()
-      local response, status = http_client.post(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test5.com"})
+      local response, status = http_client.post(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.falsy(body.postData.params["toremoveform"])
@@ -107,7 +124,7 @@ describe("Request Transformer", function()
     end)
 
     it("should remove parameters on multipart POST", function()
-      local response, status = http_client.post_multipart(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test5.com"})
+      local response, status = http_client.post_multipart(STUB_POST_URL, {["toremoveform"] = "yes", ["nottoremove"] = "yes"}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.falsy(body.postData.params["toremoveform"])
@@ -115,7 +132,7 @@ describe("Request Transformer", function()
     end)
 
     it("should remove parameters on GET", function()
-      local response, status = http_client.get(STUB_GET_URL, {["toremovequery"] = "yes", ["nottoremove"] = "yes"}, {host = "test5.com"})
+      local response, status = http_client.get(STUB_GET_URL, {["toremovequery"] = "yes", ["nottoremove"] = "yes"}, {host = "test1.com"})
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.falsy(body.queryString["toremovequery"])
@@ -123,5 +140,5 @@ describe("Request Transformer", function()
     end)
 
   end)
-
+  
 end)

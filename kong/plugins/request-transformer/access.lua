@@ -8,6 +8,7 @@ local CONTENT_LENGTH = "content-length"
 local FORM_URLENCODED = "application/x-www-form-urlencoded"
 local MULTIPART_DATA = "multipart/form-data"
 local CONTENT_TYPE = "content-type"
+local HOST = "host"
 
 local function iterate_and_exec(val, cb)
   if utils.table_size(val) > 0 then
@@ -32,6 +33,9 @@ function _M.execute(conf)
     if conf.add.headers then
       iterate_and_exec(conf.add.headers, function(name, value)
         ngx.req.set_header(name, value)
+        if name:lower() == HOST then -- Host header has a special treatment
+          ngx.var.backend_host = value
+        end
       end)
     end
 
