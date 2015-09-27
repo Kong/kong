@@ -96,17 +96,10 @@ describe("ALFBuffer", function()
 
       local buffer = ALFBuffer.new(CONF_STUB)
 
-      local s = spy.on(_G.ngx, "log")
-
       buffer:add_alf(huge_alf)
 
-      assert.spy(s).was.called()
       assert.equal(0, buffer.entries_size)
       assert.equal(0, #buffer.entries)
-
-      finally(function()
-        _G.ngx.log:revert()
-      end)
     end)
     describe(":flush()", function()
       it("should have emptied the current buffer and added a payload to be sent", function()
