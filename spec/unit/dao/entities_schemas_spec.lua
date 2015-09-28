@@ -287,6 +287,20 @@ describe("Entities Schemas", function()
       assert.equal("second is not a number", errors["config.second"])
     end)
 
+    it("should have an empty config if none is specified and if the config schema does not have default", function()
+      -- Insert key-auth, whose config has some default values that should be set
+      local plugin = {name = "key-auth", api_id = "stub"}
+      local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
+      assert.same({key_names = {"apikey"}, hide_credentials = false}, plugin.config)
+      assert.True(valid)
+
+      -- Insert reauest-transformer, whose default config has no default values, and should be empty
+      local plugin2 = {name = "response-transformer", api_id = "stub"}
+      valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
+      assert.same({}, plugin2.config)
+      assert.True(valid)
+    end)
+
     describe("self_check", function()
       it("should refuse `consumer_id` if specified in the config schema", function()
         local stub_config_schema = {

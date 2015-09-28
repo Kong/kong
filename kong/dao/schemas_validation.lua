@@ -75,7 +75,7 @@ function _M.validate_entity(tbl, schema, options)
             if type(v.default) == "function" then
               t[column] = v.default(t)
             else
-              t[column] = v.default
+              t[column] = utils.deep_copy(v.default)
             end
           end
           -- [INSERT_VALUE]

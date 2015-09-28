@@ -594,6 +594,24 @@ describe("Cassandra", function()
           inserted_plugin.consumer_id = nil
         end)
 
+        it("should insert a plugin with an empty config if none is specified", function()
+          local api_t = faker:fake_entity("api")
+          local api, err = dao_factory.apis:insert(api_t)
+          assert.falsy(err)
+          assert.truthy(api)
+
+          local plugin, err = dao_factory.plugins:insert({
+            name = "request-transformer",
+            api_id = api.id
+          })
+
+          assert.falsy(err)
+          assert.truthy(plugin)
+          assert.falsy(plugin.consumer_id)
+          assert.same("request-transformer", plugin.name)
+          assert.same({}, plugin.config)
+        end)
+
         it("should select a plugin configuration by 'null' uuid consumer_id and remove the column", function()
           -- Now we should be able to select this plugin
           local rows, err = dao_factory.plugins:find_by_keys {
@@ -602,7 +620,7 @@ describe("Cassandra", function()
           }
           assert.falsy(err)
           assert.truthy(rows[1])
-          assert.are.same(inserted_plugin, rows[1])
+          assert.same(inserted_plugin, rows[1])
           assert.falsy(rows[1].consumer_id)
         end)
       end)
