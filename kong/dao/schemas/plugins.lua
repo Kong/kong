@@ -41,7 +41,8 @@ return {
         queryable = true },
     config = {
         type = "table",
-        schema = load_config_schema },
+        schema = load_config_schema,
+        default = {} },
     enabled = {
         type = "boolean",
         default = true }
