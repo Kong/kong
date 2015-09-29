@@ -8,9 +8,11 @@
 
 Kong was created to secure, manage and extend Microservices & APIs. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability. Kong runs in production at [Mashape][mashape-url] and many other companies, handling billions of requests/month.
 
-- Website: [getkong.org][kong-url]
-- Documentation: [getkong.org/docs][kong-docs]
-- Mailing List: [Google Groups][google-groups-url]
+
+[Website](http://getkong.org) |
+[Documentation](http://getkong.org/docs) |
+[Mailing List](https://groups.google.com/forum/#!forum/konglayer) 
+
 
 ## Summary
 
