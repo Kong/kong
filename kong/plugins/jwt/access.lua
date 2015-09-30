@@ -81,6 +81,11 @@ function _M.execute(conf)
     end
   end)
 
+  if not jwt_secret then
+    ngx.ctx.stop_phases = true
+    return responses.send_HTTP_FORBIDDEN("No credentials found for given 'iss'")
+  end
+
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret.secret) then
     ngx.ctx.stop_phases = true
