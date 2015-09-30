@@ -58,6 +58,16 @@ describe("JWT access", function()
     assert.equal("No mandatory 'iss' in claims", body.message)
   end)
 
+  it("should return 403 Forbidden if the iss does not match a credential", function()
+    PAYLOAD.iss = "123456789"
+    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+    local authorization = "Bearer "..jwt
+    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+    assert.equal(403, status)
+    local body = json.decode(response)
+    assert.equal("No credentials found for given 'iss'", body.message)
+  end)
+
   it("should return 403 Forbidden if the signature is invalid", function()
     PAYLOAD.iss = jwt_secret.key
     local jwt = jwt_encoder.encode(PAYLOAD, "foo")
