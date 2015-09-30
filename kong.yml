@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ######
 ## Kong configuration file. All commented values are default values.
 ## Uncomment and update a value to configure Kong to your needs.
@@ -72,6 +73,29 @@
       ## Time (in milliseconds) for which sockets will be keep alive.
       ## for being eventually re-used before being closed.
       # keepalive: 60000
+
+      ######
+      ## Keyspace options. Set those before running Kong or any migration.
+      ## Those settings will be used to create a keyspace with the desired options
+      ## when first running the migrations.
+      ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
+
+      ######
+      ## The name of the replica placement strategy class for the new keyspace.
+      ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
+      # replication_strategy: SimpleStrategy
+
+      ######
+      ## For SimpleStrategy only.
+      ## The number of replicas of data on multiple nodes.
+      # replication_factor: 1
+
+      ######
+      ## For NetworkTopologyStrategy only.
+      ## The number of replicas of data on multiple nodes in each data center.
+      # data_centers:
+      #   dc1: 2
+      #   dc2: 3
 
       ######
       ## If true, will enable client-to-node encryption.
