@@ -94,7 +94,6 @@ Your cluster is now fully migrated to `0.5.0`.
 
 Some entities and properties were renamed to avoid confusion:
 
-- `public_dns` and `target_url` properties of APIs were respectively renamed to `request_host` and `upstream_url`.
 - Properties belonging to APIs entities have been renamed for clarity:
   - `public_dns` -> `request_host`
   - `path` -> `request_path`
