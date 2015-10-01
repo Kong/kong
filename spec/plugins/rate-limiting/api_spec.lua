@@ -28,7 +28,7 @@ describe("Rate Limiting API", function()
       local response, status = http_client.post(BASE_URL, { name = "rate-limiting" })
       local body = json.decode(response)
       assert.are.equal(400, status)
-      assert.are.equal("You need to set at least one limit: second, minute, hour, day, month, year", body.message)
+      assert.are.equal("You need to set at least one limit: second, minute, hour, day, month, year", body.config)
     end)
 
     it("should save with proper config", function()
