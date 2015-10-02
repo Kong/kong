@@ -30,7 +30,7 @@ local AUTHORIZE_URL = "^%s/oauth2/authorize/?$"
 local TOKEN_URL = "^%s/oauth2/token/?$"
 
 -- TODO: Expire token (using TTL ?)
-local function generate_token(conf, credential, authenticated_userid, scope, state, expiration)
+local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
   local token, err = dao.oauth2_tokens:insert({
@@ -44,11 +44,16 @@ local function generate_token(conf, credential, authenticated_userid, scope, sta
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  local refresh_token = token_expiration > 0 and token.refresh_token or nil
+  if disable_refresh then
+    refresh_token = nil
+  end
+
   return {
     access_token = token.access_token,
     token_type = "bearer",
     expires_in = token_expiration > 0 and token.expires_in or nil,
-    refresh_token = token_expiration > 0 and token.refresh_token or nil,
+    refresh_token = refresh_token,
     state = state -- If state is nil, this value won't be added
   }
 end
@@ -253,7 +258,7 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
+            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, conf.token_expiration, true)
           end
         end
       elseif grant_type == GRANT_PASSWORD then
