@@ -179,8 +179,8 @@ nginx: |
 
     server {
       server_name _;
-      listen {{proxy_port}};
-      listen {{proxy_ssl_port}} ssl;
+      listen {{proxy_port}} reuseport;
+      listen {{proxy_ssl_port}} ssl reuseport;
 
       ssl_certificate_by_lua 'kong.exec_plugins_certificate()';
 
@@ -231,7 +231,7 @@ nginx: |
     }
 
     server {
-      listen {{admin_api_port}};
+      listen {{admin_api_port}} reuseport;
 
       location / {
         default_type application/json;

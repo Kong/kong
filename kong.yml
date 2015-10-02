@@ -189,7 +189,7 @@ nginx: |
     }
 
     server {
-      listen {{admin_api_port}};
+      listen {{admin_api_port}} reuseport;
 
       location / {
         default_type application/json;
