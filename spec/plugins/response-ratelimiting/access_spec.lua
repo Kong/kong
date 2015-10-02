@@ -1,15 +1,17 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local timestamp = require "kong.tools.timestamp"
 
 local PROXY_URL = spec_helper.PROXY_URL
 local SLEEP_VALUE = "0.5"
 
 local function wait()
-  -- Wait til the beginning of a new second before starting the test
-  -- to avoid ending up in an edge case when the second is about to end
-  local now = os.time()
-  while os.time() < now + 1 do
-    -- Nothing
+  -- If the minute elapses in the middle of the test, then the test will
+  -- fail. So we give it this test 30 seconds to execute, and if the second
+  -- of the current minute is > 30, then we wait till the new minute kicks in
+  local current_second = timestamp.get_timetable().sec
+  if current_second > 30 then
+    os.execute("sleep "..tostring(60 - current_second))
   end
 end
 
@@ -43,6 +45,8 @@ describe("RateLimiting Plugin", function()
     }
 
     spec_helper.start_kong()
+
+    wait()
   end)
 
   teardown(function()
@@ -52,8 +56,6 @@ describe("RateLimiting Plugin", function()
   describe("Without authentication (IP address)", function()
 
     it("should get blocked if exceeding limit", function()
-      wait()
-
       -- Default ratelimiting plugin for this API says 6/minute
       local limit = 6
 
@@ -73,8 +75,6 @@ describe("RateLimiting Plugin", function()
 
 
     it("should handle multiple limits", function()
-      wait()
-
       for i = 1, 3 do
         local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=2, image = 1"}, {host = "test2.com"})
         assert.are.equal(200, status)
@@ -103,8 +103,6 @@ describe("RateLimiting Plugin", function()
     describe("Default plugin", function()
 
       it("should get blocked if exceeding limit and a per consumer setting", function()
-        wait()
-
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 2
 
@@ -124,8 +122,6 @@ describe("RateLimiting Plugin", function()
       end)
 
       it("should not get blocked if the last request doesn't increment", function()
-        wait()
-
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
@@ -145,8 +141,6 @@ describe("RateLimiting Plugin", function()
       end)
 
       it("should get blocked if exceeding limit", function()
-        wait()
-
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
