@@ -8,6 +8,7 @@ Kong was created at [Mashape][mashape-url] to secure, manage and extend Microser
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
+[Installation](http://getkong.org/install) |
 [Mailing List](https://groups.google.com/forum/#!forum/konglayer) 
 
 
