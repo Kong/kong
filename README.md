@@ -1,7 +1,5 @@
 # Microservice & API Management Layer
 
-[![Build Status][travis-badge]][travis-url]
-[![Circle CI][circleci-badge]][circleci-url]
 [![Gitter Badge][gitter-badge]][gitter-url]
 
 [![][kong-logo]][kong-url]
@@ -100,7 +98,10 @@ Tools:
 
 You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape/kong/wiki).
 
-## Development
+## Development 
+
+[![Build Status][travis-badge]][travis-url]
+[![Circle CI][circleci-badge]][circleci-url]
 
 If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation.
 
