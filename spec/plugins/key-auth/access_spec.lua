@@ -1,5 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local constants = require "kong.constants"
 local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
@@ -35,10 +36,11 @@ describe("Authentication Plugin", function()
 
   describe("Query Authentication", function()
 
-     it("should return invalid credentials when the credential is missing", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com"})
+     it("should return invalid credentials and www-authenticate header when the credential is missing", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -49,24 +51,27 @@ describe("Authentication Plugin", function()
       assert.equal("Invalid authentication credentials", body.message)
     end)
 
-    it("should reply 401 when the credential parameter is missing", function()
-      local response, status = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
+    it("should reply with 401 and www-authenticate header when the credential parameter is missing", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
-    it("should reply 401 when the credential parameter name is wrong in GET", function()
-      local response, status = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
+    it("should reply 401 and www-authenticate header when the credential parameter name is wrong in GET", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
-    it("should reply 401 when the credential parameter name is wrong in POST", function()
-      local response, status = http_client.post(STUB_POST_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
+    it("should reply 401 and www-authenticate header when the credential parameter name is wrong in POST", function()
+      local response, status, headers = http_client.post(STUB_POST_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -77,17 +82,19 @@ describe("Authentication Plugin", function()
       assert.equal("apikey123", parsed_response.queryString.apikey)
     end)
 
-    it("should reply 401 when the credential parameter name is wrong in GET header", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
+    it("should reply 401 and www-authenticate header when the credential parameter name is wrong in GET header", function()
+      local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
-    it("should reply 401 when the credential parameter name is wrong in POST header", function()
-      local response, status = http_client.post(STUB_POST_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
+    it("should reply 401 and www-authenticate header when the credential parameter name is wrong in POST header", function()
+      local response, status, headers = http_client.post(STUB_POST_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
