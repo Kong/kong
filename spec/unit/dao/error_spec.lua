@@ -57,11 +57,11 @@ describe("DaoError", function()
     -- example: schema validation returns a table with key/values for errors
     local stub_error = {
       name = "name is required",
-      public_dns = "invalid url"
+      request_host = "invalid url"
     }
 
     local err = DaoError(stub_error, "some_type")
-    assert.are.same("name=name is required public_dns=invalid url", tostring(err))
+    assert.are.same("name=name is required request_host=invalid url", tostring(err))
   end)
 
 end)

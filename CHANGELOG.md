@@ -1,15 +1,72 @@
 ## [Unreleased][unreleased]
 
-This release contains breaking changes.
+## [0.5.0] - 2015/09/25
+
+With new plugins, many improvements and bug fixes, this release comes with breaking changes that will require your attention.
 
 ### Breaking changes
 
-- The database schema has been updated to be future proof and handle the separation of plugins outside of the core repository. Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050).
+Several breaking changes are introduced. You will have to slightly change your configuration file and a migration script will take care of updating your database cluster. **Please follow the instructions in [UPDATE.md](/UPDATE.md#update-to-kong-050) for an update without downtime**.
+
+- Many plugins were renamed due to new naming conventions for consistency. [#480](https://github.com/Mashape/kong/issues/480)
+- In the configuration file, the Cassandra `hosts` property was renamed to `contact_points`. [#513](https://github.com/Mashape/kong/issues/513)
+- Properties belonging to APIs entities have been renamed for clarity. [#513](https://github.com/Mashape/kong/issues/513)
+  - `public_dns` -> `request_host`
+  - `path` -> `request_path`
+  - `strip_path` -> `strip_request_path`
+  - `target_url` -> `upstream_url`
+- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
+>>>>>>> dbocs(changelog) 0.5.0 changes
+- The database schema has been updated to handle the separation of plugins outside of the core repository.
+- The Key authentication and Basic authentication plugins routes have changed:
+
+```
+Old route                             New route
+/consumers/:consumer/keyauth       -> /consumers/:consumer/key-auth
+/consumers/:consumer/keyauth/:id   -> /consumers/:consumer/key-auth/:id
+/consumers/:consumer/basicauth     -> /consumers/:consumer/basic-auth
+/consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
+```
+
+The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
+
+- Admin API
+  - The route to retrieve enabled plugins is now under `/plugins/enabled`.
+  - The route to retrieve a plugin's configuration schema is now under `/plugins/schema/{plugin name}`.
 
 #### Added
 
-- Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Mashape/kong/pull/443)
-- The Basic Authentication plugin now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Mashape/kong/issues/460)
+- Plugins
+  - **New Response Rate Limiting plugin**: Give a usage quota to your users based on a parameter in your response. [#247](https://github.com/Mashape/kong/pull/247)
+  - **New ACL (Access Control) plugin**: Configure authorizations for your Consumers. [#225](https://github.com/Mashape/kong/issues/225)
+  - **New JWT (JSON Web Token) plugin**: Verify and authenticate JWTs. [#519](https://github.com/Mashape/kong/issues/519)
+  - **New HMAC signature plugin**: Verify and authenticate HMAC signed HTTP requests. [#549](https://github.com/Mashape/kong/pull/549)
+  - Plugins migrations. Each plugin can now have its own migration scripts if it needs to store data in your cluster. This is a step forward to improve Kong's pluggable architecture. [#443](https://github.com/Mashape/kong/pull/443)
+  - Basic Authentication: the password field is now sha1 encrypted. [#33](https://github.com/Mashape/kong/issues/33)
+  - Basic Authentication: now supports credentials in the `Proxy-Authorization` header. [#460](https://github.com/Mashape/kong/issues/460)
+
+#### Changed
+
+- Basic Authentication and Key Authentication now require authentication parameters even when the `Expect: 100-continue` header is being sent. [#408](https://github.com/Mashape/kong/issues/408)
+- Key Auth plugin does not support passing the key in the request payload anymore. [#566](https://github.com/Mashape/kong/pull/566)
+- APIs' names cannot contain characters from the RFC 3986 reserved list. [#589](https://github.com/Mashape/kong/pull/589)
+
+#### Fixed
+
+- Resolver
+  - Making a request with a querystring will now correctly match an API's path. [#496](https://github.com/Mashape/kong/pull/496)
+- Admin API
+  - Data associated to a given API/Consumer will correctly be deleted if related Consumer/API is deleted. [#107](https://github.com/Mashape/kong/issues/107) [#438](https://github.com/Mashape/kong/issues/438) [#504](https://github.com/Mashape/kong/issues/504)
+  - The `/api/{api_name_or_id}/plugins/{plugin_name_or_id}` changed to `/api/{api_name_or_id}/plugins/{plugin_id}` to avoid requesting the wrong plugin if two are configured for one API. [#482](https://github.com/Mashape/kong/pull/482)
+  - APIs created without a `name` but with a `request_path` will now have a name which defaults to the set `request_path`. [#547](https://github.com/Mashape/kong/issues/547)
+- Plugins
+  - Mashape Analytics: More robust buffer and better error logging. [#471](https://github.com/Mashape/kong/pull/471)
+  - Mashape Analytics: Several ALF (API Log Format) serialization fixes. [#515](https://github.com/Mashape/kong/pull/515)
+  - Oauth2: A response is now returned on `http://kong:8001/consumers/{consumer}/oauth2/{oauth2_id}`. [#469](https://github.com/Mashape/kong/issues/469)
+  - Oauth2: Saving `authenticated_userid` on Password Grant. [#476](https://github.com/Mashape/kong/pull/476)
+  - Oauth2: Proper handling of the `/oauth2/authorize` and `/oauth2/token` endpoints in the OAuth 2.0 Plugin when an API with a `path` is being consumed using the `public_dns` instead. [#503](https://github.com/Mashape/kong/issues/503)
+  - OAuth2: Properly returning `X-Authenticated-UserId` in the `client_credentials` and `password` flows. [#535](https://github.com/Mashape/kong/issues/535)
+  - Response-Transformer: Properly handling JSON responses that have a charset specified in their `Content-Type` header.
 
 ## [0.4.2] - 2015/08/10
 
@@ -253,7 +310,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.4.2...HEAD
+[unreleased]: https://github.com/mashape/kong/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/mashape/kong/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/mashape/kong/compare/0.4.1...0.4.2
 [0.4.1]: https://github.com/mashape/kong/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/mashape/kong/compare/0.3.2...0.4.0

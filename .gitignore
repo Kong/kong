@@ -10,3 +10,4 @@ kong*.yml
 
 # luacov
 luacov.*
+/doc

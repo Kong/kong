@@ -1,21 +1,24 @@
 ## Available plugins on this server
 plugins_available:
   - ssl
-  - keyauth
-  - basicauth
-  - oauth2
-  - ratelimiting
-  - response-ratelimiting
-  - tcplog
-  - udplog
-  - filelog
-  - httplog
+  - jwt
+  - acl
   - cors
-  - request_transformer
-  - response_transformer
-  - requestsizelimiting
-  - ip_restriction
+  - oauth2
+  - tcp-log
+  - udp-log
+  - file-log
+  - http-log
+  - key-auth
+  - hmac-auth
+  - basic-auth
+  - ip-restriction
   - mashape-analytics
+  - request-transformer
+  - response-transformer
+  - request-size-limiting
+  - rate-limiting
+  - response-ratelimiting
 
 ## The Kong working directory
 ## (Make sure you have read and write permissions)
@@ -36,7 +39,7 @@ database: cassandra
 databases_available:
   cassandra:
     properties:
-      hosts:
+      contact_points:
         - "localhost:9042"
       timeout: 1000
       keyspace: kong
@@ -141,6 +144,7 @@ nginx: |
 
       ssl_certificate {{ssl_cert}};
       ssl_certificate_key {{ssl_key}};
+      ssl_protocols TLSv1 TLSv1.1 TLSv1.2;# omit SSLv3 because of POODLE (CVE-2014-3566)
 
       location / {
         default_type 'text/plain';
@@ -193,6 +197,7 @@ nginx: |
           ngx.header["Access-Control-Allow-Origin"] = "*"
           if ngx.req.get_method() == "OPTIONS" then
             ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
+            ngx.header["Access-Control-Allow-Headers"] = "Content-Type"
             ngx.exit(204)
           end
           local lapis = require "lapis"

@@ -47,13 +47,13 @@ function Migrations:rollback(identifier)
 end
 
 function Migrations:migrate_all(config, callback)
-  local err = select(2, self:migrate("core", callback))
+  local err = self:migrate("core", callback)
   if err then
     return err
   end
 
   for _, plugin_name in ipairs(config.plugins_available) do
-    local err = select(2, self:migrate(plugin_name, callback))
+    local err = self:migrate(plugin_name, callback)
     if err then
       return err
     end
@@ -68,7 +68,7 @@ function Migrations:run_migrations(migrations, identifier, callback)
   -- Retrieve already executed migrations
   local old_migrations, err = self.dao.migrations:get_migrations(identifier)
   if err then
-    return nil, err
+    return err
   end
 
   -- Determine which migrations have already been run
@@ -80,7 +80,7 @@ function Migrations:run_migrations(migrations, identifier, callback)
       if old_migrations[i] == nil then
         table.insert(diff_migrations, migration)
       elseif old_migrations[i] ~= migration.name then
-        return nil, "Inconsitency"
+        return "Inconsitency"
       end
     end
     -- If no diff, there is no new migration to run

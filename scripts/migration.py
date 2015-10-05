@@ -2,16 +2,19 @@
 
 '''Kong 0.5.0 Migration Script
 
-Usage: python migration.py --config=/path/to/kong/config
+Usage: python migration.py --config=/path/to/kong/config [--purge]
+
+Run this script first to migrate Kong to the 0.5.0 schema. Once successful, reload Kong
+and run this script again with the --purge option.
 
 Arguments:
   -c, --config   path to your Kong configuration file
-
 Flags:
+  --purge        if already migrated, purge the old values
   -h             print help
 '''
 
-import getopt, sys, os.path, logging
+import getopt, sys, os.path, logging, json, hashlib
 
 log = logging.getLogger()
 log.setLevel("INFO")
@@ -22,6 +25,9 @@ log.addHandler(handler)
 try:
     import yaml
     from cassandra.cluster import Cluster
+    from cassandra import ConsistencyLevel, InvalidRequest
+    from cassandra.query import SimpleStatement
+    from cassandra import InvalidRequest
 except ImportError as err:
     log.error(err)
     log.info("""This script requires cassandra-driver and PyYAML:
@@ -55,7 +61,7 @@ def load_cassandra_config(kong_config):
     """
     cass_properties = kong_config["databases_available"]["cassandra"]["properties"]
 
-    host, port = cass_properties["hosts"][0].split(":")
+    host, port = cass_properties["contact_points"][0].split(":")
     keyspace = cass_properties["keyspace"]
 
     return (host, port, keyspace)
@@ -66,51 +72,137 @@ def migrate_schema_migrations_table(session):
 
     :param session: opened cassandra session
     """
-    query = "INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)"
+    log.info("Migrating schema_migrations table...")
+    query = SimpleStatement("INSERT INTO schema_migrations(id, migrations) VALUES(%s, %s)", consistency_level=ConsistencyLevel.ALL)
     session.execute(query, ["core", ['2015-01-12-175310_skeleton', '2015-01-12-175310_init_schema']])
-    session.execute(query, ["basicauth", ['2015-08-03-132400_init_basicauth']])
-    session.execute(query, ["keyauth", ['2015-07-31-172400_init_keyauth']])
-    session.execute(query, ["ratelimiting", ['2015-08-03-132400_init_ratelimiting']])
-    session.execute(query, ["oauth2", ['2015-08-03-132400_init_oauth2']])
+    session.execute(query, ["basic-auth", ['2015-08-03-132400_init_basicauth']])
+    session.execute(query, ["key-auth", ['2015-07-31-172400_init_keyauth']])
+    session.execute(query, ["rate-limiting", ['2015-08-03-132400_init_ratelimiting']])
+    session.execute(query, ["oauth2", ['2015-08-03-132400_init_oauth2', '2015-08-24-215800_cascade_delete_index']])
     log.info("schema_migrations table migrated")
 
-def migrate_schema_migrations_remove_legacy_row(session):
-    session.execute("DELETE FROM schema_migrations WHERE id = 'migrations'")
-    log.info("Legacy values removed from schema_migrations table")
-
-def migrate(kong_config):
+def migrate_plugins_configurations(session):
     """
-    Instanciate a Cassandra session and decides if the keyspace needs to be migrated
-    by looking at what the schema_migrations table contains.
+    Migrate all rows in the `plugins_configurations` table to `plugins`, applying:
+    - renaming of plugins if name changed
+    - conversion of old rate-limiting schema if old schema detected
 
-    :param kong_config: parsed Kong configuration
-    :return: True if some migrations were ran, False otherwise
+    :param session: opened cassandra session
     """
-    host, port, keyspace = load_cassandra_config(kong_config)
-    cluster = Cluster([host], protocol_version=2, port=port)
-    global session
-    session = cluster.connect(keyspace)
+    log.info("Migrating plugins...")
 
-    rows = session.execute("SELECT * FROM schema_migrations")
-    if len(rows) == 1 and rows[0].id == "migrations":
-        last_executed_migration = rows[0].migrations[-1]
-        if last_executed_migration != "2015-08-10-813213_0.4.2":
-            log.error("Please migrate your cluster to Kong 0.4.2 before running this script.")
-            shutdown_exit(1)
+    new_names = {
+        "keyauth": "key-auth",
+        "basicauth": "basic-auth",
+        "ratelimiting": "rate-limiting",
+        "tcplog": "tcp-log",
+        "udplog": "udp-log",
+        "filelog": "file-log",
+        "httplog": "http-log",
+        "request_transformer": "request-transformer",
+        "response_transfomer": "response-transfomer",
+        "requestsizelimiting": "request-size-limiting",
+        "ip_restriction": "ip-restriction"
+    }
 
-        log.info("Schema_migrations table needs migration")
-        migrate_schema_migrations_table(session)
-        migrate_schema_migrations_remove_legacy_row(session)
+    session.execute("""
+       create table if not exists plugins(
+          id uuid,
+          api_id uuid,
+          consumer_id uuid,
+          name text,
+          config text,
+          enabled boolean,
+          created_at timestamp,
+          primary key (id, name))""")
+    session.execute("create index if not exists on plugins(name)")
+    session.execute("create index if not exists on plugins(api_id)")
+    session.execute("create index if not exists on plugins(consumer_id)")
 
-    elif len(rows) > 1:
-        # apparently kong was restarted without previously running this script
-        if any(row.id == "migrations" for row in rows):
-            log.info("Already migrated to 0.5.0, but legacy schema found. Purging.")
-            migrate_schema_migrations_remove_legacy_row(session)
-        else:
-            return False
+    select_query = SimpleStatement("SELECT * FROM plugins_configurations", consistency_level=ConsistencyLevel.ALL)
+    for plugin in session.execute(select_query):
+        # New plugins names
+        plugin_name = plugin.name
+        if plugin.name in new_names:
+            plugin_name = new_names[plugin.name]
 
-    return True
+        # rate-limiting config
+        plugin_conf = plugin.value
+        if plugin_name == "rate-limiting":
+            conf = json.loads(plugin.value)
+            if "limit" in conf:
+                plugin_conf = {}
+                plugin_conf[conf["period"]] = conf["limit"]
+                plugin_conf = json.dumps(plugin_conf)
+
+        insert_query = SimpleStatement("""
+            INSERT INTO plugins(id, api_id, consumer_id, name, config, enabled, created_at)
+            VALUES(%s, %s, %s, %s, %s, %s, %s)""", consistency_level=ConsistencyLevel.ALL)
+        session.execute(insert_query, [plugin.id, plugin.api_id, plugin.consumer_id, plugin_name, plugin_conf, plugin.enabled, plugin.created_at])
+
+    log.info("Plugins migrated")
+
+def migrate_rename_apis_properties(sessions):
+    """
+    Create new columns for the `apis` column family and insert the equivalent values in it
+
+    :param session: opened cassandra session
+    """
+    log.info("Renaming some properties for APIs...")
+
+    session.execute("ALTER TABLE apis ADD request_host text")
+    session.execute("ALTER TABLE apis ADD request_path text")
+    session.execute("ALTER TABLE apis ADD strip_request_path boolean")
+    session.execute("ALTER TABLE apis ADD upstream_url text")
+    session.execute("CREATE INDEX IF NOT EXISTS ON apis(request_host)")
+    session.execute("CREATE INDEX IF NOT EXISTS ON apis(request_path)")
+
+    select_query = SimpleStatement("SELECT * FROM apis", consistency_level=ConsistencyLevel.ALL)
+    for api in session.execute(select_query):
+        session.execute("UPDATE apis SET request_host = %s, request_path = %s, strip_request_path = %s, upstream_url = %s WHERE id = %s", [api.public_dns, api.path, api.strip_path, api.target_url, api.id])
+
+    log.info("APIs properties renamed")
+
+def migrate_hash_passwords(session):
+    """
+    Hash all passwords in basicauth_credentials using sha1 and the consumer_id as the salt.
+    Also stores the plain passwords in a temporary column in case this script is run multiple times by the user.
+    Temporare column will be dropped on --purge.
+
+    :param session: opened cassandra session
+    """
+    log.info("Hashing basic-auth passwords...")
+
+    first_run = True
+
+    try:
+        session.execute("ALTER TABLE basicauth_credentials ADD plain_password text")
+    except InvalidRequest as err:
+        first_run = False
+
+    select_query = SimpleStatement("SELECT * FROM basicauth_credentials", consistency_level=ConsistencyLevel.ALL)
+    for credential in session.execute(select_query):
+        plain_password = credential.password if first_run else credential.plain_password
+        m = hashlib.sha1()
+        m.update(plain_password)
+        m.update(str(credential.consumer_id))
+        digest = m.hexdigest()
+        session.execute("UPDATE basicauth_credentials SET password = %s, plain_password = %s WHERE id = %s", [digest, plain_password, credential.id])
+
+def purge(session):
+    session.execute("ALTER TABLE apis DROP public_dns")
+    session.execute("ALTER TABLE apis DROP target_url")
+    session.execute("ALTER TABLE apis DROP path")
+    session.execute("ALTER TABLE apis DROP strip_path")
+    session.execute("ALTER TABLE basicauth_credentials DROP plain_password")
+    session.execute("DROP TABLE plugins_configurations")
+    session.execute(SimpleStatement("DELETE FROM schema_migrations WHERE id = 'migrations'", consistency_level=ConsistencyLevel.ALL))
+
+def migrate(session):
+    migrate_schema_migrations_table(session)
+    migrate_plugins_configurations(session)
+    migrate_rename_apis_properties(session)
+    migrate_hash_passwords(session)
 
 def parse_arguments(argv):
     """
@@ -120,13 +212,16 @@ def parse_arguments(argv):
     :return: parsed kong configuration
     """
     config_path = ""
+    purge = False
 
-    opts, args = getopt.getopt(argv, "hc:", ["config="])
+    opts, args = getopt.getopt(argv, "hc:", ["config=", "purge"])
     for opt, arg in opts:
         if opt == "-h":
             usage()
         elif opt in ("-c", "--config"):
             config_path = arg
+        elif opt in ("--purge"):
+            purge = True
 
     if config_path == "":
         raise ArgumentException("No Kong configuration given")
@@ -138,15 +233,41 @@ def parse_arguments(argv):
     with open(config_path, "r") as stream:
         config = yaml.load(stream)
 
-    return config
+    return (config, purge)
 
 def main(argv):
     try:
-        config = parse_arguments(argv)
-        if migrate(config):
-            log.info("Schema migrated to Kong 0.5.0.")
+        kong_config, purge_cmd = parse_arguments(argv)
+        host, port, keyspace = load_cassandra_config(kong_config)
+        cluster = Cluster([host], protocol_version=2, port=port)
+        global session
+        session = cluster.connect(keyspace)
+
+        # Find out where the schema is at
+        rows = session.execute("SELECT * FROM schema_migrations")
+        is_migrated = len(rows) > 1 and any(mig.id == "core" for mig in rows)
+        is_0_4_2 = len(rows) == 1 and rows[0].migrations[-1] == "2015-08-10-813213_0.4.2"
+        is_purged = len(session.execute("SELECT * FROM system.schema_columnfamilies WHERE keyspace_name = %s AND columnfamily_name = 'plugins_configurations'", [keyspace])) == 0
+
+        if not is_0_4_2 and not is_migrated:
+            log.error("Please migrate your cluster to Kong 0.4.2 before running this script.")
+            shutdown_exit(1)
+
+        if purge_cmd:
+            if not is_purged and is_migrated:
+                purge(session)
+                log.info("Cassandra purged from <0.5.0 data.")
+            elif not is_purged and not is_migrated:
+                log.info("Cassandra not previously migrated. Run this script in migration mode before.")
+                shutdown_exit(1)
+            else:
+                log.info("Cassandra already purged and migrated.")
+        elif not is_migrated:
+            migrate(session)
+            log.info("Cassandra migrated to Kong 0.5.0. Restart Kong and run this script with '--purge'.")
         else:
-            log.info("Schema already migrated to Kong 0.5.0.")
+            log.info("Cassandra already migrated to Kong 0.5.0. Restart Kong and run this script with '--purge'.")
+
         shutdown_exit(0)
     except getopt.GetoptError as err:
         log.error(err)

@@ -1,12 +1,12 @@
---
--- classic
+---
+-- classic, object model.
 --
 -- Copyright (c) 2014, rxi
 --
 -- This module is free software; you can redistribute it and/or modify it under
 -- the terms of the MIT license. See LICENSE for details.
 --
-
+-- Base object model used with Kong, see [classic github repo](https://github.com/rxi/classic) for usage information
 
 local Object = {}
 Object.__index = Object

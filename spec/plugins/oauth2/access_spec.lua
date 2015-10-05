@@ -40,21 +40,21 @@ describe("Authentication Plugin", function()
     spec_helper.drop_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests oauth2", public_dns = "oauth2.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 with path", public_dns = "mockbin-path.com", target_url = "http://mockbin.com", path = "/somepath/" },
-        { name = "tests oauth2 with hide credentials", public_dns = "oauth2_3.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 client credentials", public_dns = "oauth2_4.com", target_url = "http://mockbin.com" },
-        { name = "tests oauth2 password grant", public_dns = "oauth2_5.com", target_url = "http://mockbin.com" }
+        { name = "tests-oauth2", request_host = "oauth2.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-oauth2-with-path", request_host = "mockbin-path.com", upstream_url = "http://mockbin.com", request_path = "/somepath/" },
+        { name = "tests-oauth2-with-hide-credentials", request_host = "oauth2_3.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-oauth2-client-credentials", request_host = "oauth2_4.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-oauth2-password-grant", request_host = "oauth2_5.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { username = "auth_tests_consumer" }
       },
-      plugin_configuration = {
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
-        { name = "oauth2", value = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 }
+      plugin = {
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 }
       },
       oauth2_credential = {
         { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 }
@@ -171,6 +171,15 @@ describe("Authentication Plugin", function()
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
       end)
 
+      it("should fail with a path when using the DNS", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123a", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "mockbin-path.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_provision_key", body.error)
+        assert.are.equal("Invalid Kong provision_key", body.error_description)
+      end)
+
       it("should return success with a path", function()
         local response, status = http_client.post(PROXY_SSL_URL.."/somepath/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "mockbin-path.com"})
         local body = cjson.decode(response)
@@ -207,8 +216,8 @@ describe("Authentication Plugin", function()
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
 
         local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
-        local code 
-        for line in matches do 
+        local code
+        for line in matches do
           code = line
         end
         local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
@@ -249,7 +258,7 @@ describe("Authentication Plugin", function()
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=[\\w]{32,32}$"))
 
         local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=([\\w]{32,32})$")
-        local access_token 
+        local access_token
         for line in matches do
           access_token = line
         end
@@ -296,12 +305,41 @@ describe("Authentication Plugin", function()
         assert.are.equal("You must use HTTPS", body.error_description)
       end)
 
+      it("should return fail when setting authenticated_userid and no provision_key", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials", authenticated_userid = "user123" }, {host = "oauth2_4.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_provision_key", body.error)
+        assert.are.equal("Invalid Kong provision_key", body.error_description)
+      end)
+
+      it("should return fail when setting authenticated_userid and invalid provision_key", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials", authenticated_userid = "user123", provision_key = "hello" }, {host = "oauth2_4.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("invalid_provision_key", body.error)
+        assert.are.equal("Invalid Kong provision_key", body.error_description)
+      end)
+
       it("should return success", function()
         local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials" }, {host = "oauth2_4.com"})
         local body = cjson.decode(response)
         assert.are.equal(200, status)
-        assert.are.equals(4, utils.table_size(body))
-        assert.truthy(body.refresh_token)
+        assert.are.equals(3, utils.table_size(body))
+        assert.falsy(body.refresh_token)
+        assert.truthy(body.access_token)
+        assert.are.equal("bearer", body.token_type)
+        assert.are.equal(5, body.expires_in)
+      end)
+
+      it("should return success with authenticated_userid and valid provision_key", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials", authenticated_userid = "hello", provision_key = "provision123" }, {host = "oauth2_4.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equals(3, utils.table_size(body))
+        assert.falsy(body.refresh_token)
         assert.truthy(body.access_token)
         assert.are.equal("bearer", body.token_type)
         assert.are.equal(5, body.expires_in)
@@ -311,8 +349,8 @@ describe("Authentication Plugin", function()
         local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { scope = "email", grant_type = "client_credentials" }, {host = "oauth2_4.com", authorization = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"})
         local body = cjson.decode(response)
         assert.are.equal(200, status)
-        assert.are.equals(4, utils.table_size(body))
-        assert.truthy(body.refresh_token)
+        assert.are.equals(3, utils.table_size(body))
+        assert.falsy(body.refresh_token)
         assert.truthy(body.access_token)
         assert.are.equal("bearer", body.token_type)
         assert.are.equal(5, body.expires_in)
@@ -408,6 +446,7 @@ describe("Authentication Plugin", function()
       end)
 
     end)
+
   end)
 
   describe("OAuth2 Access Token", function()
@@ -586,7 +625,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(5, body.expires_in)
     end)
 
-    it("should expire after 5 seconds", function() 
+    it("should expire after 5 seconds", function()
       local token = provision_token()
       local _, status = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       assert.are.equal(200, status)

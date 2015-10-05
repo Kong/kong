@@ -9,7 +9,7 @@ describe("Response Rate Limiting API", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests response-ratelimiting 1", public_dns = "test1.com", target_url = "http://mockbin.com" }
+        { name = "tests-response-ratelimiting1", request_host = "test1.com", upstream_url = "http://mockbin.com" }
       }
     }
     spec_helper.start_kong()
@@ -24,18 +24,18 @@ describe("Response Rate Limiting API", function()
 
   describe("POST", function()
 
-    it("should not save with empty value", function()
+    it("should not save with empty config", function()
       local response, status = http_client.post(BASE_URL, { name = "response-ratelimiting" })
       local body = json.decode(response)
       assert.are.equal(400, status)
-      assert.are.equal("You need to set at least one limit name", body.value)
+      assert.are.equal("You need to set at least one limit name", body.config)
     end)
 
-    it("should save with proper value", function()
-      local response, status = http_client.post(BASE_URL, { name = "response-ratelimiting", ["value.limits.video.second"] = 10 })
+    it("should save with proper config", function()
+      local response, status = http_client.post(BASE_URL, { name = "response-ratelimiting", ["config.limits.video.second"] = 10 })
       local body = json.decode(response)
       assert.are.equal(201, status)
-      assert.are.equal(10, body.value.limits.video.second)
+      assert.are.equal(10, body.config.limits.video.second)
     end)
 
   end)

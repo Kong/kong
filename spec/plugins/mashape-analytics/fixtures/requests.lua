@@ -17,7 +17,7 @@ return {
       var = {
         scheme = "http",
         host = "mockbin.com",
-        uri = "/request",
+        request_uri = "/request",
         request_length = 123,
         body_bytes_sent = 934,
         remote_addr = "127.0.0.1",
@@ -109,7 +109,7 @@ return {
       var = {
         scheme = "http",
         host = "mockbin.com",
-        uri = "/request",
+        request_uri = "/request",
         request_length = 123,
         body_bytes_sent = 934,
         remote_addr = "127.0.0.1",

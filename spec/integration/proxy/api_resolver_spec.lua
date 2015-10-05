@@ -26,20 +26,20 @@ describe("Resolver", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests host resolver 1", public_dns = "mockbin.com", target_url = "http://mockbin.com"},
-        {name = "tests host resolver 2", public_dns = "mockbin-auth.com", target_url = "http://mockbin.com"},
-        {name = "tests path resolver", target_url = "http://mockbin.com", path = "/status"},
-        {name = "tests stripped path resolver", target_url = "http://mockbin.com", path = "/mockbin", strip_path = true},
-        {name = "tests stripped path resolver with pattern characters", target_url = "http://mockbin.com", path = "/mockbin-with-pattern/", strip_path = true},
-        {name = "tests deep path resolver", target_url = "http://mockbin.com", path = "/deep/path/", strip_path = true},
-        {name = "tests dup path resolver", target_url = "http://mockbin.com", path = "/har", strip_path = true},
-        {name = "tests wildcard subdomain", target_url = "http://mockbin.com/status/200", public_dns = "*.wildcard.com"},
-        {name = "tests wildcard subdomain 2", target_url = "http://mockbin.com/status/201", public_dns = "wildcard.*"},
-        {name = "tests preserve host", public_dns = "httpbin-nopreserve.com", target_url = "http://httpbin.org"},
-        {name = "tests preserve host 2", public_dns = "httpbin-preserve.com", target_url = "http://httpbin.org", preserve_host = true}
+        {name = "tests-host-resolver-1", request_host = "mockbin.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-host-resolver-2", request_host = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/status"},
+        {name = "tests-stripped-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/mockbin", strip_request_path = true},
+        {name = "tests-stripped-request_path-resolver-with-pattern-characters", upstream_url = "http://mockbin.com", request_path = "/mockbin-with-pattern/", strip_request_path = true},
+        {name = "tests-deep-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/deep/request_path/", strip_request_path = true},
+        {name = "tests-dup-request_path-resolver", upstream_url = "http://mockbin.com", request_path = "/har", strip_request_path = true},
+        {name = "tests-wildcard-subdomain", upstream_url = "http://mockbin.com/status/200", request_host = "*.wildcard.com"},
+        {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
+        {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
+        {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true}
       },
-      plugin_configuration = {
-        {name = "keyauth", value = {key_names = {"apikey"} }, __api = 2}
+      plugin = {
+        {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
       }
     }
 
@@ -55,7 +55,7 @@ describe("Resolver", function()
     it("should return Not Found when the API is not in Kong", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, {host = "foo.com"})
       assert.equal(404, status)
-      assert.equal('{"public_dns":["foo.com"],"message":"API not found with these values","path":"\\/request"}\n', response)
+      assert.equal('{"request_path":"\\/request","message":"API not found with these values","request_host":["foo.com"]}\n', response)
     end)
 
   end)
@@ -130,7 +130,7 @@ describe("Resolver", function()
 
       describe("with wildcard subdomain", function()
 
-        it("should proxy when the public_dns is a wildcard subdomain", function()
+        it("should proxy when the request_host is a wildcard subdomain", function()
           local _, status = http_client.get(STUB_GET_URL, nil, {host = "subdomain.wildcard.com"})
           assert.equal(200, status)
 
@@ -140,8 +140,8 @@ describe("Resolver", function()
       end)
     end)
 
-    describe("By Path", function()
-      it("should proxy when no Host is present but the request_uri matches the API's path", function()
+    describe("By request_Path", function()
+      it("should proxy when no Host is present but the request_uri matches the API's request_path", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/status/200")
         assert.equal(200, status)
 
@@ -151,34 +151,34 @@ describe("Resolver", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin")
         assert.equal(200, status)
       end)
-      it("should not proxy when the path does not match the start of the request_uri", function()
-        local response, status = http_client.get(spec_helper.PROXY_URL.."/somepath/status/200")
+      it("should not proxy when the request_path does not match the start of the request_uri", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/somerequest_path/status/200")
         local body = cjson.decode(response)
         assert.equal("API not found with these values", body.message)
-        assert.equal("/somepath/status/200", body.path)
+        assert.equal("/somerequest_path/status/200", body.request_path)
         assert.equal(404, status)
       end)
-      it("should proxy and strip the path if `strip_path` is true", function()
+      it("should proxy and strip the request_path if `strip_request_path` is true", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
         assert.equal(200, status)
         local body = cjson.decode(response)
         assert.equal("http://mockbin.com/request", body.url)
       end)
-      it("should proxy and strip the path if `strip_path` is true if path has pattern characters", function()
+      it("should proxy and strip the request_path if `strip_request_path` is true if request_path has pattern characters", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin-with-pattern/request")
         assert.equal(200, status)
         local body = cjson.decode(response)
         assert.equal("http://mockbin.com/request", body.url)
       end)
-      it("should proxy when the path has a deep level", function()
-        local _, status = http_client.get(spec_helper.PROXY_URL.."/deep/path/status/200")
+      it("should proxy when the request_path has a deep level", function()
+        local _, status = http_client.get(spec_helper.PROXY_URL.."/deep/request_path/status/200")
         assert.equal(200, status)
       end)
       it("should not care about querystring parameters", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin?foo=bar")
         assert.equal(200, status)
       end)
-      it("should not strip if the `path` pattern is repeated in the request_uri", function()
+      it("should not strip if the `request_path` pattern is repeated in the request_uri", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/har/har/of/request")
         assert.equal(200, status)
         local body = cjson.decode(response)

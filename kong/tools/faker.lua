@@ -15,17 +15,17 @@ function Faker:fake_entity(type)
   if type == "api" then
     return {
       name = "random"..r,
-      public_dns = "random"..r..".com",
-      target_url = "http://random"..r..".com"
+      request_host = "random"..r..".com",
+      upstream_url = "http://random"..r..".com"
     }
   elseif type == "consumer" then
     return {
       custom_id = "random_custom_id_"..r
     }
-  elseif type == "plugin_configuration" then
+  elseif type == "plugin" then
     return {
-      name = "ratelimiting",
-      value = { second = 10 }
+      name = "rate-limiting",
+      config = { second = 10 }
     }
   else
     error("Entity of type "..type.." cannot be generated.")
@@ -57,7 +57,7 @@ function Faker:insert_from_table(entities_to_insert)
   -- Insert in order (for foreign relashionships)
   -- 1. consumers and APIs
   -- 2. credentials, which need references to inserted apis and consumers
-  for _, type in ipairs({ "api", "consumer", "plugin_configuration", "oauth2_credential", "basicauth_credential", "keyauth_credential" }) do
+  for _, type in ipairs({ "api", "consumer", "plugin", "oauth2_credential", "basicauth_credential", "keyauth_credential", "acl", "jwt_secret", "hmacauth_credential" }) do
     if entities_to_insert[type] then
       for i, entity in ipairs(entities_to_insert[type]) do
 
@@ -74,7 +74,7 @@ function Faker:insert_from_table(entities_to_insert)
         end
 
         -- Insert in DB
-        local dao_type = type == "plugin_configuration" and "plugins_configurations" or type.."s"
+        local dao_type = type == "plugin" and "plugins" or type.."s"
         local res, err = self.dao_factory[dao_type]:insert(entity)
         if err then
           local printable_mt = require "kong.tools.printable"
