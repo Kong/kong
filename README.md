@@ -4,13 +4,12 @@
 
 [![][kong-logo]][kong-url]
 
-Kong was created at [Mashape][mashape-url] to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability. 
+Kong was created at [Mashape][mashape-url] to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
 [Installation](http://getkong.org/install) |
-[Mailing List](https://groups.google.com/forum/#!forum/konglayer) 
-
+[Mailing List][google-groups-url]
 
 ## Summary
 
@@ -70,38 +69,30 @@ Kong comes in many shapes. While this repository contains its core's source code
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
 - [Kong Packages](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
 
-## Community Resources and Tools 
+## Community Resources and Tools
 
 Resources:
 
-- [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)  
+- [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
 - [Kong Getting Started Tutorials in Japanese](http://dev.classmethod.jp/etc/kong-api-aggregator/)
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 
-
-
 Tools:
 
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
-- [Kong Admin GUI in JS](https://github.com/rsdevigo/jungle) 
+- [Kong Admin GUI in JS](https://github.com/rsdevigo/jungle)
 - [Kong Admin GUI in Py](https://github.com/vikingco/django-kong-admin)
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
 - [Python Client for Kong API](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
 
-
-
-
 ## Roadmap
 
 You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape/kong/wiki).
 
-## Development 
-
-[![Build Status][travis-badge]][travis-url]
-[![Circle CI][circleci-badge]][circleci-url]
+## Development
 
 If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation.
 
@@ -172,18 +163,11 @@ limitations under the License.
 ```
 
 [kong-url]: http://getkong.org/
-[kong-docs]: http://getkong.org/docs/
 
 [kong-logo]: http://i.imgur.com/4jyQQAZ.png
 [kong-benefits]: http://cl.ly/image/1B3J3b3h1H1c/Image%202015-07-07%20at%206.57.25%20PM.png
 
 [mashape-url]: https://www.mashape.com
-
-[travis-url]: https://travis-ci.org/Mashape/kong
-[travis-badge]: https://img.shields.io/travis/Mashape/kong.svg?style=flat
-
-[circleci-url]: https://circleci.com/gh/Mashape/kong
-[circleci-badge]: https://circleci.com/gh/Mashape/kong.svg?style=shield
 
 [gitter-url]: https://gitter.im/Mashape/kong
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
