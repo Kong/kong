@@ -76,7 +76,6 @@ Resources:
 
 - [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)  
 - [Kong Getting Started Tutorials in Japanese](http://dev.classmethod.jp/etc/kong-api-aggregator/)
-- [Configuring Kong](http://rotlogix.com/2015/06/18/configuring-kong-for-a-services-layer/)
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
