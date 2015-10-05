@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ######
 ## Kong configuration file. All commented values are default values.
 ## Uncomment and update a value to configure Kong to your needs.
@@ -59,61 +58,60 @@
 ## Databases configuration.
 # databases_available:
   # cassandra:
-    # properties:
-      ######
-      ## Contact points to your Cassandra cluster.
-      # contact_points:
-      #   - "localhost:9042"
+    ######
+    ## Contact points to your Cassandra cluster.
+    # contact_points:
+    #   - "localhost:9042"
 
-      # timeout: 1000
+    # timeout: 1000
 
-      # keyspace: kong
+    # keyspace: kong
 
-      ######
-      ## Time (in milliseconds) for which sockets will be keep alive.
-      ## for being eventually re-used before being closed.
-      # keepalive: 60000
+    ######
+    ## Time (in milliseconds) for which sockets will be keep alive.
+    ## for being eventually re-used before being closed.
+    # keepalive: 60000
 
-      ######
-      ## Keyspace options. Set those before running Kong or any migration.
-      ## Those settings will be used to create a keyspace with the desired options
-      ## when first running the migrations.
-      ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
+    ######
+    ## Keyspace options. Set those before running Kong or any migration.
+    ## Those settings will be used to create a keyspace with the desired options
+    ## when first running the migrations.
+    ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
 
-      ######
-      ## The name of the replica placement strategy class for the new keyspace.
-      ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
-      # replication_strategy: SimpleStrategy
+    ######
+    ## The name of the replica placement strategy class for the new keyspace.
+    ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
+    # replication_strategy: SimpleStrategy
 
-      ######
-      ## For SimpleStrategy only.
-      ## The number of replicas of data on multiple nodes.
-      # replication_factor: 1
+    ######
+    ## For SimpleStrategy only.
+    ## The number of replicas of data on multiple nodes.
+    # replication_factor: 1
 
-      ######
-      ## For NetworkTopologyStrategy only.
-      ## The number of replicas of data on multiple nodes in each data center.
-      # data_centers:
-      #   dc1: 2
-      #   dc2: 3
+    ######
+    ## For NetworkTopologyStrategy only.
+    ## The number of replicas of data on multiple nodes in each data center.
+    # data_centers:
+    #   dc1: 2
+    #   dc2: 3
 
-      ######
-      ## If true, will enable client-to-node encryption.
-      # ssl: false
+    ######
+    ## If true, will enable client-to-node encryption.
+    # ssl: false
 
-      ######
-      ## If true, will verify the SSL certificate in use.
-      ## `ssl_certificate` must be provided.
-      # ssl_verify: false
+    ######
+    ## If true, will verify the SSL certificate in use.
+    ## `ssl_certificate` must be provided.
+    # ssl_verify: false
 
-      ######
-      ## **Absolute path** to the certificate authority file for your cluster.
-      # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
+    ######
+    ## **Absolute path** to the certificate authority file for your cluster.
+    # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
 
-      ######
-      ## If the cluster as authentication enabled, provide a user and a password here.
-      # user: cassandra
-      # password: cassandra
+    ######
+    ## If the cluster as authentication enabled, provide a user and a password here.
+    # user: cassandra
+    # password: cassandra
 
 ######
 ## Time (in seconds) for which entities from the database (APIs, plugins configurations...)

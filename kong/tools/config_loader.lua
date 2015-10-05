@@ -23,7 +23,7 @@ local function validate_config_schema(config, config_schema)
     property = config[config_key] or key_infos.default
 
     -- Recursion on table values
-    if key_infos.type == "table" then
+    if key_infos.type == "table" and key_infos.content ~= nil then
       if property == nil then
         property = {}
       end

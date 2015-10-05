@@ -71,7 +71,7 @@ local CORE_MIGRATIONS_STUB = {
 
 local test_env = spec_helper.get_env() -- test environment
 local test_configuration = test_env.configuration
-local test_cassandra_properties = test_configuration.databases_available[test_configuration.database].properties
+local test_cassandra_properties = test_configuration.dao_config
 test_cassandra_properties.keyspace = TEST_KEYSPACE
 
 local test_dao = DAO(test_cassandra_properties)

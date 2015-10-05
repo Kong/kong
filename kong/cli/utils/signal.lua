@@ -95,7 +95,7 @@ local function prepare_nginx_working_dir(args_config)
 
   ssl.prepare_ssl(kong_config)
   local ssl_cert_path, ssl_key_path = ssl.get_ssl_cert_and_key(kong_config)
-  local trusted_ssl_cert_path = kong_config.dao_config.properties.ssl_certificate -- DAO ssl cert
+  local trusted_ssl_cert_path = kong_config.dao_config.ssl_certificate -- DAO ssl cert
 
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
@@ -193,7 +193,7 @@ _M.QUIT = QUIT
 
 function _M.prepare_kong(args_config, signal)
   local kong_config = get_kong_config(args_config)
-  local dao_config = kong_config.databases_available[kong_config.database].properties
+  local dao_config = kong_config.dao_config
 
   local printable_mt = require "kong.tools.printable"
   setmetatable(dao_config, printable_mt)
