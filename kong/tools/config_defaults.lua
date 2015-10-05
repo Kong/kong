@@ -9,7 +9,24 @@ return {
   ["proxy_port"] = {type = "number", default = 8000},
   ["proxy_ssl_port"] = {type = "number", default = 8443},
   ["admin_api_port"] = {type = "number", default = 8001},
-  ["dnsmasq_port"] = {type = "number", default = 8053},
+  ["dns_resolver"] = {type = "string", default = "dnsmasq"},
+  ["dns_resolvers_available"] = {
+    type = "table",
+    content = {
+      ["server"] = {
+        type = "table",
+        content = {
+          ["address"] = {type = "string", default = "8.8.8.8:53"}
+        }
+      },
+      ["dnsmasq"] = {
+        type = "table",
+        content = {
+          ["port"] = {type = "number", default = 8053}
+        }
+      }
+    }
+  },
   ["database"] = {type = "string", default = "cassandra"},
   ["databases_available"] = {
     type = "table",
@@ -17,20 +34,18 @@ return {
       ["cassandra"] = {
         type = "table",
         content = {
-          ["properties"] = {
-            type = "table",
-            content = {
-              ["contact_points"] = {type = "array", default = {"localhost:9042"}},
-              ["timeout"] = {type = "number", default = 1000},
-              ["keyspace"] = {type = "string", default = "kong"},
-              ["keepalive"] = {type = "number", default = 60000},
-              ["ssl"] = {type = "boolean", default = false},
-              ["ssl_verify"] = {type = "boolean", default = false},
-              ["ssl_certificate"] = {type = "string", nullable = true},
-              ["user"] = {type = "string", nullable = true},
-              ["password"] = {type = "string", nullable = true}
-            }
-          }
+          ["contact_points"] = {type = "array", default = {"localhost:9042"}},
+          ["timeout"] = {type = "number", default = 1000},
+          ["keyspace"] = {type = "string", default = "kong"},
+          ["keepalive"] = {type = "number", default = 60000},
+          ["replication_strategy"] = {type = "string", default = "SimpleStrategy"},
+          ["replication_factor"] = {type = "number", default = 1},
+          ["data_centers"] = {type = "table", default = {}},
+          ["ssl"] = {type = "boolean", default = false},
+          ["ssl_verify"] = {type = "boolean", default = false},
+          ["ssl_certificate"] = {type = "string", nullable = true},
+          ["user"] = {type = "string", nullable = true},
+          ["password"] = {type = "string", nullable = true}
         }
       }
     }

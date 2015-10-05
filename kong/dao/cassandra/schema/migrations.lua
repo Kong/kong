@@ -1,32 +1,10 @@
-local DEFAULTS = {
-  ["SimpleStrategy"] = {
-    replication_factor = 1
-  },
-  ["NetworkTopologyStrategy"] = {
-    data_centers = {}
-  }
-}
-
 local Migrations = {
   {
     init = true,
     name = "2015-01-12-175310_skeleton",
     up = function(options)
-      if not options.replication_strategy then options.replication_strategy = "SimpleStrategy" end
       local keyspace_name = options.keyspace
-      local strategy, strategy_properties = "", ""
-
-      -- Find strategy and retrieve default options
-      for strategy_name, strategy_defaults in pairs(DEFAULTS) do
-        if options.replication_strategy == strategy_name then
-          strategy = strategy_name
-          for opt_name, opt_value in pairs(strategy_defaults) do
-            if not options[opt_name] then
-              options[opt_name] = opt_value
-            end
-          end
-        end
-      end
+      local strategy, strategy_properties = options.replication_strategy, ""
 
       -- Format strategy options
       if strategy == "SimpleStrategy" then

@@ -23,7 +23,7 @@ local function validate_config_schema(config, config_schema)
     property = config[config_key] or key_infos.default
 
     -- Recursion on table values
-    if key_infos.type == "table" then
+    if key_infos.type == "table" and key_infos.content ~= nil then
       if property == nil then
         property = {}
       end
@@ -94,6 +94,16 @@ function _M.load(config_path)
   -- Adding computed properties
   config.pid_file = IO.path:join(config.nginx_working_dir, constants.CLI.NGINX_PID)
   config.dao_config = config.databases_available[config.database]
+  if config.dns_resolver == "dnsmasq" then
+    config.dns_resolver = {
+      address = "127.0.0.1:"..config.dns_resolvers_available.dnsmasq.port,
+      port = config.dns_resolvers_available.dnsmasq.port,
+      dnsmasq = true
+    }
+  else
+    config.dns_resolver = {address = config.dns_resolver.server.address}
+  end
+
 
   -- Load absolute path for the nginx working directory
   if not stringy.startswith(config.nginx_working_dir, "/") then

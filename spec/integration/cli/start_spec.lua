@@ -29,44 +29,6 @@ describe("CLI", function()
       pcall(spec_helper.stop_kong, SERVER_CONF)
     end)
 
-  describe("dnsmasq check", function()
-
-    it("should start dnsmasq with the default settings", function()
-      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
-      assert.are.same(0, exit_code)
-    end)
-
-    it("should not start with both dnsmasq and an address set", function()
-      replace_conf_property("dns_resolver", {
-        address = "8.8.8.8:53",
-        dnsmasq = {
-          enabled = true,
-          port = 8053
-        }
-      })
-
-      assert.error_matches(function()
-        spec_helper.start_kong(SERVER_CONF, true)
-      end, "Invalid \"dns_resolver\" setting: you cannot set both an address and enable dnsmasq", nil, true)
-    end)
-
-    it("should not start with none of dnsmasq and an address set", function()
-      replace_conf_property("dns_resolver", { dnsmasq = {}})
-
-      assert.error_matches(function()
-        spec_helper.start_kong(SERVER_CONF, true)
-      end, "Invalid \"dns_resolver\" setting: you must set at least an address or enable dnsmasq", nil, true)
-    end)
-
-    it("should start dnsmasq with a custom address", function()
-      replace_conf_property("dns_resolver", { address = "8.8.8.8:53", dnsmasq = { enabled = false, port = 8053}})
-
-      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
-      assert.are.same(0, exit_code)
-    end)
-
-  end)
-
   describe("Startup plugins check", function()
 
     it("should start with the default configuration", function()
