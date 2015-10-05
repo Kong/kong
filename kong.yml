@@ -38,39 +38,38 @@ database: cassandra
 ## Databases configuration
 databases_available:
   cassandra:
-    properties:
-      contact_points:
-        - "localhost:9042"
-      timeout: 1000
-      keepalive: 60000 # in milliseconds
-      keyspace: kong
+    contact_points:
+      - "localhost:9042"
+    timeout: 1000
+    keepalive: 60000 # in milliseconds
+    keyspace: kong
 
-      ## Keyspace options. Set those before running Kong or any migration.
-      ## Those settings will be used to create a keyspace with the desired options
-      ## when first running the migrations.
-      ##
-      ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
+    ## Keyspace options. Set those before running Kong or any migration.
+    ## Those settings will be used to create a keyspace with the desired options
+    ## when first running the migrations.
+    ##
+    ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
 
-      ## The name of the replica placement strategy class for the new keyspace.
-      ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
-      replication_strategy: SimpleStrategy
+    ## The name of the replica placement strategy class for the new keyspace.
+    ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
+    replication_strategy: SimpleStrategy
 
-      ## For SimpleStrategy only.
-      ## The number of replicas of data on multiple nodes.
-      replication_factor: 1
+    ## For SimpleStrategy only.
+    ## The number of replicas of data on multiple nodes.
+    replication_factor: 1
 
-      ## For NetworkTopologyStrategy only.
-      ## The number of replicas of data on multiple nodes in each data center.
-      # data_centers:
-      #   dc1: 2
-      #   dc2: 3
+    ## For NetworkTopologyStrategy only.
+    ## The number of replicas of data on multiple nodes in each data center.
+    # data_centers:
+    #   dc1: 2
+    #   dc2: 3
 
-      ## SSL client-to-node encryption and authentication options.
-      # ssl: false
-      # ssl_verify: false
-      # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
-      # user: cassandra
-      # password: cassandra
+    ## SSL client-to-node encryption and authentication options.
+    # ssl: false
+    # ssl_verify: false
+    # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
+    # user: cassandra
+    # password: cassandra
 
 ## Cassandra cache configuration
 database_cache_expiration: 5 # in seconds

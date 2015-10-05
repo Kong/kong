@@ -137,7 +137,7 @@ function _M.load_configuration_and_dao(configuration_path)
 
   -- Instantiate the DAO Factory along with the configuration
   local DaoFactory = require("kong.dao."..configuration.database..".factory")
-  local dao_factory = DaoFactory(dao_config.properties, configuration.plugins_available)
+  local dao_factory = DaoFactory(dao_config, configuration.plugins_available)
 
   return configuration, dao_factory
 end
