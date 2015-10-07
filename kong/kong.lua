@@ -24,7 +24,8 @@
 -- |[[    ]]|
 -- ==========
 
-local IO = require "kong.tools.io"
+local config = require "kong.tools.config_loader"
+local dao_loader = require "kong.tools.dao_loader"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
@@ -62,8 +63,6 @@ local function load_plugin(api_id, consumer_id, plugin_name)
 
   if plugin and not plugin.null and plugin.enabled then
     return plugin
-  else
-    return nil
   end
 end
 
@@ -136,7 +135,8 @@ end
 -- it will be thrown and needs to be catched in init_by_lua.
 function _M.init()
   -- Loading configuration
-  configuration, dao = IO.load_configuration_and_dao(os.getenv("KONG_CONF"))
+  configuration = config.load(os.getenv("KONG_CONF"))
+  dao = dao_loader.load(configuration)
 
   -- Initializing plugins
   plugins = init_plugins()
