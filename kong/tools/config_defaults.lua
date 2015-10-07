@@ -2,7 +2,7 @@ return {
   ["plugins_available"] = {type = "array",
     default = {"ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
                "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
-               "mashape-analytics", "request_transformer", "response-transformer",
+               "mashape-analytics", "request-transformer", "response-transformer",
                "request-size-limiting", "rate-limiting", "response-ratelimiting"}
   },
   ["nginx_working_dir"] = {type = "string", default = "/user/local/kong"},
@@ -39,6 +39,6 @@ return {
   ["ssl_cert_path"] = {type = "string", nullable = true},
   ["ssl_key_path"] = {type = "string", nullable = true},
   ["send_anonymous_reports"] = {type = "boolean", default = false},
-  ["memory_cache_size"] = {type = "number", default = 128},
+  ["memory_cache_size"] = {type = "number", default = 128, min = 32},
   ["nginx"] = {type = "string", nullable = true}
 }
