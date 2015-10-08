@@ -24,7 +24,19 @@ describe("Configuration validation", function()
     assert.truthy(conf.database)
     assert.truthy(conf.databases_available)
     assert.equal("table", type(conf.databases_available))
-    assert.equal("localhost:9042", conf.databases_available.cassandra.properties.contact_points[1])
+
+    local function check_defaults(conf, conf_defaults)
+      for k, v in pairs(conf) do
+        if conf_defaults[k].type == "table" then
+          check_defaults(v, conf_defaults[k].content)
+        end
+        if conf_defaults[k].default ~= nil then
+          assert.equal(conf_defaults[k].default, v)
+        end
+      end
+    end
+
+    check_defaults(conf, require("kong.tools.config_defaults"))
   end)
   it("should validate various types", function()
     local ok, errors = config.validate({

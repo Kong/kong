@@ -1,70 +1,121 @@
-## Available plugins on this server
-plugins_available:
-  - ssl
-  - jwt
-  - acl
-  - cors
-  - oauth2
-  - tcp-log
-  - udp-log
-  - file-log
-  - http-log
-  - key-auth
-  - hmac-auth
-  - basic-auth
-  - ip-restriction
-  - mashape-analytics
-  - request-transformer
-  - response-transformer
-  - request-size-limiting
-  - rate-limiting
-  - response-ratelimiting
+######
+## Kong configuration file. All commented values are default values.
+## Uncomment and update a value to configure Kong to your needs.
+##
+## Lines starting with `##` are comments.
+## Lines starting with `#` are properties that can be updated.
+## Beware of YAML formatting for nested properties.
 
-## The Kong working directory
-## (Make sure you have read and write permissions)
-nginx_working_dir: /usr/local/kong/
+######
+## Plugins that this node needs to execute.
+## By default, Kong will try to execute all installed plugins on every request.
+## If you are sure to only use a few plugins, uncomment and update this property to contain
+## only those.
+## Custom plugins also need to be added to this list.
+# plugins_available:
+#   - ssl
+#   - jwt
+#   - ...
 
-## Port configuration
-proxy_port: 8000
-proxy_ssl_port: 8443
-admin_api_port: 8001
+######
+## The Kong working directory. Equivalent to nginx's prefix path.
+## This is where this running nginx instance will keep server files including logs.
+## Make sure it has the appropriate permissions.
+# nginx_working_dir: /usr/local/kong/
 
-## Secondary port configuration
-dnsmasq_port: 8053
+######
+## Port which Kong proxies HTTP requests through, consumers will make requests against this port
+## so make sure it is publicly available.
+# proxy_port: 8000
 
-## Specify the DAO to use
-database: cassandra
+######
+## Same as proxy_port, but for HTTPS requests.
+# proxy_ssl_port: 8443
 
-## Databases configuration
-databases_available:
-  cassandra:
-    properties:
-      contact_points:
-        - "localhost:9042"
-      timeout: 1000
-      keyspace: kong
-      keepalive: 60000 # in milliseconds
+######
+## DNS resolver configuration. Specify how Kong should resolve DNS addresses either by
+## specifying a DNS resolver address, or by using dnsmasq (default) that will use the system settings
+# dns_resolver:
+  # address: "8.8.8.8:53"
+  # dnsmasq:
+    # enabled: true
+    # port: 8053
+
+######
+## Port on which the admin API will listen to. The admin API is a private API which lets you
+## manage your Kong infrastructure. It needs to be secured appropriatly.
+# admin_api_port: 8001
+
+######
+## Port on which Kong will start dnsmasq.
+# dnsmasq_port: 8053
+
+######
+## Specify which database to use from the databases_available property.
+# database: cassandra
+
+######
+## Databases configuration.
+# databases_available:
+  # cassandra:
+    # properties:
+      ######
+      ## Contact points to your Cassandra cluster.
+      # contact_points:
+      #   - "localhost:9042"
+
+      # timeout: 1000
+
+      # keyspace: kong
+
+      ######
+      ## Time (in milliseconds) for which sockets will be keep alive.
+      ## for being eventually re-used before being closed.
+      # keepalive: 60000
+
+      ######
+      ## If true, will enable client-to-node encryption.
       # ssl: false
+
+      ######
+      ## If true, will verify the SSL certificate in use.
+      ## `ssl_certificate` must be provided.
       # ssl_verify: false
+
+      ######
+      ## **Absolute path** to the certificate authority file for your cluster.
       # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
+
+      ######
+      ## If the cluster as authentication enabled, provide a user and a password here.
       # user: cassandra
       # password: cassandra
 
-## Cassandra cache configuration
-database_cache_expiration: 5 # in seconds
+######
+## Time (in seconds) for which entities from the database (APIs, plugins configurations...)
+## are cached by Kong. Increase this value if you want to lower the number of requests made
+## to your database.
+# database_cache_expiration: 5
 
-## SSL Settings
-## (Uncomment the two properties below to set your own certificate)
+######
+## SSL certificates to use.
 # ssl_cert_path: /path/to/certificate.pem
 # ssl_key_path: /path/to/certificate.key
 
-## Sends anonymous error reports
-send_anonymous_reports: true
+######
+## Sending anonymous error reports helps Kong developers to understand how it performs.
+# send_anonymous_reports: true
 
-## In-memory cache size (MB)
-memory_cache_size: 128
+######
+## Size (in MB) of the Lua cache. This value may not be smaller than 32MB.
+# memory_cache_size: 128
 
-## Nginx configuration
+######
+## The nginx configuration file which allows Kong to run.
+## The placeholders will be computed and this property will be written as a file
+## by Kong at `<nginx_working_dir>/nginx.conf` during startup.
+## This file can tweaked to some extent, but many directives are necessary for Kong to work.
+## /!\ BE CAREFUL
 nginx: |
   worker_processes auto;
   error_log logs/error.log error;
