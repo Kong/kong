@@ -83,6 +83,9 @@ function _M.load(config_path)
   local ok, errors = _M.validate(config)
   if not ok then
     for config_key, config_error in pairs(errors) do
+      if type(config_error) == "table" then
+        config_error = table.concat(config_error, ", ")
+      end
       cutils.logger:warn(string.format("%s: %s", config_key, config_error))
     end
     cutils.logger:error_exit("Invalid properties in given configuration file")

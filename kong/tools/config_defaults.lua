@@ -5,7 +5,7 @@ return {
                "mashape-analytics", "request-transformer", "response-transformer",
                "request-size-limiting", "rate-limiting", "response-ratelimiting"}
   },
-  ["nginx_working_dir"] = {type = "string", default = "/user/local/kong"},
+  ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
   ["proxy_port"] = {type = "number", default = 8000},
   ["proxy_ssl_port"] = {type = "number", default = 8443},
   ["admin_api_port"] = {type = "number", default = 8001},
