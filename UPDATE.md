@@ -55,7 +55,7 @@ properties:
 # First, make sure you are already running Kong 0.4.2
 
 # Clone the Kong git repository if you don't already have it:
-$ git clone git@github.com:Mashape/kong.git
+$ git clone https://github.com/Mashape/kong.git
 
 # Go to the 'scripts/' folder:
 $ cd kong/scripts
