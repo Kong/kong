@@ -1,7 +1,4 @@
 # Microservice & API Management Layer
-
-[![Gitter Badge][gitter-badge]][gitter-url]
-
 [![][kong-logo]][kong-url]
 
 Kong was created at [Mashape][mashape-url] to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
@@ -10,6 +7,9 @@ Kong was created at [Mashape][mashape-url] to secure, manage and extend Microser
 [Documentation](http://getkong.org/docs) |
 [Installation](http://getkong.org/install) |
 [Mailing List][google-groups-url]
+
+[![Gitter Badge][gitter-badge]][gitter-url]
+
 
 ## Summary
 
