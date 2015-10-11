@@ -1,7 +1,7 @@
 # Microservice & API Management Layer
 [![][kong-logo]][kong-url]
 
-Kong was created at [Mashape][mashape-url] to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
+Kong was [created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) for the [Mashape Marketplace](https://www.mashape.com/#market) to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
@@ -78,12 +78,14 @@ Resources:
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
+- [The story behind Kong creation](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservice)
 
 Tools:
 
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
 - [Kong Admin GUI in JS](https://github.com/rsdevigo/jungle)
 - [Kong Admin GUI in Py](https://github.com/vikingco/django-kong-admin)
+- [Kong UI](https://github.com/msaraf/kong-ui)
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
 - [Python Client for Kong API](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
