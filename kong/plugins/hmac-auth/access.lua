@@ -11,6 +11,7 @@ local ngx_parse_time = ngx.parse_http_time
 local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_set_headers = ngx.req.get_headers
+local ngx_log = ngx.log
 
 local split = stringy.split
 
@@ -28,13 +29,13 @@ local function retrieve_hmac_fields(request, headers, header_name, conf)
   if authorization_header then
     local iterator, iter_err = ngx_gmatch(authorization_header, "\\s*[Hh]mac\\s*username=\"(.+)\",\\s*algorithm=\"(.+)\",\\s*headers=\"(.+)\",\\s*signature=\"(.+)\"")
     if not iterator then
-      ngx.log(ngx.ERR, iter_err)
+      ngx_log(ngx.ERR, iter_err)
       return
     end
 
     local m, err = iterator()
     if err then
-      ngx.log(ngx.ERR, err)
+      ngx_log(ngx.ERR, err)
       return 
     end
 
@@ -151,6 +152,9 @@ function _M.execute(conf)
 
   -- validate signature
   local secret = load_secret(hmac_params.username)
+  if not secret then
+    responses.send_HTTP_FORBIDDEN(SIGNATURE_NOT_VALID)
+  end    
   hmac_params.secret = secret.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
