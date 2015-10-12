@@ -214,7 +214,8 @@ build = {
     ["kong.plugins.jwt.api"] = "kong/plugins/jwt/api.lua",
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
-
+    
+    ["kong.plugins.hmac-auth.migrations.cassandra"] = "kong/plugins/hmac-auth/migrations/cassandra.lua",
     ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",
