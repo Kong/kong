@@ -157,9 +157,10 @@ function BaseDao:get_or_prepare_stmt(session, query)
   end
 
   local statement, err
+  local session_addr = session_uniq_addr(session)
   -- Retrieve the prepared statement from cache or prepare and cache
-  if self._statements_cache[session_uniq_addr(session)] and self._statements_cache[session_uniq_addr(session)][query] then
-    statement = self._statements_cache[session_uniq_addr(session)][query]
+  if self._statements_cache[session_addr] and self._statements_cache[session_addr][query] then
+    statement = self._statements_cache[session_addr][query]
   else
     statement, err = self:prepare_stmt(session, query)
     if err then
@@ -333,13 +334,14 @@ function BaseDao:prepare_stmt(session, query)
   if prepare_err then
     return nil, DaoError("Failed to prepare statement: \""..query.."\". "..prepare_err, error_types.DATABASE)
   else
+    local session_addr = session_uniq_addr(session)
     -- cache of prepared statements must be specific to each node
-    if not self._statements_cache[session_uniq_addr(session)] then
-      self._statements_cache[session_uniq_addr(session)] = {}
+    if not self._statements_cache[session_addr] then
+      self._statements_cache[session_addr] = {}
     end
 
     -- cache key is the non-striped/non-formatted query from _queries
-    self._statements_cache[session_uniq_addr(session)][query] = prepared_stmt
+    self._statements_cache[session_addr][query] = prepared_stmt
     return prepared_stmt
   end
 end
