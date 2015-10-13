@@ -1,7 +1,7 @@
 # Microservice & API Management Layer
 [![][kong-logo]][kong-url]
 
-Kong was [created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) for the [Mashape Marketplace](https://www.mashape.com/#market) to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
+Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) at [Mashape](https://www.mashape.com) to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
@@ -37,7 +37,7 @@ Kong was [created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-
   - **ACL**: Acccess Control for your API Consumers.
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Response-Rate-Limiting**: Rate limiting based on custom response header value.
-  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Mashape Analytics](https://apianalytics.com).
+  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Mashape Analytics](https://apianalytics.com) (Galileo).
   - **SSL**: Setup a specific SSL certificate for an underlying service or API.
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
@@ -63,11 +63,13 @@ We've load tested Kong and Cassandra on AWS; you can see our [benchmark report h
 Kong comes in many shapes. While this repository contains its core's source code, other repos are also under active development:
 
 - [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for running Kong in Docker.
+- [Kong Packages](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
 - [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for provisioning a development ready environment for Kong.
 - [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula for Kong.
 - [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation): Kong in a 1-click deployment for AWS EC2
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
-- [Kong Packages](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
+- [Kong on Microsoft Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/): Run Kong using Azure Resource Manager.
+
 
 ## Community Resources and Tools
 
@@ -78,7 +80,8 @@ Resources:
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
-- [The story behind Kong creation](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservice)
+- [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservice)
+- [Kong using Microsoft Azure](https://github.com/Mashape/kong-azure)
 
 Tools:
 
