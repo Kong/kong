@@ -45,6 +45,9 @@ local function is_openresty(path_to_check)
     if code ~= 0 then
       cutils.logger:error_exit(out)
     end
+
+    print("Version found is: "..out)
+
     return out:match("^nginx version: ngx_openresty/")
         or out:match("^nginx version: openresty/")
         or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus%-extras.+%)")
@@ -75,6 +78,7 @@ local function find_nginx()
   for _, v in ipairs(search_paths) do
     local prefix = stringy.endswith(v, "/") and v or v.."/"
     local to_check = prefix..NGINX_BIN
+    print("Checking in "..to_check)
     if is_openresty(to_check) then
       return to_check
     end
