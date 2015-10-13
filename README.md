@@ -68,7 +68,7 @@ Kong comes in many shapes. While this repository contains its core's source code
 - [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula for Kong.
 - [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation): Kong in a 1-click deployment for AWS EC2
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
-- [Kong on Microsoft Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/): Run Kong using Azure Resource Manager.
+- [Kong on Microsoft Azure](https://github.com/Mashape/kong-azure): Run Kong using Azure Resource Manager.
 
 
 ## Community Resources and Tools
@@ -81,7 +81,7 @@ Resources:
 - [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservice)
-- [Kong using Microsoft Azure](https://github.com/Mashape/kong-azure)
+- [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
 
 Tools:
 
