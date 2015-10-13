@@ -2,6 +2,9 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
+local constants = require "kong.constants"
+
+local format = string.format
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
@@ -24,7 +27,9 @@ describe("RateLimiting Plugin", function()
         { name = "tests-rate-limiting1", request_host = "test3.com", upstream_url = "http://mockbin.com" },
         { name = "tests-rate-limiting2", request_host = "test4.com", upstream_url = "http://mockbin.com" },
         { name = "tests-rate-limiting3", request_host = "test5.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting4", request_host = "test6.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-rate-limiting4", request_host = "test6.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-rate-limiting5", request_host = "test7.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-rate-limiting6", request_host = "test8.com", upstream_url = "http://mockbin.com" },
       },
       consumer = {
         { custom_id = "provider_123" },
@@ -36,7 +41,9 @@ describe("RateLimiting Plugin", function()
         { name = "rate-limiting", config = { minute = 8 }, __api = 1, __consumer = 1 },
         { name = "rate-limiting", config = { minute = 6 }, __api = 2 },
         { name = "rate-limiting", config = { minute = 3, hour = 5 }, __api = 3 },
-        { name = "rate-limiting", config = { minute = 33 }, __api = 4 }
+        { name = "rate-limiting", config = { minute = 33 }, __api = 4 },
+        { name = "rate-limiting", config = { minute = 12, hour = 16, usage_status_url = "/usu"}, __api = 5 },
+        { name = "rate-limiting", config = { minute = 3, hour = 5 }, __api = 6 },
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
@@ -144,4 +151,62 @@ describe("RateLimiting Plugin", function()
 
     end)
   end)
+
+  describe("Rate limit usage status", function()
+    it("should return json with current rate limit usage status", function()
+      -- set matrics for second.
+      local get_matrics_url = format("%s/%s", spec_helper.PROXY_URL, "usu")
+
+      -- make 2 requests to the api
+      http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
+      http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
+
+      -- get current status
+      local response_json, status = http_client.get(get_matrics_url, {}, {host = "test7.com"})
+      local response = cjson.decode(response_json)
+      assert.are.equal(200, status)
+      assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-second"])
+      assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-second"])
+
+      assert.are.equal(12, response.rate["limit-minute"])
+      assert.are.equal(10, response.rate["remaining-minute"])
+
+      assert.are.equal(16, response.rate["limit-hour"])
+      assert.are.equal(14, response.rate["remaining-hour"])
+
+      assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-day"])
+      assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-day"])
+
+      assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-month"])
+      assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-month"])
+
+    local get_matrics_url = format("%s/%s", spec_helper.PROXY_URL, "usage_status")
+      -- make 2 requests to the api
+    http_client.get(STUB_GET_URL, {}, {host = "test8.com"})
+    http_client.get(STUB_GET_URL, {}, {host = "test8.com"})
+    local response_json, status = http_client.get(get_matrics_url, {}, {host = "test8.com"})
+    local response = cjson.decode(response_json)
+    assert.are.equal(200, status)
+    assert.are.equal(3, response.rate["limit-minute"])
+    assert.are.equal(1, response.rate["remaining-minute"])
+
+    assert.are.equal(5, response.rate["limit-hour"])
+    assert.are.equal(3, response.rate["remaining-hour"])
+
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-second"])
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-second"])
+
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-day"])
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-day"])
+
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-month"])
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-month"])
+
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["limit-year"])
+    assert.are.equal(constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE, response.rate["remaining-year"])
+
+    end)
+  end)
+
+
 end)
