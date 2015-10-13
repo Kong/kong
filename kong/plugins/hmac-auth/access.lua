@@ -92,10 +92,10 @@ local function hmacauth_credential_key(username)
   return "hmacauth_credentials/"..username
 end
 
-local function load_secret(username)
-  local secret
+local function load_credential(username)
+  local credential
   if username then
-      secret = cache.get_or_set(hmacauth_credential_key(username), function()
+      credential = cache.get_or_set(hmacauth_credential_key(username), function()
       local keys, err = dao.hmacauth_credentials:find_by_keys { username = username }
       local result
       if err then
@@ -106,7 +106,7 @@ local function load_secret(username)
       return result
     end)
   end
-  return secret
+  return credential
 end
 
 local function validate_clock_skew(headers, allowed_clock_skew)
@@ -151,19 +151,19 @@ function _M.execute(conf)
   end
 
   -- validate signature
-  local secret = load_secret(hmac_params.username)
-  if not secret then
+  local credential = load_credential(hmac_params.username)
+  if not credential then
     responses.send_HTTP_FORBIDDEN(SIGNATURE_NOT_VALID)
   end    
-  hmac_params.secret = secret.secret
+  hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("HMAC signature does not match")
   end
 
   -- Retrieve consumer
-  local consumer = cache.get_or_set(cache.consumer_key(secret.consumer_id), function()
-    local result, err = dao.consumers:find_by_primary_key({ id = secret.consumer_id })
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
+    local result, err = dao.consumers:find_by_primary_key({ id = credential.consumer_id })
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -173,6 +173,7 @@ function _M.execute(conf)
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.req.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   ngx.ctx.authenticated_entity = secret
 end
 
