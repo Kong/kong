@@ -115,6 +115,7 @@ nginx: |
   worker_rlimit_nofile {{auto_worker_rlimit_nofile}};
 
   env KONG_CONF;
+  env PATH;
 
   events {
     worker_connections {{auto_worker_connections}};
