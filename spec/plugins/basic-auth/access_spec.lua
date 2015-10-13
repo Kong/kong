@@ -1,5 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local constants = require "kong.constants"
 local cjson = require "cjson"
 
 local PROXY_URL = spec_helper.PROXY_URL
@@ -32,10 +33,11 @@ describe("Authentication Plugin", function()
 
   describe("Basic Authentication", function()
 
-    it("should return invalid credentials when the credential is missing", function()
-      local response, status = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com"})
+    it("should return invalid credentials and www-authenticate header when the credential is missing", function()
+      local response, status, headers = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Basic realm=\""..constants.NAME.."\"")
       assert.equal("Unauthorized", body.message)
     end)
 
@@ -67,10 +69,11 @@ describe("Authentication Plugin", function()
       assert.equal("Invalid authentication credentials", body.message)
     end)
 
-    it("should reply 401 when authorization is missing", function()
-      local response, status = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com", authorization123 = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
+    it("should reply 401 and www-authenticate header when authorization is missing", function()
+      local response, status, headers = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com", authorization123 = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       local body = cjson.decode(response)
       assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Basic realm=\""..constants.NAME.."\"")
       assert.equal("Unauthorized", body.message)
     end)
 
