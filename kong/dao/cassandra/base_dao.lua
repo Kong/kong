@@ -546,6 +546,18 @@ function BaseDao:find_by_keys(where_t, page_size, paging_state)
   return res, err, filtering
 end
 
+-- Retrieve the number of rows from the given columns/value table.
+-- @param `where_t`      (Optional) columns/values table by which to count entities.
+-- @return `res`
+-- @return `err`
+-- @return `filtering`   A boolean indicating if ALLOW FILTERING was needed by the query
+function BaseDao:count_by_keys(where_t)
+  local select_q, where_columns, filtering = query_builder.count(self._table, where_t, self._column_family_details)
+  local res, err = self:execute(select_q, where_columns, where_t, {})
+
+  return (#res >= 1 and table.remove(res, 1).count or 0), err, filtering
+end
+
 -- Retrieve a page of the table attached to the DAO.
 -- @param  `page_size`    Size of the page to retrieve (number of rows).
 -- @param  `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.

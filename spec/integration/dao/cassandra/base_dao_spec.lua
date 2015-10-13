@@ -182,6 +182,34 @@ describe("Cassandra", function()
 
     end) -- describe :insert()
 
+    describe(":count_by_keys()", function()
+
+      it("should properly count the items in a table", function()
+        local count, err = dao_factory.apis:count_by_keys()
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(4, count)
+      end)
+
+      it("should properly count the items in a table with keys", function()
+        local count, err = dao_factory.apis:count_by_keys({name="test.com"})
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(1, count)
+
+        count, err = dao_factory.apis:count_by_keys({name="test.com.com"})
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(0, count)
+
+        count, err = dao_factory.apis:count_by_keys({name=""})
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(0, count)
+      end)
+
+    end)
+    
     describe(":update()", function()
 
       it("should error if called with invalid parameters", function()
