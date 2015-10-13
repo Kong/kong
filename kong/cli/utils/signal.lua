@@ -68,10 +68,17 @@ local NGINX_SEARCH_PATHS = {
 -- @return Path to found executable or nil if none was found
 local function find_nginx()
   local env_path_variable = os.getenv("PATH")
+
+  print("PATH variable is: "..env_path_variable)
+
   local env_paths = {}
   if env_path_variable and stringy.strip(env_path_variable) ~= "" then
     env_paths = stringy.split(env_path_variable, ":")
   end
+
+  local inspect = require "inspect"
+  print("Parsed PATH variable is: ")
+  print(inspect(env_paths))
 
   local search_paths = utils.table_merge(env_paths, NGINX_SEARCH_PATHS)
 
