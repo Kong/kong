@@ -249,6 +249,7 @@ nginx: |
 
       location /nginx_status {
         internal;
+        access_log off;
         stub_status;
       }
 
