@@ -2,6 +2,8 @@ local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
 
+local string_format = string.format
+
 local _M = {}
 
 local function get_identifier()
@@ -53,6 +55,20 @@ local function get_usage(api_id, identifier, current_timestamp, limits)
   return usage, stop
 end
 
+function _M.retrieve_usage_status(usage)
+  local usage_for_field
+  local response_data = { rate = {} }
+  local no_limit_value = constants.RATELIMIT.USAGE_STATUS.NO_LIMIT_VALUE or "unlimited"
+
+  for k, field_name in ipairs(constants.RATELIMIT.PERIODS) do
+    usage_for_field = usage[field_name] or {}
+    response_data.rate[string_format("limit-%s", field_name)] = usage_for_field.limit or no_limit_value
+    response_data.rate[string_format("remaining-%s", field_name)] = usage_for_field.remaining or no_limit_value
+  end
+
+  return response_data
+end
+
 function _M.execute(conf)
   local current_timestamp = timestamp.get_utc()
 
@@ -61,8 +77,16 @@ function _M.execute(conf)
 
   local api_id = ngx.ctx.api.id
 
+  local usage_status_url = conf.usage_status_url or "/usage_status"
+  conf.usage_status_url = nil -- remove the url from limits.
+
   -- Load current metric for configured period
   local usage, stop = get_usage(api_id, identifier, current_timestamp, conf)
+
+  -- check if we should retrieve usage status
+  if ngx.var.uri == usage_status_url then
+    return responses.send(200, _M.retrieve_usage_status(usage))
+  end
 
   -- Adding headers
   for k, v in pairs(usage) do

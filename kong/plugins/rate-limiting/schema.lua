@@ -8,7 +8,8 @@ return {
     hour = { type = "number" },
     day = { type = "number" },
     month = { type = "number" },
-    year = { type = "number" }
+    year = { type = "number" },
+    usage_status_url = { type = "string", default = "/usage_status" },
   },
   self_check = function(schema, plugin_t, dao, is_update)
     local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}
