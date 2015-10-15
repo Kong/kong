@@ -16,8 +16,8 @@ dependencies = {
 
   "uuid ~> 0.2-1",
   "luatz ~> 0.3-1",
-  "yaml ~> 1.1.1-1",
-  "lapis ~> 1.1.0-1",
+  "yaml ~> 1.1.2-1",
+  "lapis ~> 1.3.0-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.3.6-0",
   "multipart ~> 0.2-1",
@@ -27,8 +27,8 @@ dependencies = {
   "lbase64 ~> 20120820-1",
   "lua-resty-iputils ~> 0.2.0-1",
 
-  "luasocket ~> 2.0.2-5",
-  "lrexlib-pcre ~> 2.7.2-1",
+  "luasocket ~> 2.0.2-6",
+  "lrexlib-pcre ~> 2.8.0-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1"
 }
