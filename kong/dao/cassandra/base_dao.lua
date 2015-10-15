@@ -553,9 +553,12 @@ end
 -- @return `res`
 -- @return `err`
 -- @return `filtering`   A boolean indicating if ALLOW FILTERING was needed by the query
-function BaseDao:count_by_keys(where_t)
+function BaseDao:count_by_keys(where_t, page_size, paging_state)
   local select_q, where_columns, filtering = query_builder.count(self._table, where_t, self._column_family_details)
-  local res, err = self:execute(select_q, where_columns, where_t, {})
+  local res, err = self:execute(select_q, where_columns, where_t, {
+    page_size = page_size,
+    paging_state = paging_state
+  })
 
   return (#res >= 1 and table.remove(res, 1).count or 0), err, filtering
 end
