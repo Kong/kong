@@ -6,7 +6,7 @@ Discuss it on the [Google Group](https://groups.google.com/forum/#!forum/konglay
 
 ## Found a bug?
 
-We would like to hear about it. Please [submit an issue][new-issue] on GitHub and we will follow up. Even better, we would appreaciate a [Pull Request][new-pr] with a fix for it.
+We would like to hear about it. Please [submit an issue][new-issue] on GitHub and we will follow up. Even better, we would appreaciate a [Pull Request][new-pr] with a fix for it. If the fix is urgent, feel free to open the PR against the `master` branch.
 
 ## Want a feature?
 
@@ -36,7 +36,7 @@ Before submitting your Pull Request please make sure to:
 - Consider squashing your commits. We prefer your initial changes to be squashed into a single commit. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review. As a final step before merging we will either ask you to squash all commits yourself or we'll do it for you.
 - Run the test suite with `make test-all`.
 
-If all went well, we are eager to see your contribution, feel free to submit your Pull Request!
+If all went well, we are eager to see your contribution, feel free to submit your Pull Request against the `next` branch.
 
 [new-issue]: #submitting-an-issue
 [new-pr]: #submitting-a-pull-request
