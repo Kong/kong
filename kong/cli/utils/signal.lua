@@ -9,11 +9,11 @@ local constants = require "kong.constants"
 local syslog = require "kong.tools.syslog"
 local socket = require "socket"
 local dnsmasq = require "kong.cli.utils.dnsmasq"
+local config = require "kong.tools.config_loader"
+local dao = require "kong.tools.dao_loader"
 
 -- Cache config path, parsed config and DAO factory
-local kong_config_path
-local kong_config
-local dao_factory
+local kong_config_path, kong_config
 
 -- Retrieve the desired Kong config file, parse it and provides a DAO factory
 -- Will cache them for future retrieval
@@ -28,9 +28,9 @@ local function get_kong_config(args_config)
     cutils.logger:info("Using configuration: "..kong_config_path)
   end
   if not kong_config then
-    kong_config, dao_factory = IO.load_configuration_and_dao(kong_config_path)
+    kong_config = config.load(kong_config_path)
   end
-  return kong_config, kong_config_path, dao_factory
+  return kong_config, kong_config_path
 end
 
 -- Check if an executable (typically `nginx`) is a distribution of openresty
@@ -82,33 +82,34 @@ local function prepare_nginx_working_dir(args_config)
   if err then
     cutils.logger:error_exit(err)
   end
+
   -- Create logs files
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "error.log"))
   os.execute("touch "..IO.path:join(kong_config.nginx_working_dir, "logs", "access.log"))
+
   -- Create SSL folder if needed
   local _, err = IO.path:mkdir(IO.path:join(kong_config.nginx_working_dir, "ssl"))
   if err then
     cutils.logger:error_exit(err)
   end
-  -- TODO: this is NOT the place to do this.
-  -- @see https://github.com/Mashape/kong/issues/92 for configuration validation/defaults
-  -- @see https://github.com/Mashape/kong/issues/217 for a better configuration file
-
-  -- Check memory cache
-  if kong_config.memory_cache_size then
-    if tonumber(kong_config.memory_cache_size) == nil then
-      cutils.logger:error_exit("Invalid \"memory_cache_size\" setting")
-    elseif tonumber(kong_config.memory_cache_size) < 32 then
-      cutils.logger:error_exit("Invalid \"memory_cache_size\" setting: needs to be at least 32")
-    end
-  else
-    kong_config.memory_cache_size = 128 -- Default value
-    cutils.logger:warn("Setting \"memory_cache_size\" to default 128MB")
-  end
 
   ssl.prepare_ssl(kong_config)
   local ssl_cert_path, ssl_key_path = ssl.get_ssl_cert_and_key(kong_config)
-  local trusted_ssl_cert_path = kong_config.databases_available[kong_config.database].properties.ssl_certificate -- DAO ssl cert
+  local trusted_ssl_cert_path = kong_config.dao_config.properties.ssl_certificate -- DAO ssl cert
+
+  -- Check dns_resolver
+  local dns_resolver
+  if kong_config.dns_resolver.address and kong_config.dns_resolver.dnsmasq.enabled then
+    cutils.logger:error_exit("Invalid \"dns_resolver\" setting: you cannot set both an address and enable dnsmasq")
+  elseif not kong_config.dns_resolver.address and not kong_config.dns_resolver.dnsmasq.enabled then
+    cutils.logger:error_exit("Invalid \"dns_resolver\" setting: you must set at least an address or enable dnsmasq")
+  elseif kong_config.dns_resolver.address then
+    dns_resolver = kong_config.dns_resolver.address
+  else
+    dns_resolver = "127.0.0.1:"..kong_config.dns_resolver.dnsmasq.port
+  end
+
+  cutils.logger:info("DNS resolver set to: "..dns_resolver)
 
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
@@ -116,7 +117,7 @@ local function prepare_nginx_working_dir(args_config)
     proxy_port = kong_config.proxy_port,
     proxy_ssl_port = kong_config.proxy_ssl_port,
     admin_api_port = kong_config.admin_api_port,
-    dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
+    dns_resolver = dns_resolver,
     memory_cache_size = kong_config.memory_cache_size,
     ssl_cert = ssl_cert_path,
     ssl_key = ssl_key_path,
@@ -166,7 +167,8 @@ end
 -- Prepare the database keyspace if needed (run schema migrations)
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 local function prepare_database(args_config)
-  local kong_config, _, dao_factory = get_kong_config(args_config)
+  local kong_config = get_kong_config(args_config)
+  local dao_factory = dao.load(kong_config)
   local migrations = require("kong.tools.migrations")(dao_factory)
 
   local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
@@ -222,7 +224,7 @@ function _M.prepare_kong(args_config, signal)
   kong_config.proxy_port,
   kong_config.proxy_ssl_port,
   kong_config.admin_api_port,
-  kong_config.dnsmasq_port,
+  kong_config.dns_resolver.dnsmasq.enabled and kong_config.dns_resolver.dnsmasq.port or "DISABLED",
   kong_config.database,
   tostring(dao_config)))
 
@@ -272,8 +274,11 @@ function _M.send_signal(args_config, signal)
   -- dnsmasq start/stop
   if signal == START then
     dnsmasq.stop(kong_config)
-    check_port(kong_config.dnsmasq_port)
-    dnsmasq.start(kong_config)
+    if kong_config.dns_resolver.dnsmasq.enabled then
+      local dnsmasq_port = kong_config.dns_resolver.dnsmasq.port
+      check_port(dnsmasq_port)
+      dnsmasq.start(kong_config.nginx_working_dir, dnsmasq_port)
+    end
   elseif signal == STOP or signal == QUIT then
     dnsmasq.stop(kong_config)
   end
