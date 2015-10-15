@@ -29,8 +29,12 @@ proxy_port: 8000
 proxy_ssl_port: 8443
 admin_api_port: 8001
 
-## Secondary port configuration
-dnsmasq_port: 8053
+## DNS resolver configuration
+dns_resolver:
+  #address: "8.8.8.8:53"
+  dnsmasq:
+    enabled: true
+    port: 8053
 
 ## Specify the DAO to use
 database: cassandra
