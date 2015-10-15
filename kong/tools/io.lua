@@ -103,7 +103,7 @@ function _M.file_size(path)
 end
 
 --- Load a yaml configuration file.
--- The return config will get 2 extra fields; `pid_file` of the nginx process 
+-- The return config will get 2 extra fields; `pid_file` of the nginx process
 -- and `dao_config` as a shortcut to the dao configuration
 -- @param configuration_path path to configuration file to load
 -- @return config Loaded configuration table
@@ -137,7 +137,7 @@ function _M.load_configuration_and_dao(configuration_path)
 
   -- Instantiate the DAO Factory along with the configuration
   local DaoFactory = require("kong.dao."..configuration.database..".factory")
-  local dao_factory = DaoFactory(dao_config.properties, configuration.plugins_available)
+  local dao_factory = DaoFactory(dao_config, configuration.plugins_available)
 
   return configuration, dao_factory
 end
