@@ -50,6 +50,26 @@ local function dic_to_array(hash, fn)
   end
 end
 
+--- Get a header from nginx's headers
+-- Make sure that is multiple headers of a same name are present,
+-- we only want the last one. Also include a default value if
+-- no header is present.
+-- @param `headers` ngx's request or response headers table.
+-- @param `name`    Name of the desired header to retrieve.
+-- @param `default` String returned in case no header is found.
+-- @return `header` The header value (a string) or the default, or nil.
+local function get_header(headers, name, default)
+  local val = headers[name]
+  if val ~= nil then
+    if type(val) == "table" then
+      val = val[#val]
+    end
+    return val
+  end
+
+  return default
+end
+
 local _M = {}
 
 -- Serialize `ngx` into one ALF entry.
@@ -112,8 +132,8 @@ function _M.serialize_entry(ngx)
   local alf_res_headers_size = string.len(res_headers_str)
 
   -- mimeType, defaulting to "application/octet-stream"
-  local alf_req_mimeType = req_headers["Content-Type"] and req_headers["Content-Type"] or "application/octet-stream"
-  local alf_res_mimeType = res_headers["Content-Type"] and res_headers["Content-Type"] or "application/octet-stream"
+  local alf_req_mimeType = get_header(req_headers, "Content-Type", "application/octet-stream")
+  local alf_res_mimeType = get_header(res_headers, "Content-Type", "application/octet-stream")
 
   return {
     startedDateTime = os.date("!%Y-%m-%dT%TZ", alf_started_at),
