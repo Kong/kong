@@ -110,13 +110,27 @@ local function prepare_nginx_working_dir(args_config)
   local ssl_cert_path, ssl_key_path = ssl.get_ssl_cert_and_key(kong_config)
   local trusted_ssl_cert_path = kong_config.databases_available[kong_config.database].properties.ssl_certificate -- DAO ssl cert
 
+  -- Check dns_resolver
+  local dns_resolver
+  if kong_config.dns_resolver.address and kong_config.dns_resolver.dnsmasq.enabled then
+    cutils.logger:error_exit("Invalid \"dns_resolver\" setting: you cannot set both an address and enable dnsmasq")
+  elseif not kong_config.dns_resolver.address and not kong_config.dns_resolver.dnsmasq.enabled then
+    cutils.logger:error_exit("Invalid \"dns_resolver\" setting: you must set at least an address or enable dnsmasq")
+  elseif kong_config.dns_resolver.address then
+    dns_resolver = kong_config.dns_resolver.address
+  else
+    dns_resolver = "127.0.0.1:"..kong_config.dns_resolver.dnsmasq.port
+  end
+
+  cutils.logger:info("DNS resolver set to: "..dns_resolver)
+
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = kong_config.nginx
   local nginx_inject = {
     proxy_port = kong_config.proxy_port,
     proxy_ssl_port = kong_config.proxy_ssl_port,
     admin_api_port = kong_config.admin_api_port,
-    dns_resolver = "127.0.0.1:"..kong_config.dnsmasq_port,
+    dns_resolver = dns_resolver,
     memory_cache_size = kong_config.memory_cache_size,
     ssl_cert = ssl_cert_path,
     ssl_key = ssl_key_path,
@@ -222,7 +236,7 @@ function _M.prepare_kong(args_config, signal)
   kong_config.proxy_port,
   kong_config.proxy_ssl_port,
   kong_config.admin_api_port,
-  kong_config.dnsmasq_port,
+  kong_config.dns_resolver.dnsmasq.enabled and kong_config.dns_resolver.dnsmasq.port or "DISABLED",
   kong_config.database,
   tostring(dao_config)))
 
@@ -272,8 +286,11 @@ function _M.send_signal(args_config, signal)
   -- dnsmasq start/stop
   if signal == START then
     dnsmasq.stop(kong_config)
-    check_port(kong_config.dnsmasq_port)
-    dnsmasq.start(kong_config)
+    if kong_config.dns_resolver.dnsmasq.enabled then
+      local dnsmasq_port = kong_config.dns_resolver.dnsmasq.port
+      check_port(dnsmasq_port)
+      dnsmasq.start(kong_config.nginx_working_dir, dnsmasq_port)
+    end
   elseif signal == STOP or signal == QUIT then
     dnsmasq.stop(kong_config)
   end
