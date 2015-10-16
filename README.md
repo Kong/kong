@@ -80,7 +80,7 @@ Resources:
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
-- [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservice)
+- [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices)
 - [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
 
 Tools:
