@@ -550,13 +550,13 @@ end
 
 -- Retrieve the number of rows from the given columns/value table.
 -- @param `where_t`      (Optional) columns/values table by which to count entities.
+-- @param `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
 -- @return `res`
 -- @return `err`
 -- @return `filtering`   A boolean indicating if ALLOW FILTERING was needed by the query
-function BaseDao:count_by_keys(where_t, page_size, paging_state)
-  local select_q, where_columns, filtering = query_builder.count(self._table, where_t, self._column_family_details)
-  local res, err = self:execute(select_q, where_columns, where_t, {
-    page_size = page_size,
+function BaseDao:count_by_keys(where_t, paging_state)
+  local count_q, where_columns, filtering = query_builder.count(self._table, where_t, self._column_family_details)
+  local res, err = self:execute(count_q, where_columns, where_t, {
     paging_state = paging_state
   })
 
