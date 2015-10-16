@@ -1,5 +1,17 @@
 ## [Unreleased][unreleased]
 
+### Added
+
+- Added a `total` field in API responses, that counts the total number of entities in the table. [#635](https://github.com/Mashape/kong/pull/635)
+
+### Changed
+
+- The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` field. [#635](https://github.com/Mashape/kong/pull/635)
+
+### Fixed
+
+- In the API, the `next` link is not being displayed anymore if there are no more entities to return. [#635](https://github.com/Mashape/kong/pull/635)
+
 ## [0.5.1] - 2015/10/13
 
 Fixing a few glitches we let out with 0.5.0!
