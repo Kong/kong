@@ -14,6 +14,24 @@ local function get_type(value, val_type)
   end
 end
 
+local checks = {
+  type = function(value, key_infos, value_type)
+    if value_type ~= key_infos.type then
+      return "must be a "..key_infos.type
+    end
+  end,
+  minimum = function(value, key_infos, value_type)
+    if value_type == "number" and key_infos.min ~= nil and value < key_infos.min then
+      return "must be greater than "..key_infos.min
+    end
+  end,
+  enum = function(value, key_infos, value_type)
+    if key_infos.enum ~= nil and not utils.table_contains(key_infos.enum, value) then
+      return string.format("must be one of: '%s'", table.concat(key_infos.enum, ", "))
+    end
+  end
+}
+
 local function validate_config_schema(config, config_schema)
   if not config_schema then config_schema = config_defaults end
   local errors, property
@@ -30,7 +48,6 @@ local function validate_config_schema(config, config_schema)
 
       local ok, s_errors = validate_config_schema(property, key_infos.content)
       if not ok then
-        --errors = utils.add_error(errors, config_key, s_errors)
         for s_k, s_v in pairs(s_errors) do
           errors = utils.add_error(errors, config_key.."."..s_k, s_v)
         end
@@ -40,13 +57,13 @@ local function validate_config_schema(config, config_schema)
     -- Nullable checking
     if property ~= nil and not key_infos.nullable then
       local property_type = get_type(property, key_infos.type)
-      -- Type checking
-      if property_type ~= key_infos.type then
-        errors = utils.add_error(errors, config_key, "must be a "..key_infos.type)
-      end
-      -- Min checking
-      if property_type == "number" and key_infos.min ~= nil and property < key_infos.min then
-        errors = utils.add_error(errors, config_key, "must be greater than "..key_infos.min)
+      local err
+      -- Individual checks
+      for _, check_fun in pairs(checks) do
+        err = check_fun(property, key_infos, property_type)
+        if err then
+          errors = utils.add_error(errors, config_key, err)
+        end
       end
     end
 

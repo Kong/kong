@@ -63,6 +63,17 @@ describe("Configuration validation", function()
     assert.False(ok)
     assert.equal("must be greater than 32", errors.memory_cache_size)
   end)
+  it("should check that the value is contained in `enum`", function()
+    local ok, errors = config.validate({
+      databases_available = {
+        cassandra = {
+          replication_strategy = "foo"
+        }
+      }
+    })
+    assert.False(ok)
+    assert.equal("must be one of: 'SimpleStrategy, NetworkTopologyStrategy'", errors["databases_available.cassandra.replication_strategy"])
+  end)
   it("should validate the selected database property", function()
     local ok, errors = config.validate({database = "foo"})
     assert.False(ok)

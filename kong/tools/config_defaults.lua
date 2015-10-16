@@ -9,7 +9,7 @@ return {
   ["proxy_port"] = {type = "number", default = 8000},
   ["proxy_ssl_port"] = {type = "number", default = 8443},
   ["admin_api_port"] = {type = "number", default = 8001},
-  ["dns_resolver"] = {type = "string", default = "dnsmasq"},
+  ["dns_resolver"] = {type = "string", default = "dnsmasq", enum = {"server", "dnsmasq"}},
   ["dns_resolvers_available"] = {
     type = "table",
     content = {
@@ -38,7 +38,7 @@ return {
           ["timeout"] = {type = "number", default = 1000},
           ["keyspace"] = {type = "string", default = "kong"},
           ["keepalive"] = {type = "number", default = 60000},
-          ["replication_strategy"] = {type = "string", default = "SimpleStrategy"},
+          ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
           ["replication_factor"] = {type = "number", default = 1},
           ["data_centers"] = {type = "table", default = {}},
           ["ssl"] = {type = "boolean", default = false},
