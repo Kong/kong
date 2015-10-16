@@ -13,7 +13,6 @@ local env = spec_helper.get_env() -- test environment
 local faker = env.faker
 local dao_factory = env.dao_factory
 local configuration = env.configuration
-configuration.cassandra = configuration.databases_available[configuration.database].properties
 
 -- An utility function to apply tests on core collections.
 local function describe_core_collections(tests_cb)
@@ -46,9 +45,9 @@ describe("Cassandra", function()
 
     -- Create a parallel session to verify the dao's behaviour
     session = cassandra:new()
-    session:set_timeout(configuration.cassandra.timeout)
+    session:set_timeout(configuration.dao_config.timeout)
 
-    local _, err = session:connect(configuration.cassandra.contact_points)
+    local _, err = session:connect(configuration.dao_config.contact_points)
     assert.falsy(err)
 
     local _, err = session:set_keyspace("kong_tests")

@@ -61,9 +61,9 @@ local CORE_MIGRATIONS_STUB = {
       ]]
     end,
     down = function()
-       return [[
-         DROP TABLE users2;
-       ]]
+      return [[
+        DROP TABLE users2;
+      ]]
     end
   }
 
@@ -71,7 +71,7 @@ local CORE_MIGRATIONS_STUB = {
 
 local test_env = spec_helper.get_env() -- test environment
 local test_configuration = test_env.configuration
-local test_cassandra_properties = test_configuration.databases_available[test_configuration.database].properties
+local test_cassandra_properties = test_configuration.dao_config
 test_cassandra_properties.keyspace = TEST_KEYSPACE
 
 local test_dao = DAO(test_cassandra_properties)
@@ -99,6 +99,37 @@ say:set("assertion.has_table.positive", "Expected keyspace to have table %s")
 say:set("assertion.has_table.negative", "Expected keyspace not to have table %s")
 assert:register("assertion", "has_table", has_table, "assertion.has_table.positive", "assertion.has_table.negative")
 
+local function has_keyspace(state, arguments)
+  local rows, err = session:execute("SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?", {arguments[1]})
+  if err then
+    error(err)
+  end
+
+  return #rows > 0
+end
+
+say:set("assertion.has_keyspace.positive", "Expected keyspace %s to exist")
+say:set("assertion.has_keyspace.negative", "Expected keyspace %s to not exist")
+assert:register("assertion", "has_keyspace", has_keyspace, "assertion.has_keyspace.positive", "assertion.has_keyspace.negative")
+
+local function has_replication_options(state, arguments)
+  local rows, err = session:execute("SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?", {arguments[1]})
+  if err then
+    error(err)
+  end
+
+  if #rows > 0 then
+    local keyspace = rows[1]
+    assert.equal("org.apache.cassandra.locator."..arguments[2], keyspace.strategy_class)
+    assert.equal(arguments[3], keyspace.strategy_options)
+    return true
+  end
+end
+
+say:set("assertion.has_replication_options.positive", "Expected keyspace %s to have given replication options")
+say:set("assertion.has_replication_options.negative", "Expected keyspace %s to not have given replication options")
+assert:register("assertion", "has_replication_options", has_replication_options, "assertion.has_replication_options.positive", "assertion.has_replication_options.negative")
+
 local function has_migration(state, arguments)
   local identifier = arguments[1]
   local migration = arguments[2]
@@ -121,7 +152,6 @@ local function has_migration(state, arguments)
   return false
 end
 
-local say = require "say"
 say:set("assertion.has_migration.positive", "Expected keyspace to have migration %s record")
 say:set("assertion.has_migration.negative", "Expected keyspace not to have migration %s recorded")
 assert:register("assertion", "has_migration", has_migration, "assertion.has_migration.positive", "assertion.has_migration.negative")
@@ -230,6 +260,31 @@ describe("Migrations", function()
 
       assert.has_table("plugins2")
       assert.has_migration("fixtures", "stub_fixture_mig2")
+    end)
+  end)
+  describe("keyspace replication strategy", function()
+    local KEYSPACE_NAME = "kong_replication_strategy_tests"
+
+    setup(function()
+      migrations = Migrations(test_dao)
+      migrations.dao_properties.keyspace = KEYSPACE_NAME
+    end)
+
+    after_each(function()
+      session:execute("DROP KEYSPACE "..KEYSPACE_NAME)
+    end)
+
+    it("should create a keyspace with SimpleStrategy by default", function()
+      local err = migrations:migrate("core")
+      assert.falsy(err)
+      assert.has_keyspace(KEYSPACE_NAME)
+      assert.has_replication_options(KEYSPACE_NAME, "SimpleStrategy", "{\"replication_factor\":\"1\"}")
+    end)
+    it("should catch an invalid replication strategy", function()
+      migrations.dao_properties.replication_strategy = "foo"
+      local err = migrations:migrate("core")
+      assert.truthy(err)
+      assert.equal("invalid replication_strategy class", err)
     end)
   end)
 end)
