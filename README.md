@@ -10,7 +10,6 @@ Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-
 
 [![Gitter Badge][gitter-badge]][gitter-url]
 
-
 ## Summary
 
 - [**Features**](#features)
@@ -82,6 +81,12 @@ Resources:
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices)
 - [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
+
+Videos:
+
+- [VIDEO - Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
+- [VIDEO - OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
+- [VIDEO - Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
 Tools:
 
