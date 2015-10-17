@@ -1,6 +1,6 @@
-local app = require "kong.api.app"
-
 require "kong.tools.ngx_stub"
+
+local app = require "kong.api.app"
 
 local stub = {
   req = { headers = {} },

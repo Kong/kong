@@ -11,9 +11,7 @@ return {
   },
   CLI = {
     GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
-    NGINX_CONFIG = "nginx.conf",
-    NGINX_PID = "kong.pid",
-    DNSMASQ_PID = "dnsmasq.pid",
+    NGINX_CONFIG = "nginx.conf"
   },
   DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
   DATABASE_ERROR_TYPES = setmetatable ({

@@ -2,14 +2,15 @@
 -- It is built so that it only needs to be required at the beginning of any spec file.
 -- It supports other environments by passing a configuration file.
 
+require "kong.tools.ngx_stub"
+
 local IO = require "kong.tools.io"
 local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
+local Events = require "kong.core.events"
 local Migrations = require "kong.tools.migrations"
-
-require "kong.tools.ngx_stub"
 
 local _M = {}
 
@@ -33,10 +34,12 @@ _M.envs = {}
 -- a factory/migrations/faker that are environment-specific to this new config.
 function _M.add_env(conf_file)
   local env_configuration = config.load(conf_file)
-  local env_factory = dao.load(env_configuration)
+  local events = Events()
+  local env_factory = dao.load(env_configuration, false, events)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,
+    events = events,
     migrations = Migrations(env_factory, env_configuration),
     conf_file = conf_file,
     faker = Faker(env_factory)
@@ -56,26 +59,19 @@ end
 --
 -- OS and bin/kong helpers
 --
-local function kong_bin(signal, conf_file, skip_wait)
+local function kong_bin(signal, conf_file)
   local env = _M.get_env(conf_file)
   local result, exit_code = IO.os_execute(_M.KONG_BIN.." "..signal.." -c "..env.conf_file)
-
   if exit_code ~= 0 then
     error("spec_helper cannot "..signal.." kong: \n"..result)
-  end
-
-  if signal == "start" and not skip_wait then
-    os.execute("while ! [ -f "..env.configuration.pid_file.." ]; do sleep 0; done")
-  elseif signal == "quit" or signal == "stop" then
-    os.execute("while [ -f "..env.configuration.pid_file.." ]; do sleep 0; done")
   end
 
   return result, exit_code
 end
 
-for _, signal in ipairs({ "start", "stop", "restart", "reload", "quit" }) do
+for _, signal in ipairs({ "start", "stop", "restart", "reload", "quit", "status" }) do
   _M[signal.."_kong"] = function(conf_file, skip_wait)
-    return kong_bin(signal, conf_file, skip_wait)
+    return kong_bin(signal, conf_file)
   end
 end
 

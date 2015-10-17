@@ -1,9 +1,10 @@
 local route_helpers = require "kong.api.route_helpers"
+local utils = require "kong.tools.utils"
 
 describe("Route Helpers", function()
   
   it("should return the hostname", function()
-    assert.truthy(route_helpers.get_hostname())
+    assert.truthy(utils.get_hostname())
   end)
 
   it("should return parse the nginx status", function()

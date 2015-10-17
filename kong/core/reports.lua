@@ -1,5 +1,14 @@
 local syslog = require "kong.tools.syslog"
 local cache = require "kong.tools.database_cache"
+local utils = require "kong.tools.utils"
+local unique_str = utils.random_string()
+local enabled = false
+
+local resty_lock
+local status, res = pcall(require, "resty.lock")
+if status then
+  resty_lock = res
+end
 
 local INTERVAL = 3600
 
@@ -11,15 +20,16 @@ local function create_timer(at, cb)
 end
 
 local function send_ping(premature)
-  local resty_lock = require "resty.lock"
-  local lock = resty_lock:new("locks", {
+  if premature then return end
+
+  local lock = resty_lock:new("reports_locks", {
     exptime = INTERVAL - 0.001
   })
   local elapsed = lock:lock("ping")
   if elapsed and elapsed == 0 then
     local reqs = cache.get(cache.requests_key())
     if not reqs then reqs = 0 end
-    syslog.log({signal = "ping", requests=reqs, process_id=process_id})
+    syslog.log({signal = "ping", requests = reqs, unique_id = unique_str})
     cache.incr(cache.requests_key(), -reqs) -- Reset counter
   end
   create_timer(INTERVAL, send_ping)
@@ -27,10 +37,17 @@ end
 
 return {
   init_worker = function()
-    cache.rawset(cache.requests_key(), 0, 0) -- Initializing the counter
-    create_timer(INTERVAL, send_ping)
+    if enabled then
+      cache.rawset(cache.requests_key(), 0, 0) -- Initializing the counter
+      create_timer(INTERVAL, send_ping)
+    end
   end,
   log = function()
-    cache.incr(cache.requests_key(), 1)
+    if enabled then
+      cache.incr(cache.requests_key(), 1)
+    end
+  end,
+  enable = function()
+    enabled = true
   end
 }

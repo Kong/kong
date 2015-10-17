@@ -101,6 +101,26 @@ local Migrations = {
         DROP TABLE plugins;
       ]]
     end
+  },
+  -- Clustering nodes
+  {
+    name = "2015-11-23-817313_nodes",
+    up = function(options, dao_factory)
+      return dao_factory:execute_queries [[
+        CREATE TABLE IF NOT EXISTS nodes(
+          name text,
+          cluster_listening_address text,
+          created_at timestamp,
+          PRIMARY KEY (name)
+        ) WITH default_time_to_live = 3600;
+        CREATE INDEX IF NOT EXISTS ON nodes(cluster_listening_address);
+      ]]
+    end,
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
+        DROP TABLE nodes;
+      ]]
+    end
   }
 }
 

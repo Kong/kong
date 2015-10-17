@@ -1,10 +1,10 @@
+local spec_helper = require "spec.spec_helpers"
 local ssl = require "ssl"
 local url = require "socket.url"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local socket = require "socket"
 local constants = require "kong.constants"
-local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL

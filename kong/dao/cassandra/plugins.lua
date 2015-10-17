@@ -10,11 +10,11 @@ local table_insert = table.insert
 
 local Plugins = BaseDao:extend()
 
-function Plugins:new(properties)
+function Plugins:new(properties, events_handler)
   self._table = "plugins"
   self._schema = plugins_schema
 
-  Plugins.super.new(self, properties)
+  Plugins.super.new(self, properties, events_handler)
 end
 
 -- @override

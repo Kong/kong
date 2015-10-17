@@ -1,7 +1,8 @@
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 local utils = require "kong.tools.utils"
-local cutils = require "kong.cli.utils"
+local logger = require "kong.cli.utils.logger"
+local luarocks = require "kong.cli.utils.luarocks"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local config_defaults = require "kong.tools.config_defaults"
@@ -38,7 +39,10 @@ local function validate_config_schema(config, config_schema)
 
   for config_key, key_infos in pairs(config_schema) do
     -- Default value
-    property = config[config_key] or key_infos.default
+    property = config[config_key]
+    if property == nil then
+      property = key_infos.default
+    end
 
     -- Recursion on table values
     if key_infos.type == "table" and key_infos.content ~= nil then
@@ -89,7 +93,8 @@ end
 function _M.load(config_path)
   local config_contents = IO.read_file(config_path)
   if not config_contents then
-    cutils.logger:error_exit("No configuration file at: "..config_path)
+    logger:error("No configuration file at: "..config_path)
+    os.exit(1)
   end
 
   local config = yaml.load(config_contents)
@@ -100,9 +105,10 @@ function _M.load(config_path)
       if type(config_error) == "table" then
         config_error = table.concat(config_error, ", ")
       end
-      cutils.logger:warn(string.format("%s: %s", config_key, config_error))
+      logger:warn(string.format("%s: %s", config_key, config_error))
     end
-    cutils.logger:error_exit("Invalid properties in given configuration file")
+    logger:error("Invalid properties in given configuration file")
+    os.exit(1)
   end
 
   -- Adding computed properties
@@ -125,10 +131,20 @@ function _M.load(config_path)
     config.nginx_working_dir = fs.current_dir().."/"..config.nginx_working_dir
   end
 
-  -- Load all plugins
   config.plugins = utils.table_merge(constants.PLUGINS_AVAILABLE, config.custom_plugins)
 
-  return config
+  return config, config_path
+end
+
+function _M.load_default(config_path)
+  if not IO.file_exists(config_path) then
+    logger:warn("No configuration at: "..config_path.." using default config instead.")
+    config_path = IO.path:join(luarocks.get_config_dir(), "kong.yml")
+  end
+
+  logger:info("Using configuration: "..config_path)
+
+  return _M.load(config_path)
 end
 
 return _M

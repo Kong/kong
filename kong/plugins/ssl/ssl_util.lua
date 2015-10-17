@@ -12,16 +12,18 @@ local function execute_openssl(data, cmd)
   IO.write_to_file(input, data)
 
   -- Execute OpenSSL command
-  local _, code = IO.os_execute(string.format(cmd, input, output))
+  local res, code = IO.os_execute(string.format(cmd, input, output))
   if code == 0 then
     result = IO.read_file(output)
+
+    -- Remove temp files
+    os.remove(input)
+    os.remove(output)
+
+    return result
+  else
+    return false, res
   end
-
-  -- Remove temp files
-  os.remove(input)
-  os.remove(output)
-
-  return result
 end
 
 function _M.cert_to_der(data)
