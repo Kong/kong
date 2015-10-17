@@ -30,6 +30,8 @@ local function send_to_syslog(log_level, severity, message)
 end
 
 local function log(premature, conf, message)
+  if premature then return end
+  
   if message.response.status >= 500 then
     send_to_syslog(conf.log_level, conf.server_errors_severity, message)
   elseif message.response.status >= 400 then

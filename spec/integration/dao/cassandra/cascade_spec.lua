@@ -124,9 +124,9 @@ describe("Cassandra cascade delete", function()
       spec_helper.drop_db()
     end)
     it("should delete foreign keyauth_credentials when deleting a Consumer", function()
-      local ok, err = dao_factory.consumers:delete(consumer)
+      local res, err = dao_factory.consumers:delete(consumer)
       assert.falsy(err)
-      assert.True(ok)
+      assert.truthy(res)
 
       local results, err = dao_factory.keyauth_credentials:find_by_keys {
         consumer_id = consumer.id

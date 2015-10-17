@@ -191,7 +191,7 @@ local function find_api(uri, headers)
   local api, matched_host, hosts_list, strip_request_path_pattern
 
   -- Retrieve all APIs
-  local apis_dics, err = cache.get_or_set("ALL_APIS_BY_DIC", _M.load_apis_in_memory, 60) -- 60 seconds cache, longer than usual
+  local apis_dics, err = cache.get_or_set(cache.all_apis_by_dict_key(), _M.load_apis_in_memory)
   if err then
     return err
   end

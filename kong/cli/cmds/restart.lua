@@ -1,8 +1,9 @@
 #!/usr/bin/env luajit
 
 local constants = require "kong.constants"
-local cutils = require "kong.cli.utils"
-local signal = require "kong.cli.utils.signal"
+local config_loader = require "kong.tools.config_loader"
+local services = require "kong.cli.utils.services"
+
 local args = require("lapp")(string.format([[
 Restart the Kong instance running in the configured 'nginx_working_dir'.
 
@@ -15,16 +16,8 @@ Options:
   -c,--config (default %s) path to configuration file
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
-if signal.is_running(args.config) then
-  if not signal.send_signal(args.config, signal.STOP) then
-    cutils.logger:error_exit("Could not stop Kong")
-  end
-end
+local configuration, configuration_path = config_loader.load_default(args.config)
 
-signal.prepare_kong(args.config)
+services.stop_all(configuration, configuration_path)
 
-if not signal.send_signal(args.config) then
-  cutils.logger:error_exit("Could not restart Kong")
-end
-
-cutils.logger:success("Restarted")
+require("kong.cli.cmds.start")

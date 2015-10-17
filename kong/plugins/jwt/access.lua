@@ -42,10 +42,6 @@ local function retrieve_token(request, conf)
   end
 end
 
-local function jwt_secret_cache_key(consumer_id)
-  return "jwt_secret/"..consumer_id
-end
-
 function _M.execute(conf)
   local token, err = retrieve_token(ngx.req, conf)
   if err then
@@ -70,7 +66,7 @@ function _M.execute(conf)
   end
 
   -- Retrieve the secret
-  local jwt_secret = cache.get_or_set(jwt_secret_cache_key(jwt_secret_key), function()
+  local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), function()
     local rows, err = dao.jwt_secrets:find_by_keys {key = jwt_secret_key}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()

@@ -7,10 +7,10 @@ local table_insert = table.insert
 
 local Apis = BaseDao:extend()
 
-function Apis:new(properties)
+function Apis:new(properties, events_handler)
   self._table = "apis"
   self._schema = apis_schema
-  Apis.super.new(self, properties)
+  Apis.super.new(self, properties, events_handler)
 end
 
 function Apis:find_all()

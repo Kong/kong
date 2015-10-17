@@ -17,9 +17,9 @@
 --   `KONG_<CONTEXT_NAME>_TIME`: time taken by Kong to execute all the plugins for this context
 --
 -- @see https://github.com/openresty/lua-nginx-module#ngxctx
-
-local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
+local utils = require "kong.tools.utils"
+local cluster = require "kong.core.cluster"
 local resolver = require "kong.core.resolver"
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
@@ -33,6 +33,7 @@ end
 return {
   init_worker = function()
     reports.init_worker()
+    cluster.init_worker()
   end,
   certificate = function()
     ngx.ctx.api = certificate.execute()

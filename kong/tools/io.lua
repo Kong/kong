@@ -26,7 +26,7 @@ end
 -- @param command OS command to execute
 -- @return string containing command output (both stdout and stderr)
 -- @return exitcode
-function _M.os_execute(command)
+function _M.os_execute(command, preserve_output)
   local n = os.tmpname() -- get a temporary file name to store output
   local f = os.tmpname() -- get a temporary file name to store script
   _M.write_to_file(f, command)
@@ -34,7 +34,7 @@ function _M.os_execute(command)
   local result = _M.read_file(n)
   os.remove(n)
   os.remove(f)
-  return string.gsub(string.gsub(result, "^"..f..":[%s%w]+:%s*", ""), "[%\r%\n]", ""), exit_code / 256
+  return preserve_output and result or string.gsub(string.gsub(result, "^"..f..":[%s%w]+:%s*", ""), "[%\r%\n]", ""), exit_code / 256
 end
 
 ---
@@ -84,6 +84,7 @@ function _M.write_to_file(path, value)
   file:close()
   return true
 end
+
 
 --- Get the filesize.
 -- @param path path to file to check

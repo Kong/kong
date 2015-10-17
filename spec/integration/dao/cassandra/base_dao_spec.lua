@@ -787,6 +787,53 @@ describe("Cassandra", function()
     end)
 
     --
+    -- Nodes tests
+    --
+
+    describe("Nodes", function()
+
+      setup(function()
+        spec_helper.drop_db()
+        spec_helper.seed_db(100)
+      end)
+
+      describe(":insert()", function()
+        local node, err = dao_factory.nodes:insert({
+          cluster_listening_address = "wot.hello.com:1111",
+          name = "wot"
+        })
+        assert.falsy(err)
+        assert.truthy(node)
+        assert.equal("wot.hello.com:1111", node.cluster_listening_address)
+      end)
+
+      describe(":find_by_keys() and :delete()", function()
+        local nodes, err = dao_factory.nodes:find_by_keys({
+          cluster_listening_address = "wot.hello.com:1111"
+        })
+
+        assert.falsy(err)
+        assert.truthy(nodes)
+        assert.equal(1, #nodes)
+
+        local ok, err = dao_factory.nodes:delete({
+          name = table.remove(nodes, 1).name
+        })
+
+        assert.True(ok)
+        assert.falsy(err)
+      end)
+
+      describe(":find_all()", function()
+        local nodes, err = dao_factory.nodes:find_all()
+        assert.falsy(err)
+        assert.truthy(nodes)
+        assert.equal(100, #nodes)
+      end)
+
+    end)
+
+    --
     -- Plugins configuration additional behaviour
     --
 

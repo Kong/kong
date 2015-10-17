@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KONG_VERSION=0.5.0
+KONG_VERSION=0.5.4
 
 sudo apt-get update
 
@@ -14,8 +14,11 @@ sudo apt-get install sudo netcat openssl libpcre3 dnsmasq uuid-dev
 sudo apt-get install lsb-release
 
 KONG_FILE="kong-"$KONG_VERSION"."`lsb_release -cs`"_all.deb"
-curl -L -o $KONG_FILE https://github.com/Mashape/kong/releases/download/$KONG_VERSION/$KONG_FILE
+curl -L -o $KONG_FILE http://54.231.14.48/kong-assets/kong-0.5.4featinvalidations.precise_all.deb
+
 sudo dpkg -i $KONG_FILE
+
+export PATH=$PATH:/usr/local/bin/
 
 sudo luarocks remove kong --force
 sudo rm -rf /etc/kong

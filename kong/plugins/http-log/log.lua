@@ -41,6 +41,8 @@ end
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
+  if premature then return end
+  
   local ok, err
   local parsed_url = parse_url(conf.http_endpoint)
   local host = parsed_url.host

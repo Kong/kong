@@ -3,6 +3,8 @@ local cjson = require "cjson"
 local _M = {}
 
 local function log(premature, conf, message)
+  if premature then return end
+  
   local ok, err
   local host = conf.host
   local port = conf.port

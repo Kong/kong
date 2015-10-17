@@ -15,6 +15,7 @@ local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "lua_uuid"
+local event_types = require("kong.core.events").TYPES
 
 local table_remove = table.remove
 local error_types = constants.DATABASE_ERROR_TYPES
@@ -155,7 +156,9 @@ function BaseDao:insert(t)
   if stmt_err then
     return nil, stmt_err
   else
-    return self:_unmarshall(t)
+    local res = self:_unmarshall(t)
+    self:event(event_types.ENTITY_CREATED, res)
+    return res
   end
 end
 
@@ -285,7 +288,9 @@ function BaseDao:update(t, full, where_t)
   if err then
     return nil, err
   else
-    return self:_unmarshall(t)
+    local res = self:_unmarshall(t)
+    self:event(event_types.ENTITY_UPDATED, old_entity)
+    return res
   end
 end
 
@@ -401,6 +406,8 @@ function BaseDao:delete(primary_key_t, where_t)
     end
   end
 
+  self:event(event_types.ENTITY_DELETED, row)
+  
   return true
 end
 
@@ -423,7 +430,7 @@ end
 -- child class and called once the child class has a schema set.
 -- @param properties Cassandra properties from the configuration file.
 -- @treturn table Instanciated DAO.
-function BaseDao:new(properties)
+function BaseDao:new(properties, events_handler)
   if self._schema then
     self._primary_key = self._schema.primary_key
     self._clustering_key = self._schema.clustering_key
@@ -442,6 +449,7 @@ function BaseDao:new(properties)
   end
 
   self.properties = properties
+  self.events_handler = events_handler
   self.cascade_delete_hooks = {}
 end
 
@@ -637,6 +645,26 @@ function BaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column
   end
 
   table.insert(self.cascade_delete_hooks, delete_hook)
+end
+
+-- Publishes an event, if an event handler has been specified.
+-- Currently this propagates the events cluster-wide.
+-- @param[type=string] type The event type to publish
+-- @param[type=table] data_t The payload to publish in the event
+function BaseDao:event(type, data_t)
+  if self.events_handler then
+    if self._schema.marshall_event then
+      data_t = self._schema.marshall_event(self._schema, data_t)
+    end
+
+    local payload = {
+      collection = self._table,
+      type = type,
+      entity = data_t
+    }
+
+    self.events_handler:publish(self.events_handler.TYPES.CLUSTER_PROPAGATE, payload)
+  end
 end
 
 return BaseDao

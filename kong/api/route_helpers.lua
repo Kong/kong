@@ -2,14 +2,6 @@ local stringy = require "stringy"
 
 local _M = {}
 
-function _M.get_hostname()
-  local f = io.popen ("/bin/hostname")
-  local hostname = f:read("*a") or ""
-  f:close()
-  hostname = string.gsub(hostname, "\n$", "")
-  return hostname
-end
-
 function _M.parse_status(value)
   local result = {}
   local parts = stringy.split(value, "\n")

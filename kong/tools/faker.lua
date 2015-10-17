@@ -27,6 +27,11 @@ function Faker:fake_entity(type)
       name = "rate-limiting",
       config = { second = 10 }
     }
+  elseif type == "node" then
+    return {
+      name = "random_name_"..r,
+      cluster_listening_address = "random_address_"..r
+    }
   else
     error("Entity of type "..type.." cannot be generated.")
   end
@@ -39,7 +44,7 @@ function Faker:seed(random_amount)
 
   local random_entities = {}
 
-  for _, type in ipairs({ "api", "consumer" }) do
+  for _, type in ipairs({ "api", "consumer", "node" }) do
     random_entities[type] = {}
     for i = 1, random_amount do
       table.insert(random_entities[type], self:fake_entity(type))
@@ -57,7 +62,7 @@ function Faker:insert_from_table(entities_to_insert)
   -- Insert in order (for foreign relashionships)
   -- 1. consumers and APIs
   -- 2. credentials, which need references to inserted apis and consumers
-  for _, type in ipairs({ "api", "consumer", "plugin", "oauth2_credential", "basicauth_credential", "keyauth_credential", "acl", "jwt_secret", "hmacauth_credential" }) do
+  for _, type in ipairs({ "api", "consumer", "plugin", "node", "oauth2_credential", "basicauth_credential", "keyauth_credential", "acl", "jwt_secret", "hmacauth_credential" }) do
     if entities_to_insert[type] then
       for i, entity in ipairs(entities_to_insert[type]) do
 

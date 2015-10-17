@@ -2,10 +2,10 @@
 
 local Migrations = require "kong.tools.migrations"
 local constants = require "kong.constants"
-local cutils = require "kong.cli.utils"
+local logger = require "kong.cli.utils.logger"
 local utils = require "kong.tools.utils"
 local input = require "kong.cli.utils.input"
-local config = require "kong.tools.config_loader"
+local config_loader = require "kong.tools.config_loader"
 local dao = require "kong.tools.dao_loader"
 local lapp = require "lapp"
 local args = lapp(string.format([[
@@ -28,8 +28,7 @@ if args.command == "migrations" then
   lapp.quit("Missing required <command>.")
 end
 
-local config_path = cutils.get_kong_config_path(args.config)
-local configuration = config.load(config_path)
+local configuration = config_loader.load_default(args.config)
 local dao_factory = dao.load(configuration)
 local migrations = Migrations(dao_factory, configuration)
 
@@ -37,7 +36,8 @@ local kind = args.type
 if kind ~= "all" and kind ~= "core" then
   -- Assuming we are trying to run migrations for a plugin
   if not utils.table_contains(configuration.plugins_available, kind) then
-    cutils.logger:error_exit("No \""..kind.."\" plugin enabled in the configuration.")
+    logger:error("No \""..kind.."\" plugin enabled in the configuration.")
+    os.exit(1)
   end
 end
 
@@ -45,105 +45,111 @@ if args.command == "list" then
 
   local migrations, err = dao_factory.migrations:get_migrations()
   if err then
-    cutils.logger:error_exit(err)
+    logger:error(err)
+    os.exit(1)
   elseif migrations then
-    cutils.logger:info(string.format(
+    logger:info(string.format(
       "Executed migrations for keyspace %s (%s):",
-      cutils.colors.yellow(dao_factory.properties.keyspace),
+      logger.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
 
     for _, row in ipairs(migrations) do
-      cutils.logger:info(string.format("%s: %s",
-        cutils.colors.yellow(row.id),
+      logger:info(string.format("%s: %s",
+        logger.colors.yellow(row.id),
         table.concat(row.migrations, ", ")
       ))
     end
   else
-    cutils.logger:info(string.format(
+    logger:info(string.format(
       "No migrations have been run yet for %s on keyspace: %s",
-      cutils.colors.yellow(dao_factory.type),
-      cutils.colors.yellow(dao_factory.properties.keyspace)
+      logger.colors.yellow(dao_factory.type),
+      logger.colors.yellow(dao_factory.properties.keyspace)
     ))
   end
 
 elseif args.command == "up" then
 
   local function before(identifier)
-    cutils.logger:info(string.format(
+    logger:info(string.format(
       "Migrating %s on keyspace \"%s\" (%s)",
-      cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory.properties.keyspace),
+      logger.colors.yellow(identifier),
+      logger.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
 
   local function on_each_success(identifier, migration)
-    cutils.logger:info(string.format(
+    logger:info(string.format(
       "%s migrated up to: %s",
       identifier,
-      cutils.colors.yellow(migration.name)
+      logger.colors.yellow(migration.name)
     ))
   end
 
   if kind == "all" then
     local err = migrations:run_all_migrations(before, on_each_success)
     if err then
-      cutils.logger:error_exit(err)
+      logger:error(err)
+      os.exit(1)
     end
   else
     local err = migrations:run_migrations(kind, before, on_each_success)
     if err then
-      cutils.logger:error_exit(err)
+      logger:error(err)
+      os.exit(1)
     end
   end
 
-  cutils.logger:success("Schema up to date")
+  logger:success("Schema up to date")
 
 elseif args.command == "down" then
 
   if kind == "all" then
-    cutils.logger:error_exit("You must specify 'core' or a plugin name for this command.")
+    logger:error("You must specify 'core' or a plugin name for this command.")
+    os.exit(1)
   end
 
   local function before(identifier)
-    cutils.logger:info(string.format(
+    logger:info(string.format(
       "Rollbacking %s in keyspace \"%s\" (%s)",
-      cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory.properties.keyspace),
+      logger.colors.yellow(identifier),
+      logger.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
 
   local function on_success(identifier, migration)
     if migration then
-      cutils.logger:success("\""..identifier.."\" rollbacked: "..cutils.colors.yellow(migration.name))
+      logger:success("\""..identifier.."\" rollbacked: "..logger.colors.yellow(migration.name))
     else
-      cutils.logger:success("No migration to rollback")
+      logger:success("No migration to rollback")
     end
   end
 
   local err = migrations:run_rollback(kind, before, on_success)
   if err then
-    cutils.logger:error_exit(err)
+    logger:error(err)
+    os.exit(1)
   end
 
 elseif args.command == "reset" then
 
   local keyspace = dao_factory.properties.keyspace
 
-  cutils.logger:info(string.format(
+  logger:info(string.format(
     "Resetting \"%s\" keyspace (%s)",
-    cutils.colors.yellow(keyspace),
+    logger.colors.yellow(keyspace),
     dao_factory.type
   ))
 
   if input.confirm("Are you sure? You will lose all of your data, this operation is irreversible.") then
     local _, err = dao_factory.migrations:drop_keyspace(keyspace)
     if err then
-      cutils.logger:error_exit(err)
+      logger:error(err)
+      os.exit(1)
     else
-      cutils.logger:success("Keyspace successfully reset")
+      logger:success("Keyspace successfully reset")
     end
   end
 else

@@ -22,6 +22,8 @@ end
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
+  if premature then return end
+  
   message = cjson.encode(message).."\n"
 
   local fd = fd_util.get_fd(conf.path)

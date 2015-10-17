@@ -20,6 +20,18 @@ local string_format = string.format
 
 local _M = {}
 
+
+--- Retrieves the hostname of the local machine
+-- @return string  The hostname
+function _M.get_hostname()
+  local f = io.popen ("/bin/hostname")
+  local hostname = f:read("*a") or ""
+  f:close()
+  hostname = string.gsub(hostname, "\n$", "")
+  return hostname
+end
+
+
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()

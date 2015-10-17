@@ -6,9 +6,12 @@ return {
                "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog", "loggly", "datadog"}
   },
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
+  ["listen_address"] = {type = "string", default = "0.0.0.0"},
   ["proxy_port"] = {type = "number", default = 8000},
   ["proxy_ssl_port"] = {type = "number", default = 8443},
   ["admin_api_port"] = {type = "number", default = 8001},
+  ["cluster_listening_port"] = {type = "number", default = 7946},
+  ["cluster_rpc_listening_port"] = {type = "number", default = 7373},
   ["dns_resolver"] = {type = "string", default = "dnsmasq", enum = {"server", "dnsmasq"}},
   ["dns_resolvers_available"] = {
     type = "table",
@@ -25,6 +28,14 @@ return {
           ["port"] = {type = "number", default = 8053}
         }
       }
+    }
+  },
+  ["cluster"] = {
+    type = "table",
+    content = {
+      ["auto-join"] = {type = "boolean", default = true},
+      ["advertise"] = {type = "string", nullable = true},
+      ["encrypt"] = {type = "string", nullable = true}
     }
   },
   ["database"] = {type = "string", default = "cassandra"},
@@ -53,10 +64,9 @@ return {
       }
     }
   },
-  ["database_cache_expiration"] = {type = "number", default = 5},
   ["ssl_cert_path"] = {type = "string", nullable = true},
   ["ssl_key_path"] = {type = "string", nullable = true},
-  ["send_anonymous_reports"] = {type = "boolean", default = false},
+  ["send_anonymous_reports"] = {type = "boolean", default = true},
   ["memory_cache_size"] = {type = "number", default = 128, min = 32},
   ["nginx"] = {type = "string", nullable = true}
 }

@@ -2,7 +2,7 @@ language: erlang
 
 env:
   global:
-    - CASSANDRA_VERSION=2.1.11
+    - CASSANDRA_VERSION=2.2.4
   matrix:
     - LUA=lua5.1
 
@@ -16,5 +16,6 @@ install:
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"
   - "make lint"
+  - "cat nginx_tmp/logs/error.log"
 
 after_success: "luacov-coveralls -i kong"
