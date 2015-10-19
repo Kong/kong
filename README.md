@@ -10,7 +10,6 @@ Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-
 
 [![Gitter Badge][gitter-badge]][gitter-url]
 
-
 ## Summary
 
 - [**Features**](#features)
@@ -85,6 +84,12 @@ Resources:
 - [Kong Intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [Deploy Kong with Azure Resource Manager](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
 
+Videos:
+
+- [VIDEO - Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
+- [VIDEO - OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
+- [VIDEO - Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
+
 Tools:
 
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
@@ -101,7 +106,7 @@ You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape
 
 ## Development
 
-If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation.
+If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation. The `next` branch holds the latest unreleased source code.
 
 #### Vagrant
 
@@ -109,11 +114,13 @@ You can use a Vagrant box running Kong and Cassandra that you can find at [Masha
 
 #### Source Install
 
-First, you will need to already have Kong installed. Install Kong by following one of the methods described at [getkong.org/download](http://getkong.org/download). Then, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running. These steps will override your Kong installation with the latest source from the master branch:
+First, you will need to already have Kong installed. Install Kong by following one of the methods described at [getkong.org/download](http://getkong.org/download). Then, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running. These steps will override your Kong installation with the latest source code:
 
 ```shell
+# clone the repo and use the next branch
 $ git clone https://github.com/Mashape/kong
 $ cd kong/
+$ git checkout next
 
 # Build and install Kong globally using Luarocks, overriding the version previously installed
 $ [sudo] make install
