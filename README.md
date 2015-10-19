@@ -81,6 +81,7 @@ Resources:
 - [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices)
 - [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
+- [Kong tutorial in Japanese](http://www.ryuzee.com/contents/blog/7048)
 
 Videos:
 
