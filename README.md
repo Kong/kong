@@ -74,13 +74,15 @@ Kong comes in many shapes. While this repository contains its core's source code
 
 Resources:
 
-- [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
-- [Kong Getting Started Tutorials in Japanese](http://dev.classmethod.jp/etc/kong-api-aggregator/)
-- [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
-- [How to Create your own Plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
-- [Instaclustr Partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices)
+- [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
+- [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
+- [How to create your own Kong plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
+- [Instaclustr partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
+- [Kong intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
+- [Kong tutorial in Japanese 1](http://dev.classmethod.jp/etc/kong-api-aggregator/)
+- [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
 
 Videos:
 
