@@ -18,6 +18,7 @@ local split = stringy.split
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 local DATE = "date"
+local X_DATE = "x-date"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 
 local _M = {}
@@ -77,7 +78,6 @@ local function create_hash(request, hmac_params, headers)
       signing_string = signing_string.."\n"
     end       
   end
-
   return ngx_sha1(hmac_params.secret, signing_string)
 end
 
@@ -109,14 +109,14 @@ local function load_credential(username)
   return credential
 end
 
-local function validate_clock_skew(headers, allowed_clock_skew)
-  local date = headers[DATE]
+local function validate_clock_skew(headers, date_header_name, allowed_clock_skew)  
+  local date = headers[date_header_name]
   if not date then
     return false
   end
 
-  local requestTime, err = ngx_parse_time(date)
-  if err then
+  local requestTime = ngx_parse_time(date)
+  if not requestTime then
     return false
   end
 
@@ -136,8 +136,8 @@ function _M.execute(conf)
   end
 
   -- validate clock skew
-  if not validate_clock_skew(headers, conf.clock_skew) then
-    responses.send_HTTP_FORBIDDEN("HMAC signature cannot be verified, a valid date field is required for HMAC Authentication")
+  if not (validate_clock_skew(headers, X_DATE, conf.clock_skew) or validate_clock_skew(headers, DATE, conf.clock_skew)) then
+      responses.send_HTTP_FORBIDDEN("HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication")
   end
   
   -- retrieve hmac parameter from Proxy-Authorization header
@@ -174,7 +174,7 @@ function _M.execute(conf)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.req.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-  ngx.ctx.authenticated_entity = secret
+  ngx.ctx.authenticated_entity = credential
 end
 
 return _M
