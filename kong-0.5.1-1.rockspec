@@ -70,6 +70,9 @@ build = {
     ["kong.tools.migrations"] = "kong/tools/migrations.lua",
     ["kong.tools.http_client"] = "kong/tools/http_client.lua",
     ["kong.tools.database_cache"] = "kong/tools/database_cache.lua",
+    ["kong.tools.config_defaults"] = "kong/tools/config_defaults.lua",
+    ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
+    ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
 
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
     ["kong.resolver.access"] = "kong/resolver/access.lua",
@@ -214,7 +217,7 @@ build = {
     ["kong.plugins.jwt.api"] = "kong/plugins/jwt/api.lua",
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
-    
+
     ["kong.plugins.hmac-auth.migrations.cassandra"] = "kong/plugins/hmac-auth/migrations/cassandra.lua",
     ["kong.plugins.hmac-auth.handler"] = "kong/plugins/hmac-auth/handler.lua",
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",

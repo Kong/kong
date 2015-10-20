@@ -52,10 +52,6 @@
 # admin_api_port: 8001
 
 ######
-## Port on which Kong will start dnsmasq.
-# dnsmasq_port: 8053
-
-######
 ## Specify which database to use from the databases_available property.
 # database: cassandra
 
