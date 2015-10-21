@@ -92,12 +92,13 @@ Videos:
 
 Tools:
 
+- [Kongfig](https://github.com/mybuilder/kongfig)
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
-- [Kong Admin GUI in JS](https://github.com/rsdevigo/jungle)
-- [Kong Admin GUI in Py](https://github.com/vikingco/django-kong-admin)
+- [Kong GUI in JS](https://github.com/rsdevigo/jungle)
+- [Kong GUI in Py](https://github.com/vikingco/django-kong-admin)
 - [Kong UI](https://github.com/msaraf/kong-ui)
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
-- [Python Client for Kong API](https://pypi.python.org/pypi/python-kong/)
+- [Python Client for Kong](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
 
 ## Roadmap
