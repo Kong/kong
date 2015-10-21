@@ -76,7 +76,9 @@ local function get_redirect_uri(client_id)
 end
 
 local function is_https()
-  return ngx.var.scheme:lower() == "https"
+  local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+
+  return ngx.var.scheme:lower() == "https" or (forwarded_proto_header and forwarded_proto_header:lower() == "https")
 end
 
 local function retrieve_parameters()
