@@ -6,8 +6,8 @@ local _M = {}
 
 function _M.execute(conf)
   local consumer_id
-  if ngx.ctx.authenticated_entity then
-    consumer_id = ngx.ctx.authenticated_entity.consumer_id
+  if ngx.ctx.authenticated_credential then
+    consumer_id = ngx.ctx.authenticated_credential.consumer_id
   else
     return responses.send_HTTP_FORBIDDEN("Cannot identify the consumer, add an authentication plugin to use the ACL plugin")
   end
