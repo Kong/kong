@@ -3,12 +3,14 @@
 -- @see http://nginx.org/en/docs/beginners_guide.html#control
 
 local IO = require "kong.tools.io"
+local utils = require "kong.tools.utils"
 local cutils = require "kong.cli.utils"
 local ssl = require "kong.cli.utils.ssl"
 local constants = require "kong.constants"
 local syslog = require "kong.tools.syslog"
 local socket = require "socket"
 local dnsmasq = require "kong.cli.utils.dnsmasq"
+local stringy = require "stringy"
 
 -- Cache config path, parsed config and DAO factory
 local kong_config_path
@@ -43,6 +45,9 @@ local function is_openresty(path_to_check)
     if code ~= 0 then
       cutils.logger:error_exit(out)
     end
+
+    print("Version found is: "..out)
+
     return out:match("^nginx version: ngx_openresty/")
         or out:match("^nginx version: openresty/")
         or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus%-extras.+%)")
@@ -62,9 +67,25 @@ local NGINX_SEARCH_PATHS = {
 -- Try to find an `nginx` executable in defined paths, or in $PATH
 -- @return Path to found executable or nil if none was found
 local function find_nginx()
-  for i = 1, #NGINX_SEARCH_PATHS + 1 do
-    local prefix = NGINX_SEARCH_PATHS[i] and NGINX_SEARCH_PATHS[i] or ""
+  local env_path_variable = os.getenv("PATH")
+
+  print("PATH variable is: "..env_path_variable)
+
+  local env_paths = {}
+  if env_path_variable and stringy.strip(env_path_variable) ~= "" then
+    env_paths = stringy.split(env_path_variable, ":")
+  end
+
+  local inspect = require "inspect"
+  print("Parsed PATH variable is: ")
+  print(inspect(env_paths))
+
+  local search_paths = utils.table_merge(env_paths, NGINX_SEARCH_PATHS)
+
+  for _, v in ipairs(search_paths) do
+    local prefix = stringy.endswith(v, "/") and v or v.."/"
     local to_check = prefix..NGINX_BIN
+    print("Checking in "..to_check)
     if is_openresty(to_check) then
       return to_check
     end
