@@ -1,6 +1,14 @@
 local _M = {}
 
 function _M.serialize(ngx)
+  local authenticated_entity
+  if ngx.ctx.authenticated_credential ~= nil then
+    authenticated_entity = {
+      id = ngx.ctx.authenticated_credential.id,
+      consumer_id = ngx.ctx.authenticated_credential.consumer_id
+    }
+  end
+
   return {
     request = {
       uri = ngx.var.request_uri,
@@ -22,7 +30,7 @@ function _M.serialize(ngx)
       proxy = ngx.var.upstream_response_time * 1000,
       request = ngx.var.request_time * 1000
     },
-    authenticated_entity = ngx.ctx.authenticated_entity,
+    authenticated_entity = authenticated_entity,
     api = ngx.ctx.api,
     client_ip = ngx.var.remote_addr,
     started_at = ngx.req.start_time() * 1000
