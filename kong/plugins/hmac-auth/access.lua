@@ -37,7 +37,7 @@ local function retrieve_hmac_fields(request, headers, header_name, conf)
     local m, err = iterator()
     if err then
       ngx_log(ngx.ERR, err)
-      return 
+      return
     end
 
     if m and #m >= 4 then
@@ -67,7 +67,7 @@ local function create_hash(request, hmac_params, headers)
     if not header_value then
       if header == "request-line" then
         -- request-line in hmac headers list
-        signing_string = signing_string..split(request.raw_header(), "\r\n")[1] 
+        signing_string = signing_string..split(request.raw_header(), "\r\n")[1]
       else
         signing_string = signing_string..header..":"
       end
@@ -76,7 +76,7 @@ local function create_hash(request, hmac_params, headers)
     end
     if i < count then
       signing_string = signing_string.."\n"
-    end       
+    end
   end
   return ngx_sha1(hmac_params.secret, signing_string)
 end
@@ -109,7 +109,7 @@ local function load_credential(username)
   return credential
 end
 
-local function validate_clock_skew(headers, date_header_name, allowed_clock_skew)  
+local function validate_clock_skew(headers, date_header_name, allowed_clock_skew)
   local date = headers[date_header_name]
   if not date then
     return false
@@ -125,7 +125,7 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
     return false
   end
   return true
-end  
+end
 
 function _M.execute(conf)
   local headers = ngx_set_headers();
@@ -139,7 +139,7 @@ function _M.execute(conf)
   if not (validate_clock_skew(headers, X_DATE, conf.clock_skew) or validate_clock_skew(headers, DATE, conf.clock_skew)) then
       responses.send_HTTP_FORBIDDEN("HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication")
   end
-  
+
   -- retrieve hmac parameter from Proxy-Authorization header
   local hmac_params = retrieve_hmac_fields(ngx.req, headers, PROXY_AUTHORIZATION, conf)
   -- Try with the authorization header
@@ -154,7 +154,7 @@ function _M.execute(conf)
   local credential = load_credential(hmac_params.username)
   if not credential then
     responses.send_HTTP_FORBIDDEN(SIGNATURE_NOT_VALID)
-  end    
+  end
   hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
     ngx.ctx.stop_phases = true -- interrupt other phases of this request
@@ -174,7 +174,11 @@ function _M.execute(conf)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.req.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+<<<<<<< HEAD
   ngx.ctx.authenticated_entity = credential
+=======
+  ngx.ctx.authenticated_credential = credential
+>>>>>>> release/0.5.2
 end
 
 return _M

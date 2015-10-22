@@ -15,6 +15,16 @@
 
 - In the API, the `next` link is not being displayed anymore if there are no more entities to return. [#635](https://github.com/Mashape/kong/pull/635)
 
+## [0.5.2] - 2015/10/21
+
+A few fixes requested by the community!
+
+### Fixed
+
+- Plugins
+- OAuth2: can detect that the originating protocol for a request was HTTPS through the `X-Forwarded-Proto` header and work behind another reverse proxy (load balancer). [#650](https://github.com/Mashape/kong/pull/650)
+- HMAC signature: support for `X-Date` header to sign the request for usage in browsers (since the `Date` header is protected). [#641](https://github.com/Mashape/kong/issues/641)
+
 ## [0.5.1] - 2015/10/13
 
 Fixing a few glitches we let out with 0.5.0!
@@ -350,7 +360,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.5.1...next
+[unreleased]: https://github.com/mashape/kong/compare/0.5.2...next
+[0.5.2]: https://github.com/mashape/kong/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/mashape/kong/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/mashape/kong/compare/0.4.2...0.5.0
 [0.4.2]: https://github.com/mashape/kong/compare/0.4.1...0.4.2

@@ -177,7 +177,7 @@ function _M.exec_plugins_access()
   for _, plugin_t in ipairs(plugins) do
     if ngx.ctx.api then
       ngx.ctx.plugin[plugin_t.name] = load_plugin(ngx.ctx.api.id, nil, plugin_t.name)
-      local consumer_id = ngx.ctx.authenticated_entity and ngx.ctx.authenticated_entity.consumer_id or nil
+      local consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id or nil
       if consumer_id then
         local app_plugin = load_plugin(ngx.ctx.api.id, consumer_id, plugin_t.name)
         if app_plugin then

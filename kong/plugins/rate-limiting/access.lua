@@ -7,9 +7,9 @@ local _M = {}
 local function get_identifier()
   local identifier
 
-  -- Consumer is identified by ip address or authenticated_entity id
-  if ngx.ctx.authenticated_entity then
-    identifier = ngx.ctx.authenticated_entity.id
+  -- Consumer is identified by ip address or authenticated_credential id
+  if ngx.ctx.authenticated_credential then
+    identifier = ngx.ctx.authenticated_credential.id
   else
     identifier = ngx.var.remote_addr
   end
@@ -56,7 +56,7 @@ end
 function _M.execute(conf)
   local current_timestamp = timestamp.get_utc()
 
-  -- Consumer is identified by ip address or authenticated_entity id
+  -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier()
 
   local api_id = ngx.ctx.api.id
