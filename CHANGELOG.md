@@ -21,9 +21,10 @@ A few fixes requested by the community!
 
 ### Fixed
 
-- Plugins
-- OAuth2: can detect that the originating protocol for a request was HTTPS through the `X-Forwarded-Proto` header and work behind another reverse proxy (load balancer). [#650](https://github.com/Mashape/kong/pull/650)
-- HMAC signature: support for `X-Date` header to sign the request for usage in browsers (since the `Date` header is protected). [#641](https://github.com/Mashape/kong/issues/641)
+- Kong properly search the `nginx` in your $PATH variable.
+- Plugins:
+  - OAuth2: can detect that the originating protocol for a request was HTTPS through the `X-Forwarded-Proto` header and work behind another reverse proxy (load balancer). [#650](https://github.com/Mashape/kong/pull/650)
+  - HMAC signature: support for `X-Date` header to sign the request for usage in browsers (since the `Date` header is protected). [#641](https://github.com/Mashape/kong/issues/641)
 
 ## [0.5.1] - 2015/10/13
 

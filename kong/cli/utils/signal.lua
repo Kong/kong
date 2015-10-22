@@ -37,33 +37,28 @@ end
 -- @param path_to_check Path to the binary
 -- @return true or false
 local function is_openresty(path_to_check)
-  if IO.file_exists(path_to_check) then
-    local cmd = path_to_check.." -v"
-    local out, code = IO.os_execute(cmd)
-    if code ~= 0 then
-      cutils.logger:error_exit(out)
-    end
-    return out:match("^nginx version: ngx_openresty/")
-        or out:match("^nginx version: openresty/")
-        or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus%-extras.+%)")
-  end
-  return false
+  local cmd = path_to_check.." -v"
+  local out = IO.os_execute(cmd)
+  return out:match("^nginx version: ngx_openresty/")
+      or out:match("^nginx version: openresty/")
+      or out:match("^nginx version: nginx/[%w.%s]+%(nginx%-plus%-extras.+%)")
 end
 
--- Paths where to search for an `nginx` executable in addition to the usual $PATH
+-- Preferred paths where to search for an `nginx` executable in priority to the $PATH
 local NGINX_BIN = "nginx"
 local NGINX_SEARCH_PATHS = {
   "/usr/local/openresty/nginx/sbin/",
   "/usr/local/opt/openresty/bin/",
   "/usr/local/bin/",
-  "/usr/sbin/"
+  "/usr/sbin/",
+  "" -- to check the $PATH
 }
 
 -- Try to find an `nginx` executable in defined paths, or in $PATH
 -- @return Path to found executable or nil if none was found
 local function find_nginx()
-  for i = 1, #NGINX_SEARCH_PATHS + 1 do
-    local prefix = NGINX_SEARCH_PATHS[i] and NGINX_SEARCH_PATHS[i] or ""
+  for i = 1, #NGINX_SEARCH_PATHS do
+    local prefix = NGINX_SEARCH_PATHS[i]
     local to_check = prefix..NGINX_BIN
     if is_openresty(to_check) then
       return to_check
