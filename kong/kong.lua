@@ -104,9 +104,6 @@ local function init_plugins()
     return priority_a > priority_b
   end)
 
-  local inspect = require "inspect"
-  print(inspect(loaded_plugins))
-
   -- resolver is always the first plugin as it is the one retrieving any needed information
   table.insert(loaded_plugins, 1, {
     resolver = true,
