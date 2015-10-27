@@ -1,6 +1,4 @@
----
 -- IO related utility functions
---
 
 local yaml = require "yaml"
 local path = require("path").new("/")
