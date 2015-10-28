@@ -86,7 +86,7 @@ local function send_response(status_code)
 
   -- Send a JSON response for the closure's status code with the given content.
   -- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
-  -- @see http://wiki.nginx.org/HttpLuaModule
+  -- @see https://github.com/openresty/lua-nginx-module
   -- @param content (Optional) The content to send as a response.
   -- @param raw     (Optional) A boolean defining if the `content` should not be serialized to JSON
   --                             This useed to send text as JSON in some edge-cases of cjson.
@@ -140,8 +140,8 @@ local closure_cache = {}
 -- used to send any response.
 -- If the `status_code` parameter is in the 5xx range, it is expectde that the `content` parameter be the error encountered. It will be logged and the response body will be empty. The user will just receive a 500 status code.
 -- Will call `ngx.say` and `ngx.exit`, terminating the current context.
--- @see ngx.say()
--- @see ngx.exit()
+-- @see ngx.say
+-- @see ngx.exit
 -- @param[type=number] status_code HTTP status code to send
 -- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property. Except if the `raw` parameter is set to `true`.
 -- @param[type=boolean] raw If true, send the `body` as it is.
