@@ -94,9 +94,11 @@ describe("JWT API", function()
 
     describe("PATCH", function()
 
-      it("[SUCCESS] should not be supported", function()
-        local _, status = http_client.patch(BASE_URL..jwt_secret.id, {key = "alice"})
-        assert.equal(405, status)
+      it("[SUCCESS] should update a credential", function()
+        local response, status = http_client.patch(BASE_URL..jwt_secret.id, {key = "alice",secret = "newsecret"})
+        assert.equal(200, status)
+        jwt_secret = json.decode(response)
+        assert.equal("newsecret", jwt_secret.secret)
       end)
 
     end)
