@@ -1,7 +1,7 @@
 # Microservice & API Management Layer
 [![][kong-logo]][kong-url]
 
-Kong [was created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) at [Mashape](https://www.mashape.com) to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
+Kong was [created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) to power the API Marketplace at [Mashape](https://www.mashape.com) to secure, manage and extend Microservices & APIs, while handling billions of requests per month. Kong is powered by the battle-tested tech of **NGINX** with a focus on scalability, high performance & reliability.
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
@@ -83,6 +83,7 @@ Resources:
 - [Kong intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [Kong tutorial in Japanese 1](http://dev.classmethod.jp/etc/kong-api-aggregator/)
 - [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
+- [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
 
 Videos:
 
