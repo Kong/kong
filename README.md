@@ -108,7 +108,9 @@ You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape
 
 ## Development
 
-If you are planning on developing on Kong (writing your own plugin or contribute to the core), you'll need a development installation. The `next` branch holds the latest unreleased source code.
+If you are planning on developing on Kong, you'll need a development installation. The `next` branch holds the latest unreleased source code.
+
+You can read more about writing your own plugins in the [Plugin Development Guide](https://getkong.org/docs/latest/plugin-development/), or browse an online version of Kong's source code documentation in the [Public Lua API Reference](https://getkong.org/docs/0.5.x/lua-reference/).
 
 #### Vagrant
 
