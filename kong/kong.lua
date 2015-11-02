@@ -160,7 +160,7 @@ function _M.exec_plugins_certificate()
     end
 
     local plugin = ngx.ctx.plugin[plugin_t.name]
-    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
+    if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
       plugin_t.handler:certificate(plugin and plugin.config or {})
     end
   end
@@ -187,7 +187,7 @@ function _M.exec_plugins_access()
     end
 
     local plugin = ngx.ctx.plugin[plugin_t.name]
-    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
+    if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
       plugin_t.handler:access(plugin and plugin.config or {})
     end
   end
@@ -211,7 +211,7 @@ function _M.exec_plugins_header_filter()
   -- Setting a property that will be available for every plugin
   ngx.ctx.proxy_ended_at = start
 
-  if not ngx.ctx.stop_phases then
+  if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases then
     ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
 
     for _, plugin_t in ipairs(plugins) do
@@ -227,7 +227,7 @@ end
 -- Calls `body_filter()` on every loaded plugin
 function _M.exec_plugins_body_filter()
   local start = get_now()
-  if not ngx.ctx.stop_phases then
+  if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases then
     for _, plugin_t in ipairs(plugins) do
       local plugin = ngx.ctx.plugin[plugin_t.name]
       if plugin then
@@ -240,7 +240,7 @@ end
 
 -- Calls `log()` on every loaded plugin
 function _M.exec_plugins_log()
-  if not ngx.ctx.stop_phases then
+  if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases then
     for _, plugin_t in ipairs(plugins) do
       local plugin = ngx.ctx.plugin[plugin_t.name]
       if plugin or plugin_t.reports then
