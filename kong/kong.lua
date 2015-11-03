@@ -160,7 +160,7 @@ function _M.exec_plugins_certificate()
     end
 
     local plugin = ngx.ctx.plugin[plugin_t.name]
-    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
+    if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
       plugin_t.handler:certificate(plugin and plugin.config or {})
     end
   end
@@ -187,7 +187,7 @@ function _M.exec_plugins_access()
     end
 
     local plugin = ngx.ctx.plugin[plugin_t.name]
-    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
+    if ngx.ctx.stop_phases ~= nil and not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
       plugin_t.handler:access(plugin and plugin.config or {})
     end
   end
