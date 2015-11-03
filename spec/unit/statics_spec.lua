@@ -70,6 +70,7 @@ nginx_working_dir: /usr/local/kong/
 proxy_port: 8000
 proxy_ssl_port: 8443
 admin_api_port: 8001
+consumer_api_port: 8002
 
 ## Secondary port configuration
 dnsmasq_port: 8053
@@ -259,6 +260,34 @@ nginx: |
       # Do not remove, additional configuration placeholder for some plugins
       # {{additional_configuration}}
     }
+
+    server {
+      listen {{consumer_api_port}};
+
+      location / {
+        default_type application/json;
+        content_by_lua '
+          ngx.header["Access-Control-Allow-Origin"] = "*"
+          if ngx.req.get_method() == "OPTIONS" then
+            ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
+            ngx.exit(204)
+          end
+          local lapis = require "lapis"
+          lapis.serve("kong.consumer_api.app")
+        ';
+      }
+
+      location /nginx_status {
+        internal;
+        stub_status;
+      }
+
+      location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+      }
+
+    }
+
   }
 ]], configuration)
     end)
