@@ -119,6 +119,7 @@ function _M.start_tcp_server(port, ...)
       local line, err = client:receive()
       if not err then client:send(line .. "\n") end
       client:close()
+      server:close()
       return line
     end;
   }, port)
@@ -158,6 +159,7 @@ function _M.start_http_server(port, ...)
 
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
+      server:close()
       return lines
     end;
   }, port)
