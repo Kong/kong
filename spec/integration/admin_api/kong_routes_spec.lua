@@ -2,6 +2,8 @@ local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
 local utils = require "kong.tools.utils"
+local env = spec_helper.get_env() -- test environment
+local dao_factory = env.dao_factory
 
 describe("Admin API", function()
 
@@ -60,15 +62,25 @@ describe("Admin API", function()
       assert.are.equal(200, status)
       local body = json.decode(response)
       assert.truthy(body)
+      assert.are.equal(2, utils.table_size(body))
 
-      assert.are.equal(7, utils.table_size(body))
-      assert.truthy(body.connections_accepted)
-      assert.truthy(body.connections_active)
-      assert.truthy(body.connections_handled)
-      assert.truthy(body.connections_reading)
-      assert.truthy(body.connections_writing)
-      assert.truthy(body.connections_waiting)
-      assert.truthy(body.total_requests)
+      -- Database stats
+      -- Removing migrations DAO
+      dao_factory.daos.migrations = nil
+      assert.are.equal(utils.table_size(dao_factory.daos), utils.table_size(body.database))
+      for k, _ in pairs(dao_factory.daos) do
+        assert.truthy(body.database[k])
+      end
+
+      -- Server stats
+      assert.are.equal(7, utils.table_size(body.server))
+      assert.truthy(body.server.connections_accepted)
+      assert.truthy(body.server.connections_active)
+      assert.truthy(body.server.connections_handled)
+      assert.truthy(body.server.connections_reading)
+      assert.truthy(body.server.connections_writing)
+      assert.truthy(body.server.connections_waiting)
+      assert.truthy(body.server.total_requests)
     end)
   end)
 end)
