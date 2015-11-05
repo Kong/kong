@@ -16,8 +16,8 @@ dependencies = {
 
   "uuid ~> 0.2-1",
   "luatz ~> 0.3-1",
-  "yaml ~> 1.1.1-1",
-  "lapis ~> 1.1.0-1",
+  "yaml ~> 1.1.2-1",
+  "lapis ~> 1.3.0-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.3.6-0",
   "multipart ~> 0.2-1",
@@ -27,8 +27,8 @@ dependencies = {
   "lbase64 ~> 20120820-1",
   "lua-resty-iputils ~> 0.2.0-1",
 
-  "luasocket ~> 2.0.2-5",
-  "lrexlib-pcre ~> 2.7.2-1",
+  "luasocket ~> 2.0.2-6",
+  "lrexlib-pcre ~> 2.8.0-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1"
 }
@@ -70,6 +70,9 @@ build = {
     ["kong.tools.migrations"] = "kong/tools/migrations.lua",
     ["kong.tools.http_client"] = "kong/tools/http_client.lua",
     ["kong.tools.database_cache"] = "kong/tools/database_cache.lua",
+    ["kong.tools.config_defaults"] = "kong/tools/config_defaults.lua",
+    ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
+    ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
 
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
     ["kong.resolver.access"] = "kong/resolver/access.lua",
@@ -110,6 +113,10 @@ build = {
     ["kong.plugins.key-auth.schema"] = "kong/plugins/key-auth/schema.lua",
     ["kong.plugins.key-auth.api"] = "kong/plugins/key-auth/api.lua",
     ["kong.plugins.key-auth.daos"] = "kong/plugins/key-auth/daos.lua",
+
+    ["kong.plugins.gelato.handler"] = "kong/plugins/gelato/handler.lua",
+    ["kong.plugins.gelato.access"] = "kong/plugins/gelato/access.lua",
+    ["kong.plugins.gelato.schema"] = "kong/plugins/gelato/schema.lua",
 
     ["kong.plugins.oauth2.migrations.cassandra"] = "kong/plugins/oauth2/migrations/cassandra.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",

@@ -13,7 +13,6 @@ local env = spec_helper.get_env() -- test environment
 local faker = env.faker
 local dao_factory = env.dao_factory
 local configuration = env.configuration
-configuration.cassandra = configuration.databases_available[configuration.database].properties
 
 -- An utility function to apply tests on core collections.
 local function describe_core_collections(tests_cb)
@@ -46,9 +45,9 @@ describe("Cassandra", function()
 
     -- Create a parallel session to verify the dao's behaviour
     session = cassandra:new()
-    session:set_timeout(configuration.cassandra.timeout)
+    session:set_timeout(configuration.dao_config.timeout)
 
-    local _, err = session:connect(configuration.cassandra.contact_points)
+    local _, err = session:connect(configuration.dao_config.contact_points)
     assert.falsy(err)
 
     local _, err = session:set_keyspace("kong_tests")
@@ -182,6 +181,34 @@ describe("Cassandra", function()
 
     end) -- describe :insert()
 
+    describe(":count_by_keys()", function()
+
+      it("should properly count the items in a table", function()
+        local count, err = dao_factory.apis:count_by_keys()
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(4, count)
+      end)
+
+      it("should properly count the items in a table with keys", function()
+        local count, err = dao_factory.apis:count_by_keys({name="test.com"})
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(1, count)
+
+        count, err = dao_factory.apis:count_by_keys({name="test.com.com"})
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(0, count)
+
+        count, err = dao_factory.apis:count_by_keys({name=""})
+        assert.falsy(err)
+        assert.truthy(count)
+        assert.are.same(0, count)
+      end)
+
+    end)
+    
     describe(":update()", function()
 
       it("should error if called with invalid parameters", function()
