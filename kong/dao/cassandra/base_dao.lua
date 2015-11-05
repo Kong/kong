@@ -321,7 +321,6 @@ function BaseDao:count_by_keys(where_t, paging_state)
   local res, err = self:execute(count_q, where_columns, where_t, {
     paging_state = paging_state
   })
-
   return (#res >= 1 and table.remove(res, 1).count or 0), err, filtering
 end
 

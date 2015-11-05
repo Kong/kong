@@ -3,7 +3,7 @@ return {
     default = {"ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
                "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
                "mashape-analytics", "request-transformer", "response-transformer",
-               "request-size-limiting", "rate-limiting", "response-ratelimiting"}
+               "request-size-limiting", "rate-limiting", "response-ratelimiting", "gelato"}
   },
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
   ["proxy_port"] = {type = "number", default = 8000},
