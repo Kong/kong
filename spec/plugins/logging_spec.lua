@@ -33,7 +33,8 @@ describe("Logging Plugins", function()
         { name = "tests-udp-logging", request_host = "udp_logging.com", upstream_url = "http://mockbin.com" },
         { name = "tests-http-logging", request_host = "http_logging.com", upstream_url = "http://mockbin.com" },
         { name = "tests-https-logging", request_host = "https_logging.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-file-logging", request_host = "file_logging.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-file-logging", request_host = "file_logging.com", upstream_url = "http://mockbin.com" },
+        { name = "syslog-logging", request_host = "logging.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
         { name = "tcp-log", config = { host = "127.0.0.1", port = TCP_PORT }, __api = 1 },
@@ -41,7 +42,8 @@ describe("Logging Plugins", function()
         { name = "udp-log", config = { host = "127.0.0.1", port = UDP_PORT }, __api = 3 },
         { name = "http-log", config = { http_endpoint = "http://localhost:"..HTTP_PORT.."/" }, __api = 4 },
         { name = "http-log", config = { http_endpoint = "https://mockbin.org/bin/"..mock_bin }, __api = 5 },
-        { name = "file-log", config = { path = FILE_LOG_PATH }, __api = 6 }
+        { name = "file-log", config = { path = FILE_LOG_PATH }, __api = 6 },
+        { name = "syslog", __api = 7 }
       }
     }
 
@@ -149,7 +151,7 @@ describe("Logging Plugins", function()
     -- Making sure it's alright
     assert.are.same("127.0.0.1", log_message.client_ip)
   end)
-
+  
   it("should log to file", function()
     local uuid = utils.random_string()
 
@@ -174,5 +176,4 @@ describe("Logging Plugins", function()
 
     os.remove(FILE_LOG_PATH)
   end)
-
 end)
