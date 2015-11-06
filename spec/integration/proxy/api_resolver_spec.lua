@@ -36,7 +36,8 @@ describe("Resolver", function()
         {name = "tests-wildcard-subdomain", upstream_url = "http://mockbin.com/status/200", request_host = "*.wildcard.com"},
         {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
         {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
-        {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true}
+        {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true},
+        {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -48,6 +49,22 @@ describe("Resolver", function()
 
   teardown(function()
     spec_helper.stop_kong()
+  end)
+
+  describe("Test URI", function()
+
+    it("should URL decode the URI with querystring", function()
+      local response, status = http_client.get(spec_helper.STUB_GET_URL.."/hello%2F", { hello = "world"}, {host = "mockbin-uri.com"})
+      assert.equal(200, status)
+      assert.equal("http://mockbin.org/request/hello%2f?hello=world", cjson.decode(response).url)
+    end)
+
+    it("should URL decode the URI without querystring", function()
+      local response, status = http_client.get(spec_helper.STUB_GET_URL.."/hello%2F", nil, {host = "mockbin-uri.com"})
+      assert.equal(200, status)
+      assert.equal("http://mockbin.org/request/hello%2f", cjson.decode(response).url)
+    end)
+
   end)
 
   describe("Inexistent API", function()
@@ -216,4 +233,5 @@ describe("Resolver", function()
       assert.equal("httpbin-preserve.com", parsed_response.headers["Host"])
     end)
   end)
+  
 end)
