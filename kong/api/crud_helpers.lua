@@ -51,22 +51,36 @@ function _M.paginated_set(self, dao_collection)
     return app_helpers.yield_error(err)
   end
 
+  local total, err = dao_collection:count_by_keys(self.params)
+  if err then
+    return app_helpers.yield_error(err)
+  end
+
   local next_url
   if data.next_page then
-    next_url = self:build_url(self.req.parsed_url.path, {
-      port = self.req.parsed_url.port,
-      query = ngx.encode_args({
-                offset = ngx.encode_base64(data.next_page),
-                size = size
-              })
-    })
+    -- Parse next URL, if there are no elements then don't append it
+    local next_total, err = dao_collection:count_by_keys(self.params, data.next_page)
+    if err then
+      return app_helpers.yield_error(err)
+    end
+
+    if next_total > 0 then
+      next_url = self:build_url(self.req.parsed_url.path, {
+        port = self.req.parsed_url.port,
+        query = ngx.encode_args({
+                  offset = ngx.encode_base64(data.next_page),
+                  size = size
+                })
+      })
+    end
+
     data.next_page = nil
   end
 
   -- This check is required otherwise the response is going to be a
   -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
   -- will not be translated as an empty array by cjson, but as an empty object.
-  local result = #data == 0 and "{\"data\":[]}" or {data=data, ["next"]=next_url}
+  local result = #data == 0 and "{\"data\":[],\"total\":0}" or {data=data, ["next"]=next_url, total=total}  
 
   return responses.send_HTTP_OK(result, type(result) ~= "table")
 end

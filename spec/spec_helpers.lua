@@ -3,6 +3,8 @@
 -- It supports other environments by passing a configuration file.
 
 local IO = require "kong.tools.io"
+local config = require "kong.tools.config_loader"
+local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
@@ -30,7 +32,8 @@ _M.envs = {}
 -- When dealing with another configuration file for a few tests, this allows to add
 -- a factory/migrations/faker that are environment-specific to this new config.
 function _M.add_env(conf_file)
-  local env_configuration, env_factory = IO.load_configuration_and_dao(conf_file)
+  local env_configuration = config.load(conf_file)
+  local env_factory = dao.load(env_configuration)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,
