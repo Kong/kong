@@ -4,7 +4,7 @@ local constants = require "kong.constants"
 local DaoError = require "kong.dao.error"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 -- Raw session for double-check purposes
 local session
@@ -147,7 +147,7 @@ describe("Cassandra", function()
       it("should ensure fields with `foreign` are existing", function()
         -- Plugin configuration
         local plugin_t = faker:fake_entity("plugin")
-        plugin_t.api_id = uuid()
+        plugin_t.api_id = uuid.generate()
 
         local plugin, err = dao_factory.plugins:insert(plugin_t)
         assert.falsy(plugin)
@@ -223,7 +223,7 @@ describe("Cassandra", function()
 
       it("should return nil and no error if no entity was found to update in DB", function()
         local api_t = faker:fake_entity("api")
-        api_t.id = uuid()
+        api_t.id = uuid.generate()
 
         -- No entity to update
         local entity, err = dao_factory.apis:update(api_t)
@@ -521,7 +521,7 @@ describe("Cassandra", function()
         end)
 
         it("should return false if entity to delete wasn't found", function()
-          local ok, err = dao_factory[collection]:delete({id = uuid()})
+          local ok, err = dao_factory[collection]:delete({id = uuid.generate()})
           assert.falsy(err)
           assert.False(ok)
         end)

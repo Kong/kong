@@ -1,5 +1,5 @@
 local spec_helper = require "spec.spec_helpers"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 local env = spec_helper.get_env()
 local dao_factory = env.dao_factory
@@ -21,7 +21,7 @@ describe("DAO key-auth Credentials", function()
     assert.are.same("consumer_id is required", err.message.consumer_id)
 
     -- With an invalid consumer_id, it's a FOREIGN error
-    local app_t = {key = "apikey123", consumer_id = uuid()}
+    local app_t = {key = "apikey123", consumer_id = uuid.generate()}
     local app, err = dao_factory.keyauth_credentials:insert(app_t)
     assert.falsy(app)
     assert.truthy(err)
