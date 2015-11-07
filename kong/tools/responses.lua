@@ -96,7 +96,6 @@ local function send_response(status_code)
       if content then
         ngx.log(ngx.ERR, tostring(content))
       end
-      ngx.ctx.stop_phases = true -- interrupt other phases of this request
     end
 
     ngx.status = status_code

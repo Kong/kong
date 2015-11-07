@@ -166,7 +166,7 @@ function Kong.exec_plugins_certificate()
   for _, plugin_t in ipairs(loaded_plugins) do
     if ngx.ctx.api ~= nil then
       local plugin = load_plugin_configuration(ngx.ctx.api.id, nil, plugin_t.name)
-      if not ngx.ctx.stop_phases and plugin then
+      if plugin then
         plugin_t.handler:certificate(plugin.config)
       end
     end
@@ -190,7 +190,7 @@ function Kong.exec_plugins_access()
     end
 
     local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-    if not ngx.ctx.stop_phases and plugin then
+    if plugin then
       plugin_t.handler:access(plugin.config)
     end
   end
@@ -210,12 +210,10 @@ end
 function Kong.exec_plugins_header_filter()
   resolver.header_filter:before()
 
-  if not ngx.ctx.stop_phases then
-    for _, plugin_t in ipairs(loaded_plugins) do
-      local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-      if plugin then
-        plugin_t.handler:header_filter(plugin.config)
-      end
+  for _, plugin_t in ipairs(loaded_plugins) do
+    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
+    if plugin then
+      plugin_t.handler:header_filter(plugin.config)
     end
   end
 
@@ -226,12 +224,10 @@ end
 function Kong.exec_plugins_body_filter()
   resolver.body_filter:before()
 
-  if not ngx.ctx.stop_phases then
-    for _, plugin_t in ipairs(loaded_plugins) do
-      local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-      if plugin then
-        plugin_t.handler:body_filter(plugin.config)
-      end
+  for _, plugin_t in ipairs(loaded_plugins) do
+    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
+    if plugin then
+      plugin_t.handler:body_filter(plugin.config)
     end
   end
 
@@ -240,12 +236,10 @@ end
 
 -- Calls `log()` on every loaded plugin
 function Kong.exec_plugins_log()
-  if not ngx.ctx.stop_phases then
-    for _, plugin_t in ipairs(loaded_plugins) do
-      local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-      if plugin or plugin_t.reports then
-        plugin_t.handler:log(plugin.config)
-      end
+  for _, plugin_t in ipairs(loaded_plugins) do
+    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
+    if plugin or plugin_t.reports then
+      plugin_t.handler:log(plugin.config)
     end
   end
 end

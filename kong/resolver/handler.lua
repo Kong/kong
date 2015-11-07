@@ -9,7 +9,9 @@
 -- a Consumer.
 --
 -- In other phases, we create different variables and timers.
--- Timers are:
+-- Variables:
+--   `plugins_to_execute`: an array of plugin to be executed for this request.
+-- Timers:
 --   `KONG_<CONTEXT_NAME>_STARTED_AT`: time at which a given context is started to be executed by all Kong plugins.
 --   `KONG_<CONTEXT_NAME>_ENDED_AT`: time at which all plugins have been executed by Kong for this context.
 --   `KONG_<CONTEXT_NAME>_TIME`: time taken by Kong to execute all the plugins for this context

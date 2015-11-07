@@ -72,7 +72,6 @@ function _M.execute(conf)
 
   -- If limit is exceeded, terminate the request
   if stop then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send(429, "API rate limit exceeded")
   end
 
