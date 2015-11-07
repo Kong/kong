@@ -76,7 +76,6 @@ build = {
 
     ["kong.resolver.handler"] = "kong/resolver/handler.lua",
     ["kong.resolver.access"] = "kong/resolver/access.lua",
-    ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
     ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
 
     ["kong.reports.handler"] = "kong/reports/handler.lua",

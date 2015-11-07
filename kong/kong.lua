@@ -31,17 +31,20 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+local ipairs = ipairs
+local table_remove = table.remove
 
--- Define the plugins to load here, in the appropriate order
-local plugins = {}
+local loaded_plugins = {}
+local resolver = require("kong.resolver.handler")
 
-local _M = {}
-
-local function get_now()
-  return ngx.now() * 1000
-end
-
-local function load_plugin(api_id, consumer_id, plugin_name)
+--- Load the configuration for a plugin entry in the DB.
+-- Given an API, a Consumer and a plugin name, retrieve the plugin's configuration if it exists.
+-- Results are cached in ngx.dict
+-- @param[type=string] api_id ID of the API being proxied.
+-- @param[type=string] consumer_id ID of the Consumer making the request (if any).
+-- @param[type=stirng] plugin_name Name of the plugin being tested for.
+-- @treturn table Plugin retrieved from the cache or database.
+local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
 
   local plugin = cache.get_or_set(cache_key, function()
@@ -55,22 +58,31 @@ local function load_plugin(api_id, consumer_id, plugin_name)
       end
 
       if #rows > 0 then
-        return table.remove(rows, 1)
+        local plugin_row = table_remove(rows, 1)
+        if plugin_row.config == nil then
+          plugin_row.config = {}
+        end
+        return plugin_row
       else
-        return { null = true }
+        -- force to insert a cached value (could be avoided)
+        return {null = true}
       end
   end)
 
-  if plugin and not plugin.null and plugin.enabled then
+  if plugin ~= nil and plugin.enabled then
     return plugin
   end
 end
 
+--- Detect enabled plugins on the node.
+-- Get plugins in the DB (distict by `name`), compare them with plugins in kong.yml's `plugins_available`.
+-- If both lists match, return a list of plugins sorted by execution priority for lua-nginx-module's context handlers.
+-- @treturn table Array of plugins to execute in context handlers.
 local function init_plugins()
   -- TODO: this should be handled with other default configs
   configuration.plugins_available = configuration.plugins_available or {}
 
-  print("Discovering used plugins")
+  ngx.log(ngx.DEBUG, "Discovering used plugins")
   local db_plugins, err = dao.plugins:find_distinct()
   if err then
     error(err)
@@ -90,7 +102,7 @@ local function init_plugins()
     if not loaded then
       error("The following plugin has been enabled in the configuration but it is not installed on the system: "..v)
     else
-      print("Loading plugin: "..v)
+      ngx.log(ngx.DEBUG, "Loading plugin: "..v)
       table.insert(loaded_plugins, {
         name = v,
         handler = plugin_handler_mod()
@@ -104,13 +116,6 @@ local function init_plugins()
     return priority_a > priority_b
   end)
 
-  -- resolver is always the first plugin as it is the one retrieving any needed information
-  table.insert(loaded_plugins, 1, {
-    resolver = true,
-    name = "resolver",
-    handler = require("kong.resolver.handler")()
-  })
-
   if configuration.send_anonymous_reports then
     table.insert(loaded_plugins, 1, {
       reports = true,
@@ -122,132 +127,127 @@ local function init_plugins()
   return loaded_plugins
 end
 
--- To be called by nginx's init_by_lua directive.
+--- Kong public context handlers.
+-- @section kong_handlers
+
+local Kong = {}
+
+-- To be called by the lua-nginx-module `init_by_lua` directive.
 -- Execution:
 --   - load the configuration from the path computed by the CLI
 --   - instanciate the DAO Factory
 --   - load the used plugins
 --     - load all plugins if used and installed
 --     - sort the plugins by priority
---     - load the resolver
 --
--- If any error during the initialization of the DAO or plugins,
--- it will be thrown and needs to be catched in init_by_lua.
-function _M.init()
+-- If any error happens during the initialization of the DAO or plugins,
+-- it will be thrown and needs to be catched in `init_by_lua`.
+function Kong.init()
   -- Loading configuration
   configuration = config.load(os.getenv("KONG_CONF"))
   dao = dao_loader.load(configuration)
 
   -- Initializing plugins
-  plugins = init_plugins()
+  loaded_plugins = init_plugins()
 
   ngx.update_time()
 end
 
--- Calls `init_worker()` on eveyr loaded plugin
-function _M.exec_plugins_init_worker()
-  for _, plugin_t in ipairs(plugins) do
+-- Calls `init_worker()` on every loaded plugin
+function Kong.exec_plugins_init_worker()
+  for _, plugin_t in ipairs(loaded_plugins) do
     plugin_t.handler:init_worker()
   end
 end
 
-function _M.exec_plugins_certificate()
-  ngx.ctx.plugin = {}
+function Kong.exec_plugins_certificate()
+  resolver.certificate:before()
 
-  for _, plugin_t in ipairs(plugins) do
-    if ngx.ctx.api then
-      ngx.ctx.plugin[plugin_t.name] = load_plugin(ngx.ctx.api.id, nil, plugin_t.name)
-    end
-
-    local plugin = ngx.ctx.plugin[plugin_t.name]
-    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
-      plugin_t.handler:certificate(plugin and plugin.config or {})
+  for _, plugin_t in ipairs(loaded_plugins) do
+    if ngx.ctx.api ~= nil then
+      local plugin = load_plugin_configuration(ngx.ctx.api.id, nil, plugin_t.name)
+      if not ngx.ctx.stop_phases and plugin then
+        plugin_t.handler:certificate(plugin.config)
+      end
     end
   end
-
-  return
 end
 
 -- Calls `access()` on every loaded plugin
-function _M.exec_plugins_access()
-  local start = get_now()
-  ngx.ctx.plugin = {}
+function Kong.exec_plugins_access()
+  resolver.access:before()
 
-  -- Iterate over all the plugins
-  for _, plugin_t in ipairs(plugins) do
+  for _, plugin_t in ipairs(loaded_plugins) do
     if ngx.ctx.api then
-      ngx.ctx.plugin[plugin_t.name] = load_plugin(ngx.ctx.api.id, nil, plugin_t.name)
+      ngx.ctx.plugins_to_execute[plugin_t.name] = load_plugin_configuration(ngx.ctx.api.id, nil, plugin_t.name)
       local consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id or nil
       if consumer_id then
-        local app_plugin = load_plugin(ngx.ctx.api.id, consumer_id, plugin_t.name)
-        if app_plugin then
-          ngx.ctx.plugin[plugin_t.name] = app_plugin
+        local consumer_plugin = load_plugin_configuration(ngx.ctx.api.id, consumer_id, plugin_t.name)
+        if consumer_plugin then
+          ngx.ctx.plugins_to_execute[plugin_t.name] = consumer_plugin
         end
       end
     end
 
-    local plugin = ngx.ctx.plugin[plugin_t.name]
-    if not ngx.ctx.stop_phases and (plugin_t.resolver or plugin) then
-      plugin_t.handler:access(plugin and plugin.config or {})
+    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
+    if not ngx.ctx.stop_phases and plugin then
+      plugin_t.handler:access(plugin.config)
     end
   end
+
   -- Append any modified querystring parameters
   local parts = stringy.split(ngx.var.backend_url, "?")
   local final_url = parts[1]
   if utils.table_size(ngx.req.get_uri_args()) > 0 then
     final_url = final_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
   end
-  ngx.var.backend_url = final_url
 
-  local t_end = get_now()
-  ngx.ctx.kong_processing_access = t_end - start
-  -- Setting a property that will be available for every plugin
-  ngx.ctx.proxy_started_at = t_end
+  ngx.var.backend_url = final_url
+  resolver.access:after()
 end
 
 -- Calls `header_filter()` on every loaded plugin
-function _M.exec_plugins_header_filter()
-  local start = get_now()
-  -- Setting a property that will be available for every plugin
-  ngx.ctx.proxy_ended_at = start
+function Kong.exec_plugins_header_filter()
+  resolver.header_filter:before()
 
   if not ngx.ctx.stop_phases then
-    ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
-
-    for _, plugin_t in ipairs(plugins) do
-      local plugin = ngx.ctx.plugin[plugin_t.name]
+    for _, plugin_t in ipairs(loaded_plugins) do
+      local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
       if plugin then
-        plugin_t.handler:header_filter(plugin and plugin.config or {})
+        plugin_t.handler:header_filter(plugin.config)
       end
     end
   end
-  ngx.ctx.kong_processing_header_filter = get_now() - start
+
+  resolver.header_filter:after()
 end
 
 -- Calls `body_filter()` on every loaded plugin
-function _M.exec_plugins_body_filter()
-  local start = get_now()
+function Kong.exec_plugins_body_filter()
+  resolver.body_filter:before()
+
   if not ngx.ctx.stop_phases then
-    for _, plugin_t in ipairs(plugins) do
-      local plugin = ngx.ctx.plugin[plugin_t.name]
+    for _, plugin_t in ipairs(loaded_plugins) do
+      local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
       if plugin then
-        plugin_t.handler:body_filter(plugin and plugin.config or {})
+        plugin_t.handler:body_filter(plugin.config)
       end
     end
   end
-  ngx.ctx.kong_processing_body_filter = (ngx.ctx.kong_processing_body_filter or 0) + (get_now() - start)
+
+  resolver.body_filter:after()
 end
 
 -- Calls `log()` on every loaded plugin
-function _M.exec_plugins_log()
+function Kong.exec_plugins_log()
   if not ngx.ctx.stop_phases then
-    for _, plugin_t in ipairs(plugins) do
-      local plugin = ngx.ctx.plugin[plugin_t.name]
+    for _, plugin_t in ipairs(loaded_plugins) do
+      local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
       if plugin or plugin_t.reports then
-        plugin_t.handler:log(plugin and plugin.config or {})
+        plugin_t.handler:log(plugin.config)
       end
     end
   end
 end
 
-return _M
+return Kong
