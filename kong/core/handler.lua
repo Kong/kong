@@ -19,17 +19,23 @@
 -- @see https://github.com/openresty/lua-nginx-module#ngxctx
 
 local constants = require "kong.constants"
-local certificate = require "kong.resolver.certificate"
-local access = require "kong.resolver.access"
+local utils = require "kong.tools.utils"
+local certificate = require "kong.core.certificate"
+local resolver = require "kong.core.resolver"
+local reports = require "kong.core.reports"
+local stringy = require "stringy"
 local table_insert = table.insert
 local math_floor = math.floor
 
-local mult = 10^3
-function round(num)
-  return math_floor(num * mult + 0.5) / mult
+local MULT = 10^3
+local function round(num)
+  return math_floor(num * MULT + 0.5) / MULT
 end
 
 return {
+  init_worker = function()
+    reports.init_worker()
+  end,
   certificate = {
     before = function()
       certificate.execute()
@@ -39,14 +45,23 @@ return {
     before = function()
       ngx.ctx.KONG_ACCESS_START = ngx.now()
       ngx.ctx.plugins_to_execute = {}
-      access.execute()
+      ngx.ctx.api, ngx.ctx.upstream_url = resolver.execute()
     end,
-    -- Only executed if the `access` module found an API and allows nginx to proxy it.
+    -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
       local now = ngx.now()
       ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START
       ngx.ctx.KONG_ACCESS_ENDED_AT = now
       ngx.ctx.KONG_PROXIED = true
+
+      -- Append any querystring parameters modified during plugins execution
+      local upstream_url = unpack(stringy.split(ngx.ctx.upstream_url, "?"))
+      if utils.table_size(ngx.req.get_uri_args()) > 0 then
+        upstream_url = upstream_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
+      end
+
+      -- Set the `$upstream_url` variable for the `proxy_pass` nginx's directive.
+      ngx.var.upstream_url = upstream_url
     end
   },
   header_filter = {
@@ -101,5 +116,8 @@ return {
         ngx.ctx.KONG_BODY_FILTER_EDINGS = nil
       end
     end
-  }
+  },
+  log = function()
+    reports.log()
+  end
 }

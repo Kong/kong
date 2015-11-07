@@ -225,18 +225,19 @@ nginx: |
         default_type 'text/plain';
 
         # These properties will be used later by proxy_pass
-        set $backend_host nil;
-        set $backend_url nil;
+        set $upstream_host nil;
+        set $upstream_url nil;
 
         # Authenticate the user and load the API info
         access_by_lua 'kong.exec_plugins_access()';
 
         # Proxy the request
+        # Proxy the request
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $backend_host;
-        proxy_pass $backend_url;
+        proxy_set_header Host $upstream_host;
+        proxy_pass $upstream_url;
         proxy_pass_header Server;
 
         # Add additional response headers

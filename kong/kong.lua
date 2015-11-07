@@ -28,14 +28,13 @@ local config = require "kong.tools.config_loader"
 local dao_loader = require "kong.tools.dao_loader"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local ipairs = ipairs
 local table_remove = table.remove
 
 local loaded_plugins = {}
-local resolver = require("kong.resolver.handler")
+local core = require("kong.core.handler")
 
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's configuration if it exists.
@@ -155,13 +154,15 @@ end
 
 -- Calls `init_worker()` on every loaded plugin
 function Kong.exec_plugins_init_worker()
+  core.init_worker()
+
   for _, plugin_t in ipairs(loaded_plugins) do
     plugin_t.handler:init_worker()
   end
 end
 
 function Kong.exec_plugins_certificate()
-  resolver.certificate:before()
+  core.certificate:before()
 
   for _, plugin_t in ipairs(loaded_plugins) do
     if ngx.ctx.api ~= nil then
@@ -175,7 +176,7 @@ end
 
 -- Calls `access()` on every loaded plugin
 function Kong.exec_plugins_access()
-  resolver.access:before()
+  core.access:before()
 
   for _, plugin_t in ipairs(loaded_plugins) do
     if ngx.ctx.api then
@@ -195,20 +196,12 @@ function Kong.exec_plugins_access()
     end
   end
 
-  -- Append any modified querystring parameters
-  local parts = stringy.split(ngx.var.backend_url, "?")
-  local final_url = parts[1]
-  if utils.table_size(ngx.req.get_uri_args()) > 0 then
-    final_url = final_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
-  end
-
-  ngx.var.backend_url = final_url
-  resolver.access:after()
+  core.access:after()
 end
 
 -- Calls `header_filter()` on every loaded plugin
 function Kong.exec_plugins_header_filter()
-  resolver.header_filter:before()
+  core.header_filter:before()
 
   for _, plugin_t in ipairs(loaded_plugins) do
     local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
@@ -217,12 +210,12 @@ function Kong.exec_plugins_header_filter()
     end
   end
 
-  resolver.header_filter:after()
+  core.header_filter:after()
 end
 
 -- Calls `body_filter()` on every loaded plugin
 function Kong.exec_plugins_body_filter()
-  resolver.body_filter:before()
+  core.body_filter:before()
 
   for _, plugin_t in ipairs(loaded_plugins) do
     local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
@@ -231,7 +224,7 @@ function Kong.exec_plugins_body_filter()
     end
   end
 
-  resolver.body_filter:after()
+  core.body_filter:after()
 end
 
 -- Calls `log()` on every loaded plugin
@@ -242,6 +235,8 @@ function Kong.exec_plugins_log()
       plugin_t.handler:log(plugin.config)
     end
   end
+
+  core.log()
 end
 
 return Kong
