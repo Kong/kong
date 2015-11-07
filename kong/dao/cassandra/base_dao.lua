@@ -14,15 +14,12 @@ local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 local cassandra_constants = cassandra.constants
 local error_types = constants.DATABASE_ERROR_TYPES
 
 local BaseDao = Object:extend()
-
--- This is important to seed the UUID generator
-uuid.seed()
 
 local function session_uniq_addr(session)
   return session.host..":"..session.port
