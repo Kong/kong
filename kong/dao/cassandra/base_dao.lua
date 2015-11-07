@@ -1,5 +1,9 @@
--- Kong's Cassandra base DAO entity. Provides basic functionalities on top of
--- lua-resty-cassandra (https://github.com/jbochi/lua-resty-cassandra)
+---
+-- Kong's Cassandra base DAO module. Provides functionalities on top of
+-- lua-cassandra (https://github.com/thibaultCha/lua-cassandra) for schema validations,
+-- CRUD operations, preparation and caching of executed statements, etc...
+--
+-- @see http://thibaultcha.github.io/lua-cassandra/manual/README.md.html
 
 local query_builder = require "kong.dao.cassandra.query_builder"
 local validations = require "kong.dao.schemas_validation"
@@ -24,6 +28,11 @@ local function session_uniq_addr(session)
   return session.host..":"..session.port
 end
 
+--- Constructor.
+-- Instanciate a new Cassandra DAO. This method is to be overriden from the
+-- child class and called once the child class has a schema set.
+-- @param properties Cassandra properties from the configuration file.
+-- @treturn table Instanciated DAO.
 function BaseDao:new(properties)
   if self._schema then
     self._primary_key = self._schema.primary_key
@@ -47,22 +56,34 @@ function BaseDao:new(properties)
   self._cascade_delete_hooks = {}
 end
 
--- Marshall an entity. Does nothing by default,
--- must be overriden for entities where marshalling applies.
+---
+-- Marshall an entity.
+-- Executed on each entity insertion to serialize
+-- eventual properties for Cassandra storage.
+-- Does nothing by default, must be overriden for entities where marshalling applies.
+-- @param[type=table] t Entity to marshall.
+-- @treturn table Serialized entity.
 function BaseDao:_marshall(t)
   return t
 end
 
--- Unmarshall an entity. Does nothing by default,
--- must be overriden for entities where marshalling applies.
+---
+-- Unmarshall an entity.
+-- Executed each time an entity is being retrieved from Cassandra
+-- to deserialize properties serialized by `:_mashall()`,
+-- Does nothing by default, must be overriden for entities where marshalling applies.
+-- @see :_marshall()
+-- @param[type=table] t Entity to unmarshall.
+-- @treturn table Deserialized entity.
 function BaseDao:_unmarshall(t)
   return t
 end
 
+---
 -- Open a session on the configured keyspace.
--- @param  `keyspace` (Optional) Override the keyspace for this session if specified.
--- @return `session` Opened session
--- @return `error`   Error if any
+-- @param[type=string]  keyspace (Optional) Override the keyspace for this session if specified.
+-- @return table Opened session
+-- @return table Error if any
 function BaseDao:_open_session(keyspace)
   local ok, err
 
@@ -92,10 +113,12 @@ function BaseDao:_open_session(keyspace)
   return session
 end
 
+---
 -- Close the given opened session.
--- Will try to put the session in the socket pool if supported.
--- @param `session` Cassandra session to close
--- @return `error`  Error if any
+-- Will try to put the session in the socket pool for re-use if supported
+-- by the current phase.
+-- @param[type=table] session Cassandra session to close
+-- @return table Error if any
 function BaseDao:_close_session(session)
   -- Back to the pool or close if using luasocket
   local ok, err = session:set_keepalive(self._properties.keepalive)
@@ -108,16 +131,17 @@ function BaseDao:_close_session(session)
   end
 end
 
--- Build the array of arguments to pass to lua-resty-cassandra :execute method.
+---
+-- Build the array of arguments to pass to lua-cassandra's :execute method.
 -- Note:
 --   Since this method only accepts an ordered list, we build this list from
 --   the entity `t` and an (ordered) array of parameters for a query, taking
 --   into account special cassandra values (uuid, timestamps, NULL).
--- @param `schema`     A schema with type properties to encode specific values
--- @param `t`          Values to bind to a statement
--- @param `parameters` An ordered list of parameters
--- @return `args`      An ordered list of values to be binded to lua-resty-cassandra :execute
--- @return `error`     Error Cassandra type validation errors
+-- @param[type=table] schema A schema with type properties to encode specific values
+-- @param[type=table] t      Values to bind to a statement
+-- @param[type=table] parameters An ordered list of parameters
+-- @return table An ordered list of values to be binded to lua-resty-cassandra :execute
+-- @return table Error Cassandra type validation errors
 local function encode_cassandra_args(schema, t, args_keys)
   local args_to_bind = {}
   local errors
@@ -144,12 +168,41 @@ local function encode_cassandra_args(schema, t, args_keys)
   return args_to_bind, errors
 end
 
--- Get a statement from the cache or prepare it (and thus insert it in the cache).
--- The cache key will be the plain string query representation.
--- @param  `query`     The query to prepare
--- @return `statement` The prepared cassandra statement
--- @return `cache_key` The cache key used to store it into the cache
--- @return `error`     Error if any during the query preparation
+---
+-- @local
+-- Prepare a query and insert it into the statements cache.
+-- @param[type=string] query The query to prepare
+-- @return table The prepared statement, ready to be used by lua-cassandra.
+-- @return table Error if any during the preparation of the statement
+-- @see get_or_prepare_stmt
+local function prepare_stmt(self, session, query)
+  assert(type(query) == "string", "Query to prepare must be a string")
+  query = stringy.strip(query)
+
+  local prepared_stmt, prepare_err = session:prepare(query)
+  if prepare_err then
+    return nil, DaoError("Failed to prepare statement: \""..query.."\". "..prepare_err, error_types.DATABASE)
+  else
+    local session_addr = session_uniq_addr(session)
+    -- cache of prepared statements must be specific to each node
+    if not self._statements_cache[session_addr] then
+      self._statements_cache[session_addr] = {}
+    end
+
+    -- cache key is the non-striped/non-formatted query from _queries
+    self._statements_cache[session_addr][query] = prepared_stmt
+    return prepared_stmt
+  end
+end
+
+---
+-- Get a prepared statement from the statements cache or prepare it (and thus insert it in the cache).
+-- The cache is unique for each Cassandra contact_point (base on the host and port).
+-- The statement's cache key will be the plain string query representation.
+-- @param[type=string] query The query to prepare
+-- @return table The prepared statement, ready to be used by lua-cassandra.
+-- @return string The cache key used to store it into the cache
+-- @return table Error if any during the query preparation
 function BaseDao:get_or_prepare_stmt(session, query)
   if type(query) ~= "string" then
     -- Cannot be prepared (probably a BatchStatement)
@@ -162,7 +215,7 @@ function BaseDao:get_or_prepare_stmt(session, query)
   if self._statements_cache[session_addr] and self._statements_cache[session_addr][query] then
     statement = self._statements_cache[session_addr][query]
   else
-    statement, err = self:prepare_stmt(session, query)
+    statement, err = prepare_stmt(self, session, query)
     if err then
       return nil, query, err
     end
@@ -171,15 +224,24 @@ function BaseDao:get_or_prepare_stmt(session, query)
   return statement, query
 end
 
--- Execute a query, trying to prepare them on a per-host basis.
+--- Execute a query.
+-- This method should be called with the proper **args** formatting (as an array). See
+-- **:execute()** for building this parameter.
+-- Make sure the query is either prepared and cached, or retrieved from the
+-- current cache.
 -- Opens a socket, execute the statement, puts the socket back into the
 -- socket pool and returns a parsed result.
--- @param `query`     Plain string query or BatchStatement.
--- @param `args`      (Optional) Arguments to the query, simply passed to lua-resty-cassandra's :execute()
--- @param `options`   (Optional) Options to give to lua-resty-cassandra's :execute()
--- @param `keyspace`  (Optional) Override the keyspace for this query if specified.
--- @return `results`  If results set are ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results have a paging_state.
--- @return `error`    An error if any during the whole execution (sockets/query execution)
+--
+-- @see execute
+-- @see get_or_prepare_stmt
+-- @see _close_session
+--
+-- @param query Plain string query or BatchStatement.
+-- @param[type=table] args (Optional) Arguments to the query, as an array. Simply passed to lua-cassandra's :execute()
+-- @param[type=table] options (Optional) Options to give to lua-resty-cassandra's :execute()
+-- @param[type=string] keyspace (Optional) Override the keyspace for this query if specified.
+-- @return table If the result set consists of ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results have a paging_state.
+-- @return table An error if any during the whole execution (sockets/query execution)
 function BaseDao:_execute(query, args, options, keyspace)
   local session, err = self:_open_session(keyspace)
   if err then
@@ -246,11 +308,12 @@ function BaseDao:_execute(query, args, options, keyspace)
   end
 end
 
+---
 -- Bind a table of arguments to a query depending on the entity's schema,
--- and then execute the query.
--- @param `query`        The query to execute
--- @param `args_to_bind` Key/value table of arguments to bind
--- @param `options`      Options to pass to lua-resty-cassandra :execute()
+-- and then execute the query via **:_execute()**.
+-- @param[type=string] query The query to execute
+-- @param[type=table] args_to_bind Key/value table of arguments to bind
+-- @param[type=stable] options Options to pass to lua-cassandra's :execute()
 -- @return :_execute()
 function BaseDao:execute(query, columns, args_to_bind, options)
   -- Build args array if operation has some
@@ -267,7 +330,13 @@ function BaseDao:execute(query, columns, args_to_bind, options)
   return self:_execute(query, args, options)
 end
 
--- Check all fields marked with a `unique` in the schema do not already exist.
+--- Perform "unique" check on a column.
+-- Check that all fields marked with `unique` in the schema do not already exist
+-- with the same value.
+-- @param[type=table] t Key/value representation of the entity
+-- @param[type=boolean] is_update If true, we ignore an identical value if the row containing it is the one we are trying to update.
+-- @return boolean True if all unique fields are not already present, false if any already exists with the same value.
+-- @return table A key/value table of all columns (as keys) having values already in the database.
 function BaseDao:check_unique_fields(t, is_update)
   local errors
 
@@ -301,7 +370,11 @@ function BaseDao:check_unique_fields(t, is_update)
   return errors == nil, errors
 end
 
--- Check all fields marked as `foreign` in the schema exist on other column families.
+--- Perform "foreign" check on a column.
+-- Check all fields marked with `foreign` in the schema have an existing parent row.
+-- @param[type=table] t Key/value representation of the entity
+-- @return boolean True if all fields marked as foreign have a parent row.
+-- @return table A key/value table of all columns (as keys) not having a parent row.
 function BaseDao:check_foreign_fields(t)
   local errors, foreign_type, foreign_field, res, err
 
@@ -322,35 +395,14 @@ function BaseDao:check_foreign_fields(t)
   return errors == nil, errors
 end
 
--- Prepare a query and insert it into the statement cache.
--- @param  `query`     The query to prepare
--- @return `statement` The prepared statement, ready to be used by lua-resty-cassandra.
--- @return `error`     Error if any during the preparation of the statement
-function BaseDao:prepare_stmt(session, query)
-  assert(type(query) == "string", "Query to prepare must be a string")
-  query = stringy.strip(query)
-
-  local prepared_stmt, prepare_err = session:prepare(query)
-  if prepare_err then
-    return nil, DaoError("Failed to prepare statement: \""..query.."\". "..prepare_err, error_types.DATABASE)
-  else
-    local session_addr = session_uniq_addr(session)
-    -- cache of prepared statements must be specific to each node
-    if not self._statements_cache[session_addr] then
-      self._statements_cache[session_addr] = {}
-    end
-
-    -- cache key is the non-striped/non-formatted query from _queries
-    self._statements_cache[session_addr][query] = prepared_stmt
-    return prepared_stmt
-  end
-end
-
--- Insert a row in the DAO's table.
--- Perform schema validation, UNIQUE checks, FOREIGN checks.
--- @param `t`       A table representing the entity to insert
--- @return `result` Inserted entity or nil
--- @return `error`  Error if any during the execution
+---
+-- Insert a row in the defined column family (defined by the **_table** attribute).
+-- Perform schema validation, 'UNIQUE' checks, 'FOREIGN' checks.
+-- @see check_unique_fields
+-- @see check_foreign_fields
+-- @param[table=table] t A table representing the entity to insert
+-- @return table Inserted entity or nil
+-- @return table Error if any during the execution
 function BaseDao:insert(t)
   assert(t ~= nil, "Cannot insert a nil element")
   assert(type(t) == "table", "Entity to insert must be a table")
@@ -413,6 +465,7 @@ local function extract_primary_key(t, primary_key, clustering_key)
   return t_primary_key, t_no_primary_key
 end
 
+---
 -- When updating a row that has a json-as-text column (ex: plugin.config),
 -- we want to avoid overriding it with a partial value.
 -- Ex: config.key_name + config.hide_credential, if we update only one field,
@@ -431,13 +484,15 @@ local function fix_tables(t, old_t, schema)
   end
 end
 
--- Update a row: find the row with the given PRIMARY KEY and update the other values
--- If `full`, sets to NULL values that are not included in the schema.
--- Performs schema validation, UNIQUE and FOREIGN checks.
--- @param `t`       A table representing the entity to insert
--- @param `full`    If `true`, set to NULL any column not in the `t` parameter
--- @return `result` Updated entity or nil
--- @return `error`  Error if any during the execution
+---
+-- Update an entity: find the row with the given PRIMARY KEY and update the other values
+-- Performs schema validation, 'UNIQUE' and 'FOREIGN' checks.
+-- @see check_unique_fields
+-- @see check_foreign_fields
+-- @param[type=table] t A table representing the entity to update. It **must** contain the entity's PRIMARY KEY (can be composite).
+-- @param[type=boolean] full  If **true**, set to NULL any column not in the `t` parameter, such as a PUT query would do for example.
+-- @return table Updated entity or nil
+-- @return table  Error if any during the execution
 function BaseDao:update(t, full)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
@@ -504,10 +559,11 @@ function BaseDao:update(t, full)
   end
 end
 
+---
 -- Retrieve a row at given PRIMARY KEY.
--- @param  `where_t` A table containing the PRIMARY KEY (columns/values) of the row to retrieve.
--- @return `row`   The first row of the result.
--- @return `error`
+-- @param[type=table] where_t A table containing the PRIMARY KEY (it can be composite, hence be multiple columns as keys and their values) of the row to retrieve.
+-- @return row   The first row of the result.
+-- @return error
 function BaseDao:find_by_primary_key(where_t)
   assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
   assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
@@ -531,13 +587,15 @@ function BaseDao:find_by_primary_key(where_t)
   return data, err
 end
 
--- Retrieve a set of rows from the given columns/value table.
--- @param `where_t`      (Optional) columns/values table by which to find an entity.
--- @param `page_size`    Size of the page to retrieve (number of rows).
--- @param `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
--- @return `res`
--- @return `err`
--- @return `filtering`   A boolean indicating if ALLOW FILTERING was needed by the query
+---
+-- Retrieve a set of rows from the given columns/value table with a given
+-- 'WHERE' clause.
+-- @param[type=table] where_t (Optional) columns/values table by which to find an entity.
+-- @param[type=number] page_size Size of the page to retrieve (number of rows).
+-- @param[type=string] paging_state Start page from given offset. See lua-cassandra's related **:execute()** option.
+-- @return table An array (of possible length 0) of entities as the result of the query
+-- @return table An error if any
+-- @return boolean A boolean indicating if the 'ALLOW FILTERING' clause was needed by the query
 function BaseDao:find_by_keys(where_t, page_size, paging_state)
   local select_q, where_columns, filtering = query_builder.select(self._table, where_t, self._column_family_details)
   local res, err = self:execute(select_q, where_columns, where_t, {
@@ -548,10 +606,27 @@ function BaseDao:find_by_keys(where_t, page_size, paging_state)
   return res, err, filtering
 end
 
--- Retrieve a page of the table attached to the DAO.
--- @param  `page_size`    Size of the page to retrieve (number of rows).
--- @param  `paging_state` Start page from given offset. See lua-resty-cassandra's :execute() option.
--- @return `find_by_keys()`
+---
+-- Retrieve the number of rows in the related column family matching a possible 'WHERE' clause.
+-- @param[type=table] where_t (Optional) columns/values table by which to count entities.
+-- @param[type=string] paging_state Start page from given offset. See lua-cassandra's related **:execute()** option.
+-- @return integer The number of rows matching the specified criteria
+-- @return table An error if any
+-- @return boolean A boolean indicating if the 'ALLOW FILTERING' clause was needed by the query
+function BaseDao:count_by_keys(where_t, paging_state)
+  local count_q, where_columns, filtering = query_builder.count(self._table, where_t, self._column_family_details)
+  local res, err = self:execute(count_q, where_columns, where_t, {
+    paging_state = paging_state
+  })
+
+  return (#res >= 1 and table.remove(res, 1).count or 0), err, filtering
+end
+
+---
+-- Retrieve a page of rows from the related column family.
+-- @param[type=number] page_size Size of the page to retrieve (number of rows). The default is the default value from lua-cassandra.
+-- @param[type=string] paging_state Start page from given offset. See lua-cassandra's related **:execute()** option.
+-- @return find_by_keys()
 function BaseDao:find(page_size, paging_state)
   return self:find_by_keys(nil, page_size, paging_state)
 end
@@ -559,13 +634,13 @@ end
 -- Add a delete hook on a parent DAO of a foreign row.
 -- The delete hook will basically "cascade delete" all foreign rows of a parent row.
 -- @see cassandra/factory.lua ':load_daos()'
--- @param foreign_dao_name Name (string) of the parent DAO
--- @param foreign_column Name (string) of the foreign column
--- @param parent_column Name (string) of the parent column identifying the parent row
+-- @param[type=string] foreign_dao_name Name of the parent DAO
+-- @param[type=string] foreign_column Name of the foreign column
+-- @param[type=string] parent_column Name of the parent column identifying the parent row
 function BaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column)
 
   -- The actual delete hook
-  -- @param deleted_primary_key The value of the deleted row's primary key
+  -- @param[type=table] deleted_primary_key The value of the deleted row's primary key
   -- @return boolean True if success, false otherwise
   -- @return table A DAOError in case of error
   local delete_hook = function(deleted_primary_key)
@@ -596,10 +671,11 @@ function BaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column
   table.insert(self._cascade_delete_hooks, delete_hook)
 end
 
--- Delete the row at a given PRIMARY KEY.
--- @param  `where_t` A table containing the PRIMARY KEY (columns/values) of the row to delete
--- @return `success` True if deleted, false if otherwise or not found
--- @return `error`   Error if any during the query execution or the cascade delete hook
+---
+-- Delete the row with PRIMARY KEY from the configured table (**_table** attribute).
+-- @param[table=table] where_t A table containing the PRIMARY KEY (columns/values) of the row to delete
+-- @return boolean True if deleted, false if otherwise or not found
+-- @return table   Error if any during the query execution or the cascade delete hook
 function BaseDao:delete(where_t)
   assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
   assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
@@ -631,8 +707,9 @@ function BaseDao:delete(where_t)
   return results
 end
 
--- Truncate the table of this DAO
--- @return `:execute()`
+---
+-- Truncate the table related to this DAO (the **_table** attribute).
+-- Only executes a 'TRUNCATE' query using the @{execute} method.
 function BaseDao:drop()
   local truncate_q = query_builder.truncate(self._table)
   return self:execute(truncate_q)

@@ -1,4 +1,4 @@
---- Stub _G.ngx for unit testing.
+-- Stub _G.ngx for unit testing.
 -- Creates a stub for `ngx` for use by Kong's modules such as the DAO. It allows to use them
 -- outside of the nginx context such as when using the CLI, or unit testing.
 --

@@ -128,4 +128,14 @@ function _M.load_module_if_exists(module_name)
   end
 end
 
+-- Get Hostname
+-- @return hostname or empty string
+function _M.getHostname()
+  local f = io.popen ("/bin/hostname")
+  local hostname = f:read("*a") or ""
+  f:close()
+  hostname = string.gsub(hostname, "\n$", "")
+  return hostname
+end
+
 return _M
