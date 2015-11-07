@@ -1,17 +1,14 @@
 ---
 -- Module containing some general utility functions
 
-local uuid = require "uuid"
-
--- This is important to seed the UUID generator
-uuid.seed()
+local uuid = require "lua_uuid"
 
 local _M = {}
 
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
-  return uuid():gsub("-", "")
+  return uuid.generate():gsub("-", "")
 end
 
 --- Calculates a table size.

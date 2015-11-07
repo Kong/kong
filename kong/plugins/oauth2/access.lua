@@ -26,8 +26,9 @@ local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
-local AUTHORIZE_URL = "^%s/oauth2/authorize/?$"
-local TOKEN_URL = "^%s/oauth2/token/?$"
+
+local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
+local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
 -- TODO: Expire token (using TTL ?)
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)

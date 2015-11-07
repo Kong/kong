@@ -1,14 +1,14 @@
 local spec_helper = require "spec.spec_helpers"
 local timestamp = require "kong.tools.timestamp"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 local env = spec_helper.get_env()
 local dao_factory = env.dao_factory
 local response_ratelimiting_metrics = dao_factory.response_ratelimiting_metrics
 
 describe("Rate Limiting Metrics", function()
-  local api_id = uuid()
-  local identifier = uuid()
+  local api_id = uuid.generate()
+  local identifier = uuid.generate()
 
   after_each(function()
     spec_helper.drop_db()

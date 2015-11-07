@@ -1,6 +1,5 @@
---- JWT verification module
---
--- Adapted version of x25/luajwt for Kong. It provide various improvements and
+-- JWT verification module
+-- Adapted version of x25/luajwt for Kong. It provides various improvements and
 -- an OOP architecture allowing the JWT to be parsed and verified separatly,
 -- avoiding multiple parsings.
 --
@@ -23,7 +22,7 @@ local setmetatable = setmetatable
 local alg_sign = {
   ["HS256"] = function(data, key) return crypto.hmac.digest("sha256", data, key, true) end
   --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
-  --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end,
+  --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
 }
 
 --- Supported algorithms for verifying tokens.
@@ -31,7 +30,7 @@ local alg_sign = {
 local alg_verify = {
   ["HS256"] = function(data, signature, key) return signature == alg_sign["HS256"](data, key) end
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
-  --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end,
+  --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
 }
 
 --- base 64 encoding
