@@ -1,7 +1,7 @@
 # Microservice & API Management Layer
 [![][kong-logo]][kong-url]
 
-Kong was [created](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) to power the API Marketplace at [Mashape](https://www.mashape.com) to secure, manage and extend Microservices & APIs. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability. Kong runs in production at Mashape where it has handled billions of API requests for over 16,000 APIs.
+Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage and extend over [15,000 APIs](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices), while handling billions of requests per month. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability.
 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
