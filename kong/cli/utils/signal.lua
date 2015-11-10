@@ -47,8 +47,8 @@ end
 -- Preferred paths where to search for an `nginx` executable in priority to the $PATH
 local NGINX_BIN = "nginx"
 local NGINX_SEARCH_PATHS = {
-  --"/usr/local/openresty/nginx/sbin/",
-  --"/usr/local/opt/openresty/bin/",
+  "/usr/local/openresty/nginx/sbin/",
+  "/usr/local/opt/openresty/bin/",
   "/usr/local/bin/",
   "/usr/sbin/",
   "" -- to check the $PATH

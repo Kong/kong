@@ -75,8 +75,9 @@ build = {
     ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
 
     ["kong.core.handler"] = "kong/core/handler.lua",
-    ["kong.core.resolver"] = "kong/core/resolver.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
+    ["kong.core.resolver"] = "kong/core/resolver.lua",
+    ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
     ["kong.core.reports"] = "kong/core/reports.lua",
 
     ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",

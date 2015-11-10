@@ -1,12 +1,12 @@
--- Kong resolver
+-- Kong core
 --
--- The resolver is essential to Kong's core. It consists of events than need to
+-- This consists of events than need to
 -- be ran at the very beginning and very end of the lua-nginx-module contexts.
 -- It mainly carries information related to a request from one context to the next one,
 -- through the `ngx.ctx` table.
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the API being proxied by
--- a Consumer.
+-- a Consumer. Then it is responsible for loading the plugins to execute on this request.
 --
 -- In other phases, we create different variables and timers.
 -- Variables:
@@ -18,12 +18,13 @@
 --
 -- @see https://github.com/openresty/lua-nginx-module#ngxctx
 
-local constants = require "kong.constants"
 local utils = require "kong.tools.utils"
-local certificate = require "kong.core.certificate"
-local resolver = require "kong.core.resolver"
 local reports = require "kong.core.reports"
 local stringy = require "stringy"
+local resolver = require "kong.core.resolver"
+local constants = require "kong.constants"
+local certificate = require "kong.core.certificate"
+
 local table_insert = table.insert
 local math_floor = math.floor
 
@@ -36,11 +37,9 @@ return {
   init_worker = function()
     reports.init_worker()
   end,
-  certificate = {
-    before = function()
-      ngx.ctx.api = certificate.execute()
-    end
-  },
+  certificate = function()
+    ngx.ctx.api = certificate.execute()
+  end,
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = ngx.now()
