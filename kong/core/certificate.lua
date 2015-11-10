@@ -28,9 +28,11 @@ function _M.execute()
   local server_name = ssl.server_name()
   if server_name then -- Only support SNI requests
     local api, err = find_api({server_name})
-    if not err and api then
-      ngx.ctx.api = api
+    if err then
+      ngx.log(ngx.ERR, err)
     end
+
+    return api
   end
 end
 

@@ -32,6 +32,7 @@ local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local ipairs = ipairs
 local table_remove = table.remove
+local table_insert = table.insert
 
 local loaded_plugins = {}
 local core = require("kong.core.handler")
@@ -126,6 +127,62 @@ local function init_plugins()
   return loaded_plugins
 end
 
+---
+-- @param[type=table] plugins_to_execute
+local function plugins_iter(_, i)
+  i = i + 1
+  local p = ngx.ctx.plugins_for_request[i]
+  if p == nil then
+    -- End of the iteration
+    return
+  end
+
+  local plugin, plugin_configuration = p[1], p[2]
+
+  if phase_name == "access" then
+    -- Check if any Consumer was authenticated during the access_phase.
+    -- If so, retrieve the configuration for this Consumer.
+    local consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id or nil
+    if consumer_id ~= nil then
+      local consumer_plugin_configuration = load_plugin_configuration(ngx.ctx.api.id, nil, plugin.name)
+      if consumer_plugin_configuration ~= nil then
+        -- This Consumer has a special configuration when this plugin gets executed.
+        -- Override this plugin's configuration for this request.
+        plugin_configuration = consumer_plugin_configuration
+        ngx.ctx.plugins_for_request[i][2] = consumer_plugin_configuration
+      end
+    end
+  end
+
+  return i, plugin, plugin_configuration.config
+end
+
+local function noop()
+end
+
+local function plugins_to_execute(loaded_plugins)
+  if ngx.ctx.plugins_for_request == nil then
+    local t = {}
+    -- Build an array of plugins that must be executed for this particular request.
+    -- A plugin is considered to be executed if there is a row in the DB which contains:
+    -- 1. the API id (contained in ngx.ctx.api.id, retried by the core resolver)
+    -- 2. a Consumer id, in which case it overrides any previous plugin found in 1.
+    --    this use case will be treated later.
+    -- Such a row will contain a `config` value, which is a table.
+    for plugin_idx, plugin in ipairs(loaded_plugins) do
+      if ngx.ctx.api ~= nil then
+        local plugin_configuration = load_plugin_configuration(ngx.ctx.api.id, nil, plugin.name)
+        if plugin_configuration ~= nil then
+          table_insert(t, {plugin, plugin_configuration})
+        end
+      end
+    end
+    ngx.ctx.plugins_for_request = t
+  end
+
+  return plugins_iter, nil, 0
+end
+
 --- Kong public context handlers.
 -- @section kong_handlers
 
@@ -156,21 +213,16 @@ end
 function Kong.exec_plugins_init_worker()
   core.init_worker()
 
-  for _, plugin_t in ipairs(loaded_plugins) do
-    plugin_t.handler:init_worker()
+  for _, plugin in ipairs(loaded_plugins) do
+    plugin.handler:init_worker()
   end
 end
 
 function Kong.exec_plugins_certificate()
   core.certificate:before()
 
-  for _, plugin_t in ipairs(loaded_plugins) do
-    if ngx.ctx.api ~= nil then
-      local plugin = load_plugin_configuration(ngx.ctx.api.id, nil, plugin_t.name)
-      if plugin then
-        plugin_t.handler:certificate(plugin.config)
-      end
-    end
+  for _, plugin, plugin_conf in plugins_to_execute(loaded_plugins, "certificate") do
+    plugin.handler:certificate(plugin_conf)
   end
 end
 
@@ -178,22 +230,8 @@ end
 function Kong.exec_plugins_access()
   core.access:before()
 
-  for _, plugin_t in ipairs(loaded_plugins) do
-    if ngx.ctx.api then
-      ngx.ctx.plugins_to_execute[plugin_t.name] = load_plugin_configuration(ngx.ctx.api.id, nil, plugin_t.name)
-      local consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id or nil
-      if consumer_id then
-        local consumer_plugin = load_plugin_configuration(ngx.ctx.api.id, consumer_id, plugin_t.name)
-        if consumer_plugin then
-          ngx.ctx.plugins_to_execute[plugin_t.name] = consumer_plugin
-        end
-      end
-    end
-
-    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-    if plugin then
-      plugin_t.handler:access(plugin.config)
-    end
+  for _, plugin, plugin_conf in plugins_to_execute(loaded_plugins, "access") do
+    plugin.handler:access(plugin_conf)
   end
 
   core.access:after()
@@ -203,11 +241,8 @@ end
 function Kong.exec_plugins_header_filter()
   core.header_filter:before()
 
-  for _, plugin_t in ipairs(loaded_plugins) do
-    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-    if plugin then
-      plugin_t.handler:header_filter(plugin.config)
-    end
+  for _, plugin, plugin_conf in plugins_to_execute(loaded_plugins, "header_filter") do
+    plugin.handler:header_filter(plugin_conf)
   end
 
   core.header_filter:after()
@@ -217,11 +252,8 @@ end
 function Kong.exec_plugins_body_filter()
   core.body_filter:before()
 
-  for _, plugin_t in ipairs(loaded_plugins) do
-    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-    if plugin then
-      plugin_t.handler:body_filter(plugin.config)
-    end
+  for _, plugin, plugin_conf in plugins_to_execute(loaded_plugins, "body_filter") do
+    plugin.handler:body_filter(plugin_conf)
   end
 
   core.body_filter:after()
@@ -229,11 +261,8 @@ end
 
 -- Calls `log()` on every loaded plugin
 function Kong.exec_plugins_log()
-  for _, plugin_t in ipairs(loaded_plugins) do
-    local plugin = ngx.ctx.plugins_to_execute[plugin_t.name]
-    if plugin or plugin_t.reports then
-      plugin_t.handler:log(plugin.config)
-    end
+  for _, plugin, plugin_conf in plugins_to_execute(loaded_plugins, "log") do
+    plugin.handler:log(plugin_conf)
   end
 
   core.log()

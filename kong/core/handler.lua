@@ -38,13 +38,12 @@ return {
   end,
   certificate = {
     before = function()
-      certificate.execute()
+      ngx.ctx.api = certificate.execute()
     end
   },
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = ngx.now()
-      ngx.ctx.plugins_to_execute = {}
       ngx.ctx.api, ngx.ctx.upstream_url = resolver.execute()
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
