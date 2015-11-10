@@ -111,6 +111,10 @@ build = {
     ["kong.plugins.key-auth.api"] = "kong/plugins/key-auth/api.lua",
     ["kong.plugins.key-auth.daos"] = "kong/plugins/key-auth/daos.lua",
 
+    ["kong.plugins.gelato.handler"] = "kong/plugins/gelato/handler.lua",
+    ["kong.plugins.gelato.access"] = "kong/plugins/gelato/access.lua",
+    ["kong.plugins.gelato.schema"] = "kong/plugins/gelato/schema.lua",
+
     ["kong.plugins.oauth2.migrations.cassandra"] = "kong/plugins/oauth2/migrations/cassandra.lua",
     ["kong.plugins.oauth2.handler"] = "kong/plugins/oauth2/handler.lua",
     ["kong.plugins.oauth2.access"] = "kong/plugins/oauth2/access.lua",
