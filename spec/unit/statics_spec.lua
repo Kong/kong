@@ -1,4 +1,3 @@
-local spec_helper = require "spec.spec_helpers"
 local constants = require "kong.constants"
 local stringy = require "stringy"
 local IO = require "kong.tools.io"
