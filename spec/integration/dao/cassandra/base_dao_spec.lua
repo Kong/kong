@@ -4,7 +4,7 @@ local constants = require "kong.constants"
 local DaoError = require "kong.dao.error"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 -- Raw session for double-check purposes
 local session
