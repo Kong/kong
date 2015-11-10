@@ -30,7 +30,8 @@ dependencies = {
   "luasocket ~> 2.0.2-6",
   "lrexlib-pcre ~> 2.8.0-1",
   "lua-llthreads2 ~> 0.1.3-1",
-  "luacrypto >= 0.3.2-1"
+  "luacrypto >= 0.3.2-1",
+  "luasyslog >= 1.0.0-2"
 }
 build = {
   type = "builtin",
@@ -220,7 +221,15 @@ build = {
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
-    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua"
+    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
+    
+    ["kong.plugins.syslog.handler"] = "kong/plugins/syslog/handler.lua",
+    ["kong.plugins.syslog.log"] = "kong/plugins/syslog/log.lua",
+    ["kong.plugins.syslog.schema"] = "kong/plugins/syslog/schema.lua",
+    
+    ["kong.plugins.loggly.handler"] = "kong/plugins/loggly/handler.lua",
+    ["kong.plugins.loggly.log"] = "kong/plugins/loggly/log.lua",
+    ["kong.plugins.loggly.schema"] = "kong/plugins/loggly/schema.lua"
   },
   install = {
     conf = { "kong.yml" },
