@@ -34,7 +34,7 @@ function _M.execute(conf)
       iterate_and_exec(conf.add.headers, function(name, value)
         ngx.req.set_header(name, value)
         if name:lower() == HOST then -- Host header has a special treatment
-          ngx.var.backend_host = value
+          ngx.var.upstream_host = value
         end
       end)
     end
@@ -123,7 +123,6 @@ function _M.execute(conf)
     end
 
   end
-
 end
 
 return _M

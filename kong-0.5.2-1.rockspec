@@ -74,14 +74,11 @@ build = {
     ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
     ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
 
-    ["kong.resolver.handler"] = "kong/resolver/handler.lua",
-    ["kong.resolver.access"] = "kong/resolver/access.lua",
-    ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
-    ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
-
-    ["kong.reports.handler"] = "kong/reports/handler.lua",
-    ["kong.reports.init_worker"] = "kong/reports/init_worker.lua",
-    ["kong.reports.log"] = "kong/reports/log.lua",
+    ["kong.core.handler"] = "kong/core/handler.lua",
+    ["kong.core.certificate"] = "kong/core/certificate.lua",
+    ["kong.core.resolver"] = "kong/core/resolver.lua",
+    ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
+    ["kong.core.reports"] = "kong/core/reports.lua",
 
     ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",
     ["kong.dao.error"] = "kong/dao/error.lua",
