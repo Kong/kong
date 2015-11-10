@@ -1,10 +1,7 @@
 ---
 -- Module containing some general utility functions
 
-local uuid = require "uuid"
-
--- This is important to seed the UUID generator
-uuid.seed()
+local uuid = require "lua_uuid"
 
 local _M = {}
 

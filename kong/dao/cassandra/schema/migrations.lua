@@ -1,14 +1,35 @@
 local Migrations = {
-  -- skeleton
   {
     init = true,
     name = "2015-01-12-175310_skeleton",
     up = function(options)
-      return [[
-        CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
-          WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
+      local keyspace_name = options.keyspace
+      local strategy, strategy_properties = options.replication_strategy, ""
 
-        USE "]]..options.keyspace..[[";
+      -- Format strategy options
+      if strategy == "SimpleStrategy" then
+        strategy_properties = string.format(", 'replication_factor': %s", options.replication_factor)
+      elseif strategy == "NetworkTopologyStrategy" then
+        local dcs = {}
+        for dc_name, dc_repl in pairs(options.data_centers) do
+          table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
+        end
+        if #dcs > 0 then
+          strategy_properties = string.format(", %s", table.concat(dcs, ", "))
+        end
+      else
+        -- Strategy unknown
+        return nil, "invalid replication_strategy class"
+      end
+
+      -- Format final keyspace creation query
+      local keyspace_str = string.format([[
+        CREATE KEYSPACE IF NOT EXISTS "%s"
+          WITH REPLICATION = {'class': '%s'%s};
+      ]], keyspace_name, strategy, strategy_properties)
+
+      return keyspace_str..[[
+        USE "]]..keyspace_name..[[";
 
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
