@@ -267,6 +267,9 @@ nginx: |
     server {
       listen {{admin_api_port}};
 
+      client_max_body_size 10m;
+      client_body_buffer_size 10m;
+
       location / {
         default_type application/json;
         content_by_lua '
