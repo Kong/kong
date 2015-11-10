@@ -194,7 +194,8 @@ local function find_api(uri)
 end
 
 function _M.execute(conf)
-  local uri = ngx.var.uri
+  local uri = stringy.split(ngx.var.request_uri, "?")[1]
+
   local err, api, hosts, strip_request_path_pattern = find_api(uri)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
