@@ -144,7 +144,23 @@ function _M.execute(conf)
       end
     end
 
+    if conf.remove.json then
+      local content_type = get_content_type()
+      if content_type and stringy.startswith(get_content_type(), APPLICATION_JSON) then
+        ngx.req.read_body()
+        local parameters = cjson.decode(ngx.req.get_body_data())
+
+        iterate_and_exec(conf.remove.json, function(name)
+          parameters[name] = nil
+        end)
+
+        local new_data = cjson.encode(parameters)
+        ngx.req.set_header(CONTENT_LENGTH, string.len(new_data))
+        ngx.req.set_body_data(new_data)
+      end
+    end
   end
+
 
 end
 
