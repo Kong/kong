@@ -1,6 +1,4 @@
----
 -- IO related utility functions
---
 
 local yaml = require "yaml"
 local path = require("path").new("/")
@@ -100,46 +98,6 @@ function _M.file_size(path)
     file:close()
   end
   return size
-end
-
---- Load a yaml configuration file.
--- The return config will get 2 extra fields; `pid_file` of the nginx process
--- and `dao_config` as a shortcut to the dao configuration
--- @param configuration_path path to configuration file to load
--- @return config Loaded configuration table
--- @return dao_factory the accompanying DAO factory
-function _M.load_configuration_and_dao(configuration_path)
-  local configuration_file = _M.read_file(configuration_path)
-  if not configuration_file then
-    error("No configuration file at: "..configuration_path)
-  end
-
-  -- Configuration should already be validated by the CLI at this point
-  local configuration = yaml.load(configuration_file)
-
-  local dao_config = configuration.databases_available[configuration.database]
-  if dao_config == nil then
-    error('No "'..configuration.database..'" dao defined')
-  end
-
-  -- Adding computed properties to the configuration
-  configuration.pid_file = path:join(configuration.nginx_working_dir, constants.CLI.NGINX_PID)
-
-  -- Alias the DAO configuration we are using for this instance for easy access
-  configuration.dao_config = dao_config
-
-  -- Load absolute path for the nginx working directory
-  if not stringy.startswith(configuration.nginx_working_dir, "/") then
-    -- It's a relative path, convert it to absolute
-    local fs = require "luarocks.fs"
-    configuration.nginx_working_dir = fs.current_dir().."/"..configuration.nginx_working_dir
-  end
-
-  -- Instantiate the DAO Factory along with the configuration
-  local DaoFactory = require("kong.dao."..configuration.database..".factory")
-  local dao_factory = DaoFactory(dao_config.properties, configuration.plugins_available)
-
-  return configuration, dao_factory
 end
 
 return _M

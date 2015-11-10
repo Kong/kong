@@ -88,6 +88,20 @@ describe("Query Builder", function()
 
   end)
 
+  describe("COUNT", function()
+
+    it("should build a COUNT query", function()
+      local q = builder.count("apis")
+      assert.equal("SELECT COUNT(*) FROM apis", q)
+    end)
+
+    it("should build a COUNT query with WHERE keys", function()
+      local q = builder.count("apis", {id="123", name="mockbin"})
+      assert.equal("SELECT COUNT(*) FROM apis WHERE name = ? AND id = ? ALLOW FILTERING", q)
+    end)
+
+  end)
+
   describe("INSERT", function()
 
     it("should build an INSERT query", function()
