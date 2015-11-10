@@ -28,6 +28,7 @@ describe("Request Transformer", function()
               headers = { "x-to-remove" },
               querystring = { "toremovequery" },
               form = { "toremoveform" },
+              json = { "toremovejson" }
             }
           },
           __api = 1
@@ -147,6 +148,15 @@ describe("Request Transformer", function()
       assert.are.equal(200, status)
       assert.falsy(body.postData.params["toremoveform"])
       assert.are.same("yes", body.postData.params["nottoremove"])
+    end)
+
+    it("should remove parameters on json POST", function()
+      local response, status = http_client.post(STUB_POST_URL, {["toremovejson"] = "yes", ["nottoremove"] = "yes"}, {host = "test1.com", ["content-type"] = "application/json"})
+      local raw = cjson.decode(response)
+      local body = cjson.decode(raw.postData.text)
+      assert.are.equal(200, status)
+      assert.falsy(body["toremovejson"])
+      assert.are.same("yes", body["nottoremove"])
     end)
 
     it("should remove parameters on GET", function()
