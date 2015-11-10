@@ -37,6 +37,7 @@ return {
     UPSTREAM_LATENCY = "X-Kong-Upstream-Latency",
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
+    CONSUMER_CUSTOM_DATA = "X-Consumer-Custom-Data",
     CONSUMER_USERNAME = "X-Consumer-Username",
     CREDENTIAL_USERNAME = "X-Credential-Username",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",

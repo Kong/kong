@@ -51,6 +51,7 @@ local Migrations = {
         CREATE TABLE IF NOT EXISTS consumers(
           id uuid,
           custom_id text,
+          custom_data text,
           username text,
           created_at timestamp,
           PRIMARY KEY (id)
