@@ -5,7 +5,8 @@ return {
       fields = {
         form = { type = "array" },
         headers = { type = "array" },
-        querystring = { type = "array" }
+        querystring = { type = "array" },
+        json = { type = "array" }
       }
     }
     },

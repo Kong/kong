@@ -1,9 +1,11 @@
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 local Multipart = require "multipart"
+local cjson = require "cjson"
 
 local _M = {}
 
+local APPLICATION_JSON = "application/json"
 local CONTENT_LENGTH = "content-length"
 local FORM_URLENCODED = "application/x-www-form-urlencoded"
 local MULTIPART_DATA = "multipart/form-data"
@@ -76,6 +78,26 @@ function _M.execute(conf)
       end
     end
 
+  end
+
+  if conf.add.json then
+    local content_type = get_content_type()
+    if content_type and stringy.startswith(get_content_type(), APPLICATION_JSON) then
+      ngx.req.read_body()
+      local parameters = cjson.decode(ngx.req.get_body_data())
+
+      iterate_and_exec(conf.add.json, function(name, value)
+        local v = cjson.encode(value)
+        if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
+        v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
+        end
+        parameters[name] = v
+      end)
+
+      local new_data = cjson.encode(parameters)
+      ngx.req.set_header(CONTENT_LENGTH, string.len(new_data))
+      ngx.req.set_body_data(new_data)
+    end
   end
 
   if conf.remove then
