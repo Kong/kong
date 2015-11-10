@@ -17,14 +17,14 @@ describe("Syslog", function()
         { request_host = "logging3.com", upstream_url = "http://mockbin.com" }
       },
       plugin = {
-        { name = "syslog", config = { log_level = "info", successful_severity = "warning", 
-                                      client_errors_severity = "warning", 
+        { name = "syslog", config = { log_level = "info", successful_severity = "warning",
+                                      client_errors_severity = "warning",
                                       server_errors_severity = "warning" }, __api = 1 },
-        { name = "syslog", config = { log_level = "err", successful_severity = "warning", 
-                                      client_errors_severity = "warning", 
+        { name = "syslog", config = { log_level = "err", successful_severity = "warning",
+                                      client_errors_severity = "warning",
                                       server_errors_severity = "warning" }, __api = 2 },
-        { name = "syslog", config = { log_level = "warning", successful_severity = "warning", 
-                                      client_errors_severity = "warning", 
+        { name = "syslog", config = { log_level = "warning", successful_severity = "warning",
+                                      client_errors_severity = "warning",
                                       server_errors_severity = "warning" }, __api = 3 }
       }
     }
@@ -66,20 +66,20 @@ describe("Syslog", function()
         local output, code = IO.os_execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l "..uuid)
         assert.are.equal(0, code)
         assert.truthy(#output > 0)
-      end 
+      end
     end
   end
 
-  it("should log to syslog if log_level is lower", function() 
+  it("should log to syslog if log_level is lower", function()
     do_test("logging.com", true)
-  end) 
+  end)
 
-  it("should not log to syslog if the log_level is higher", function() 
+  it("should not log to syslog if the log_level is higher", function()
     do_test("logging2.com", false)
-  end) 
+  end)
 
-  it("should log to syslog if log_level is the same", function() 
+  it("should log to syslog if log_level is the same", function()
     do_test("logging3.com", true)
-  end) 
+  end)
 
 end)

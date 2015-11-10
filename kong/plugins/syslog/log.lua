@@ -11,14 +11,14 @@ local _M = {}
 
 local SENDER_NAME = "kong"
 
-local LOG_LEVELS = { 
-  debug = 7, 
-  info = 6, 
-  notice = 5, 
-  warning = 4, 
-  err = 3, 
-  crit = 2, 
-  alert = 1, 
+local LOG_LEVELS = {
+  debug = 7,
+  info = 6,
+  notice = 5,
+  warning = 4,
+  err = 3,
+  crit = 2,
+  alert = 1,
   emerg = 0
 }
 

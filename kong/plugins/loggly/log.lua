@@ -21,14 +21,14 @@ end
 local HOSTNAME = getHostname()
 local SENDER_NAME = "kong"
 
-local LOG_LEVELS = { 
-  debug = 7, 
-  info = 6, 
-  notice = 5, 
-  warning = 4, 
-  err = 3, 
-  crit = 2, 
-  alert = 1, 
+local LOG_LEVELS = {
+  debug = 7,
+  info = 6,
+  notice = 5,
+  warning = 4,
+  err = 3,
+  crit = 2,
+  alert = 1,
   emerg = 0
 }
 
@@ -39,15 +39,15 @@ local function merge(conf, message, pri)
     table_insert(tags, "tag=".."\""..tags_list[i].."\"")
   end
 
-  local udp_message = { 
-    "<"..pri..">1", 
-    os_date("!%Y-%m-%dT%XZ"), 
-    HOSTNAME, 
-    SENDER_NAME, 
-    "-", 
-    "-", 
-    "["..conf.key.."@41058", table_concat(tags, " ").."]", 
-    cjson.encode(message) 
+  local udp_message = {
+    "<"..pri..">1",
+    os_date("!%Y-%m-%dT%XZ"),
+    HOSTNAME,
+    SENDER_NAME,
+    "-",
+    "-",
+    "["..conf.key.."@41058", table_concat(tags, " ").."]",
+    cjson.encode(message)
   }
   return table_concat(udp_message, " ")
 end
