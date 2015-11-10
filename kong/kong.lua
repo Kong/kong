@@ -82,7 +82,7 @@ local function load_node_plugins(configuration)
   if configuration.send_anonymous_reports then
     table_insert(sorted_plugins, 1, {
       name = "reports",
-      handler = require("kong.reports.handler")()
+      handler = require("kong.core.reports")
     })
   end
 
