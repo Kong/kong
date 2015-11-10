@@ -103,6 +103,8 @@ Tools:
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
 - [Python Client for Kong](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
+- [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
+
 
 ## Roadmap
 
