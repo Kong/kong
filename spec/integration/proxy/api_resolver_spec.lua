@@ -37,7 +37,11 @@ describe("Resolver", function()
         {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
         {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
         {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true},
-        {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"}
+        {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"},
+        {name = "tests-trailing-slash-path", request_path = "/test-trailing-slash", strip_request_path = true, upstream_url = "http://www.mockbin.org/request"},
+        {name = "tests-trailing-slash-path2", request_path = "/test-trailing-slash2", strip_request_path = false, upstream_url = "http://www.mockbin.org/request"},
+        {name = "tests-trailing-slash-path3", request_path = "/test-trailing-slash3", strip_request_path = true, upstream_url = "http://www.mockbin.org"},
+        {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -193,6 +197,26 @@ describe("Resolver", function()
         local body = cjson.decode(response)
         local upstream_url = body.log.entries[1].request.url
         assert.equal("http://mockbin.com/har/of/request", upstream_url)
+      end)
+      it("should not add a trailing slash when strip_path is enabled", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request?hello=world", cjson.decode(response).url)
+      end)
+      it("should not add a trailing slash when strip_path is disabled", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash2", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request/test-trailing-slash2?hello=world", cjson.decode(response).url)
+      end)
+      it("should not add a trailing slash when strip_path is enabled and upstream_url has no path", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash3/request", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request?hello=world", cjson.decode(response).url)
+      end)
+      it("should not add a trailing slash when strip_path is enabled and upstream_url has single path", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash4/request", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request?hello=world", cjson.decode(response).url)
       end)
     end)
 

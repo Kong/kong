@@ -39,7 +39,7 @@ local function get_upstream_url(api)
   local len = string_len(result)
   if string_sub(result, len, len) == "/" then
     -- Remove one slash to avoid having a double slash
-    -- Because ngx.var.uri always starts with a slash
+    -- Because ngx.var.request_uri always starts with a slash
     result = string_sub(result, 0, len - 1)
   end
 
@@ -159,9 +159,14 @@ end
 
 -- Replace `/request_path` with `request_path`, and then prefix with a `/`
 -- or replace `/request_path/foo` with `/foo`, and then do not prefix with `/`.
-function _M.strip_request_path(uri, strip_request_path_pattern)
+function _M.strip_request_path(uri, strip_request_path_pattern, upstream_url_has_path)
   local uri = string_gsub(uri, strip_request_path_pattern, "", 1)
-  if string_sub(uri, 0, 1) ~= "/" then
+
+  -- Sometimes uri can be an empty string, and adding a slash "/"..uri will lead to a trailing slash
+  -- We don't want to add a trailing slash in one specific scenario, when the upstream_url already has
+  -- a path (so it's not root, like http://hello.com/, but http://hello.com/path) in order to avoid
+  -- having an unnecessary trailing slash not wanted by the user. Hence the "upstream_url_has_path" check.
+  if string_sub(uri, 0, 1) ~= "/" and not upstream_url_has_path then
     uri = "/"..uri
   end
   return uri
@@ -203,6 +208,11 @@ local function find_api(uri)
   return nil, api, all_hosts, strip_request_path_pattern
 end
 
+local function url_has_path(url)
+  local _, count_slashes = string.gsub(url, "/", "")
+  return count_slashes > 2
+end
+
 function _M.execute()
   local uri = stringy.split(ngx.var.request_uri, "?")[1]
   local err, api, hosts, strip_request_path_pattern = find_api(uri)
@@ -216,12 +226,14 @@ function _M.execute()
     }
   end
 
+  local upstream_url = get_upstream_url(api)
+
   -- If API was retrieved by request_path and the request_path needs to be stripped
   if strip_request_path_pattern and api.strip_request_path then
-    uri = _M.strip_request_path(uri, strip_request_path_pattern)
+    uri = _M.strip_request_path(uri, strip_request_path_pattern, url_has_path(upstream_url))
   end
 
-  local upstream_url = get_upstream_url(api)..uri
+  upstream_url = upstream_url..uri
 
   -- Set the
   if api.preserve_host then
@@ -229,7 +241,6 @@ function _M.execute()
   else
     ngx.var.upstream_host = get_host_from_url(upstream_url)
   end
-
   return api, upstream_url
 end
 
