@@ -34,12 +34,6 @@ local setmetatable = setmetatable
 local MB = 1024 * 1024
 local MAX_BUFFER_SIZE = 1 * MB
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
--- Mashape Analytics socket server properties
-local ANALYTICS_SOCKET = {
-  host = "socket.analytics.mashape.com",
-  port = 80,
-  path = "/1.0.0/batch"
-}
 
 local buffer_mt = {}
 buffer_mt.__index = buffer_mt
@@ -73,6 +67,9 @@ function buffer_mt.new(conf)
     MAX_ENTRIES = conf.batch_size,
     MAX_SIZE = MAX_BUFFER_SIZE,
     AUTO_FLUSH_DELAY = conf.delay,
+    HOST = conf.host,
+    PORT = conf.port,
+    PATH = conf.path,
     entries = {}, -- current buffer as an array of strings (serialized ALFs)
     entries_size = 0, -- current buffer size in bytes
     sending_queue = {}, -- array of constructed payloads (batches of ALFs) to be sent
@@ -177,9 +174,9 @@ function buffer_mt.send_batch(premature, self)
   local client = http:new()
   client:set_timeout(50000) -- 5 sec
 
-  local ok, err = client:connect(ANALYTICS_SOCKET.host, ANALYTICS_SOCKET.port)
+  local ok, err = client:connect(self.HOST, self.PORT)
   if ok then
-    local res, err = client:request({path = ANALYTICS_SOCKET.path, body = batch_to_send.payload})
+    local res, err = client:request({path = self.PATH, body = batch_to_send.payload})
     if not res then
       ngx_log(ngx_log_ERR, string_format("[mashape-analytics] failed to send batch (%s ALFs %s bytes): %s",
                                      batch_to_send.n_entries, batch_to_send.size, err))
