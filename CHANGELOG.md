@@ -1,5 +1,17 @@
 ## [Unreleased][unreleased]
 
+## [0.5.3] - 2015/11/16
+
+### Fixed
+
+- Avoids additional URL encoding when proxying to an upstream service. [#691](https://github.com/Mashape/kong/pull/691)
+- Fixing potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
+- Fixed a missing "env" statement in the Nginx configuration. [#706](https://github.com/Mashape/kong/pull/706)
+
+### Added
+
+- The Galileo plugin now supports arbitrary host, port and path values. [#721](https://github.com/Mashape/kong/pull/721)
+
 ## [0.5.2] - 2015/10/21
 
 A few fixes requested by the community!
