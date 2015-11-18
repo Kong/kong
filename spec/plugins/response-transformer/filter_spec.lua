@@ -3,41 +3,25 @@ local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.PROXY_URL.."/get"
-local STUB_POST_URL = spec_helper.PROXY_URL.."/post"
 local STUB_HEADERS_URL = spec_helper.PROXY_URL.."/response-headers"
 
 describe("Response Transformer Plugin #proxy", function()
-
   setup(function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        {name = "tests-response-transformer", request_host = "response.com", upstream_url = "http://httpbin.org"},
-        {name = "tests-response-transformer2", request_host = "response2.com", upstream_url = "http://httpbin.org"}
+        {name = "tests-response-transformer", request_host = "response.com", upstream_url = "http://httpbin.org"}
       },
       plugin = {
         {
           name = "response-transformer",
           config = {
-            add = {
-              headers = {"x-added:true", "x-added2:true"},
-              json = {"newjsonparam:newvalue"}
-            },
             remove = {
-              headers = {"x-to-remove"},
-              json = {"origin"}
+              headers = {"Access-Control-Allow-Origin"},
+              json = {"url"}
             }
           },
           __api = 1
-        },
-        {
-          name = "response-transformer",
-          config = {
-            add = {
-              headers = {"Cache-Control:max-age=86400"}
-            }
-          },
-          __api = 2
         }
       }
     }
@@ -49,52 +33,20 @@ describe("Response Transformer Plugin #proxy", function()
     spec_helper.stop_kong()
   end)
 
-  describe("Test adding parameters", function()
-
-    it("should add new headers", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response.com"})
-      assert.are.equal(200, status)
-      assert.are.equal("true", headers["x-added"])
-      assert.are.equal("true", headers["x-added2"])
-    end)
-
-    it("should add new parameters on GET", function()
+  describe("Test transforming parameters", function()
+    it("should remove a parameter", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "response.com"})
-      assert.are.equal(200, status)
+      assert.equal(200, status)
       local body = cjson.decode(response)
-      assert.are.equal("newvalue", body["newjsonparam"])
+      assert.falsy(body.url)
     end)
-
-    it("should add new parameters on POST", function()
-      local response, status = http_client.post(STUB_POST_URL, {}, {host = "response.com"})
-      assert.are.equal(200, status)
-      local body = cjson.decode(response)
-      assert.are.equal("newvalue", body["newjsonparam"])
-    end)
-
-    it("should add new headers", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "response2.com"})
-      assert.are.equal(200, status)
-      assert.are.equal("max-age=86400", headers["cache-control"])
-    end)
-
   end)
-
-  describe("Test removing parameters", function()
-
+  
+  describe("Test transforming headers", function()  
     it("should remove a header", function()
-      local _, status, headers = http_client.get(STUB_HEADERS_URL, {["x-to-remove"] = "true"}, {host = "response.com"})
-      assert.are.equal(200, status)
-      assert.falsy(headers["x-to-remove"])
+      local _, status, headers = http_client.get(STUB_HEADERS_URL, {}, {host = "response.com"})
+      assert.equal(200, status)
+      assert.falsy(headers["access-control-allow-origin"])
     end)
-
-    it("should remove a parameter on GET", function()
-      local response, status = http_client.get(STUB_GET_URL, {}, {host = "response.com"})
-      assert.are.equal(200, status)
-      local body = cjson.decode(response)
-      assert.falsy(body.origin)
-    end)
-
   end)
-
 end)

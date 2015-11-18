@@ -302,11 +302,13 @@ describe("Entities Schemas", function()
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.same({key_names = {"apikey"}, hide_credentials = false}, plugin.config)
       assert.True(valid)
-
-      -- Insert reauest-transformer, whose default config has no default values, and should be empty
+    end)
+    
+    it("should be valid if no value is specified for subfield and if the config schema has default as empty array", function()
+      -- Insert response-transformer, whose default config has no default values, and should be empty
       local plugin2 = {name = "response-transformer", api_id = "stub"}
-      valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
-      assert.same({}, plugin2.config)
+      local valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
+      assert.same({remove = {headers = {}}, replace = {headers = {}}, add = {headers = {}},  append = {headers = {}}}, plugin2.config)
       assert.True(valid)
     end)
 
