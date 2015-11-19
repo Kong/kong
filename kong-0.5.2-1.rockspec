@@ -14,7 +14,7 @@ dependencies = {
   "lua ~> 5.1",
   "luasec ~> 0.5-2",
 
-  "lua_uuid ~> 0.1-4",
+  "lua_uuid ~> 0.1-8",
   "luatz ~> 0.3-1",
   "yaml ~> 1.1.2-1",
   "lapis ~> 1.3.0-1",
