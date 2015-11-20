@@ -13,6 +13,7 @@ local STATE = "state"
 local CODE = "code"
 local TOKEN = "token"
 local REFRESH_TOKEN = "refresh_token"
+local NEW_REFRESH_TOKEN = "new_refresh_token"
 local SCOPE = "scope"
 local CLIENT_ID = "client_id"
 local CLIENT_SECRET = "client_secret"
@@ -31,12 +32,23 @@ local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
 local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
 -- TODO: Expire token (using TTL ?)
-local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
+local function generate_token(
+  conf,
+  credential,
+  authenticated_userid,
+  scope,
+  state, 
+  expiration,
+  disable_refresh,
+  access_token,
+  refresh_token)
   local token_expiration = expiration or conf.token_expiration
 
   local token, err = dao.oauth2_tokens:insert({
     credential_id = credential.id,
     authenticated_userid = authenticated_userid,
+    access_token = access_token,
+    refresh_token = refresh_token,
     expires_in = token_expiration,
     scope = scope
   })
@@ -249,8 +261,9 @@ local function issue_token(conf)
           response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
-        -- Only check the provision_key if the authenticated_userid is being set
-        if parameters.authenticated_userid and conf.provision_key ~= parameters.provision_key then
+        local has_supplied_access_token_or_authenticated_userid = parameters[AUTHENTICATED_USERID] or parameters[ACCESS_TOKEN]
+        
+        if has_supplied_access_token_or_authenticated_userid and conf.provision_key ~= parameters.provision_key then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
         else
           -- Check scopes
@@ -258,7 +271,7 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, conf.token_expiration, true)
+            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, conf.token_expiration, true, parameters[ACCESS_TOKEN], nil)
           end
         end
       elseif grant_type == GRANT_PASSWORD then
@@ -273,7 +286,7 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
+            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, nil, false, parameters[ACCESS_TOKEN], parameters[REFRESH_TOKEN])
           end
         end
       elseif grant_type == GRANT_REFRESH_TOKEN then
@@ -282,8 +295,14 @@ local function issue_token(conf)
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
         else
-          response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state)
-          dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          local has_supplied_tokens = parameters[ACCESS_TOKEN] or parameters[NEW_REFRESH_TOKEN]
+
+          if has_supplied_tokens and conf.provision_key ~= parameters.provision_key then
+            response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+          else
+            response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state, nil, false, parameters[ACCESS_TOKEN], parameters[NEW_REFRESH_TOKEN])
+            dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          end
         end
       end
     end
