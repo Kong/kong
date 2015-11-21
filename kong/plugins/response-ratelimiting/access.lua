@@ -57,20 +57,16 @@ function _M.execute(conf)
   local usage = get_current_usage(api_id, identifier, current_timestamp, conf.limits)
   ngx.ctx.usage = usage -- For use to determine whether to block, and later when the upstream-response headers come back
 
-  -- 
-  local stop
+  -- If any usage quota has been exceeded, block the request:
   for limit_name, v in pairs(usage) do
     for period_name, lv in pairs(usage[limit_name]) do
       if lv.remaining <= 0 then
-        stop = true -- No more
+        ngx.ctx.stop_log = true
+        return responses.send(429, "API quota exceeded")
       end
     end
   end
 
-  if stop then
-    ngx.ctx.stop_log = true
-    return responses.send(429, "API quota exceeded")
-  end
 end
 
 return _M
