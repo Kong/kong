@@ -56,6 +56,21 @@ function _M.execute(conf)
   -- Load current metric for configured period
   local usage = get_current_usage(api_id, identifier, current_timestamp, conf.limits)
   ngx.ctx.usage = usage -- For later use
+
+  --local usage = ngx.ctx.usage -- Load current usage
+  local stop
+  for limit_name, v in pairs(usage) do
+    for period_name, lv in pairs(usage[limit_name]) do
+      if lv.remaining <= 0 then
+        stop = true -- No more
+      end
+    end
+  end
+
+  if stop then
+    ngx.ctx.stop_log = true
+    return responses.send(429, "API quota exceeded")
+  end
 end
 
 return _M

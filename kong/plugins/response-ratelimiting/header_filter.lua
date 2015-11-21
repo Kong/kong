@@ -33,26 +33,17 @@ function _M.execute(conf)
 
   local usage = ngx.ctx.usage -- Load current usage
 
-  local stop
+  -- Set headers describing the relevant limits to API users
   for limit_name, v in pairs(usage) do
     for period_name, lv in pairs(usage[limit_name]) do
       ngx.header[constants.HEADERS.RATELIMIT_LIMIT.."-"..limit_name.."-"..period_name] = lv.limit
       ngx.header[constants.HEADERS.RATELIMIT_REMAINING.."-"..limit_name.."-"..period_name] = math.max(0, lv.remaining - (increments[limit_name] and increments[limit_name] or 0)) -- increment_value for this current request
-
-      if increments[limit_name] and increments[limit_name] > 0 and lv.remaining <= 0 then
-        stop = true -- No more
-      end
     end
   end
 
   -- Remove header
   ngx.header[conf.header_name] = nil
 
-  -- If limit is exceeded, terminate the request
-  if stop then
-    ngx.ctx.stop_log = true
-    return responses.send(429) -- Don't set a body
-  end
 end
 
 return _M
