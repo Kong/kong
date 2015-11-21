@@ -1,7 +1,6 @@
 local stringy = require "stringy"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
-local responses = require "kong.tools.responses"
 
 local _M = {}
 
