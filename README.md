@@ -26,6 +26,7 @@ Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage 
 
 - **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
+- **Geo-Replicated**: Configs are always up-to-date across different regions. 
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
@@ -36,7 +37,7 @@ Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage 
   - **ACL**: Acccess Control for your API Consumers.
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Response-Rate-Limiting**: Rate limiting based on custom response header value.
-  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Mashape Analytics](https://apianalytics.com) (Galileo).
+  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
   - **SSL**: Setup a specific SSL certificate for an underlying service or API.
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
@@ -94,6 +95,7 @@ Videos:
 
 Tools:
 
+- [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
 - [Kongfig](https://github.com/mybuilder/kongfig)
 - [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)

@@ -1,8 +1,8 @@
 This document describes eventual additional steps that might be required to update between two versions of Kong. If nothing is described here for a particular version and platform, then assume the update will go smoothly.
 
-## Update to Kong `0.5.0`
+## Update to Kong `0.5.x`
 
-Migrating to 0.5.0 can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
+Migrating to 0.5.x can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
 > Several changes were introduced in this version: some plugins and properties were renamed and the database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed.
 
@@ -70,11 +70,11 @@ $ pip install cassandra-driver pyyaml
 $ python migration.py -c /path/to/kong/config
 ```
 
-If everything went well the script should print a success message. **At this point, your database is compatible with both Kong 0.4.2 and 0.5.0.** If you are running more than one Kong node, you simply have to follow step 3. for each one of them now.
+If everything went well the script should print a success message. **At this point, your database is compatible with both Kong 0.4.2 and 0.5.x.** If you are running more than one Kong node, you simply have to follow step 3. for each one of them now.
 
 ##### 3. Upgrade without downtime
 
-You can now update Kong to 0.5.0. Proceed as a regular update and install the package of your choice from the website. After updating, reload Kong to avoid downtime:
+You can now update Kong to 0.5.x. Proceed as a regular update and install the package of your choice from the website. After updating, reload Kong to avoid downtime:
 
 ```shell
 $ kong reload
@@ -82,13 +82,13 @@ $ kong reload
 
 ##### 4. Purge your Cassandra cluster
 
-Finally, once Kong has restarted in 0.5.0, run the migration script again, with the `--purge` flag:
+Finally, once Kong has restarted in 0.5.x, run the migration script again, with the `--purge` flag:
 
 ```shell
 $ python migration.py -c /path/to/kong/config --purge
 ```
 
-Your cluster is now fully migrated to `0.5.0`.
+Your cluster is now fully migrated to `0.5.x`.
 
 ##### Other changes to acknowledge
 
