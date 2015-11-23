@@ -358,7 +358,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.5.2...next
+[unreleased]: https://github.com/mashape/kong/compare/0.5.3...next
+[0.5.3]: https://github.com/mashape/kong/compare/0.5.3...0.5.3
 [0.5.2]: https://github.com/mashape/kong/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/mashape/kong/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/mashape/kong/compare/0.4.2...0.5.0
