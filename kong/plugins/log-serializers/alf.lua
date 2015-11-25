@@ -17,6 +17,8 @@
 
 local stringy = require "stringy"
 
+local ngx_encode_base64 = ngx.encode_base64
+
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
 
 -- Transform a key/value lua table into an array of elements with `name`, `value`.
@@ -66,6 +68,9 @@ function _M.serialize_entry(ngx)
   local alf_req_body = analytics_data.req_body or ""
   local alf_res_body = analytics_data.res_body or ""
   local alf_req_post_args = analytics_data.req_post_args or {}
+
+  local alf_base64_req_body = ngx_encode_base64(alf_req_body)
+  local alf_base64_res_body = ngx_encode_base64(alf_res_body)
 
   -- timers
   local proxy_started_at, proxy_ended_at = ngx.ctx.proxy_started_at, ngx.ctx.proxy_ended_at
@@ -130,7 +135,7 @@ function _M.serialize_entry(ngx)
       postData = {
         mimeType = alf_req_mimeType,
         params = dic_to_array(alf_req_post_args),
-        text = alf_req_body
+        text = alf_base64_req_body
       }
     },
     response = {
@@ -145,7 +150,7 @@ function _M.serialize_entry(ngx)
       content = {
         size = tonumber(ngx.var.body_bytes_sent),
         mimeType = alf_res_mimeType,
-        text = alf_res_body
+        text = alf_base64_res_body
       }
     },
     cache = {},
