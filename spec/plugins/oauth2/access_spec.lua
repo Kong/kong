@@ -50,7 +50,7 @@ describe("Authentication Plugin", function()
         { username = "auth_tests_consumer" }
       },
       plugin = {
-        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
+        { name = "oauth2", config = { scopes = { "email", "profile", "user.email" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
@@ -234,6 +234,26 @@ describe("Authentication Plugin", function()
 
         assert.are.equal("userid123", data[1].authenticated_userid)
         assert.are.equal("email", data[1].scope)
+      end)
+
+      it("should return success with a dotted scope and store authenticated user properties", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "user.email", response_type = "code", state = "hello", authenticated_userid = "userid123" }, {host = "oauth2.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equal(1, utils.table_size(body))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
+
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+        local code
+        for line in matches do
+          code = line
+        end
+        local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
+        assert.are.equal(1, #data)
+        assert.are.equal(code, data[1].code)
+
+        assert.are.equal("userid123", data[1].authenticated_userid)
+        assert.are.equal("user.email", data[1].scope)
       end)
 
     end)

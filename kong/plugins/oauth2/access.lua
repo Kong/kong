@@ -92,7 +92,7 @@ local function retrieve_scopes(parameters, conf)
   local scope = parameters[SCOPE]
   local scopes = {}
   if conf.scopes and scope then
-    for v in scope:gmatch("%w+") do
+    for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then
         return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
       else
@@ -323,7 +323,7 @@ local function parse_access_token(conf)
     local authorization = ngx.req.get_headers()["authorization"]
     if authorization then
       local parts = {}
-      for v in authorization:gmatch("%w+") do -- Split by space
+      for v in authorization:gmatch("%S+") do -- Split by space
         table.insert(parts, v)
       end
       if #parts == 2 and (parts[1]:lower() == "token" or parts[1]:lower() == "bearer") then
