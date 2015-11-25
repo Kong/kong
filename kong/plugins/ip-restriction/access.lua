@@ -1,4 +1,4 @@
-local iputils = require "resty.iputils" 
+local iputils = require "resty.iputils"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
 
@@ -22,7 +22,6 @@ function _M.execute(conf)
   end
 
   if block then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("Your IP address is not allowed")
   end
 end

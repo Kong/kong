@@ -1,4 +1,4 @@
-local resolver_access = require "kong.resolver.access"
+local resolver_access = require "kong.core.resolver"
 
 -- Stubs
 require "kong.tools.ngx_stub"

@@ -174,5 +174,4 @@ describe("Logging Plugins", function()
 
     os.remove(FILE_LOG_PATH)
   end)
-
 end)

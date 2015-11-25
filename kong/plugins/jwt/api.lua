@@ -40,6 +40,10 @@ return {
       return helpers.responses.send_HTTP_OK(self.credential)
     end,
 
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, self.credential, dao_factory.jwt_secrets)
+    end,
+
     DELETE = function(self, dao_factory)
       crud.delete(self.credential, dao_factory.jwt_secrets)
     end

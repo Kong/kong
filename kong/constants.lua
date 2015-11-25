@@ -33,8 +33,8 @@ return {
   -- Non standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
-    PROXY_TIME = "X-Kong-Proxy-Time",
-    API_TIME = "X-Kong-Api-Time",
+    PROXY_LATENCY = "X-Kong-Proxy-Latency",
+    UPSTREAM_LATENCY = "X-Kong-Upstream-Latency",
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",

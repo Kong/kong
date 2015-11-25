@@ -26,8 +26,9 @@ local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
-local AUTHORIZE_URL = "^%s/oauth2/authorize/?$"
-local TOKEN_URL = "^%s/oauth2/token/?$"
+
+local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
+local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
 -- TODO: Expire token (using TTL ?)
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
@@ -166,11 +167,8 @@ local function authorize(conf)
   -- Adding the state if it exists. If the state == nil then it won't be added
   response_params.state = state
 
-  -- Stopping other phases
-  ngx.ctx.stop_phases = true
-
   -- Sending response in JSON format
-  responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
+  return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
     redirect_uri = redirect_uri.."?"..ngx.encode_args(response_params)
   } or response_params, false, {
     ["cache-control"] = "no-store",
@@ -294,11 +292,8 @@ local function issue_token(conf)
   -- Adding the state if it exists. If the state == nil then it won't be added
   response_params.state = state
 
-  -- Stopping other phases
-  ngx.ctx.stop_phases = true
-
   -- Sending response in JSON format
-  responses.send(response_params[ERROR] and 400 or 200, response_params, false, {
+  return responses.send(response_params[ERROR] and 400 or 200, response_params, false, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
   })
@@ -378,7 +373,6 @@ function _M.execute(conf)
 
   local token = retrieve_token(parse_access_token(conf))
   if not token then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end
 
@@ -386,7 +380,6 @@ function _M.execute(conf)
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      ngx.ctx.stop_phases = true -- interrupt other phases of this request
       return responses.send_HTTP_BAD_REQUEST({[ERROR] = "invalid_request", error_description = "access_token expired"})
     end
   end

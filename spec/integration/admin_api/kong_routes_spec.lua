@@ -1,7 +1,10 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
+local IO = require "kong.tools.io"
 local utils = require "kong.tools.utils"
+local env = spec_helper.get_env() -- test environment
+local dao_factory = env.dao_factory
 
 describe("Admin API", function()
 
@@ -13,7 +16,7 @@ describe("Admin API", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-
+  
   describe("Kong routes", function()
     describe("/", function()
       local constants = require "kong.constants"
@@ -60,15 +63,58 @@ describe("Admin API", function()
       assert.are.equal(200, status)
       local body = json.decode(response)
       assert.truthy(body)
+      assert.are.equal(2, utils.table_size(body))
 
-      assert.are.equal(7, utils.table_size(body))
-      assert.truthy(body.connections_accepted)
-      assert.truthy(body.connections_active)
-      assert.truthy(body.connections_handled)
-      assert.truthy(body.connections_reading)
-      assert.truthy(body.connections_writing)
-      assert.truthy(body.connections_waiting)
-      assert.truthy(body.total_requests)
+      -- Database stats
+      -- Removing migrations DAO
+      dao_factory.daos.migrations = nil
+      assert.are.equal(utils.table_size(dao_factory.daos), utils.table_size(body.database))
+      for k, _ in pairs(dao_factory.daos) do
+        assert.truthy(body.database[k])
+      end
+
+      -- Server stats
+      assert.are.equal(7, utils.table_size(body.server))
+      assert.truthy(body.server.connections_accepted)
+      assert.truthy(body.server.connections_active)
+      assert.truthy(body.server.connections_handled)
+      assert.truthy(body.server.connections_reading)
+      assert.truthy(body.server.connections_writing)
+      assert.truthy(body.server.connections_waiting)
+      assert.truthy(body.server.total_requests)
     end)
   end)
+
+  describe("Request size", function()
+    it("should properly hanlde big POST bodies < 10MB", function()
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", { request_path = "hello.com", upstream_url = "http://mockbin.org" })
+      assert.equal(201, status)
+      local api_id = json.decode(response).id
+      assert.truthy(api_id)
+
+
+      local big_value = string.rep("204.48.16.0,", 1000)
+      big_value = string.sub(big_value, 1, string.len(big_value) - 1)
+      assert.truthy(string.len(big_value) > 10000) -- More than 10kb
+
+      local _, status = http_client.post(spec_helper.API_URL.."/apis/"..api_id.."/plugins/", { name = "ip-restriction", ["config.blacklist"] = big_value})
+      assert.equal(201, status)
+    end)
+
+    it("should fail with requests > 10MB", function()
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", { request_path = "hello2.com", upstream_url = "http://mockbin.org" })
+      assert.equal(201, status)
+      local api_id = json.decode(response).id
+      assert.truthy(api_id)
+
+      -- It should fail with more than 10MB
+      local big_value = string.rep("204.48.16.0,", 1024000)
+      big_value = string.sub(big_value, 1, string.len(big_value) - 1)
+      assert.truthy(string.len(big_value) > 10000000) -- More than 10kb
+
+      local _, status = http_client.post(spec_helper.API_URL.."/apis/"..api_id.."/plugins/", { name = "ip-restriction", ["config.blacklist"] = big_value})
+      assert.equal(413, status)
+    end)
+  end)
+
 end)

@@ -1,3 +1,5 @@
+local stringy = require "stringy"
+
 local _M = {}
 
 function _M.serialize(ngx)
@@ -7,6 +9,19 @@ function _M.serialize(ngx)
       id = ngx.ctx.authenticated_credential.id,
       consumer_id = ngx.ctx.authenticated_credential.consumer_id
     }
+  end
+
+  -- Time waiting for the upstream response
+  local upstream_response_time = 0
+  local upstream_response_times = ngx.var.upstream_response_time
+  if not upstream_response_times or upstream_response_times == "-" then
+    -- client aborted the request
+    return
+  end
+
+  upstream_response_times = stringy.split(upstream_response_times, ", ")
+  for _, val in ipairs(upstream_response_times) do
+    upstream_response_time = upstream_response_time + val
   end
 
   return {
@@ -24,10 +39,10 @@ function _M.serialize(ngx)
       size = ngx.var.bytes_sent
     },
     latencies = {
-      kong = (ngx.ctx.kong_processing_access or 0) +
-             (ngx.ctx.kong_processing_header_filter or 0) +
-             (ngx.ctx.kong_processing_body_filter or 0),
-      proxy = ngx.var.upstream_response_time * 1000,
+      kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
+             (ngx.ctx.KONG_HEADER_FILTER_TIME or 0) +
+             (ngx.ctx.KONG_BODY_FILTER_TIME or 0),
+      proxy = upstream_response_time * 1000,
       request = ngx.var.request_time * 1000
     },
     authenticated_entity = authenticated_entity,

@@ -21,12 +21,14 @@ describe("Request Transformer", function()
             add = {
               headers = {"x-added:true", "x-added2:true" },
               querystring = {"newparam:value"},
-              form = {"newformparam:newvalue"}
+              form = {"newformparam:newvalue"},
+              json = {"newjsonparam:newvalue"}
             },
             remove = {
               headers = { "x-to-remove" },
               querystring = { "toremovequery" },
-              form = { "toremoveform" }
+              form = { "toremoveform" },
+              json = { "toremovejson" }
             }
           },
           __api = 1
@@ -90,6 +92,23 @@ describe("Request Transformer", function()
       assert.are.equal("newvalue", body.postData.params["newformparam"])
     end)
 
+    it("should add new paramters on json POST", function()
+      local response, status = http_client.post(STUB_POST_URL, {}, {host = "test1.com", ["content-type"] = "application/json"})
+      local raw = cjson.decode(response)
+      local body = cjson.decode(raw.postData.text)
+      assert.are.equal(200, status)
+      assert.are.equal("newvalue", body["newjsonparam"])
+    end)
+
+    it("should add new paramters on json POST when existing params exist", function()
+      local response, status = http_client.post(STUB_POST_URL, {hello = "world"}, {host = "test1.com", ["content-type"] = "application/json"})
+      local raw = cjson.decode(response)
+      local body = cjson.decode(raw.postData.text)
+      assert.are.equal(200, status)
+      assert.are.equal("world", body["hello"])
+      assert.are.equal("newvalue", body["newjsonparam"])
+    end)
+
     it("should add new parameters on GET", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com"})
       local body = cjson.decode(response)
@@ -129,6 +148,15 @@ describe("Request Transformer", function()
       assert.are.equal(200, status)
       assert.falsy(body.postData.params["toremoveform"])
       assert.are.same("yes", body.postData.params["nottoremove"])
+    end)
+
+    it("should remove parameters on json POST", function()
+      local response, status = http_client.post(STUB_POST_URL, {["toremovejson"] = "yes", ["nottoremove"] = "yes"}, {host = "test1.com", ["content-type"] = "application/json"})
+      local raw = cjson.decode(response)
+      local body = cjson.decode(raw.postData.text)
+      assert.are.equal(200, status)
+      assert.falsy(body["toremovejson"])
+      assert.are.same("yes", body["nottoremove"])
     end)
 
     it("should remove parameters on GET", function()
