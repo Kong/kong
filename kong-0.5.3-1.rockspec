@@ -17,7 +17,7 @@ dependencies = {
   "lua_uuid ~> 0.1-8",
   "luatz ~> 0.3-1",
   "yaml ~> 1.1.2-1",
-  "lapis ~> 1.3.0-1",
+  "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.3.6-0",
   "multipart ~> 0.2-1",
