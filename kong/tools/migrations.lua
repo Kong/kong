@@ -80,7 +80,7 @@ function Migrations:run_migrations(migrations, identifier, callback)
       if old_migrations[i] == nil then
         table.insert(diff_migrations, migration)
       elseif old_migrations[i] ~= migration.name then
-        return "Inconsitency"
+        return "Inconsistency"
       end
     end
     -- If no diff, there is no new migration to run
