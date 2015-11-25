@@ -26,6 +26,9 @@ _G.ngx = {
       return res_str, sub_made
     end
   },
+  encode_base64 = function(str)
+    return string.format("base64_%s", str)
+  end,
   -- Builds a querystring from a table, separated by `&`
   -- @param `tab`          The key/value parameters
   -- @param `key`          The parent key if the value is multi-dimensional (optional)

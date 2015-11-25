@@ -1,3 +1,4 @@
+require "kong.tools.ngx_stub"
 local fixtures = require "spec.plugins.mashape-analytics.fixtures.requests"
 local ALFSerializer = require "kong.plugins.log-serializers.alf"
 
