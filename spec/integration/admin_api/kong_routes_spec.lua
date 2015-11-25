@@ -1,7 +1,6 @@
 local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
-local IO = require "kong.tools.io"
 local utils = require "kong.tools.utils"
 local env = spec_helper.get_env() -- test environment
 local dao_factory = env.dao_factory
