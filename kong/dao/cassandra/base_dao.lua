@@ -598,7 +598,7 @@ function BaseDao:_execute(query, args, options, keyspace)
 
   -- Handle unprepared queries
   if err and err.cassandra_err_code == cassandra_constants.error_codes.UNPREPARED then
-    ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..err..")")
+    ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..tostring(err)..")")
     -- If the statement was declared unprepared, clear it from the cache, and try again.
     self._statements_cache[session_uniq_addr(session)][cache_key] = nil
     return self:_execute(query, args, options)
