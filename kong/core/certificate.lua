@@ -29,7 +29,7 @@ function _M.execute()
   if server_name then -- Only support SNI requests
     local api, err = find_api({server_name})
     if err then
-      ngx.log(ngx.ERR, err)
+      ngx.log(ngx.ERR, tostring(err))
     end
 
     return api
