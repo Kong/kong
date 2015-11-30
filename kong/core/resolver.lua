@@ -46,7 +46,7 @@ local function get_upstream_url(api)
   return result
 end
 
-local function get_host_from_url(val)
+local function get_host_from_upstream_url(val)
   local parsed_url = url.parse(val)
 
   local port
@@ -99,7 +99,7 @@ function _M.load_apis_in_memory()
 end
 
 function _M.find_api_by_request_host(req_headers, apis_dics)
-  local all_hosts = {}
+  local hosts_list = {}
   for _, header_name in ipairs({"Host", constants.HEADERS.HOST_OVERRIDE}) do
     local hosts = req_headers[header_name]
     if hosts then
@@ -109,9 +109,9 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
         host = unpack(stringy.split(host, ":"))
-        table_insert(all_hosts, host)
+        table_insert(hosts_list, host)
         if apis_dics.by_dns[host] then
-          return apis_dics.by_dns[host]
+          return apis_dics.by_dns[host], host
         else
           -- If the API was not found in the dictionary, maybe it is a wildcard request_host.
           -- In that case, we need to loop over all of them.
@@ -125,7 +125,7 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
     end
   end
 
-  return nil, all_hosts
+  return nil, nil, hosts_list
 end
 
 -- To do so, we have to compare entire URI segments (delimited by "/").
@@ -180,13 +180,14 @@ end
 -- We keep APIs in the database cache for a longer time than usual.
 -- @see https://github.com/Mashape/kong/issues/15 for an improvement on this.
 --
--- @param  `uri` The URI for this request.
--- @return `err`         Any error encountered during the retrieval.
--- @return `api`         The retrieved API, if any.
--- @return `hosts`       The list of headers values found in Host and X-Host-Override.
+-- @param  `uri`          The URI for this request.
+-- @return `err`          Any error encountered during the retrieval.
+-- @return `api`          The retrieved API, if any.
+-- @return `matched_host` The host that was matched for this API, if matched.
+-- @return `hosts`        The list of headers values found in Host and X-Host-Override.
 -- @return `strip_request_path_pattern` If the API was retrieved by request_path, contain the pattern to strip it from the URI.
-local function find_api(uri)
-  local api, all_hosts, strip_request_path_pattern
+local function find_api(uri, headers)
+  local api, matched_host, hosts_list, strip_request_path_pattern
 
   -- Retrieve all APIs
   local apis_dics, err = cache.get_or_set("ALL_APIS_BY_DIC", _M.load_apis_in_memory, 60) -- 60 seconds cache, longer than usual
@@ -195,37 +196,37 @@ local function find_api(uri)
   end
 
   -- Find by Host header
-  api, all_hosts = _M.find_api_by_request_host(ngx.req.get_headers(), apis_dics)
-
+  api, matched_host, hosts_list = _M.find_api_by_request_host(headers, apis_dics)
   -- If it was found by Host, return
   if api then
-    return nil, api, all_hosts
+    return nil, api, matched_host, hosts_list
   end
 
   -- Otherwise, we look for it by request_path. We have to loop over all APIs and compare the requested URI.
   api, strip_request_path_pattern = _M.find_api_by_request_path(uri, apis_dics.request_path_arr)
 
-  return nil, api, all_hosts, strip_request_path_pattern
+  return nil, api, nil, hosts_list, strip_request_path_pattern
 end
 
 local function url_has_path(url)
-  local _, count_slashes = string.gsub(url, "/", "")
+  local _, count_slashes = string_gsub(url, "/", "")
   return count_slashes > 2
 end
 
-function _M.execute()
-  local uri = stringy.split(ngx.var.request_uri, "?")[1]
-  local err, api, hosts, strip_request_path_pattern = find_api(uri)
+function _M.execute(request_uri, request_headers)
+  local uri = stringy.split(request_uri, "?")[1]
+  local err, api, matched_host, hosts_list, strip_request_path_pattern = find_api(uri, request_headers)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   elseif not api then
     return responses.send_HTTP_NOT_FOUND {
       message = "API not found with these values",
-      request_host = hosts,
+      request_host = hosts_list,
       request_path = uri
     }
   end
 
+  local upstream_host
   local upstream_url = get_upstream_url(api)
 
   -- If API was retrieved by request_path and the request_path needs to be stripped
@@ -235,13 +236,15 @@ function _M.execute()
 
   upstream_url = upstream_url..uri
 
-  -- Set the
   if api.preserve_host then
-    ngx.var.upstream_host = ngx.req.get_headers()["host"]
-  else
-    ngx.var.upstream_host = get_host_from_url(upstream_url)
+    upstream_host = matched_host
   end
-  return api, upstream_url
+
+  if upstream_host == nil then
+    upstream_host = get_host_from_upstream_url(upstream_url)
+  end
+
+  return api, upstream_url, upstream_host
 end
 
 return _M
