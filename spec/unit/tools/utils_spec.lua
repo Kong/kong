@@ -71,6 +71,13 @@ describe("Utils", function()
         }
         assert.equal("hello=world&multiple=hello%2c%20world&multiple%20values", str)
       end)
+      it("should not percent-encode if given a `raw` option", function()
+        -- this is useful for kong.tools.http_client
+        local str = utils.encode_args({
+          ["hello world"] = "foo, bar"
+        }, true)
+        assert.equal("hello world=foo, bar", str)
+      end)
     end)
   end)
 

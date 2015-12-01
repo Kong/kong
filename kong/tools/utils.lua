@@ -26,10 +26,20 @@ function _M.random_string()
   return uuid():gsub("-", "")
 end
 
-local function encode_args_value(key, value)
-  key = url.escape(key)
+--- URL escape and format key and value
+-- An obligatory url.unescape pass must be done to prevent double-encoding
+-- already encoded values (which contain a '%' character that `url.escape` escapes)
+local function encode_args_value(key, value, raw)
+  if not raw then
+    key = url.unescape(key)
+    key = url.escape(key)
+  end
   if value ~= nil then
-    return string_format("%s=%s", key, url.escape(value))
+    if not raw then
+      value = url.unescape(value)
+      value = url.escape(value)
+    end
+    return string_format("%s=%s", key, value)
   else
     return key
   end
@@ -42,7 +52,7 @@ end
 -- @see https://github.com/Mashape/kong/issues/749
 -- @param[type=table] args A key/value table containing the query args to encode
 -- @treturn string A valid querystring (without the prefixing '?')
-function _M.encode_args(args)
+function _M.encode_args(args, raw)
   local query = {}
   local keys = {}
 
@@ -56,14 +66,16 @@ function _M.encode_args(args)
     local value = args[key]
     if type(value) == "table" then
       for _, sub_value in ipairs(value) do
-        query[#query+1] = encode_args_value(key, sub_value)
+        query[#query+1] = encode_args_value(key, sub_value, raw)
       end
     elseif value == true then
-      query[#query+1] = encode_args_value(key)
+      query[#query+1] = encode_args_value(key, nil, raw)
     elseif value ~= false and value ~= nil then
       value = tostring(value)
       if value ~= "" then
-        query[#query+1] = encode_args_value(key, value)
+        query[#query+1] = encode_args_value(key, value, raw)
+      elseif raw then
+        query[#query+1] = key
       end
     end
   end
