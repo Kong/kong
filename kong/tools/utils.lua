@@ -1,7 +1,22 @@
 ---
--- Module containing some general utility functions
+-- Module containing some general utility functions used in many places in Kong.
+--
+-- NOTE: Before implementing a function here, consider if it will be used in many places
+-- across Kong. If not, a local function in the appropriate module is prefered.
+--
 
+local url = require "socket.url"
 local uuid = require "lua_uuid"
+
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local tostring = tostring
+local table_sort = table.sort
+local table_concat = table.concat
+local table_insert = table.insert
+local string_find = string.find
+local string_format = string.format
 
 local _M = {}
 
@@ -9,6 +24,51 @@ local _M = {}
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
   return uuid():gsub("-", "")
+end
+
+local function encode_args_value(key, value)
+  key = url.escape(key)
+  if value ~= nil then
+    return string_format("%s=%s", key, url.escape(value))
+  else
+    return key
+  end
+end
+
+--- Encode a Lua table to a querystring
+-- Tries to mimic ngx_lua's `ngx.encode_args`, but also percent-encode querystring values.
+-- Supports multi-value query args, boolean values.
+-- @TODO drop and use `ngx.encode_args` once it implements percent-encoding.
+-- @see https://github.com/Mashape/kong/issues/749
+-- @param[type=table] args A key/value table containing the query args to encode
+-- @treturn string A valid querystring (without the prefixing '?')
+function _M.encode_args(args)
+  local query = {}
+  local keys = {}
+
+  for k in pairs(args) do
+    keys[#keys+1] = k
+  end
+
+  table_sort(keys)
+
+  for _, key in ipairs(keys) do
+    local value = args[key]
+    if type(value) == "table" then
+      for _, sub_value in ipairs(value) do
+        query[#query+1] = encode_args_value(key, sub_value)
+      end
+    elseif value == true then
+      query[#query+1] = encode_args_value(key)
+    elseif value ~= false and value ~= nil then
+      value = tostring(value)
+      if value ~= "" then
+        query[#query+1] = encode_args_value(key, value)
+      end
+    end
+  end
+
+  return table_concat(query, "&")
 end
 
 --- Calculates a table size.
@@ -99,7 +159,7 @@ function _M.add_error(errors, k, v)
       errors[k] = setmetatable({errors[k]}, err_list_mt)
     end
 
-    table.insert(errors[k], v)
+    table_insert(errors[k], v)
   else
     errors[k] = v
   end
@@ -118,7 +178,7 @@ function _M.load_module_if_exists(module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and string.find(res, "module '"..module_name.."' not found", nil, true) then
+  elseif type(res) == "string" and string_find(res, "module '"..module_name.."' not found", nil, true) then
     return false
   else
     error(res)

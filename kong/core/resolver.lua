@@ -214,7 +214,7 @@ local function url_has_path(url)
 end
 
 function _M.execute(request_uri, request_headers)
-  local uri = stringy.split(request_uri, "?")[1]
+  local uri = unpack(stringy.split(request_uri, "?"))
   local err, api, matched_host, hosts_list, strip_request_path_pattern = find_api(uri, request_headers)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

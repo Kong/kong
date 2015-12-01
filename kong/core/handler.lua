@@ -18,6 +18,7 @@
 --
 -- @see https://github.com/openresty/lua-nginx-module#ngxctx
 
+local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local stringy = require "stringy"
@@ -25,10 +26,10 @@ local resolver = require "kong.core.resolver"
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
 
-local table_insert = table.insert
-local math_floor = math.floor
-local unpack = unpack
+local type = type
 local ipairs = ipairs
+local math_floor = math.floor
+local table_insert = table.insert
 
 local MULT = 10^3
 local function round(num)
@@ -55,9 +56,10 @@ return {
       ngx.ctx.KONG_PROXIED = true
 
       -- Append any querystring parameters modified during plugins execution
-      local upstream_url = unpack(stringy.split(ngx.ctx.upstream_url, "?"))
-      if utils.table_size(ngx.req.get_uri_args()) > 0 then
-        upstream_url = upstream_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
+      local upstream_url = ngx.ctx.upstream_url
+      local uri_args = ngx.req.get_uri_args()
+      if utils.table_size(uri_args) > 0 then
+        upstream_url = upstream_url.."?"..utils.encode_args(uri_args)
       end
 
       -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
