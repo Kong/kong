@@ -128,7 +128,7 @@ describe("Utils", function()
         }, add_error(errors, "foo", "bar"))
       end)
       it("should transform previous values to a list if the same key is given again", function()
-        local e
+        local e = nil -- initialize for luacheck
         e = add_error(e, "key1", "value1")
         e = add_error(e, "key2", "value2")
         assert.same({key1 = "value1", key2 = "value2"}, e)
@@ -143,7 +143,7 @@ describe("Utils", function()
         assert.same({key1 = {"value1", "value3", "value4", "value5", "value6"}, key2 = {"value2", "value7"}}, e)
       end)
       it("should also list tables pushed as errors", function()
-        local e
+        local e = nil -- initialize for luacheck
         e = add_error(e, "key1", "value1")
         e = add_error(e, "key2", "value2")
         e = add_error(e, "key1", "value3")

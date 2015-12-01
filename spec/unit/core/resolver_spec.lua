@@ -198,7 +198,7 @@ describe("Resolver", function()
       assert.same(APIS_FIXTURES[8], api)
 
       -- strip when contains pattern characters
-      api, upstream_url, upstream_host = resolver.execute("/strip-me/hello/world", {})
+      local api, upstream_url, upstream_host = resolver.execute("/strip-me/hello/world", {})
       assert.same(APIS_FIXTURES[9], api)
       assert.equal("http://mockbin.com/hello/world", upstream_url)
       assert.equal("mockbin.com", upstream_host)
