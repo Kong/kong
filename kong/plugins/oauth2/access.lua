@@ -76,10 +76,15 @@ local function get_redirect_uri(client_id)
   return client and client.redirect_uri or nil, client
 end
 
-local function is_https()
-  local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+local HTTPS = "https"
 
-  return ngx.var.scheme:lower() == "https" or (forwarded_proto_header and forwarded_proto_header:lower() == "https")
+local function is_https(conf)
+  local result = ngx.var.scheme:lower() == HTTPS
+  if not result and conf.accept_http_if_already_terminated then
+    local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+    result = forwarded_proto_header and forwarded_proto_header:lower() == HTTPS
+  end
+  return result
 end
 
 local function retrieve_parameters()
@@ -113,7 +118,7 @@ local function authorize(conf)
   local state = parameters[STATE]
   local redirect_uri, client
 
-  if not is_https() then
+  if not is_https(conf) then
     response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
@@ -214,7 +219,7 @@ local function issue_token(conf)
   local parameters = retrieve_parameters() --TODO: Also from authorization header
   local state = parameters[STATE]
 
-  if not is_https() then
+  if not is_https(conf) then
     response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
   else
     local grant_type = parameters[GRANT_TYPE]
