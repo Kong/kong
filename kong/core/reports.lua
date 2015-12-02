@@ -19,7 +19,7 @@ local function send_ping(premature)
   if elapsed and elapsed == 0 then
     local reqs = cache.get(cache.requests_key())
     if not reqs then reqs = 0 end
-    syslog.log({signal = "ping", requests=reqs})
+    syslog.log({signal = "ping", requests=reqs, process_id=process_id})
     cache.incr(cache.requests_key(), -reqs) -- Reset counter
   end
   create_timer(INTERVAL, send_ping)

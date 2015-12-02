@@ -109,6 +109,7 @@ function Kong.init()
   configuration = config_loader.load(os.getenv("KONG_CONF"))
   dao = dao_loader.load(configuration)
   loaded_plugins = load_node_plugins(configuration)
+  process_id = utils.random_string()
   ngx.update_time()
 end
 
