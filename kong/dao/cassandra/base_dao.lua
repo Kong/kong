@@ -588,6 +588,23 @@ function BaseDao:_execute(query, args, options, keyspace)
     return _, rows, err, page
   end
 
+  if not options then
+    if self._properties.consistency_level then
+      options = {
+        consistency_level = self._properties.consistency_level
+      }
+    else
+      options = {
+        consistency_level = cassandra_constants.consistency.LOCAL_QUORUM
+      }
+    end
+  elseif not options.consistency_level then
+    if self._properties.consistency_level then
+      options.consistency_level = self._properties.consistency_level
+    else
+      options.consistency_level = cassandra_constants.consistency.LOCAL_QUORUM
+    end
+  end
   local results, err = session:execute(statement, args, options)
 
   -- First, close the socket
