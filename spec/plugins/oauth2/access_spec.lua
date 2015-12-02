@@ -44,7 +44,8 @@ describe("Authentication Plugin", function()
         { name = "tests-oauth2-with-path", request_host = "mockbin-path.com", upstream_url = "http://mockbin.com", request_path = "/somepath/" },
         { name = "tests-oauth2-with-hide-credentials", request_host = "oauth2_3.com", upstream_url = "http://mockbin.com" },
         { name = "tests-oauth2-client-credentials", request_host = "oauth2_4.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-oauth2-password-grant", request_host = "oauth2_5.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-oauth2-password-grant", request_host = "oauth2_5.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-oauth2-accept_http_if_already_terminated", request_host = "oauth2_6.com", upstream_url = "http://mockbin.com" },
       },
       consumer = {
         { username = "auth_tests_consumer" }
@@ -54,7 +55,8 @@ describe("Authentication Plugin", function()
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
-        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 }
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 },
+        { name = "oauth2", config = { scopes = { "email", "profile", "user.email" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, accept_http_if_already_terminated = true }, __api = 6 },
       },
       oauth2_credential = {
         { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 }
@@ -163,12 +165,21 @@ describe("Authentication Plugin", function()
         assert.are.equal("You must use HTTPS", body.error_description)
       end)
 
-      it("should return success when under HTTP and X-Forwarded-Proto header is set to HTTPS", function()
-        local response, status = http_client.post(PROXY_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "oauth2.com", ["X-Forwarded-Proto"] = "https"})
+      it("should work when not under HTTPS but accept_http_if_already_terminated is true", function()
+        local response, status = http_client.post(PROXY_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "oauth2_6.com", ["X-Forwarded-Proto"] = "https"})
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
         assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}$"))
+      end)
+
+      it("should fail when not under HTTPS and accept_http_if_already_terminated is false", function()
+        local response, status = http_client.post(PROXY_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "code" }, {host = "oauth2.com", ["X-Forwarded-Proto"] = "https"})
+        local body = cjson.decode(response)
+        assert.are.equal(400, status)
+        assert.are.equal(2, utils.table_size(body))
+        assert.are.equal("access_denied", body.error)
+        assert.are.equal("You must use HTTPS", body.error_description)
       end)
 
       it("should return success", function()
