@@ -20,17 +20,16 @@ return {
         request_uri = "/request",
         request_length = 123,
         body_bytes_sent = 934,
-        remote_addr = "127.0.0.1",
-        upstream_response_time = 0.391
+        remote_addr = "127.0.0.1"
       },
       ctx = {
-        proxy_started_at = 1432844571719,
-        proxy_ended_at = 143284457211,
+        KONG_PROXY_LATENCY = 22,
+        KONG_WAITING_TIME = 236,
+        KONG_RECEIVE_TIME = 177,
         analytics = {
           req_body = "hello=world&hello=earth",
           res_body = "{\"message\":\"response body\"}",
-          req_post_args = {["hello"] = {"world", "earth"}},
-          response_received = 143284457211
+          req_post_args = {["hello"] = {"world", "earth"}}
         }
       }
     },
@@ -81,15 +80,15 @@ return {
         statusText = ""
       },
       startedDateTime = "2015-05-28T20:22:51Z",
-      time = 487,
+      time = 435,
       timings = {
         blocked = -1,
         connect = -1,
         dns = -1,
-        receive = 0,
-        send = 96,
+        receive = 177,
+        send = 22,
         ssl = -1,
-        wait = 391
+        wait = 236
       }
     }
   },
@@ -112,17 +111,16 @@ return {
         request_uri = "/request",
         request_length = 123,
         body_bytes_sent = 934,
-        remote_addr = "127.0.0.1",
-        upstream_response_time = "60.345, 0.123"
+        remote_addr = "127.0.0.1"
       },
       ctx = {
-        proxy_started_at = 1432844571719,
-        proxy_ended_at = 143284457211,
+        KONG_PROXY_LATENCY = 10,
+        KONG_WAITING_TIME = 236,
+        KONG_RECEIVE_TIME = 1,
         analytics = {
           req_body = "hello=world&hello=earth",
           res_body = "{\"message\":\"response body\"}",
-          req_post_args = {["hello"] = {"world", "earth"}},
-          response_received = 143284457211
+          req_post_args = {["hello"] = {"world", "earth"}}
         }
       }
     },
@@ -172,15 +170,15 @@ return {
         statusText = ""
       },
       startedDateTime = "2015-05-28T20:22:51Z",
-      time = 60564,
+      time = 247,
       timings = {
         blocked = -1,
         connect = -1,
         dns = -1,
-        receive = 0,
-        send = 96,
+        receive = 1,
+        send = 10,
         ssl = -1,
-        wait = 60468
+        wait = 236
       }
     }
   },
@@ -203,17 +201,16 @@ return {
         request_uri = "/request",
         request_length = 123,
         body_bytes_sent = 934,
-        remote_addr = "127.0.0.1",
-        upstream_response_time = "0.391"
+        remote_addr = "127.0.0.1"
       },
       ctx = {
-        proxy_started_at = 1432844571719,
-        proxy_ended_at = 143284457211,
+        KONG_PROXY_LATENCY = 10,
+        KONG_WAITING_TIME = 236,
+        KONG_RECEIVE_TIME = 1,
         analytics = {
           req_body = "hello=world&hello=earth",
           res_body = "{\"message\":\"response body\"}",
-          req_post_args = {["hello"] = {"world", "earth"}},
-          response_received = 143284457211
+          req_post_args = {["hello"] = {"world", "earth"}}
         }
       }
     },
@@ -266,15 +263,15 @@ return {
         statusText = ""
       },
       startedDateTime = "2015-05-28T20:22:51Z",
-      time = 487,
+      time = 247,
       timings = {
         blocked = -1,
         connect = -1,
         dns = -1,
-        receive = 0,
-        send = 96,
+        receive = 1,
+        send = 10,
         ssl = -1,
-        wait = 391
+        wait = 236
       }
     }
   }

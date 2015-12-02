@@ -18,22 +18,16 @@
 --
 -- @see https://github.com/openresty/lua-nginx-module#ngxctx
 
-local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
-local stringy = require "stringy"
 local resolver = require "kong.core.resolver"
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
 
-local type = type
-local ipairs = ipairs
-local math_floor = math.floor
-local table_insert = table.insert
+local ngx_now = ngx.now
 
-local MULT = 10^3
-local function round(num)
-  return math_floor(num * MULT + 0.5) / MULT
+local function get_now()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
 return {
@@ -45,16 +39,11 @@ return {
   end,
   access = {
     before = function()
-      ngx.ctx.KONG_ACCESS_START = ngx.now()
+      ngx.ctx.KONG_ACCESS_START = get_now()
       ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
-      local now = ngx.now()
-      ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START
-      ngx.ctx.KONG_ACCESS_ENDED_AT = now
-      ngx.ctx.KONG_PROXIED = true
-
       -- Append any querystring parameters modified during plugins execution
       local upstream_url = ngx.ctx.upstream_url
       local uri_args = ngx.req.get_uri_args()
@@ -65,58 +54,40 @@ return {
       -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
       -- directive in kong.yml.
       ngx.var.upstream_url = upstream_url
+
+      local now = get_now()
+      ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
+      ngx.ctx.KONG_ACCESS_ENDED_AT = now
+      -- time spent in Kong before sending the reqeust to upstream
+      ngx.ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
+      ngx.ctx.KONG_PROXIED = true
     end
   },
   header_filter = {
     before = function()
       if ngx.ctx.KONG_PROXIED then
-        ngx.ctx.KONG_HEADER_FILTER_STARTED_AT = ngx.now()
+        local now = get_now()
+        ngx.ctx.KONG_WAITING_TIME = now - ngx.ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
+        ngx.ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
     after = function()
       if ngx.ctx.KONG_PROXIED then
-        local now = ngx.now()
-        local proxy_started_at = ngx.ctx.KONG_ACCESS_ENDED_AT
-        local proxy_ended_at = ngx.ctx.KONG_HEADER_FILTER_STARTED_AT
-        local upstream_response_time = round(proxy_ended_at - proxy_started_at)
-        local proxy_time = round(now - ngx.req.start_time() - upstream_response_time)
-
-        ngx.ctx.KONG_HEADER_FILTER_TIME = now - ngx.ctx.KONG_HEADER_FILTER_STARTED_AT
-        ngx.header[constants.HEADERS.UPSTREAM_LATENCY] = upstream_response_time * 1000 -- ms
-        ngx.header[constants.HEADERS.PROXY_LATENCY] = proxy_time * 1000 -- ms
+        ngx.header[constants.HEADERS.UPSTREAM_LATENCY] = ngx.ctx.KONG_WAITING_TIME
+        ngx.header[constants.HEADERS.PROXY_LATENCY] = ngx.ctx.KONG_PROXY_LATENCY
         ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
       else
         ngx.header["Server"] = constants.NAME.."/"..constants.VERSION
       end
     end
   },
-  -- `body_filter_by_lua` can be executed mutiple times depending on the size of the
-  -- response body.
-  -- To compute the time spent in Kong, we keep an array of size n,
-  -- n being the number of times the directive ran:
-  -- starts = {4312, 5423, 4532}
-  -- ends = {4320, 5430, 4550}
-  -- time = 8 + 7 + 18 = 33 = total time spent in `body_filter` in all plugins
   body_filter = {
-    before = function()
-      if ngx.ctx.KONG_BODY_FILTER_STARTS == nil then
-        ngx.ctx.KONG_BODY_FILTER_STARTS = {}
-        ngx.ctx.KONG_BODY_FILTER_EDINGS = {}
-      end
-      table_insert(ngx.ctx.KONG_BODY_FILTER_STARTS, ngx.now())
-    end,
     after = function()
-      table_insert(ngx.ctx.KONG_BODY_FILTER_EDINGS, ngx.now())
-
-      if ngx.arg[2] then
-        -- compute time spent in Kong's body_filters
-        local total_time = 0
-        for i in ipairs(ngx.ctx.KONG_BODY_FILTER_EDINGS) do
-          total_time = total_time + (ngx.ctx.KONG_BODY_FILTER_EDINGS[i] - ngx.ctx.KONG_BODY_FILTER_STARTS[i])
-        end
-        ngx.ctx.KONG_BODY_FILTER_TIME = total_time
-        ngx.ctx.KONG_BODY_FILTER_STARTS = nil
-        ngx.ctx.KONG_BODY_FILTER_EDINGS = nil
+      if ngx.arg[2] and ngx.ctx.KONG_PROXIED then
+        -- time spent receiving the response (header_filter + body_filter)
+        -- we could uyse $upstream_response_time but we need to distinguish the waiting time
+        -- from the receiving time in our logging plugins (especially ALF serializer).
+        ngx.ctx.KONG_RECEIVE_TIME = get_now() - ngx.ctx.KONG_HEADER_FILTER_STARTED_AT
       end
     end
   },
