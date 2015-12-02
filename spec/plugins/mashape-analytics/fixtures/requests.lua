@@ -237,7 +237,7 @@ return {
             {name = "hello", value = "world"},
             {name = "hello", value = "earth"}
           },
-          text = "hello=world&hello=earth"
+          text = "base64_hello=world&hello=earth"
         },
         queryString = {
           {name = "foo", value = "bar"},
@@ -250,7 +250,7 @@ return {
         content = {
           mimeType = "application/www-form-urlencoded",
           size = 934,
-          text = "{\"message\":\"response body\"}"
+          text = "base64_{\"message\":\"response body\"}"
         },
         cookies = {EMPTY_ARRAY_PLACEHOLDER},
         headers = {
