@@ -18,6 +18,7 @@
 --
 -- @see https://github.com/openresty/lua-nginx-module#ngxctx
 
+local url = require "socket.url"
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local stringy = require "stringy"
@@ -25,8 +26,10 @@ local resolver = require "kong.core.resolver"
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
 
-local table_insert = table.insert
+local type = type
+local ipairs = ipairs
 local math_floor = math.floor
+local table_insert = table.insert
 
 local MULT = 10^3
 local function round(num)
@@ -43,7 +46,7 @@ return {
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = ngx.now()
-      ngx.ctx.api, ngx.ctx.upstream_url = resolver.execute()
+      ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
@@ -53,12 +56,14 @@ return {
       ngx.ctx.KONG_PROXIED = true
 
       -- Append any querystring parameters modified during plugins execution
-      local upstream_url = unpack(stringy.split(ngx.ctx.upstream_url, "?"))
-      if utils.table_size(ngx.req.get_uri_args()) > 0 then
-        upstream_url = upstream_url.."?"..ngx.encode_args(ngx.req.get_uri_args())
+      local upstream_url = ngx.ctx.upstream_url
+      local uri_args = ngx.req.get_uri_args()
+      if utils.table_size(uri_args) > 0 then
+        upstream_url = upstream_url.."?"..utils.encode_args(uri_args)
       end
 
-      -- Set the `$upstream_url` variable for the `proxy_pass` nginx's directive.
+      -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
+      -- directive in kong.yml.
       ngx.var.upstream_url = upstream_url
     end
   },
