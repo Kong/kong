@@ -50,7 +50,7 @@ describe("Authentication Plugin", function()
         { username = "auth_tests_consumer" }
       },
       plugin = {
-        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
+        { name = "oauth2", config = { scopes = { "email", "profile", "user.email" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 1 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true }, __api = 2 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, hide_credentials = true }, __api = 3 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
@@ -236,9 +236,30 @@ describe("Authentication Plugin", function()
         assert.are.equal("email", data[1].scope)
       end)
 
+      it("should return success with a dotted scope and store authenticated user properties", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "user.email", response_type = "code", state = "hello", authenticated_userid = "userid123" }, {host = "oauth2.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equal(1, utils.table_size(body))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&state=hello$"))
+
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+        local code
+        for line in matches do
+          code = line
+        end
+        local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
+        assert.are.equal(1, #data)
+        assert.are.equal(code, data[1].code)
+
+        assert.are.equal("userid123", data[1].authenticated_userid)
+        assert.are.equal("user.email", data[1].scope)
+      end)
+
     end)
 
     describe("Implicit Grant", function()
+
       it("should return success", function()
         local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2.com"})
         local body = cjson.decode(response)
@@ -280,6 +301,26 @@ describe("Authentication Plugin", function()
         -- Checking that there is no refresh token since it's an implicit grant
         assert.are.equal(0, data[1].expires_in)
         assert.falsy(data[1].refresh_token)
+      end)
+
+      it("should return set the right upstream headers", function()
+        local response = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email  profile", response_type = "token", authenticated_userid = "userid123" }, {host = "oauth2.com"})
+        local body = cjson.decode(response)
+
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?token_type=bearer&access_token=([\\w]{32,32})$")
+        local access_token
+        for line in matches do
+          access_token = line
+        end
+
+        local response, status = http_client.get(PROXY_SSL_URL.."/request", { access_token = access_token }, {host = "oauth2.com"})
+        assert.are.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.truthy(body.headers["x-consumer-id"])
+        assert.are.equal("auth_tests_consumer", body.headers["x-consumer-username"])
+        assert.are.equal("email profile", body.headers["x-authenticated-scope"])
+        assert.are.equal("userid123", body.headers["x-authenticated-userid"])
       end)
 
     end)
@@ -373,6 +414,20 @@ describe("Authentication Plugin", function()
         assert.are.equal("Invalid client_secret", body.error_description)
       end)
 
+      it("should return set the right upstream headers", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials", authenticated_userid = "hello", provision_key = "provision123" }, {host = "oauth2_4.com"})
+        assert.are.equal(200, status)
+
+        local response, status = http_client.get(PROXY_SSL_URL.."/request", { access_token = cjson.decode(response).access_token }, {host = "oauth2_4.com"})
+        assert.are.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.truthy(body.headers["x-consumer-id"])
+        assert.are.equal("auth_tests_consumer", body.headers["x-consumer-username"])
+        assert.are.equal("email", body.headers["x-authenticated-scope"])
+        assert.are.equal("hello", body.headers["x-authenticated-userid"])
+      end)
+
     end)
 
     describe("Password Grant", function()
@@ -451,6 +506,20 @@ describe("Authentication Plugin", function()
         assert.are.equal(2, utils.table_size(body))
         assert.are.equal("invalid_request", body.error)
         assert.are.equal("Invalid client_secret", body.error_description)
+      end)
+
+      it("should return set the right upstream headers", function()
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { provision_key = "provision123", authenticated_userid = "id123", scope = "email", grant_type = "password" }, {host = "oauth2_5.com", authorization = "Basic Y2xpZW50aWQxMjM6c2VjcmV0MTIz"})
+        assert.are.equal(200, status)
+
+        local response, status = http_client.get(PROXY_SSL_URL.."/request", { access_token = cjson.decode(response).access_token }, {host = "oauth2_5.com"})
+        assert.are.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.truthy(body.headers["x-consumer-id"])
+        assert.are.equal("auth_tests_consumer", body.headers["x-consumer-username"])
+        assert.are.equal("email", body.headers["x-authenticated-scope"])
+        assert.are.equal("id123", body.headers["x-authenticated-userid"])
       end)
 
     end)
@@ -549,6 +618,21 @@ describe("Authentication Plugin", function()
       assert.are.equal("bearer", body.token_type)
       assert.are.equal(5, body.expires_in)
       assert.are.equal("wot", body.state)
+    end)
+
+    it("should return set the right upstream headers", function()
+      local code = provision_code()
+      local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" }, {host = "oauth2.com"})
+      assert.are.equal(200, status)
+
+      local response, status = http_client.get(PROXY_SSL_URL.."/request", { access_token = cjson.decode(response).access_token }, {host = "oauth2.com"})
+      assert.are.equal(200, status)
+
+      local body = cjson.decode(response)
+      assert.truthy(body.headers["x-consumer-id"])
+      assert.are.equal("auth_tests_consumer", body.headers["x-consumer-username"])
+      assert.are.equal("email", body.headers["x-authenticated-scope"])
+      assert.are.equal("userid123", body.headers["x-authenticated-userid"])
     end)
   end)
 
@@ -718,6 +802,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(200, status)
       assert.falsy(body.headers.authorization)
     end)
+
   end)
 
 end)

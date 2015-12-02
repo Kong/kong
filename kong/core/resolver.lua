@@ -3,34 +3,44 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+local table_insert = table.insert
+local string_match = string.match
+local string_find = string.find
+local string_format = string.format
+local string_sub = string.sub
+local string_gsub = string.gsub
+local string_len = string.len
+local ipairs = ipairs
+local unpack = unpack
+local type = type
 
 local _M = {}
 
 -- Take a request_host and make it a pattern for wildcard matching.
 -- Only do so if the request_host actually has a wildcard.
 local function create_wildcard_pattern(request_host)
-  if string.find(request_host, "*", 1, true) then
-    local pattern = string.gsub(request_host, "%.", "%%.")
-    pattern = string.gsub(pattern, "*", ".+")
-    pattern = string.format("^%s$", pattern)
+  if string_find(request_host, "*", 1, true) then
+    local pattern = string_gsub(request_host, "%.", "%%.")
+    pattern = string_gsub(pattern, "*", ".+")
+    pattern = string_format("^%s$", pattern)
     return pattern
   end
 end
 
 -- Handles pattern-specific characters if any.
 local function create_strip_request_path_pattern(request_path)
-  return string.gsub(request_path, "[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%"..c end)
+  return string_gsub(request_path, "[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%"..c end)
 end
 
-local function get_backend_url(api)
+local function get_upstream_url(api)
   local result = api.upstream_url
 
   -- Checking if the target url ends with a final slash
-  local len = string.len(result)
-  if string.sub(result, len, len) == "/" then
+  local len = string_len(result)
+  if string_sub(result, len, len) == "/" then
     -- Remove one slash to avoid having a double slash
-    -- Because ngx.var.uri always starts with a slash
-    result = string.sub(result, 0, len - 1)
+    -- Because ngx.var.request_uri always starts with a slash
+    result = string_sub(result, 0, len - 1)
   end
 
   return result
@@ -66,14 +76,14 @@ function _M.load_apis_in_memory()
       if pattern then
         -- If the request_host is a wildcard, we have a pattern and we can
         -- store it in an array for later lookup.
-        table.insert(dns_wildcard_arr, {pattern = pattern, api = api})
+        table_insert(dns_wildcard_arr, {pattern = pattern, api = api})
       else
         -- Keep non-wildcard request_host in a dictionary for faster lookup.
         dns_dic[api.request_host] = api
       end
     end
     if api.request_path then
-      table.insert(request_path_arr, {
+      table_insert(request_path_arr, {
         api = api,
         request_path = api.request_path,
         strip_request_path_pattern = create_strip_request_path_pattern(api.request_path)
@@ -99,14 +109,14 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
         host = unpack(stringy.split(host, ":"))
-        table.insert(all_hosts, host)
+        table_insert(all_hosts, host)
         if apis_dics.by_dns[host] then
           return apis_dics.by_dns[host]
         else
           -- If the API was not found in the dictionary, maybe it is a wildcard request_host.
           -- In that case, we need to loop over all of them.
           for _, wildcard_dns in ipairs(apis_dics.wildcard_dns_arr) do
-            if string.match(host, wildcard_dns.pattern) then
+            if string_match(host, wildcard_dns.pattern) then
               return wildcard_dns.api
             end
           end
@@ -149,9 +159,14 @@ end
 
 -- Replace `/request_path` with `request_path`, and then prefix with a `/`
 -- or replace `/request_path/foo` with `/foo`, and then do not prefix with `/`.
-function _M.strip_request_path(uri, strip_request_path_pattern)
-  local uri = string.gsub(uri, strip_request_path_pattern, "", 1)
-  if string.sub(uri, 0, 1) ~= "/" then
+function _M.strip_request_path(uri, strip_request_path_pattern, upstream_url_has_path)
+  local uri = string_gsub(uri, strip_request_path_pattern, "", 1)
+
+  -- Sometimes uri can be an empty string, and adding a slash "/"..uri will lead to a trailing slash
+  -- We don't want to add a trailing slash in one specific scenario, when the upstream_url already has
+  -- a path (so it's not root, like http://hello.com/, but http://hello.com/path) in order to avoid
+  -- having an unnecessary trailing slash not wanted by the user. Hence the "upstream_url_has_path" check.
+  if string_sub(uri, 0, 1) ~= "/" and not upstream_url_has_path then
     uri = "/"..uri
   end
   return uri
@@ -193,9 +208,13 @@ local function find_api(uri)
   return nil, api, all_hosts, strip_request_path_pattern
 end
 
-function _M.execute(conf)
-  local uri = stringy.split(ngx.var.request_uri, "?")[1]
+local function url_has_path(url)
+  local _, count_slashes = string.gsub(url, "/", "")
+  return count_slashes > 2
+end
 
+function _M.execute()
+  local uri = stringy.split(ngx.var.request_uri, "?")[1]
   local err, api, hosts, strip_request_path_pattern = find_api(uri)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -207,20 +226,22 @@ function _M.execute(conf)
     }
   end
 
+  local upstream_url = get_upstream_url(api)
+
   -- If API was retrieved by request_path and the request_path needs to be stripped
   if strip_request_path_pattern and api.strip_request_path then
-    uri = _M.strip_request_path(uri, strip_request_path_pattern)
+    uri = _M.strip_request_path(uri, strip_request_path_pattern, url_has_path(upstream_url))
   end
 
-  -- Setting the backend URL for the proxy_pass directive
-  ngx.var.backend_url = get_backend_url(api)..uri
+  upstream_url = upstream_url..uri
+
+  -- Set the
   if api.preserve_host then
-    ngx.var.backend_host = ngx.req.get_headers()["host"]
+    ngx.var.upstream_host = ngx.req.get_headers()["host"]
   else
-    ngx.var.backend_host = get_host_from_url(ngx.var.backend_url)
+    ngx.var.upstream_host = get_host_from_url(upstream_url)
   end
-
-  ngx.ctx.api = api
+  return api, upstream_url
 end
 
 return _M

@@ -1,4 +1,4 @@
-local resolver_access = require "kong.resolver.access"
+local resolver_access = require "kong.core.resolver"
 
 -- Stubs
 require "kong.tools.ngx_stub"
@@ -115,6 +115,10 @@ describe("Resolver Access", function()
     end)
     it("should only strip the first pattern", function()
       assert.equal("/mockbin/status/200/mockbin", resolver_access.strip_request_path("/mockbin/mockbin/status/200/mockbin", apis_dics.request_path_arr[1].strip_request_path_pattern))
+    end)
+    it("should not add final slash", function()
+      assert.equal("hello", resolver_access.strip_request_path("hello", apis_dics.request_path_arr[3].strip_request_path_pattern, true))
+      assert.equal("/hello", resolver_access.strip_request_path("hello", apis_dics.request_path_arr[3].strip_request_path_pattern, false))
     end)
   end)
 end)

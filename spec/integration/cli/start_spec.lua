@@ -14,9 +14,7 @@ end
 
 describe("CLI", function()
 
-  describe("Startup plugins check", function()
-
-    setup(function()
+  setup(function()
       os.execute("cp "..TEST_CONF.." "..SERVER_CONF)
       spec_helper.add_env(SERVER_CONF)
       spec_helper.prepare_db(SERVER_CONF)
@@ -30,6 +28,8 @@ describe("CLI", function()
     after_each(function()
       pcall(spec_helper.stop_kong, SERVER_CONF)
     end)
+
+  describe("Startup plugins check", function()
 
     it("should start with the default configuration", function()
       assert.has_no.errors(function()

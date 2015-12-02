@@ -67,6 +67,11 @@ describe("ALF serializer", function()
       assert.are.sameEntry(fixtures.MULTIPLE_UPSTREAMS.ENTRY, entry)
       assert.equal(60468, entry.timings.wait)
     end)
+
+    it("should return the last header if two are present for mimeType", function()
+      local entry = ALFSerializer.serialize_entry(fixtures.MULTIPLE_HEADERS.NGX_STUB)
+      assert.are.sameEntry(fixtures.MULTIPLE_HEADERS.ENTRY, entry)
+    end)
   end)
 
   describe("#new_alf()", function ()

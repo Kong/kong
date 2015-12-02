@@ -145,7 +145,6 @@ function _M.execute(conf)
   local headers = ngx_set_headers();
   -- If both headers are missing, return 401
   if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
-    ngx.ctx.stop_phases = true
     return responses.send_HTTP_UNAUTHORIZED()
   end
 
@@ -171,7 +170,6 @@ function _M.execute(conf)
   end
   hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("HMAC signature does not match")
   end
 

@@ -14,10 +14,10 @@ dependencies = {
   "lua ~> 5.1",
   "luasec ~> 0.5-2",
 
-  "uuid ~> 0.2-1",
+  "lua_uuid ~> 0.1-8",
   "luatz ~> 0.3-1",
-  "yaml ~> 1.1.1-1",
-  "lapis ~> 1.1.0-1",
+  "yaml ~> 1.1.2-1",
+  "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.3.6-0",
   "multipart ~> 0.2-1",
@@ -27,10 +27,11 @@ dependencies = {
   "lbase64 ~> 20120820-1",
   "lua-resty-iputils ~> 0.2.0-1",
 
-  "luasocket ~> 2.0.2-5",
+  "luasocket ~> 2.0.2-6",
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
-  "luacrypto >= 0.3.2-1"
+  "luacrypto >= 0.3.2-1",
+  "luasyslog >= 1.0.0-2"
 }
 build = {
   type = "builtin",
@@ -70,15 +71,15 @@ build = {
     ["kong.tools.migrations"] = "kong/tools/migrations.lua",
     ["kong.tools.http_client"] = "kong/tools/http_client.lua",
     ["kong.tools.database_cache"] = "kong/tools/database_cache.lua",
+    ["kong.tools.config_defaults"] = "kong/tools/config_defaults.lua",
+    ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
+    ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
 
-    ["kong.resolver.handler"] = "kong/resolver/handler.lua",
-    ["kong.resolver.access"] = "kong/resolver/access.lua",
-    ["kong.resolver.header_filter"] = "kong/resolver/header_filter.lua",
-    ["kong.resolver.certificate"] = "kong/resolver/certificate.lua",
-
-    ["kong.reports.handler"] = "kong/reports/handler.lua",
-    ["kong.reports.init_worker"] = "kong/reports/init_worker.lua",
-    ["kong.reports.log"] = "kong/reports/log.lua",
+    ["kong.core.handler"] = "kong/core/handler.lua",
+    ["kong.core.certificate"] = "kong/core/certificate.lua",
+    ["kong.core.resolver"] = "kong/core/resolver.lua",
+    ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
+    ["kong.core.reports"] = "kong/core/reports.lua",
 
     ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",
     ["kong.dao.error"] = "kong/dao/error.lua",
@@ -220,7 +221,15 @@ build = {
     ["kong.plugins.hmac-auth.access"] = "kong/plugins/hmac-auth/access.lua",
     ["kong.plugins.hmac-auth.schema"] = "kong/plugins/hmac-auth/schema.lua",
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
-    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua"
+    ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
+
+    ["kong.plugins.syslog.handler"] = "kong/plugins/syslog/handler.lua",
+    ["kong.plugins.syslog.log"] = "kong/plugins/syslog/log.lua",
+    ["kong.plugins.syslog.schema"] = "kong/plugins/syslog/schema.lua",
+
+    ["kong.plugins.loggly.handler"] = "kong/plugins/loggly/handler.lua",
+    ["kong.plugins.loggly.log"] = "kong/plugins/loggly/log.lua",
+    ["kong.plugins.loggly.schema"] = "kong/plugins/loggly/schema.lua"
   },
   install = {
     conf = { "kong.yml" },

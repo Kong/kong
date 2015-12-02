@@ -214,7 +214,7 @@ function buffer_mt.send_batch(premature, self)
 
   -- Keep sendind data if the queue is not yet emptied
   if #self.sending_queue > 0 then
-    local ok, err = ngx_timer_at(2, self.send_batch, self)
+    local ok, err = ngx_timer_at(0, self.send_batch, self)
     if not ok then
       ngx_log(ngx_log_ERR, "[mashape-analytics] failed to create batch retry timer: ", err)
     end

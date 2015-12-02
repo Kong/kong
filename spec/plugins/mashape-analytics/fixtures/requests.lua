@@ -183,5 +183,99 @@ return {
         wait = 60468
       }
     }
+  },
+  ["MULTIPLE_HEADERS"] = {
+    ["NGX_STUB"] = {
+      req = {
+        start_time = function() return 1432844571.623 end,
+        get_method = function() return "GET" end,
+        http_version = function() return 1.1 end,
+        get_headers = function() return {["Accept"] = "/*/", ["Host"] = "mockbin.com", ["Content-Type"] = {"application/json", "application/www-form-urlencoded"}} end,
+        get_uri_args = function() return {["hello"] = "world", ["foo"] = "bar"} end
+      },
+      resp = {
+        get_headers = function() return {["Connection"] = "close", ["Content-Type"] = {"application/json", "application/www-form-urlencoded"}, ["Content-Length"] = "934"} end
+      },
+      status = 200,
+      var = {
+        scheme = "http",
+        host = "mockbin.com",
+        request_uri = "/request",
+        request_length = 123,
+        body_bytes_sent = 934,
+        remote_addr = "127.0.0.1",
+        upstream_response_time = "0.391"
+      },
+      ctx = {
+        proxy_started_at = 1432844571719,
+        proxy_ended_at = 143284457211,
+        analytics = {
+          req_body = "hello=world&hello=earth",
+          res_body = "{\"message\":\"response body\"}",
+          req_post_args = {["hello"] = {"world", "earth"}},
+          response_received = 143284457211
+        }
+      }
+    },
+    ["ENTRY"] = {
+      cache = {},
+      request = {
+        bodySize = 23,
+        cookies = {EMPTY_ARRAY_PLACEHOLDER},
+        headers = {
+          {name = "Accept", value = "/*/"},
+          {name = "Host", value = "mockbin.com"},
+          {name = "Content-Type", value = "application/json"},
+          {name = "Content-Type", value = "application/www-form-urlencoded"}
+        },
+        headersSize = 95,
+        httpVersion = "HTTP/1.1",
+        method = "GET",
+        postData = {
+          mimeType = "application/www-form-urlencoded",
+          params = {
+            {name = "hello", value = "world"},
+            {name = "hello", value = "earth"}
+          },
+          text = "hello=world&hello=earth"
+        },
+        queryString = {
+          {name = "foo", value = "bar"},
+          {name = "hello", value = "world"}
+        },
+        url = "http://mockbin.com/request"
+      },
+      response = {
+        bodySize = 934,
+        content = {
+          mimeType = "application/www-form-urlencoded",
+          size = 934,
+          text = "{\"message\":\"response body\"}"
+        },
+        cookies = {EMPTY_ARRAY_PLACEHOLDER},
+        headers = {
+          {name = "Content-Length", value = "934"},
+          {name = "Content-Type", value = "application/json"},
+          {name = "Content-Type", value = "application/www-form-urlencoded"},
+          {name = "Connection", value = "close"}
+        },
+        headersSize = 103,
+        httpVersion = "",
+        redirectURL = "",
+        status = 200,
+        statusText = ""
+      },
+      startedDateTime = "2015-05-28T20:22:51Z",
+      time = 487,
+      timings = {
+        blocked = -1,
+        connect = -1,
+        dns = -1,
+        receive = 0,
+        send = 96,
+        ssl = -1,
+        wait = 391
+      }
+    }
   }
 }

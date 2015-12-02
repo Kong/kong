@@ -1,6 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local timestamp = require "kong.tools.timestamp"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 local env = spec_helper.get_env()
 local dao_factory = env.dao_factory

@@ -16,6 +16,15 @@
 -- - ngx_http_core_module: http://wiki.nginx.org/HttpCoreModule#.24http_HEADER
 
 local stringy = require "stringy"
+local table_insert = table.insert
+local tostring = tostring
+local pairs = pairs
+local ipairs = ipairs
+local type = type
+local tonumber = tonumber
+local string_len = string.len
+local os_date = os.date
+
 
 local ngx_encode_base64 = ngx.encode_base64
 
@@ -40,7 +49,7 @@ local function dic_to_array(hash, fn)
     for _, val in ipairs(v) do
       k = tostring(k)
       val = tostring(val)
-      table.insert(arr, {name = k, value = val})
+      table_insert(arr, {name = k, value = val})
       fn(k, val)
     end
   end
@@ -50,6 +59,26 @@ local function dic_to_array(hash, fn)
   else
     return {EMPTY_ARRAY_PLACEHOLDER}
   end
+end
+
+--- Get a header from nginx's headers
+-- Make sure that is multiple headers of a same name are present,
+-- we only want the last one. Also include a default value if
+-- no header is present.
+-- @param `headers` ngx's request or response headers table.
+-- @param `name`    Name of the desired header to retrieve.
+-- @param `default` String returned in case no header is found.
+-- @return `header` The header value (a string) or the default, or nil.
+local function get_header(headers, name, default)
+  local val = headers[name]
+  if val ~= nil then
+    if type(val) == "table" then
+      val = val[#val]
+    end
+    return val
+  end
+
+  return default
 end
 
 local _M = {}
@@ -113,15 +142,15 @@ function _M.serialize_entry(ngx)
 
   local alf_req_headers_arr = dic_to_array(req_headers, function(k, v) req_headers_str = req_headers_str..k..v end)
   local alf_res_headers_arr = dic_to_array(res_headers, function(k, v) res_headers_str = res_headers_str..k..v end)
-  local alf_req_headers_size = string.len(req_headers_str)
-  local alf_res_headers_size = string.len(res_headers_str)
+  local alf_req_headers_size = string_len(req_headers_str)
+  local alf_res_headers_size = string_len(res_headers_str)
 
   -- mimeType, defaulting to "application/octet-stream"
-  local alf_req_mimeType = req_headers["Content-Type"] and req_headers["Content-Type"] or "application/octet-stream"
-  local alf_res_mimeType = res_headers["Content-Type"] and res_headers["Content-Type"] or "application/octet-stream"
+  local alf_req_mimeType = get_header(req_headers, "Content-Type", "application/octet-stream")
+  local alf_res_mimeType = get_header(res_headers, "Content-Type", "application/octet-stream")
 
   return {
-    startedDateTime = os.date("!%Y-%m-%dT%TZ", alf_started_at),
+    startedDateTime = os_date("!%Y-%m-%dT%TZ", alf_started_at),
     time = alf_time,
     request = {
       method = ngx.req.get_method(),
@@ -131,7 +160,7 @@ function _M.serialize_entry(ngx)
       headers = alf_req_headers_arr,
       headersSize = alf_req_headers_size,
       cookies = {EMPTY_ARRAY_PLACEHOLDER},
-      bodySize = string.len(alf_req_body),
+      bodySize = string_len(alf_req_body),
       postData = {
         mimeType = alf_req_mimeType,
         params = dic_to_array(alf_req_post_args),

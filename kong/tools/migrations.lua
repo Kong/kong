@@ -16,7 +16,7 @@ function Migrations:new(dao, core_migrations, plugins_namespace)
   end
 
   self.dao = dao
-  self.options = {keyspace = dao._properties.keyspace}
+  self.dao_properties = dao._properties
   self.plugins_namespace = plugins_namespace and plugins_namespace or "kong.plugins"
 end
 
@@ -92,11 +92,14 @@ function Migrations:run_migrations(migrations, identifier, callback)
     diff_migrations = migrations
   end
 
-  local err
+  local up_query, err
   -- Execute all new migrations, in order
   for _, migration in ipairs(diff_migrations) do
     -- Generate UP query from string + options parameter
-    local up_query = migration.up(self.options)
+    up_query, err = migration.up(self.dao_properties)
+    if not up_query then
+      break
+    end
     err = self.dao:execute_queries(up_query, migration.init)
     if err then
       err = "Error executing migration for "..identifier..": "..err
@@ -145,7 +148,7 @@ function Migrations:run_rollback(migrations, identifier)
   end
 
   -- Generate DOWN query from string + options
-  local down_query = migration_to_rollback.down(self.options)
+  local down_query = migration_to_rollback.down(self.dao_properties)
   local err = self.dao:execute_queries(down_query)
   if err then
     return nil, err

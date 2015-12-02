@@ -1,4 +1,4 @@
----
+--
 -- Module for timestamp support.
 -- Based on the LuaTZ module.
 local luatz = require "luatz"

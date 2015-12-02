@@ -37,7 +37,11 @@ describe("Resolver", function()
         {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
         {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
         {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true},
-        {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"}
+        {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"},
+        {name = "tests-trailing-slash-path", request_path = "/test-trailing-slash", strip_request_path = true, upstream_url = "http://www.mockbin.org/request"},
+        {name = "tests-trailing-slash-path2", request_path = "/test-trailing-slash2", strip_request_path = false, upstream_url = "http://www.mockbin.org/request"},
+        {name = "tests-trailing-slash-path3", request_path = "/test-trailing-slash3", strip_request_path = true, upstream_url = "http://www.mockbin.org"},
+        {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -68,17 +72,16 @@ describe("Resolver", function()
   end)
 
   describe("Inexistent API", function()
-
     it("should return Not Found when the API is not in Kong", function()
-      local response, status = http_client.get(spec_helper.STUB_GET_URL, nil, {host = "foo.com"})
+      local response, status, headers = http_client.get(spec_helper.STUB_GET_URL, nil, {host = "foo.com"})
       assert.equal(404, status)
       assert.equal('{"request_path":"\\/request","message":"API not found with these values","request_host":["foo.com"]}\n', response)
+      assert.falsy(headers[constants.HEADERS.PROXY_LATENCY])
+      assert.falsy(headers[constants.HEADERS.UPSTREAM_LATENCY])
     end)
-
   end)
 
   describe("SSL", function()
-
     it("should work when calling SSL port", function()
       local response, status = http_client.get(STUB_GET_SSL_URL, nil, {host = "mockbin.com"})
       assert.equal(200, status)
@@ -86,7 +89,6 @@ describe("Resolver", function()
       local parsed_response = cjson.decode(response)
       assert.same("GET", parsed_response.method)
     end)
-
     it("should work when manually triggering the handshake on default route", function()
       local parsed_url = url.parse(STUB_GET_SSL_URL)
 
@@ -120,7 +122,6 @@ describe("Resolver", function()
 
       conn:close()
     end)
-
   end)
 
   describe("Existing API", function()
@@ -129,24 +130,19 @@ describe("Resolver", function()
         local _, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
         assert.equal(200, status)
       end)
-
       it("should proxy when the Host header is not trimmed", function()
         local _, status = http_client.get(STUB_GET_URL, nil, {host = "   mockbin.com  "})
         assert.equal(200, status)
       end)
-
       it("should proxy when the request has no Host header but the X-Host-Override header", function()
         local _, status = http_client.get(STUB_GET_URL, nil, {["X-Host-Override"] = "mockbin.com"})
         assert.equal(200, status)
       end)
-
       it("should proxy when the Host header contains a port", function()
         local _, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com:80"})
         assert.equal(200, status)
       end)
-
       describe("with wildcard subdomain", function()
-
         it("should proxy when the request_host is a wildcard subdomain", function()
           local _, status = http_client.get(STUB_GET_URL, nil, {host = "subdomain.wildcard.com"})
           assert.equal(200, status)
@@ -157,7 +153,7 @@ describe("Resolver", function()
       end)
     end)
 
-    describe("By request_Path", function()
+    describe("By request_path", function()
       it("should proxy when no Host is present but the request_uri matches the API's request_path", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/status/200")
         assert.equal(200, status)
@@ -202,32 +198,58 @@ describe("Resolver", function()
         local upstream_url = body.log.entries[1].request.url
         assert.equal("http://mockbin.com/har/of/request", upstream_url)
       end)
+      it("should not add a trailing slash when strip_path is enabled", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request?hello=world", cjson.decode(response).url)
+      end)
+      it("should not add a trailing slash when strip_path is disabled", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash2", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request/test-trailing-slash2?hello=world", cjson.decode(response).url)
+      end)
+      it("should not add a trailing slash when strip_path is enabled and upstream_url has no path", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash3/request", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request?hello=world", cjson.decode(response).url)
+      end)
+      it("should not add a trailing slash when strip_path is enabled and upstream_url has single path", function()
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash4/request", { hello = "world"})
+        assert.equal(200, status)
+        assert.equal("http://www.mockbin.org/request?hello=world", cjson.decode(response).url)
+      end)
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
       assert.equal(200, status)
       assert.equal("cloudflare-nginx", headers.server)
       assert.equal(constants.NAME.."/"..constants.VERSION, headers.via)
     end)
     it("should return the correct Server and no Via header when the request was NOT proxied", function()
-      local _, status, headers = http_client.get(STUB_GET_URL, nil, { host = "mockbin-auth.com"})
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, {host = "mockbin-auth.com"})
       assert.equal(401, status)
       assert.equal(constants.NAME.."/"..constants.VERSION, headers.server)
       assert.falsy(headers.via)
+    end)
+    it("should return correct timing headers when the request was proxied", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
+      assert.equal(200, status)
+      assert.truthy(headers[constants.HEADERS.PROXY_LATENCY:lower()])
+      assert.truthy(headers[constants.HEADERS.UPSTREAM_LATENCY:lower()])
     end)
   end)
 
   describe("Preseve Host", function()
     it("should not preserve the host (default behavior)", function()
-      local response, status = http_client.get(PROXY_URL.."/get", nil, { host = "httpbin-nopreserve.com"})
+      local response, status = http_client.get(PROXY_URL.."/get", nil, {host = "httpbin-nopreserve.com"})
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal("httpbin.org", parsed_response.headers["Host"])
     end)
 
     it("should preserve the host (default behavior)", function()
-      local response, status = http_client.get(PROXY_URL.."/get", nil, { host = "httpbin-preserve.com"})
+      local response, status = http_client.get(PROXY_URL.."/get", nil, {host = "httpbin-preserve.com"})
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal("httpbin-preserve.com", parsed_response.headers["Host"])
