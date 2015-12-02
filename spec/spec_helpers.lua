@@ -9,9 +9,6 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
 
-startDebug = function() require("mobdebug").start() end
-stopDebug = function() require("mobdebug").done() end
-      
 require "kong.tools.ngx_stub"
 
 local _M = {}
