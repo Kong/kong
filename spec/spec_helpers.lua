@@ -9,6 +9,9 @@ local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
 
+startDebug = function() require("mobdebug").start() end
+stopDebug = function() require("mobdebug").done() end
+      
 require "kong.tools.ngx_stub"
 
 local _M = {}
@@ -98,8 +101,8 @@ function _M.find_port(exclude)
   end
 
   -- Finding an available port
-  local handle = io.popen([[(netstat  -atn | awk '{printf "%s\n%s\n", $4, $4}' | grep -oE '[0-9]*$'; seq 32768 61000) | sort -n | uniq -u | head -n 1]])
-  local result = handle:read("*a")
+  local handle = io.popen([[(netstat  -atn | awk '{printf "%s\n%s\n", $4, $4}' | grep -oE '[0-9]*$'; seq 32768 61000) | sort -n | uniq -u]])
+  local result = (handle:read("*a") .. "\n"):match("^(.-)\n")
   handle:close()
 
   -- Closing the opened servers
