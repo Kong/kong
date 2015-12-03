@@ -1,5 +1,14 @@
 ## [Unreleased][unreleased]
 
+## [0.5.4] - 2015/12/03
+
+### Fixed
+
+- Mashape Analytics plugin (aka Galileo):
+  - Improve stability under heavy load. [#757](https://github.com/Mashape/kong/issues/757)
+  - base64 encode ALF request/response bodies, enabling proper support for Galileo bodies inspection capabilities. [#747](https://github.com/Mashape/kong/pull/747)
+  - Do not include JSON bodies in ALF `postData.params` field. [#766](https://github.com/Mashape/kong/pull/766)
+
 ## [0.5.3] - 2015/11/16
 
 ### Fixed
@@ -358,8 +367,9 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.5.3...next
-[0.5.3]: https://github.com/mashape/kong/compare/0.5.3...0.5.3
+[unreleased]: https://github.com/mashape/kong/compare/0.5.4...next
+[0.5.4]: https://github.com/mashape/kong/compare/0.5.3...0.5.4
+[0.5.3]: https://github.com/mashape/kong/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/mashape/kong/compare/0.5.1...0.5.2
 [0.5.1]: https://github.com/mashape/kong/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/mashape/kong/compare/0.4.2...0.5.0

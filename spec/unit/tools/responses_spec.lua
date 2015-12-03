@@ -14,7 +14,7 @@ describe("Responses", function()
     ngx.header = {}
     -- Revert mocked functions
     for _, v in pairs(ngx) do
-      if type(v) == "table" and v.revert then
+      if type(v) == "table" and type(v.revert) == "function" then
         v:revert()
       end
     end
