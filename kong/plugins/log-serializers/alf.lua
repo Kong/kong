@@ -15,15 +15,14 @@
 -- - Nginx lua module documentation: http://wiki.nginx.org/HttpLuaModule
 -- - ngx_http_core_module: http://wiki.nginx.org/HttpCoreModule#.24http_HEADER
 
-local table_insert = table.insert
-local tostring = tostring
+local type = type
 local pairs = pairs
 local ipairs = ipairs
 local os_date = os.date
 local tostring = tostring
 local tonumber = tonumber
 local string_len = string.len
-
+local table_insert = table.insert
 local ngx_encode_base64 = ngx.encode_base64
 
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
@@ -195,8 +194,8 @@ function _M.new_alf(ngx, token, environment)
       log = {
         version = "1.2",
         creator = {
-          name = "mashape-analytics-agent-kong",
-          version = "1.0.3"
+          name = "galileo-agent-kong",
+          version = "1.1.0"
         },
         entries = {_M.serialize_entry(ngx)}
       }
