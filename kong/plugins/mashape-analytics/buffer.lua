@@ -216,7 +216,6 @@ function buffer_mt.send_batch(premature, self)
       if res.status == 200 then
         ngx_log(ngx.NOTICE, string_format("[mashape-analytics] successfully saved the batch. (%s)", res.body))
       elseif res.status == 207 then
-        retry = true
         ngx_log(ngx_log_ERR, string_format("[mashape-analytics] socket server could not save all ALFs from the batch. (%s)", res.body))
       elseif res.status == 400 then
         ngx_log(ngx_log_ERR, string_format("[mashape-analytics] socket server refused the batch (%s ALFs %s bytes). Dropping batch. Status: (%s) Error: (%s)", batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
