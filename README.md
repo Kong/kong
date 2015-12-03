@@ -101,6 +101,7 @@ Tools:
 - [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
 - [Kongfig](https://github.com/mybuilder/kongfig)
 - [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
+- [Konga CLI Tool](https://github.com/Floby/konga-cli)
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
 - [Kong GUI in JS](https://github.com/rsdevigo/jungle)
 - [Kong GUI in Py](https://github.com/vikingco/django-kong-admin)
