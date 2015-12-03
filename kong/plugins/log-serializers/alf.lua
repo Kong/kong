@@ -17,6 +17,14 @@
 
 local stringy = require "stringy"
 
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local os_date = os.date
+local tostring = tostring
+local tonumber = tonumber
+local string_len = string.len
+local table_insert = table.insert
 local ngx_encode_base64 = ngx.encode_base64
 
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
@@ -40,7 +48,7 @@ local function dic_to_array(hash, fn)
     for _, val in ipairs(v) do
       k = tostring(k)
       val = tostring(val)
-      table.insert(arr, {name = k, value = val})
+      table_insert(arr, {name = k, value = val})
       fn(k, val)
     end
   end
@@ -113,15 +121,15 @@ function _M.serialize_entry(ngx)
 
   local alf_req_headers_arr = dic_to_array(req_headers, function(k, v) req_headers_str = req_headers_str..k..v end)
   local alf_res_headers_arr = dic_to_array(res_headers, function(k, v) res_headers_str = res_headers_str..k..v end)
-  local alf_req_headers_size = string.len(req_headers_str)
-  local alf_res_headers_size = string.len(res_headers_str)
+  local alf_req_headers_size = string_len(req_headers_str)
+  local alf_res_headers_size = string_len(res_headers_str)
 
   -- mimeType, defaulting to "application/octet-stream"
   local alf_req_mimeType = req_headers["Content-Type"] and req_headers["Content-Type"] or "application/octet-stream"
   local alf_res_mimeType = res_headers["Content-Type"] and res_headers["Content-Type"] or "application/octet-stream"
 
   return {
-    startedDateTime = os.date("!%Y-%m-%dT%TZ", alf_started_at),
+    startedDateTime = os_date("!%Y-%m-%dT%TZ", alf_started_at),
     time = alf_time,
     request = {
       method = ngx.req.get_method(),
@@ -131,7 +139,7 @@ function _M.serialize_entry(ngx)
       headers = alf_req_headers_arr,
       headersSize = alf_req_headers_size,
       cookies = {EMPTY_ARRAY_PLACEHOLDER},
-      bodySize = string.len(alf_req_body),
+      bodySize = string_len(alf_req_body),
       postData = {
         mimeType = alf_req_mimeType,
         params = dic_to_array(alf_req_post_args),
@@ -187,7 +195,7 @@ function _M.new_alf(ngx, token, environment)
       log = {
         version = "1.2",
         creator = {
-          name = "mashape-analytics-agent-kong",
+          name = "galileo-agent-kong",
           version = "1.1.0"
         },
         entries = {_M.serialize_entry(ngx)}
