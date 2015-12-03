@@ -1,7 +1,7 @@
 -- ALF buffer module
 --
 -- This module contains a buffered array of ALF objects. When the buffer is full (max number of entries
--- or max payload size accepted by the socket server), it is eventually converted to a JSON payload and moved a
+-- or max payload size accepted by the collector), it is eventually converted to a JSON payload and moved a
 -- queue of payloads to be sent to the server. "Eventually", because to prevent the sending queue from growing
 -- too much and crashing the Lua VM, its size is limited (in bytes). If the sending queue is currently bloated
 -- and reached its size limit, then the buffer is NOT added to it, and simply discarded. ALFs will be lost.
@@ -10,12 +10,12 @@
 --   One buffer of ALFs (gets flushed once it reaches the max size)
 --   One queue of pending, ready-to-be-sent batches which are JSON payloads (which also has a max size, in bytes)
 --
--- 1. The sending queue keeps sending batches one by one, and if batches are acknowledged by the socket server,
+-- 1. The sending queue keeps sending batches one by one, and if batches are acknowledged by the collector,
 -- the batch is considered saved and is discarded.
--- 2. If the batch is invalid (bad ALF formatting) according to the socket server, it is discarded and won't be retried.
--- 3. If the connection to the socket server could not be made, the batch will not be discarded so it can be retried.
+-- 2. If the batch is invalid (bad ALF formatting) according to the collector, it is discarded and won't be retried.
+-- 3. If the connection to the collector could not be made, the batch will not be discarded so it can be retried.
 -- 4. The sending queue keeps sending batches as long as it has some pending for sending. If the connection failed (3.),
--- the sending queue will use a retry policy timer which is incremented everytime the socket server did not answer.
+-- the sending queue will use a retry policy timer which is incremented everytime the collector did not answer.
 -- 5. We run a 'delayed timer' in case no call is received for a while to still flush the buffer and have 'real-time' analytics.
 --
 -- @see alf_serializer.lua
@@ -41,7 +41,7 @@ local math_min = math.min
 local setmetatable = setmetatable
 
 local MB = 1024 * 1024
-local MAX_BUFFER_SIZE = 500 * MB
+local MAX_COLLECTOR_PAYLOAD_SIZE = 500 * MB
 local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
 
 -- Define an exponential retry policy for all workers.
@@ -55,7 +55,7 @@ local RETRY_MAX_DELAY = 60 -- seconds
 
 local buffer_mt = {}
 buffer_mt.__index = buffer_mt
-buffer_mt.MAX_BUFFER_SIZE = MAX_BUFFER_SIZE
+buffer_mt.MAX_COLLECTOR_PAYLOAD_SIZE = MAX_COLLECTOR_PAYLOAD_SIZE
 
 -- A handler for delayed batch sending. When no call has been made for X seconds
 -- (X being conf.delay), we send the batch to keep analytics as close to real-time
@@ -83,12 +83,11 @@ end
 function buffer_mt.new(conf)
   local buffer = {
     max_entries = conf.batch_size,
-    max_entries_size = buffer_mt.MAX_BUFFER_SIZE, -- using the value attached to the buffer_mt allows us to unit test this
     auto_flush_delay = conf.delay,
     host = conf.host,
     port = conf.port,
     path = conf.path,
-    max_queue_size = conf.sending_queue_size * MB,
+    max_sending_queue_size = conf.max_sending_queue_size * MB,
     entries = {}, -- current buffer as an array of strings (serialized ALFs)
     entries_size = 0, -- current entries size in bytes (total)
     sending_queue = {}, -- array of constructed payloads (batches of ALFs) to be sent
@@ -117,13 +116,13 @@ function buffer_mt:add_alf(alf)
   local alf_size = string_len(str)
 
   -- If the alf_size exceeds the payload limit by itself, we have a big problem
-  if alf_size > self.max_entries_size then
-    ngx_log(ngx_log_ERR, string_format("[mashape-analytics] ALF size exceeded the maximum size (%sMB) accepted by the socket server. Dropping it.", self.max_entries_size / MB))
+  if alf_size > buffer_mt.MAX_COLLECTOR_PAYLOAD_SIZE then
+    ngx_log(ngx_log_ERR, string_format("[mashape-analytics] ALF size exceeds the maximum size (%sMB) accepted by the collector. Dropping it.", buffer_mt.MAX_COLLECTOR_PAYLOAD_SIZE / MB))
     return
   end
 
   -- If size or entries exceed the max limits
-  local full = next_n_entries > self.max_entries or (self:get_size() + alf_size) > self.max_entries_size
+  local full = next_n_entries > self.max_entries or (self:get_size() + alf_size) > buffer_mt.MAX_COLLECTOR_PAYLOAD_SIZE
   if full then
     self:flush()
     -- Batch size reached, let's send the data
@@ -161,35 +160,36 @@ function buffer_mt:get_size()
 end
 
 -- Flush the buffer
--- 1. Make sure the current sending queue doesn't exceed its size limit
--- 1b. Convert its content into a JSON payload
--- 1c. Add the payload to the queue of payloads to be sent
--- 2. Empty the buffer and reset the current buffer size
+-- 1. Make sure the batch is not too big for the configured max_sending_queue_size
+-- 2. Make sure the current sending queue doesn't exceed its size limit
+-- 2b. Convert its content into a JSON payload
+-- 2c. Add the payload to the queue of payloads to be sent
+-- 3. Empty the buffer and reset the current buffer size
 function buffer_mt:flush()
-  local size = self:get_size()
+  local batch_size = self:get_size()
 
-  -- Make sure we don't cross the size limit. The only exception is if the sending_queue is empty,
-  -- it could happen that the configuration is erroneous (ex: batch_size too big for a too small sending_queue_size)
-  if self.sending_queue_size + size <= self.max_queue_size or table_getn(self.sending_queue) < 1 then
-    self.sending_queue_size = self.sending_queue_size + size
+  if batch_size > self.max_sending_queue_size then
+    ngx_log(ngx.NOTICE, string_format("[mashape-analytics] batch was bigger (%s bytes) than the configured max_sending_queue_size (%s bytes). Dropping it (%s ALFs)", batch_size, self.max_sending_queue_size, table_getn(self.entries)))
+  elseif self.sending_queue_size + batch_size <= self.max_sending_queue_size then
+    self.sending_queue_size = self.sending_queue_size + batch_size
 
     table_insert(self.sending_queue, {
       payload = self:payload_string(),
       n_entries = table_getn(self.entries),
-      size = size
+      size = batch_size
     })
   else
-    ngx_log(ngx.NOTICE, string_format("[mashape-analytics] buffer reached its maximum sending queue size. (%s) ALFs, (%s) bytes dropped.", table_getn(self.entries), size))
+    ngx_log(ngx.NOTICE, string_format("[mashape-analytics] buffer reached its maximum max_sending_queue_size. (%s) ALFs, (%s) bytes dropped.", table_getn(self.entries), batch_size))
   end
 
   self.entries = {}
   self.entries_size = 0
 end
 
--- Send the oldest payload (batch of ALFs) from the queue to the socket server.
--- The payload will be removed if the socket server acknowledged the batch.
+-- Send the oldest payload (batch of ALFs) from the queue to the collector.
+-- The payload will be removed if the collector acknowledged the batch.
 -- If the queue still has payloads to be sent, keep on sending them.
--- If the connection to the socket server fails, use the retry policy.
+-- If the connection to the collector fails, use the retry policy.
 function buffer_mt.send_batch(premature, self)
   if self.lock_sending then return end
   self.lock_sending = true -- simple lock
@@ -203,7 +203,7 @@ function buffer_mt.send_batch(premature, self)
 
   local retry
   local client = http:new()
-  client:set_timeout(50000) -- 5 sec
+  client:set_timeout(5000) -- 5 sec
 
   local ok, err = client:connect(self.host, self.port)
   if ok then
@@ -214,14 +214,14 @@ function buffer_mt.send_batch(premature, self)
     else
       res.body = string_sub(res.body, 1, -2) -- remove trailing line jump for logs
       if res.status == 200 then
-        ngx_log(ngx.NOTICE, string_format("[mashape-analytics] successfully saved the batch. (%s)", res.body))
+        ngx_log(ngx.DEBUG, string_format("[mashape-analytics] successfully saved the batch. (%s)", res.body))
       elseif res.status == 207 then
-        ngx_log(ngx_log_ERR, string_format("[mashape-analytics] socket server could not save all ALFs from the batch. (%s)", res.body))
+        ngx_log(ngx_log_ERR, string_format("[mashape-analytics] collector could not save all ALFs from the batch. (%s)", res.body))
       elseif res.status == 400 then
-        ngx_log(ngx_log_ERR, string_format("[mashape-analytics] socket server refused the batch (%s ALFs %s bytes). Dropping batch. Status: (%s) Error: (%s)", batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
+        ngx_log(ngx_log_ERR, string_format("[mashape-analytics] collector refused the batch (%s ALFs %s bytes). Dropping batch. Status: (%s) Error: (%s)", batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
       else
         retry = true
-        ngx_log(ngx_log_ERR, string_format("[mashape-analytics] socket server could not save the batch (%s ALFs %s bytes). Status: (%s) Error: (%s)", batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
+        ngx_log(ngx_log_ERR, string_format("[mashape-analytics] collector could not save the batch (%s ALFs %s bytes). Status: (%s) Error: (%s)", batch_to_send.n_entries, batch_to_send.size, res.status, res.body))
       end
     end
 
@@ -236,13 +236,13 @@ function buffer_mt.send_batch(premature, self)
     end
   else
     retry = true
-    ngx_log(ngx_log_ERR, "[mashape-analytics] failed to connect to the socket server: ", err)
+    ngx_log(ngx_log_ERR, "[mashape-analytics] failed to connect to the collector: ", err)
   end
 
   local next_batch_delay = 0 -- default delay for the next batch sending
 
   if retry then
-    -- could not reach the socket server, need to retry
+    -- could not reach the collector, need to retry
     table_insert(self.sending_queue, 1, batch_to_send)
 
     local ok, err = dict:add(RETRY_INDEX_KEY, 0)
@@ -259,7 +259,7 @@ function buffer_mt.send_batch(premature, self)
 
     ngx_log(ngx.NOTICE, string_format("[mashape-analytics] batch was queued for retry. Next retry in: %s seconds", next_batch_delay))
   else
-    -- batch acknowledged by the socket server
+    -- batch acknowledged by the collector
     self.sending_queue_size = self.sending_queue_size - batch_to_send.size
 
     -- reset retry policy
