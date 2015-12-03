@@ -21,6 +21,8 @@ local ALFSerializer = require "kong.plugins.log-serializers.alf"
 local ngx_now = ngx.now
 local ngx_log = ngx.log
 local ngx_log_ERR = ngx.ERR
+local string_find = string.find
+local pcall = pcall
 
 local ALF_BUFFERS = {} -- buffers per-api
 
@@ -33,29 +35,36 @@ end
 function AnalyticsHandler:access(conf)
   AnalyticsHandler.super.access(self)
 
-  -- Retrieve and keep in memory the bodies for this request
-  ngx.ctx.analytics = {
-    req_body = "",
-    res_body = "",
-    req_post_args = {}
-  }
-
-  ngx.req.read_body()
-
-  local status, res = pcall(ngx.req.get_post_args)
-  if not status then
-    if res == "requesty body in temp file not supported" then
-      ngx_log(ngx_log_ERR, "[mashape-analytics] cannot read request body from temporary file. Try increasing the client_body_buffer_size directive.")
-    else
-      ngx_log(ngx_log_ERR, res)
-    end
-  else
-    ngx.ctx.analytics.req_post_args = res
-  end
+  local req_body = ""
+  local res_body = ""
+  local req_post_args = {}
 
   if conf.log_body then
-    ngx.ctx.analytics.req_body = ngx.req.get_body_data()
+    ngx.req.read_body()
+    req_body = ngx.req.get_body_data()
+
+    local headers = ngx.req.get_headers()
+    local content_type = headers["content-type"]
+    if content_type and string_find(content_type:lower(), "application/x-www-form-urlencoded", nil, true) then
+      local status, res = pcall(ngx.req.get_post_args)
+      if not status then
+        if res == "requesty body in temp file not supported" then
+          ngx_log(ngx_log_ERR, "[mashape-analytics] cannot read request body from temporary file. Try increasing the client_body_buffer_size directive.")
+        else
+          ngx_log(ngx_log_ERR, res)
+        end
+      else
+        req_post_args = res
+      end
+    end
   end
+
+  -- keep in memory the bodies for this request
+  ngx.ctx.analytics = {
+    req_body = req_body,
+    res_body = res_body,
+    req_post_args = req_post_args
+  }
 end
 
 function AnalyticsHandler:body_filter(conf)
