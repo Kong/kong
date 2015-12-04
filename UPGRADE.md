@@ -1,6 +1,28 @@
-This document describes eventual additional steps that might be required to update between two versions of Kong. If nothing is described here for a particular version and platform, then assume the update will go smoothly.
+This document guides you through the process of upgrading Kong. First, check if a section named "Upgrade to Kong `x.x.x`" exists (`x.x.x`) being the version you are planning to upgrade to. If such a section does not exist, the upgrade you want to perform does not have any particular instructions, and you can simply consult the [Suggested upgrade path](#suggested-upgrade-path).
 
-## Update to Kong `0.5.x`
+## Suggested upgrade path
+
+Unless indicated otherwise in one of the upgrade paths of this document, it is possible to upgrade Kong **without downtime**:
+
+Considering that Kong is already running on your system, acquire the latest version from any of the available [installation methods](https://getkong.org/install/) and proceed to installing it, overriding your previous installation. Once done, consider that this is a good time to also modify your configuration.
+
+Then, run any new migration to upgrade your database schema:
+
+```shell
+$ kong migrations up [-c configuration_file]
+...
+[OK] Schema up to date
+```
+
+If you see the "Schema up to date" message, you only have to [reload](https://getkong.org/docs/latest/cli/#reload) Kong:
+
+```shell
+$ kong reload [-c configuration_file]
+```
+
+**Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly starts new workers taking over the old ones until they all have been terminated. This will guarantee you no drop in your current incoming traffic.
+
+## Upgrade to Kong `0.5.x`
 
 Migrating to 0.5.x can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
@@ -49,7 +71,7 @@ properties:
 
 ##### 2. Migration script
 
-[This Python script](/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
+[This Python script](https://github.com/Mashape/kong/blob/0.5.0/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
 
 ```shell
 # First, make sure you are already running Kong 0.4.2
@@ -74,11 +96,7 @@ If everything went well the script should print a success message. **At this poi
 
 ##### 3. Upgrade without downtime
 
-You can now update Kong to 0.5.x. Proceed as a regular update and install the package of your choice from the website. After updating, reload Kong to avoid downtime:
-
-```shell
-$ kong reload
-```
+You can now upgrade Kong to `0.5.x.` Proceed as a regular upgrade and follow the suggested upgrade path, in particular the `kong reload` command.
 
 ##### 4. Purge your Cassandra cluster
 
@@ -116,7 +134,7 @@ The old routes are still maintained but will be removed in upcoming versions. Co
   - The route to retrieve enabled plugins is now under `/plugins/enabled`.
   - The route to retrieve a plugin's configuration schema is now under `/plugins/schema/{plugin name}`.
 
-## Update to Kong `0.4.2`
+## Upgrade to Kong `0.4.2`
 
 The configuration format for specifying the port of your Cassandra instance changed. Replace:
 
@@ -136,7 +154,7 @@ cassandra:
       - "localhost:9042"
 ```
 
-## Update to Kong `0.3.x`
+## Upgrade to Kong `0.3.x`
 
 Kong now requires a patch on OpenResty for SSL support. On Homebrew you will need to reinstall OpenResty.
 

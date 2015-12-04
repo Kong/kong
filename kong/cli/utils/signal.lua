@@ -150,7 +150,7 @@ end
 local function prepare_database(args_config)
   local kong_config = get_kong_config(args_config)
   local dao_factory = dao.load(kong_config)
-  local migrations = require("kong.tools.migrations")(dao_factory)
+  local migrations = require("kong.tools.migrations")(dao_factory, kong_config)
 
   local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
   if err then
@@ -159,11 +159,24 @@ local function prepare_database(args_config)
     cutils.logger:info("Database not initialized. Running migrations...")
   end
 
-  local err = migrations:migrate_all(kong_config, function(identifier, migration)
-    if migration then
-      cutils.logger:success(string.format("%s migrated up to: %s", identifier, cutils.colors.yellow(migration.name)))
-    end
-  end)
+  local function before(identifier)
+    cutils.logger:info(string.format(
+      "Migrating %s on keyspace \"%s\" (%s)",
+      cutils.colors.yellow(identifier),
+      cutils.colors.yellow(dao_factory._properties.keyspace),
+      dao_factory.type
+    ))
+  end
+
+  local function on_each_success(identifier, migration)
+    cutils.logger:info(string.format(
+      "%s migrated up to: %s",
+      identifier,
+      cutils.colors.yellow(migration.name)
+    ))
+  end
+
+  local err = migrations:run_all_migrations(before, on_each_success)
   if err then
     cutils.logger:error_exit(err)
   end

@@ -37,11 +37,11 @@ function Plugins:_unmarshall(t)
 end
 
 -- @override
-function Plugins:update(t)
+function Plugins:update(t, full)
   if not t.consumer_id then
     t.consumer_id = constants.DATABASE_NULL_ID
   end
-  return Plugins.super.update(self, t)
+  return Plugins.super.update(self, t, full)
 end
 
 function Plugins:find_distinct()

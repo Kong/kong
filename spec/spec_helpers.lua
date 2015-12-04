@@ -37,7 +37,7 @@ function _M.add_env(conf_file)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,
-    migrations = Migrations(env_factory),
+    migrations = Migrations(env_factory, env_configuration),
     conf_file = conf_file,
     faker = Faker(env_factory)
   }
@@ -192,7 +192,7 @@ function _M.prepare_db(conf_file)
   local env = _M.get_env(conf_file)
 
   -- 1. Migrate our keyspace
-  local err = env.migrations:migrate_all(env.configuration)
+  local err = env.migrations:run_all_migrations()
   if err then
     error(err)
   end

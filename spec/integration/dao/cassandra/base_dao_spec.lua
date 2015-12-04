@@ -208,7 +208,7 @@ describe("Cassandra", function()
       end)
 
     end)
-    
+
     describe(":update()", function()
 
       it("should error if called with invalid parameters", function()

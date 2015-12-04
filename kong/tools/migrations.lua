@@ -1,61 +1,49 @@
 local utils = require "kong.tools.utils"
 local Object = require "classic"
+local fmt = string.format
+
+local _CORE_MIGRATIONS_IDENTIFIER = "core"
 
 local Migrations = Object:extend()
 
--- Instanciate a migrations runner.
--- @param `core_migrations` (Optional) If specified, will use those migrations for core instead of the real ones (for testing).
--- @param `plugins_namespace` (Optional) If specified, will look for plugins there instead of `kong.plugins` (for testing).
-function Migrations:new(dao, core_migrations, plugins_namespace)
-  dao:load_daos(require("kong.dao.cassandra.migrations"))
+function Migrations:new(dao, kong_config, core_migrations_module, plugins_namespace)
+  core_migrations_module = core_migrations_module or "kong.dao."..dao.type..".schema.migrations"
+  plugins_namespace = plugins_namespace or "kong.plugins"
 
-  if core_migrations then
-    self.core_migrations = core_migrations
-  else
-    self.core_migrations = require("kong.dao."..dao.type..".schema.migrations")
-  end
+  -- Load the DAO which interacts with the migrations table
+  dao:load_daos(require("kong.dao."..dao.type..".migrations"))
 
   self.dao = dao
   self.dao_properties = dao._properties
-  self.plugins_namespace = plugins_namespace and plugins_namespace or "kong.plugins"
+  self.migrations = {
+    [_CORE_MIGRATIONS_IDENTIFIER] = require(core_migrations_module)
+  }
+
+  for _, plugin_identifier in ipairs(kong_config.plugins_available) do
+    local has_migration, plugin_migrations = utils.load_module_if_exists(fmt("%s.%s.schema.migrations", plugins_namespace, plugin_identifier))
+    if has_migration then
+      self.migrations[plugin_identifier] = plugin_migrations
+    end
+  end
 end
 
 function Migrations:get_migrations(identifier)
   return self.dao.migrations:get_migrations(identifier)
 end
 
-function Migrations:migrate(identifier, callback)
-  if identifier == "core" then
-    return self:run_migrations(self.core_migrations, identifier, callback)
-  else
-    local has_migration, plugin_migrations = utils.load_module_if_exists(self.plugins_namespace.."."..identifier..".migrations."..self.dao.type)
-    if has_migration then
-      return self:run_migrations(plugin_migrations, identifier, callback)
-    end
-  end
-end
-
-function Migrations:rollback(identifier)
-  if identifier == "core" then
-    return self:run_rollback(self.core_migrations, identifier)
-  else
-    local has_migration, plugin_migrations = utils.load_module_if_exists(self.plugins_namespace.."."..identifier..".migrations."..self.dao.type)
-    if has_migration then
-      return self:run_rollback(plugin_migrations, identifier)
-    end
-  end
-end
-
-function Migrations:migrate_all(config, callback)
-  local err = self:migrate("core", callback)
+function Migrations:run_all_migrations(before, on_each_success)
+  local err = self:run_migrations(_CORE_MIGRATIONS_IDENTIFIER, before, on_each_success)
   if err then
     return err
   end
 
-  for _, plugin_name in ipairs(config.plugins_available) do
-    local err = self:migrate(plugin_name, callback)
-    if err then
-      return err
+  for identifier in pairs(self.migrations) do
+    -- skip core migrations
+    if identifier ~= _CORE_MIGRATIONS_IDENTIFIER then
+      local err = self:run_migrations(identifier, before, on_each_success)
+      if err then
+        return err
+      end
     end
   end
 end
@@ -64,7 +52,12 @@ end
 -- PRIVATE
 --
 
-function Migrations:run_migrations(migrations, identifier, callback)
+function Migrations:run_migrations(identifier, before, on_each_success)
+  local migrations = self.migrations[identifier]
+  if migrations == nil then
+    return fmt("No migrations registered for %s", identifier)
+  end
+
   -- Retrieve already executed migrations
   local old_migrations, err = self.dao.migrations:get_migrations(identifier)
   if err then
@@ -92,41 +85,40 @@ function Migrations:run_migrations(migrations, identifier, callback)
     diff_migrations = migrations
   end
 
-  local up_query, err
+  if before then
+    before(identifier)
+  end
+
   -- Execute all new migrations, in order
   for _, migration in ipairs(diff_migrations) do
-    -- Generate UP query from string + options parameter
-    up_query, err = migration.up(self.dao_properties)
-    if not up_query then
-      break
-    end
-    err = self.dao:execute_queries(up_query, migration.init)
+    local err = migration.up(self.dao_properties, self.dao)
     if err then
-      err = "Error executing migration for "..identifier..": "..err
-      break
+      return fmt('Error executing migration for "%s": %s', identifier, err)
     end
 
     -- Record migration in db
     err = select(2, self.dao.migrations:add_migration(migration.name, identifier))
     if err then
-      err = "Cannot record migration "..migration.name.." ("..identifier.."): "..err
-      break
+      return fmt('Cannot record successful migration "%s" (%s): %s', migration.name, identifier, err)
     end
 
     -- Migration succeeded
-    if callback then
-      callback(identifier, migration)
+    if on_each_success then
+      on_each_success(identifier, migration)
     end
   end
-
-  return err
 end
 
-function Migrations:run_rollback(migrations, identifier)
+function Migrations:run_rollback(identifier, before, on_success)
+  local migrations = self.migrations[identifier]
+  if migrations == nil then
+    return fmt("No migrations registered for %s", identifier)
+  end
+
   -- Retrieve already executed migrations
   local old_migrations, err = self.dao.migrations:get_migrations(identifier)
   if err then
-    return nil, err
+    return err
   end
 
   local migration_to_rollback
@@ -140,30 +132,37 @@ function Migrations:run_rollback(migrations, identifier)
       end
     end
     if not migration_to_rollback then
-      return nil, "Could not find migration \""..newest_migration_name.."\" to rollback it."
+      return fmt('Could not find migration "%s" to rollback it.', newest_migration_name)
     end
   else
     -- No more migration to rollback
+    if on_success then
+      on_success(identifier, nil) -- explicit no migration to rollback
+    end
     return
   end
 
-  -- Generate DOWN query from string + options
-  local down_query = migration_to_rollback.down(self.dao_properties)
-  local err = self.dao:execute_queries(down_query)
+  if before then
+    before(identifier)
+  end
+
+  local err = migration_to_rollback.down(self.dao_properties, self.dao)
   if err then
-    return nil, err
+    return fmt('Error rollbacking migration for "%s": %s', identifier, err)
   end
 
   -- delete migration from schema changes records if it's not the first one
   -- (otherwise the schema_migrations table doesn't exist anymore)
   if not migration_to_rollback.init then
-    local _, err = self.dao.migrations:delete_migration(migration_to_rollback.name, identifier)
+    err = select(2, self.dao.migrations:delete_migration(migration_to_rollback.name, identifier))
     if err then
-      return nil, "Cannot delete migration "..migration_to_rollback.name..": "..err
+      return fmt('Cannot record migration deletion "%s" (%s): %s', migration_to_rollback.name, identifier, err)
     end
   end
 
-  return migration_to_rollback
+  if on_success then
+    on_success(identifier, migration_to_rollback)
+  end
 end
 
 return Migrations

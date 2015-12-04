@@ -2,7 +2,7 @@ local Migrations = {
   {
     init = true,
     name = "2015-01-12-175310_skeleton",
-    up = function(options)
+    up = function(options, dao_factory)
       local keyspace_name = options.keyspace
       local strategy, strategy_properties = options.replication_strategy, ""
 
@@ -19,7 +19,7 @@ local Migrations = {
         end
       else
         -- Strategy unknown
-        return nil, "invalid replication_strategy class"
+        return "invalid replication_strategy class"
       end
 
       -- Format final keyspace creation query
@@ -28,17 +28,18 @@ local Migrations = {
           WITH REPLICATION = {'class': '%s'%s};
       ]], keyspace_name, strategy, strategy_properties)
 
-      return keyspace_str..[[
+      return dao_factory:execute_queries(keyspace_str..[[
+
         USE "]]..keyspace_name..[[";
 
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
           migrations list<text>
         );
-      ]]
+      ]], true)
     end,
-    down = function(options)
-      return [[
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         DROP KEYSPACE "]]..options.keyspace..[[";
       ]]
     end
@@ -46,8 +47,8 @@ local Migrations = {
   -- init schema migration
   {
     name = "2015-01-12-175310_init_schema",
-    up = function(options)
-      return [[
+    up = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS consumers(
           id uuid,
           custom_id text,
@@ -91,8 +92,8 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
       ]]
     end,
-    down = function(options)
-      return [[
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         DROP TABLE consumers;
         DROP TABLE apis;
         DROP TABLE plugins;
