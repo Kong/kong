@@ -1,8 +1,8 @@
 local Migrations = {
   {
     name = "2015-08-21_init_response-rate-limiting",
-    up = function(options)
-      return [[
+    up = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS response_ratelimiting_metrics(
           api_id uuid,
           identifier text,
@@ -13,8 +13,8 @@ local Migrations = {
         );
       ]]
     end,
-    down = function(options)
-      return [[
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         DROP TABLE response_ratelimiting_metrics;
       ]]
     end

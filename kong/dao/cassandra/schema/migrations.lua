@@ -3,8 +3,8 @@ local Migrations = {
   {
     init = true,
     name = "2015-01-12-175310_skeleton",
-    up = function(options)
-      return [[
+    up = function(options, dao_factory)
+      return dao_factory:execute_queries([[
         CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
           WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
 
@@ -14,10 +14,10 @@ local Migrations = {
           id text PRIMARY KEY,
           migrations list<text>
         );
-      ]]
+      ]], true)
     end,
-    down = function(options)
-      return [[
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         DROP KEYSPACE "]]..options.keyspace..[[";
       ]]
     end
@@ -25,8 +25,8 @@ local Migrations = {
   -- init schema migration
   {
     name = "2015-01-12-175310_init_schema",
-    up = function(options)
-      return [[
+    up = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS consumers(
           id uuid,
           custom_id text,
@@ -70,8 +70,8 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
       ]]
     end,
-    down = function(options)
-      return [[
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
         DROP TABLE consumers;
         DROP TABLE apis;
         DROP TABLE plugins;

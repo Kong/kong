@@ -115,7 +115,7 @@ end
 -- Useful for huge DDL operations such as migrations
 -- @param {string} queries Semicolon separated string of queries
 -- @param {boolean} no_keyspace Won't set the keyspace if true
--- @return {string} error if any
+-- @return {table} error if any
 function CassandraFactory:execute_queries(queries, no_keyspace)
   local ok, err
   local session = cassandra:new()
