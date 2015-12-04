@@ -27,6 +27,13 @@ describe("CLI", function()
 
   it("should restart kong when it's crashed", function()
     local kong_pid = IO.read_file(spec_helper.get_env().configuration.pid_file)
+    if not kong_pid then
+      -- we might be to quick, so wait and retry
+      os.execute("sleep 1")
+      kong_pid = IO.read_file(spec_helper.get_env().configuration.pid_file)
+      if not kong_pid then error("Could not read Kong pid") end
+    end
+    
     os.execute("pkill -9 nginx")
 
     repeat

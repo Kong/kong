@@ -39,8 +39,12 @@ describe("Real IP", function()
       }
     )
 
+    local timeout = 10
     while not (IO.file_exists(FILE_LOG_PATH) and IO.file_size(FILE_LOG_PATH) > 0) do
       -- Wait for the file to be created, and for the log to be appended
+      os.execute("sleep 1")
+      timeout = timeout -1
+      if timeout == 0 then error("Retrieving the ip address timed out") end
     end
 
     local file_log = IO.read_file(FILE_LOG_PATH)
