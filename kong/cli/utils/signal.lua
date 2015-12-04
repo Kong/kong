@@ -228,8 +228,8 @@ function _M.prepare_kong(args_config, signal)
 end
 
 local function check_port(port)
-  if cutils.is_port_open(port) then
-    cutils.logger:error_exit("Port "..tostring(port).." is already being used by another process.")
+  if not cutils.is_port_bindable(port) then
+    cutils.logger:error_exit("Port "..tostring(port).." is being blocked by another process.")
   end
 end
 

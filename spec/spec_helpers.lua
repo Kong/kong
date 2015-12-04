@@ -110,18 +110,22 @@ function _M.find_port(exclude)
   return tonumber(result)
 end
 
--- Starts a TCP server
+-- Starts a TCP server, accepting a single connection and then closes
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
 function _M.start_tcp_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require "socket"
-      local server = assert(socket.bind("*", port))
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
       local client = server:accept()
       local line, err = client:receive()
       if not err then client:send(line .. "\n") end
       client:close()
+      server:close()
       return line
     end;
   }, port)
@@ -130,14 +134,17 @@ function _M.start_tcp_server(port, ...)
 end
 
 
--- Starts a HTTP server
+-- Starts a HTTP server, accepting a single connection and then closes
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
 function _M.start_http_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require "socket"
-      local server = assert(socket.bind("*", port))
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
       local client = server:accept()
 
       local lines = {}
@@ -156,11 +163,13 @@ function _M.start_http_server(port, ...)
       end
 
       if err then
+        server:close()
         error(err)
       end
 
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
+      server:close()
       return lines
     end;
   }, port)
@@ -168,7 +177,7 @@ function _M.start_http_server(port, ...)
   return thread:start(...)
 end
 
--- Starts a UDP server
+-- Starts a UDP server, accepting a single connection and then closes
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
 function _M.start_udp_server(port, ...)
@@ -176,8 +185,10 @@ function _M.start_udp_server(port, ...)
     function(port)
       local socket = require("socket")
       local udp = socket.udp()
+      udp:setoption('reuseaddr', true)
       udp:setsockname("*", port)
       local data = udp:receivefrom()
+      udp:close()
       return data
     end;
   }, port)
