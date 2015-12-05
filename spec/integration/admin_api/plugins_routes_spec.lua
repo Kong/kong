@@ -5,6 +5,11 @@ local spec_helper = require "spec.spec_helpers"
 describe("Admin API", function()
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        { request_host = "test.com", upstream_url = "http://mockbin.com" }
+      }
+    }
     spec_helper.start_kong()
   end)
 
@@ -21,6 +26,32 @@ describe("Admin API", function()
       local body = json.decode(response)
       assert.equal("table", type(body.enabled_plugins))
     end)
+  end)
+
+  describe("CRUD", function()
+
+    local res = http_client.get(spec_helper.API_URL.."/apis/")
+    local api = json.decode(res).data[1]
+    assert.truthy(api)
+
+    local BASE_URL = spec_helper.API_URL.."/apis/"..api.id.."/plugins/"
+
+    it("PATCH", function()
+      local response, status = http_client.post(BASE_URL, {
+        name = "rate-limiting",
+        ["config.second"] = 3
+      })
+
+      assert.equals(201, status)
+      local plugin = json.decode(response)
+      assert.True(plugin.enabled)
+
+      local response, status = http_client.patch(BASE_URL..plugin.id, {enabled = false})
+      assert.equals(200, status)
+      plugin = json.decode(response)
+      assert.False(plugin.enabled)
+    end)
+
   end)
 
   describe("/plugins/schema/:name", function()

@@ -78,6 +78,15 @@ describe("Utils", function()
         }, true)
         assert.equal("hello world=foo, bar", str)
       end)
+      describe("raw encoding", function()
+        it("should ignore nil and false values", function()
+          local str = utils.encode_args({
+            a = true,
+            b = false
+          }, true)
+          assert.equal("a=true&b=false", str)
+        end)
+      end)
     end)
   end)
 

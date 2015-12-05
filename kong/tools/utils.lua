@@ -69,8 +69,8 @@ function _M.encode_args(args, raw)
         query[#query+1] = encode_args_value(key, sub_value, raw)
       end
     elseif value == true then
-      query[#query+1] = encode_args_value(key, nil, raw)
-    elseif value ~= false and value ~= nil then
+      query[#query+1] = encode_args_value(key, raw and true or nil, raw)
+    elseif value ~= false and value ~= nil or raw then
       value = tostring(value)
       if value ~= "" then
         query[#query+1] = encode_args_value(key, value, raw)
