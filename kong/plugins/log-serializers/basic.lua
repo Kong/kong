@@ -24,10 +24,9 @@ function _M.serialize(ngx)
       size = ngx.var.bytes_sent
     },
     latencies = {
-      kong = (ngx.ctx.kong_processing_access or 0) +
-             (ngx.ctx.kong_processing_header_filter or 0) +
-             (ngx.ctx.kong_processing_body_filter or 0),
-      proxy = ngx.var.upstream_response_time * 1000,
+      kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
+             (ngx.ctx.KONG_RECEIVE_TIME or 0),
+      proxy = ngx.ctx.KONG_WAITING_TIME or -1,
       request = ngx.var.request_time * 1000
     },
     authenticated_entity = authenticated_entity,

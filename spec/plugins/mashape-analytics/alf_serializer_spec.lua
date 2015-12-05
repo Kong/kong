@@ -65,7 +65,12 @@ describe("ALF serializer", function()
     it("should handle timing calculation if multiple upstreams were called", function()
       local entry = ALFSerializer.serialize_entry(fixtures.MULTIPLE_UPSTREAMS.NGX_STUB)
       assert.are.sameEntry(fixtures.MULTIPLE_UPSTREAMS.ENTRY, entry)
-      assert.equal(60468, entry.timings.wait)
+      assert.equal(236, entry.timings.wait)
+    end)
+
+    it("should return the last header if two are present for mimeType", function()
+      local entry = ALFSerializer.serialize_entry(fixtures.MULTIPLE_HEADERS.NGX_STUB)
+      assert.are.sameEntry(fixtures.MULTIPLE_HEADERS.ENTRY, entry)
     end)
   end)
 

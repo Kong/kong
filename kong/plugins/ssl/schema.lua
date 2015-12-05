@@ -23,6 +23,7 @@ return {
     cert = { required = true, type = "string", func = validate_cert },
     key = { required = true, type = "string", func = validate_key },
     only_https = { required = false, type = "boolean", default = false },
+    accept_http_if_already_terminated = { required = false, type = "boolean", default = false },
 
     -- Internal use
     _cert_der_cache = { type = "string", immutable = true },

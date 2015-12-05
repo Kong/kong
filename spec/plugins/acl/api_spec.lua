@@ -41,7 +41,7 @@ describe("ACLs API", function()
       end)
 
     end)
-    
+
     describe("PUT", function()
 
       it("[SUCCESS] should create and update", function()
@@ -64,9 +64,9 @@ describe("ACLs API", function()
       end)
 
     end)
-    
+
   end)
-  
+
   describe("/consumers/:consumer/acl/:id", function()
 
     describe("GET", function()
@@ -79,7 +79,7 @@ describe("ACLs API", function()
       end)
 
     end)
-    
+
     describe("PATCH", function()
 
       it("[SUCCESS] should update an ACL association", function()
@@ -96,7 +96,7 @@ describe("ACLs API", function()
       end)
 
     end)
-    
+
     describe("DELETE", function()
 
       it("[FAILURE] should return proper errors", function()
@@ -113,7 +113,7 @@ describe("ACLs API", function()
       end)
 
     end)
-    
+
   end)
-  
+
 end)
