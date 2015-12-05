@@ -8,7 +8,7 @@ Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage 
 [Installation](http://getkong.org/install) |
 [Mailing List][google-groups-url]
 
-[![Gitter Badge][gitter-badge]][gitter-url]
+[![Gitter Badge][gitter-badge]][gitter-url] [![Changelog #185](https://img.shields.io/badge/changelog-%23185-lightgrey.svg)](https://changelog.com/185)
 
 ## Summary
 
