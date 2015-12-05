@@ -362,6 +362,22 @@ describe("Admin API", function()
             assert.same({"key_set_null_test_updated"}, body.config.key_names)
             assert.equal(true, body.config.hide_credentials)
           end)
+          it("should be possible to disable it", function()
+            local response, status = http_client.patch(BASE_URL..plugin.id, {
+              enabled = false
+            })
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.False(body.enabled)
+          end)
+          it("should be possible to enabled it", function()
+            local response, status = http_client.patch(BASE_URL..plugin.id, {
+              enabled = true
+            })
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.True(body.enabled)
+          end)
         end)
 
         describe("DELETE", function()

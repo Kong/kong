@@ -78,8 +78,23 @@ describe("Utils", function()
         }, true)
         assert.equal("hello world=foo, bar", str)
       end)
-      describe("raw encoding", function()
-        it("should ignore nil and false values", function()
+      -- while this method's purpose is to mimic 100% the behavior of ngx.encode_args,
+      -- it is also used by Kong specs' http_client, to encode both querystrings and *bodies*.
+      -- Hence, a `raw` parameter allows encoding for bodies.
+      describe("raw", function()
+        it("should not percent-encode values", function()
+          local str = utils.encode_args({
+            foo = "hello world"
+          }, true)
+          assert.equal("foo=hello world", str)
+        end)
+        it("should not percent-encode keys", function()
+          local str = utils.encode_args({
+            ["hello world"] = "foo"
+          }, true)
+          assert.equal("hello world=foo", str)
+        end)
+        it("should plainly include true and false values", function()
           local str = utils.encode_args({
             a = true,
             b = false
