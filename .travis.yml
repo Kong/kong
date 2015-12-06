@@ -9,6 +9,7 @@ env:
 branches:
   only:
     - master
+    - next
 
 before_install:
   - "bash .ci/setup_kong.sh"
