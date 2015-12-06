@@ -121,17 +121,17 @@ end
 
 -- Checks if a port is available to bind a server to on localhost
 -- @param `port`  The port to check
--- @return `open` Truthy if available, falsy otherwise
+-- @return `open` Truthy if available, falsy + error otherwise
 local function is_port_bindable(port)
-  local server, success
+  local server, success, err
   server = require("socket").tcp()
   server:setoption('reuseaddr', true)
-  success = server:bind("*", port)
+  success, err = server:bind("*", port)
   if success then 
-    success = server:listen()
+    success, err = server:listen()
   end
   server:close()
-  return success
+  return success, err
 end
 
 return {
