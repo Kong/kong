@@ -8,7 +8,7 @@ sudo apt-get update
 sudo apt-get install wget curl tar make gcc unzip git liblua5.1-0-dev
 
 # Installing dependencies required for Kong
-sudo apt-get install sudo netcat lua5.1 openssl libpcre3 dnsmasq libuuid1 uuid-dev
+sudo apt-get install sudo netcat lua5.1 openssl libpcre3 dnsmasq uuid-dev
 
 # Installing Kong and its dependencies
 sudo apt-get install lsb-release
