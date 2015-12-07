@@ -10,11 +10,11 @@ local HTTPS = "https"
 -- @param `parsed_url` contains the host details
 -- @param `message`  Message to be logged
 -- @return `payload` http payload
-local function generate_post_payload(method, access_token, parsed_url, message)
+local function generate_post_payload(parsed_url, access_token, message)
   local body = cjson.encode(message)
   local payload = string.format(
-    "%s %s HTTP/1.1\r\nX-Test: foo\r\nHost: %s\r\nConnection: Keep-Alive\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s",
-    method:upper(), parsed_url.path, parsed_url.host, access_token, string.len(body), body)
+    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s",
+    "POST", parsed_url.path, parsed_url.host, access_token, string.len(body), body)
   return payload
 end
 
@@ -42,8 +42,8 @@ end
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
   local ok, err
-  local parsed_url = parse_url(conf.http_endpoint)
-  local access_token = parse_url(conf.access_token)
+  local parsed_url = parse_url(conf.api_endpoint.."/buckets/"..conf.bucket_key.."/messages")
+  local access_token = conf.access_token
   local host = parsed_url.host
   local port = tonumber(parsed_url.port)
 
@@ -63,7 +63,7 @@ local function log(premature, conf, message)
     end
   end
 
-  ok, err = sock:send(generate_post_payload(conf.method, conf.access_token, parsed_url, message).."\r\n")
+  ok, err = sock:send(generate_post_payload(parsed_url, access_token, message).."\r\n")
   if not ok then
     ngx.log(ngx.ERR, "[http-log] failed to send data to "..host..":"..tostring(port)..": ", err)
   end
