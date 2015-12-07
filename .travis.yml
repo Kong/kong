@@ -6,10 +6,6 @@ env:
   matrix:
     - LUA=lua5.1
 
-branches:
-  only:
-    - master
-
 before_install:
   - "bash .ci/setup_kong.sh"
   - "bash .ci/setup_cassandra.sh"
