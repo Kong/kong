@@ -6,7 +6,7 @@ n=0
 until [ $n -ge 5 ]
 do
     sudo rm -rf /var/lib/cassandra/*
-    curl http://apache.arvixe.com/cassandra/$CASSANDRA_VERSION/$CASSANDRA_BASE-bin.tar.gz | tar xz && break
+    curl http://archive.apache.org/dist/cassandra/$CASSANDRA_VERSION/$CASSANDRA_BASE-bin.tar.gz | tar xz && break
     n=$[$n+1]
     sleep 5
 done
