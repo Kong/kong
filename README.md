@@ -6,9 +6,9 @@ Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage 
 [Website](http://getkong.org) |
 [Documentation](http://getkong.org/docs) |
 [Installation](http://getkong.org/install) |
-[Mailing List][google-groups-url]
-
-[![Gitter Badge][gitter-badge]][gitter-url]
+[Mailing List][google-groups-url] |
+[Gitter Chat][gitter-url] |
+freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 
 ## Summary
 
@@ -26,7 +26,7 @@ Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage 
 
 - **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
-- **Geo-Replicated**: Configs are always up-to-date across different regions. 
+- **Geo-Replicated**: Configs are always up-to-date across different regions.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
