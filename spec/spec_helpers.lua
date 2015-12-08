@@ -230,6 +230,26 @@ function _M.insert_fixtures(fixtures, conf_file)
   return env.faker:insert_from_table(fixtures)
 end
 
+--
+-- Debug helpers
+--
+
+-- in case of hanging tests, insert a call to this function and it
+-- will print each next line to be executed, allowing to quickly identify
+-- where it hangs.
+_M.line_dump = function() 
+  debug.sethook(function(trigger, line)
+      if trigger == "tail return" then
+        print("tail return")
+      else
+        local info = debug.getinfo(2)
+        print("Executing next: ", info.currentline, info.source)
+        --for k,v in pairs(info) do print(k,v) end
+      end
+    end, "l")
+end
+
+
 -- Add the default env to our spec_helper
 _M.add_env(_M.TEST_CONF_FILE)
 
