@@ -99,7 +99,7 @@ describe("Logging Plugins", function()
   end)
 
   it("should log to UDP when severity and log level are default values", function()
-spec_helper.line_dump()      
+spec_helper.line_dump_start()      
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock TCP server
 
     local _, status = http_client.get(STUB_GET_URL, nil, { host = "logging3.com" })
@@ -118,5 +118,6 @@ spec_helper.line_dump()
     end
     local log_message = cjson.decode(message[1])
     assert.are.same("127.0.0.1", log_message.client_ip)
+spec_helper.line_dump_stop()
   end)
 end)
