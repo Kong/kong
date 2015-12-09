@@ -8,6 +8,8 @@ local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
+local pack = function(...) return { n = select("#", ...), ...} end
+local unpack = function(t,i,j) return unpack(t,i or 1, j or t.n or #t) end
 
 require "kong.tools.ngx_stub"
 
@@ -130,7 +132,9 @@ function _M.start_tcp_server(port, ...)
     end;
   }, port)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  os.execute("sleep 1")
+  return unpack(result)
 end
 
 
@@ -174,7 +178,9 @@ function _M.start_http_server(port, ...)
     end;
   }, port)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  os.execute("sleep 1")
+  return unpack(result)
 end
 
 -- Starts a UDP server, accepting a single connection and then closes
@@ -193,7 +199,9 @@ function _M.start_udp_server(port, ...)
     end;
   }, port)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  os.execute("sleep 1")
+  return unpack(result)
 end
 
 --
