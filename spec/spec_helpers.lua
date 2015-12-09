@@ -8,6 +8,7 @@ local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
+local sleep = require("socket").sleep
 local pack = function(...) return { n = select("#", ...), ...} end
 local unpack = function(t,i,j) return unpack(t,i or 1, j or t.n or #t) end
 
@@ -133,7 +134,7 @@ function _M.start_tcp_server(port, ...)
   }, port)
 
   local result = pack(thread:start(...))
-  os.execute("sleep 1")
+  sleep(1)
   return unpack(result)
 end
 
@@ -163,7 +164,7 @@ function _M.start_http_server(port, ...)
       end
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-        os.execute("sleep 2")
+        socket.sleep(2)
       end
 
       if err then
@@ -179,7 +180,7 @@ function _M.start_http_server(port, ...)
   }, port)
 
   local result = pack(thread:start(...))
-  os.execute("sleep 1")
+  sleep(1)
   return unpack(result)
 end
 
@@ -200,7 +201,7 @@ function _M.start_udp_server(port, ...)
   }, port)
 
   local result = pack(thread:start(...))
-  os.execute("sleep 1")
+  sleep(1)
   return unpack(result)
 end
 
