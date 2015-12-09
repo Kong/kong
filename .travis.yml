@@ -7,8 +7,8 @@ env:
     - LUA=lua5.1
 
 before_install:
-  - "bash echo 'Branch      : $TRAVIS_BRANCH'" 
-  - "bash echo 'Pull request: $TRAVIS_PULL_REQUEST'" 
+  - "echo 'Branch      : $TRAVIS_BRANCH'" 
+  - "echo 'Pull request: $TRAVIS_PULL_REQUEST'" 
   - "bash .ci/setup_kong.sh"
   - "bash .ci/setup_cassandra.sh"
 
