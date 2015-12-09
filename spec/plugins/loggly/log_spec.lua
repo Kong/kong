@@ -29,11 +29,9 @@ describe("Logging Plugins", function()
     }
 
     spec_helper.start_kong()
-spec_helper.line_dump_start()      
   end)
 
   teardown(function()
-spec_helper.line_dump_stop()
     spec_helper.stop_kong()
   end)
 
