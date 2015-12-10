@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
