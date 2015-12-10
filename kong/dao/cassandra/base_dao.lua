@@ -16,14 +16,13 @@ local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "lua_uuid"
 
-local cassandra_constants = cassandra.constants
+local table_remove = table.remove
 local error_types = constants.DATABASE_ERROR_TYPES
 
-local BaseDao = Object:extend()
+--- Base DAO
+-- @section base_dao
 
-local function session_uniq_addr(session)
-  return session.host..":"..session.port
-end
+local BaseDao = Object:extend()
 
 ---
 -- @local
@@ -54,7 +53,7 @@ local function encode_cassandra_args(schema, t, args_keys)
     elseif schema_field.type == "timestamp" and arg then
       arg = cassandra.timestamp(arg)
     elseif arg == nil then
-      arg = cassandra.null
+      arg = cassandra.unset
     end
 
     table.insert(args_to_bind, arg)
@@ -75,7 +74,7 @@ end
 -- @param[type=stable] options Options to pass to lua-cassandra's :execute()
 -- @return return values of _execute()
 -- @see _execute
-function BaseDao:execute(query, columns, args_to_bind, options)
+function BaseDao:execute(query, columns, args_to_bind, query_options)
   -- Build args array if operation has some
   local args
   if columns and args_to_bind then
@@ -87,7 +86,7 @@ function BaseDao:execute(query, columns, args_to_bind, options)
   end
 
   -- Execute statement
-  return self:_execute(query, args, options)
+  return self:_execute(query, args, query_options)
 end
 
 --- Children DAOs interface.
@@ -244,7 +243,7 @@ function BaseDao:update(t, full)
   if full then
     for k, v in pairs(self._schema.fields) do
       if not t[k] and not v.immutable then
-        t_no_primary_key[k] = cassandra.null
+        t_no_primary_key[k] = cassandra.unset
       end
     end
   end
@@ -318,8 +317,11 @@ function BaseDao:count_by_keys(where_t, paging_state)
   local res, err = self:execute(count_q, where_columns, where_t, {
     paging_state = paging_state
   })
+  if err then
+    return nil, err
+  end
 
-  return (#res >= 1 and table.remove(res, 1).count or 0), err, filtering
+  return (#res >= 1 and table_remove(res, 1).count or 0), nil, filtering
 end
 
 ---
@@ -406,7 +408,6 @@ function BaseDao:new(properties)
   end
 
   self._properties = properties
-  self._statements_cache = {}
   self._cascade_delete_hooks = {}
 end
 
@@ -434,117 +435,24 @@ function BaseDao:_unmarshall(t)
   return t
 end
 
+local function page_iterator(self, session, query, args, query_options)
+  local iter = session:execute(query, args, query_options)
+  return function(query, previous_rows)
+    local rows, err, page = iter(query, previous_rows)
+    if rows == nil or err ~= nil then
+      session:set_keep_alive()
+    else
+      for i, row in ipairs(rows) do
+        rows[i] = self:_unmarshall(row)
+      end
+    end
+    return rows, err, page
+  end, query
+end
+
 --- Private methods.
 -- For internal use in the base_dao itself or advanced usage in a child DAO.
 -- @section private
-
----
--- Open a session on the configured keyspace.
--- @param[type=string]  keyspace (Optional) Override the keyspace for this session if specified.
--- @treturn table Opened session
--- @treturn table Error if any
-function BaseDao:_open_session(keyspace)
-  local ok, err
-
-  -- Start cassandra session
-  local session = cassandra:new()
-  session:set_timeout(self._properties.timeout)
-
-  local options = self._factory:get_session_options()
-
-  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
-  if not ok then
-    return nil, DaoError(err, error_types.DATABASE)
-  end
-
-  local times, err = session:get_reused_times()
-  if err and err.message ~= "luasocket does not support reusable sockets" then
-    return nil, DaoError(err, error_types.DATABASE)
-  end
-
-  if times == 0 or not times then
-    ok, err = session:set_keyspace(keyspace ~= nil and keyspace or self._properties.keyspace)
-    if not ok then
-      return nil, DaoError(err, error_types.DATABASE)
-    end
-  end
-
-  return session
-end
-
----
--- Close the given opened session.
--- Will try to put the session in the socket pool for re-use if supported
--- by the current phase.
--- @param[type=table] session Cassandra session to close
--- @treturn table Error if any
-function BaseDao:_close_session(session)
-  -- Back to the pool or close if using luasocket
-  local ok, err = session:set_keepalive(self._properties.keepalive)
-  if not ok and err.message == "luasocket does not support reusable sockets" then
-    ok, err = session:close()
-  end
-
-  if not ok then
-    return DaoError(err, error_types.DATABASE)
-  end
-end
-
----
--- @local
--- Prepare a query and insert it into the statements cache.
--- @param[type=string] query The query to prepare
--- @treturn table The prepared statement, ready to be used by lua-cassandra.
--- @treturn table Error if any during the preparation of the statement
--- @see get_or_prepare_stmt
-local function prepare_stmt(self, session, query)
-  assert(type(query) == "string", "Query to prepare must be a string")
-  query = stringy.strip(query)
-
-  local prepared_stmt, prepare_err = session:prepare(query)
-  if prepare_err then
-    return nil, DaoError("Failed to prepare statement: \""..query.."\". "..prepare_err, error_types.DATABASE)
-  else
-    local session_addr = session_uniq_addr(session)
-    -- cache of prepared statements must be specific to each node
-    if not self._statements_cache[session_addr] then
-      self._statements_cache[session_addr] = {}
-    end
-
-    -- cache key is the non-striped/non-formatted query from _queries
-    self._statements_cache[session_addr][query] = prepared_stmt
-    return prepared_stmt
-  end
-end
-
----
--- Get a prepared statement from the statements cache or prepare it (and thus insert it in the cache).
--- The cache is unique for each Cassandra contact_point (base on the host and port).
--- The statement's cache key will be the plain string query representation.
--- @param[type=string] query The query to prepare
--- @treturn table The prepared statement, ready to be used by lua-cassandra.
--- @treturn string The cache key used to store it into the cache
--- @treturn table Error if any during the query preparation
-function BaseDao:get_or_prepare_stmt(session, query)
-  if type(query) ~= "string" then
-    -- Cannot be prepared (probably a BatchStatement)
-    return query
-  end
-
-  local statement, err
-  local session_addr = session_uniq_addr(session)
-  -- Retrieve the prepared statement from cache or prepare and cache
-  if self._statements_cache[session_addr] and self._statements_cache[session_addr][query] then
-    statement = self._statements_cache[session_addr][query]
-  else
-    statement, err = prepare_stmt(self, session, query)
-    if err then
-      return nil, query, err
-    end
-  end
-
-  return statement, query
-end
 
 --- Execute a query (internally).
 -- This method should be called with the proper **args** formatting (as an array). See
@@ -564,47 +472,28 @@ end
 -- @param[type=string] keyspace (Optional) Override the keyspace for this query if specified.
 -- @treturn table If the result set consists of ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results have a paging_state.
 -- @treturn table An error if any during the whole execution (sockets/query execution)
-function BaseDao:_execute(query, args, options, keyspace)
-  local session, err = self:_open_session(keyspace)
+function BaseDao:_execute(query, args, query_options, keyspace)
+  local options = self._factory:get_session_options()
+  if keyspace then
+    options.keyspace = keyspace
+  end
+
+  local session, err = cassandra.spawn_session(options)
+  if not session then
+    return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  end
+
+  if query_options and query_options.auto_paging then
+    return page_iterator(self, session, query, args, query_options)
+  end
+
+  local results, err = session:execute(query, args, query_options)
   if err then
-    return nil, err
+    err = DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
-
-  -- Prepare query and cache the prepared statement for later call
-  local statement, cache_key, err = self:get_or_prepare_stmt(session, query)
-  if err then
-    if options and options.auto_paging then
-      -- Allow the iteration to run once and thus catch the error
-      return function() return {}, err end
-    end
-    return nil, err
-  end
-
-  if options and options.auto_paging then
-    local _, rows, err, page = session:execute(statement, args, options)
-    for i, row in ipairs(rows) do
-      rows[i] = self:_unmarshall(row)
-    end
-    return _, rows, err, page
-  end
-
-  local results, err = session:execute(statement, args, options)
 
   -- First, close the socket
-  local socket_err = self:_close_session(session)
-  if socket_err then
-    return nil, socket_err
-  end
-
-  -- Handle unprepared queries
-  if err and err.cassandra_err_code == cassandra_constants.error_codes.UNPREPARED then
-    ngx.log(ngx.NOTICE, "Cassandra did not recognize prepared statement \""..cache_key.."\". Re-preparing it and re-trying the query. (Error: "..tostring(err)..")")
-    -- If the statement was declared unprepared, clear it from the cache, and try again.
-    self._statements_cache[session_uniq_addr(session)][cache_key] = nil
-    return self:_execute(query, args, options)
-  elseif err then
-    err = DaoError(err, error_types.DATABASE)
-  end
+  session:set_keep_alive()
 
   -- Parse result
   if results and results.type == "ROWS" then
@@ -638,7 +527,7 @@ end
 -- @treturn boolean True if all unique fields are not already present, false if any already exists with the same value.
 -- @treturn table A key/value table of all columns (as keys) having values already in the database.
 function BaseDao:check_unique_fields(t, is_update)
-  local errors
+    local errors
 
   for k, field in pairs(self._schema.fields) do
     if field.unique and t[k] ~= nil then

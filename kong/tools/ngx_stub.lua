@@ -106,6 +106,7 @@ _G.ngx = {
   req = {},
   ctx = {},
   header = {},
+  get_phase = function() return "init" end,
   exit = function() end,
   say = function() end,
   log = function() end,

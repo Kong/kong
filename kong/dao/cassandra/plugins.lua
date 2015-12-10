@@ -4,6 +4,10 @@ local constants = require "kong.constants"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local cjson = require "cjson"
 
+local pairs = pairs
+local ipairs = ipairs
+local table_insert = table.insert
+
 local Plugins = BaseDao:extend()
 
 function Plugins:new(properties)
@@ -45,37 +49,24 @@ function Plugins:update(t, full)
 end
 
 function Plugins:find_distinct()
-  -- Open session
-  local session, err = Plugins.super._open_session(self)
-  if err then
-    return nil, err
-  end
-
-  local select_q = query_builder.select(self._table)
-
-  -- Execute query
   local distinct_names = {}
-  for rows, err in Plugins.super.execute(self, select_q, nil, nil, {auto_paging=true}) do
+  local select_q = query_builder.select(self._table)
+  for rows, err in self:execute(select_q, nil, nil, {auto_paging = true}) do
     if err then
       return nil, err
-    end
-    for _, v in ipairs(rows) do
-      -- Rows also contains other properties, so making sure it's a plugin
-      if v.name then
-        distinct_names[v.name] = true
+    elseif rows ~= nil then
+      for _, v in ipairs(rows) do
+        -- Rows also contains other properties, so making sure it's a plugin
+        if v.name then
+          distinct_names[v.name] = true
+        end
       end
     end
   end
 
-  -- Close session
-  local socket_err = Plugins.super._close_session(self, session)
-  if socket_err then
-    return nil, socket_err
-  end
-
   local result = {}
   for k, _ in pairs(distinct_names) do
-    table.insert(result, k)
+    table_insert(result, k)
   end
 
   return result, nil

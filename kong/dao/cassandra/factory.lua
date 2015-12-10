@@ -98,15 +98,14 @@ end
 
 function CassandraFactory:get_session_options()
   local options = {
-    ssl = self._properties.ssl,
-    ssl_verify = self._properties.ssl_verify,
-    ca_file = self._properties.ssl_certificate -- in case of using luasocket
+    shm = "cassandra",
+    prepared_shm = "cassandra_prepared",
+    contact_points = self._properties.contact_points,
+    keyspace = self._properties.keyspace,
+    query_options = {
+      prepare = false -- todo
+    }
   }
-
-  if self._properties.user and self._properties.password then
-    local PasswordAuthenticator = require "cassandra.authenticators.PasswordAuthenticator"
-    options.authenticator = PasswordAuthenticator(self._properties.user, self._properties.password)
-  end
 
   return options
 end
@@ -117,22 +116,16 @@ end
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {table} error if any
 function CassandraFactory:execute_queries(queries, no_keyspace)
-  local ok, err
-  local session = cassandra:new()
-  session:set_timeout(self._properties.timeout)
-
   local options = self:get_session_options()
+  options.query_options.same_coordinator = true
 
-  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
-  if not ok then
-    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  if no_keyspace then
+    options.keyspace = nil
   end
 
-  if no_keyspace == nil then
-    ok, err = session:set_keyspace(self._properties.keyspace)
-    if not ok then
-      return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
-    end
+  local session, err = cassandra.spawn_session(options)
+  if not session then
+    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   -- Cassandra only supports BATCH on DML statements.
@@ -140,14 +133,18 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
   queries = stringy.split(queries, ";")
   for _, query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
-      local _, stmt_err = session:execute(query, nil, {consistency_level = cassandra.constants.consistency.ALL})
-      if stmt_err then
-        return DaoError(stmt_err, constants.DATABASE_ERROR_TYPES.DATABASE)
+      err = select(2, session:execute(query))
+      if err then
+        break
       end
     end
   end
 
-  session:close()
+  session:shutdown()
+
+  if err then
+    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  end
 end
 
 return CassandraFactory

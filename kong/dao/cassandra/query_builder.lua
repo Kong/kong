@@ -55,7 +55,7 @@ local function where_fragment(where_t, column_family_details, no_filtering_check
   assert(type(where_t) == "table", "where_t must be a table")
   if next(where_t) == nil then
     if not no_filtering_check then
-      return ""
+      return "", nil, false
     else
       error("where_t must contain keys")
     end
@@ -107,8 +107,6 @@ local function where_fragment(where_t, column_family_details, no_filtering_check
 
   if needs_filtering then
     filtering = " ALLOW FILTERING"
-  else
-    needs_filtering = false
   end
 
   where_parts = table.concat(where_parts, " AND ")
@@ -145,7 +143,6 @@ function _M.count(column_family, where_t, column_family_details)
 
   local count_str = count_fragment(column_family)
   local where_str, columns, needed_filtering = where_fragment(where_t, column_family_details)
-
   return trim(string.format("%s %s", count_str, where_str)), columns, needed_filtering
 end
 
