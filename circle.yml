@@ -10,6 +10,24 @@ dependencies:
         - sudo make dev
 test:
     override:
+        - busted -o junit ./spec/unit/schemas_spec.lua
+        - busted -o junit ./spec/unit/statics_spec.lua
+        - busted -o junit ./spec/unit/stub_coverage_spec.lua
+        - busted -o junit ./spec/unit/api/app_spec.lua
+        - busted -o junit ./spec/unit/cli/utils_spec.lua
+        - busted -o junit ./spec/unit/core/resolver_spec.lua
+        - busted -o junit ./spec/unit/dao/entities_schemas_spec.lua
+        - busted -o junit ./spec/unit/dao/error_spec.lua
+        - busted -o junit ./spec/unit/dao/cassandra/migrations_spec.lua
+        - busted -o junit ./spec/unit/dao/cassandra/query_builder_spec.lua
+        - busted -o junit ./spec/unit/tools/config_loader_spec.lua
+        - busted -o junit ./spec/unit/tools/database_cache_spec.lua
+        - busted -o junit ./spec/unit/tools/faker_spec.lua
+        - busted -o junit ./spec/unit/tools/io_spec.lua
+        - busted -o junit ./spec/unit/tools/responses_spec.lua
+        - busted -o junit ./spec/unit/tools/syslog_spec.lua
+        - busted -o junit ./spec/unit/tools/timestamp_spec.lua
+        - busted -o junit ./spec/unit/tools/utils_spec.lua
         - busted -o junit ./spec/unit > $CIRCLE_TEST_REPORTS/junit_unit.xml
         - busted -o junit ./spec/integration > $CIRCLE_TEST_REPORTS/junit_integration.xml
         - busted -o junit ./spec/plugins > $CIRCLE_TEST_REPORTS/junit_plugins.xml
