@@ -10,6 +10,9 @@ dependencies:
         - sudo make dev
 test:
     override:
+        - busted -o junit ./spec/unit > $CIRCLE_TEST_REPORTS/junit_unit.xml
+        - busted -o junit ./spec/integration > $CIRCLE_TEST_REPORTS/junit_integration.xml
+        - busted -o junit ./spec/plugins > $CIRCLE_TEST_REPORTS/junit_plugins.xml
         - busted -o spec/busted-print.lua --coverage spec/
     post:
         - make lint
