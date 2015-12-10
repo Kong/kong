@@ -93,6 +93,9 @@ Videos:
 - [VIDEO - OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
 - [VIDEO - Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
+Podcasts:
+- [Changelog #185](https://changelog.com/185)
+
 Tools:
 
 - [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
