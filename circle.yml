@@ -37,6 +37,6 @@ test:
         - busted -o spec/busted-print.lua :
             parallel: true
             files:
-              - spec/**/*.spec
+              - spec/**/*_spec.lua
     post:
         - make lint
