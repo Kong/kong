@@ -232,12 +232,16 @@ end
 -- @param name Functional name the port is used for (display name)
 -- @param timeout (optional) Timeout in seconds after which a failure is logged 
 -- and application exit is performed, if not provided then it will fail at once without retries.
-local function check_port(port, name, timeout)
+local function check_port(port, name, timeout, kong_config)
   local expire = socket.gettime() + (timeout or 0)
   local msg = tostring(port) .. (name and " ("..tostring(name)..")")
   local warned
   while not cutils.is_port_bindable(port) do
     if expire <= socket.gettime() then
+      local kong_running,kong_err = IO.is_running_by_pid_file(kong_config.pid_file)
+      local dnsmasq_running,dnsmasq_err = dnsmasq.is_running(kong_config)
+      cutils.logger:error("Kong running: "..tostring(kong_running).." - "..tostring(kong_err))
+      cutils.logger:error("dnsmasq running: "..tostring(dnsmasq_running).." - "..tostring(dnsmasq_err))
       cutils.logger:error_exit("Port "..msg.." is being blocked by another process.")
     else
       if not warned then
@@ -290,9 +294,8 @@ function _M.send_signal(args_config, signal)
   if signal == START then
     dnsmasq.stop(kong_config)
     if kong_config.dns_resolver.dnsmasq then
-      local dnsmasq_port = kong_config.dns_resolver.port
-      check_port(dnsmasq_port, "dnsmasq", port_timeout)
-      dnsmasq.start(kong_config.nginx_working_dir, dnsmasq_port)
+      check_port(kong_config.dns_resolver.port, "dnsmasq", port_timeout)
+      dnsmasq.start(kong_config)
     end
   elseif signal == STOP or signal == QUIT then
     dnsmasq.stop(kong_config)
@@ -335,28 +338,19 @@ end
 --
 -- @param args_config Path to the desired configuration (usually from the --config CLI argument)
 -- @return true is running, false otherwise
--- @return If not running, an error containing the path where the pid was supposed to be
+-- @return If not running, an error containing either the path where the pid was supposed to be, or the pid that was not running
 function _M.is_running(args_config)
   -- Get configuration from default or given path
   local kong_config = get_kong_config(args_config)
-
-  if IO.file_exists(kong_config.pid_file) then
-    local pid = IO.read_file(kong_config.pid_file)
-    local _, code = IO.os_execute("kill -0 "..pid)
-    if code == 0 then
-      return true
-    else
-      cutils.logger:warn("It seems like Kong crashed the last time it was started!")
-      cutils.logger:info("Removing pid at: "..kong_config.pid_file)
-      local _, err = os.remove(kong_config.pid_file)
-      if err then
-        error(err)
-      end
-      return false, "Not running. Could not find pid: "..pid
-    end
-  else
-    return false, "Not running. Could not find pid at: "..kong_config.pid_file
+  local running, err = IO.is_running_by_pid_file(kong_config.pid_file)
+  
+  if IO.file_exists(kong_config.pid_file) and (not running) then
+    cutils.logger:warn("It seems like Kong crashed the last time it was started!")
+    cutils.logger:info("Removing pid at: "..kong_config.pid_file)
+    local _, err = os.remove(kong_config.pid_file)
+    if err then error(err) end
   end
+  return running, err
 end
 
 return _M

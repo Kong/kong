@@ -5,15 +5,25 @@ local stringy = require "stringy"
 
 local _M = {}
 
+-- returns the full path to the dnsmasq pid-file from the config
+-- @param kong_config The config to construct the pid location from
+function _M.pid_file(kong_config)
+  return kong_config.nginx_working_dir..(stringy.endswith(kong_config.nginx_working_dir, "/") and "" or "/")..constants.CLI.DNSMASQ_PID
+end
+
 function _M.stop(kong_config)
-  local pid_file = kong_config.nginx_working_dir.."/"..constants.CLI.DNSMASQ_PID
-  local _, code = IO.kill_process_by_pid_file(pid_file)
+  local _, code = IO.kill_process_by_pid_file(_M.pid_file(kong_config))
   if code and code == 0 then
     cutils.logger:info("dnsmasq stopped")
   end
 end
 
-function _M.start(nginx_working_dir, dnsmasq_port)
+function _M.is_running(kong_config)
+  return IO.is_running_by_pid_file(_M.pid_file(kong_config))
+end
+
+
+function _M.start(kong_config)
   local cmd = IO.cmd_exists("dnsmasq") and "dnsmasq"
 
   if not cmd then -- Load dnsmasq given the PATH settings
@@ -32,8 +42,7 @@ function _M.start(nginx_working_dir, dnsmasq_port)
   end
 
   -- Start the dnsmasq daemon
-  local file_pid = nginx_working_dir..(stringy.endswith(nginx_working_dir, "/") and "" or "/")..constants.CLI.DNSMASQ_PID
-  local res, code = IO.os_execute(cmd.." -p "..dnsmasq_port.." --pid-file="..file_pid.." -N -o")
+  local res, code = IO.os_execute(cmd.." -p "..kong_config.dns_resolver.port.." --pid-file=".._M.pid_file(kong_config).." -N -o")
   if code ~= 0 then
     cutils.logger:error_exit(res)
   else
