@@ -257,7 +257,7 @@ end
 -- @return A boolean: true for success, false otherwise
 function _M.send_signal(args_config, signal)
   -- Make sure nginx is there and is openresty
-  local port_timeout = 0   --Default 0 to not change current behaviour. TODO: make timeout configurable (note: this is a blocking timeout!)
+  local port_timeout = 1   -- OPT: make timeout configurable (note: this is a blocking timeout!)
   local nginx_path = find_nginx()
   if not nginx_path then
     cutils.logger:error_exit(string.format("Kong cannot find an 'nginx' executable.\nMake sure it is in your $PATH or in one of the following directories:\n%s", table.concat(NGINX_SEARCH_PATHS, "\n")))
