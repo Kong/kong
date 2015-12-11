@@ -4,6 +4,9 @@
 -- Also provides helper methods for preparing queries among the DAOs, migrating the
 -- database and dropping it.
 
+local log = require "cassandra.log"
+log.set_lvl("ERR")
+
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local DaoError = require "kong.dao.error"

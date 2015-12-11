@@ -1,8 +1,5 @@
-local log = require "cassandra.log"
-log.set_lvl("ERR")
-
-local spec_helper = require "spec.spec_helpers"
 local cassandra = require "cassandra"
+local spec_helper = require "spec.spec_helpers"
 local constants = require "kong.constants"
 local DaoError = require "kong.dao.error"
 local utils = require "kong.tools.utils"
@@ -46,12 +43,11 @@ describe("Cassandra", function()
 
     local cluster, err = cassandra.spawn_cluster {
       shm = "factory_specs",
-      --keyspace = "kong_tests",
       contact_points = configuration.dao_config.contact_points
     }
     assert.falsy(err)
 
-    session, err = cluster:spawn_session {keyspace = "kong_tests"}
+    session, err = cluster:spawn_session {keyspace = configuration.dao_config.keyspace}
     assert.falsy(err)
   end)
 
@@ -662,21 +658,26 @@ describe("Cassandra", function()
     --
 
     describe("plugins", function()
+      setup(function()
+        spec_helper.drop_db()
+        faker:insert_from_table {
+          api = {
+            {name = "tests-distinct-1", request_host = "foo.com", upstream_url = "http://mockbin.com"},
+            {name = "tests-distinct-2", request_host = "bar.com", upstream_url = "http://mockbin.com"}
+          },
+          plugin = {
+            {name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1},
+            {name = "rate-limiting", config = { minute = 6}, __api = 1},
+            {name = "rate-limiting", config = { minute = 6}, __api = 2},
+            {name = "file-log", config = { path = "/tmp/spec.log" }, __api = 1}
+          }
+        }
+      end)
+      teardown(function()
+        spec_helper.drop_db()
+      end)
       describe("find_distinct()", function()
         it("should find distinct plugins configurations", function()
-          faker:insert_from_table {
-            api = {
-              {name = "tests-distinct-1", request_host = "foo.com", upstream_url = "http://mockbin.com"},
-              {name = "tests-distinct-2", request_host = "bar.com", upstream_url = "http://mockbin.com"}
-            },
-            plugin = {
-              {name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1},
-              {name = "rate-limiting", config = { minute = 6}, __api = 1},
-              {name = "rate-limiting", config = { minute = 6}, __api = 2},
-              {name = "file-log", config = { path = "/tmp/spec.log" }, __api = 1}
-            }
-          }
-
           local res, err = dao_factory.plugins:find_distinct()
           assert.falsy(err)
           assert.truthy(res)
