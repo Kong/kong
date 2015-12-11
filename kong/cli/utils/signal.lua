@@ -240,7 +240,7 @@ local function check_port(port, name, timeout)
     if expire <= socket.gettime() then
       cutils.logger:error_exit("Port "..msg.." is being blocked by another process.")
     else
-      if msg then
+      if not warned then
         cutils.logger:warn("Port "..msg.." is unavailable, retrying for "..tostring(timeout).." seconds")
         warned = true
       end
@@ -302,7 +302,7 @@ function _M.send_signal(args_config, signal)
   if signal == START or signal == RESTART or signal == RELOAD then
     local res, code = IO.os_execute("ulimit -n")
     if code == 0 and tonumber(res) < 4096 then
-      cutils.logger:warn("ulimit is currently set to \""..res.."\". For better performance set it to at least \"4096\" using \"ulimit -n\"")
+      cutils.logger:warn('ulimit is currently set to "'..res..'". For better performance set it to at least "4096" using "ulimit -n"')
     end
   end
 
