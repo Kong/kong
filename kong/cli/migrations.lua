@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local Migrations = require "kong.tools.migrations"
 local constants = require "kong.constants"
