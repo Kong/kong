@@ -41,6 +41,33 @@ describe("Basic Auth Credentials API", function()
         assert.equal(consumer.id, credential.consumer_id)
       end)
 
+      it("[SUCCESS] should create a basicauth credential with password omitted", function()
+        local response, status = http_client.post(BASE_URL, {username = "bob2"})
+        assert.equal(201, status)
+        credential = json.decode(response)
+        assert.equal(consumer.id, credential.consumer_id)
+      end)
+      
+      it("[SUCCESS] should create a basicauth credential with random password", function()
+        credential = {}
+        local response, status = http_client.post(BASE_URL, {username = "bob3"})
+        assert.equal(201, status)
+        credential = json.decode(response)
+        local first_password = credential.password
+        -- delete credential created
+        local dao = spec_helper.get_env().dao_factory
+        local ok, err = dao.basicauth_credentials:delete(credential)
+        assert.True(ok)
+        assert.falsy(err)
+        -- recreate exact same 
+        local response, status = http_client.post(BASE_URL, {username = "bob3"})
+        assert.equal(201, status)
+        credential = json.decode(response)
+        local second_password = credential.password
+        assert.not_equal(first_password, second_password)
+      end)
+
+
       it("[SUCCESS] should encrypt a password", function()
         local base_url = spec_helper.API_URL.."/consumers/alice/basic-auth/"
         local response, status = http_client.post(base_url, {username = "alice", password = "1234"})
@@ -86,7 +113,7 @@ describe("Basic Auth Credentials API", function()
         local response, status = http_client.get(BASE_URL)
         assert.equal(200, status)
         local body = json.decode(response)
-        assert.equal(2, #(body.data))
+        assert.equal(4, #(body.data))
       end)
 
     end)
