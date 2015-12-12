@@ -41,13 +41,12 @@ describe("Cassandra", function()
   setup(function()
     spec_helper.prepare_db()
 
-    local cluster, err = cassandra.spawn_cluster {
+    local err
+    session, err = cassandra.spawn_session {
       shm = "factory_specs",
+      keyspace = configuration.dao_config.keyspace,
       contact_points = configuration.dao_config.contact_points
     }
-    assert.falsy(err)
-
-    session, err = cluster:spawn_session {keyspace = configuration.dao_config.keyspace}
     assert.falsy(err)
   end)
 

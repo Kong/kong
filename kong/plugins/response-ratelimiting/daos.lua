@@ -1,6 +1,10 @@
-local cassandra = require "cassandra"
 local BaseDao = require "kong.dao.cassandra.base_dao"
+local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
+
+local ngx_log = ngx.log
+local ngx_err = ngx.ERR
+local tostring = tostring
 
 local ResponseRateLimitingMetrics = BaseDao:extend()
 
@@ -26,19 +30,31 @@ end
 
 function ResponseRateLimitingMetrics:increment(api_id, identifier, current_timestamp, value, name)
   local periods = timestamp.get_timestamps(current_timestamp)
-  local batch = cassandra:BatchStatement(cassandra.batch_types.COUNTER)
+  local options = self._factory:get_session_options()
+  local session, err = cassandra.spawn_session(options)
+  if err then
+    ngx_log(ngx_err, "[response-rate-limiting] could not spawn session to Cassandra: "..tostring(err))
+    return
+  end
 
+  local ok = true
   for period, period_date in pairs(periods) do
-    batch:add(self.queries.increment_counter, {
+    local res, err = session:execute(self.queries.increment_counter, {
       cassandra.counter(value),
       cassandra.uuid(api_id),
       identifier,
       cassandra.timestamp(period_date),
       name.."_"..period
     })
+    if not res then
+      ok = false
+      ngx_log(ngx_err, "[response-rate-limiting] could not increment counter for period '"..period.."': ", tostring(err))
+    end
   end
 
-  return ResponseRateLimitingMetrics.super._execute(self, batch)
+  session:set_keep_alive()
+
+  return ok
 end
 
 function ResponseRateLimitingMetrics:find_one(api_id, identifier, current_timestamp, period, name)

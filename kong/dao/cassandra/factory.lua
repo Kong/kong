@@ -4,15 +4,15 @@
 -- Also provides helper methods for preparing queries among the DAOs, migrating the
 -- database and dropping it.
 
-local log = require "cassandra.log"
-log.set_lvl("ERR")
-
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
+
+-- Silent outside of ngx_lua logging
+cassandra.set_log_level("QUIET")
 
 local CassandraFactory = Object:extend()
 
@@ -106,7 +106,7 @@ function CassandraFactory:get_session_options()
     contact_points = self._properties.contact_points,
     keyspace = self._properties.keyspace,
     query_options = {
-      prepare = false -- todo
+      prepare = true
     }
   }
 
