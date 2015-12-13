@@ -10,6 +10,7 @@
 - Removed the `dnsmasq_port` property, and introduced `dns_resolver` that also allows to specify a custom DNS server. [#625](https://github.com/Mashape/kong/pull/635)
 - The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` field. [#635](https://github.com/Mashape/kong/pull/635)
 - Disabled access logs for `/status` endpoint
+- Removed the Lua 5.1 dependency, cli scripts updated to run against the LuaJit engine included with OpenResty/Nginx [#799](https://github.com/Mashape/kong/pull/799)
 
 ### Fixed
 
