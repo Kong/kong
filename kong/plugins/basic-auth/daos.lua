@@ -38,7 +38,7 @@ function BasicAuthCredentials:insert(params)
     -- inserting the data has encrypted the password field by now, 
     -- so add a new field with the generated plain text password
     -- which will be returned to the requester
-    data.plain_password = newpwd
+    if data then data.plain_password = newpwd end
     return data, err
   end
 end
