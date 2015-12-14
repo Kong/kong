@@ -4,6 +4,9 @@ local url = require "socket.url"
 local _M = {}
 
 local HTTPS = "https"
+local ngx_log = ngx.log
+local ngx_log_ERR = ngx.ERR
+
 
 -- Generates http payload .
 -- @param `method` http method to be used to send data
@@ -52,25 +55,25 @@ local function log(premature, conf, message)
 
   ok, err = sock:connect(host, port)
   if not ok then
-    ngx.log(ngx.ERR, "[http-log] failed to connect to "..host..":"..tostring(port)..": ", err)
+    ngx_log(ngx_log_ERR, "[runscope-log] failed to connect to "..host..":"..tostring(port)..": ", err)
     return
   end
 
   if parsed_url.scheme == HTTPS then
     local _, err = sock:sslhandshake(true, host, false)
     if err then
-      ngx.log(ngx.ERR, "[http-log] failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
+      ngx_log(ngx_log_ERR, "[runscope-log] failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
     end
   end
 
   ok, err = sock:send(generate_post_payload(parsed_url, access_token, message).."\r\n")
   if not ok then
-    ngx.log(ngx.ERR, "[http-log] failed to send data to "..host..":"..tostring(port)..": ", err)
+    ngx_log(ngx_log_ERR, "[runscope-log] failed to send data to "..host..":"..tostring(port)..": ", err)
   end
 
   ok, err = sock:setkeepalive(conf.keepalive)
   if not ok then
-    ngx.log(ngx.ERR, "[http-log] failed to keepalive to "..host..":"..tostring(port)..": ", err)
+    ngx_log(ngx_log_ERR, "[runscope-log] failed to keepalive to "..host..":"..tostring(port)..": ", err)
     return
   end
 end
@@ -78,7 +81,7 @@ end
 function _M.execute(conf, message)
   local ok, err = ngx.timer.at(0, log, conf, message)
   if not ok then
-    ngx.log(ngx.ERR, "[http-log] failed to create timer: ", err)
+    ngx_log(ngx_log_ERR, "[runscope-log] failed to create timer: ", err)
   end
 end
 
