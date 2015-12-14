@@ -100,17 +100,20 @@ function CassandraFactory:drop()
 end
 
 function CassandraFactory:get_session_options()
-  local options = {
+  return {
     shm = "cassandra",
     prepared_shm = "cassandra_prepared",
     contact_points = self._properties.contact_points,
     keyspace = self._properties.keyspace,
     query_options = {
       prepare = true
+    },
+    ssl_options = {
+      enabled = self._properties.ssl.enabled,
+      verify = self._properties.ssl.verify,
+      ca = self._properties.ssl.certificate_authority
     }
   }
-
-  return options
 end
 
 -- Execute a string of queries separated by ;

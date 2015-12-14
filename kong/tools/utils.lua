@@ -131,6 +131,7 @@ end
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
 function _M.is_array(t)
+  if type(t) ~= "table" then return false end
   local i = 0
   for _ in pairs(t) do
     i = i + 1
