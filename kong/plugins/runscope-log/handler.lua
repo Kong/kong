@@ -1,4 +1,4 @@
-local basic_serializer = require "kong.plugins.log-serializers.runscope"
+local runscope_serializer = require "kong.plugins.log-serializers.runscope"
 local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.runscope-log.log"
 
@@ -66,7 +66,7 @@ end
 function RunscopeLogHandler:log(conf)
   RunscopeLogHandler.super.log(self)
 
-  local message = basic_serializer.serialize(ngx)
+  local message = runscope_serializer.serialize(ngx)
   log.execute(conf, message)
 end
 
