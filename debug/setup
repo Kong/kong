@@ -1,0 +1,57 @@
+#!/usr/bin/env luajit
+
+-- updates the development and test config .yml files for debugging
+-- please update 'config.lua' for specific settings
+
+
+-- Load config file, assuming this file is in the 'debug' subdirectory of the Kong source
+local prefix = arg[0]:match("^(.+)/").."/../"  -- this file's path, and then one level up
+prefix = prefix:gsub("/debug/%.%./", "/"):gsub("^debug/%.%./", "./")
+
+local pp = package.path
+package.path = prefix.."debug/?.lua"
+print(package.path)
+local config = require("config")
+package.path = pp
+
+local filenames = {"kong_DEVELOPMENT.yml", "kong_TEST.yml"}
+local io = require "kong.tools.io"
+
+for _,filename in ipairs(filenames) do
+  filename = prefix..filename
+  
+  local content = io.read_file(filename)
+  if not content then
+    print("Could not read file:",filename)
+    os.exit(1)
+  end
+
+  -- update package paths
+  local before = string.sub(content, 1, (content:find("lua_package_path ")) - 1)
+  local after = string.sub(content, (content:find("lua_package_path ")), -1)
+  if content:find("lua_package_cpath ") then
+    after = string.sub(content, (content:find("lua_package_cpath ")), -1)
+  else  
+    after = string.sub(content, (content:find("lua_package_path ")), -1)
+  end
+  after = after:match("\n(.+)$")
+
+  content = before .. 
+            "lua_package_path '"..config.lpath.."';\n"..
+        "    lua_package_cpath '"..config.cpath.."';\n"..after
+  
+  
+  -- insert globals to access the debugger code 
+  before = content:match("^(.-init_by_lua %')").."\n"
+  after = "      "..content:match("(kong %= require.+)")
+  content = before .. '      debug.start = function(...) require("mobdebug").start(...) end\n' .. 
+                      '      debug.stop = function(...) require("mobdebug").done(...) end\n' .. after
+
+  local success, err = io.write_to_file(filename, content)
+
+  if not success then
+    print("Failed writing file: ", filename, err)
+    os.exit(1)
+  end
+  print("Succesfully update file for debugging; ",filename)
+end
