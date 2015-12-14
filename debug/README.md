@@ -11,7 +11,7 @@ Prerequisites
 =============
 
 - Kong development environment must have been setup
-- ZeroBrane Studio
+- ZeroBrane Studio must be installed
 
 Instructions
 ============
@@ -25,7 +25,9 @@ Instructions
 For debugging tests;
 - run `debug/test` with the spec files to run; eg. `debug.test spec/unit` to run the unit tests
 
-The function `debug.start()` will start the connection to the IDE and will break at that point in the code. Once this has been hit, the IDE can be used to set additional brekapoints. To speed up application execution the `debug.stop()` function can be used to close the connection and disable the debugger again.
+The function `debug.start()` will start the connection to the IDE and will break at that point in the code. Once this has been hit, the IDE can be used to set additional breakpoints. To speed up application execution the `debug.stop()` function can be used to close the connection and disable the debugger again, when (temporarily) no longer needed.
+
+NOTE: The code files must be open in the IDE to enable the debugger to find the related source code .
 
 How it works
 ============
@@ -35,8 +37,8 @@ Zerobrane Studio will be used.
 
 When developing for Kong there are 2 Lua environments that are being used;
 
-1 The Lua implementation in OpenResty
-2 The Lua engine used by Busted to execute the test sets
+1. The Lua implementation in OpenResty
+2. The Lua engine used by Busted to execute the test sets
 
 To make the debugger work 2 things need to be taken care of;
 
@@ -49,6 +51,13 @@ The `setup` script will update the test and development OpenResty config. After 
 
 Busted
 ------
-When running tests through `debug/test` a temporary file `busted-helper.lua` will be created and executed uon the buested command line with the `--helper` commandline option. This helper file will expose the global debug functions. Through the options `--lpath` and `--cpath` the search paths are updated to include the Zerobrane modules.
+When running tests through `debug/test` a temporary file `busted-helper.lua` will be created and executed on the busted command line with the `--helper` commandline option. This helper file will expose the global debug functions. Through the options `--lpath` and `--cpath` the search paths are updated to include the Zerobrane modules.
+
+More...
+=======
+
+- [ZeroBrane Studio](http://studio.zerobrane.com/)
+- [mobdebug module](https://github.com/pkulchenko/MobDebug)
+- [Debugging OpenResty with ZeroBrane Studio](http://notebook.kulchenko.com/zerobrane/debugging-openresty-nginx-lua-scripts-with-zerobrane-studio)
 
 
