@@ -1,6 +1,6 @@
 local runscope_serializer = require "kong.plugins.log-serializers.runscope"
 local BasePlugin = require "kong.plugins.base_plugin"
-local log = require "kong.plugins.runscope-log.log"
+local log = require "kong.plugins.runscope.log"
 
 local ngx_now = ngx.now
 local ngx_log = ngx.log
@@ -11,7 +11,7 @@ local pcall = pcall
 local RunscopeLogHandler = BasePlugin:extend()
 
 function RunscopeLogHandler:new()
-  RunscopeLogHandler.super.new(self, "runscope-log")
+  RunscopeLogHandler.super.new(self, "runscope")
 end
 
 function RunscopeLogHandler:access(conf)
@@ -31,7 +31,7 @@ function RunscopeLogHandler:access(conf)
       local status, res = pcall(ngx.req.get_post_args)
       if not status then
         if res == "requesty body in temp file not supported" then
-          ngx_log(ngx_log_ERR, "[runscope-log] cannot read request body from temporary file. Try increasing the client_body_buffer_size directive.")
+          ngx_log(ngx_log_ERR, "[runscope] cannot read request body from temporary file. Try increasing the client_body_buffer_size directive.")
         else
           ngx_log(ngx_log_ERR, res)
         end
