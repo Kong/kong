@@ -46,6 +46,10 @@ end
 -- @param `conf`     Configuration table, holds http endpoint details
 -- @param `message`  Message to be logged
 local function log(premature, conf, message)
+  if premature then
+    return
+  end
+
   local ok, err
   local parsed_url = parse_url(conf.api_endpoint.."/buckets/"..conf.bucket_key.."/messages")
   local access_token = conf.access_token
