@@ -60,7 +60,7 @@ end
 function ResponseRateLimitingMetrics:find_one(api_id, identifier, current_timestamp, period, name)
   local periods = timestamp.get_timestamps(current_timestamp)
 
-  local metric, err = ResponseRateLimitingMetrics.super._execute(self, self.queries.select_one, {
+  local metric, err = ResponseRateLimitingMetrics.super.execute(self, self.queries.select_one, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.timestamp(periods[period]),
@@ -102,4 +102,4 @@ function ResponseRateLimitingMetrics:find_by_keys()
   error("ratelimiting_metrics:find_by_keys() not supported", 2)
 end
 
-return { response_ratelimiting_metrics = ResponseRateLimitingMetrics }
+return {response_ratelimiting_metrics = ResponseRateLimitingMetrics}

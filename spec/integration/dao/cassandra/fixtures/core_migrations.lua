@@ -3,17 +3,23 @@ local CORE_MIGRATIONS_FIXTURES = {
     name = "stub_skeleton",
     init = true,
     up = function(options, dao_factory)
-      return dao_factory:execute_queries([[
-        CREATE KEYSPACE IF NOT EXISTS "]]..options.keyspace..[["
+      -- Format final keyspace creation query
+      local keyspace_str = string.format([[
+          CREATE KEYSPACE IF NOT EXISTS "%s"
           WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};
+      ]], options.keyspace)
 
-        USE "]]..options.keyspace..[[";
+      local err = dao_factory:execute_queries(keyspace_str, true)
+      if err then
+        return err
+      end
 
+      return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
           migrations list<text>
         );
-      ]], true)
+      ]]
     end,
     down = function(options, dao_factory)
       return dao_factory:execute_queries [[

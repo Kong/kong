@@ -60,7 +60,7 @@ end
 function RateLimitingMetrics:find_one(api_id, identifier, current_timestamp, period)
   local periods = timestamp.get_timestamps(current_timestamp)
 
-  local metric, err = RateLimitingMetrics.super._execute(self, self.queries.select_one, {
+  local metric, err = RateLimitingMetrics.super.execute(self, self.queries.select_one, {
     cassandra.uuid(api_id),
     identifier,
     cassandra.timestamp(periods[period]),
