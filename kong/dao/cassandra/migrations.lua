@@ -44,7 +44,7 @@ end
 function Migrations:add_migration(migration_name, identifier)
   return Migrations.super._execute(self, self.queries.add_migration, {cassandra.list({migration_name}), identifier}, {
     query_options = {
-      --consistency = cassandra.constants.consistency.ALL
+      consistency = cassandra.constants.consistency.all
     }
   })
 end
@@ -66,13 +66,13 @@ function Migrations:get_migrations(identifier)
   if identifier ~= nil then
     rows, err = Migrations.super._execute(self, self.queries.get_migrations, {identifier}, {
       query_options = {
-        --consistency = cassandra.constants.consistency.ALL
+        consistency = cassandra.consistencies.all
       }
     })
   else
     rows, err = Migrations.super._execute(self, self.queries.get_all_migrations, nil, {
       query_options = {
-        --consistency = cassandra.constants.consistency.ALL
+        consistency = cassandra.consistencies.all
       }
     })
   end
@@ -92,7 +92,7 @@ end
 function Migrations:delete_migration(migration_name, identifier)
   return Migrations.super._execute(self, self.queries.delete_migration, {cassandra.list({migration_name}), identifier}, {
     query_options = {
-      --consistency = cassandra.constants.consistency.ALL
+      consistency = cassandra.constants.consistency.all
     }
   })
 end

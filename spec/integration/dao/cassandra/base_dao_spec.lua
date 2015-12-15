@@ -3,7 +3,6 @@ local spec_helper = require "spec.spec_helpers"
 local constants = require "kong.constants"
 local DaoError = require "kong.dao.error"
 local utils = require "kong.tools.utils"
-local cjson = require "cjson"
 local uuid = require "lua_uuid"
 
 -- Load everything we need from the spec_helper
@@ -634,7 +633,7 @@ describe("Cassandra", function()
       setup(function()
         spec_helper.drop_db()
         for i = 1, 100 do
-          err = select(2, session:execute("INSERT INTO apis(id, name) VALUES(uuid(), 'mockbin')"))
+          local err = select(2, session:execute("INSERT INTO apis(id, name) VALUES(uuid(), 'mockbin')"))
           assert.falsy(err)
         end
       end)

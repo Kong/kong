@@ -24,7 +24,6 @@ test_cassandra_properties.keyspace = FIXTURES.keyspace
 local test_dao = DAO(test_cassandra_properties)
 local session, err = cassandra.spawn_session {
   shm = "factory_specs",
-  --keyspace = test_configuration.dao_config.keyspace,
   contact_points = test_configuration.dao_config.contact_points
 }
 if err then

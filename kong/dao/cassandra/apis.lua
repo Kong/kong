@@ -17,7 +17,6 @@ function Apis:find_all()
   local apis = {}
   local select_q = query_builder.select(self._table)
 
-  --for rows, err in Apis.super.execute(self, select_q, nil, nil, {auto_paging = true}) do
   for rows, err in self:execute(select_q, nil, nil, {auto_paging = true}) do
     if err then
       return nil, err

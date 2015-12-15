@@ -1,10 +1,9 @@
-local utils = require "kong.tools.utils"
 local Factory = require "kong.dao.cassandra.factory"
 local spec_helpers = require "spec.spec_helpers"
 local env = spec_helpers.get_env()
 local default_dao_properties = env.configuration.databases_available.cassandra
 
-describe("Cassadran factory", function()
+describe("Cassadra factory", function()
   describe("get_session_options()", function()
     local dao_properties
     before_each(function()
