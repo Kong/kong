@@ -11,8 +11,11 @@ local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 
--- Silent outside of ngx_lua logging
-cassandra.set_log_level("QUIET")
+if ngx ~= nil and type(ngx.get_phase) == "function" and ngx.get_phase() == "init" then
+  cassandra.set_log_level("INFO")
+else
+  cassandra.set_log_level("QUIET")
+end
 
 local CassandraFactory = Object:extend()
 
@@ -28,7 +31,16 @@ end
 -- Instantiate a Cassandra Factory and all its DAOs for various entities
 -- @param `properties` Cassandra properties
 function CassandraFactory:new(properties, plugins)
-  self._properties = properties
+  local ok, err = cassandra.spawn_cluster {
+    shm = "cassandra",
+    prepared_shm = "cassandra_prepared",
+    contact_points = properties.contact_points
+  }
+  if not ok then
+    error(err)
+  end
+
+  self.properties = properties
   self.type = "cassandra"
   self.daos = {}
 
@@ -66,7 +78,7 @@ end
 function CassandraFactory:load_daos(plugin_daos)
   local dao
   for name, plugin_dao in pairs(plugin_daos) do
-    dao = plugin_dao(self._properties)
+    dao = plugin_dao(self.properties)
     dao._factory = self
     self.daos[name] = dao
     if dao._schema then
@@ -103,15 +115,15 @@ function CassandraFactory:get_session_options()
   return {
     shm = "cassandra",
     prepared_shm = "cassandra_prepared",
-    contact_points = self._properties.contact_points,
-    keyspace = self._properties.keyspace,
+    contact_points = self.properties.contact_points,
+    keyspace = self.properties.keyspace,
     query_options = {
       prepare = true
     },
     ssl_options = {
-      enabled = self._properties.ssl.enabled,
-      verify = self._properties.ssl.verify,
-      ca = self._properties.ssl.certificate_authority
+      enabled = self.properties.ssl.enabled,
+      verify = self.properties.ssl.verify,
+      ca = self.properties.ssl.certificate_authority
     }
   }
 end

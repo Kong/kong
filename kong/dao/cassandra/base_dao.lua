@@ -371,7 +371,7 @@ function BaseDao:delete(where_t)
 
   -- Delete successful, trigger cascade delete hooks if any.
   local foreign_err
-  for _, hook in ipairs(self._cascade_delete_hooks) do
+  for _, hook in ipairs(self.cascade_delete_hooks) do
     foreign_err = select(2, hook(t_primary_key))
     if foreign_err then
       return false, foreign_err
@@ -418,8 +418,8 @@ function BaseDao:new(properties)
     }
   end
 
-  self._properties = properties
-  self._cascade_delete_hooks = {}
+  self.properties = properties
+  self.cascade_delete_hooks = {}
 end
 
 ---
@@ -613,7 +613,7 @@ function BaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column
     return true
   end
 
-  table.insert(self._cascade_delete_hooks, delete_hook)
+  table.insert(self.cascade_delete_hooks, delete_hook)
 end
 
 return BaseDao

@@ -163,7 +163,7 @@ local function prepare_database(args_config)
     cutils.logger:info(string.format(
       "Migrating %s on keyspace \"%s\" (%s)",
       cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
@@ -230,7 +230,7 @@ end
 -- Checks whether a port is available. Exits the application if not available.
 -- @param port The port to check
 -- @param name Functional name the port is used for (display name)
--- @param timeout (optional) Timeout in seconds after which a failure is logged 
+-- @param timeout (optional) Timeout in seconds after which a failure is logged
 -- and application exit is performed, if not provided then it will fail at once without retries.
 local function check_port(port, name, timeout)
   local expire = socket.gettime() + (timeout or 0)
@@ -267,9 +267,9 @@ function _M.send_signal(args_config, signal)
   if not signal then signal = START end
 
   if signal == START then
-    local ports = { 
-      ["Kong proxy"] = kong_config.proxy_port, 
-      ["Kong proxy ssl"] = kong_config.proxy_ssl_port, 
+    local ports = {
+      ["Kong proxy"] = kong_config.proxy_port,
+      ["Kong proxy ssl"] = kong_config.proxy_ssl_port,
       ["Kong admin api"] = kong_config.admin_api_port
     }
     for name, port in pairs(ports) do

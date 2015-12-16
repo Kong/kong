@@ -28,7 +28,7 @@ function Migrations:new(properties)
 end
 
 function Migrations:keyspace_exists(keyspace)
-  local rows, err = Migrations.super.execute(self, self.queries.get_keyspace, {self._properties.keyspace}, nil, "system")
+  local rows, err = Migrations.super.execute(self, self.queries.get_keyspace, {self.properties.keyspace}, nil, "system")
   if err then
     return nil, err
   else
