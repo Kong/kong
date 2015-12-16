@@ -317,14 +317,18 @@ describe("Cassandra", function()
 
           local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(err)
-          assert.truthy(api_t.request_path)
+          assert.truthy(api.request_path)
 
           -- Update
           api.request_path = nil
           api, err = dao_factory.apis:update(api, true)
           assert.falsy(err)
           assert.truthy(api)
-          assert.falsy(api.request_path)
+
+          local rows, err = dao_factory.apis:find_by_keys({id = api.id})
+          assert.falsy(err)
+          assert.truthy(rows)
+          assert.falsy(rows[1].request_path)
 
           -- Check update
           api, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})

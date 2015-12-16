@@ -261,7 +261,7 @@ end
 -- @return A boolean: true for success, false otherwise
 function _M.send_signal(args_config, signal)
   -- Make sure nginx is there and is openresty
-  local port_timeout = 0   --Default 0 to not change current behaviour. TODO: make timeout configurable (note: this is a blocking timeout!)
+  local port_timeout = 1   -- OPT: make timeout configurable (note: this is a blocking timeout!)
   local nginx_path = find_nginx()
   if not nginx_path then
     cutils.logger:error_exit(string.format("Kong cannot find an 'nginx' executable.\nMake sure it is in your $PATH or in one of the following directories:\n%s", table.concat(NGINX_SEARCH_PATHS, "\n")))
@@ -277,7 +277,7 @@ function _M.send_signal(args_config, signal)
       ["Kong admin api"] = kong_config.admin_api_port
     }
     for name, port in pairs(ports) do
-      check_port(port, name, port_timeout)
+      check_port(port, name, port_timeout, kong_config)
     end
   end
 
@@ -294,7 +294,7 @@ function _M.send_signal(args_config, signal)
   if signal == START then
     dnsmasq.stop(kong_config)
     if kong_config.dns_resolver.dnsmasq then
-      check_port(kong_config.dns_resolver.port, "dnsmasq", port_timeout)
+      check_port(kong_config.dns_resolver.port, "dnsmasq", port_timeout, kong_config)
       dnsmasq.start(kong_config)
     end
   elseif signal == STOP or signal == QUIT then
