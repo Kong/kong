@@ -58,6 +58,24 @@ function _M.kill_process_by_pid_file(pid_file, signal)
   end
 end
 
+-- Test if a process is already running by detecting a pid file.
+-- @param pid_file Path to the pid file
+-- @return true is running, false otherwise
+-- @return If not running, an error containing either the path where the pid was supposed to be, or the pid that was not running
+function _M.is_running_by_pid_file(pid_file)
+  if _M.file_exists(pid_file) then
+    local pid = _M.read_file(pid_file)
+    local _, code = _M.os_execute("kill -0 "..pid)
+    if code == 0 then
+      return true
+    else
+      return false, "Not running. Could not find a running pid: "..pid
+    end
+  else
+    return false, "Not running. Could not find pid_file at: "..pid_file
+  end
+end
+
 --- Read file contents.
 -- @param path filepath to read
 -- @return file contents as string, or `nil` if not succesful

@@ -8,6 +8,9 @@ local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
+local sleep = require("socket").sleep
+local pack = function(...) return { n = select("#", ...), ...} end
+local unpack = function(t,i,j) return unpack(t,i or 1, j or t.n or #t) end
 
 require "kong.tools.ngx_stub"
 
@@ -130,7 +133,9 @@ function _M.start_tcp_server(port, ...)
     end;
   }, port)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  sleep(1)
+  return unpack(result)
 end
 
 
@@ -159,7 +164,7 @@ function _M.start_http_server(port, ...)
       end
 
       if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
-        os.execute("sleep 2")
+        socket.sleep(2)
       end
 
       if err then
@@ -174,7 +179,9 @@ function _M.start_http_server(port, ...)
     end;
   }, port)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  sleep(1)
+  return unpack(result)
 end
 
 -- Starts a UDP server, accepting a single connection and then closes
@@ -193,7 +200,9 @@ function _M.start_udp_server(port, ...)
     end;
   }, port)
 
-  return thread:start(...)
+  local result = pack(thread:start(...))
+  sleep(1)
+  return unpack(result)
 end
 
 --
@@ -229,6 +238,37 @@ function _M.insert_fixtures(fixtures, conf_file)
   local env = _M.get_env(conf_file)
   return env.faker:insert_from_table(fixtures)
 end
+
+--
+-- Debug helpers
+--
+
+-- in case of hanging tests, insert a call to this function and it
+-- will print each next line to be executed, allowing to quickly identify
+-- where it hangs.
+-- @param all boolean, if truthy all lines will be dumped, otherwise only the
+-- calling code-file
+_M.line_dump_start = function(all)
+  local fname
+  if not all then
+    fname = (debug.getinfo(2) or {}).source
+  end
+  debug.sethook(function(trigger)
+      if trigger == "tail return" then
+        print("tail return")
+      else
+        local info = debug.getinfo(2)
+        if all or info.source == fname then
+          print("Executing next: ", info.currentline, info.source)
+        end
+      end
+    end, "l")
+end
+
+_M.line_dump_stop = function()
+  debug.sethook()
+end
+
 
 -- Add the default env to our spec_helper
 _M.add_env(_M.TEST_CONF_FILE)
