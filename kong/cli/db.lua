@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local Faker = require "kong.tools.faker"
 local constants = require "kong.constants"
