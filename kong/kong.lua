@@ -107,7 +107,7 @@ local Kong = {}
 -- it will be thrown and needs to be catched in `init_by_lua`.
 function Kong.init()
   configuration = config_loader.load(os.getenv("KONG_CONF"))
-  dao = dao_loader.load(configuration)
+  dao = dao_loader.load(configuration, true)
   loaded_plugins = load_node_plugins(configuration)
   process_id = utils.random_string()
   ngx.update_time()

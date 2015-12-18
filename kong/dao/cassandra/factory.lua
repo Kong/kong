@@ -11,7 +11,7 @@ local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 
-if ngx ~= nil and type(ngx.get_phase) == "function" and ngx.get_phase() == "init" then
+if ngx ~= nil and type(ngx.get_phase) == "function" and ngx.get_phase() == "init" and not ngx.stub then
   cassandra.set_log_level("INFO")
 else
   cassandra.set_log_level("QUIET")
@@ -30,14 +30,16 @@ end
 
 -- Instantiate a Cassandra Factory and all its DAOs for various entities
 -- @param `properties` Cassandra properties
-function CassandraFactory:new(properties, plugins)
+function CassandraFactory:new(properties, plugins, spawn_cluster)
   self.properties = properties
   self.type = "cassandra"
   self.daos = {}
 
-  local ok, err = cassandra.spawn_cluster(self:get_session_options())
-  if not ok then
-    error(err)
+  if spawn_cluster then
+    local ok, err = cassandra.spawn_cluster(self:get_session_options())
+    if not ok then
+      error(err)
+    end
   end
 
   -- Load core entities DAOs
