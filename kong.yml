@@ -64,31 +64,23 @@
     # contact_points:
     #   - "localhost:9042"
 
-    # timeout: 1000
-
-    # keyspace: kong
-
     ######
-    ## Time (in milliseconds) for which sockets will be keep alive.
-    ## for being eventually re-used before being closed.
-    # keepalive: 60000
+    ## Name of the keyspace used by Kong. Will be created if it does not exist.
+    # keyspace: kong
 
     ######
     ## Keyspace options. Set those before running Kong or any migration.
     ## Those settings will be used to create a keyspace with the desired options
     ## when first running the migrations.
     ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
-
     ######
-    ## The name of the replica placement strategy class for the new keyspace.
+    ## The name of the replica placement strategy class for the keyspace.
     ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
     # replication_strategy: SimpleStrategy
-
     ######
     ## For SimpleStrategy only.
     ## The number of replicas of data on multiple nodes.
     # replication_factor: 1
-
     ######
     ## For NetworkTopologyStrategy only.
     ## The number of replicas of data on multiple nodes in each data center.
@@ -96,21 +88,20 @@
     #   dc1: 2
     #   dc2: 3
 
-    ######
-    ## If true, will enable client-to-node encryption.
-    # ssl: false
+    #####
+    ## Client-to-node TLS options.
+    ## `enabled`: if true, will connect to your Cassandra instance using TLS.
+    ## `verify`: if true, will verify the server certificate using the given CA file.
+    ## `certificate_authority`: an absolute path to the trusted CA certificate in PEM format used to verify the server certificate.
+    ## For additional SSL settings, see the ngx_lua `lua_ssl_*` directives.
+    # ssl:
+    #   enabled: false
+    #   verify: false
+    #   certificate_authority: "/path/to/cluster-ca-certificate.pem"
 
     ######
-    ## If true, will verify the SSL certificate in use.
-    ## `ssl_certificate` must be provided.
-    # ssl_verify: false
-
-    ######
-    ## **Absolute path** to the certificate authority file for your cluster.
-    # ssl_certificate: "/path/to/cluster-ca-certificate.pem"
-
-    ######
-    ## If the cluster as authentication enabled, provide a user and a password here.
+    ## Cluster authentication options. Provide a user and a password here if your cluster uses the
+    ## PasswordAuthenticator scheme.
     # user: cassandra
     # password: cassandra
 
@@ -196,6 +187,8 @@ nginx: |
     lua_max_pending_timers 16384;
     lua_shared_dict locks 100k;
     lua_shared_dict cache {{memory_cache_size}}m;
+    lua_shared_dict cassandra 1m;
+    lua_shared_dict cassandra_prepared 5m;
     lua_socket_log_errors off;
     {{lua_ssl_trusted_certificate}}
 

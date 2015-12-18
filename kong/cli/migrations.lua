@@ -49,7 +49,7 @@ if args.command == "list" then
   elseif migrations then
     cutils.logger:info(string.format(
       "Executed migrations for keyspace %s (%s):",
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
 
@@ -63,7 +63,7 @@ if args.command == "list" then
     cutils.logger:info(string.format(
       "No migrations have been run yet for %s on keyspace: %s",
       cutils.colors.yellow(dao_factory.type),
-      cutils.colors.yellow(dao_factory._properties.keyspace)
+      cutils.colors.yellow(dao_factory.properties.keyspace)
     ))
   end
 
@@ -73,7 +73,7 @@ elseif args.command == "up" then
     cutils.logger:info(string.format(
       "Migrating %s on keyspace \"%s\" (%s)",
       cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
@@ -110,7 +110,7 @@ elseif args.command == "down" then
     cutils.logger:info(string.format(
       "Rollbacking %s in keyspace \"%s\" (%s)",
       cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
@@ -130,7 +130,7 @@ elseif args.command == "down" then
 
 elseif args.command == "reset" then
 
-  local keyspace = dao_factory._properties.keyspace
+  local keyspace = dao_factory.properties.keyspace
 
   cutils.logger:info(string.format(
     "Resetting \"%s\" keyspace (%s)",

@@ -44,8 +44,10 @@ describe("Configuration validation", function()
       database = 666,
       databases_available = {
         cassandra = {
-          timeout = "foo",
-          ssl = "true"
+          contact_points = "127.0.0.1",
+          ssl = {
+            enabled = "false"
+          }
         }
       }
     })
@@ -53,8 +55,8 @@ describe("Configuration validation", function()
     assert.truthy(errors)
     assert.equal("must be a number", errors.proxy_port)
     assert.equal("must be a string", errors.database)
-    assert.equal("must be a number", errors["databases_available.cassandra.timeout"])
-    assert.equal("must be a boolean", errors["databases_available.cassandra.ssl"])
+    assert.equal("must be a array", errors["databases_available.cassandra.contact_points"])
+    assert.equal("must be a boolean", errors["databases_available.cassandra.ssl.enabled"])
     assert.falsy(errors.ssl_cert_path)
     assert.falsy(errors.ssl_key_path)
   end)

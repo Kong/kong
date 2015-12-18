@@ -11,6 +11,12 @@ local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 
+if ngx ~= nil and type(ngx.get_phase) == "function" and ngx.get_phase() == "init" then
+  cassandra.set_log_level("INFO")
+else
+  cassandra.set_log_level("QUIET")
+end
+
 local CassandraFactory = Object:extend()
 
 -- Shorthand for accessing one of the underlying DAOs
@@ -25,9 +31,14 @@ end
 -- Instantiate a Cassandra Factory and all its DAOs for various entities
 -- @param `properties` Cassandra properties
 function CassandraFactory:new(properties, plugins)
-  self._properties = properties
+  self.properties = properties
   self.type = "cassandra"
   self.daos = {}
+
+  local ok, err = cassandra.spawn_cluster(self:get_session_options())
+  if not ok then
+    error(err)
+  end
 
   -- Load core entities DAOs
   for _, entity in ipairs({"apis", "consumers", "plugins"}) do
@@ -63,7 +74,7 @@ end
 function CassandraFactory:load_daos(plugin_daos)
   local dao
   for name, plugin_dao in pairs(plugin_daos) do
-    dao = plugin_dao(self._properties)
+    dao = plugin_dao(self.properties)
     dao._factory = self
     self.daos[name] = dao
     if dao._schema then
@@ -97,18 +108,22 @@ function CassandraFactory:drop()
 end
 
 function CassandraFactory:get_session_options()
-  local options = {
-    ssl = self._properties.ssl,
-    ssl_verify = self._properties.ssl_verify,
-    ca_file = self._properties.ssl_certificate -- in case of using luasocket
+  return {
+    shm = "cassandra",
+    prepared_shm = "cassandra_prepared",
+    contact_points = self.properties.contact_points,
+    keyspace = self.properties.keyspace,
+    query_options = {
+      prepare = true
+    },
+    username = self.properties.username,
+    password = self.properties.password,
+    ssl_options = {
+      enabled = self.properties.ssl.enabled,
+      verify = self.properties.ssl.verify,
+      ca = self.properties.ssl.certificate_authority
+    }
   }
-
-  if self._properties.user and self._properties.password then
-    local PasswordAuthenticator = require "cassandra.authenticators.PasswordAuthenticator"
-    options.authenticator = PasswordAuthenticator(self._properties.user, self._properties.password)
-  end
-
-  return options
 end
 
 -- Execute a string of queries separated by ;
@@ -117,22 +132,16 @@ end
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {table} error if any
 function CassandraFactory:execute_queries(queries, no_keyspace)
-  local ok, err
-  local session = cassandra:new()
-  session:set_timeout(self._properties.timeout)
-
   local options = self:get_session_options()
+  options.query_options.same_coordinator = true
 
-  ok, err = session:connect(self._properties.hosts or self._properties.contact_points, nil, options)
-  if not ok then
-    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  if no_keyspace then
+    options.keyspace = nil
   end
 
-  if no_keyspace == nil then
-    ok, err = session:set_keyspace(self._properties.keyspace)
-    if not ok then
-      return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
-    end
+  local session, err = cassandra.spawn_session(options)
+  if not session then
+    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
   end
 
   -- Cassandra only supports BATCH on DML statements.
@@ -140,14 +149,18 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
   queries = stringy.split(queries, ";")
   for _, query in ipairs(queries) do
     if stringy.strip(query) ~= "" then
-      local _, stmt_err = session:execute(query, nil, {consistency_level = cassandra.constants.consistency.ALL})
-      if stmt_err then
-        return DaoError(stmt_err, constants.DATABASE_ERROR_TYPES.DATABASE)
+      err = select(2, session:execute(query))
+      if err then
+        break
       end
     end
   end
 
-  session:close()
+  session:shutdown()
+
+  if err then
+    return DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
+  end
 end
 
 return CassandraFactory

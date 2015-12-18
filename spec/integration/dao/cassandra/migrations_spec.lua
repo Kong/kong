@@ -1,5 +1,5 @@
-local DAO = require "kong.dao.cassandra.factory"
 local cassandra = require "cassandra"
+local DAO = require "kong.dao.cassandra.factory"
 local Migrations = require "kong.tools.migrations"
 local spec_helper = require "spec.spec_helpers"
 
@@ -22,7 +22,13 @@ local test_cassandra_properties = test_configuration.dao_config
 test_cassandra_properties.keyspace = FIXTURES.keyspace
 
 local test_dao = DAO(test_cassandra_properties)
-local session = cassandra:new()
+local session, err = cassandra.spawn_session {
+  shm = "factory_specs",
+  contact_points = test_configuration.dao_config.contact_points
+}
+if err then
+  error(err)
+end
 
 local function has_table(state, arguments)
   local rows, err = session:execute("SELECT columnfamily_name FROM system.schema_columnfamilies WHERE keyspace_name = ?", {FIXTURES.keyspace})
@@ -108,13 +114,6 @@ assert:register("assertion", "has_migration", has_migration, "assertion.has_migr
 
 describe("Migrations", function()
   local migrations
-
-  setup(function()
-    local ok, err = session:connect(test_cassandra_properties.contact_points, test_cassandra_properties.port)
-    if not ok then
-      error(err)
-    end
-  end)
 
   teardown(function()
     session:execute("DROP KEYSPACE "..FIXTURES.keyspace)

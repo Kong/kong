@@ -3,11 +3,11 @@
 -- It supports other environments by passing a configuration file.
 
 local IO = require "kong.tools.io"
-local config = require "kong.tools.config_loader"
 local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
-local Migrations = require "kong.tools.migrations"
+local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
+local Migrations = require "kong.tools.migrations"
 
 require "kong.tools.ngx_stub"
 

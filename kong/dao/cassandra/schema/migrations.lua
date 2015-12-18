@@ -28,15 +28,17 @@ local Migrations = {
           WITH REPLICATION = {'class': '%s'%s};
       ]], keyspace_name, strategy, strategy_properties)
 
-      return dao_factory:execute_queries(keyspace_str..[[
+      local err = dao_factory:execute_queries(keyspace_str, true)
+      if err then
+        return err
+      end
 
-        USE "]]..keyspace_name..[[";
-
+      return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
           migrations list<text>
         );
-      ]], true)
+      ]]
     end,
     down = function(options, dao_factory)
       return dao_factory:execute_queries [[

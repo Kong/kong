@@ -14,7 +14,7 @@ function Migrations:new(dao, kong_config, core_migrations_module, plugins_namesp
   dao:load_daos(require("kong.dao."..dao.type..".migrations"))
 
   self.dao = dao
-  self.dao_properties = dao._properties
+  self.dao_properties = dao.properties
   self.migrations = {
     [_CORE_MIGRATIONS_IDENTIFIER] = require(core_migrations_module)
   }

@@ -35,17 +35,20 @@ return {
         type = "table",
         content = {
           ["contact_points"] = {type = "array", default = {"localhost:9042"}},
-          ["timeout"] = {type = "number", default = 1000},
           ["keyspace"] = {type = "string", default = "kong"},
-          ["keepalive"] = {type = "number", default = 60000},
           ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
           ["replication_factor"] = {type = "number", default = 1},
           ["data_centers"] = {type = "table", default = {}},
-          ["ssl"] = {type = "boolean", default = false},
-          ["ssl_verify"] = {type = "boolean", default = false},
-          ["ssl_certificate"] = {type = "string", nullable = true},
-          ["user"] = {type = "string", nullable = true},
-          ["password"] = {type = "string", nullable = true}
+          ["username"] = {type = "string", nullable = true},
+          ["password"] = {type = "string", nullable = true},
+          ["ssl"] = {
+            type = "table",
+            content = {
+              ["enabled"] = {type = "boolean", default = false},
+              ["verify"] = {type = "boolean", default = false},
+              ["certificate_authority"] = {type = "string", nullable = true}
+            }
+          }
         }
       }
     }
