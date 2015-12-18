@@ -103,10 +103,11 @@ local shared_mt = {
 }
 
 _G.ngx = {
+  stub = true,
   req = {},
   ctx = {},
   header = {},
-  get_phase = function() return "not_ngx_lua" end,
+  get_phase = function() return "init" end,
   exit = function() end,
   say = function() end,
   log = function() end,
