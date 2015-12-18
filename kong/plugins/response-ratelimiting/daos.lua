@@ -2,8 +2,8 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
 
-local ngx_log = ngx.log
-local ngx_err = ngx.ERR
+local ngx_log = ngx and ngx.log or print
+local ngx_err = ngx and ngx.ERR
 local tostring = tostring
 
 local ResponseRateLimitingMetrics = BaseDao:extend()

@@ -41,9 +41,7 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:add_migration(migration_name, identifier)
-  return Migrations.super.execute(self, self.queries.add_migration, {cassandra.list({migration_name}), identifier}, {
-    consistency = cassandra.consistencies.all
-  })
+  return Migrations.super.execute(self, self.queries.add_migration, {cassandra.list({migration_name}), identifier})
 end
 
 -- Return all logged migrations with a filter by identifier optionally. Check if keyspace exists before to avoid error during the first migration.
@@ -61,13 +59,9 @@ function Migrations:get_migrations(identifier)
 
   local rows, err
   if identifier ~= nil then
-    rows, err = Migrations.super.execute(self, self.queries.get_migrations, {identifier}, {
-      consistency = cassandra.consistencies.all
-    })
+    rows, err = Migrations.super.execute(self, self.queries.get_migrations, {identifier})
   else
-    rows, err = Migrations.super.execute(self, self.queries.get_all_migrations, nil, {
-      consistency = cassandra.consistencies.all
-    })
+    rows, err = Migrations.super.execute(self, self.queries.get_all_migrations)
   end
 
   if err and stringy.find(err.message, "unconfigured columnfamily schema_migrations") ~= nil then
@@ -83,9 +77,7 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:delete_migration(migration_name, identifier)
-  return Migrations.super.execute(self, self.queries.delete_migration, {cassandra.list({migration_name}), identifier}, {
-    consistency = cassandra.consistencies.all
-  })
+  return Migrations.super.execute(self, self.queries.delete_migration, {cassandra.list({migration_name}), identifier})
 end
 
 -- Drop the entire keyspace

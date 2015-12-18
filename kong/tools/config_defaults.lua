@@ -39,7 +39,7 @@ return {
           ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
           ["replication_factor"] = {type = "number", default = 1},
           ["data_centers"] = {type = "table", default = {}},
-          ["user"] = {type = "string", nullable = true},
+          ["username"] = {type = "string", nullable = true},
           ["password"] = {type = "string", nullable = true},
           ["ssl"] = {
             type = "table",

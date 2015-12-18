@@ -31,18 +31,14 @@ end
 -- Instantiate a Cassandra Factory and all its DAOs for various entities
 -- @param `properties` Cassandra properties
 function CassandraFactory:new(properties, plugins)
-  local ok, err = cassandra.spawn_cluster {
-    shm = "cassandra",
-    prepared_shm = "cassandra_prepared",
-    contact_points = properties.contact_points
-  }
-  if not ok then
-    error(err)
-  end
-
   self.properties = properties
   self.type = "cassandra"
   self.daos = {}
+
+  local ok, err = cassandra.spawn_cluster(self:get_session_options())
+  if not ok then
+    error(err)
+  end
 
   -- Load core entities DAOs
   for _, entity in ipairs({"apis", "consumers", "plugins"}) do
@@ -120,6 +116,8 @@ function CassandraFactory:get_session_options()
     query_options = {
       prepare = true
     },
+    username = self.properties.username,
+    password = self.properties.password,
     ssl_options = {
       enabled = self.properties.ssl.enabled,
       verify = self.properties.ssl.verify,
