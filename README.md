@@ -95,6 +95,7 @@ Videos:
 
 Podcasts:
 - [Changelog #185](https://changelog.com/185)
+- [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
 
 Tools:
 
