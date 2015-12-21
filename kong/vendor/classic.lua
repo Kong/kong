@@ -1,4 +1,4 @@
----
+--
 -- classic, object model.
 --
 -- Copyright (c) 2014, rxi

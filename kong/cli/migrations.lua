@@ -5,7 +5,8 @@ local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local utils = require "kong.tools.utils"
 local input = require "kong.cli.utils.input"
-local IO = require "kong.tools.io"
+local config = require "kong.tools.config_loader"
+local dao = require "kong.tools.dao_loader"
 local lapp = require "lapp"
 local args = lapp(string.format([[
 Kong datastore migrations.
@@ -28,7 +29,8 @@ if args.command == "migrations" then
 end
 
 local config_path = cutils.get_kong_config_path(args.config)
-local configuration, dao_factory = IO.load_configuration_and_dao(config_path)
+local configuration = config.load(config_path)
+local dao_factory = dao.load(configuration)
 local migrations = Migrations(dao_factory, configuration)
 
 local kind = args.type

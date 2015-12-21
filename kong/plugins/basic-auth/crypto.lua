@@ -1,4 +1,3 @@
----
 -- Module to encrypt the basic-auth credentials password field
 
 local crypto = require "crypto"

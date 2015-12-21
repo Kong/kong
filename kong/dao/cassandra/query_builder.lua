@@ -15,6 +15,10 @@ local function select_fragment(column_family, select_columns)
   return string.format("SELECT %s FROM %s", select_columns, column_family)
 end
 
+local function count_fragment(column_family)
+  return string.format("SELECT COUNT(*) FROM %s", column_family)
+end
+
 local function insert_fragment(column_family, insert_values)
   local values_placeholders, columns = {}, {}
   for column, value in pairs(insert_values) do
@@ -127,6 +131,22 @@ function _M.select(column_family, where_t, column_family_details, select_columns
   local where_str, columns, needed_filtering = where_fragment(where_t, column_family_details)
 
   return trim(string.format("%s %s", select_str, where_str)), columns, needed_filtering
+end
+
+-- Generate a COUNT query with an optional WHERE instruction.
+-- If building a WHERE instruction, we need some additional informations about the column family.
+-- @param `column_family`         Name of the column family
+-- @param `column_family_details` Additional infos about the column family (partition key, clustering key, indexes)
+-- @return `query`                The SELECT query
+-- @return `columns`              An list of columns to bind for the query, in the order of the placeholder markers (?)
+-- @return `needs_filtering`      A boolean indicating if ALLOW FILTERING was added to this query or not
+function _M.count(column_family, where_t, column_family_details)
+  assert(type(column_family) == "string", "column_family must be a string")
+
+  local count_str = count_fragment(column_family)
+  local where_str, columns, needed_filtering = where_fragment(where_t, column_family_details)
+
+  return trim(string.format("%s %s", count_str, where_str)), columns, needed_filtering
 end
 
 -- Generate an INSERT query.

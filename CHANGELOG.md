@@ -1,5 +1,20 @@
 ## [Unreleased][unreleased]
 
+### Added
+
+- Added a `total` field in API responses, that counts the total number of entities in the table. [#635](https://github.com/Mashape/kong/pull/635)
+- You can now specify a custom DNS resolver address that Kong will use when resolving hostnames. [#625](https://github.com/Mashape/kong/pull/635)
+
+### Changed
+
+- Removed the `dnsmasq_port` property, and introduced `dns_resolver` that also allows to specify a custom DNS server. [#625](https://github.com/Mashape/kong/pull/635)
+- The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` field. [#635](https://github.com/Mashape/kong/pull/635)
+- Disabled access logs for `/status` endpoint
+
+### Fixed
+
+- In the API, the `next` link is not being displayed anymore if there are no more entities to return. [#635](https://github.com/Mashape/kong/pull/635)
+
 ## [0.5.4] - 2015/12/03
 
 ### Fixed

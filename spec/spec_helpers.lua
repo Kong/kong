@@ -3,6 +3,8 @@
 -- It supports other environments by passing a configuration file.
 
 local IO = require "kong.tools.io"
+local config = require "kong.tools.config_loader"
+local dao = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local Migrations = require "kong.tools.migrations"
 local Threads = require "llthreads2.ex"
@@ -30,7 +32,8 @@ _M.envs = {}
 -- When dealing with another configuration file for a few tests, this allows to add
 -- a factory/migrations/faker that are environment-specific to this new config.
 function _M.add_env(conf_file)
-  local env_configuration, env_factory = IO.load_configuration_and_dao(conf_file)
+  local env_configuration = config.load(conf_file)
+  local env_factory = dao.load(env_configuration)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,
@@ -95,8 +98,8 @@ function _M.find_port(exclude)
   end
 
   -- Finding an available port
-  local handle = io.popen([[(netstat  -atn | awk '{printf "%s\n%s\n", $4, $4}' | grep -oE '[0-9]*$'; seq 32768 61000) | sort -n | uniq -u | head -n 1]])
-  local result = handle:read("*a")
+  local handle = io.popen([[(netstat  -atn | awk '{printf "%s\n%s\n", $4, $4}' | grep -oE '[0-9]*$'; seq 32768 61000) | sort -n | uniq -u]])
+  local result = (handle:read("*a") .. "\n"):match("^(.-)\n")
   handle:close()
 
   -- Closing the opened servers
@@ -107,18 +110,22 @@ function _M.find_port(exclude)
   return tonumber(result)
 end
 
--- Starts a TCP server
+-- Starts a TCP server, accepting a single connection and then closes
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
 function _M.start_tcp_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require "socket"
-      local server = assert(socket.bind("*", port))
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
       local client = server:accept()
       local line, err = client:receive()
       if not err then client:send(line .. "\n") end
       client:close()
+      server:close()
       return line
     end;
   }, port)
@@ -127,14 +134,17 @@ function _M.start_tcp_server(port, ...)
 end
 
 
--- Starts a HTTP server
+-- Starts a HTTP server, accepting a single connection and then closes
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
 function _M.start_http_server(port, ...)
   local thread = Threads.new({
     function(port)
       local socket = require "socket"
-      local server = assert(socket.bind("*", port))
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
       local client = server:accept()
 
       local lines = {}
@@ -153,11 +163,13 @@ function _M.start_http_server(port, ...)
       end
 
       if err then
+        server:close()
         error(err)
       end
 
       client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
       client:close()
+      server:close()
       return lines
     end;
   }, port)
@@ -165,7 +177,7 @@ function _M.start_http_server(port, ...)
   return thread:start(...)
 end
 
--- Starts a UDP server
+-- Starts a UDP server, accepting a single connection and then closes
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
 function _M.start_udp_server(port, ...)
@@ -173,8 +185,10 @@ function _M.start_udp_server(port, ...)
     function(port)
       local socket = require("socket")
       local udp = socket.udp()
+      udp:setoption('reuseaddr', true)
       udp:setsockname("*", port)
       local data = udp:receivefrom()
+      udp:close()
       return data
     end;
   }, port)

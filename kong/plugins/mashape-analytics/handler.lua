@@ -18,7 +18,6 @@ local ALFBuffer = require "kong.plugins.mashape-analytics.buffer"
 local BasePlugin = require "kong.plugins.base_plugin"
 local ALFSerializer = require "kong.plugins.log-serializers.alf"
 
-local ngx_now = ngx.now
 local ngx_log = ngx.log
 local ngx_log_ERR = ngx.ERR
 local string_find = string.find
@@ -70,14 +69,10 @@ end
 function AnalyticsHandler:body_filter(conf)
   AnalyticsHandler.super.body_filter(self)
 
-  local chunk, eof = ngx.arg[1], ngx.arg[2]
+  local chunk = ngx.arg[1]
   -- concatenate response chunks for ALF's `response.content.text`
   if conf.log_body then
     ngx.ctx.analytics.res_body = ngx.ctx.analytics.res_body..chunk
-  end
-
-  if eof then -- latest chunk
-    ngx.ctx.analytics.response_received = ngx_now() * 1000
   end
 end
 

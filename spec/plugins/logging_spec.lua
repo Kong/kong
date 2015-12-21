@@ -159,12 +159,20 @@ describe("Logging Plugins", function()
     )
     assert.are.equal(200, status)
 
+    local timeout = 10
     while not (IO.file_exists(FILE_LOG_PATH)) do
       -- Wait for the file to be created
+      os.execute("sleep 1")
+      timeout = timeout -1
+      if timeout == 0 then error("Creating the logfile timed out") end
     end
 
+    local timeout = 10
     while not (IO.file_size(FILE_LOG_PATH) > 0) do
       -- Wait for the log to be appended
+      os.execute("sleep 1")
+      timeout = timeout -1
+      if timeout == 0 then error("Appending to the logfile timed out") end
     end
 
     local file_log = IO.read_file(FILE_LOG_PATH)
@@ -174,5 +182,4 @@ describe("Logging Plugins", function()
 
     os.remove(FILE_LOG_PATH)
   end)
-
 end)
