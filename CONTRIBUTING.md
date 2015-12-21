@@ -6,7 +6,7 @@ Discuss it on the [Google Group](https://groups.google.com/forum/#!forum/konglay
 
 ## Found a bug?
 
-We would like to hear about it. Please [submit an issue][new-issue] on GitHub and we will follow up. Even better, we would appreaciate a [Pull Request][new-pr] with a fix for it. If the fix is urgent, feel free to open the PR against the `master` branch.
+We would like to hear about it. Please [submit an issue][new-issue] on GitHub and we will follow up. Even better, we would appreciate a [Pull Request][new-pr] (against the `next` branch) with a fix for it. If the fix is urgent, feel free to open the PR against the `master` branch.
 
 ## Want a feature?
 
@@ -20,7 +20,7 @@ If you'd like to implement a new feature, please consider opening an issue first
 
 Before you submit an issue, search the archive, maybe you will find that a similar one already exists.
 
-If you are submitting an issue about a bug, please include the following:
+If you are submitting an issue for a bug, please include the following:
 
 - The platform you are running Kong on
 - The version of Kong you are running
@@ -31,6 +31,7 @@ If you are submitting an issue about a bug, please include the following:
 
 Before submitting your Pull Request please make sure to:
 
+- Make the Pull Request against the `next` branch. If it's an urgent bugfix, then use the `master` branch.
 - Include tests with your changes. If your changes introduce a new feature, please include tests with it. If it fixes a bug, please create a test to validate the fix.
 - Rebase your commits. It may be that new commits have been introduced on the branch your are opening your Pull Request against. Rebasing will update your branch with the most resent code and make your changes easier to review.
 - Consider squashing your commits. We prefer your initial changes to be squashed into a single commit. Later, if we ask you to make changes, add them as separate commits. This makes them easier to review. As a final step before merging we will either ask you to squash all commits yourself or we'll do it for you.
