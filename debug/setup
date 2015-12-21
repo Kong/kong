@@ -10,7 +10,6 @@ prefix = prefix:gsub("/debug/%.%./", "/"):gsub("^debug/%.%./", "./")
 
 local pp = package.path
 package.path = prefix.."debug/?.lua"
-print(package.path)
 local config = require("config")
 package.path = pp
 
@@ -44,8 +43,8 @@ for _,filename in ipairs(filenames) do
   -- insert globals to access the debugger code 
   before = content:match("^(.-init_by_lua %')").."\n"
   after = "      "..content:match("(kong %= require.+)")
-  content = before .. '      debug.start = require("mobdebug").start(...)\n' .. 
-                      '      debug.stop = require("mobdebug").done(...)\n' .. after
+  content = before .. '      debug.start = require("mobdebug").start\n' .. 
+                      '      debug.stop = require("mobdebug").done\n' .. after
 
   local success, err = io.write_to_file(filename, content)
 
