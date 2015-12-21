@@ -376,30 +376,31 @@ describe("Cassandra", function()
             request_path = "/request_path",
             request_host = "host.com"
           }
-          local api, err = session:execute("INSERT INTO apis(id, upstream_url, request_path, request_host) VALUES(?, ?, ?, ?)", {
+          local _, err = session:execute("INSERT INTO apis(id, upstream_url, request_path, request_host) VALUES(?, ?, ?, ?)", {
             cassandra.uuid(api_t.id),
             api_t.upstream_url,
             api_t.request_path,
             api_t.request_host
           })
           assert.falsy(err)
-          assert.truthy(api.request_path)
 
           -- Update
           api_t.request_path = nil
-          api, err = dao_factory.apis:update(api_t, true)
+          local api, err = dao_factory.apis:update(api_t, true)
           assert.falsy(err)
           assert.truthy(api)
+          assert.falsy(api.request_path)
 
+          -- Check update from DAO
           local rows, err = dao_factory.apis:find_by_keys({id = api.id})
           assert.falsy(err)
           assert.truthy(rows)
           assert.falsy(rows[1].request_path)
 
-          -- Check update
-          local _, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
+          -- Check update manually
+          rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
           assert.falsy(err)
-          assert.falsy(api.request_path)
+          assert.falsy(rows[1].request_path)
         end)
         it("should still check the validity of the schema", function()
           local api_t = {
