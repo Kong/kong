@@ -44,8 +44,8 @@ for _,filename in ipairs(filenames) do
   -- insert globals to access the debugger code 
   before = content:match("^(.-init_by_lua %')").."\n"
   after = "      "..content:match("(kong %= require.+)")
-  content = before .. '      debug.start = function(...) require("mobdebug").start(...) end\n' .. 
-                      '      debug.stop = function(...) require("mobdebug").done(...) end\n' .. after
+  content = before .. '      debug.start = require("mobdebug").start(...)\n' .. 
+                      '      debug.stop = require("mobdebug").done(...)\n' .. after
 
   local success, err = io.write_to_file(filename, content)
 
@@ -53,5 +53,5 @@ for _,filename in ipairs(filenames) do
     print("Failed writing file: ", filename, err)
     os.exit(1)
   end
-  print("Succesfully update file for debugging; ",filename)
+  print("Succesfully updated file for debugging; ",filename)
 end
