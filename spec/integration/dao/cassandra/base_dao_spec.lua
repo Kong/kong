@@ -246,7 +246,7 @@ describe("Cassandra", function()
       teardown(function()
         spec_helper.drop_db()
       end)
-      it("should error if called with invalid parameters", function()
+      it("should error if called with invalid arguments", function()
         assert.has_error(function()
           dao_factory.apis:update()
         end, "Cannot update a nil element")
@@ -261,11 +261,11 @@ describe("Cassandra", function()
 
         -- No entity to update
         local entity, err = dao_factory.apis:update(api_t)
-        assert.falsy(entity)
+        assert.equal(nil, entity)
         assert.falsy(err)
       end)
       it("should consider no entity to be found if an empty table is given to it", function()
-        local api, err = dao_factory.apis:update({})
+        local api, err = dao_factory.apis:update {}
         assert.falsy(err)
         assert.falsy(api)
       end)
@@ -285,6 +285,7 @@ describe("Cassandra", function()
         local api, err = dao_factory.apis:update(api_t)
         assert.falsy(err)
         assert.truthy(api)
+        assert.equal("mockbin-updated", api.name)
 
         local rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api.id)})
         assert.falsy(err)
@@ -310,6 +311,7 @@ describe("Cassandra", function()
         local consumer, err = dao_factory.consumers:update(consumer_t)
         assert.falsy(err)
         assert.truthy(consumer)
+        assert.equal("john-updated", consumer.username)
 
         rows, err = session:execute("SELECT * FROM consumers WHERE id = ?", {cassandra.uuid(consumer_t.id)})
         assert.falsy(err)
@@ -319,14 +321,15 @@ describe("Cassandra", function()
         -- Plugin Configuration
         local plugin_t = {
           id = UUID,
-          name = "key-auth",
           api_id = UUID,
+          name = "key-auth",
           enabled = true
         }
-        _, err = session:execute("INSERT INTO plugins(id, name, api_id) VALUES(?, ?, ?)", {
+        _, err = session:execute("INSERT INTO plugins(id, api_id, name, enabled) VALUES(?, ?, ?, ?)", {
           cassandra.uuid(plugin_t.id),
+          cassandra.uuid(plugin_t.api_id),
           plugin_t.name,
-          cassandra.uuid(plugin_t.api_id)
+          plugin_t.enabled
         })
         assert.falsy(err)
 
@@ -335,97 +338,158 @@ describe("Cassandra", function()
         local plugin, err = dao_factory.plugins:update(plugin_t)
         assert.falsy(err)
         assert.truthy(plugin)
+        assert.False(plugin.enabled)
 
         rows, err = session:execute("SELECT * FROM plugins WHERE id = ?", {cassandra.uuid(plugin_t.id)})
         assert.falsy(err)
         assert.equal(1, #rows)
         assert.False(rows[1].enabled)
       end)
-      it("should ensure fields with `unique` are unique", function()
-        local UUID_1 = uuid()
-        local UUID_2 = uuid()
 
-        local _, err = session:execute("INSERT INTO apis(id, request_host) VALUES(?, ?)", {
-          cassandra.uuid(UUID_1),
-          "host1.com"
-        })
-        assert.falsy(err)
-
-        _, err = session:execute("INSERT INTO apis(id, request_host) VALUES(?, ?)", {
-          cassandra.uuid(UUID_2),
-          "host2.com"
-        })
-        assert.falsy(err)
-
-        local api, err = dao_factory.apis:update {
-          id = UUID_2,
-          request_host = "host1.com"
-        }
-        assert.truthy(err)
-        assert.falsy(api)
-        assert.is_daoError(err)
-        assert.True(err.unique)
-        assert.equal("request_host already exists with value 'host1.com'", err.message.request_host)
-      end)
-
-      describe("full update", function()
-        it("should set a column to NULL if a field is not specified", function()
-          local api_t = {
+      describe("edge-cases with an entity", function()
+        local api_t
+        before_each(function()
+          api_t = {
             id = uuid(),
+            name = "mockbin",
+            created_at = 1450519058000,
             upstream_url = "http://mockbin.com",
             request_path = "/request_path",
             request_host = "host.com"
           }
-          local api, err = session:execute("INSERT INTO apis(id, upstream_url, request_path, request_host) VALUES(?, ?, ?, ?)", {
+          local _, err = session:execute("INSERT INTO apis(id, created_at, name, upstream_url, request_path, request_host) VALUES(?, ?, ?, ?, ?, ?)", {
             cassandra.uuid(api_t.id),
+            cassandra.timestamp(api_t.created_at),
+            api_t.name,
             api_t.upstream_url,
             api_t.request_path,
             api_t.request_host
           })
           assert.falsy(err)
-          assert.truthy(api.request_path)
-
-          -- Update
-          api_t.request_path = nil
-          api, err = dao_factory.apis:update(api_t, true)
+        end)
+        after_each(function()
+          session:execute("TRUNCATE apis")
+        end)
+        it("should return the complete updated entity when the argument entity is partial", function()
+          api_t.name = "updated"
+          -- Only passing a subset of the entity to update()
+          local api, err = dao_factory.apis:update {
+            id = api_t.id,
+            name = api_t.name
+          }
           assert.falsy(err)
           assert.truthy(api)
-
-          local rows, err = dao_factory.apis:find_by_keys({id = api.id})
-          assert.falsy(err)
-          assert.truthy(rows)
-          assert.falsy(rows[1].request_path)
-
-          -- Check update
-          local _, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
-          assert.falsy(err)
-          assert.falsy(api.request_path)
+          assert.same(api_t, api)
         end)
-        it("should still check the validity of the schema", function()
-          local api_t = {
-            id = uuid(),
-            upstream_url = "http://mockbin.com",
-            request_path = "/request_path"
-          }
-          local _, err = session:execute("INSERT INTO apis(id, upstream_url, request_path) VALUES(?, ?, ?)", {
-            cassandra.uuid(api_t.id),
-            api_t.upstream_url,
-            api_t.request_path
+        it("should ensure fields with `unique` are unique", function()
+          local UUID_bis = uuid()
+
+          local _, err = session:execute("INSERT INTO apis(id, request_host) VALUES(?, ?)", {
+            cassandra.uuid(UUID_bis),
+            "host2.com"
           })
           assert.falsy(err)
 
-          -- Update
-          api_t.upstream_url = nil
-
-          local api, err = dao_factory.apis:update(api_t, true)
+          local api, err = dao_factory.apis:update {
+            id = UUID_bis,
+            request_host = api_t.request_host
+          }
           assert.truthy(err)
           assert.falsy(api)
-          assert.equal("upstream_url is required", err.message.upstream_url)
+          assert.is_daoError(err)
+          assert.True(err.unique)
+          assert.equal("request_host already exists with value 'host.com'", err.message.request_host)
 
-          -- Check update failed
-          local rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
+          local rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(UUID_bis)})
           assert.falsy(err)
-          assert.truthy(rows[1].upstream_url)
+          assert.equal("host2.com", rows[1].request_host)
+        end)
+        it("should return an error if trying to update `immutable` fields", function()
+          local rows, err = session:execute("SELECT * FROM apis")
+          assert.falsy(err)
+          assert.equal(api_t.created_at, rows[1].created_at)
+
+          local api, err = dao_factory.apis:update {
+            id = api_t.id,
+            created_at = 123
+          }
+          assert.truthy(err)
+          assert.falsy(api)
+          assert.is_daoError(err)
+          assert.True(err.schema)
+          assert.equal("created_at cannot be updated", err.message.created_at)
+
+          rows, err = session:execute("SELECT * FROM apis")
+          assert.falsy(err)
+          assert.equal(api_t.created_at, rows[1].created_at)
+        end)
+        describe("full update", function()
+          it("should set a column to CQL `null` if a field is not specified", function()
+            -- Verify the column is set
+            local rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
+            assert.falsy(err)
+            assert.equal(1, #rows)
+            assert.equal("/request_path", rows[1].request_path)
+
+            -- Update
+            api_t.request_path = nil
+            local api, err = dao_factory.apis:update(api_t, true)
+            assert.falsy(err)
+            assert.truthy(api)
+            assert.falsy(api.request_path)
+
+            rows, err = dao_factory.apis:find_by_keys {id = api_t.id}
+            assert.falsy(err)
+            assert.truthy(rows)
+            assert.falsy(rows[1].request_path)
+
+            -- Check update
+            rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
+            assert.falsy(err)
+            assert.falsy(rows[1].request_path)
+          end)
+          it("should still check the validity of the schema", function()
+            -- Update with invalid value
+            api_t.upstream_url = nil
+            local api, err = dao_factory.apis:update(api_t, true)
+            assert.truthy(err)
+            assert.falsy(api)
+            assert.equal("upstream_url is required", err.message.upstream_url)
+
+            -- Check update failed
+            local rows, err = session:execute("SELECT * FROM apis WHERE id = ?", {cassandra.uuid(api_t.id)})
+            assert.falsy(err)
+            assert.equal("http://mockbin.com", rows[1].upstream_url)
+          end)
+          it("should still select defaults when entity is incomplete", function()
+            local plugin, err = dao_factory.plugins:insert {
+              name = "key-auth",
+              api_id = api_t.id,
+              config = {hide_credentials = true}
+            }
+            assert.falsy(err)
+            assert.same({"apikey"}, plugin.config.key_names)
+            assert.True(plugin.config.hide_credentials)
+
+            plugin, err = dao_factory.plugins:update({
+              name = "key-auth",
+              id = plugin.id,
+              api_id = api_t.id
+            }, true)
+            assert.falsy(err)
+            assert.same({"apikey"}, plugin.config.key_names)
+            assert.False(plugin.config.hide_credentials)
+          end)
+          it("should return an error if trying to update `immutable` fields", function()
+            api_t.created_at = 123
+            api_t.name = "updated"
+            local api, err = dao_factory.apis:update(api_t, true)
+            assert.truthy(err)
+            assert.falsy(api)
+            assert.is_daoError(err)
+            assert.True(err.schema)
+            assert.equal("created_at cannot be updated", err.message.created_at)
+          end)
         end)
       end)
     end) -- describe update()

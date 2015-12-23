@@ -176,73 +176,82 @@ local function extract_primary_key(t, primary_key, clustering_key)
 end
 
 ---
--- When updating a row that has a json-as-text column (ex: plugin.config),
+-- Complete a partial entity given to `update`.
+-- Also handle updating a row that has a json-as-text column (ex: plugin.config),
 -- we want to avoid overriding it with a partial value.
 -- Ex: config.key_name + config.hide_credential, if we update only one field,
--- the other should be preserved. Of course this only applies in partial update.
-local function fix_tables(t, old_t, schema)
-  for k, v in pairs(schema.fields) do
-    if t[k] ~= nil and v.schema then
-      local s = type(v.schema) == "function" and v.schema(t) or v.schema
-      for s_k, s_v in pairs(s.fields) do
-        if not t[k][s_k] and old_t[k] then
-          t[k][s_k] = old_t[k][s_k]
+-- the other should be preserved. Of course this only applies in partial updates.
+local function complete_partial_entity(new_t, old_t, schema)
+  for field_key, field_rules in pairs(schema.fields) do
+    if new_t[field_key] == nil and old_t[field_key] ~= nil then
+      new_t[field_key] = old_t[field_key]
+    elseif new_t[field_key] ~= nil and field_rules.schema ~= nil then
+      -- Retrieve the field's schema
+      local field_schema = type(field_rules.schema) == "function" and field_rules.schema(old_t) or field_rules.schema
+
+      -- Replace each of those subfields with the value from the already inserted entity
+      -- if not present in the new_fields
+      for s_k, s_v in pairs(field_schema.fields) do
+        if new_t[field_key][s_k] == nil and old_t[field_key] ~= nil then
+          new_t[field_key][s_k] = old_t[field_key][s_k]
         end
       end
-      fix_tables(t[k], old_t[k], s)
+
+      -- Recursive call for sub fields
+      complete_partial_entity(new_t[field_key], old_t[field_key], field_schema)
     end
   end
 end
 
----
--- Update an entity: find the row with the given PRIMARY KEY and update the other values
+--- Update an entity.
+-- Find the row with the given PRIMARY KEY and update its colums with values
+-- from the given table and return the complete entity, with updates taken into account.
+-- If asked, the update can be "full", just like an HTTP PUT method would expect to work:
+-- any schema field that is not included in the given argument will be set to CQL `null` (unset).
 -- Performs schema validation, 'UNIQUE' and 'FOREIGN' checks.
 -- @see check_unique_fields
 -- @see check_foreign_fields
--- @param[type=table] t A table representing the entity to update. It **must** contain the entity's PRIMARY KEY (can be composite).
--- @param[type=boolean] full  If **true**, set to NULL any column not in the `t` parameter, such as a PUT query would do for example.
--- @treturn table Updated entity or nil.
--- @treturn table Error if any during the execution.
+-- @param[type=table] t A table representing the entity to update. It must contain the entity's PRIMARY KEY (can be composite).
+-- @param[type=boolean] full  If true, set to CQL `null` any column not in the `t` argument, such as a PUT query would do for example.
+-- @treturn table `result`: Updated entity or nil.
+-- @treturn table `error`: Error if any during the execution.
 function BaseDao:update(t, full)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
 
-  local ok, db_err, errors, self_err
-
-  -- Check if exists to prevent upsert
-  local res, err = self:find_by_primary_key(t)
-  if err then
-    return false, err
-  elseif not res then
-    return false
+  -- Check if the entity exists to prevent upsert and retrieve its old values
+  local entity, err = self:find_by_primary_key(t)
+  if entity == nil or err then
+    return nil, err
   end
 
   if not full then
-    fix_tables(t, res, self._schema)
+    complete_partial_entity(t, entity, self._schema)
   end
 
   -- Validate schema
-  ok, errors, self_err = validations.validate_entity(t, self._schema, {
-    partial_update = not full,
+  local ok, errors, err = validations.validate_entity(t, self._schema, {
+    update = true,
+    old_t = entity,
     full_update = full,
     dao = self._factory
   })
-  if self_err then
-    return nil, self_err
+  if err then
+    return nil, err
   elseif not ok then
     return nil, DaoError(errors, error_types.SCHEMA)
   end
 
-  ok, errors, db_err = self:check_unique_fields(t, true)
-  if db_err then
-    return nil, DaoError(db_err, error_types.DATABASE)
+  ok, errors, err = self:check_unique_fields(t, true)
+  if err then
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
     return nil, DaoError(errors, error_types.UNIQUE)
   end
 
-  ok, errors, db_err = self:check_foreign_fields(t)
-  if db_err then
-    return nil, DaoError(db_err, error_types.DATABASE)
+  ok, errors, err = self:check_foreign_fields(t)
+  if err then
+    return nil, DaoError(err, error_types.DATABASE)
   elseif not ok then
     return nil, DaoError(errors, error_types.FOREIGN)
   end
@@ -250,10 +259,10 @@ function BaseDao:update(t, full)
   -- Extract primary key from the entity
   local t_primary_key, t_no_primary_key = extract_primary_key(t, self._primary_key, self._clustering_key)
 
-  -- If full, add `null` values to the SET part of the query for nil columns
+  -- If full, add CQL `null` to the SET part of the query for nil columns
   if full then
     for k, v in pairs(self._schema.fields) do
-      if not t[k] and not v.immutable then
+      if t[k] == nil and not v.immutable then
         t_no_primary_key[k] = cassandra.unset
       end
     end
@@ -261,9 +270,9 @@ function BaseDao:update(t, full)
 
   local update_q, columns = query_builder.update(self._table, t_no_primary_key, t_primary_key)
 
-  local _, stmt_err = self:build_args_and_execute(update_q, columns, self:_marshall(t))
-  if stmt_err then
-    return nil, stmt_err
+  local _, err = self:build_args_and_execute(update_q, columns, self:_marshall(t))
+  if err then
+    return nil, err
   else
     return self:_unmarshall(t)
   end

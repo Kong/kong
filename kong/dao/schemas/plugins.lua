@@ -24,6 +24,7 @@ return {
     },
     created_at = {
       type = "timestamp",
+      immutable = true,
       dao_insert_value = true
     },
     api_id = {
