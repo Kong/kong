@@ -24,7 +24,7 @@ local function find_api(hosts)
 end
 
 function _M.execute()
-  local ssl = require "ngx.ssl"
+  local ssl = require "kong.vendor.ssl"
   local server_name = ssl.server_name()
   if server_name then -- Only support SNI requests
     local api, err = find_api({server_name})
