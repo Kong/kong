@@ -1,7 +1,7 @@
 -- ALF serializer module.
 -- ALF is the format supported by Mashape Analytics (http://apianalytics.com)
 --
--- This module represents _one_ ALF, zhich has _one_ ALF entry.
+-- This module represents _one_ ALF, which has _one_ ALF entry.
 -- It used to be a representation of one ALF with several entries, but ALF
 -- had its `clientIPAddress` moved to the root level of ALF, hence breaking
 -- this implementation.
@@ -14,8 +14,6 @@
 -- - ALF specifications: https://github.com/Mashape/api-log-format
 -- - Nginx lua module documentation: http://wiki.nginx.org/HttpLuaModule
 -- - ngx_http_core_module: http://wiki.nginx.org/HttpCoreModule#.24http_HEADER
-
-local stringy = require "stringy"
 
 local type = type
 local pairs = pairs
@@ -60,6 +58,26 @@ local function dic_to_array(hash, fn)
   end
 end
 
+--- Get a header from nginx's headers
+-- Make sure that is multiple headers of a same name are present,
+-- we only want the last one. Also include a default value if
+-- no header is present.
+-- @param `headers` ngx's request or response headers table.
+-- @param `name`    Name of the desired header to retrieve.
+-- @param `default` String returned in case no header is found.
+-- @return `header` The header value (a string) or the default, or nil.
+local function get_header(headers, name, default)
+  local val = headers[name]
+  if val ~= nil then
+    if type(val) == "table" then
+      val = val[#val]
+    end
+    return val
+  end
+
+  return default
+end
+
 local _M = {}
 
 -- Serialize `ngx` into one ALF entry.
@@ -81,29 +99,10 @@ function _M.serialize_entry(ngx)
   local alf_base64_res_body = ngx_encode_base64(alf_res_body)
 
   -- timers
-  local proxy_started_at, proxy_ended_at = ngx.ctx.proxy_started_at, ngx.ctx.proxy_ended_at
-
-  local alf_started_at = ngx.req.start_time()
-
-  -- First byte sent to upstream - first byte received from client
-  local alf_send_time = proxy_started_at - alf_started_at * 1000
-
-  -- Time waiting for the upstream response
-  local upstream_response_time = 0
-  local upstream_response_times = ngx.var.upstream_response_time
-  if not upstream_response_times or upstream_response_times == "-" then
-    -- client aborted the request
-    return
-  end
-
-  upstream_response_times = stringy.split(upstream_response_times, ", ")
-  for _, val in ipairs(upstream_response_times) do
-    upstream_response_time = upstream_response_time + val
-  end
-  local alf_wait_time = upstream_response_time * 1000
-
-  -- upstream response fully received - upstream response 1 byte received
-  local alf_receive_time = analytics_data.response_received and analytics_data.response_received - proxy_ended_at or -1
+  -- @see core.handler for their definition
+  local alf_send_time = ngx.ctx.KONG_PROXY_LATENCY or -1
+  local alf_wait_time = ngx.ctx.KONG_WAITING_TIME or -1
+  local alf_receive_time = ngx.ctx.KONG_RECEIVE_TIME or -1
 
   -- Compute the total time. If some properties were unavailable
   -- (because the proxying was aborted), then don't add the value.
@@ -125,11 +124,11 @@ function _M.serialize_entry(ngx)
   local alf_res_headers_size = string_len(res_headers_str)
 
   -- mimeType, defaulting to "application/octet-stream"
-  local alf_req_mimeType = req_headers["Content-Type"] and req_headers["Content-Type"] or "application/octet-stream"
-  local alf_res_mimeType = res_headers["Content-Type"] and res_headers["Content-Type"] or "application/octet-stream"
+  local alf_req_mimeType = get_header(req_headers, "Content-Type", "application/octet-stream")
+  local alf_res_mimeType = get_header(res_headers, "Content-Type", "application/octet-stream")
 
   return {
-    startedDateTime = os_date("!%Y-%m-%dT%TZ", alf_started_at),
+    startedDateTime = os_date("!%Y-%m-%dT%TZ", ngx.req.start_time()),
     time = alf_time,
     request = {
       method = ngx.req.get_method(),

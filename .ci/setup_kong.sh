@@ -5,10 +5,10 @@ KONG_VERSION=0.5.0
 sudo apt-get update
 
 # Installing dependencies required to build development rocks
-sudo apt-get install wget curl tar make gcc unzip git liblua5.1-0-dev
+sudo apt-get install wget curl tar make gcc unzip git
 
 # Installing dependencies required for Kong
-sudo apt-get install sudo netcat lua5.1 openssl libpcre3 dnsmasq
+sudo apt-get install sudo netcat openssl libpcre3 dnsmasq uuid-dev
 
 # Installing Kong and its dependencies
 sudo apt-get install lsb-release

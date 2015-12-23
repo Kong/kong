@@ -1,11 +1,12 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local Migrations = require "kong.tools.migrations"
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local utils = require "kong.tools.utils"
 local input = require "kong.cli.utils.input"
-local IO = require "kong.tools.io"
+local config = require "kong.tools.config_loader"
+local dao = require "kong.tools.dao_loader"
 local lapp = require "lapp"
 local args = lapp(string.format([[
 Kong datastore migrations.
@@ -28,7 +29,8 @@ if args.command == "migrations" then
 end
 
 local config_path = cutils.get_kong_config_path(args.config)
-local configuration, dao_factory = IO.load_configuration_and_dao(config_path)
+local configuration = config.load(config_path)
+local dao_factory = dao.load(configuration)
 local migrations = Migrations(dao_factory, configuration)
 
 local kind = args.type
@@ -47,7 +49,7 @@ if args.command == "list" then
   elseif migrations then
     cutils.logger:info(string.format(
       "Executed migrations for keyspace %s (%s):",
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
 
@@ -61,7 +63,7 @@ if args.command == "list" then
     cutils.logger:info(string.format(
       "No migrations have been run yet for %s on keyspace: %s",
       cutils.colors.yellow(dao_factory.type),
-      cutils.colors.yellow(dao_factory._properties.keyspace)
+      cutils.colors.yellow(dao_factory.properties.keyspace)
     ))
   end
 
@@ -71,7 +73,7 @@ elseif args.command == "up" then
     cutils.logger:info(string.format(
       "Migrating %s on keyspace \"%s\" (%s)",
       cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
@@ -108,7 +110,7 @@ elseif args.command == "down" then
     cutils.logger:info(string.format(
       "Rollbacking %s in keyspace \"%s\" (%s)",
       cutils.colors.yellow(identifier),
-      cutils.colors.yellow(dao_factory._properties.keyspace),
+      cutils.colors.yellow(dao_factory.properties.keyspace),
       dao_factory.type
     ))
   end
@@ -128,7 +130,7 @@ elseif args.command == "down" then
 
 elseif args.command == "reset" then
 
-  local keyspace = dao_factory._properties.keyspace
+  local keyspace = dao_factory.properties.keyspace
 
   cutils.logger:info(string.format(
     "Resetting \"%s\" keyspace (%s)",

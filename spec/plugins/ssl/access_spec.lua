@@ -18,11 +18,13 @@ describe("SSL Plugin", function()
       api = {
         { name = "ssl-test", request_host = "ssl1.com", upstream_url = "http://mockbin.com" },
         { name = "ssl-test2", request_host = "ssl2.com", upstream_url = "http://mockbin.com" },
-        { name = "ssl-test3", request_host = "ssl3.com", upstream_url = "http://mockbin.com" }
+        { name = "ssl-test3", request_host = "ssl3.com", upstream_url = "http://mockbin.com" },
+        { name = "ssl-test4", request_host = "ssl4.com", upstream_url = "http://mockbin.com" },
       },
       plugin = {
         { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
-        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true }, __api = 2 }
+        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true }, __api = 2 },
+        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true, accept_http_if_already_terminated = true }, __api = 4 }
       }
     }
 
@@ -83,6 +85,21 @@ describe("SSL Plugin", function()
 
     it("should not block request with https", function()
       local _, status = http_client.get(STUB_GET_SSL_URL, nil, { host = "ssl2.com" })
+      assert.are.equal(200, status)
+    end)
+
+    it("should block request with https in x-forwarded-proto but no accept_if_already_terminated", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "ssl2.com", ["x-forwarded-proto"] = "https" })
+      assert.are.equal(426, status)
+    end)
+
+    it("should not block request with https", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "ssl4.com", ["x-forwarded-proto"] = "https" })
+      assert.are.equal(200, status)
+    end)
+
+    it("should not block request with https in x-forwarded-proto but accept_if_already_terminated", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, { host = "ssl4.com", ["x-forwarded-proto"] = "https" })
       assert.are.equal(200, status)
     end)
 

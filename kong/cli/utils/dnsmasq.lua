@@ -13,7 +13,7 @@ function _M.stop(kong_config)
   end
 end
 
-function _M.start(kong_config)
+function _M.start(nginx_working_dir, dnsmasq_port)
   local cmd = IO.cmd_exists("dnsmasq") and "dnsmasq"
 
   if not cmd then -- Load dnsmasq given the PATH settings
@@ -32,8 +32,8 @@ function _M.start(kong_config)
   end
 
   -- Start the dnsmasq daemon
-  local file_pid = kong_config.nginx_working_dir..(stringy.endswith(kong_config.nginx_working_dir, "/") and "" or "/")..constants.CLI.DNSMASQ_PID
-  local res, code = IO.os_execute(cmd.." -p "..kong_config.dnsmasq_port.." --pid-file="..file_pid.." -N -o")
+  local file_pid = nginx_working_dir..(stringy.endswith(nginx_working_dir, "/") and "" or "/")..constants.CLI.DNSMASQ_PID
+  local res, code = IO.os_execute(cmd.." -p "..dnsmasq_port.." --pid-file="..file_pid.." -N -o")
   if code ~= 0 then
     cutils.logger:error_exit(res)
   else

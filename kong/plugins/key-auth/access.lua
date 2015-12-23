@@ -71,14 +71,12 @@ function _M.execute(conf)
 
   -- No key found in the request's headers or parameters
   if not key_found then
-    ngx.ctx.stop_phases = true
     ngx.header["WWW-Authenticate"] = "Key realm=\""..constants.NAME.."\""
     return responses.send_HTTP_UNAUTHORIZED("No API Key found in headers, body or querystring")
   end
 
   -- No key found in the DB, this credential is invalid
   if not credential then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
   end
 

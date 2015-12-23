@@ -19,33 +19,40 @@ return {
   clustering_key = {"name"},
   fields = {
     id = {
-        type = "id",
-        dao_insert_value = true },
+      type = "id",
+      dao_insert_value = true
+    },
     created_at = {
-        type = "timestamp",
-        dao_insert_value = true },
+      type = "timestamp",
+      dao_insert_value = true
+    },
     api_id = {
-        type = "id",
-        required = true,
-        foreign = "apis:id",
-        queryable = true },
+      type = "id",
+      required = true,
+      foreign = "apis:id",
+      queryable = true
+    },
     consumer_id = {
-        type = "id",
-        foreign = "consumers:id",
-        queryable = true,
-        default = constants.DATABASE_NULL_ID },
+      type = "id",
+      foreign = "consumers:id",
+      queryable = true,
+      default = constants.DATABASE_NULL_ID
+    },
     name = {
-        type = "string",
-        required = true,
-        immutable = true,
-        queryable = true },
+      type = "string",
+      required = true,
+      immutable = true,
+      queryable = true
+    },
     config = {
-        type = "table",
-        schema = load_config_schema,
-        default = {} },
+      type = "table",
+      schema = load_config_schema,
+      default = {}
+    },
     enabled = {
-        type = "boolean",
-        default = true }
+      type = "boolean",
+      default = true
+    }
   },
   self_check = function(self, plugin_t, dao, is_update)
     -- Load the config schema

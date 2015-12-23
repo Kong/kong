@@ -5,6 +5,11 @@ local spec_helper = require "spec.spec_helpers"
 describe("Admin API", function()
   setup(function()
     spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        {request_host = "test.com", upstream_url = "http://mockbin.com"}
+      }
+    }
     spec_helper.start_kong()
   end)
 

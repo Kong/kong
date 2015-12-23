@@ -14,7 +14,7 @@ function Migrations:new(dao, kong_config, core_migrations_module, plugins_namesp
   dao:load_daos(require("kong.dao."..dao.type..".migrations"))
 
   self.dao = dao
-  self.options = dao._properties
+  self.dao_properties = dao.properties
   self.migrations = {
     [_CORE_MIGRATIONS_IDENTIFIER] = require(core_migrations_module)
   }
@@ -91,7 +91,7 @@ function Migrations:run_migrations(identifier, before, on_each_success)
 
   -- Execute all new migrations, in order
   for _, migration in ipairs(diff_migrations) do
-    local err = migration.up(self.options, self.dao)
+    local err = migration.up(self.dao_properties, self.dao)
     if err then
       return fmt('Error executing migration for "%s": %s', identifier, err)
     end
@@ -146,7 +146,7 @@ function Migrations:run_rollback(identifier, before, on_success)
     before(identifier)
   end
 
-  local err = migration_to_rollback.down(self.options, self.dao)
+  local err = migration_to_rollback.down(self.dao_properties, self.dao)
   if err then
     return fmt('Error rollbacking migration for "%s": %s', identifier, err)
   end

@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Kong CLI entry-point (bin/kong).
 --
@@ -48,8 +48,6 @@ elseif not commands[cmd] then
   print("Invalid <command>: "..cmd.."\n\n"..help_message)
   os.exit(1)
 end
-
-require "kong.tools.ngx_stub"
 
 -- Load and execute desired command
 require(commands[cmd])
