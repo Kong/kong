@@ -252,7 +252,7 @@ Support, Demo, Training, API Certifications and Consulting available at https://
 ## License
 
 ```
-Copyright 2015 Mashape, Inc
+Copyright 2016 Mashape, Inc
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -277,4 +277,3 @@ limitations under the License.
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
 
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
-
