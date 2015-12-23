@@ -10,6 +10,9 @@ dependencies:
         - sudo make dev
 test:
     override:
-        - busted -o spec/busted-print.lua --coverage spec/
+        - busted -v -o spec/busted-print.lua --coverage :
+            parallel: true
+            files:
+              - spec/**/*_spec.lua
     post:
         - make lint

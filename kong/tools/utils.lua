@@ -1,10 +1,22 @@
 ---
--- Module containing some general utility functions
+-- Module containing some general utility functions used in many places in Kong.
+--
+-- NOTE: Before implementing a function here, consider if it will be used in many places
+-- across Kong. If not, a local function in the appropriate module is prefered.
+--
 
-local uuid = require "uuid"
+local url = require "socket.url"
+local uuid = require "lua_uuid"
 
--- This is important to seed the UUID generator
-uuid.seed()
+local type = type
+local pairs = pairs
+local ipairs = ipairs
+local tostring = tostring
+local table_sort = table.sort
+local table_concat = table.concat
+local table_insert = table.insert
+local string_find = string.find
+local string_format = string.format
 
 local _M = {}
 
@@ -12,6 +24,65 @@ local _M = {}
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
   return uuid():gsub("-", "")
+end
+
+--- URL escape and format key and value
+-- An obligatory url.unescape pass must be done to prevent double-encoding
+-- already encoded values (which contain a '%' character that `url.escape` escapes)
+local function encode_args_value(key, value, raw)
+  if not raw then
+    key = url.unescape(key)
+    key = url.escape(key)
+  end
+  if value ~= nil then
+    if not raw then
+      value = url.unescape(value)
+      value = url.escape(value)
+    end
+    return string_format("%s=%s", key, value)
+  else
+    return key
+  end
+end
+
+--- Encode a Lua table to a querystring
+-- Tries to mimic ngx_lua's `ngx.encode_args`, but also percent-encode querystring values.
+-- Supports multi-value query args, boolean values.
+-- It also supports encoding for bodies (only because it is used in http_client for specs.
+-- @TODO drop and use `ngx.encode_args` once it implements percent-encoding.
+-- @see https://github.com/Mashape/kong/issues/749
+-- @param[type=table] args A key/value table containing the query args to encode.
+-- @param[type=boolean] raw If true, will not percent-encode any key/value and will ignore special boolean rules.
+-- @treturn string A valid querystring (without the prefixing '?')
+function _M.encode_args(args, raw)
+  local query = {}
+  local keys = {}
+
+  for k in pairs(args) do
+    keys[#keys+1] = k
+  end
+
+  table_sort(keys)
+
+  for _, key in ipairs(keys) do
+    local value = args[key]
+    if type(value) == "table" then
+      for _, sub_value in ipairs(value) do
+        query[#query+1] = encode_args_value(key, sub_value, raw)
+      end
+    elseif value == true then
+      query[#query+1] = encode_args_value(key, raw and true or nil, raw)
+    elseif value ~= false and value ~= nil or raw then
+      value = tostring(value)
+      if value ~= "" then
+        query[#query+1] = encode_args_value(key, value, raw)
+      elseif raw then
+        query[#query+1] = key
+      end
+    end
+  end
+
+  return table_concat(query, "&")
 end
 
 --- Calculates a table size.
@@ -60,6 +131,7 @@ end
 -- @param t The table to check
 -- @return Returns `true` if the table is an array, `false` otherwise
 function _M.is_array(t)
+  if type(t) ~= "table" then return false end
   local i = 0
   for _ in pairs(t) do
     i = i + 1
@@ -102,7 +174,7 @@ function _M.add_error(errors, k, v)
       errors[k] = setmetatable({errors[k]}, err_list_mt)
     end
 
-    table.insert(errors[k], v)
+    table_insert(errors[k], v)
   else
     errors[k] = v
   end
@@ -121,7 +193,7 @@ function _M.load_module_if_exists(module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and string.find(res, "module '"..module_name.."' not found", nil, true) then
+  elseif type(res) == "string" and string_find(res, "module '"..module_name.."' not found", nil, true) then
     return false
   else
     error(res)

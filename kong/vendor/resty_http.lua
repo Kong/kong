@@ -17,17 +17,12 @@ module(...)
 
 _VERSION = "0.1.0"
 
---------------------------------------
--- LOCAL CONSTANTS                  --
---------------------------------------
+-- LOCAL CONSTANTS
 local HTTP_1_1   = " HTTP/1.1\r\n"
 local CHUNK_SIZE = 1048576
 local USER_AGENT = "Resty/HTTP " .. _VERSION .. " (Lua)"
 
---------------------------------------
--- LOCAL HELPERS                    --
---------------------------------------
-
+-- LOCAL HELPERS
 local function _req_header(conf, opts)
   opts = opts or {}
 
@@ -201,7 +196,7 @@ local function _receive(self, sock)
       return nil, err
     end
     body = str
-  end
+end
 
   if lower(headers["connection"]) == "close" then
     self:close()
@@ -213,10 +208,7 @@ local function _receive(self, sock)
 end
 
 
---------------------------------------
--- PUBLIC API                       --
---------------------------------------
-
+-- PUBLIC API
 function new(self)
   local sock, err = tcp()
   if not sock then

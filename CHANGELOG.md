@@ -1,5 +1,23 @@
 ## [Unreleased][unreleased]
 
+### Breaking changes
+
+- Drop the Lua 5.1 dependency which was only used for Kong's CLI. The CLI now runs against LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Mashape/kong/pull/799)
+
+### Added
+
+- A new `total` field in API responses, that counts the total number of entities in the response body. [#635](https://github.com/Mashape/kong/pull/635)
+- Dnsmasq is now optional. You can specify a custom DNS resolver address that Kong will use when resolving hostnames. This can be configured in `kong.yml`. [#625](https://github.com/Mashape/kong/pull/635)
+
+### Changed
+
+- Disable access logs for `/status` endpoint.
+- The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` field. [#635](https://github.com/Mashape/kong/pull/635)
+
+### Fixed
+
+- In the Admin API responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
+
 ## [0.5.4] - 2015/12/03
 
 ### Fixed
@@ -14,8 +32,8 @@
 ### Fixed
 
 - Avoids additional URL encoding when proxying to an upstream service. [#691](https://github.com/Mashape/kong/pull/691)
-- Fixing potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
-- Fixed a missing "env" statement in the Nginx configuration. [#706](https://github.com/Mashape/kong/pull/706)
+- Potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
+- A missing "env" statement in the Nginx configuration. [#706](https://github.com/Mashape/kong/pull/706)
 
 ### Added
 
@@ -73,7 +91,6 @@ Several breaking changes are introduced. You will have to slightly change your c
   - `strip_path` -> `strip_request_path`
   - `target_url` -> `upstream_url`
 - `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
->>>>>>> dbocs(changelog) 0.5.0 changes
 - The database schema has been updated to handle the separation of plugins outside of the core repository.
 - The Key authentication and Basic authentication plugins routes have changed:
 

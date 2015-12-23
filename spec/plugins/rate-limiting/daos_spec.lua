@@ -1,6 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local timestamp = require "kong.tools.timestamp"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 local env = spec_helper.get_env()
 local dao_factory = env.dao_factory
@@ -21,7 +21,7 @@ describe("Rate Limiting Metrics", function()
     for period, period_date in pairs(periods) do
       local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
       assert.falsy(err)
-      assert.are.same(nil, metric)
+      assert.same(nil, metric)
     end
   end)
 
@@ -30,15 +30,14 @@ describe("Rate Limiting Metrics", function()
     local periods = timestamp.get_timestamps(current_timestamp)
 
     -- First increment
-    local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1)
-    assert.falsy(err)
+    local ok = ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1)
     assert.True(ok)
 
     -- First select
     for period, period_date in pairs(periods) do
       local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
       assert.falsy(err)
-      assert.are.same({
+      assert.same({
         api_id = api_id,
         identifier = identifier,
         period = period,
@@ -48,15 +47,14 @@ describe("Rate Limiting Metrics", function()
     end
 
     -- Second increment
-    local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1)
-    assert.falsy(err)
+    local ok = ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1)
     assert.True(ok)
 
     -- Second select
     for period, period_date in pairs(periods) do
       local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
       assert.falsy(err)
-      assert.are.same({
+      assert.same({
         api_id = api_id,
         identifier = identifier,
         period = period,
@@ -70,8 +68,7 @@ describe("Rate Limiting Metrics", function()
     periods = timestamp.get_timestamps(current_timestamp)
 
      -- Third increment
-    local ok, err = ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1)
-    assert.falsy(err)
+    local ok = ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1)
     assert.True(ok)
 
     -- Third select with 1 second delay
@@ -85,7 +82,7 @@ describe("Rate Limiting Metrics", function()
 
       local metric, err = ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period)
       assert.falsy(err)
-      assert.are.same({
+      assert.same({
         api_id = api_id,
         identifier = identifier,
         period = period,

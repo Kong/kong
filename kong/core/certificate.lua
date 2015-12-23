@@ -9,7 +9,7 @@ local function find_api(hosts)
     local sanitized_host = stringy.split(host, ":")[1]
 
     retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host), function()
-      local apis, err = dao.apis:find_by_keys { request_host = sanitized_host }
+      local apis, err = dao.apis:find_by_keys {request_host = sanitized_host}
       if err then
         return nil, err
       elseif apis and #apis == 1 then
@@ -23,14 +23,16 @@ local function find_api(hosts)
   end
 end
 
-function _M.execute(conf)
+function _M.execute()
   local ssl = require "ngx.ssl"
   local server_name = ssl.server_name()
   if server_name then -- Only support SNI requests
     local api, err = find_api({server_name})
-    if not err and api then
-      ngx.ctx.api = api
+    if err then
+      ngx.log(ngx.ERR, tostring(err))
     end
+
+    return api
   end
 end
 

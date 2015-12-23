@@ -39,8 +39,10 @@ describe("Admin API", function()
 
     describe("PUT", function()
 
+      local consumer
+
       it("[SUCCESS] should create and update", function()
-        local consumer = send_content_types(BASE_URL, "PUT", {
+        consumer = send_content_types(BASE_URL, "PUT", {
           username = "consumer PUT tests"
         }, 201, nil, {drop_db=true})
 
@@ -61,6 +63,44 @@ describe("Admin API", function()
         }, 409, '{"username":"username already exists with value \'consumer PUT tests updated\'"}')
       end)
 
+      it("[SUCCESS] should update a Consumer", function()
+        local response, status = http_client.get(BASE_URL..consumer.id)
+        assert.equal(200, status)
+
+        local body = json.decode(response)
+        assert.falsy(body.custom_id)
+
+        body.custom_id = "custom123"
+        local response, status = http_client.put(BASE_URL, body)
+        assert.equal(200, status)
+        assert.truthy(response)
+
+        local response, status = http_client.get(BASE_URL..consumer.id)
+        assert.equal(200, status)
+
+        local body = json.decode(response)
+        assert.equal("custom123", body.custom_id)
+      end)
+
+      it("[SUCCESS] should update a Consumer and remove a field", function()
+        local response, status = http_client.get(BASE_URL..consumer.id)
+        assert.equal(200, status)
+
+        local body = json.decode(response)
+        assert.equal("custom123", body.custom_id)
+
+        body.custom_id = nil
+        local response, status = http_client.put(BASE_URL, body)
+        assert.equal(200, status)
+        assert.truthy(response)
+
+        local response, status = http_client.get(BASE_URL..consumer.id)
+        assert.equal(200, status)
+
+        local body = json.decode(response)
+        assert.falsy(body.custom_id)
+      end)
+
     end)
 
     describe("GET", function()
@@ -76,6 +116,7 @@ describe("Admin API", function()
         local body = json.decode(response)
         assert.truthy(body.data)
         assert.equal(10, table.getn(body.data))
+        assert.equal(10, body.total)
       end)
 
       it("should retrieve a paginated set", function()
@@ -85,6 +126,7 @@ describe("Admin API", function()
         assert.truthy(body_page_1.data)
         assert.equal(3, table.getn(body_page_1.data))
         assert.truthy(body_page_1.next)
+        assert.equal(10, body_page_1.total)
 
         response, status = http_client.get(BASE_URL, {size=3,offset=body_page_1.next})
         assert.equal(200, status)
@@ -93,14 +135,15 @@ describe("Admin API", function()
         assert.equal(3, table.getn(body_page_2.data))
         assert.truthy(body_page_2.next)
         assert.not_same(body_page_1, body_page_2)
+        assert.equal(10, body_page_2.total)
 
         response, status = http_client.get(BASE_URL, {size=4,offset=body_page_2.next})
         assert.equal(200, status)
         local body_page_3 = json.decode(response)
         assert.truthy(body_page_3.data)
         assert.equal(4, table.getn(body_page_3.data))
-        -- TODO: fixme
-        --assert.falsy(body_page_3.next)
+        assert.equal(10, body_page_3.total)
+        assert.falsy(body_page_3.next)
         assert.not_same(body_page_2, body_page_3)
       end)
 

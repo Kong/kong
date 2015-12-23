@@ -50,7 +50,6 @@ function _M.execute(conf)
   end
 
   if block then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
 

@@ -10,7 +10,7 @@ describe("Database cache", function()
     spec_helper.prepare_db()
     fixtures = spec_helper.insert_fixtures {
       api = {
-        { name = "tests-database-cache", request_host = "cache.test", upstream_url = "http://httpbin.org" }
+        {name = "tests-database-cache", request_host = "cache.test", upstream_url = "http://httpbin.org"}
       }
     }
 
@@ -22,7 +22,8 @@ describe("Database cache", function()
   end)
 
   it("should expire cache after five seconds", function()
-    local _ = http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "cache.test"})
+    -- trigger a db fetch for this API's plugins
+    http_client.get(spec_helper.PROXY_URL.."/get", {}, {host = "cache.test"})
 
     -- Let's add the authentication plugin configuration
     local _, err = env.dao_factory.plugins:insert {
@@ -45,7 +46,7 @@ describe("Database cache", function()
     assert.are.equal(401, status)
 
     -- Create a consumer and a key will make it work again
-    local consumer, err = env.dao_factory.consumers:insert { username = "john" }
+    local consumer, err = env.dao_factory.consumers:insert {username = "john"}
     assert.falsy(err)
 
     local _, err = env.dao_factory.keyauth_credentials:insert {

@@ -26,8 +26,9 @@ local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
-local AUTHORIZE_URL = "^%s/oauth2/authorize/?$"
-local TOKEN_URL = "^%s/oauth2/token/?$"
+
+local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
+local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
 -- TODO: Expire token (using TTL ?)
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
@@ -75,10 +76,15 @@ local function get_redirect_uri(client_id)
   return client and client.redirect_uri or nil, client
 end
 
-local function is_https()
-  local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+local HTTPS = "https"
 
-  return ngx.var.scheme:lower() == "https" or (forwarded_proto_header and forwarded_proto_header:lower() == "https")
+local function is_https(conf)
+  local result = ngx.var.scheme:lower() == HTTPS
+  if not result and conf.accept_http_if_already_terminated then
+    local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+    result = forwarded_proto_header and forwarded_proto_header:lower() == HTTPS
+  end
+  return result
 end
 
 local function retrieve_parameters()
@@ -91,7 +97,7 @@ local function retrieve_scopes(parameters, conf)
   local scope = parameters[SCOPE]
   local scopes = {}
   if conf.scopes and scope then
-    for v in scope:gmatch("%w+") do
+    for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then
         return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
       else
@@ -112,7 +118,7 @@ local function authorize(conf)
   local state = parameters[STATE]
   local redirect_uri, client
 
-  if not is_https() then
+  if not is_https(conf) then
     response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
@@ -166,11 +172,8 @@ local function authorize(conf)
   -- Adding the state if it exists. If the state == nil then it won't be added
   response_params.state = state
 
-  -- Stopping other phases
-  ngx.ctx.stop_phases = true
-
   -- Sending response in JSON format
-  responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
+  return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
     redirect_uri = redirect_uri.."?"..ngx.encode_args(response_params)
   } or response_params, false, {
     ["cache-control"] = "no-store",
@@ -216,7 +219,7 @@ local function issue_token(conf)
   local parameters = retrieve_parameters() --TODO: Also from authorization header
   local state = parameters[STATE]
 
-  if not is_https() then
+  if not is_https(conf) then
     response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
   else
     local grant_type = parameters[GRANT_TYPE]
@@ -294,11 +297,8 @@ local function issue_token(conf)
   -- Adding the state if it exists. If the state == nil then it won't be added
   response_params.state = state
 
-  -- Stopping other phases
-  ngx.ctx.stop_phases = true
-
   -- Sending response in JSON format
-  responses.send(response_params[ERROR] and 400 or 200, response_params, false, {
+  return responses.send(response_params[ERROR] and 400 or 200, response_params, false, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
   })
@@ -328,7 +328,7 @@ local function parse_access_token(conf)
     local authorization = ngx.req.get_headers()["authorization"]
     if authorization then
       local parts = {}
-      for v in authorization:gmatch("%w+") do -- Split by space
+      for v in authorization:gmatch("%S+") do -- Split by space
         table.insert(parts, v)
       end
       if #parts == 2 and (parts[1]:lower() == "token" or parts[1]:lower() == "bearer") then
@@ -376,18 +376,21 @@ function _M.execute(conf)
     end
   end
 
-  local token = retrieve_token(parse_access_token(conf))
+  local accessToken = parse_access_token(conf);
+  if not accessToken then
+    return responses.send_HTTP_UNAUTHORIZED({}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
+  end
+
+  local token = retrieve_token(accessToken)
   if not token then
-    ngx.ctx.stop_phases = true -- interrupt other phases of this request
-    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid"'})
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      ngx.ctx.stop_phases = true -- interrupt other phases of this request
-      return responses.send_HTTP_BAD_REQUEST({[ERROR] = "invalid_request", error_description = "access_token expired"})
+      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token expired"'})
     end
   end
 

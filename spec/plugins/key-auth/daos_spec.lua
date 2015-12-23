@@ -1,5 +1,5 @@
 local spec_helper = require "spec.spec_helpers"
-local uuid = require "uuid"
+local uuid = require "lua_uuid"
 
 local env = spec_helper.get_env()
 local dao_factory = env.dao_factory

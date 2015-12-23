@@ -26,6 +26,7 @@ return {
     enable_implicit_grant = { required = true, type = "boolean", default = false },
     enable_client_credentials = { required = true, type = "boolean", default = false },
     enable_password_grant = { required = true, type = "boolean", default = false },
-    hide_credentials = { type = "boolean", default = false }
+    hide_credentials = { type = "boolean", default = false },
+    accept_http_if_already_terminated = { required = false, type = "boolean", default = false }
   }
 }

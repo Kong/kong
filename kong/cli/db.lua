@@ -1,9 +1,10 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local Faker = require "kong.tools.faker"
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
-local IO = require "kong.tools.io"
+local config = require "kong.tools.config_loader"
+local dao = require "kong.tools.dao_loader"
 local lapp = require("lapp")
 
 local args = lapp(string.format([[
@@ -29,7 +30,8 @@ if args.command == "db" then
 end
 
 local config_path = cutils.get_kong_config_path(args.config)
-local _, dao_factory = IO.load_configuration_and_dao(config_path)
+local config = config.load(config_path)
+local dao_factory = dao.load(config)
 
 if args.command == "seed" then
 
