@@ -37,12 +37,16 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong"] = "kong/kong.lua",
+    -- NOTE: the paths of the modules should not be altered upon installation, or 
+    -- stated otherwise the paths below should be equal left and right hand side
+    -- (if not, subtle test problems will be introduced)
+    
+    ["kong.kong_main"] = "kong/kong_main.lua",
 
-    ["classic"] = "kong/vendor/classic.lua",
-    ["lapp"] = "kong/vendor/lapp.lua",
-    ["ngx.ssl"] = "kong/vendor/ssl.lua",
-    ["resty_http"] = "kong/vendor/resty_http.lua",
+    ["kong.vendor.classic"] = "kong/vendor/classic.lua",
+    ["kong.vendor.lapp"] = "kong/vendor/lapp.lua",
+    ["kong.vendor.ssl"] = "kong/vendor/ssl.lua",
+    ["kong.vendor.resty_http"] = "kong/vendor/resty_http.lua",
 
     ["kong.constants"] = "kong/constants.lua",
 
@@ -206,7 +210,6 @@ build = {
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
     ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
     ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
-    ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
 
     ["kong.plugins.jwt.schema.migrations"] = "kong/plugins/jwt/schema/migrations.lua",
