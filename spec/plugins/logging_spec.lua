@@ -126,7 +126,7 @@ describe("Logging Plugins", function()
     assert.are.same("127.0.0.1", log_message.client_ip)
   end)
 
-  it("should log to HTTPs", function()
+  it("should log to HTTPS", function()
     -- Making the request
     local _, status = http_client.get(STUB_GET_URL, nil, { host = "https_logging.com" })
     assert.are.equal(200, status)

@@ -84,6 +84,15 @@ describe("Entities Schemas", function()
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
     end)
 
+    it("should complain if `request_host` is an empty string", function()
+      local t = {request_host = "", upstream_url = "http://mockbin.com"}
+
+      local valid, errors = validate_entity(t, api_schema)
+      assert.False(valid)
+      assert.equal("request_host has an invalid value", errors.request_host)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
+    end)
+
     it("should set the name from request_host if not set", function()
       local t = {request_host = "mockbin.com", upstream_url = "http://mockbin.com"}
 

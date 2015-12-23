@@ -19,7 +19,7 @@ describe("Authentication Plugin", function()
       },
       plugin = {
         {name = "basic-auth", config = {}, __api = 1},
-        {name = "basic-auth", config = { hide_credentials = true }, __api = 2}
+        {name = "basic-auth", config = {hide_credentials = true}, __api = 2}
       },
       basicauth_credential = {
         {username = "username", password = "password", __consumer = 1}

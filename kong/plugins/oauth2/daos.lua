@@ -25,7 +25,7 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
     client_id = { type = "string", required = false, unique = true, queryable = true, func = generate_if_missing },
     client_secret = { type = "string", required = false, unique = true, func = generate_if_missing },
     redirect_uri = { type = "url", required = true },
-    created_at = { type = "timestamp", dao_insert_value = true }
+    created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   }
 }
 
@@ -36,7 +36,7 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
     code = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
     authenticated_userid = { type = "string", required = false, queryable = true },
     scope = { type = "string" },
-    created_at = { type = "timestamp", dao_insert_value = true }
+    created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   }
 }
 
@@ -52,7 +52,7 @@ local OAUTH2_TOKENS_SCHEMA = {
     expires_in = { type = "number", required = true },
     authenticated_userid = { type = "string", required = false, queryable = true },
     scope = { type = "string" },
-    created_at = { type = "timestamp", dao_insert_value = true }
+    created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   }
 }
 
