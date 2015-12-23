@@ -3,7 +3,7 @@
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local signal = require "kong.cli.utils.signal"
-local args = require("lapp")(string.format([[
+local args = require("kong.vendor.lapp")(string.format([[
 Restart the Kong instance running in the configured 'nginx_working_dir'.
 
 Kong will be shutdown before restarting. For a zero-downtime reload

@@ -193,7 +193,7 @@ nginx: |
     {{lua_ssl_trusted_certificate}}
 
     init_by_lua '
-      kong = require "kong"
+      kong = require "kong.kong_main"
       local status, err = pcall(kong.init)
       if not status then
         ngx.log(ngx.ERR, "Startup error: "..err)

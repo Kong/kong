@@ -6,7 +6,7 @@ Kong CLI utilities
 
 local ansicolors = require "ansicolors"
 local constants = require "kong.constants"
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local lpath = require "luarocks.path"
 local IO = require "kong.tools.io"
 

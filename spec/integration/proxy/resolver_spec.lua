@@ -1,4 +1,4 @@
-local ssl = require "ssl"
+local ssl = require "kong.vendor.ssl"
 local url = require "socket.url"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"

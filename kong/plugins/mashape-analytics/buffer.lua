@@ -22,7 +22,7 @@
 -- @see handler.lua
 
 local json = require "cjson"
-local http = require "resty_http"
+local http = require "kong.vendor.resty_http"
 
 local table_getn = table.getn
 local ngx_now = ngx.now

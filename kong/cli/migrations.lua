@@ -7,7 +7,7 @@ local utils = require "kong.tools.utils"
 local input = require "kong.cli.utils.input"
 local config = require "kong.tools.config_loader"
 local dao = require "kong.tools.dao_loader"
-local lapp = require "lapp"
+local lapp = require "kong.vendor.lapp"
 local args = lapp(string.format([[
 Kong datastore migrations.
 

@@ -1,4 +1,4 @@
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 
 local Faker = Object:extend()
 
