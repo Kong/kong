@@ -5,7 +5,7 @@ machine:
 dependencies:
     pre:
         - "bash .ci/setup_kong.sh"
-        - "while ! cqlsh -e 'exit'; do :; done"
+        - "curl -sSL https://s3.amazonaws.com/circle-downloads/wait-for-cassandra.sh | sh"
     post:
         - sudo make dev
 test:
