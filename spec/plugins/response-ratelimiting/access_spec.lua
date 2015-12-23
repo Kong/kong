@@ -1,9 +1,11 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local timestamp = require "kong.tools.timestamp"
+local cjson = require "cjson"
 
 local PROXY_URL = spec_helper.PROXY_URL
 local SLEEP_VALUE = "0.5"
+local RESPONSE_BLOCKED_MESSAGE = "API quota exceeded"
 
 local function wait()
   -- If the minute elapses in the middle of the test, then the test will
@@ -68,8 +70,10 @@ describe("RateLimiting Plugin", function()
       end
 
       -- Additonal request, while limit is 6/minute
-      local _, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test1.com"})
+      local response, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test1.com"})
+      local body = cjson.decode(response)
       assert.are.equal(429, status)
+      assert.are.equal(RESPONSE_BLOCKED_MESSAGE, body.message)
 
     end)
 
@@ -88,9 +92,10 @@ describe("RateLimiting Plugin", function()
         os.execute("sleep "..SLEEP_VALUE) -- The increment happens in log_by_lua, give it some time
       end
 
-      local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=2, image = 1"}, {host = "test2.com"})
-
+      local response, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=2, image = 1"}, {host = "test2.com"})
+      local body = cjson.decode(response)
       assert.are.equal(429, status)
+      assert.are.equal(RESPONSE_BLOCKED_MESSAGE, body.message)
       assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
       assert.are.equal("4", headers["x-ratelimit-remaining-video-hour"])
       assert.are.equal("1", headers["x-ratelimit-remaining-image-minute"])
@@ -115,8 +120,10 @@ describe("RateLimiting Plugin", function()
         end
 
         -- Third query, while limit is 2/minute
-        local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey123", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
+        local response, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey123", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
+        local body = cjson.decode(response)
         assert.are.equal(429, status)
+        assert.are.equal(RESPONSE_BLOCKED_MESSAGE, body.message)
         assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
         assert.are.equal("2", headers["x-ratelimit-limit-video-minute"])
       end)
@@ -125,7 +132,8 @@ describe("RateLimiting Plugin", function()
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 6
 
-        for i = 1, limit do
+        -- Do 5 requests while incrementing the limit
+        for i = 1, (limit-1) do
           local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey124", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
           assert.are.equal(200, status)
           assert.are.same(tostring(limit), headers["x-ratelimit-limit-video-minute"])
@@ -133,11 +141,26 @@ describe("RateLimiting Plugin", function()
           os.execute("sleep "..SLEEP_VALUE) -- The increment happens in log_by_lua, give it some time
         end
 
-        -- Third query, while limit is 2/minute
+        -- Do a 6th request that doesn't increment the limit:
         local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey124"}, {host = "test3.com"})
+        assert.are.equal(200, status)
+        assert.are.equal("1", headers["x-ratelimit-remaining-video-minute"])
+        assert.are.equal("6", headers["x-ratelimit-limit-video-minute"])
+
+        -- Do a 7th request that increments the limit and should NOT be blocked because the previous didn't increment:
+        local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey124", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
         assert.are.equal(200, status)
         assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
         assert.are.equal("6", headers["x-ratelimit-limit-video-minute"])
+
+        -- Do a another request that gets blocked:
+        local response, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey124", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(429, status)
+        assert.are.equal(RESPONSE_BLOCKED_MESSAGE, body.message)
+        assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
+        assert.are.equal("6", headers["x-ratelimit-limit-video-minute"])
+
       end)
 
       it("should get blocked if exceeding limit", function()
@@ -152,9 +175,11 @@ describe("RateLimiting Plugin", function()
           os.execute("sleep "..SLEEP_VALUE) -- The increment happens in log_by_lua, give it some time
         end
 
-        -- Third query, while limit is 2/minute
-        local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey125", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
+        -- Seventh query, while limit is 6/minute
+        local response, status, headers = http_client.get(PROXY_URL.."/response-headers", {apikey = "apikey125", ["x-kong-limit"] = "video=1"}, {host = "test3.com"})
+        local body = cjson.decode(response)
         assert.are.equal(429, status)
+        assert.are.equal(RESPONSE_BLOCKED_MESSAGE, body.message)
         assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
         assert.are.equal("6", headers["x-ratelimit-limit-video-minute"])
       end)
