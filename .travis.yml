@@ -16,6 +16,5 @@ install:
 script:
   - "busted -o spec/busted-print.lua --coverage spec/"
   - "make lint"
-  - "cat nginx_tmp/logs/error.log"
 
 after_success: "luacov-coveralls -i kong"
