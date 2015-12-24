@@ -26,19 +26,21 @@ function Dnsmasq:start()
       return nil, err
     end
 
-    local res, code = IO.os_execute(cmd.." -p "..self._configuration.dns_resolver.port.." --pid-file="..self._pid_file_path.." -N -o")    
+    -- dnsmasq always listens on the local 127.0.0.1 address
+    local res, code = IO.os_execute(cmd.." -p "..self._configuration.dns_resolver.port.." --pid-file="..self._pid_file_path.." -N -o --listen-address=127.0.0.1")    
     if code == 0 then
       while not self:is_running() do
         -- Wait for PID file to be created
       end
 
       setmetatable(self._configuration.dns_resolver, require "kong.tools.printable")
-      logger:info(string.format([[dnsmasq ...........%s]], tostring(self._configuration.dns_resolver)))
+      logger:info(string.format([[dnsmasq............%s]], tostring(self._configuration.dns_resolver)))
       return true
     else
       return nil, res
     end
   end
+  return true
 end
 
 function Dnsmasq:stop()

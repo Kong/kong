@@ -25,7 +25,7 @@ function Serf:new(configuration)
 end
 
 function Serf:_get_cmd()
-  local cmd, err = Serf.super._get_cmd(self, {}, function(path) 
+  local cmd, err = Serf.super._get_cmd(self, {}, function(path)
     local res, code = IO.os_execute(path.." version")
     if code == 0 then
       return res:match("^Serf v0.7.0")
@@ -57,7 +57,7 @@ fi
 
 echo $PAYLOAD > /tmp/payload
 
-COMMAND='require("kong.tools.http_client").post("http://127.0.0.1:]]..self._configuration.admin_api_port..[[/cluster/events/", ]].."[['${PAYLOAD}']]"..[[, {["content-type"] = "application/json"})'
+COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[['${PAYLOAD}']]"..[[, {["content-type"] = "application/json"})'
 
 echo $COMMAND | ]]..luajit_path..[[
 ]]
@@ -75,12 +75,20 @@ echo $COMMAND | ]]..luajit_path..[[
   return true
 end
 
+
+function Serf:_join_node(address)
+  local _, err = self:invoke_signal("join", {address})
+  if err then
+    return false
+  end
+  return true
+end
+
 function Serf:_autojoin(current_node_name)
   if self._configuration.cluster["auto-join"] then
+    logger:info("Trying to auto-join Kong nodes, please wait..")
 
-    logger:info("Auto-joining cluster, please wait..")
-
-    -- Delete current node just in case it was there
+    -- Delete current node just in case it was there (due to an inconsistency caused by a crash)
     local _, err = self._dao_factory.nodes:delete({
       name = current_node_name
     })
@@ -95,25 +103,22 @@ function Serf:_autojoin(current_node_name)
       if #nodes == 0 then
         logger:warn("Cannot auto-join the cluster because no nodes were found")
       else
-
-        -- Sort by newest to oldest
+        -- Sort by newest to oldest (although by TTL would be a better sort)
         table.sort(nodes, function(a, b)
           return a.created_at > b.created_at
         end)
 
         local joined
         for _, v in ipairs(nodes) do
-          local _, err = self:invoke_signal("join", {v.cluster_listening_address})
-          if err then
-            logger:warn("Cannot join "..v.cluster_listening_address..". If the node does not exist anymore it will be automatically purged.")
-          else
+          if self:_join_node(v.cluster_listening_address) then
             logger:info("Successfully auto-joined "..v.cluster_listening_address)
             joined = true
             break
+          else
+            logger:warn("Cannot join "..v.cluster_listening_address..". If the node does not exist anymore it will be automatically purged.")
           end
         end
         if not joined then
-          --return false, "Could not join the existing cluster"
           logger:warn("Could not join the existing cluster")
         end
       end
@@ -136,8 +141,8 @@ function Serf:start()
 
   -- Prepare arguments
   local cmd_args = {
-    ["-bind"] = self._configuration.listen_address..":"..self._configuration.cluster_listening_port,
-    ["-rpc-addr"] = "127.0.0.1:"..self._configuration.cluster_rpc_listening_port,
+    ["-bind"] = self._configuration.cluster_listen,
+    ["-rpc-addr"] = self._configuration.cluster_listen_rpc,
     ["-advertise"] = self._configuration.cluster.advertise,
     ["-encrypt"] = self._configuration.cluster.encrypt,
     ["-log-level"] = "err",
@@ -184,7 +189,7 @@ function Serf:invoke_signal(signal, args, no_rpc, skip_running_check)
 
   if not args then args = {} end
   setmetatable(args, require "kong.tools.printable")
-  local res, code = IO.os_execute(cmd.." "..signal.." "..(no_rpc and "" or "-rpc-addr=127.0.0.1:"..self._configuration.cluster_rpc_listening_port).." "..tostring(args), true)
+  local res, code = IO.os_execute(cmd.." "..signal.." "..(no_rpc and "" or "-rpc-addr="..self._configuration.cluster_listen_rpc).." "..tostring(args), true)
   if code == 0 then
     return res
   else
@@ -195,7 +200,7 @@ end
 function Serf:event(t_payload)
   local args = {
     ["-coalesce"] = false,
-    ["-rpc-addr"] = "127.0.0.1:"..self._configuration.cluster_rpc_listening_port
+    ["-rpc-addr"] = self._configuration.cluster_listen_rpc
   }
   setmetatable(args, require "kong.tools.printable")
 

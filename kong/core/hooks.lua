@@ -22,17 +22,21 @@ local function invalidate(message_t)
   end
 end
 
-local function retrieve_member_address(name)
+local function get_cluster_members()
   local serf = require("kong.cli.services.serf")(configuration)
   local res, err = serf:invoke_signal("members", { ["-format"] = "json" })
   if err then
     ngx.log(ngx.ERR, err)
   else
-    local members = cjson.decode(res).members
-    for _, member in ipairs(members) do
-      if member.name == name then
-        return member.addr
-      end
+    return cjson.decode(res).members
+  end
+end
+
+local function retrieve_member_address(name)
+  local members = get_cluster_members()
+  for _, member in ipairs(members) do
+    if member.name == name then
+      return member.addr
     end
   end
 end
@@ -64,7 +68,7 @@ local function member_leave(message_t)
   end
 end
 
-local function member_update(message_t)
+local function member_update(message_t, is_reap)
   local member = parse_member(message_t.entity)
 
   local nodes, err = dao.nodes:find_by_keys({
@@ -83,6 +87,11 @@ local function member_update(message_t)
       ngx.log(ngx.ERR, tostring(err))
       return
     end
+  end
+
+  if is_reap and dao.nodes:count_by_keys({}) > 1 then
+    -- Purge the cache when a failed node re-appears 
+    cache.delete_all()
   end
 end
 
@@ -107,9 +116,14 @@ local function member_join(message_t)
       return
     end
   elseif #nodes == 1 then -- Update
-    member_update(message_t, "alive")
+    member_update(message_t)
   else
     error("Inconsistency error. More than one node found with name "..member.name)
+  end
+
+  -- Purge the cache when a new node joins
+  if dao.nodes:count_by_keys({}) > 1 then -- If it's only one node, no need to delete the cache
+    cache.delete_all()
   end
 end
 
@@ -143,6 +157,6 @@ return {
     member_update(message_t)
   end,
   [events.TYPES["MEMBER-REAP"]] = function(message_t)
-    member_update(message_t)
+    member_update(message_t, true)
   end
 }

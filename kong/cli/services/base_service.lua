@@ -53,11 +53,11 @@ function BaseService:new(name, nginx_working_dir)
 end
 
 function BaseService:is_running()
-  local result = nil
+  local result = false
 
   local pid = IO.read_file(self._pid_file_path)
   if pid then
-    local _, code = IO.os_execute("ps -p "..stringy.strip(pid))
+    local _, code = IO.os_execute("kill -0 "..stringy.strip(pid))
     if code and code == 0 then
       result = pid
     end

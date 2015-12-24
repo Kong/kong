@@ -13,17 +13,16 @@ Usage: kong cluster <command> <args> [options]
 
 Commands:
   <command> (string) where <command> is one of:
-                       join, members, force-leave, reachability, keygen
+                       members, force-leave, reachability, keygen
 
 Options:
   -c,--config (default %s) path to configuration file
 
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
-local JOIN = "join"
 local KEYGEN = "keygen"
 local FORCE_LEAVE = "force-leave"
-local SUPPORTED_COMMANDS = {JOIN, "members", KEYGEN, "reachability", FORCE_LEAVE}
+local SUPPORTED_COMMANDS = {"members", KEYGEN, "reachability", FORCE_LEAVE}
 
 if not utils.table_contains(SUPPORTED_COMMANDS, args.command) then
   lapp.quit("Invalid cluster command. Supported commands are: "..table.concat(SUPPORTED_COMMANDS, ", "))
@@ -37,10 +36,7 @@ args.config = nil
 
 local skip_running_check
 
-if signal == JOIN and utils.table_size(args) ~= 1 then
-  logger:error("You must specify one address")
-  os.exit(1)
-elseif signal == FORCE_LEAVE and utils.table_size(args) ~= 1 then
+if signal == FORCE_LEAVE and utils.table_size(args) ~= 1 then
   logger:error("You must specify a node name")
   os.exit(1)
 elseif signal == KEYGEN then
