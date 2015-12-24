@@ -226,25 +226,24 @@ $ ldoc -c config.ld kong/
 $ make doc
 ```
 
-#### Makefile Operations
+We maintain this documentation on the  [Public Lua API Reference](https://getkong.org/docs/latest/lua-reference/) so it is unlikely that you will have to generate it, but it is useful to keep that information in mind when documenting your modules if you wish to contribute.
+
+#### Makefile
 
 When developing, you can use the `Makefile` for doing the following operations:
 
-| Name          | Description                                                              |
-| -------------:| -------------------------------------------------------------------------|
-| `install`     | Install the Kong luarock globally                                        |
-| `dev`         | Setup your development environment                                       |
-| `clean`       | Clean your development environment                                       |
-| `start`       | Start the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)             |
-| `restart`     | Restart the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)           |
-| `seed`        | Seed the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
-| `drop`        | Drop the `DEVELOPMENT` environment (`kong_DEVELOPMENT.yml`)              |
-| `lint`        | Lint Lua files in `kong/` and `spec/`                                    |
-| `test`        | Run the unit tests                                                       |
-| `test-integration` | Run the integration tests (Kong + DAO)                               |
-| `test-plugins` | Run unit + integration tests of all plugins                              |
-| `test-all`    | Run all unit + integration tests at once                                 |
-| `coverage`    | Run all tests + coverage report                                          |
+| Name               | Description                                             |
+| ------------------:| --------------------------------------------------------|
+| `install`          | Install the Kong luarock globally                       |
+| `dev`              | Setup your development environment                      |
+| `clean`            | Clean your development environment                      |
+| `doc`              | Generate the ldoc documentation                         |
+| `lint`             | Lint Lua files in `kong/` and `spec/`                   |
+| `test`             | Run the unit tests suite                                |
+| `test-integration` | Run the integration tests suite                         |
+| `test-plugins`     | Run the plugins test suite                              |
+| `test-all`         | Run all unit + integration tests at once                |
+| `coverage`         | Run all tests + coverage report                         |
 
 ## Enterprise Support
 
