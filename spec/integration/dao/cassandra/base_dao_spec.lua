@@ -734,11 +734,6 @@ describe("Cassandra", function()
         local ok, err = dao_factory.plugins:delete(rows[1])
         assert.falsy(err)
         assert.True(ok)
-
-        rows, err = session:execute("SELECT * FROM plugins WHERE id = ?", {cassandra.uuid(rows[1].id)})
-        assert.falsy(err)
-        assert.truthy(rows)
-        assert.equal(0, #rows)
       end)
       it("should delete an entity when it can be found without its primay key", function()
         local ok, err = dao_factory.consumers:delete(nil, {
@@ -784,6 +779,53 @@ describe("Cassandra", function()
           assert.equal(100, #apis)
         end)
       end)
+    end)
+
+    --
+    -- Nodes tests
+    --
+
+    describe("Nodes", function()
+
+      setup(function()
+        spec_helper.drop_db()
+        spec_helper.seed_db(100)
+      end)
+
+      describe(":insert()", function()
+        local node, err = dao_factory.nodes:insert({
+          cluster_listening_address = "wot.hello.com:1111",
+          name = "wot"
+        })
+        assert.falsy(err)
+        assert.truthy(node)
+        assert.equal("wot.hello.com:1111", node.cluster_listening_address)
+      end)
+
+      describe(":find_by_keys() and :delete()", function()
+        local nodes, err = dao_factory.nodes:find_by_keys({
+          cluster_listening_address = "wot.hello.com:1111"
+        })
+
+        assert.falsy(err)
+        assert.truthy(nodes)
+        assert.equal(1, #nodes)
+
+        local ok, err = dao_factory.nodes:delete({
+          name = table.remove(nodes, 1).name
+        })
+
+        assert.True(ok)
+        assert.falsy(err)
+      end)
+
+      describe(":find_all()", function()
+        local nodes, err = dao_factory.nodes:find_all()
+        assert.falsy(err)
+        assert.truthy(nodes)
+        assert.equal(100, #nodes)
+      end)
+
     end)
 
     --
