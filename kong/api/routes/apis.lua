@@ -2,6 +2,7 @@ local crud = require "kong.api.crud_helpers"
 local syslog = require "kong.tools.syslog"
 local constants = require "kong.constants"
 local validations = require "kong.dao.schemas_validation"
+local is_uuid = validations.is_valid_uuid
 
 return {
   ["/apis/"] = {
@@ -20,24 +21,22 @@ return {
 
   ["/apis/:name_or_id"] = {
     before = function(self, dao_factory)
-      if validations.is_valid_uuid(self.params.name_or_id) then
-        self.params.id = self.params.name_or_id
-      else
-        self.params.name = self.params.name_or_id
-      end
+      self.fetch_keys = {
+        [is_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+      }
       self.params.name_or_id = nil
     end,
 
     GET = function(self, dao_factory, helpers)
-      crud.get(self.params, dao_factory.apis)
+      crud.get(self.fetch_keys, dao_factory.apis)
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.apis)
+      crud.patch(self.params, dao_factory.apis, self.fetch_keys)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.params, dao_factory.apis)
+      crud.delete(nil, dao_factory.apis, self.fetch_keys)
     end
   },
 
@@ -51,7 +50,7 @@ return {
       crud.paginated_set(self, dao_factory.plugins)
     end,
 
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
         if configuration.send_anonymous_reports then
           data.signal = constants.SYSLOG.API
@@ -60,7 +59,7 @@ return {
       end)
     end,
 
-    PUT = function(self, dao_factory, helpers)
+    PUT = function(self, dao_factory)
       crud.put(self.params, dao_factory.plugins)
     end
   },

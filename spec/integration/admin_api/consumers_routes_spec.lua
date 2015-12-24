@@ -202,6 +202,16 @@ describe("Admin API", function()
             assert.equal("patch-updated", body.username)
           end
         end)
+        it_content_types("should update by username", function(content_type)
+          return function()
+            local response, status = http_client.patch(BASE_URL..consumer.username, {
+              username = "patch-updated"
+            }, {["content-type"] = content_type})
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.equal("patch-updated", body.username)
+          end
+        end)
         describe("errors", function()
           it_content_types("should return 404 if not found", function(content_type)
             return function()
@@ -229,8 +239,20 @@ describe("Admin API", function()
       end)
 
       describe("DELETE", function()
-        it("delete a Consumer", function()
+        local dao_factory = spec_helper.get_env().dao_factory
+        setup(function()
+          local _, err = dao_factory.consumers:insert {
+            username = "to-delete"
+          }
+          assert.falsy(err)
+        end)
+        it("delete a Consumer by id", function()
           local response, status = http_client.delete(BASE_URL..consumer.id)
+          assert.equal(204, status)
+          assert.falsy(response)
+        end)
+        it("delete a Consumer by name", function()
+          local response, status = http_client.delete(BASE_URL..consumer.username)
           assert.equal(204, status)
           assert.falsy(response)
         end)
