@@ -2,21 +2,22 @@ local responses = require "kong.tools.responses"
 local validations = require "kong.dao.schemas_validation"
 local app_helpers = require "lapis.application"
 local utils = require "kong.tools.utils"
+local is_uuid = validations.is_valid_uuid
 
 local _M = {}
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local fetch_keys = {
-    [validations.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+    [is_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
   }
   self.params.name_or_id = nil
 
-  local data, err = dao_factory.apis:find_by_keys(fetch_keys)
+  local rows, err = dao_factory.apis:find_by_keys(fetch_keys)
   if err then
     return helpers.yield_error(err)
   end
 
-  self.api = data[1]
+  self.api = rows[1]
   if not self.api then
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
@@ -24,16 +25,16 @@ end
 
 function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
   local fetch_keys = {
-    [validations.is_valid_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
+    [is_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
   }
   self.params.username_or_id = nil
 
-  local data, err = dao_factory.consumers:find_by_keys(fetch_keys)
+  local rows, err = dao_factory.consumers:find_by_keys(fetch_keys)
   if err then
     return helpers.yield_error(err)
   end
 
-  self.consumer = data[1]
+  self.consumer = rows[1]
   if not self.consumer then
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
@@ -131,8 +132,8 @@ function _M.post(params, dao_collection, success)
   end
 end
 
-function _M.patch(params, dao_collection)
-  local updated_entity, err = dao_collection:update(params)
+function _M.patch(params, dao_collection, where_t)
+  local updated_entity, err = dao_collection:update(params, false, where_t)
   if err then
     return app_helpers.yield_error(err)
   elseif updated_entity == nil then
@@ -142,8 +143,8 @@ function _M.patch(params, dao_collection)
   end
 end
 
-function _M.delete(where_t, dao_collection)
-  local ok, err = dao_collection:delete(where_t)
+function _M.delete(primary_key_t, dao_collection, where_t)
+  local ok, err = dao_collection:delete(primary_key_t, where_t)
   if not ok then
     if err then
       return app_helpers.yield_error(err)
