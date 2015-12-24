@@ -1,11 +1,11 @@
 # Microservice & API Management Layer
 [![][kong-logo]][kong-url]
 
-Kong runs in production at [Mashape](https://www.mashape.com) to secure, manage and extend over [15,000 APIs](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices), while handling billions of requests per month. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability.
+Kong runs in production at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices), while handling billions of requests per month. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability.
 
-[Website](http://getkong.org) |
-[Documentation](http://getkong.org/docs) |
-[Installation](http://getkong.org/install) |
+[Website][kong-url] |
+[Documentation](https://getkong.org/docs) |
+[Installation](https://getkong.org/install) |
 [Mailing List][google-groups-url] |
 [Gitter Chat][gitter-url] |
 freenode: [#kong](http://webchat.freenode.net/?channels=kong)
@@ -56,7 +56,7 @@ If you're building for web, mobile or IoT (Internet of Things) you will likely e
 
 ## Benchmarks
 
-We've load tested Kong and Cassandra on AWS; you can see our [benchmark report here](http://getkong.org/about/benchmark/).
+We've load tested Kong and Cassandra on AWS; you can see our [benchmark report here](https://getkong.org/about/benchmark/).
 
 ## Distributions
 
@@ -120,7 +120,7 @@ You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape
 
 If you are planning on developing on Kong, you'll need a development installation. The `next` branch holds the latest unreleased source code.
 
-You can read more about writing your own plugins in the [Plugin Development Guide](https://getkong.org/docs/latest/plugin-development/), or browse an online version of Kong's source code documentation in the [Public Lua API Reference](https://getkong.org/docs/0.5.x/lua-reference/).
+You can read more about writing your own plugins in the [Plugin Development Guide](https://getkong.org/docs/latest/plugin-development/), or browse an online version of Kong's source code documentation in the [Public Lua API Reference](https://getkong.org/docs/latest/lua-reference/).
 
 #### Vagrant
 
@@ -128,7 +128,7 @@ You can use a Vagrant box running Kong and Cassandra that you can find at [Masha
 
 #### Source Install
 
-First, you will need to already have Kong installed. Install Kong by following one of the methods described at [getkong.org/download](http://getkong.org/download). Then, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running. These steps will override your Kong installation with the latest source code:
+First, you will need to already have Kong installed. Install Kong by following one of the methods described at [getkong.org/download](https://getkong.org/download). Then, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running. These steps will override your Kong installation with the latest source code:
 
 ```shell
 $ git clone https://github.com/Mashape/kong
@@ -247,7 +247,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 
 ## Enterprise Support
 
-Support, Demo, Training, API Certifications and Consulting available at http://getkong.org/enterprise.
+Support, Demo, Training, API Certifications and Consulting available at https://getkong.org/enterprise.
 
 ## License
 
@@ -267,14 +267,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-[kong-url]: http://getkong.org/
+[kong-url]: https://getkong.org/
+[mashape-url]: https://www.mashape.com
 
 [kong-logo]: http://i.imgur.com/4jyQQAZ.png
 [kong-benefits]: http://cl.ly/image/1B3J3b3h1H1c/Image%202015-07-07%20at%206.57.25%20PM.png
-
-[mashape-url]: https://www.mashape.com
 
 [gitter-url]: https://gitter.im/Mashape/kong
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
 
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
+
