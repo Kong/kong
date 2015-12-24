@@ -211,28 +211,39 @@ end
 -- Performs schema validation, 'UNIQUE' and 'FOREIGN' checks.
 -- @see check_unique_fields
 -- @see check_foreign_fields
--- @param[type=table] t A table representing the entity to update. It must contain the entity's PRIMARY KEY (can be composite).
+-- @param[type=table] t A table representing the entity to update. It should contain the entity's PRIMARY KEY fields (can be composite). If not, then a selector can be passed as argument #3.
 -- @param[type=boolean] full  If true, set to CQL `null` any column not in the `t` argument, such as a PUT query would do for example.
+-- @param[type=table] where_t A table containing the PRIMARY KEY fields of the row to update.
 -- @treturn table `result`: Updated entity or nil.
 -- @treturn table `error`: Error if any during the execution.
-function BaseDao:update(t, full)
+function BaseDao:update(t, full, where_t)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
 
   -- Check if the entity exists to prevent upsert and retrieve its old values
-  local entity, err = self:find_by_primary_key(t)
-  if entity == nil or err then
-    return nil, err
+  local old_entity, err
+  if where_t ~= nil then
+    old_entity, err = self:find_by_keys(where_t)
+    if not old_entity or #old_entity ~= 1 or err then
+      return nil, err
+    else
+      old_entity = old_entity[1]
+    end
+  else
+    old_entity, err = self:find_by_primary_key(t)
+    if old_entity == nil or err then
+      return nil, err
+    end
   end
 
   if not full then
-    complete_partial_entity(t, entity, self._schema)
+    complete_partial_entity(t, old_entity, self._schema)
   end
 
   -- Validate schema
   local ok, errors, err = validations.validate_entity(t, self._schema, {
     update = true,
-    old_t = entity,
+    old_t = old_entity,
     full_update = full,
     dao = self._factory
   })
@@ -257,7 +268,7 @@ function BaseDao:update(t, full)
   end
 
   -- Extract primary key from the entity
-  local t_primary_key, t_no_primary_key = extract_primary_key(t, self._primary_key, self._clustering_key)
+  local t_primary_key, t_no_primary_key = extract_primary_key(old_entity, self._primary_key, self._clustering_key)
 
   -- If full, add CQL `null` to the SET part of the query for nil columns
   if full then
@@ -356,38 +367,41 @@ end
 
 ---
 -- Delete the row with PRIMARY KEY from the configured table (**_table** attribute).
--- @param[table=table] where_t A table containing the PRIMARY KEY (columns/values) of the row to delete
+-- @param[table=table] primary_key_t A table containing the PRIMARY KEY (columns/values) of the row to delete
 -- @treturn boolean True if deleted, false if otherwise or not found.
 -- @treturn table Error if any during the query execution or the cascade delete hook.
-function BaseDao:delete(where_t)
-  assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
-  assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
-
+function BaseDao:delete(primary_key_t, where_t)
   -- Test if exists first
-  local res, err = self:find_by_primary_key(where_t)
-  if err then
-    return false, err
-  elseif not res then
-    return false
+  local row, err
+  if where_t ~= nil then
+    local rows, err = self:find_by_keys(where_t)
+    if err or rows and #rows ~= 1 then
+      return false, err
+    end
+    row = rows[1]
+  else
+    row, err = self:find_by_primary_key(primary_key_t)
+    if row == nil or err then
+      return false, err
+    end
   end
 
-  local t_primary_key = extract_primary_key(where_t, self._primary_key, self._clustering_key)
+  local t_primary_key = extract_primary_key(row, self._primary_key, self._clustering_key)
   local delete_q, where_columns = query_builder.delete(self._table, t_primary_key)
-  local results, err = self:build_args_and_execute(delete_q, where_columns, where_t)
-  if err then
+  local ok, err = self:build_args_and_execute(delete_q, where_columns, row)
+  if not ok then
     return false, err
   end
 
   -- Delete successful, trigger cascade delete hooks if any.
-  local foreign_err
   for _, hook in ipairs(self.cascade_delete_hooks) do
-    foreign_err = select(2, hook(t_primary_key))
+    local foreign_err = select(2, hook(t_primary_key))
     if foreign_err then
       return false, foreign_err
     end
   end
 
-  return results
+  return true
 end
 
 ---

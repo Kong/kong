@@ -195,6 +195,16 @@ describe("Admin API", function()
             assert.equal("patch-updated", body.name)
           end
         end)
+        it_content_types("should update by name", function(content_type)
+          return function()
+            local response, status = http_client.patch(BASE_URL..api.name, {
+              name = "patch-updated"
+            }, {["content-type"] = content_type})
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.equal("patch-updated", body.name)
+          end
+        end)
         describe("errors", function()
           it_content_types("should return 404 if not found", function(content_type)
             return function()
@@ -218,8 +228,21 @@ describe("Admin API", function()
       end)
 
       describe("DELETE", function()
-        it("delete an API", function()
+        before_each(function()
+          local _, err = dao_factory.apis:insert {
+            name = "to-delete",
+            request_host = "to-delete.com",
+            upstream_url = "http://mockbin.com"
+          }
+          assert.falsy(err)
+        end)
+        it("delete an API by id", function()
           local response, status = http_client.delete(BASE_URL..api.id)
+          assert.equal(204, status)
+          assert.falsy(response)
+        end)
+        it("delete an API by name #only", function()
+          local response, status = http_client.delete(BASE_URL.."to-delete")
           assert.equal(204, status)
           assert.falsy(response)
         end)

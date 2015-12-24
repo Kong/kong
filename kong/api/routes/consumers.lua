@@ -1,5 +1,6 @@
 local validations = require "kong.dao.schemas_validation"
 local crud = require "kong.api.crud_helpers"
+local is_uuid = validations.is_valid_uuid
 
 return {
   ["/consumers/"] = {
@@ -18,24 +19,22 @@ return {
 
   ["/consumers/:username_or_id"] = {
     before = function(self, dao_factory)
-      if validations.is_valid_uuid(self.params.username_or_id) then
-        self.params.id = self.params.username_or_id
-      else
-        self.params.username = self.params.username_or_id
-      end
+      self.fetch_keys = {
+        [is_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
+      }
       self.params.username_or_id = nil
     end,
 
-    GET = function(self, dao_factory, helpers)
-      crud.get(self.params, dao_factory.consumers)
+    GET = function(self, dao_factory)
+      crud.get(self.fetch_keys, dao_factory.consumers)
     end,
 
-    PATCH = function(self, dao_factory, helpers)
-      crud.patch(self.params, dao_factory.consumers)
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.consumers, self.fetch_keys)
     end,
 
-    DELETE = function(self, dao_factory, helpers)
-      crud.delete(self.params, dao_factory.consumers)
+    DELETE = function(self, dao_factory)
+      crud.delete(nil, dao_factory.consumers, self.fetch_keys)
     end
   }
 }
