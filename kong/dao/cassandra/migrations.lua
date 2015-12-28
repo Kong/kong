@@ -8,7 +8,7 @@ function Migrations:new(properties)
   self._table = "schema_migrations"
   self.queries = {
     get_keyspace = [[
-      SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?;
+      SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?;
     ]],
     add_migration = [[
       UPDATE schema_migrations SET migrations = migrations + ? WHERE id = ?;
