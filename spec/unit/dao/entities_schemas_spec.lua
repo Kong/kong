@@ -308,7 +308,7 @@ describe("Entities Schemas", function()
       -- Insert response-transformer, whose default config has no default values, and should be empty
       local plugin2 = {name = "response-transformer", api_id = "stub"}
       local valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
-      assert.same({remove = {headers = {}}, replace = {headers = {}}, add = {headers = {}},  append = {headers = {}}}, plugin2.config)
+      assert.same({remove = {headers = {}, json = {}}, replace = {headers = {}, json = {}}, add = {headers = {}, json = {}},  append = {headers = {}, json = {}}}, plugin2.config)
       assert.True(valid)
     end)
 
