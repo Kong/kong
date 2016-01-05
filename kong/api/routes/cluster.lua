@@ -11,7 +11,7 @@ return {
     GET = function(self, dao_factory, helpers)
       local res, err = Serf(configuration):invoke_signal("members", {["-format"] = "json"})
       if err then
-        return helpers.yield_error(err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
 
       local members = cjson.decode(res).members

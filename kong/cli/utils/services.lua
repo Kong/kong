@@ -76,10 +76,9 @@ function _M.check_status(configuration, configuration_path)
 end
 
 function _M.stop_all(configuration, configuration_path)
-  -- Stop in reverse order to keep dependencies running
-  for index = #services,1,-1 do
-    services[index](configuration, configuration_path):stop()
-  end   
+  for _, service in ipairs(services) do
+    service(configuration, configuration_path):stop()
+  end
 end
 
 function _M.start_all(configuration, configuration_path)

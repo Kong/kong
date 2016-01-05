@@ -14,11 +14,24 @@ describe("Admin API", function()
     spec_helper.stop_kong()
   end)
 
+  describe("/cluster/events/", function()
+    local BASE_URL = spec_helper.API_URL.."/cluster/events"
+
+    describe("POST", function()
+
+      it("[SUCCESS] should post a new event", function()
+        local _, status = http_client.post(BASE_URL, {}, {})
+        assert.equal(200, status)
+      end)
+
+    end)
+
+  end)
+
   describe("/cluster/", function()
     local BASE_URL = spec_helper.API_URL.."/cluster/"
 
     describe("GET", function()
-
       it("[SUCCESS] should get the list of members", function()
         os.execute("sleep 2") -- Let's wait for serf to register the node
 
@@ -37,22 +50,15 @@ describe("Admin API", function()
 
         assert.equal("alive", member.status)
       end)
+      it("[FAILURE] should fail when serf is not running anymore", function()
+        os.execute("pkill -9 serf")
 
-    end)
-
-  end)
-
-  describe("/cluster/events/", function()
-    local BASE_URL = spec_helper.API_URL.."/cluster/events"
-
-    describe("POST", function()
-
-      it("[SUCCESS] should post a new event", function()
-        local _, status = http_client.post(BASE_URL, {}, {})
-        assert.equal(200, status)
+        local response, status = http_client.get(BASE_URL, {}, {})
+        assert.equal(500, status)
       end)
-
     end)
 
   end)
+
+  
 end)

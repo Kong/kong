@@ -33,7 +33,7 @@ function Dnsmasq:start()
       end
 
       setmetatable(self._configuration.dns_resolver, require "kong.tools.printable")
-      logger:info(string.format([[dnsmasq ...........%s]], tostring(self._configuration.dns_resolver)))
+      logger:info(string.format([[dnsmasq............%s]], tostring(self._configuration.dns_resolver)))
       return true
     else
       return nil, res
