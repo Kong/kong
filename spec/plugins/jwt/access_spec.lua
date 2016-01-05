@@ -21,7 +21,8 @@ describe("JWT access", function()
       api = {
         {name = "tests-jwt", request_host = "jwt.com", upstream_url = "http://mockbin.com"},
         {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"},
-        {name = "tests-jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"}
+        {name = "tests-jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-jwt4", request_host = "jwt4.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
         {username = "jwt_tests_consumer"}
@@ -29,7 +30,8 @@ describe("JWT access", function()
       plugin = {
         {name = "jwt", config = {}, __api = 1},
         {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2},
-        {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, __api = 3}
+        {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, __api = 3},
+        {name = "jwt", config = {secret_key_field = "aud"}, __api = 4}
       },
       jwt_secret = {
         {__consumer = 1}
@@ -83,6 +85,17 @@ describe("JWT access", function()
     local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+    assert.equal(200, status)
+    local body = json.decode(response)
+    assert.equal(authorization, body.headers.authorization)
+    assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+  end)
+
+  it("should proxy the request if secret key is stored in a field other than iss", function()
+    PAYLOAD.aud = jwt_secret.key
+    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+    local authorization = "Bearer "..jwt
+    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt4.com", authorization = authorization})
     assert.equal(200, status)
     local body = json.decode(response)
     assert.equal(authorization, body.headers.authorization)
