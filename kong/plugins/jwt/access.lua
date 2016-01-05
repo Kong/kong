@@ -70,8 +70,6 @@ function _M.execute(conf)
     jwt_secret_key_field = conf.secret_key_field
   end
 
-  ngx.log(ngx.DEBUG, "Looking for secret in "..jwt_secret_key_field)
-
   local jwt_secret_key = claims[jwt_secret_key_field]
   if not jwt_secret_key then
     ngx.ctx.stop_phases = true
