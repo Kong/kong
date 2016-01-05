@@ -65,10 +65,7 @@ function _M.execute(conf)
 
   local claims = jwt.claims
 
-  local jwt_secret_key_field = "iss"
-  if conf.secret_key_field then
-    jwt_secret_key_field = conf.secret_key_field
-  end
+  local jwt_secret_key_field = conf.secret_key_field
 
   local jwt_secret_key = claims[jwt_secret_key_field]
   if not jwt_secret_key then
