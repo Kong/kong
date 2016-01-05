@@ -65,10 +65,10 @@ function _M.execute(conf)
 
   local claims = jwt.claims
 
-  local jwt_secret_key = claims.iss
+  local jwt_secret_key = claims[conf.secret_key_field]
   if not jwt_secret_key then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_UNAUTHORIZED("No mandatory 'iss' in claims")
+    return responses.send_HTTP_UNAUTHORIZED("No mandatory '"..conf.secret_key_field.."' in claims")
   end
 
   -- Retrieve the secret
@@ -83,7 +83,7 @@ function _M.execute(conf)
 
   if not jwt_secret then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_FORBIDDEN("No credentials found for given 'iss'")
+    return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.secret_key_field.."'")
   end
 
   -- Now verify the JWT signature
@@ -111,7 +111,7 @@ function _M.execute(conf)
   -- However this should not happen
   if not consumer then
     ngx.ctx.stop_phases = true
-    return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", "iss", jwt_secret_key))
+    return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", conf.secret_key_field, jwt_secret_key))
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
