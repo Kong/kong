@@ -26,7 +26,7 @@ function Dnsmasq:start()
       return nil, err
     end
 
-    local res, code = IO.os_execute(cmd.." -p "..self._configuration.dns_resolver.port.." --pid-file="..self._pid_file_path.." -N -o")    
+    local res, code = IO.os_execute(cmd.." -p "..self._configuration.dns_resolver.port.." --pid-file="..self._pid_file_path.." -N -o --listen-address="..self._configuration.listen_address)    
     if code == 0 then
       while not self:is_running() do
         -- Wait for PID file to be created

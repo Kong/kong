@@ -38,13 +38,24 @@
 # proxy_ssl_port: 8443
 
 ######
+## Port on which the admin API will listen to. The admin API is a private API which lets you
+## manage your Kong infrastructure. It needs to be secured appropriatly.
+# admin_api_port: 8001
+
+######
 ## Port used by the node to communicate with other Kong nodes in the cluster with both UDP and TCP
 ## messages. All the nodes in the cluster must be able to communicate with each other on this port.
 # cluster_listening_port: 7946
 
 ######
 ## Port used by the node to communicate with the local clustering agent (TCP only, and local only).
+## Mainly for debugging purposes.
 # cluster_rpc_listening_port: 7373
+
+######
+## SSL certificates to use.
+# ssl_cert_path: /path/to/certificate.pem
+# ssl_key_path: /path/to/certificate.key
 
 ######
 ## Specify how Kong performs DNS resolution (in the `dns_resolvers_available` property) you want to use.
@@ -59,15 +70,6 @@
     # address: "8.8.8.8:53"
   # dnsmasq:
     # port: 8053
-
-######
-## Port on which the admin API will listen to. The admin API is a private API which lets you
-## manage your Kong infrastructure. It needs to be secured appropriatly.
-# admin_api_port: 8001
-
-######
-## Port on which Kong will start dnsmasq.
-# dnsmasq_port: 8053
 
 ######
 ## Cluster settings
@@ -141,11 +143,6 @@
     ## PasswordAuthenticator scheme.
     # user: cassandra
     # password: cassandra
-
-######
-## SSL certificates to use.
-# ssl_cert_path: /path/to/certificate.pem
-# ssl_key_path: /path/to/certificate.key
 
 ######
 ## Sending anonymous error reports helps Kong developers to understand how it performs.
