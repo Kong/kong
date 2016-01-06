@@ -22,7 +22,28 @@ $ kong reload [-c configuration_file]
 
 **Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly starts new workers taking over the old ones until they all have been terminated. This will guarantee you no drop in your current incoming traffic.
 
-## Upgrade to Kong `0.5.x`
+## Upgrade to `0.6.x`
+
+The configuration file changed in this release. Make sure to check out the new default one and update it to your needs. In particular, make sure that:
+
+```yaml
+databases_available:
+  cassandra:
+    properties:
+      contact_points:
+        - ...
+```
+
+becomes:
+
+```yaml
+databases_available:
+  cassandra:
+    contact_points:
+      - ...
+```
+
+## Upgrade to `0.5.x`
 
 Migrating to 0.5.x can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
 
@@ -154,7 +175,7 @@ cassandra:
       - "localhost:9042"
 ```
 
-## Upgrade to Kong `0.3.x`
+## Upgrade to `0.3.x`
 
 Kong now requires a patch on OpenResty for SSL support. On Homebrew you will need to reinstall OpenResty.
 
