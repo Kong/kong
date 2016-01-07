@@ -1,10 +1,5 @@
 return {
-  ["plugins_available"] = {type = "array",
-    default = {"ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
-               "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
-               "mashape-analytics", "request-transformer", "response-transformer",
-               "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog", "loggly", "datadog"}
-  },
+  ["custom_plugins"] = {type = "array", default = {}},
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
   ["proxy_port"] = {type = "number", default = 8000},
   ["proxy_ssl_port"] = {type = "number", default = 8443},

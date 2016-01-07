@@ -30,6 +30,13 @@ return {
                     return val
                  end
               }),
+  PLUGINS_AVAILABLE = {
+    "ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
+    "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
+    "mashape-analytics", "request-transformer", "response-transformer",
+    "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog", 
+    "loggly", "datadog"
+  },
   -- Non standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",

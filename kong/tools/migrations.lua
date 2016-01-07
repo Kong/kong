@@ -19,7 +19,7 @@ function Migrations:new(dao, kong_config, core_migrations_module, plugins_namesp
     [_CORE_MIGRATIONS_IDENTIFIER] = require(core_migrations_module)
   }
 
-  for _, plugin_identifier in ipairs(kong_config.plugins_available) do
+  for _, plugin_identifier in ipairs(kong_config.plugins) do
     local has_migration, plugin_migrations = utils.load_module_if_exists(fmt("%s.%s.schema.migrations", plugins_namespace, plugin_identifier))
     if has_migration then
       self.migrations[plugin_identifier] = plugin_migrations
