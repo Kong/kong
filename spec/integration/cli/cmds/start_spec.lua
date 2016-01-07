@@ -11,7 +11,13 @@ local API_URL = spec_helper.API_URL
 local function replace_conf_property(key, value)
   local yaml_value = yaml.load(IO.read_file(TEST_CONF))
   yaml_value[key] = value
-  local ok = IO.write_to_file(SERVER_CONF, yaml.dump(yaml_value))
+  local new_config_content = yaml.dump(yaml_value)
+  
+  -- Workaround for https://github.com/lubyk/yaml/issues/2
+  -- This workaround is in two places. To remove it "Find and replace" in the code
+  new_config_content = string.gsub(new_config_content, "(%w+:%s*)([%w%.]+:%d+)", "%1\"%2\"")
+
+  local ok = IO.write_to_file(SERVER_CONF, new_config_content)
   assert.truthy(ok)
 end
 

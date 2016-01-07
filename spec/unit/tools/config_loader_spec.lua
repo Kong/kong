@@ -19,8 +19,11 @@ describe("Configuration validation", function()
     assert.falsy(errors)
 
     assert.truthy(conf.plugins_available)
-    assert.truthy(conf.admin_api_port)
-    assert.truthy(conf.proxy_port)
+    assert.truthy(conf.admin_api_listen)
+    assert.truthy(conf.proxy_listen)
+    assert.truthy(conf.proxy_listen_ssl)
+    assert.truthy(conf.cluster_listen)
+    assert.truthy(conf.cluster_listen_rpc)
     assert.truthy(conf.database)
     assert.truthy(conf.databases_available)
     assert.equal("table", type(conf.databases_available))
@@ -40,8 +43,8 @@ describe("Configuration validation", function()
   end)
   it("should validate various types", function()
     local ok, errors = config.validate({
-      proxy_port = "string",
-      database = 666,
+      proxy_listen = 123,
+      database = 777,
       databases_available = {
         cassandra = {
           contact_points = "127.0.0.1",
@@ -53,8 +56,9 @@ describe("Configuration validation", function()
     })
     assert.False(ok)
     assert.truthy(errors)
-    assert.equal("must be a number", errors.proxy_port)
-    assert.equal("must be a string", errors.database)
+    assert.equal("must be a string", errors.proxy_listen)
+    assert.equal("must be a string", errors.database[1])
+    assert.equal("must be one of: 'cassandra'", errors.database[2])
     assert.equal("must be a array", errors["databases_available.cassandra.contact_points"])
     assert.equal("must be a boolean", errors["databases_available.cassandra.ssl.enabled"])
     assert.falsy(errors.ssl_cert_path)
@@ -79,7 +83,70 @@ describe("Configuration validation", function()
   it("should validate the selected database property", function()
     local ok, errors = config.validate({database = "foo"})
     assert.False(ok)
-    assert.equal("foo is not listed in databases_available", errors.database)
+    assert.equal("must be one of: 'cassandra'", errors.database)
+  end)
+  it("should validate the selected dns_resolver property", function()
+    local ok, errors = config.validate({dns_resolver = "foo"})
+    assert.False(ok)
+    assert.equal("must be one of: 'server, dnsmasq'", errors.dns_resolver)
+  end)
+  it("should validate the host:port listen addresses", function()
+    -- Missing port
+    local ok, errors = config.validate({proxy_listen = "foo"})
+    assert.False(ok)
+    assert.equal("foo is not a valid \"host:port\" value", errors.proxy_listen)
+
+    -- Port invalid
+    ok, errors = config.validate({proxy_listen = "foo:asd"})
+    assert.False(ok)
+    assert.equal("foo:asd is not a valid \"host:port\" value", errors.proxy_listen)
+
+    -- Port too large
+    ok, errors = config.validate({proxy_listen = "foo:8000000"})
+    assert.False(ok)
+    assert.equal("foo:8000000 is not a valid \"host:port\" value", errors.proxy_listen)
+
+    -- Only port
+    ok, errors = config.validate({proxy_listen = "1231"})
+    assert.False(ok)
+    assert.equal("1231 is not a valid \"host:port\" value", errors.proxy_listen)
+
+    -- Only semicolon and port
+    ok, errors = config.validate({proxy_listen = ":1231"})
+    assert.False(ok)
+    assert.equal(":1231 is not a valid \"host:port\" value", errors.proxy_listen)
+
+    -- Valid with hostname
+    ok, errors = config.validate({proxy_listen = "hello:1231"})
+    assert.True(ok)
+
+    -- Valid with IP
+    ok, errors = config.validate({proxy_listen = "1.1.1.1:1231"})
+    assert.True(ok)
+  end)
+  it("should validate the ip:port listen addresses", function()
+    -- Hostname instead of IP
+    local ok, errors = config.validate({cluster_listen = "hello.com:1231"})
+    assert.False(ok)
+    assert.equal("hello.com:1231 is not a valid \"ip:port\" value", errors.cluster_listen)
+
+    -- Invalid IP
+    ok, errors = config.validate({cluster_listen = "777.1.1.1:1231"})
+    assert.False(ok)
+    assert.equal("777.1.1.1:1231 is not a valid \"ip:port\" value", errors.cluster_listen)
+
+    -- Valid
+    ok, errors = config.validate({cluster_listen = "1.1.1.1:1231"})
+    assert.True(ok)
+
+    -- Invalid cluster.advertise
+    ok, errors = config.validate({cluster={advertise = "1"}})
+    assert.False(ok)
+    assert.equal("1 is not a valid \"ip:port\" value", errors["cluster.advertise"])
+
+    -- Valid cluster.advertise
+    ok, errors = config.validate({cluster={advertise = "1.1.1.1:1231"}})
+    assert.True(ok)
   end)
 end)
 

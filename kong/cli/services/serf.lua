@@ -57,7 +57,7 @@ fi
 
 echo $PAYLOAD > /tmp/payload
 
-COMMAND='require("kong.tools.http_client").post("http://127.0.0.1:]]..self._configuration.admin_api_port..[[/cluster/events/", ]].."[['${PAYLOAD}']]"..[[, {["content-type"] = "application/json"})'
+COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[['${PAYLOAD}']]"..[[, {["content-type"] = "application/json"})'
 
 echo $COMMAND | ]]..luajit_path..[[
 ]]
@@ -136,8 +136,8 @@ function Serf:start()
 
   -- Prepare arguments
   local cmd_args = {
-    ["-bind"] = self._configuration.listen_address..":"..self._configuration.cluster_listening_port,
-    ["-rpc-addr"] = "127.0.0.1:"..self._configuration.cluster_rpc_listening_port,
+    ["-bind"] = self._configuration.cluster_listen,
+    ["-rpc-addr"] = self._configuration.cluster_listen_rpc,
     ["-advertise"] = self._configuration.cluster.advertise,
     ["-encrypt"] = self._configuration.cluster.encrypt,
     ["-log-level"] = "err",
@@ -184,7 +184,7 @@ function Serf:invoke_signal(signal, args, no_rpc, skip_running_check)
 
   if not args then args = {} end
   setmetatable(args, require "kong.tools.printable")
-  local res, code = IO.os_execute(cmd.." "..signal.." "..(no_rpc and "" or "-rpc-addr=127.0.0.1:"..self._configuration.cluster_rpc_listening_port).." "..tostring(args), true)
+  local res, code = IO.os_execute(cmd.." "..signal.." "..(no_rpc and "" or "-rpc-addr="..self._configuration.cluster_listen_rpc).." "..tostring(args), true)
   if code == 0 then
     return res
   else
@@ -195,7 +195,7 @@ end
 function Serf:event(t_payload)
   local args = {
     ["-coalesce"] = false,
-    ["-rpc-addr"] = "127.0.0.1:"..self._configuration.cluster_rpc_listening_port
+    ["-rpc-addr"] = self._configuration.cluster_listen_rpc
   }
   setmetatable(args, require "kong.tools.printable")
 

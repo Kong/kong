@@ -56,9 +56,9 @@ local function prepare_nginx_configuration(configuration, ssl_config)
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = configuration.nginx
   local nginx_inject = {
-    proxy_port = configuration.listen_address..":"..configuration.proxy_port,
-    proxy_ssl_port = configuration.listen_address..":"..configuration.proxy_ssl_port,
-    admin_api_port = configuration.listen_address..":"..configuration.admin_api_port,
+    proxy_listen = configuration.proxy_listen,
+    proxy_listen_ssl = configuration.proxy_listen_ssl,
+    admin_api_listen = configuration.admin_api_listen,
     dns_resolver = configuration.dns_resolver.address,
     memory_cache_size = configuration.memory_cache_size,
     ssl_cert = ssl_config.ssl_cert_path,
@@ -194,13 +194,13 @@ function Nginx:start()
 
   local ok, err = self:_invoke_signal(cmd, START)
   if ok then
-    local ports = {
-      proxy_port = self._configuration.proxy_port,
-      proxy_ssl_port = self._configuration.proxy_ssl_port,
-      admin_api_port = self._configuration.admin_api_port
+    local listen_addresses = {
+      proxy_listen = self._configuration.proxy_listen,
+      proxy_listen_ssl = self._configuration.proxy_listen_ssl,
+      admin_api_listen = self._configuration.admin_api_listen
     }
-    setmetatable(ports, require "kong.tools.printable")
-    logger:info(string.format([[nginx .............%s]], tostring(ports)))
+    setmetatable(listen_addresses, require "kong.tools.printable")
+    logger:info(string.format([[nginx .............%s]], tostring(listen_addresses)))
   end
 
   return ok, err

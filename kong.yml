@@ -24,33 +24,28 @@
 # nginx_working_dir: /usr/local/kong/
 
 ######
-## Address on which the server will accept requests, without any port specified. This address
-## will also be used for intracluster communications.
-# listen_address: 0.0.0.0
+## Address and port on which the server will accept HTTP requests, consumers will make requests against 
+## this port.
+# proxy_listen: "0.0.0.0:8000"
 
 ######
-## Port which Kong proxies HTTP requests through, consumers will make requests against this port
-## so make sure it is publicly available.
-# proxy_port: 8000
+## Same as proxy_listen, but for HTTPS requests.
+# proxy_listen_ssl: "0.0.0.0:8443"
 
 ######
-## Same as proxy_port, but for HTTPS requests.
-# proxy_ssl_port: 8443
+## Address and port on which the admin API will listen to. The admin API is a private API which lets you
+## manage your Kong infrastructure. It needs to be secured appropriately.
+# admin_api_listen: "0.0.0.0:8001"
 
 ######
-## Port on which the admin API will listen to. The admin API is a private API which lets you
-## manage your Kong infrastructure. It needs to be secured appropriatly.
-# admin_api_port: 8001
+## Address and port used by the node to communicate with other Kong nodes in the cluster with both UDP and
+## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
+# cluster_listen: "0.0.0.0:7946"
 
 ######
-## Port used by the node to communicate with other Kong nodes in the cluster with both UDP and TCP
-## messages. All the nodes in the cluster must be able to communicate with each other on this port.
-# cluster_listening_port: 7946
-
-######
-## Port used by the node to communicate with the local clustering agent (TCP only, and local only).
-## Mainly for debugging purposes.
-# cluster_rpc_listening_port: 7373
+## Address and port used by the node to communicate with the local clustering agent (TCP only, and local only).
+## Used internally by this Kong node.
+# cluster_listen_rpc: "127.0.0.1:7373"
 
 ######
 ## SSL certificates to use.
@@ -166,7 +161,6 @@ nginx: |
   worker_rlimit_nofile {{auto_worker_rlimit_nofile}};
 
   env KONG_CONF;
-  env PATH;
 
   events {
     worker_connections {{auto_worker_connections}};
@@ -234,8 +228,8 @@ nginx: |
 
     server {
       server_name _;
-      listen {{proxy_port}};
-      listen {{proxy_ssl_port}} ssl;
+      listen {{proxy_listen}};
+      listen {{proxy_listen_ssl}} ssl;
 
       ssl_certificate_by_lua 'kong.exec_plugins_certificate()';
 
@@ -287,7 +281,7 @@ nginx: |
     }
 
     server {
-      listen {{admin_api_port}};
+      listen {{admin_api_listen}};
 
       client_max_body_size 10m;
       client_body_buffer_size 10m;

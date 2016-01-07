@@ -28,12 +28,11 @@ local DEFAULT_ENV_VALUES = {
     yaml = {
       ["nginx_working_dir"] = "nginx_tmp",
       ["send_anonymous_reports"] = false,
-      ["proxy_port"] = 8100,
-      ["proxy_ssl_port"] = 8543,
-      ["admin_api_port"] = 8101,
-      ["dnsmasq_port"] = 8153,
-      ["cluster_listening_port"] = 9100,
-      ["cluster_rpc_listening_port"] = 9101,
+      ["proxy_listen"] = "0.0.0.0:8100",
+      ["proxy_listen_ssl"] = "0.0.0.0:8543",
+      ["admin_api_listen"] = "0.0.0.0:8101",
+      ["cluster_listen"] = "0.0.0.0:9100",
+      ["cluster_listen_rpc"] = "0.0.0.0:9101",
       ["databases_available"] = {
         ["cassandra"] = {
           ["keyspace"] = "kong_tests"
@@ -80,6 +79,10 @@ end
 
 -- Dump into a string
 local new_config_content = yaml.dump(new_config)
+
+-- Workaround for https://github.com/lubyk/yaml/issues/2
+-- This workaround is in two places. To remove it "Find and replace" in the code
+new_config_content = string.gsub(new_config_content, "(%w+:%s*)([%w%.]+:%d+)", "%1\"%2\"")
 
 -- Replace nginx directives
 local nginx_config = configuration.nginx
