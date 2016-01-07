@@ -1,28 +1,44 @@
 ## [Unreleased][unreleased]
 
-## [0.6.0]
-
 ### Breaking changes
 
-- The configuration file format changed. Some properties were slightly moved, many others are new. For example, the cassandra properties are not nested under `cassandra.properties` anymore, but rather directly under `cassandra`. Since many new properties are available, it is wise to consult the new configuration file while updating yours.
+ We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
+
+- [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
+- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended to checkout the new default configuration file.
 - Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Mashape/kong/pull/799)
 
 ### Added
 
+One of the biggest new features of this release is the cluster-awareness added to Kong in [#729](https://github.com/Mashape/kong/pull/729), which deserves its own section:
+
+- Each Kong node is now aware of belonging to a cluster through Serf. Nodes automatically join the specified cluster according to the configuration file's settings.
+- The datastore cache is not invalidated by expiration time anymore, but following an invalidation strategy between the nodes of a same cluster, leading to improved performance.
+- Admin API
+  - Expose a `/cache` endpoint for retrieving elements stored in the in-memory cache of a node.
+  - Expose a `/cluster` endpoint used to add/remove/list members of the cluster, and also used internally for data propagation.
+- CLI
+  - New `kong cluster` command for cluster management.
+  - New `kong status` command for cluster healthcheck.
+
+Other additions include:
+
 - New Cassandra driver which enables cluster-awareness of the Cassandra cluster. Kong is now protected if one of your Cassandra nodes goes down as long as a replica is available on another node. Load balancing policies also improve the performance along with many other smaller improvements. [#803](https://github.com/Mashape/kong/pull/803)
 - Admin API
-  - A new `total` field in API responses, that counts the total number of entities in the response body. [#635](https://github.com/Mashape/kong/pull/635)
+  - A new `total` field in API responses, that counts the total number of entities in the datastore. [#635](https://github.com/Mashape/kong/pull/635)
 - Configuration
   - Possibility to configure the keyspace replication strategy for Cassandra. It will be taken into account by the migrations when the configured keyspace does not already exist. [#350](https://github.com/Mashape/kong/issues/350)
   - Dnsmasq is now optional. You can specify a custom DNS resolver address that Kong will use when resolving hostnames. This can be configured in `kong.yml`. [#625](https://github.com/Mashape/kong/pull/625)
 - Plugins
-  - **New syslog plugin**: send logs to local sytem log. [#698](https://github.com/Mashape/kong/pull/698)
-  - **New loggly plugin**: send logs to Loggly over UDP. [#698](https://github.com/Mashape/kong/pull/698)
-  - **New statsd plugin**: send logs to statsd server. [#758](https://github.com/Mashape/kong/pull/758)
-  - OAuth2: add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
+  - **New "syslog" plugin**: send logs to local sytem log. [#698](https://github.com/Mashape/kong/pull/698)
+  - **New "loggly" plugin**: send logs to Loggly over UDP. [#698](https://github.com/Mashape/kong/pull/698)
+  - **New "datadog" plugin**: send logs to Datadog server. [#758](https://github.com/Mashape/kong/pull/758)
+  - OAuth2
+    - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
+    - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Mashape/kong/pull/729)
   - Request transformer
     - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#824](https://github.com/Mashape/kong/pull/824)
-    - Support to transform a JSON body. [#569](https://github.com/Mashape/kong/issues/569)
+    - Support JSON body transformation. [#569](https://github.com/Mashape/kong/issues/569)
   - Response transformer
     - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#822](https://github.com/Mashape/kong/pull/822)
 
@@ -51,12 +67,14 @@
   - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Mashape/kong/issues/584)
   - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Mashape/kong/pull/667)
   - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Mashape/kong/issues/681)
+  - Basic Authentication: do not re-hash the password field when updating a credential. [#726](https://github.com/Mashape/kong/issues/726)
   - OAuth2
     - Implement correct responses when the OAuth2 challenges are refused. [#737](https://github.com/Mashape/kong/issues/737)
     - Handle querystring on `/authorize` and `/token` URLs. [#687](https://github.com/Mashape/kong/pull/667)
     - Handle punctuation in scopes on `/authorize` and `/token` endpoints. [#658](https://github.com/Mashape/kong/issues/658)
 
 > ***internal***
+> - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
 > - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
 > - Work has been done to restore the reliability of the CI platforms.
 > - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Mashape/kong/pull/770)

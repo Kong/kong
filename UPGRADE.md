@@ -27,6 +27,9 @@ $ kong reload [-c configuration_file]
 The configuration file changed in this release. Make sure to check out the new default one and update it to your needs. In particular, make sure that:
 
 ```yaml
+proxy_port: ...
+proxy_ssl_port: ...
+admin_api_port: ...
 databases_available:
   cassandra:
     properties:
@@ -37,10 +40,23 @@ databases_available:
 becomes:
 
 ```yaml
+proxy_listen: ...
+proxy_listen_ssl: ...
+admin_api_listen: ...
 databases_available:
   cassandra:
     contact_points:
       - ...
+```
+
+Secondly, you will need to have [Serf](https://www.serfdom.io) installed on your system and available in your `$PATH`.
+
+Finally, this should already be the case, but make sure that LuaJIT is in your `$PATH` too as the CLI interpreter switched from Lua 5.1 to LuaJIT.
+
+In order to start Kong with its new clustering and cache invalidation capabilities, you will need to restart your node(s) (and not reload):
+
+```shell
+$ kong restart [-c configuration_file]
 ```
 
 ## Upgrade to `0.5.x`
