@@ -734,11 +734,6 @@ describe("Cassandra", function()
         local ok, err = dao_factory.plugins:delete(rows[1])
         assert.falsy(err)
         assert.True(ok)
-
-        rows, err = session:execute("SELECT * FROM plugins WHERE id = ?", {cassandra.uuid(rows[1].id)})
-        assert.falsy(err)
-        assert.truthy(rows)
-        assert.equal(0, #rows)
       end)
       it("should delete an entity when it can be found without its primay key", function()
         local ok, err = dao_factory.consumers:delete(nil, {
@@ -894,7 +889,7 @@ describe("Cassandra", function()
           inserted_plugin = plugin
           inserted_plugin.consumer_id = nil
         end)
-        it("should insert a plugin with an empty config if none is specified", function()
+        it("should insert a plugin with an default config if none is specified", function()
           local api_t = faker:fake_entity("api")
           local api, err = dao_factory.apis:insert(api_t)
           assert.falsy(err)
@@ -909,7 +904,27 @@ describe("Cassandra", function()
           assert.truthy(plugin)
           assert.falsy(plugin.consumer_id)
           assert.equal("request-transformer", plugin.name)
-          assert.same({}, plugin.config)
+          assert.same({
+            add = {
+              form = {},
+              headers = {},
+              querystring = {}
+            },
+            append = {
+              headers = {},
+              querystring = {}
+            },
+            remove = {
+              form = {},
+              headers = {},
+              querystring = {}
+            },
+            replace = {
+              form = {},
+              headers = {},
+              querystring = {}
+            }
+          }, plugin.config)
         end)
         it("should select a plugin configuration by 'null' uuid consumer_id and remove the column", function()
           -- Now we should be able to select this plugin
