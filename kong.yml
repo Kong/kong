@@ -24,8 +24,7 @@
 # nginx_working_dir: /usr/local/kong/
 
 ######
-## Address and port on which the server will accept HTTP requests, consumers will make requests against 
-## this port.
+## Address and port on which the server will accept HTTP requests, consumers will make requests on this port.
 # proxy_listen: "0.0.0.0:8000"
 
 ######
@@ -40,15 +39,16 @@
 ######
 ## Address and port used by the node to communicate with other Kong nodes in the cluster with both UDP and
 ## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
+## Only IPv4 addresses are allowed (no hostnames).
 # cluster_listen: "0.0.0.0:7946"
 
 ######
 ## Address and port used by the node to communicate with the local clustering agent (TCP only, and local only).
-## Used internally by this Kong node.
+## Used internally by this Kong node. Only IPv4 addresses are allowed (no hostnames).
 # cluster_listen_rpc: "127.0.0.1:7373"
 
 ######
-## SSL certificates to use.
+## The path to the SSL certificate and key that Kong will use when listening on the `https` port.
 # ssl_cert_path: /path/to/certificate.pem
 # ssl_key_path: /path/to/certificate.key
 
@@ -58,8 +58,10 @@
 # dns_resolver: dnsmasq
 
 ######
-## DNS resolvers configuration. Specify a DNS server or the port on which you want
-## dnsmasq to run.
+## A dictionary of DNS resolvers Kong can use, and their respective properties.
+## Currently `dnsmasq` (default, http://www.thekelleys.org.uk/dnsmasq/doc.html) and `server` are supported.
+## By choosing `dnsmasq`, Kong will resolve hostnames using the local `/etc/hosts` file and `resolv.conf` 
+## configuration. By choosing `server`, you can specify a custom DNS server.
 # dns_resolvers_available:
   # server:
     # address: "8.8.8.8:53"
@@ -67,7 +69,8 @@
     # port: 8053
 
 ######
-## Cluster settings
+## Cluster settings between Kong nodes. 
+## For more information take a look at the Clustering Reference: https://getkong.org/docs/latest/clustering/
 # cluster:
 
   ######
@@ -75,10 +78,13 @@
   # auto-join: true
 
   ######
+  ## Address and port used by the node to communicate with other Kong nodes in the cluster with both UDP and
+  ## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
+  ## Only IPv4 addresses are allowed (no hostnames).
   ## The advertise flag is used to change the address that we advertise to other nodes in the
-  ## cluster. By default, the bind address is advertised. However, in some cases (specifically 
-  ## NAT traversal), there may be a routable address that cannot be bound to. This flag enables 
-  ## gossiping a different address to support this
+  ## cluster. By default, the cluster_listen address is advertised. However, in some cases 
+  ## (specifically NAT traversal), there may be a routable address that cannot be bound to.  
+  ## This flag enables gossiping a different address to support this.
   # advertise: ""
 
   ######
@@ -90,7 +96,7 @@
 # database: cassandra
 
 ######
-## Databases configuration.
+## A dictionary of databases Kong can connect to, and their respective properties.
 # databases_available:
   # cassandra:
     ######
@@ -140,15 +146,20 @@
     # password: cassandra
 
 ######
-## Sending anonymous error reports helps Kong developers to understand how it performs.
+## Kong will send anonymous reports to Mashape. This helps Mashape fixing bugs/errors and improving Kong. 
+## By default is `true`.
 # send_anonymous_reports: true
 
 ######
-## Size (in MB) of the Lua cache. This value may not be smaller than 32MB.
+## A value specifying (in MB) the size of the internal preallocated in-memory cache. Kong uses an in-memory 
+## cache to store database entities in order to optimize access to the underlying datastore. The cache size 
+## needs to be as big as the size of the entities being used by Kong at any given time. The default value 
+## is `128`, and the potential maximum value is the total size of the datastore.
+## This value may not be smaller than 32MB.
 # memory_cache_size: 128
 
 ######
-## The nginx configuration file which allows Kong to run.
+## The NGINX configuration (or `nginx.conf`) that will be used for this instance.
 ## The placeholders will be computed and this property will be written as a file
 ## by Kong at `<nginx_working_dir>/nginx.conf` during startup.
 ## This file can tweaked to some extent, but many directives are necessary for Kong to work.
