@@ -18,10 +18,9 @@ function _M.serialize(ngx)
       size = ngx.var.bytes_sent,
       body = ngx.ctx.runscope.res_body,
       timestamp = ngx.req_start_time,
-      response_time = ((ngx.ctx.KONG_ACCESS_TIME or 0) +
-                       (ngx.ctx.KONG_RECEIVE_TIME or 0) +
-                       (ngx.var.upstream_response_time * 1000) +
-                       (ngx.var.request_time * 1000)) / 1000
+      response_time = ((ngx.ctx.KONG_PROXY_LATENCY or 0) +
+                       (ngx.ctx.KONG_WAITING_TIME or 0) +
+                       (ngx.ctx.KONG_RECEIVE_TIME or 0)) / 1000
     }
   }
 end
