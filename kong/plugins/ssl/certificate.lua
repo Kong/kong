@@ -3,7 +3,7 @@ local cache = require "kong.tools.database_cache"
 local _M = {}
 
 function _M.execute(conf)
-  local ssl = require "ngx.ssl"
+  local ssl = require "kong.vendor.ssl"
   ssl.clear_certs()
 
   local data = cache.get_or_set(cache.ssl_data(ngx.ctx.api.id), function()

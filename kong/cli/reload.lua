@@ -3,7 +3,7 @@
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local signal = require "kong.cli.utils.signal"
-local args = require("lapp")(string.format([[
+local args = require("kong.vendor.lapp")(string.format([[
 Gracefully reload the Kong instance running in the configured 'nginx_working_dir'.
 
 Any configuration change will be applied.

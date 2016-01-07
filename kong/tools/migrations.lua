@@ -1,5 +1,5 @@
 local utils = require "kong.tools.utils"
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local fmt = string.format
 
 local _CORE_MIGRATIONS_IDENTIFIER = "core"

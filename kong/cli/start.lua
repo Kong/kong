@@ -3,7 +3,7 @@
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local signal = require "kong.cli.utils.signal"
-local args = require("lapp")(string.format([[
+local args = require("kong.vendor.lapp")(string.format([[
 Start Kong with given configuration. Kong will run in the configured 'nginx_working_dir' directory.
 
 Usage: kong start [options]

@@ -12,7 +12,7 @@ local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local utils = require "kong.tools.utils"
 local uuid = require "lua_uuid"
 

@@ -4,7 +4,7 @@ local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
 local IO = require "kong.tools.io"
 local yaml = require "yaml"
-local args = require("lapp")(string.format([[
+local args = require("kong.vendor.lapp")(string.format([[
 For development purposes only.
 
 Duplicate an existing configuration for given environment.

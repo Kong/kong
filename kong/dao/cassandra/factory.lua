@@ -8,7 +8,7 @@ local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local utils = require "kong.tools.utils"
 
 if ngx ~= nil and type(ngx.get_phase) == "function" and ngx.get_phase() == "init" and not ngx.stub then
