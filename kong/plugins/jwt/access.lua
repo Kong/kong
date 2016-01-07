@@ -83,8 +83,13 @@ function _M.execute(conf)
     return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.secret_key_field.."'")
   end
 
+  local jwt_secret_value = jwt_secret.secret
+  if conf.secret_is_base64 then
+    jwt_secret_value = jwt:b64_decode(jwt_secret_value)
+  end
+
   -- Now verify the JWT signature
-  if not jwt:verify_signature(jwt_secret.secret) then
+  if not jwt:verify_signature(jwt_secret_value) then
     return responses.send_HTTP_FORBIDDEN("Invalid signature")
   end
 

@@ -2,6 +2,7 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local json = require "cjson"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
+local base64 = require "base64"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
@@ -13,7 +14,7 @@ local PAYLOAD = {
 }
 
 describe("JWT access", function()
-  local jwt_secret
+  local jwt_secret, base64_jwt_secret
 
   setup(function()
     spec_helper.prepare_db()
@@ -22,23 +23,28 @@ describe("JWT access", function()
         {name = "tests-jwt", request_host = "jwt.com", upstream_url = "http://mockbin.com"},
         {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"},
         {name = "tests-jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"},
-        {name = "tests-jwt4", request_host = "jwt4.com", upstream_url = "http://mockbin.com"}
+        {name = "tests-jwt4", request_host = "jwt4.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-jwt5", request_host = "jwt5.com", upstream_url = "http://mockbin.com"}
       },
       consumer = {
-        {username = "jwt_tests_consumer"}
+        {username = "jwt_tests_consumer"},
+        {username = "jwt_tests_base64_consumer"}
       },
       plugin = {
         {name = "jwt", config = {}, __api = 1},
         {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2},
         {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, __api = 3},
-        {name = "jwt", config = {secret_key_field = "aud"}, __api = 4}
+        {name = "jwt", config = {secret_key_field = "aud"}, __api = 4},
+        {name = "jwt", config = {secret_is_base64 = true}, __api = 5}
       },
       jwt_secret = {
-        {__consumer = 1}
+        {__consumer = 1},
+        {__consumer = 2}
       }
     }
 
     jwt_secret = fixtures.jwt_secret[1]
+    base64_jwt_secret = fixtures.jwt_secret[2]
     spec_helper.start_kong()
   end)
 
@@ -96,6 +102,22 @@ describe("JWT access", function()
     local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
     local authorization = "Bearer "..jwt
     local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt4.com", authorization = authorization})
+    assert.equal(200, status)
+    local body = json.decode(response)
+    assert.equal(authorization, body.headers.authorization)
+    assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+  end)
+
+  it("should proxy the request if secret is base64", function()
+    PAYLOAD.iss = base64_jwt_secret.key
+    local original_secret = base64_jwt_secret.secret
+    local base64_secret = base64.encode(base64_jwt_secret.secret)
+    local base_url = spec_helper.API_URL.."/consumers/jwt_tests_consumer/jwt/"..base64_jwt_secret.id
+    http_client.patch(base_url, {key = base64_jwt_secret.key, secret = base64_secret})
+
+    local jwt = jwt_encoder.encode(PAYLOAD, original_secret)
+    local authorization = "Bearer "..jwt
+    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt5.com", authorization = authorization})
     assert.equal(200, status)
     local body = json.decode(response)
     assert.equal(authorization, body.headers.authorization)
