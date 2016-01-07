@@ -1,18 +1,35 @@
 machine:
-  services:
-    - cassandra
-
+    services:
+        - cassandra
+    environment:
+        LUA: luajit-2.1
+        LUAROCKS_VERSION: 2.2.2
+        OPENSSL_VERSION: 1.0.2e
+        OPENRESTY_VERSION: 1.9.3.1
+        LUAJIT_DIR: $HOME/luajit
+        LUAROCKS_DIR: $HOME/luarocks
+        OPENRESTY_DIR: $HOME/openresty
 dependencies:
     pre:
-        - "bash .ci/setup_kong.sh"
+        - sudo apt-get update
+        - sudo apt-get install dnsmasq uuid-dev
+        - bash .ci/setup_lua.sh
+        - bash .ci/setup_openresty.sh
+        - export PATH="$LUAJIT_DIR/bin:$LUAROCKS_DIR/bin:$OPENRESTY_DIR/nginx/sbin:$PATH"
+        - export LUA_PATH="./?.lua;$LUAROCKS_DIR/share/lua/5.1/?.lua;$LUAROCKS_DIR/share/lua/5.1/?/init.lua;$LUAROCKS_DIR/lib/lua/5.1/?.lua;$LUA_PATH"
+        - export LUA_CPATH="./?.so;$LUAROCKS_DIR/lib/lua/5.1/?.so;$LUA_CPATH"
+        - luarocks install busted
+        - luarocks install luacov
+        - luarocks install luacov-coveralls
+        - luarocks install luacheck
         - "curl -sSL https://s3.amazonaws.com/circle-downloads/wait-for-cassandra.sh | sh"
     post:
-        - sudo make dev
+        - luarocks make kong-*.rockspec
+        - "kong config -c kong.yml -e TEST"
 test:
     override:
-        - busted -v -o spec/busted-print.lua --coverage :
+        - make lint
+        - busted --exclude-tags=ci -o spec/busted-print.lua --coverage :
             parallel: true
             files:
-              - spec/**/*_spec.lua
-    post:
-        - make lint
+                - spec/**/*_spec.lua

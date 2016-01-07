@@ -25,6 +25,5 @@ describe("CLI Utils", function()
     success, err = cutils.is_port_bindable(PORT)
     server:close()
     assert.falsy(success, err)
-
   end)
 end)

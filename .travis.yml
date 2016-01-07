@@ -1,20 +1,50 @@
-language: erlang
-
+sudo: false
+notifications:
+  email: false
+addons:
+  apt:
+    packages:
+      - sed
+      - net-tools
+      - uuid-dev
+      - libpcre3-dev
+      - build-essential
 env:
   global:
-    - CASSANDRA_VERSION=2.1.11
-  matrix:
-    - LUA=lua5.1
-
+    - LUA=luajit-2.1
+    - CASSANDRA_VERSION=2.1.9
+    - LUAROCKS_VERSION=2.2.2
+    - OPENSSL_VERSION=1.0.2e
+    - OPENRESTY_VERSION=1.9.3.1
+    - LUAJIT_DIR=$HOME/luajit
+    - LUAROCKS_DIR=$HOME/luarocks
+    - OPENRESTY_DIR=$HOME/openresty
+    - CASSANDRA_HOSTS=127.0.0.1
 before_install:
-  - "bash .ci/setup_kong.sh"
-  - "bash .ci/setup_cassandra.sh"
-
+  - bash .ci/setup_lua.sh
+  - bash .ci/setup_openresty.sh
+  - bash .ci/setup_cassandra.sh
+  - export PATH="$LUAJIT_DIR/bin:$LUAROCKS_DIR/bin:$OPENRESTY_DIR/nginx/sbin:$PATH"
+  - export LUA_PATH="./?.lua;$LUAROCKS_DIR/share/lua/5.1/?.lua;$LUAROCKS_DIR/share/lua/5.1/?/init.lua;$LUAROCKS_DIR/lib/lua/5.1/?.lua;$LUA_PATH"
+  - export LUA_CPATH="./?.so;$LUAROCKS_DIR/lib/lua/5.1/?.so;$LUA_CPATH"
 install:
-  - "sudo make dev"
-
+  - luarocks install busted
+  - luarocks install luacov
+  - luarocks install luacov-coveralls
+  - luarocks install luacheck
+  - luarocks make kong-*.rockspec
+  - "kong config -c kong.yml -e TEST"
+  - 'sed -i "2 i\dns_resolver: server" kong_TEST.yml'
 script:
-  - "busted -o spec/busted-print.lua --coverage spec/"
-  - "make lint"
-
-after_success: "luacov-coveralls -i kong"
+  - make lint
+  - "busted --exclude-tags=ci -o spec/busted-print.lua --coverage spec/"
+after_success:
+  - "luacov-coveralls -i kong"
+cache:
+  apt: true
+  pip: true
+  directories:
+    - $LUAJIT_DIR
+    - $LUAROCKS_DIR
+    - $OPENRESTY_DIR
+    - $HOME/.ccm/repository

@@ -8,7 +8,6 @@ local IO = require "kong.tools.io"
 local FILE_LOG_PATH = os.tmpname()
 
 describe("Real IP", function()
-
   setup(function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
@@ -54,5 +53,4 @@ describe("Real IP", function()
 
     os.remove(FILE_LOG_PATH)
   end)
-
 end)
