@@ -43,7 +43,7 @@ describe("Datadog Plugin", function()
     assert.truthy(res)
     assert.equal("kong.logging1_com.request.count:1|c", res)
   end)
-  
+
   it("should log to UDP when metrics is status_count", function()
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
 
@@ -55,7 +55,7 @@ describe("Datadog Plugin", function()
     assert.truthy(res)
     assert.equal("kong.logging3_com.request.status.200:1|c", res)
   end)
-  
+
   it("should log to UDP when metrics is request_size", function()
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
 
@@ -65,9 +65,9 @@ describe("Datadog Plugin", function()
     local ok, res = thread:join()
     assert.True(ok)
     assert.truthy(res)
-    assert.equal("kong.logging4_com.request.size:111|g", res)
+    assert.equal("kong.logging4_com.request.size:113|g", res)
   end)
-  
+
   it("should log to UDP when metrics is latency", function()
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
 
@@ -77,7 +77,7 @@ describe("Datadog Plugin", function()
     local ok, res = thread:join()
     assert.True(ok)
     assert.truthy(res)
-    
+
     local message = {}
     for w in string.gmatch(res,"kong.logging2_com.latency:.*|g") do
       table.insert(message, w)
@@ -85,7 +85,7 @@ describe("Datadog Plugin", function()
 
     assert.equal(1, #message)
   end)
-  
+
   it("should log to UDP when metrics is request_count", function()
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
 
