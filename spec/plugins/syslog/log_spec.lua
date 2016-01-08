@@ -6,7 +6,7 @@ local http_client = require "kong.tools.http_client"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
-it("Syslog #ci", function()
+describe("Syslog #ci", function()
   setup(function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
