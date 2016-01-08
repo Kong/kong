@@ -1,5 +1,6 @@
 local stringy = require "stringy"
 local multipart = require "multipart"
+local cjson = require "cjson"
 
 local table_insert = table.insert
 local req_set_uri_args = ngx.req.set_uri_args
@@ -10,21 +11,50 @@ local req_read_body = ngx.req.read_body
 local req_set_body_data = ngx.req.set_body_data
 local req_get_body_data = ngx.req.get_body_data
 local req_clear_header = ngx.req.clear_header
-local req_get_post_args = ngx.req.get_post_args
 local encode_args = ngx.encode_args
+local ngx_decode_args = ngx.decode_args
 local type = type
 local string_len = string.len
+local string_find = string.find
+local pcall = pcall
 
 local unpack = unpack
 
 local _M = {}
 
 local CONTENT_LENGTH = "content-length"
-local FORM_URLENCODED = "application/x-www-form-urlencoded"
-local MULTIPART_DATA = "multipart/form-data"
 local CONTENT_TYPE = "content-type"
 local HOST = "host"
+local JSON, MULTI, ENCODED = "json", "multi_part", "form_encoded"
 
+local function parse_json(body)
+  if body then
+    local status, res = pcall(cjson.decode, body)
+    if status then
+      return res
+    end
+  end
+end
+
+local function decode_args(body)
+  if body then
+    return ngx_decode_args(body)
+  end
+  return {}
+end
+
+local function get_content_type(content_type)
+  if content_type == nil then
+    return
+  end
+  if string_find(content_type:lower(), "application/json", nil, true) then
+    return JSON
+  elseif string_find(content_type:lower(), "multipart/form-data", nil, true) then
+    return MULTI
+  elseif string_find(content_type:lower(), "application/x-www-form-urlencoded", nil, true) then
+    return ENCODED  
+  end   
+end
 
 local function iter(config_array)
   return function(config_array, i, previous_name, previous_value)
@@ -36,13 +66,6 @@ local function iter(config_array)
     local current_name, current_value = unpack(stringy.split(current_pair, ":"))
     return i, current_name, current_value
   end, config_array, 0
-end
-
-local function get_content_type()
-  local header_value = req_get_headers()[CONTENT_TYPE]
-  if header_value then
-    return stringy.strip(header_value):lower()
-  end
 end
 
 local function append_value(current_value, value)
@@ -135,106 +158,154 @@ local function transform_querystrings(conf)
   end
 end
 
-local function transform_form_params(conf)
-  -- Remove form parameter(s)
-  if conf.remove.form  then
-    local content_type = get_content_type()
-    if content_type and stringy.startswith(content_type, FORM_URLENCODED) then
-      req_read_body()
-      local parameters = req_get_post_args()
+local function transform_json_body(conf, body, content_length)
+  local removed, replaced, added, appended = false, false, false, false
+  local content_length = (body and string_len(body)) or 0
+  local parameters = parse_json(body)
+  if parameters == nil and content_length > 0 then return false, nil end
 
-      for _, name, value in iter(conf.remove.form) do
-        parameters[name] = nil
+  if content_length > 0 and #conf.remove.body > 0 then
+    for _, name, value in iter(conf.remove.body) do
+      parameters[name] = nil
+      removed = true
+    end
+  end
+
+  if content_length > 0 and #conf.replace.body > 0 then 
+    for _, name, value in iter(conf.replace.body) do
+      if parameters[name] then
+        parameters[name] = value
+        replaced = true
       end
+    end
+  end
 
-      local encoded_args = encode_args(parameters)
-      req_set_header(CONTENT_LENGTH, string_len(encoded_args))
-      req_set_body_data(encoded_args)
-    elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
-      -- Call req_read_body to read the request body first
-      req_read_body()
+  if #conf.add.body > 0 then
+    for _, name, value in iter(conf.add.body) do
+      if not parameters[name] then
+        parameters[name] = value
+        added = true
+      end
+    end
+  end  
 
-      local body = req_get_body_data()
-      local parameters = multipart(body and body or "", content_type)
-      for _, name, value in iter(conf.remove.form) do
+  if #conf.append.body > 0 then
+    for _, name, value in iter(conf.append.body) do
+      local old_value = parameters[name]
+      parameters[name] = append_value(old_value, value)
+      appended = true
+    end
+  end
+
+  if removed or replaced or added or appended then 
+    return true, cjson.encode(parameters)
+  end
+end
+
+local function transform_url_encoded_body(conf, body, content_length)
+  local removed, replaced, added, appended = false, false, false, false
+  local parameters = decode_args(body)
+
+  if content_length > 0 and #conf.remove.body > 0 then
+    for _, name, value in iter(conf.remove.body) do
+      parameters[name] = nil
+      removed = true
+    end
+  end
+
+  if content_length > 0 and #conf.replace.body > 0 then 
+    for _, name, value in iter(conf.replace.body) do
+      if parameters[name] then
+        parameters[name] = value
+        replaced = true
+      end
+    end
+  end
+
+  if #conf.add.body > 0 then
+    for _, name, value in iter(conf.add.body) do
+      if parameters[name] == nil then
+        parameters[name] = value
+        added = true
+      end
+    end
+  end
+
+  if #conf.append.body > 0 then
+    for _, name, value in iter(conf.append.body) do
+      local old_value = parameters[name]
+      parameters[name] = append_value(old_value, value)
+      appended = true
+    end
+  end
+
+  if removed or replaced or added or appended then 
+    return true, encode_args(parameters)
+  end
+end
+
+local function transform_multipart_body(conf, body, content_length, content_type_value)
+  local removed, replaced, added, appended = false, false, false, false
+  local parameters = multipart(body and body or "", content_type_value)
+
+  if content_length > 0 and #conf.remove.body > 0 then
+    for _, name, value in iter(conf.remove.body) do
+      parameters:delete(name)
+      removed = true
+    end
+  end
+
+  if content_length > 0 and #conf.replace.body > 0 then
+    for _, name, value in iter(conf.replace.body) do
+      if parameters:get(name) then
         parameters:delete(name)
+        parameters:set_simple(name, value)
+        replaced = true
       end
-      local new_data = parameters:tostring()
-      req_set_header(CONTENT_LENGTH, string_len(new_data))
-      req_set_body_data(new_data)
     end
   end
 
-  -- Replace form parameter(s)
-  if conf.replace.form then
-    local content_type = get_content_type()
-    if content_type and stringy.startswith(content_type, FORM_URLENCODED) then
-      -- Call req_read_body to read the request body first
-      req_read_body()
-
-      local parameters = req_get_post_args()
-      for _, name, value in iter(conf.replace.form) do
-        if parameters[name] then
-          parameters[name] = value
-        end
+  if #conf.add.body > 0 then
+    for _, name, value in iter(conf.add.body) do
+      if not parameters[name] then
+        parameters:set_simple(name, value)
+        added = true
       end
-      local encoded_args = encode_args(parameters)
-      req_set_header(CONTENT_LENGTH, string_len(encoded_args))
-      req_set_body_data(encoded_args)
-    elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
-      -- Call req_read_body to read the request body first
-      req_read_body()
-
-      local body = req_get_body_data()
-      local parameters = multipart(body and body or "", content_type)
-      for _, name, value in iter(conf.replace.form) do
-        if parameters:get(name) then
-          parameters:delete(name)
-          parameters:set_simple(name, value)
-        end
-      end
-      local new_data = parameters:tostring()
-      req_set_header(CONTENT_LENGTH, string_len(new_data))
-      req_set_body_data(new_data)
     end
   end
 
-  -- Add form parameter(s)
-  if conf.add.form then
-    local content_type = get_content_type()
-    if content_type and stringy.startswith(content_type, FORM_URLENCODED) then
-      -- Call req_read_body to read the request body first
-      req_read_body()
+  if removed or replaced or added or appended then 
+    return true, parameters:tostring()
+  end
+end
 
-      local parameters = req_get_post_args()
-      for _, name, value in iter(conf.add.form) do
-        if not parameters[name] then
-          parameters[name] = value
-        end
-      end
-      local encoded_args = encode_args(parameters)
-      req_set_header(CONTENT_LENGTH, string_len(encoded_args))
-      req_set_body_data(encoded_args)
-    elseif content_type and stringy.startswith(content_type, MULTIPART_DATA) then
-      -- Call req_read_body to read the request body first
-      req_read_body()
+local function transform_body(conf)
+  local content_type_value = req_get_headers()[CONTENT_TYPE]
+  local content_type = get_content_type(content_type_value)
+  if content_type == nil or #conf.remove.body < 1 and #conf.replace.body < 1 and #conf.add.body < 1 and #conf.append.body < 1 then return end
 
-      local body = req_get_body_data()
-      local parameters = multipart(body and body or "", content_type)
-      for _, name, value in iter(conf.add.form) do
-        if not parameters:get(name) then
-          parameters:set_simple(name, value)
-        end
-      end
-      local new_data = parameters:tostring()
-      req_set_header(CONTENT_LENGTH, string_len(new_data))
-      req_set_body_data(new_data)
-    end
+  -- Call req_read_body to read the request body first
+  req_read_body()
+  local body = req_get_body_data()
+  local is_body_transformed = false
+  local content_length = (body and string_len(body)) or 0
+
+  if content_type == ENCODED then
+    is_body_transformed, body = transform_url_encoded_body(conf, body, content_length)
+  elseif content_type == MULTI then
+    is_body_transformed, body = transform_multipart_body(conf, body, content_length, content_type_value)
+  elseif content_type == JSON then
+    is_body_transformed, body = transform_json_body(conf, body, content_length)
+  end
+
+  if is_body_transformed then
+    req_set_body_data(body)
+    req_set_header(CONTENT_LENGTH, string_len(body))
   end
 end
 
 function _M.execute(conf)
-  transform_form_params(conf)
+  transform_body(conf)
   transform_headers(conf)
   transform_querystrings(conf)
 end
