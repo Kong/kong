@@ -36,7 +36,7 @@ local migrations = Migrations(dao_factory, configuration)
 local kind = args.type
 if kind ~= "all" and kind ~= "core" then
   -- Assuming we are trying to run migrations for a plugin
-  if not utils.table_contains(configuration.plugins_available, kind) then
+  if not utils.table_contains(configuration.plugins, kind) then
     cutils.logger:error_exit("No \""..kind.."\" plugin enabled in the configuration.")
   end
 end

@@ -121,13 +121,15 @@ function _M.load(config_path)
     config.dns_resolver = {address = config.dns_resolver.server.address}
   end
 
-
   -- Load absolute path for the nginx working directory
   if not stringy.startswith(config.nginx_working_dir, "/") then
     -- It's a relative path, convert it to absolute
     local fs = require "luarocks.fs"
     config.nginx_working_dir = fs.current_dir().."/"..config.nginx_working_dir
   end
+
+  -- Load all plugins
+  config.plugins = utils.table_merge(constants.PLUGINS_AVAILABLE, config.custom_plugins)
 
   return config
 end
