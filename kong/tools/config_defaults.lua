@@ -11,7 +11,7 @@ return {
       ["server"] = {
         type = "table",
         content = {
-          ["address"] = {type = "string", default = "8.8.8.8:53"}
+          ["address"] = {type = "string", default = "8.8.8.8"}
         }
       },
       ["dnsmasq"] = {
@@ -29,7 +29,7 @@ return {
       ["cassandra"] = {
         type = "table",
         content = {
-          ["contact_points"] = {type = "array", default = {"localhost:9042"}},
+          ["contact_points"] = {type = "array", default = {"127.0.0.1:9042"}},
           ["keyspace"] = {type = "string", default = "kong"},
           ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
           ["replication_factor"] = {type = "number", default = 1},

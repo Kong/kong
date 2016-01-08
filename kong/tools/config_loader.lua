@@ -118,7 +118,7 @@ function _M.load(config_path)
       dnsmasq = true
     }
   else
-    config.dns_resolver = {address = config.dns_resolver.server.address}
+    config.dns_resolver = {address = config.dns_resolvers_available.server.address}
   end
 
   -- Load absolute path for the nginx working directory

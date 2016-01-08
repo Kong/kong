@@ -1,18 +1,22 @@
 machine:
-  services:
-    - cassandra
-
+    services:
+        - cassandra
 dependencies:
     pre:
-        - "bash .ci/setup_kong.sh"
+        - bash .ci/setup_circle.sh
         - "curl -sSL https://s3.amazonaws.com/circle-downloads/wait-for-cassandra.sh | sh"
     post:
-        - sudo make dev
+        - sudo luarocks install busted
+        - sudo luarocks install luacov
+        - sudo luarocks install luacov-coveralls
+        - sudo luarocks install luacheck
+        - sudo luarocks make kong-*.rockspec
+        - "kong config -c kong.yml -e TEST"
 test:
+    pre:
+        - make lint
     override:
-        - busted -v -o spec/busted-print.lua --coverage :
+        - busted --exclude-tags=ci -o spec/busted-print.lua :
             parallel: true
             files:
-              - spec/**/*_spec.lua
-    post:
-        - make lint
+                - spec/**/*_spec.lua
