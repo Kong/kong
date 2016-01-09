@@ -18,7 +18,7 @@ describe("Configuration validation", function()
     assert.True(ok)
     assert.falsy(errors)
 
-    assert.truthy(conf.plugins_available)
+    assert.truthy(conf.custom_plugins)
     assert.truthy(conf.admin_api_listen)
     assert.truthy(conf.proxy_listen)
     assert.truthy(conf.proxy_listen_ssl)
@@ -40,6 +40,12 @@ describe("Configuration validation", function()
     end
 
     check_defaults(conf, require("kong.tools.config_defaults"))
+  end)
+  it("should populate the plugins property", function()
+    local config = config.load(TEST_CONF_PATH)
+    assert.truthy(config)
+    assert.equal(0, #config.custom_plugins)
+    assert.truthy(#config.plugins > 0)
   end)
   it("should validate various types", function()
     local ok, errors = config.validate({

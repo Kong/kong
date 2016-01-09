@@ -7,14 +7,13 @@
 ## Beware of YAML formatting for nested properties.
 
 ######
-## Plugins that this node needs to execute.
-## By default, Kong will try to execute all installed plugins on every request.
-## If you are sure to only use a few plugins, uncomment and update this property to contain
-## only those.
-## Custom plugins also need to be added to this list.
-# plugins_available:
-#   - ssl
-#   - jwt
+## Additional plugins that this node needs to load.
+## If you want to load custom plugins that are not supported by Kong, uncomment and update
+## this property with the names of the plugins to load.
+## Plugins will be loaded from the kong.plugins.{name}.* namespace.
+# custom_plugins:
+#   - hello_world
+#   - custom_plugin2
 #   - ...
 
 ######
@@ -102,7 +101,7 @@
     ######
     ## Contact points to your Cassandra cluster.
     # contact_points:
-    #   - "localhost:9042"
+    #   - "127.0.0.1:9042"
 
     ######
     ## Name of the keyspace used by Kong. Will be created if it does not exist.
@@ -179,7 +178,7 @@ nginx: |
   }
 
   http {
-    resolver {{dns_resolver}} ipv6=off;
+    resolver {{dns_resolver}};
     charset UTF-8;
 
     access_log logs/access.log;

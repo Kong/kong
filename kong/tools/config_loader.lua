@@ -172,9 +172,8 @@ function _M.load(config_path)
       dnsmasq = true
     }
   else
-    config.dns_resolver = {address = config.dns_resolver.server.address}
+    config.dns_resolver = {address = config.dns_resolvers_available.server.address}
   end
-
 
   -- Load absolute path for the nginx working directory
   if not stringy.startswith(config.nginx_working_dir, "/") then
@@ -182,6 +181,8 @@ function _M.load(config_path)
     local fs = require "luarocks.fs"
     config.nginx_working_dir = fs.current_dir().."/"..config.nginx_working_dir
   end
+
+  config.plugins = utils.table_merge(constants.PLUGINS_AVAILABLE, config.custom_plugins)
 
   return config, config_path
 end

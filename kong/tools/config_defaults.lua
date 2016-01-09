@@ -1,10 +1,5 @@
 return {
-  ["plugins_available"] = {type = "array",
-    default = {"ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
-               "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
-               "mashape-analytics", "request-transformer", "response-transformer",
-               "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog", "loggly", "datadog"}
-  },
+  ["custom_plugins"] = {type = "array", default = {}},
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
   ["proxy_listen"] = {type = "string", default = "0.0.0.0:8000"},
   ["proxy_listen_ssl"] = {type = "string", default = "0.0.0.0:8443"},
@@ -18,7 +13,7 @@ return {
       ["server"] = {
         type = "table",
         content = {
-          ["address"] = {type = "string", default = "8.8.8.8:53"}
+          ["address"] = {type = "string", default = "8.8.8.8"}
         }
       },
       ["dnsmasq"] = {
@@ -44,7 +39,7 @@ return {
       ["cassandra"] = {
         type = "table",
         content = {
-          ["contact_points"] = {type = "array", default = {"localhost:9042"}},
+          ["contact_points"] = {type = "array", default = {"127.0.0.1:9042"}},
           ["keyspace"] = {type = "string", default = "kong"},
           ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
           ["replication_factor"] = {type = "number", default = 1},

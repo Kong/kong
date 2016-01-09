@@ -174,6 +174,10 @@ function _M:verify_signature(key)
   return alg_verify[self.header.alg](self.header_64.."."..self.claims_64, self.signature, key)
 end
 
+function _M:b64_decode(input)
+  return b64_decode(input)
+end
+
 --- Registered claims according to RFC 7519 Section 4.1
 local registered_claims = {
   ["nbf"] = {

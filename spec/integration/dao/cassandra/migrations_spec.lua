@@ -12,7 +12,7 @@ local FIXTURES = {
   core_migrations_module = "spec.integration.dao.cassandra.fixtures.core_migrations",
   plugins_namespace = "spec.integration.dao.cassandra.fixtures",
   kong_config = {
-    plugins_available = {"plugin_fixture"}
+    plugins = {"plugin_fixture"}
   }
 }
 
@@ -314,7 +314,7 @@ describe("Migrations", function()
 
   describe("migrations with DML statements", function()
     setup(function()
-      migrations = Migrations(test_dao, {plugins_available = {"plugin_fixture_dml_migrations"}}, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
+      migrations = Migrations(test_dao, {plugins = {"plugin_fixture_dml_migrations"}}, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
     end)
     it("should be able to execute migrations modifying the stored data", function()
       local err = migrations:run_migrations("plugin_fixture_dml_migrations")

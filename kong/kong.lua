@@ -49,7 +49,7 @@ end
 
 --- Load enabled plugins on the node.
 -- Get plugins in the DB (distinct by `name`), compare them with plugins
--- in kong.yml's `plugins_available`. If both lists match, return a list
+-- in `configuration.plugins`. If both lists match, return a list
 -- of plugins sorted by execution priority for lua-nginx-module's context handlers.
 -- @treturn table Array of plugins to execute in context handlers.
 local function load_node_plugins(configuration)
@@ -61,14 +61,14 @@ local function load_node_plugins(configuration)
 
   -- Checking that the plugins in the DB are also enabled
   for _, v in ipairs(db_plugins) do
-    if not utils.table_contains(configuration.plugins_available, v) then
+    if not utils.table_contains(configuration.plugins, v) then
       error("You are using a plugin that has not been enabled in the configuration: "..v)
     end
   end
 
   local sorted_plugins = {}
 
-  for _, v in ipairs(configuration.plugins_available) do
+  for _, v in ipairs(configuration.plugins) do
     local loaded, plugin_handler_mod = utils.load_module_if_exists("kong.plugins."..v..".handler")
     if not loaded then
       error("The following plugin has been enabled in the configuration but it is not installed on the system: "..v)
