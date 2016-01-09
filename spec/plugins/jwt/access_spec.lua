@@ -34,7 +34,7 @@ describe("JWT access", function()
         {name = "jwt", config = {}, __api = 1},
         {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2},
         {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, __api = 3},
-        {name = "jwt", config = {secret_key_field = "aud"}, __api = 4},
+        {name = "jwt", config = {key_claim_name = "aud"}, __api = 4},
         {name = "jwt", config = {secret_is_base64 = true}, __api = 5}
       },
       jwt_secret = {
