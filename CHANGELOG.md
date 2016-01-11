@@ -5,7 +5,7 @@
  We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
 
 - [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
-- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended to checkout the new default configuration file.
+- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended checking out the new default configuration file.
 - Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Mashape/kong/pull/799)
 
 ### Added
@@ -23,7 +23,7 @@ One of the biggest new features of this release is the cluster-awareness added t
 
 Other additions include:
 
-- New Cassandra driver which enables cluster-awareness of the Cassandra cluster. Kong is now protected if one of your Cassandra nodes goes down as long as a replica is available on another node. Load balancing policies also improve the performance along with many other smaller improvements. [#803](https://github.com/Mashape/kong/pull/803)
+- New Cassandra driver which makes Kong aware of the Cassandra cluster. Kong is now unaffected if one of your Cassandra nodes goes down as long as a replica is available on another node. Load balancing policies also improve the performance along with many other smaller improvements. [#803](https://github.com/Mashape/kong/pull/803)
 - Admin API
   - A new `total` field in API responses, that counts the total number of entities in the datastore. [#635](https://github.com/Mashape/kong/pull/635)
 - Configuration
@@ -36,6 +36,9 @@ Other additions include:
   - OAuth2
     - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
     - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Mashape/kong/pull/729)
+  - JWT:
+    - Support for base64 encoded secrets. [#838](https://github.com/Mashape/kong/pull/838) [#577](https://github.com/Mashape/kong/issues/577)
+    - Support to configure the claim in which the key is given into the token (not `iss` only anymore). [#838](https://github.com/Mashape/kong/pull/838)
   - Request transformer
     - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#824](https://github.com/Mashape/kong/pull/824)
     - Support JSON body transformation. [#569](https://github.com/Mashape/kong/issues/569)
