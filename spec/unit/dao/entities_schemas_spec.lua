@@ -67,7 +67,7 @@ describe("Entities Schemas", function()
       assert.True(valid)
     end)
 
-    it("should complain if missing `request_host` and `request_path`", function()
+    it("should complain if missing request_host and request_path", function()
       local valid, errors = validate_entity({
         name = "mockbin"
       }, api_schema)
@@ -84,13 +84,84 @@ describe("Entities Schemas", function()
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
     end)
 
-    it("should complain if `request_host` is an empty string", function()
+    it("should complain if request_host is an empty string", function()
       local t = {request_host = "", upstream_url = "http://mockbin.com"}
 
       local valid, errors = validate_entity(t, api_schema)
       assert.False(valid)
-      assert.equal("request_host has an invalid value", errors.request_host)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
+    end)
+
+    it("should complain if request_path is an empty string", function()
+      local t = {request_path = "", upstream_url = "http://mockbin.com"}
+
+      local valid, errors = validate_entity(t, api_schema)
+      assert.False(valid)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
+    end)
+
+    it("should not accept an invalid request_host", function()
+      local invalids = {"/mockbin", ".mockbin", "mockbin.", "mockbin.f", "mock;bin",
+                        "mockbin.com-org", "mockbin.com/org", "mockbin.com_org",
+                        "-mockbin.org", "mockbin-.org", "mockbin.or-g", "mockbin.org-",
+                        "mockbin.-org", "hello.-mockbin.com", "hello..mockbin.com", "hello-.mockbin.com"}
+
+      for _, v in ipairs(invalids) do
+        local t = {request_host = v, upstream_url = "http://mockbin.com"}
+        local valid, errors = validate_entity(t, api_schema)
+        assert.equal("Invalid value: "..v, (errors and errors.request_host or ""))
+        assert.falsy(errors.request_path)
+        assert.False(valid)
+      end
+    end)
+
+    it("should accept valid request_host", function()
+      local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
+                      "HELLO.com", "123helloWORLD.com", "mockbin.123", "mockbin-api.com",
+                      "hello.abcd", "mockbin_api.com"}
+
+      for _, v in ipairs(valids) do
+        local t = {request_host = v, upstream_url = "http://mockbin.com"}
+        local valid, errors = validate_entity(t, api_schema)
+        assert.falsy(errors)
+        assert.True(valid)
+      end
+    end)
+
+    it("should accept valid wildcard request_host", function()
+      local valids = {"mockbin.*", "*.mockbin.org"}
+
+      for _, v in ipairs(valids) do
+        local t = {request_host = v, upstream_url = "http://mockbin.com"}
+        local valid, errors = validate_entity(t, api_schema)
+        assert.falsy(errors)
+        assert.True(valid)
+      end
+    end)
+
+    it("should refuse request_host with more than one wildcard", function()
+      local api_t = {
+        name = "mockbin",
+        request_host = "*.mockbin.*",
+        upstream_url = "http://mockbin.com"
+      }
+
+      local valid, errors = validate_entity(api_t, api_schema)
+      assert.False(valid)
+      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.request_host)
+    end)
+
+    it("should refuse invalid wildcard request_host", function()
+      local invalids = {"*mockbin.com", "www.mockbin*", "mock*bin.com"}
+
+      for _, v in ipairs(invalids) do
+        local t = {request_host = v, upstream_url = "http://mockbin.com"}
+        local valid, errors = validate_entity(t, api_schema)
+        assert.equal("Invalid wildcard placement: "..v, (errors and errors.request_host or ""))
+        assert.False(valid)
+      end
     end)
 
     it("should set the name from request_host if not set", function()
@@ -123,12 +194,12 @@ describe("Entities Schemas", function()
     end)
 
     it("should normalize a name for URI if coming from request_host or request_path", function()
-      local t = {upstream_url = "http://mockbin.com", request_host = "mockbin#com"}
+      local t = {upstream_url = "http://mockbin.com", request_host = "mockbin.com"}
 
       local valid, errors = validate_entity(t, api_schema)
       assert.True(valid)
       assert.falsy(errors)
-      assert.equal("mockbin-com", t.name)
+      assert.equal("mockbin.com", t.name)
 
       t = {upstream_url = "http://mockbin.com", request_path = "/mockbin/status"}
 
@@ -138,47 +209,7 @@ describe("Entities Schemas", function()
       assert.equal("mockbin-status", t.name)
     end)
 
-    it("should accept valid wildcard request_host", function()
-      local valid, errors = validate_entity({
-        name = "mockbin",
-        request_host = "*.mockbin.org",
-        upstream_url = "http://mockbin.com"
-      }, api_schema)
-      assert.True(valid)
-      assert.falsy(errors)
-
-      valid, errors = validate_entity({
-        name = "mockbin",
-        request_host = "mockbin.*",
-        upstream_url = "http://mockbin.com"
-      }, api_schema)
-      assert.True(valid)
-      assert.falsy(errors)
-    end)
-
-    it("should refuse invalid wildcard request_host", function()
-      local api_t = {
-        name = "mockbin",
-        request_host = "*.mockbin.*",
-        upstream_url = "http://mockbin.com"
-      }
-
-      local valid, errors = validate_entity(api_t, api_schema)
-      assert.False(valid)
-      assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.request_host)
-
-      api_t.request_host = "*mockbin.com"
-      valid, errors = validate_entity(api_t, api_schema)
-      assert.False(valid)
-      assert.equal("Invalid wildcard placement: *mockbin.com", errors.request_host)
-
-      api_t.request_host = "www.mockbin*"
-      valid, errors = validate_entity(api_t, api_schema)
-      assert.False(valid)
-      assert.equal("Invalid wildcard placement: www.mockbin*", errors.request_host)
-    end)
-
-    it("should only accept alphanumeric `request_path`", function()
+    it("should only accept alphanumeric request_path", function()
       local valid, errors = validate_entity({
         name = "mockbin",
         request_path = "/[a-zA-Z]{3}",
@@ -202,7 +233,7 @@ describe("Entities Schemas", function()
       assert.True(valid)
     end)
 
-    it("should prefix a `request_path` with a slash and remove trailing slash", function()
+    it("should prefix a request_path with a slash and remove trailing slash", function()
       local api_t = { name = "mockbin", request_path = "status", upstream_url = "http://mockbin.com" }
       validate_entity(api_t, api_schema)
       assert.equal("/status", api_t.request_path)
@@ -350,6 +381,20 @@ describe("Entities Schemas", function()
         assert.True(valid)
         assert.falsy(err)
       end)
+    end)
+  end)
+
+  describe("update", function()
+    it("should only validate updated fields", function()
+      local t = {request_host = "", upstream_url = "http://mockbin.com"}
+
+      local valid, errors = validate_entity(t, api_schema, {
+        update = true
+      })
+      assert.False(valid)
+      assert.same({
+        request_host = "At least a 'request_host' or a 'request_path' must be specified"
+      }, errors)
     end)
   end)
 end)
