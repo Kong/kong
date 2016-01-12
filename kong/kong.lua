@@ -104,32 +104,38 @@ local Kong = {}
 --     - sort the plugins by priority
 --
 -- If any error happens during the initialization of the DAO or plugins,
--- it will be thrown and needs to be catched in `init_by_lua`.
+-- it return an nginx error and exit.
 function Kong.init()
-  configuration = config_loader.load(os.getenv("KONG_CONF"))
-  dao = dao_loader.load(configuration, true)
-  loaded_plugins = load_node_plugins(configuration)
-  process_id = utils.random_string()
-  ngx.update_time()
+  local status, err = pcall(function() 
+      configuration = config_loader.load(os.getenv("KONG_CONF"))
+      dao = dao_loader.load(configuration, true)
+      loaded_plugins = load_node_plugins(configuration)
+      process_id = utils.random_string()
+      ngx.update_time()
+    end)
+  if not status then
+    ngx.log(ngx.ERR, "Startup error: "..err)
+    os.exit(1)
+  end
 end
 
-function Kong.exec_plugins_init_worker()
-  core.init_worker()
+function Kong.init_worker()
+  core.init_worker.before()
 
   for _, plugin in ipairs(loaded_plugins) do
     plugin.handler:init_worker()
   end
 end
 
-function Kong.exec_plugins_certificate()
-  core.certificate()
+function Kong.ssl_certificate()
+  core.certificate.before()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, "certificate") do
     plugin.handler:certificate(plugin_conf)
   end
 end
 
-function Kong.exec_plugins_access()
+function Kong.access()
   core.access.before()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, "access") do
@@ -139,7 +145,7 @@ function Kong.exec_plugins_access()
   core.access.after()
 end
 
-function Kong.exec_plugins_header_filter()
+function Kong.header_filter()
   core.header_filter.before()
 
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, "header_filter") do
@@ -149,7 +155,7 @@ function Kong.exec_plugins_header_filter()
   core.header_filter.after()
 end
 
-function Kong.exec_plugins_body_filter()
+function Kong.body_filter()
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, "body_filter") do
     plugin.handler:body_filter(plugin_conf)
   end
@@ -157,12 +163,12 @@ function Kong.exec_plugins_body_filter()
   core.body_filter.after()
 end
 
-function Kong.exec_plugins_log()
+function Kong.log()
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, "log") do
     plugin.handler:log(plugin_conf)
   end
 
-  core.log()
+  core.log.after()
 end
 
 return Kong

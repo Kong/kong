@@ -1,6 +1,6 @@
 -- Kong core
 --
--- This consists of events than need to
+-- This consists of events that need to
 -- be ran at the very beginning and very end of the lua-nginx-module contexts.
 -- It mainly carries information related to a request from one context to the next one,
 -- through the `ngx.ctx` table.
@@ -30,13 +30,18 @@ local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
+-- in the table below the `before` and `after` is to indicate when they run; before or after the plugins
 return {
-  init_worker = function()
-    reports.init_worker()
-  end,
-  certificate = function()
-    ngx.ctx.api = certificate.execute()
-  end,
+  init_worker = {
+    before = function()
+      reports.init_worker()
+    end
+  },
+  certificate = {
+    before = function()
+      ngx.ctx.api = certificate.execute()
+    end
+  },
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = get_now()
@@ -91,7 +96,9 @@ return {
       end
     end
   },
-  log = function()
-    reports.log()
-  end
+  log = {
+    after = function()
+      reports.log()
+    end
+  }
 }

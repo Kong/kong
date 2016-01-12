@@ -13,7 +13,7 @@ Usage: kong config [options]
 
 Options:
   -c,--config (default %s) path to configuration file
-  -o,--output (default .)                  ouput
+  -o,--output (default .)                  output
   -e,--env    (string)                     environment name
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
