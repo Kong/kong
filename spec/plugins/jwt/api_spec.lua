@@ -30,6 +30,7 @@ describe("JWT API", function()
       local jwt1, jwt2
 
       teardown(function()
+        if jwt1 == nil then return end
         jwt_secrets:delete(jwt1)
         jwt_secrets:delete(jwt2)
       end)

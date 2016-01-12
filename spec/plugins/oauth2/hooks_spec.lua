@@ -11,7 +11,7 @@ local API_URL = spec_helper.API_URL
 local env = spec_helper.get_env() -- test environment
 local dao_factory = env.dao_factory
 local configuration = env.configuration
-configuration.cassandra = configuration.databases_available[configuration.database].properties
+configuration.cassandra = configuration[configuration.database].properties
 
 describe("OAuth2 Authentication Hooks", function()
 

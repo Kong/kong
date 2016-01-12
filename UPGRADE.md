@@ -27,6 +27,10 @@ $ kong reload [-c configuration_file]
 The configuration file changed in this release. Make sure to check out the new default one and update it to your needs. In particular, make sure that:
 
 ```yaml
+plugins_available:
+  - key-auth
+  - ...
+  - custom-plugin
 proxy_port: ...
 proxy_ssl_port: ...
 admin_api_port: ...
@@ -40,13 +44,14 @@ databases_available:
 becomes:
 
 ```yaml
+custom_plugins:
+  - only-custom-plugins
 proxy_listen: ...
 proxy_listen_ssl: ...
 admin_api_listen: ...
-databases_available:
-  cassandra:
-    contact_points:
-      - ...
+cassandra:
+  contact_points:
+    - ...
 ```
 
 Secondly, you will need to have [Serf](https://www.serfdom.io) installed on your system and available in your `$PATH`.

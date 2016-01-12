@@ -906,21 +906,22 @@ describe("Cassandra", function()
           assert.equal("request-transformer", plugin.name)
           assert.same({
             add = {
-              form = {},
+              body = {},
               headers = {},
               querystring = {}
             },
             append = {
+              body = {},
               headers = {},
               querystring = {}
             },
             remove = {
-              form = {},
+              body = {},
               headers = {},
               querystring = {}
             },
             replace = {
-              form = {},
+              body = {},
               headers = {},
               querystring = {}
             }

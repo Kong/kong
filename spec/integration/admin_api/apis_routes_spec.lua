@@ -56,11 +56,15 @@ describe("Admin API", function()
           assert.equal(400, status)
           assert.equal('{"message":"Cannot parse JSON body"}\n', response)
         end)
-        it_content_types("should return proper validation errors", function(content_type)
+        it_content_types("return proper validation errors", function(content_type)
           return function()
             local response, status = http_client.post(BASE_URL, {}, {["content-type"] = content_type})
             assert.equal(400, status)
             assert.equal([[{"upstream_url":"upstream_url is required","request_path":"At least a 'request_host' or a 'request_path' must be specified","request_host":"At least a 'request_host' or a 'request_path' must be specified"}]], stringy.strip(response))
+
+            response, status = http_client.post(BASE_URL, {request_host = "/httpbin", upstream_url = "http://mockbin.com"}, {["content-type"] = content_type})
+            assert.equal(400, status)
+            assert.equal([[{"request_host":"Invalid value: \/httpbin"}]], stringy.strip(response))
           end
         end)
         it_content_types("should return HTTP 409 if already exists", function(content_type)
@@ -185,7 +189,7 @@ describe("Admin API", function()
       end)
 
       describe("PATCH", function()
-        it_content_types("should update if found", function(content_type)
+        it_content_types("should update name if found", function(content_type)
           return function()
             local response, status = http_client.patch(BASE_URL..api.id, {
               name = "patch-updated"
@@ -193,9 +197,15 @@ describe("Admin API", function()
             assert.equal(200, status)
             local body = json.decode(response)
             assert.equal("patch-updated", body.name)
+
+            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            assert.falsy(err)
+            assert.equal(1, #rows)
+            local api = rows[1]
+            assert.equal("patch-updated", api.name)
           end
         end)
-        it_content_types("should update by name", function(content_type)
+        it_content_types("should update name by its old name", function(content_type)
           return function()
             local response, status = http_client.patch(BASE_URL..api.name, {
               name = "patch-updated"
@@ -203,6 +213,63 @@ describe("Admin API", function()
             assert.equal(200, status)
             local body = json.decode(response)
             assert.equal("patch-updated", body.name)
+
+            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            assert.falsy(err)
+            assert.equal(1, #rows)
+            local api = rows[1]
+            assert.equal("patch-updated", api.name)
+          end
+        end)
+        it_content_types("should update request_path", function(content_type)
+          return function()
+            local response, status = http_client.patch(BASE_URL..api.id, {
+              request_path = "/httpbin-updated"
+            }, {["content-type"] = content_type})
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.equal("/httpbin-updated", body.request_path)
+
+            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            assert.falsy(err)
+            assert.equal(1, #rows)
+            local api = rows[1]
+            assert.equal("/httpbin-updated", api.request_path)
+          end
+        end)
+        it_content_types("should update strip_request_path if it was not previously set", function(content_type)
+          return function()
+            local response, status = http_client.patch(BASE_URL..api.id, {
+              strip_request_path = true
+            }, {["content-type"] = content_type})
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.True(body.strip_request_path)
+
+            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            assert.falsy(err)
+            assert.equal(1, #rows)
+            local api = rows[1]
+            assert.True(api.strip_request_path)
+          end
+        end)
+        it_content_types("should update request_host and request_path at once", function(content_type)
+          return function()
+            local response, status = http_client.patch(BASE_URL..api.id, {
+              request_path = "/httpbin-updated-path",
+              request_host = "httpbin-updated.org"
+            }, {["content-type"] = content_type})
+            assert.equal(200, status)
+            local body = json.decode(response)
+            assert.equal("/httpbin-updated-path", body.request_path)
+            assert.equal("httpbin-updated.org", body.request_host)
+
+            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            assert.falsy(err)
+            assert.equal(1, #rows)
+            local api = rows[1]
+            assert.equal("/httpbin-updated-path", api.request_path)
+            assert.equal("httpbin-updated.org", api.request_host)
           end
         end)
         describe("errors", function()
@@ -221,7 +288,7 @@ describe("Admin API", function()
                 request_host = " "
               }, {["content-type"] = content_type})
               assert.equal(400, status)
-              assert.equal([[{"request_host":"request_host has an invalid value"}]], stringy.strip(response))
+              assert.equal([[{"request_host":"At least a 'request_host' or a 'request_path' must be specified"}]], stringy.strip(response))
             end
           end)
         end)
@@ -241,7 +308,7 @@ describe("Admin API", function()
           assert.equal(204, status)
           assert.falsy(response)
         end)
-        it("delete an API by name #only", function()
+        it("delete an API by name", function()
           local response, status = http_client.delete(BASE_URL.."to-delete")
           assert.equal(204, status)
           assert.falsy(response)

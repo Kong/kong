@@ -25,8 +25,7 @@ describe("Configuration validation", function()
     assert.truthy(conf.cluster_listen)
     assert.truthy(conf.cluster_listen_rpc)
     assert.truthy(conf.database)
-    assert.truthy(conf.databases_available)
-    assert.equal("table", type(conf.databases_available))
+    assert.truthy(conf.cassandra)
 
     local function check_defaults(conf, conf_defaults)
       for k, v in pairs(conf) do
@@ -51,12 +50,10 @@ describe("Configuration validation", function()
     local ok, errors = config.validate({
       proxy_listen = 123,
       database = 777,
-      databases_available = {
-        cassandra = {
-          contact_points = "127.0.0.1",
-          ssl = {
-            enabled = "false"
-          }
+      cassandra = {
+        contact_points = "127.0.0.1",
+        ssl = {
+          enabled = "false"
         }
       }
     })
@@ -65,8 +62,8 @@ describe("Configuration validation", function()
     assert.equal("must be a string", errors.proxy_listen)
     assert.equal("must be a string", errors.database[1])
     assert.equal("must be one of: 'cassandra'", errors.database[2])
-    assert.equal("must be a array", errors["databases_available.cassandra.contact_points"])
-    assert.equal("must be a boolean", errors["databases_available.cassandra.ssl.enabled"])
+    assert.equal("must be a array", errors["cassandra.contact_points"])
+    assert.equal("must be a boolean", errors["cassandra.ssl.enabled"])
     assert.falsy(errors.ssl_cert_path)
     assert.falsy(errors.ssl_key_path)
   end)
@@ -77,14 +74,12 @@ describe("Configuration validation", function()
   end)
   it("should check that the value is contained in `enum`", function()
     local ok, errors = config.validate({
-      databases_available = {
-        cassandra = {
-          replication_strategy = "foo"
-        }
+      cassandra = {
+        replication_strategy = "foo"
       }
     })
     assert.False(ok)
-    assert.equal("must be one of: 'SimpleStrategy, NetworkTopologyStrategy'", errors["databases_available.cassandra.replication_strategy"])
+    assert.equal("must be one of: 'SimpleStrategy, NetworkTopologyStrategy'", errors["cassandra.replication_strategy"])
   end)
   it("should validate the selected database property", function()
     local ok, errors = config.validate({database = "foo"})

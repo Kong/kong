@@ -7,8 +7,6 @@ local rex = require "rex_pcre"
 -- Load everything we need from the spec_helper
 local env = spec_helper.get_env() -- test environment
 local dao_factory = env.dao_factory
-local configuration = env.configuration
-configuration.cassandra = configuration.databases_available[configuration.database].properties
 
 local PROXY_SSL_URL = spec_helper.PROXY_SSL_URL
 local PROXY_URL = spec_helper.PROXY_URL

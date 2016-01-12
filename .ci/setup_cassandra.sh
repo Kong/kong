@@ -2,6 +2,11 @@
 
 set -e
 
+if [ "$TEST_SUITE" == "unit" ]; then
+  echo "Exiting, no integration tests"
+  exit
+fi
+
 arr=(${CASSANDRA_HOSTS//,/ })
 
 pip install --user PyYAML six

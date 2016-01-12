@@ -13,7 +13,7 @@ local function validate_upstream_url_protocol(value)
   return true
 end
 
-local function check_request_host_and_path(value, api_t)
+local function check_request_host_and_path(api_t)
   local request_host = type(api_t.request_host) == "string" and stringy.strip(api_t.request_host) or ""
   local request_path = type(api_t.request_path) == "string" and stringy.strip(api_t.request_path) or ""
 
@@ -21,14 +21,38 @@ local function check_request_host_and_path(value, api_t)
     return false, "At least a 'request_host' or a 'request_path' must be specified"
   end
 
-  -- Validate wildcard request_host
-  if request_host then
+  return true
+end
+
+local host_allowed_chars = "[%d%a%-%.%_]"
+local ext_allowed_chars = "[%d%a]"
+local dns_pattern = "^"..host_allowed_chars.."+%."..ext_allowed_chars..ext_allowed_chars.."+$"
+
+local function check_request_host(request_host, api_t)
+  local valid, err = check_request_host_and_path(api_t)
+  if valid == false then
+    return false, err
+  end
+
+  if request_host ~= nil and request_host ~= "" then
     local _, count = request_host:gsub("%*", "")
-    if count > 1 then
-      return false, "Only one wildcard is allowed: "..request_host
-    elseif count > 0 then
-      local pos = request_host:find("%*")
+    if count == 0 then
+      -- Validate regular request_host
+      local match = request_host:match(dns_pattern)
+      if match == nil then
+        return false, "Invalid value: "..request_host
+      end
+
+      -- Reject prefix/trailing dashes and dots in each segment
+      for _, segment in ipairs(stringy.split(request_host, ".")) do
+        if segment == "" or segment:match("^-") or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
+          return false, "Invalid value: "..request_host
+        end
+      end
+    elseif count == 1 then
+      -- Validate wildcard request_host
       local valid
+      local pos = request_host:find("%*")
       if pos == 1 then
         valid = request_host:match("^%*%.") ~= nil
       elseif pos == string.len(request_host) then
@@ -38,17 +62,21 @@ local function check_request_host_and_path(value, api_t)
       if not valid then
         return false, "Invalid wildcard placement: "..request_host
       end
+    else
+      return false, "Only one wildcard is allowed: "..request_host
     end
   end
+
+  return true
 end
 
 local function check_request_path(request_path, api_t)
-  local valid, err = check_request_host_and_path(request_path, api_t)
+  local valid, err = check_request_host_and_path(api_t)
   if valid == false then
     return false, err
   end
 
-  if request_path then
+  if request_path ~= nil and request_path ~= "" then
     request_path = string.gsub(request_path, "^/*", "")
     request_path = string.gsub(request_path, "/*$", "")
 
@@ -79,7 +107,7 @@ local function default_name(api_t)
   local default_name, err, _
 
   default_name = api_t.request_host
-  if not default_name and api_t.request_path then
+  if default_name == nil and api_t.request_path ~= nil then
     default_name = api_t.request_path:sub(2):gsub("/", "-")
   end
 
@@ -120,8 +148,7 @@ return {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
     name = {type = "string", unique = true, queryable = true, default = default_name, func = check_name},
-    request_host = {type = "string", unique = true, queryable = true, func = check_request_host_and_path,
-                  regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)"},
+    request_host = {type = "string", unique = true, queryable = true, func = check_request_host},
     request_path = {type = "string", unique = true, func = check_request_path},
     strip_request_path = {type = "boolean"},
     upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},

@@ -87,58 +87,57 @@
   # encrypt: "foo"
 
 ######
-## Specify which database to use from the databases_available property.
+## Specify which database to use. Only "cassandra" is currently available.
 # database: cassandra
 
 ######
-## A dictionary of databases Kong can connect to, and their respective properties.
-# databases_available:
-  # cassandra:
-    ######
-    ## Contact points to your Cassandra cluster.
-    # contact_points:
-    #   - "127.0.0.1:9042"
+## Cassandra configuration (keyspace, authentication, client-to-node encryption)
+# cassandra:
+  ######
+  ## Contact points to your Cassandra cluster.
+  # contact_points:
+  #   - "127.0.0.1:9042"
 
-    ######
-    ## Name of the keyspace used by Kong. Will be created if it does not exist.
-    # keyspace: kong
+  ######
+  ## Name of the keyspace used by Kong. Will be created if it does not exist.
+  # keyspace: kong
 
-    ######
-    ## Keyspace options. Set those before running Kong or any migration.
-    ## Those settings will be used to create a keyspace with the desired options
-    ## when first running the migrations.
-    ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
-    ######
-    ## The name of the replica placement strategy class for the keyspace.
-    ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
-    # replication_strategy: SimpleStrategy
-    ######
-    ## For SimpleStrategy only.
-    ## The number of replicas of data on multiple nodes.
-    # replication_factor: 1
-    ######
-    ## For NetworkTopologyStrategy only.
-    ## The number of replicas of data on multiple nodes in each data center.
-    # data_centers:
-    #   dc1: 2
-    #   dc2: 3
+  ######
+  ## Keyspace options. Set those before running Kong or any migration.
+  ## Those settings will be used to create a keyspace with the desired options
+  ## when first running the migrations.
+  ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
+  ######
+  ## The name of the replica placement strategy class for the keyspace.
+  ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
+  # replication_strategy: SimpleStrategy
+  ######
+  ## For SimpleStrategy only.
+  ## The number of replicas of data on multiple nodes.
+  # replication_factor: 1
+  ######
+  ## For NetworkTopologyStrategy only.
+  ## The number of replicas of data on multiple nodes in each data center.
+  # data_centers:
+  #   dc1: 2
+  #   dc2: 3
 
-    #####
-    ## Client-to-node TLS options.
-    ## `enabled`: if true, will connect to your Cassandra instance using TLS.
-    ## `verify`: if true, will verify the server certificate using the given CA file.
-    ## `certificate_authority`: an absolute path to the trusted CA certificate in PEM format used to verify the server certificate.
-    ## For additional SSL settings, see the ngx_lua `lua_ssl_*` directives.
-    # ssl:
-    #   enabled: false
-    #   verify: false
-    #   certificate_authority: "/path/to/cluster-ca-certificate.pem"
+  #####
+  ## Client-to-node TLS options.
+  ## `enabled`: if true, will connect to your Cassandra instance using TLS.
+  ## `verify`: if true, will verify the server certificate using the given CA file.
+  ## `certificate_authority`: an absolute path to the trusted CA certificate in PEM format used to verify the server certificate.
+  ## For additional SSL settings, see the ngx_lua `lua_ssl_*` directives.
+  # ssl:
+  #   enabled: false
+  #   verify: false
+  #   certificate_authority: "/path/to/cluster-ca-certificate.pem"
 
-    ######
-    ## Cluster authentication options. Provide a user and a password here if your cluster uses the
-    ## PasswordAuthenticator scheme.
-    # user: cassandra
-    # password: cassandra
+  ######
+  ## Cluster authentication options. Provide a user and a password here if your cluster uses the
+  ## PasswordAuthenticator scheme.
+  # user: cassandra
+  # password: cassandra
 
 ######
 ## Kong will send anonymous reports to Mashape. This helps Mashape fixing bugs/errors and improving Kong. 
@@ -223,21 +222,17 @@ nginx: |
 
     init_by_lua '
       kong = require "kong"
-      local status, err = pcall(kong.init)
-      if not status then
-        ngx.log(ngx.ERR, "Startup error: "..err)
-        os.exit(1)
-      end
+      kong.init()
     ';
 
-    init_worker_by_lua 'kong.exec_plugins_init_worker()';
+    init_worker_by_lua 'kong.init_worker()';
 
     server {
       server_name _;
       listen {{proxy_listen}};
       listen {{proxy_listen_ssl}} ssl;
 
-      ssl_certificate_by_lua 'kong.exec_plugins_certificate()';
+      ssl_certificate_by_lua 'kong.ssl_certificate()';
 
       ssl_certificate {{ssl_cert}};
       ssl_certificate_key {{ssl_key}};
@@ -251,7 +246,7 @@ nginx: |
         set $upstream_url nil;
 
         # Authenticate the user and load the API info
-        access_by_lua 'kong.exec_plugins_access()';
+        access_by_lua 'kong.access()';
 
         # Proxy the request
         # Proxy the request
@@ -263,13 +258,13 @@ nginx: |
         proxy_pass_header Server;
 
         # Add additional response headers
-        header_filter_by_lua 'kong.exec_plugins_header_filter()';
+        header_filter_by_lua 'kong.header_filter()';
 
         # Change the response body
-        body_filter_by_lua 'kong.exec_plugins_body_filter()';
+        body_filter_by_lua 'kong.body_filter()';
 
         # Log the request
-        log_by_lua 'kong.exec_plugins_log()';
+        log_by_lua 'kong.log()';
       }
 
       location /robots.txt {

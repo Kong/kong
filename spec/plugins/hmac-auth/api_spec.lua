@@ -23,7 +23,7 @@ describe("HMAC Auth Credentials API", function()
       consumer = fixtures.consumer[1]
       BASE_URL = spec_helper.API_URL.."/consumers/bob/hmac-auth/"
     end)
-    
+
     describe("POST", function()
 
       it("[SUCCESS] should create a hmac-auth credential", function()
@@ -43,6 +43,7 @@ describe("HMAC Auth Credentials API", function()
 
     describe("PUT", function()
       setup(function()
+        if credential == nil then return end
         spec_helper.get_env().dao_factory.hmacauth_credentials:delete({id = credential.id})
       end)
 
@@ -104,7 +105,7 @@ describe("HMAC Auth Credentials API", function()
     end)
 
     describe("DELETE", function()
-    
+
       it("[FAILURE] should return proper errors", function()
         local _, status = http_client.delete(BASE_URL.."blah")
         assert.equal(400, status)

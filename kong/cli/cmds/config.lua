@@ -14,7 +14,7 @@ Usage: kong config [options]
 
 Options:
   -c,--config (default %s) path to configuration file
-  -o,--output (default .)                  ouput
+  -o,--output (default .)                  output
   -e,--env    (string)                     environment name
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
@@ -33,10 +33,8 @@ local DEFAULT_ENV_VALUES = {
       ["admin_api_listen"] = "0.0.0.0:8101",
       ["cluster_listen"] = "0.0.0.0:9100",
       ["cluster_listen_rpc"] = "0.0.0.0:9101",
-      ["databases_available"] = {
-        ["cassandra"] = {
-          ["keyspace"] = "kong_tests"
-        }
+      ["cassandra"] = {
+        ["keyspace"] = "kong_tests"
       }
     },
     nginx = {
@@ -47,10 +45,8 @@ local DEFAULT_ENV_VALUES = {
   },
   DEVELOPMENT = {
     yaml = {
-      ["databases_available"] = {
-        ["cassandra"] = {
-          ["keyspace"] = "kong_development"
-        }
+      ["cassandra"] = {
+        ["keyspace"] = "kong_development"
       }
     },
     nginx = {
