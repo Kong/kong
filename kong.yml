@@ -1,78 +1,78 @@
-######
 ## Kong configuration file. All commented values are default values.
 ## Uncomment and update a value to configure Kong to your needs.
-##
+
 ## Lines starting with `##` are comments.
 ## Lines starting with `#` are properties that can be updated.
 ## Beware of YAML formatting for nested properties.
 
-######
+
 ## Additional plugins that this node needs to load.
 ## If you want to load custom plugins that are not supported by Kong, uncomment and update
 ## this property with the names of the plugins to load.
 ## Plugins will be loaded from the kong.plugins.{name}.* namespace.
-# custom_plugins:
-  # - hello_world
-  # - custom_plugin2
-  # - ...
 
-######
+# custom_plugins:
+#  - hello_world
+#   - custom_plugin1
+#   - custom_plugin2
+
+
 ## The Kong working directory. Equivalent to nginx's prefix path.
 ## This is where this running nginx instance will keep server files including logs.
 ## Make sure it has the appropriate permissions.
+
 # nginx_working_dir: /usr/local/kong/
 
-######
 ## Address and port on which the server will accept HTTP requests, consumers will make requests on this port.
+
 # proxy_listen: "0.0.0.0:8000"
 
-######
 ## Same as proxy_listen, but for HTTPS requests.
+
 # proxy_listen_ssl: "0.0.0.0:8443"
 
-######
 ## Address and port on which the admin API will listen to. The admin API is a private API which lets you
 ## manage your Kong infrastructure. It needs to be secured appropriately.
+
 # admin_api_listen: "0.0.0.0:8001"
 
-######
 ## Address and port used by the node to communicate with other Kong nodes in the cluster with both UDP and
 ## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
 ## Only IPv4 addresses are allowed (no hostnames).
+
 # cluster_listen: "0.0.0.0:7946"
 
-######
 ## Address and port used by the node to communicate with the local clustering agent (TCP only, and local only).
 ## Used internally by this Kong node. Only IPv4 addresses are allowed (no hostnames).
+
 # cluster_listen_rpc: "127.0.0.1:7373"
 
-######
 ## The path to the SSL certificate and key that Kong will use when listening on the `https` port.
+
 # ssl_cert_path: /path/to/certificate.pem
 # ssl_key_path: /path/to/certificate.key
 
-######
 ## Specify how Kong performs DNS resolution (in the `dns_resolvers_available` property) you want to use.
 ## Options are: "dnsmasq" (You will need dnsmasq to be installed) or "server".
+
 # dns_resolver: dnsmasq
 
-######
 ## A dictionary of DNS resolvers Kong can use, and their respective properties.
 ## Currently `dnsmasq` (default, http://www.thekelleys.org.uk/dnsmasq/doc.html) and `server` are supported.
 ## By choosing `dnsmasq`, Kong will resolve hostnames using the local `/etc/hosts` file and `resolv.conf` 
 ## configuration. By choosing `server`, you can specify a custom DNS server.
-# dns_resolvers_available:
-  # server:
-    # address: "8.8.8.8:53"
-  # dnsmasq:
-    # port: 8053
 
-######
+# dns_resolvers_available:
+#   server:
+#     address: "8.8.8.8:53"
+#   dnsmasq:
+#    port: 8053
+
 ## Cluster settings between Kong nodes. 
 ## For more information take a look at the Clustering Reference: https://getkong.org/docs/latest/clustering/
+
 # cluster:
 
-  ######
   ## Address and port used by the node to communicate with other Kong nodes in the cluster with both UDP and
   ## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
   ## Only IPv4 addresses are allowed (no hostnames).
@@ -80,84 +80,87 @@
   ## cluster. By default, the cluster_listen address is advertised. However, in some cases 
   ## (specifically NAT traversal), there may be a routable address that cannot be bound to.  
   ## This flag enables gossiping a different address to support this.
+
   # advertise: ""
 
-  ######
   ## Key for encrypting network traffic within Kong. Must be a base64-encoded 16-byte key.
+  
   # encrypt: "foo"
 
-######
 ## Specify which database to use. Only "cassandra" is currently available.
+
 # database: cassandra
 
-######
 ## Cassandra configuration (keyspace, authentication, client-to-node encryption)
+
 # cassandra:
-  ######
   ## Contact points to your Cassandra cluster.
+
   # contact_points:
   #   - "127.0.0.1:9042"
 
-  ######
   ## Name of the keyspace used by Kong. Will be created if it does not exist.
+
   # keyspace: kong
 
-  ######
   ## Keyspace options. Set those before running Kong or any migration.
   ## Those settings will be used to create a keyspace with the desired options
   ## when first running the migrations.
   ## See http://docs.datastax.com/en/cql/3.1/cql/cql_reference/create_keyspace_r.html
-  ######
+
   ## The name of the replica placement strategy class for the keyspace.
   ## Can be "SimpleStrategy" or "NetworkTopologyStrategy".
+
   # replication_strategy: SimpleStrategy
-  ######
+
   ## For SimpleStrategy only.
   ## The number of replicas of data on multiple nodes.
+
   # replication_factor: 1
-  ######
+
   ## For NetworkTopologyStrategy only.
   ## The number of replicas of data on multiple nodes in each data center.
+
   # data_centers:
   #   dc1: 2
   #   dc2: 3
 
-  #####
   ## Client-to-node TLS options.
   ## `enabled`: if true, will connect to your Cassandra instance using TLS.
   ## `verify`: if true, will verify the server certificate using the given CA file.
   ## `certificate_authority`: an absolute path to the trusted CA certificate in PEM format used to verify the server certificate.
   ## For additional SSL settings, see the ngx_lua `lua_ssl_*` directives.
+
   # ssl:
   #   enabled: false
   #   verify: false
   #   certificate_authority: "/path/to/cluster-ca-certificate.pem"
 
-  ######
   ## Cluster authentication options. Provide a user and a password here if your cluster uses the
   ## PasswordAuthenticator scheme.
+
   # user: cassandra
   # password: cassandra
 
-######
 ## Kong will send anonymous reports to Mashape. This helps Mashape fixing bugs/errors and improving Kong. 
 ## By default is `true`.
+
 # send_anonymous_reports: true
 
-######
 ## A value specifying (in MB) the size of the internal preallocated in-memory cache. Kong uses an in-memory 
 ## cache to store database entities in order to optimize access to the underlying datastore. The cache size 
 ## needs to be as big as the size of the entities being used by Kong at any given time. The default value 
 ## is `128`, and the potential maximum value is the total size of the datastore.
 ## This value may not be smaller than 32MB.
+
 # memory_cache_size: 128
 
-######
 ## The NGINX configuration (or `nginx.conf`) that will be used for this instance.
 ## The placeholders will be computed and this property will be written as a file
 ## by Kong at `<nginx_working_dir>/nginx.conf` during startup.
 ## This file can tweaked to some extent, but many directives are necessary for Kong to work.
 ## /!\ BE CAREFUL
+
 nginx: |
   worker_processes auto;
   error_log logs/error.log error;
