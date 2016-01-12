@@ -12,7 +12,7 @@
 ## Plugins will be loaded from the kong.plugins.{name}.* namespace.
 
 # custom_plugins:
-#  - hello_world
+#   - hello_world
 #   - custom_plugin1
 #   - custom_plugin2
 
