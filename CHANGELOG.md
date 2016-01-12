@@ -64,6 +64,7 @@ Other additions include:
 - Admin API
   - The PUT method now correctly updates boolean fields (such as `strip_request_path`). [#765](https://github.com/Mashape/kong/pull/765)
   - The PUT method now correctly resets a plugin configuration. [#720](https://github.com/Mashape/kong/pull/720)
+  - PATCH correctly set previously unset fields. [#861](https://github.com/Mashape/kong/pull/861)
   - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
   - Prevent the update of `created_at` fields. [#820](https://github.com/Mashape/kong/pull/820)
 - Plugins:
