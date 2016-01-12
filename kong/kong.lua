@@ -163,7 +163,7 @@ function Kong.body_filter()
   core.body_filter.after()
 end
 
-function Kong.exec_plugins_log()
+function Kong.log()
   for plugin, plugin_conf in plugins_iterator(loaded_plugins, "log") do
     plugin.handler:log(plugin_conf)
   end
