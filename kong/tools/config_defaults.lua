@@ -1,10 +1,5 @@
 return {
-  ["plugins_available"] = {type = "array",
-    default = {"ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
-               "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
-               "mashape-analytics", "request-transformer", "response-transformer",
-               "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog", "loggly"}
-  },
+  ["custom_plugins"] = {type = "array", default = {}},
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
   ["proxy_port"] = {type = "number", default = 8000},
   ["proxy_ssl_port"] = {type = "number", default = 8443},
@@ -16,7 +11,7 @@ return {
       ["server"] = {
         type = "table",
         content = {
-          ["address"] = {type = "string", default = "8.8.8.8:53"}
+          ["address"] = {type = "string", default = "8.8.8.8"}
         }
       },
       ["dnsmasq"] = {
@@ -27,25 +22,23 @@ return {
       }
     }
   },
-  ["database"] = {type = "string", default = "cassandra"},
-  ["databases_available"] = {
+  ["database"] = {type = "string", default = "cassandra", enum = {"cassandra"}},
+  ["cassandra"] = {
     type = "table",
     content = {
-      ["cassandra"] = {
+      ["contact_points"] = {type = "array", default = {"127.0.0.1:9042"}},
+      ["keyspace"] = {type = "string", default = "kong"},
+      ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
+      ["replication_factor"] = {type = "number", default = 1},
+      ["data_centers"] = {type = "table", default = {}},
+      ["username"] = {type = "string", nullable = true},
+      ["password"] = {type = "string", nullable = true},
+      ["ssl"] = {
         type = "table",
         content = {
-          ["contact_points"] = {type = "array", default = {"localhost:9042"}},
-          ["timeout"] = {type = "number", default = 1000},
-          ["keyspace"] = {type = "string", default = "kong"},
-          ["keepalive"] = {type = "number", default = 60000},
-          ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
-          ["replication_factor"] = {type = "number", default = 1},
-          ["data_centers"] = {type = "table", default = {}},
-          ["ssl"] = {type = "boolean", default = false},
-          ["ssl_verify"] = {type = "boolean", default = false},
-          ["ssl_certificate"] = {type = "string", nullable = true},
-          ["user"] = {type = "string", nullable = true},
-          ["password"] = {type = "string", nullable = true}
+          ["enabled"] = {type = "boolean", default = false},
+          ["verify"] = {type = "boolean", default = false},
+          ["certificate_authority"] = {type = "string", nullable = true}
         }
       }
     }

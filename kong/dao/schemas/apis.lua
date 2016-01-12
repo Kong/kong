@@ -105,9 +105,7 @@ local function check_name(name)
     if err then
       ngx.log(ngx.ERR, err)
       return
-    end
-
-    if m then
+    elseif m then
       return false, "name must only contain alphanumeric and '., -, _, ~' characters"
     end
   end
@@ -120,7 +118,7 @@ return {
   primary_key = {"id"},
   fields = {
     id = {type = "id", dao_insert_value = true},
-    created_at = {type = "timestamp", dao_insert_value = true},
+    created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
     name = {type = "string", unique = true, queryable = true, default = default_name, func = check_name},
     request_host = {type = "string", unique = true, queryable = true, func = check_request_host_and_path,
                   regex = "([a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*)"},

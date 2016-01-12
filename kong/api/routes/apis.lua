@@ -1,6 +1,8 @@
 local crud = require "kong.api.crud_helpers"
 local syslog = require "kong.tools.syslog"
 local constants = require "kong.constants"
+local validations = require "kong.dao.schemas_validation"
+local is_uuid = validations.is_valid_uuid
 
 return {
   ["/apis/"] = {
@@ -18,18 +20,23 @@ return {
   },
 
   ["/apis/:name_or_id"] = {
-    before = crud.find_api_by_name_or_id,
+    before = function(self, dao_factory)
+      self.fetch_keys = {
+        [is_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+      }
+      self.params.name_or_id = nil
+    end,
 
     GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.api)
+      crud.get(self.fetch_keys, dao_factory.apis)
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, self.api, dao_factory.apis)
+      crud.patch(self.params, dao_factory.apis, self.fetch_keys)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.api, dao_factory.apis)
+      crud.delete(nil, dao_factory.apis, self.fetch_keys)
     end
   },
 
@@ -43,7 +50,7 @@ return {
       crud.paginated_set(self, dao_factory.plugins)
     end,
 
-    POST = function(self, dao_factory, helpers)
+    POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
         if configuration.send_anonymous_reports then
           data.signal = constants.SYSLOG.API
@@ -52,43 +59,27 @@ return {
       end)
     end,
 
-    PUT = function(self, dao_factory, helpers)
+    PUT = function(self, dao_factory)
       crud.put(self.params, dao_factory.plugins)
     end
   },
 
-  ["/apis/:name_or_id/plugins/:plugin_id"] = {
+  ["/apis/:name_or_id/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_api_by_name_or_id(self, dao_factory, helpers)
       self.params.api_id = self.api.id
-
-      local fetch_keys = {
-        api_id = self.api.id,
-        id = self.params.plugin_id
-      }
-      self.params.plugin_id = nil
-
-      local data, err = dao_factory.plugins:find_by_keys(fetch_keys)
-      if err then
-        return helpers.yield_error(err)
-      end
-
-      self.plugin = data[1]
-      if not self.plugin then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
     end,
 
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.plugin)
+    GET = function(self, dao_factory)
+      crud.get(self.params, dao_factory.plugins)
     end,
 
-    PATCH = function(self, dao_factory, helpers)
-      crud.patch(self.params, self.plugin, dao_factory.plugins)
+    PATCH = function(self, dao_factory)
+      crud.patch(self.params, dao_factory.plugins)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.plugin, dao_factory.plugins)
+      crud.delete(self.params, dao_factory.plugins)
     end
   }
 }

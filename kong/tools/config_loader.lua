@@ -81,10 +81,7 @@ function _M.validate(config)
     return false, errors
   end
 
-  -- Check selected database
-  if config.databases_available[config.database] == nil then
-    return false, {database = config.database.." is not listed in databases_available"}
-  end
+  -- Perform complex validations here if needed
 
   return true
 end
@@ -110,7 +107,7 @@ function _M.load(config_path)
 
   -- Adding computed properties
   config.pid_file = IO.path:join(config.nginx_working_dir, constants.CLI.NGINX_PID)
-  config.dao_config = config.databases_available[config.database]
+  config.dao_config = config[config.database]
   if config.dns_resolver == "dnsmasq" then
     config.dns_resolver = {
       address = "127.0.0.1:"..config.dns_resolvers_available.dnsmasq.port,
@@ -118,9 +115,8 @@ function _M.load(config_path)
       dnsmasq = true
     }
   else
-    config.dns_resolver = {address = config.dns_resolver.server.address}
+    config.dns_resolver = {address = config.dns_resolvers_available.server.address}
   end
-
 
   -- Load absolute path for the nginx working directory
   if not stringy.startswith(config.nginx_working_dir, "/") then
@@ -128,6 +124,9 @@ function _M.load(config_path)
     local fs = require "luarocks.fs"
     config.nginx_working_dir = fs.current_dir().."/"..config.nginx_working_dir
   end
+
+  -- Load all plugins
+  config.plugins = utils.table_merge(constants.PLUGINS_AVAILABLE, config.custom_plugins)
 
   return config
 end

@@ -84,6 +84,15 @@ describe("Entities Schemas", function()
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
     end)
 
+    it("should complain if `request_host` is an empty string", function()
+      local t = {request_host = "", upstream_url = "http://mockbin.com"}
+
+      local valid, errors = validate_entity(t, api_schema)
+      assert.False(valid)
+      assert.equal("request_host has an invalid value", errors.request_host)
+      assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
+    end)
+
     it("should set the name from request_host if not set", function()
       local t = {request_host = "mockbin.com", upstream_url = "http://mockbin.com"}
 
@@ -293,11 +302,30 @@ describe("Entities Schemas", function()
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.same({key_names = {"apikey"}, hide_credentials = false}, plugin.config)
       assert.True(valid)
+    end)
 
-      -- Insert reauest-transformer, whose default config has no default values, and should be empty
+    it("should be valid if no value is specified for a subfield and if the config schema has default as empty array", function()
+      -- Insert response-transformer, whose default config has no default values, and should be empty
       local plugin2 = {name = "response-transformer", api_id = "stub"}
-      valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
-      assert.same({}, plugin2.config)
+      local valid = validate_entity(plugin2, plugins_schema, {dao = dao_stub})
+      assert.same({
+        remove = {
+          headers = {},
+          json = {}
+        },
+        replace = {
+          headers = {},
+          json = {}
+        },
+        add = {
+          headers = {},
+          json = {}
+        },
+        append = {
+          headers = {},
+          json = {}
+        }
+      }, plugin2.config)
       assert.True(valid)
     end)
 

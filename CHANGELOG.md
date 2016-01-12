@@ -1,25 +1,92 @@
 ## [Unreleased][unreleased]
 
+### Breaking changes
+
+ We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
+
+- [Serf](https://www.serfdom.io) is now a Kong dependency. It allows Kong nodes to communicate between each other opening the way to many features and improvements.
+- The configuration file changed. Some properties were renamed, others were moved, and some are new. We would recommended checking out the new default configuration file.
+- Drop the Lua 5.1 dependency which was only used by the CLI. The CLI now runs with LuaJIT, which is consistent with other Kong components (Luarocks and OpenResty) already relying on LuaJIT. Make sure the LuaJIT interpreter is included in your `$PATH`. [#799](https://github.com/Mashape/kong/pull/799)
+
 ### Added
 
-- Added a `total` field in API responses, that counts the total number of entities in the table. [#635](https://github.com/Mashape/kong/pull/635)
-- You can now specify a custom DNS resolver address that Kong will use when resolving hostnames. [#625](https://github.com/Mashape/kong/pull/635)
+One of the biggest new features of this release is the cluster-awareness added to Kong in [#729](https://github.com/Mashape/kong/pull/729), which deserves its own section:
+
+- Each Kong node is now aware of belonging to a cluster through Serf. Nodes automatically join the specified cluster according to the configuration file's settings.
+- The datastore cache is not invalidated by expiration time anymore, but following an invalidation strategy between the nodes of a same cluster, leading to improved performance.
+- Admin API
+  - Expose a `/cache` endpoint for retrieving elements stored in the in-memory cache of a node.
+  - Expose a `/cluster` endpoint used to add/remove/list members of the cluster, and also used internally for data propagation.
+- CLI
+  - New `kong cluster` command for cluster management.
+  - New `kong status` command for cluster healthcheck.
+
+Other additions include:
+
+- New Cassandra driver which makes Kong aware of the Cassandra cluster. Kong is now unaffected if one of your Cassandra nodes goes down as long as a replica is available on another node. Load balancing policies also improve the performance along with many other smaller improvements. [#803](https://github.com/Mashape/kong/pull/803)
+- Admin API
+  - A new `total` field in API responses, that counts the total number of entities in the datastore. [#635](https://github.com/Mashape/kong/pull/635)
+- Configuration
+  - Possibility to configure the keyspace replication strategy for Cassandra. It will be taken into account by the migrations when the configured keyspace does not already exist. [#350](https://github.com/Mashape/kong/issues/350)
+  - Dnsmasq is now optional. You can specify a custom DNS resolver address that Kong will use when resolving hostnames. This can be configured in `kong.yml`. [#625](https://github.com/Mashape/kong/pull/625)
+- Plugins
+  - **New "syslog" plugin**: send logs to local sytem log. [#698](https://github.com/Mashape/kong/pull/698)
+  - **New "loggly" plugin**: send logs to Loggly over UDP. [#698](https://github.com/Mashape/kong/pull/698)
+  - **New "datadog" plugin**: send logs to Datadog server. [#758](https://github.com/Mashape/kong/pull/758)
+  - OAuth2
+    - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
+    - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Mashape/kong/pull/729)
+  - JWT:
+    - Support for base64 encoded secrets. [#838](https://github.com/Mashape/kong/pull/838) [#577](https://github.com/Mashape/kong/issues/577)
+    - Support to configure the claim in which the key is given into the token (not `iss` only anymore). [#838](https://github.com/Mashape/kong/pull/838)
+  - Request transformer
+    - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#824](https://github.com/Mashape/kong/pull/824)
+    - Support JSON body transformation. [#569](https://github.com/Mashape/kong/issues/569)
+  - Response transformer
+    - Support for more transformation options: `remove`, `replace`, `add`, `append` motivated by [#393](https://github.com/Mashape/kong/pull/393). See [#822](https://github.com/Mashape/kong/pull/822)
 
 ### Changed
 
-- Removed the `dnsmasq_port` property, and introduced `dns_resolver` that also allows to specify a custom DNS server. [#625](https://github.com/Mashape/kong/pull/635)
-- The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` field. [#635](https://github.com/Mashape/kong/pull/635)
-- Disabled access logs for `/status` endpoint
+- As mentioned in the breaking changes section, a new configuration file format and validation. All properties are now documented and commented out with their default values. This allows for a lighter configuration file and more clarity as to what properties relate to. It also catches configuration mistakes. [#633](https://github.com/Mashape/kong/pull/633)
+- Replace the UUID generator library with a new implementation wrapping lib-uuid, fixing eventual conflicts happening in cases such as described in [#659](https://github.com/Mashape/kong/pull/659). See [#695](https://github.com/Mashape/kong/pull/695)
+- Admin API
+  - Increase the maximum body size to 10MB in order to handle configuration requests with heavy payloads. [#700](https://github.com/Mashape/kong/pull/700)
+  - Disable access logs for the `/status` endpoint.
+  - The `/status` endpoint now includes `database` statistics, while the previous stats have been moved to a `server` response field. [#635](https://github.com/Mashape/kong/pull/635)
 
 ### Fixed
 
-- In the API, the `next` link is not being displayed anymore if there are no more entities to return. [#635](https://github.com/Mashape/kong/pull/635)
+- Behaviors described in [#603](https://github.com/Mashape/kong/issues/603) related to the failure of Cassandra nodes thanks to the new driver. [#803](https://github.com/Mashape/kong/issues/803)
+- Latency headers are now properly included in responses sent to the client. [#708](https://github.com/Mashape/kong/pull/708)
+- `strip_request_path` does not add a trailing slash to the API's `upstream_url` anymore before proxying. [#675](https://github.com/Mashape/kong/issues/675)
+- Do not URL decode querystring before proxying the request to the upstream service. [#749](https://github.com/Mashape/kong/issues/749)
+- Handle cases when the request would be terminated prior to the Kong execution (that is, before ngx_lua reaches the `access_by_lua` context) in cases such as the use of a custom nginx module. [#594](https://github.com/Mashape/kong/issues/594)
+- Admin API
+  - The PUT method now correctly updates boolean fields (such as `strip_request_path`). [#765](https://github.com/Mashape/kong/pull/765)
+  - The PUT method now correctly resets a plugin configuration. [#720](https://github.com/Mashape/kong/pull/720)
+  - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
+  - Prevent the update of `created_at` fields. [#820](https://github.com/Mashape/kong/pull/820)
+- Plugins:
+  - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Mashape/kong/issues/584)
+  - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Mashape/kong/pull/667)
+  - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Mashape/kong/issues/681)
+  - Basic Authentication: do not re-hash the password field when updating a credential. [#726](https://github.com/Mashape/kong/issues/726)
+  - OAuth2
+    - Implement correct responses when the OAuth2 challenges are refused. [#737](https://github.com/Mashape/kong/issues/737)
+    - Handle querystring on `/authorize` and `/token` URLs. [#687](https://github.com/Mashape/kong/pull/667)
+    - Handle punctuation in scopes on `/authorize` and `/token` endpoints. [#658](https://github.com/Mashape/kong/issues/658)
+
+> ***internal***
+> - Event bus for local and cluster-wide events propagation. Plans for this event bus is to be widely used among Kong in the future.
+> - The Kong Public Lua API (Lua helpers integrated in Kong such as DAO and Admin API helpers) is now documented with [ldoc](http://stevedonovan.github.io/ldoc/) format and published on [the online documentation](https://getkong.org/docs/latest/lua-reference/).
+> - Work has been done to restore the reliability of the CI platforms.
+> - Migrations can now execute DML queries (instead of DDL queries only). Handy for migrations implying plugin configuration changes, plugins renamings etc... [#770](https://github.com/Mashape/kong/pull/770)
 
 ## [0.5.4] - 2015/12/03
 
 ### Fixed
 
-- Mashape Analytics plugin (aka Galileo):
+- Mashape Analytics plugin (renamed Galileo):
   - Improve stability under heavy load. [#757](https://github.com/Mashape/kong/issues/757)
   - base64 encode ALF request/response bodies, enabling proper support for Galileo bodies inspection capabilities. [#747](https://github.com/Mashape/kong/pull/747)
   - Do not include JSON bodies in ALF `postData.params` field. [#766](https://github.com/Mashape/kong/pull/766)
@@ -29,8 +96,7 @@
 ### Fixed
 
 - Avoids additional URL encoding when proxying to an upstream service. [#691](https://github.com/Mashape/kong/pull/691)
-- Fixing potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
-- Fixed a missing "env" statement in the Nginx configuration. [#706](https://github.com/Mashape/kong/pull/706)
+- Potential timing comparison bug in HMAC plugin. [#704](https://github.com/Mashape/kong/pull/704)
 
 ### Added
 
@@ -88,7 +154,6 @@ Several breaking changes are introduced. You will have to slightly change your c
   - `strip_path` -> `strip_request_path`
   - `target_url` -> `upstream_url`
 - `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions. [#513](https://github.com/Mashape/kong/issues/513)
->>>>>>> dbocs(changelog) 0.5.0 changes
 - The database schema has been updated to handle the separation of plugins outside of the core repository.
 - The Key authentication and Basic authentication plugins routes have changed:
 
@@ -382,7 +447,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.5.4...next
+[unreleased]: https://github.com/mashape/kong/compare/0.6.0...next
+[0.6.0]: https://github.com/mashape/kong/compare/0.5.4...0.6.0
 [0.5.4]: https://github.com/mashape/kong/compare/0.5.3...0.5.4
 [0.5.3]: https://github.com/mashape/kong/compare/0.5.2...0.5.3
 [0.5.2]: https://github.com/mashape/kong/compare/0.5.1...0.5.2

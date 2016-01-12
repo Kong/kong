@@ -146,8 +146,8 @@ for _, v in ipairs({"kong", "apis", "consumers", "plugins"}) do
 end
 
 -- Loading plugins routes
-if configuration and configuration.plugins_available then
-  for _, v in ipairs(configuration.plugins_available) do
+if configuration and configuration.plugins then
+  for _, v in ipairs(configuration.plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)

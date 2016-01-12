@@ -64,9 +64,9 @@ function _M.execute(conf)
 
   local claims = jwt.claims
 
-  local jwt_secret_key = claims.iss
+  local jwt_secret_key = claims[conf.key_claim_name]
   if not jwt_secret_key then
-    return responses.send_HTTP_UNAUTHORIZED("No mandatory 'iss' in claims")
+    return responses.send_HTTP_UNAUTHORIZED("No mandatory '"..conf.key_claim_name.."' in claims")
   end
 
   -- Retrieve the secret
@@ -80,11 +80,16 @@ function _M.execute(conf)
   end)
 
   if not jwt_secret then
-    return responses.send_HTTP_FORBIDDEN("No credentials found for given 'iss'")
+    return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.key_claim_name.."'")
+  end
+
+  local jwt_secret_value = jwt_secret.secret
+  if conf.secret_is_base64 then
+    jwt_secret_value = jwt:b64_decode(jwt_secret_value)
   end
 
   -- Now verify the JWT signature
-  if not jwt:verify_signature(jwt_secret.secret) then
+  if not jwt:verify_signature(jwt_secret_value) then
     return responses.send_HTTP_FORBIDDEN("Invalid signature")
   end
 
@@ -105,7 +110,7 @@ function _M.execute(conf)
 
   -- However this should not happen
   if not consumer then
-    return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", "iss", jwt_secret_key))
+    return responses.send_HTTP_FORBIDDEN(string_format("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key))
   end
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)

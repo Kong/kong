@@ -74,7 +74,7 @@ return {
   },  ["/plugins/enabled"] = {
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK {
-        enabled_plugins = configuration.plugins_available
+        enabled_plugins = configuration.plugins
       }
     end
   },

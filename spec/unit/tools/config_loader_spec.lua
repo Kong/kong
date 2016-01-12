@@ -18,12 +18,11 @@ describe("Configuration validation", function()
     assert.True(ok)
     assert.falsy(errors)
 
-    assert.truthy(conf.plugins_available)
+    assert.truthy(conf.custom_plugins)
     assert.truthy(conf.admin_api_port)
     assert.truthy(conf.proxy_port)
     assert.truthy(conf.database)
-    assert.truthy(conf.databases_available)
-    assert.equal("table", type(conf.databases_available))
+    assert.truthy(conf.cassandra)
 
     local function check_defaults(conf, conf_defaults)
       for k, v in pairs(conf) do
@@ -38,23 +37,28 @@ describe("Configuration validation", function()
 
     check_defaults(conf, require("kong.tools.config_defaults"))
   end)
+  it("should populate the plugins property", function()
+    local config = config.load(TEST_CONF_PATH)
+    assert.truthy(config)
+    assert.equal(0, #config.custom_plugins)
+    assert.truthy(#config.plugins > 0)
+  end)
   it("should validate various types", function()
     local ok, errors = config.validate({
       proxy_port = "string",
-      database = 666,
-      databases_available = {
-        cassandra = {
-          timeout = "foo",
-          ssl = "true"
+      database = "cassandra",
+      cassandra = {
+        contact_points = "127.0.0.1",
+        ssl = {
+          enabled = "false"
         }
       }
     })
     assert.False(ok)
     assert.truthy(errors)
     assert.equal("must be a number", errors.proxy_port)
-    assert.equal("must be a string", errors.database)
-    assert.equal("must be a number", errors["databases_available.cassandra.timeout"])
-    assert.equal("must be a boolean", errors["databases_available.cassandra.ssl"])
+    assert.equal("must be a array", errors["cassandra.contact_points"])
+    assert.equal("must be a boolean", errors["cassandra.ssl.enabled"])
     assert.falsy(errors.ssl_cert_path)
     assert.falsy(errors.ssl_key_path)
   end)
@@ -65,19 +69,17 @@ describe("Configuration validation", function()
   end)
   it("should check that the value is contained in `enum`", function()
     local ok, errors = config.validate({
-      databases_available = {
-        cassandra = {
-          replication_strategy = "foo"
-        }
+      cassandra = {
+        replication_strategy = "foo"
       }
     })
     assert.False(ok)
-    assert.equal("must be one of: 'SimpleStrategy, NetworkTopologyStrategy'", errors["databases_available.cassandra.replication_strategy"])
+    assert.equal("must be one of: 'SimpleStrategy, NetworkTopologyStrategy'", errors["cassandra.replication_strategy"])
   end)
   it("should validate the selected database property", function()
     local ok, errors = config.validate({database = "foo"})
     assert.False(ok)
-    assert.equal("foo is not listed in databases_available", errors.database)
+    assert.equal("must be one of: 'cassandra'", errors.database)
   end)
 end)
 

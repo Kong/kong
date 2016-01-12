@@ -11,15 +11,15 @@ description = {
   license = "MIT"
 }
 dependencies = {
-  "lua ~> 5.1",
   "luasec ~> 0.5-2",
 
   "lua_uuid ~> 0.1-8",
+  "lua_system_constants ~> 0.1-3",
   "luatz ~> 0.3-1",
   "yaml ~> 1.1.2-1",
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
-  "lua-cassandra ~> 0.3.6-0",
+  "lua-cassandra ~> 0.4.1-0",
   "multipart ~> 0.2-1",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
@@ -45,7 +45,7 @@ build = {
 
     ["kong.constants"] = "kong/constants.lua",
 
-    ["kong.cli.utils"] = "kong/cli/utils/utils.lua",
+    ["kong.cli.utils"] = "kong/cli/utils.lua",
     ["kong.cli.utils.dnsmasq"] = "kong/cli/utils/dnsmasq.lua",
     ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",
     ["kong.cli.utils.signal"] = "kong/cli/utils/signal.lua",
@@ -171,8 +171,8 @@ build = {
     ["kong.plugins.request-transformer.schema"] = "kong/plugins/request-transformer/schema.lua",
 
     ["kong.plugins.response-transformer.handler"] = "kong/plugins/response-transformer/handler.lua",
-    ["kong.plugins.response-transformer.body_filter"] = "kong/plugins/response-transformer/body_filter.lua",
-    ["kong.plugins.response-transformer.header_filter"] = "kong/plugins/response-transformer/header_filter.lua",
+    ["kong.plugins.response-transformer.body_transformer"] = "kong/plugins/response-transformer/body_transformer.lua",
+    ["kong.plugins.response-transformer.header_transformer"] = "kong/plugins/response-transformer/header_transformer.lua",
     ["kong.plugins.response-transformer.schema"] = "kong/plugins/response-transformer/schema.lua",
 
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
@@ -234,7 +234,12 @@ build = {
 
     ["kong.plugins.loggly.handler"] = "kong/plugins/loggly/handler.lua",
     ["kong.plugins.loggly.log"] = "kong/plugins/loggly/log.lua",
-    ["kong.plugins.loggly.schema"] = "kong/plugins/loggly/schema.lua"
+    ["kong.plugins.loggly.schema"] = "kong/plugins/loggly/schema.lua",
+
+    ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
+    ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
+    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua"
+
   },
   install = {
     conf = { "kong.yml" },

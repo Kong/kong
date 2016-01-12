@@ -42,14 +42,14 @@ describe("CLI", function()
     end)
 
     it("should work when no plugins are enabled and the DB is empty", function()
-      replace_conf_property("plugins_available", {})
+      replace_conf_property("custom_plugins", {})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
     it("should not work when an unexisting plugin is being enabled", function()
-      replace_conf_property("plugins_available", {"wot-wat"})
+      replace_conf_property("custom_plugins", {"wot-wat"})
 
       assert.error_matches(function()
         spec_helper.start_kong(SERVER_CONF, true)
@@ -57,21 +57,21 @@ describe("CLI", function()
     end)
 
     it("should not fail when an existing plugin is being enabled", function()
-      replace_conf_property("plugins_available", {"key-auth"})
+      replace_conf_property("custom_plugins", {"key-auth"})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
     end)
 
     it("should not work when an unexisting plugin is being enabled along with an existing one", function()
-      replace_conf_property("plugins_available", {"key-auth", "wot-wat"})
+      replace_conf_property("custom_plugins", {"key-auth", "wot-wat"})
 
       assert.error_matches(function()
         spec_helper.start_kong(SERVER_CONF, true)
       end, "The following plugin has been enabled in the configuration but it is not installed on the system: wot-wat", nil, true)
     end)
 
-    it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
+    it("should work when a default plugin is being used in the DB but it's not explicit in the configuration", function()
       spec_helper.get_env(SERVER_CONF).faker:insert_from_table {
         api = {
           {name = "tests-cli", request_host = "foo.com", upstream_url = "http://mockbin.com"},
@@ -81,18 +81,46 @@ describe("CLI", function()
         }
       }
 
-      replace_conf_property("plugins_available", {"ssl", "key-auth", "basic-auth", "oauth2", "tcp-log", "udp-log", "file-log", "http-log", "request-transformer", "cors"})
-
-      assert.error_matches(function()
-        spec_helper.start_kong(SERVER_CONF, true)
-      end, "You are using a plugin that has not been enabled in the configuration: rate-limiting", nil, true)
-    end)
-
-    it("should work the used plugins are enabled", function()
-      replace_conf_property("plugins_available", {"ssl", "key-auth", "basic-auth", "oauth2", "tcp-log", "udp-log", "file-log", "http-log", "request-transformer", "rate-limiting", "cors"})
+      replace_conf_property("custom_plugins", {"ssl", "key-auth", "basic-auth", "oauth2", "tcp-log", "udp-log", "file-log", "http-log", "request-transformer", "cors"})
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
       assert.are.same(0, exit_code)
+    end)
+
+    it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
+      local cassandra = require "cassandra"
+
+      -- Load everything we need from the spec_helper
+      local env = spec_helper.get_env(SERVER_CONF)
+      local faker = env.faker
+      local dao_factory = env.dao_factory
+      local configuration = env.configuration
+
+      local session, err = cassandra.spawn_session {
+        shm = "cli_specs",
+        keyspace = configuration.dao_config.keyspace,
+        contact_points = configuration.dao_config.contact_points
+      }
+      assert.falsy(err)
+
+      -- Insert API
+      local api_t = faker:fake_entity("api")
+      local api, err = dao_factory.apis:insert(api_t)
+      assert.falsy(err)
+      assert.truthy(api.id)
+
+      -- Insert plugin
+      local res, err = session:execute("INSERT INTO plugins(id, name, api_id, config) VALUES(uuid(), 'custom-rate-limiting', "..api.id..", '{}')")
+      assert.falsy(err)
+      assert.truthy(res)
+
+      session:shutdown()
+
+      replace_conf_property("custom_plugins", {})
+
+      assert.error_matches(function()
+        spec_helper.start_kong(SERVER_CONF, true)
+      end, "You are using a plugin that has not been enabled in the configuration: custom-rate-limiting", nil, true)
     end)
 
   end)

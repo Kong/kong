@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 local constants = require "kong.constants"
 local cutils = require "kong.cli.utils"
@@ -33,10 +33,8 @@ local DEFAULT_ENV_VALUES = {
       ["proxy_ssl_port"] = 8543,
       ["admin_api_port"] = 8101,
       ["dnsmasq_port"] = 8153,
-      ["databases_available"] = {
-        ["cassandra"] = {
-          ["keyspace"] = "kong_tests"
-        }
+      ["cassandra"] = {
+        ["keyspace"] = "kong_tests"
       }
     },
     nginx = {
@@ -47,10 +45,8 @@ local DEFAULT_ENV_VALUES = {
   },
   DEVELOPMENT = {
     yaml = {
-      ["databases_available"] = {
-        ["cassandra"] = {
-          ["keyspace"] = "kong_development"
-        }
+      ["cassandra"] = {
+        ["keyspace"] = "kong_development"
       }
     },
     nginx = {

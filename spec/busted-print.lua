@@ -1,6 +1,7 @@
-local ansicolors = require 'ansicolors'
+local busted = require 'busted'
 
 return function(options)
+  local ansicolors = require 'ansicolors'
   local handler = require 'busted.outputHandlers.utfTerminal'(options)
 
   handler.fileStart = function(file)
@@ -11,8 +12,6 @@ return function(options)
     io.write('\n  ' .. handler.getFullName(element) .. ' ... ')
     io.flush()
   end
-
-  local busted = require 'busted'
 
   busted.subscribe({ 'file', 'start' }, handler.fileStart)
   busted.subscribe({ 'test', 'start' }, handler.testStart)

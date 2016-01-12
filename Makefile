@@ -1,8 +1,8 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
-DEV_ROCKS=busted luacov luacov-coveralls luacheck
+DEV_ROCKS = busted luacov luacov-coveralls luacheck
 
-.PHONY: install dev clean start restart seed drop lint test test-integration test-plugins test-all coverage
+.PHONY: install dev clean doc lint test test-integration test-plugins test-all coverage
 
 install:
 	@if [ `uname` = "Darwin" ]; then \
@@ -32,20 +32,8 @@ clean:
 	rm -f luacov.*
 	rm -rf nginx_tmp
 
-start:
-	@bin/kong start -c $(DEVELOPMENT_CONF)
-
-stop:
-	@bin/kong stop -c $(DEVELOPMENT_CONF)
-
-restart:
-	@bin/kong restart -c $(DEVELOPMENT_CONF)
-
-seed:
-	@bin/kong db -c $(DEVELOPMENT_CONF) seed
-
-drop:
-	@bin/kong db -c $(DEVELOPMENT_CONF) drop
+doc:
+	@ldoc -c config.ld kong
 
 lint:
 	@find kong spec -name '*.lua' -not -name 'invalid-module.lua' -not -path 'kong/vendor/*' | xargs luacheck -q

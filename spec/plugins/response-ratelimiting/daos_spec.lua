@@ -30,15 +30,14 @@ describe("Rate Limiting Metrics", function()
     local periods = timestamp.get_timestamps(current_timestamp)
 
     -- First increment
-    local ok, err = response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1, "video")
-    assert.falsy(err)
+    local ok = response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1, "video")
     assert.True(ok)
 
     -- First select
     for period, period_date in pairs(periods) do
       local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
-      assert.are.same({
+      assert.same({
         api_id = api_id,
         identifier = identifier,
         period = "video_"..period,
@@ -48,15 +47,14 @@ describe("Rate Limiting Metrics", function()
     end
 
     -- Second increment
-    local ok, err = response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1, "video")
-    assert.falsy(err)
+    local ok = response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1, "video")
     assert.True(ok)
 
     -- Second select
     for period, period_date in pairs(periods) do
       local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
-      assert.are.same({
+      assert.same({
         api_id = api_id,
         identifier = identifier,
         period = "video_"..period,
@@ -70,8 +68,7 @@ describe("Rate Limiting Metrics", function()
     periods = timestamp.get_timestamps(current_timestamp)
 
      -- Third increment
-    local ok, err = response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1, "video")
-    assert.falsy(err)
+    local ok = response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, 1, "video")
     assert.True(ok)
 
     -- Third select with 1 second delay
@@ -85,7 +82,7 @@ describe("Rate Limiting Metrics", function()
 
       local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
-      assert.are.same({
+      assert.same({
         api_id = api_id,
         identifier = identifier,
         period = "video_"..period,
