@@ -4,7 +4,7 @@ return {
       type = "table",
       schema = {
         fields = {
-          form = {type = "array", default = {}},
+          body = {type = "array", default = {}},
           headers = {type = "array", default = {}},
           querystring = {type = "array", default = {}}
         }
@@ -14,7 +14,7 @@ return {
       type = "table",
       schema = {
         fields = {
-          form = {type = "array", default = {}},
+          body = {type = "array", default = {}},
           headers = {type = "array", default = {}},
           querystring = {type = "array", default = {}}
         }
@@ -24,7 +24,7 @@ return {
       type = "table",
       schema = {
         fields = {
-          form = {type = "array", default = {}},
+          body = {type = "array", default = {}},
           headers = {type = "array", default = {}},
           querystring = {type = "array", default = {}}
         }
@@ -34,6 +34,7 @@ return {
       type = "table",
       schema = {
         fields = {
+          body = {type = "array", default = {}},
           headers = {type = "array", default = {}},
           querystring = {type = "array", default = {}}
         }
