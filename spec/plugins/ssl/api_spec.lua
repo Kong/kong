@@ -3,7 +3,7 @@ local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
 local ssl_fixtures = require "spec.plugins.ssl.fixtures"
 
-describe("SSL API", function()
+describe("SSL Admin API", function()
   local BASE_URL
 
   setup(function()

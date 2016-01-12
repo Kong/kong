@@ -2,7 +2,7 @@ local json = require "cjson"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
 
-describe("Key Auth Credentials API", function()
+describe("key-auth credentials API", function()
   local BASE_URL, credential, consumer
 
   setup(function()
