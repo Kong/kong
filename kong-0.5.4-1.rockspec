@@ -121,6 +121,7 @@ build = {
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
     ["kong.plugins.log-serializers.alf"] = "kong/plugins/log-serializers/alf.lua",
+    ["kong.plugins.log-serializers.alf"] = "kong/plugins/log-serializers/runscope.lua",
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.log"] = "kong/plugins/tcp-log/log.lua",
@@ -138,6 +139,10 @@ build = {
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",
     ["kong.plugins.file-log.log"] = "kong/plugins/file-log/log.lua",
     ["kong.plugins.file-log.fd_util"] = "kong/plugins/file-log/fd_util.lua",
+
+    ["kong.plugins.runscope.handler"] = "kong/plugins/runscope/handler.lua",
+    ["kong.plugins.runscope.schema"] = "kong/plugins/runscope/schema.lua",
+    ["kong.plugins.runscope.buffer"] = "kong/plugins/runscope/log.lua",
 
     ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
     ["kong.plugins.mashape-analytics.schema"] = "kong/plugins/mashape-analytics/schema.lua",
