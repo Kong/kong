@@ -121,7 +121,7 @@ build = {
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
     ["kong.plugins.log-serializers.alf"] = "kong/plugins/log-serializers/alf.lua",
-    ["kong.plugins.log-serializers.alf"] = "kong/plugins/log-serializers/runscope.lua",
+    ["kong.plugins.log-serializers.runscope"] = "kong/plugins/log-serializers/runscope.lua",
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.log"] = "kong/plugins/tcp-log/log.lua",
