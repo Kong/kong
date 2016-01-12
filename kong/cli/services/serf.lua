@@ -75,12 +75,20 @@ echo $COMMAND | ]]..luajit_path..[[
   return true
 end
 
+
+function Serf:_join_node(address)
+  local _, err = self:invoke_signal("join", {address})
+  if err then
+    return false
+  end
+  return true
+end
+
 function Serf:_autojoin(current_node_name)
   if self._configuration.cluster["auto-join"] then
+    logger:info("Trying to auto-join Kong nodes, please wait..")
 
-    logger:info("Auto-joining cluster, please wait..")
-
-    -- Delete current node just in case it was there
+    -- Delete current node just in case it was there (due to an inconsistency caused by a crash)
     local _, err = self._dao_factory.nodes:delete({
       name = current_node_name
     })
@@ -95,25 +103,22 @@ function Serf:_autojoin(current_node_name)
       if #nodes == 0 then
         logger:warn("Cannot auto-join the cluster because no nodes were found")
       else
-
-        -- Sort by newest to oldest
+        -- Sort by newest to oldest (although by TTL would be a better sort)
         table.sort(nodes, function(a, b)
           return a.created_at > b.created_at
         end)
 
         local joined
         for _, v in ipairs(nodes) do
-          local _, err = self:invoke_signal("join", {v.cluster_listening_address})
-          if err then
-            logger:warn("Cannot join "..v.cluster_listening_address..". If the node does not exist anymore it will be automatically purged.")
-          else
+          if self:_join_node(v.cluster_listening_address) then
             logger:info("Successfully auto-joined "..v.cluster_listening_address)
             joined = true
             break
+          else
+            logger:warn("Cannot join "..v.cluster_listening_address..". If the node does not exist anymore it will be automatically purged.")
           end
         end
         if not joined then
-          --return false, "Could not join the existing cluster"
           logger:warn("Could not join the existing cluster")
         end
       end

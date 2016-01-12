@@ -13,7 +13,7 @@ Usage: kong cluster <command> <args> [options]
 
 Commands:
   <command> (string) where <command> is one of:
-                       join, members, force-leave, reachability, keygen
+                       members, force-leave, reachability, keygen
 
 Options:
   -c,--config (default %s) path to configuration file
@@ -23,9 +23,9 @@ Options:
 local JOIN = "join"
 local KEYGEN = "keygen"
 local FORCE_LEAVE = "force-leave"
-local SUPPORTED_COMMANDS = {JOIN, "members", KEYGEN, "reachability", FORCE_LEAVE}
+local SUPPORTED_COMMANDS = {"members", KEYGEN, "reachability", FORCE_LEAVE}
 
-if not utils.table_contains(SUPPORTED_COMMANDS, args.command) then
+if args.command ~= JOIN and not utils.table_contains(SUPPORTED_COMMANDS, args.command) then
   lapp.quit("Invalid cluster command. Supported commands are: "..table.concat(SUPPORTED_COMMANDS, ", "))
 end
 

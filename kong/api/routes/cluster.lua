@@ -15,15 +15,18 @@ return {
       end
 
       local members = cjson.decode(res).members
-      local result = {data = {}, total = #members}
+      local result = {data = {}}
       for _, v in pairs(members) do
-        table_insert(result.data, {
-          name = v.name,
-          address = v.addr,
-          status = v.status
-        })
+        if not self.params.status or (self.params.status and v.status == self.params.status) then
+          table_insert(result.data, {
+            name = v.name,
+            address = v.addr,
+            status = v.status
+          })
+        end
       end
 
+      result.total = #result.data
       return responses.send_HTTP_OK(result)
     end,
 

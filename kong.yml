@@ -12,9 +12,9 @@
 ## this property with the names of the plugins to load.
 ## Plugins will be loaded from the kong.plugins.{name}.* namespace.
 # custom_plugins:
-#   - hello_world
-#   - custom_plugin2
-#   - ...
+  # - hello_world
+  # - custom_plugin2
+  # - ...
 
 ######
 ## The Kong working directory. Equivalent to nginx's prefix path.
@@ -71,10 +71,6 @@
 ## Cluster settings between Kong nodes. 
 ## For more information take a look at the Clustering Reference: https://getkong.org/docs/latest/clustering/
 # cluster:
-
-  ######
-  ## Instructs this node to auto-join the nodes that are sharing the same datastore on startup.
-  # auto-join: true
 
   ######
   ## Address and port used by the node to communicate with other Kong nodes in the cluster with both UDP and

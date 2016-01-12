@@ -75,6 +75,10 @@ for _, signal in ipairs({ "start", "stop", "restart", "reload", "quit", "status"
   end
 end
 
+_M["cluster_join"] = function(conf_file, address)
+  return kong_bin("cluster join "..address, conf_file)
+end
+
 --
 -- TCP/UDP server helpers
 --
