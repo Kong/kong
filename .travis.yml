@@ -20,6 +20,10 @@ env:
     - LUAROCKS_DIR=$HOME/luarocks
     - OPENRESTY_DIR=$HOME/openresty
     - CASSANDRA_HOSTS=127.0.0.1
+  matrix:
+    - TEST_SUITE=unit
+    - TEST_SUITE=integration
+    - TEST_SUITE=plugins
 before_install:
   - bash .ci/setup_lua.sh
   - bash .ci/setup_openresty.sh
@@ -37,9 +41,7 @@ install:
   - 'sed -i "2 i\dns_resolver: server" kong_TEST.yml'
 script:
   - make lint
-  - "busted --exclude-tags=ci -o spec/busted-print.lua --coverage spec/"
-after_success:
-  - "luacov-coveralls -i kong"
+  - .ci/run_tests.sh
 cache:
   apt: true
   pip: true

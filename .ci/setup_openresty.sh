@@ -2,6 +2,11 @@
 
 set -e
 
+if [ "$TEST_SUITE" == "unit" ]; then
+  echo "Exiting, no integration tests"
+  exit
+fi
+
 mkdir -p $OPENRESTY_DIR
 
 if [ ! "$(ls -A $OPENRESTY_DIR)" ]; then

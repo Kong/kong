@@ -101,7 +101,7 @@ describe("Request Transformer", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-  
+
   describe("Test remove", function()
     it("should remove specified header", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test4.com", ["x-to-remove"] = "true", ["x-another-header"] = "true"})
@@ -132,7 +132,7 @@ describe("Request Transformer", function()
         assert.equal("v2", body.queryString["q2"])
     end)
   end)
-  
+
   describe("Test replace", function()
     it("should replace specified header if it exist", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test5.com", ["h1"] = "V", ["h2"] = "v2"})
@@ -191,7 +191,7 @@ describe("Request Transformer", function()
         assert.equal("v2", body.queryString["q2"])
     end)
   end)
-  
+
   describe("Test add", function()
     it("should add new headers", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com"})
@@ -253,7 +253,7 @@ describe("Request Transformer", function()
       assert.equal("httpbin.org", body.headers["Host"])
     end)
   end)
-  
+
   describe("Test append ", function()
     it("should add a new header if header does not exists", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test6.com"})
