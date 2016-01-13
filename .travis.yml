@@ -43,7 +43,9 @@ install:
   - "kong config -c kong.yml -e TEST"
   - 'sed -i "2 i\dns_resolver: server" kong_TEST.yml'
 script:
+  - ls nginx_tmp/
   - busted spec/integration/cli/cmds/start_spec.lua
+  - cat nginx_tmp/logs/error.log
 cache:
   apt: true
   pip: true

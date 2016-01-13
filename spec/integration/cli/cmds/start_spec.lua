@@ -63,8 +63,7 @@ describe("CLI", function()
     it("should register and de-register the node into the datastore", function()
 
       assert.has_no.errors(function()
-        local res, code = spec_helper.start_kong(TEST_CONF, true)
-        print(res)
+        spec_helper.start_kong(TEST_CONF, true)
       end)
 
       local env = spec_helper.get_env() -- test environment
@@ -73,14 +72,11 @@ describe("CLI", function()
       local nodes = {}
       local err
 
-      print("check one")
-
-      while(#nodes < 1) do
+      local start = os.time()
+      while(#nodes < 1 and (os.time() - start < 10)) do -- 10 seconds timeout
         nodes, err = dao_factory.nodes:find_all()
         assert.falsy(err)
         assert.truthy(nodes)
-
-        os.execute("sleep 1") -- To avoid crashing TravisCI
       end
 
       assert.truthy(#nodes > 0)
@@ -91,14 +87,11 @@ describe("CLI", function()
 
       nodes = {}
 
-      print("check two")
-
-      while(#nodes > 0) do
+      start = os.time()
+      while(#nodes > 0 and (os.time() - start < 10)) do -- 10 seconds timeout
         nodes, err = dao_factory.nodes:find_all()
         assert.falsy(err)
         assert.truthy(nodes)
-
-        os.execute("sleep 1") -- To avoid crashing TravisCI
       end
 
       assert.truthy(#nodes == 0)
