@@ -15,9 +15,12 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
       table.insert(found_file_paths, app_name)
     end
   else
-    print("DOES NOT EXIST IN PATH")
+    print("FAILURE: "..app_name.." does not exist in PATH")
     local exit = os.execute("hash serf")
-    print(exit/256)
+    print(exit / 256)
+    exit = os.execute("type serf")
+    print(exit / 256)
+    print(IO.os_execute("echo $PATH"))
   end
 
   -- These are some default locations we are always looking into
@@ -34,9 +37,6 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
       table.insert(found_file_paths, file_path)
     end
   end
-
-  local inspect = require "inspect"
-  print(inspect(found_file_paths))
 
   if check_path_func then
     for _, found_file_path in ipairs(found_file_paths) do
