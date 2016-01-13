@@ -21,6 +21,7 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
     exit = os.execute("type serf")
     print(exit / 256)
     print(IO.os_execute("echo $PATH"))
+    print(os.getenv("PATH"))
   end
 
   -- These are some default locations we are always looking into
