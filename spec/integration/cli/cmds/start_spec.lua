@@ -75,6 +75,8 @@ describe("CLI", function()
         nodes, err = dao_factory.nodes:find_all()
         assert.falsy(err)
         assert.truthy(nodes)
+
+        os.execute("sleep 1") -- To avoid crashing TravisCI
       end
 
       assert.truthy(#nodes > 0)
@@ -89,6 +91,8 @@ describe("CLI", function()
         nodes, err = dao_factory.nodes:find_all()
         assert.falsy(err)
         assert.truthy(nodes)
+
+        os.execute("sleep 1") -- To avoid crashing TravisCI
       end
 
       assert.truthy(#nodes == 0)
