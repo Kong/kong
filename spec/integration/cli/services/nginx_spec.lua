@@ -73,6 +73,13 @@ describe("Nginx", function()
 
     assert.falsy(nginx:is_running())
     nginx:stop()
+
+    -- Wait for process to quit, with a timeout
+    local start = os.time()
+    while (nginx:is_running() and os.time() < (start + TIMEOUT)) do
+      -- Wait
+    end
+
     assert.falsy(nginx:is_running())
   end)
 
