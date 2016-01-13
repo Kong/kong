@@ -26,7 +26,7 @@ describe("Nginx", function()
       -- Wait
     end
   end)
-  --[[
+
   it("should prepare", function()
     local ok, err = nginx:prepare()
     assert.falsy(err)
@@ -37,7 +37,7 @@ describe("Nginx", function()
 
     assert.truthy(nginx._configuration_path)
   end)
-  --]]
+
   it("should start and stop", function()
     local ok, err = nginx:prepare()
     assert.falsy(err)
@@ -65,7 +65,7 @@ describe("Nginx", function()
 
     assert.falsy(nginx:is_running())
   end)
-  --[[
+
   it("should stop even when not running", function()
     local ok, err = nginx:prepare()
     assert.falsy(err)
@@ -140,5 +140,5 @@ describe("Nginx", function()
     assert.truthy(new_pid)
     assert.truthy(pid == new_pid)
   end)
-  --]]
+
 end)
