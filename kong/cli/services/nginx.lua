@@ -156,6 +156,7 @@ function Nginx:_invoke_signal(cmd, signal)
 
   -- Start failure handler
   local res, code = IO.os_execute(full_nginx_cmd)
+  print("Result for "..full_nginx_cmd.." is "..res)
   if code == 0 then
     return true
   else
