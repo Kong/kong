@@ -9,6 +9,7 @@ local TIMEOUT = 10
 describe("Nginx", function()
  
   setup(function()
+    spec_helper.prepare_db()
     nginx:prepare()
   end)
 
