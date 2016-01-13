@@ -42,7 +42,6 @@ install:
   - luarocks make kong-*.rockspec
   - "kong config -c kong.yml -e TEST"
   - 'sed -i "2 i\dns_resolver: server" kong_TEST.yml'
-  - "cat kong_TEST.yml"
 script:
   - make lint
   - .ci/run_tests.sh

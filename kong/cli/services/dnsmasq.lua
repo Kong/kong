@@ -40,6 +40,7 @@ function Dnsmasq:start()
       return nil, res
     end
   end
+  return true
 end
 
 function Dnsmasq:stop()
