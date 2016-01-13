@@ -14,14 +14,6 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
     else
       table.insert(found_file_paths, app_name)
     end
-  else
-    print("FAILURE: "..app_name.." does not exist in PATH")
-    local exit = os.execute("hash serf")
-    print(exit / 256)
-    exit = os.execute("type serf")
-    print(exit / 256)
-    print(IO.os_execute("echo $PATH"))
-    print(os.getenv("PATH"))
   end
 
   -- These are some default locations we are always looking into
