@@ -71,6 +71,8 @@ describe("CLI", function()
       local nodes = {}
       local err
 
+      print("check one")
+
       while(#nodes < 1) do
         nodes, err = dao_factory.nodes:find_all()
         assert.falsy(err)
@@ -86,6 +88,8 @@ describe("CLI", function()
       end)
 
       nodes = {}
+
+      print("check two")
 
       while(#nodes > 0) do
         nodes, err = dao_factory.nodes:find_all()
