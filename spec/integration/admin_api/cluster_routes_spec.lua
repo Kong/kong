@@ -36,6 +36,7 @@ describe("Admin API", function()
         os.execute("sleep 2") -- Let's wait for serf to register the node
 
         local response, status = http_client.get(BASE_URL, {}, {})
+        print(response)
         assert.equal(200, status)
         local body = json.decode(response)
         assert.truthy(body)
