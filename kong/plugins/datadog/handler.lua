@@ -2,6 +2,10 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 
+local DatadogHandler = BasePlugin:extend()
+
+DatadogHandler.PRIORITY = 1
+
 local ngx_log = ngx.log
 local ngx_timer_at = ngx.timer.at
 local string_gsub = string.gsub
@@ -56,8 +60,6 @@ local function log(premature, conf, message)
   logger:close_socket()
 end
 
-local DatadogHandler = BasePlugin:extend()
-
 function DatadogHandler:new()
   DatadogHandler.super.new(self, "datadog")
 end
@@ -71,7 +73,5 @@ function DatadogHandler:log(conf)
     ngx_log(NGX_ERR, "failed to create timer: ", err)
   end
 end
-
-DatadogHandler.PRIORITY = 1
 
 return DatadogHandler

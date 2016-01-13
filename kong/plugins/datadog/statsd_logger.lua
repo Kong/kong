@@ -1,4 +1,3 @@
-local setmetatable = setmetatable
 local ngx_socket_udp = ngx.socket.udp
 local ngx_log = ngx.log
 local table_concat = table.concat
