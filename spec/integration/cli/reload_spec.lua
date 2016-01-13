@@ -4,6 +4,7 @@ describe("CLI", function()
 
   setup(function()
     pcall(spec_helper.stop_kong)
+    spec_helper.prepare_db()
   end)
 
   teardown(function()
