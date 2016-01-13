@@ -2,7 +2,6 @@ local spec_helper = require "spec.spec_helpers"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 local http_client = require "kong.tools.http_client"
-local uuid = require "lua_uuid"
 
 local TEST_CONF = spec_helper.get_env().conf_file
 local SERVER_CONF = "kong_TEST_SERVER.yml"
