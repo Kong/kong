@@ -15,7 +15,7 @@ install:
 
 dev: install
 	@for rock in $(DEV_ROCKS) ; do \
-		if ! command -v $$rock &> /dev/null ; then \
+		if ! command -v $$rock > /dev/null ; then \
       echo $$rock not found, installing via luarocks... ; \
       luarocks install $$rock ; \
     else \
