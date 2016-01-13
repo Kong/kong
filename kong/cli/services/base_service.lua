@@ -16,6 +16,8 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
     end
   else
     print("DOES NOT EXIST IN PATH")
+    local exit = os.execute("hash serf")
+    print(exit/256)
   end
 
   -- These are some default locations we are always looking into
