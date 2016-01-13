@@ -47,6 +47,7 @@ install:
 script:
   - make lint
   - busted spec/integration/cli/services/nginx_spec.lua
+  - "ps aux | grep nginx"
 cache:
   apt: true
   pip: true
