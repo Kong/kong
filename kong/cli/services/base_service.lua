@@ -31,6 +31,9 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
     end
   end
 
+  local inspect = require "inspect"
+  print(inspect(found_file_paths))
+
   if check_path_func then
     for _, found_file_path in ipairs(found_file_paths) do
       if check_path_func(found_file_path) then

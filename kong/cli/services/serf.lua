@@ -25,6 +25,7 @@ function Serf:new(configuration)
 end
 
 function Serf:_get_cmd()
+  print("TRYING TO FIND SERF")
   local cmd, err = Serf.super._get_cmd(self, {}, function(path) 
     print("EXECUTING "..path.." version")
     local res, code = IO.os_execute(path.." version")
