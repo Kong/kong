@@ -46,7 +46,7 @@ install:
   - "kong config -c kong.yml -e TEST"
 script:
   - make lint
-  - busted spec/integration/cli/services/nginx_spec.lua
+  - .ci/run_tests.sh
 cache:
   apt: true
   pip: true
