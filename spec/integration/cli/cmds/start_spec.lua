@@ -25,9 +25,10 @@ end
 describe("CLI", function()
 
   setup(function()
+      spec_helper.prepare_db()
+
       os.execute("cp "..TEST_CONF.." "..SERVER_CONF)
       spec_helper.add_env(SERVER_CONF)
-      spec_helper.prepare_db(SERVER_CONF)
     end)
 
     teardown(function()
