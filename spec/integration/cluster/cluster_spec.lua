@@ -2,7 +2,6 @@ local spec_helper = require "spec.spec_helpers"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 local http_client = require "kong.tools.http_client"
-local uuid = require "lua_uuid"
 local cjson = require "cjson"
 
 local TEST_CONF = spec_helper.get_env().conf_file
@@ -153,7 +152,7 @@ describe("Cluster", function()
       -- Wait
     end
 
-    local res, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+    local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
     assert.are.same(0, exit_code)
 
     while(#spec_helper.envs[TEST_CONF].dao_factory.nodes:find_by_keys({}) ~= 2) do
@@ -170,7 +169,7 @@ describe("Cluster", function()
     assert.truthy(res[2].name)
     assert.truthy(res[2].cluster_listening_address)
 
-    local total = 0
+    local total
     repeat
       local res, status = http_client.get(API_URL.."/cluster")
       assert.equal(200, status)
@@ -209,7 +208,7 @@ describe("Cluster", function()
     assert.truthy(res[2].name)
     assert.truthy(res[2].cluster_listening_address)
 
-    local total = 0
+    local total
     repeat
       local res, status = http_client.get(API_URL.."/cluster")
       assert.equal(200, status)
@@ -253,7 +252,7 @@ describe("Cluster", function()
     assert.truthy(res[2].name)
     assert.truthy(res[2].cluster_listening_address)
 
-    local total = 0
+    local total
     repeat
       local res, status = http_client.get(API_URL.."/cluster")
       assert.equal(200, status)
@@ -314,10 +313,10 @@ describe("Cluster", function()
     assert.equal(404, status)
 
     -- Joining the nodes in the same cluster
-    local res, exit_code = spec_helper.cluster_join(SERVER_CONF, "127.0.0.1:9100")
+    local _, exit_code = spec_helper.cluster_join(SERVER_CONF, "127.0.0.1:9100")
     assert.are.same(0, exit_code)
     -- Wait for join to complete
-    local total = 0
+    local total
     repeat
       local res, status = http_client.get(API_URL.."/cluster")
       assert.equal(200, status)

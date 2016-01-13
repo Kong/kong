@@ -190,7 +190,7 @@ describe("CLI", function()
 
 
       -- Delete the plugin
-      local res, err = session:execute("DELETE FROM plugins WHERE id="..plugin_id)
+      local _, err = session:execute("DELETE FROM plugins WHERE id="..plugin_id)
       assert.falsy(err)
       session:shutdown()
     end)

@@ -11,7 +11,7 @@ mkdir -p $SERF_DIR
 
 if [ ! "$(ls -A $SERF_DIR)" ]; then
   pushd $SERF_DIR
-  wget https://releases.hashicorp.com/serf/$SERF_VERSION/serf_$SERF_VERSION_linux_amd64.zip
-  unzip serf_$SERF_VERSION_linux_amd64.zip
+  wget https://releases.hashicorp.com/serf/${SERF_VERSION}/serf_${SERF_VERSION}_linux_amd64.zip
+  unzip serf_${SERF_VERSION}_linux_amd64.zip
   popd
 fi

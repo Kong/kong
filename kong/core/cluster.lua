@@ -1,5 +1,6 @@
 local cluster_utils = require "kong.tools.cluster"
 local Serf = require "kong.cli.services.serf"
+local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
 local resty_lock
@@ -11,8 +12,6 @@ end
 local KEEPALIVE_INTERVAL = 30
 local ASYNC_AUTOJOIN_INTERVAL = 3
 local ASYNC_AUTOJOIN_RETRIES = 20 -- Try for max a minute (3s * 20)
-
-autojoin_retries = 0
 
 local function create_timer(at, cb)
   local ok, err = ngx.timer.at(at, cb)
@@ -45,7 +44,7 @@ local function async_autojoin(premature)
     local members = cjson.decode(res).members
     if #members < 2 then
       -- Trigger auto-join
-      local ok, err = serf:_autojoin(cluster_utils.get_node_name(configuration))
+      local _, err = serf:_autojoin(cluster_utils.get_node_name(configuration))
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end
@@ -54,7 +53,7 @@ local function async_autojoin(premature)
     end
   end
 
-  autojoin_retries = autojoin_retries + 1
+  local autojoin_retries = cache.incr(cache.autojoin_retries(), 1) -- Increment retries counter
   if (autojoin_retries < ASYNC_AUTOJOIN_RETRIES) then
     create_timer(ASYNC_AUTOJOIN_INTERVAL, async_autojoin)
   end

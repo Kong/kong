@@ -14,6 +14,7 @@ local CACHE_KEYS = {
   ACLS = "acls",
   SSL = "ssl",
   REQUESTS = "requests",
+  AUTOJOIN_RETRIES = "autojoin_retries",
   TIMERS = "timers",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC"
 }
@@ -58,6 +59,10 @@ end
 
 function _M.requests_key()
   return CACHE_KEYS.REQUESTS
+end
+
+function _M.autojoin_retries_key()
+  return CACHE_KEYS.AUTOJOIN_RETRIES
 end
 
 function _M.api_key(host)

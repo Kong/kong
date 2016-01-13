@@ -53,7 +53,7 @@ describe("Admin API", function()
       it("[FAILURE] should fail when serf is not running anymore", function()
         os.execute("pkill -9 serf")
 
-        local response, status = http_client.get(BASE_URL, {}, {})
+        local _, status = http_client.get(BASE_URL, {}, {})
         assert.equal(500, status)
       end)
     end)

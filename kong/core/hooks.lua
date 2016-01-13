@@ -3,7 +3,6 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local cjson = require "cjson"
 local Serf = require "kong.cli.services.serf"
-local cluster_utils = require "kong.tools.cluster"
 
 local function invalidate_plugin(entity)
   cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))

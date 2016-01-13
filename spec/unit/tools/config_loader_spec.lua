@@ -120,10 +120,12 @@ describe("Configuration validation", function()
     -- Valid with hostname
     ok, errors = config.validate({proxy_listen = "hello:1231"})
     assert.True(ok)
+    assert.falsy(errors)
 
     -- Valid with IP
     ok, errors = config.validate({proxy_listen = "1.1.1.1:1231"})
     assert.True(ok)
+    assert.falsy(errors)
   end)
   it("should validate the ip:port listen addresses", function()
     -- Hostname instead of IP
@@ -139,6 +141,7 @@ describe("Configuration validation", function()
     -- Valid
     ok, errors = config.validate({cluster_listen = "1.1.1.1:1231"})
     assert.True(ok)
+    assert.falsy(errors)
 
     -- Invalid cluster.advertise
     ok, errors = config.validate({cluster={advertise = "1"}})
@@ -148,6 +151,7 @@ describe("Configuration validation", function()
     -- Valid cluster.advertise
     ok, errors = config.validate({cluster={advertise = "1.1.1.1:1231"}})
     assert.True(ok)
+    assert.falsy(errors)
   end)
 end)
 
