@@ -26,7 +26,9 @@ end
 
 function Serf:_get_cmd()
   local cmd, err = Serf.super._get_cmd(self, {}, function(path) 
+    print("EXECUTING "..path.." version")
     local res, code = IO.os_execute(path.." version")
+    print(res)
     if code == 0 then
       return res:match("^Serf v0.7.0")
     end

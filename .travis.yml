@@ -43,8 +43,6 @@ install:
   - "kong config -c kong.yml -e TEST"
   - 'sed -i "2 i\dns_resolver: server" kong_TEST.yml'
 script:
-  - hash serf; echo $?
-  - type serf; echo $?
   - busted spec/integration/cli/cmds/start_spec.lua
   - cat nginx_tmp/logs/error.log
 cache:
