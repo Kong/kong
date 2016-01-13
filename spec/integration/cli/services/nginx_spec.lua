@@ -47,6 +47,12 @@ describe("Nginx", function()
     assert.truthy(ok)
     assert.falsy(err)
     
+    -- Wait for process to start, with a timeout
+    local start = os.time()
+    while (not nginx:is_running() and os.time() < (start + TIMEOUT)) do
+      -- Wait
+    end
+    
     assert.truthy(nginx:is_running())
 
     -- Trying again will fail
