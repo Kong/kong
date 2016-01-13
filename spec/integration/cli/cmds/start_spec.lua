@@ -63,7 +63,8 @@ describe("CLI", function()
     it("should register and de-register the node into the datastore", function()
 
       assert.has_no.errors(function()
-        spec_helper.start_kong(TEST_CONF, true)
+        local res, code = spec_helper.start_kong(TEST_CONF, true)
+        print(res)
       end)
 
       local env = spec_helper.get_env() -- test environment
