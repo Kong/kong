@@ -159,7 +159,8 @@ describe("CLI", function()
 
     it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
       local cassandra = require "cassandra"
-
+      local UUID = "d7dcf800-f155-417e-a282-b6189d7d901b"
+      
       -- Load everything we need from the spec_helper
       local env = spec_helper.get_env(SERVER_CONF)
       local faker = env.faker
@@ -173,6 +174,11 @@ describe("CLI", function()
       }
       assert.falsy(err)
 
+      finally(function()    
+        session:execute("DELETE FROM plugins WHERE id = "..UUID)
+        session:shutdown()
+      end)
+      
       -- Insert API
       local api_t = faker:fake_entity("api")
       local api, err = dao_factory.apis:insert(api_t)
@@ -180,8 +186,7 @@ describe("CLI", function()
       assert.truthy(api.id)
 
       -- Insert plugin
-      local plugin_id = uuid()
-      local res, err = session:execute("INSERT INTO plugins(id, name, api_id, config) VALUES("..plugin_id..", 'custom-rate-limiting', "..api.id..", '{}')")
+      local res, err = session:execute("INSERT INTO plugins(id, name, api_id, config) VALUES("..UUID..", 'custom-rate-limiting', "..api.id..", '{}')")
       assert.falsy(err)
       assert.truthy(res)
 
@@ -190,12 +195,6 @@ describe("CLI", function()
       assert.error_matches(function()
         spec_helper.start_kong(SERVER_CONF, true)
       end, "You are using a plugin that has not been enabled in the configuration: custom-rate-limiting", nil, true)
-
-
-      -- Delete the plugin
-      local _, err = session:execute("DELETE FROM plugins WHERE id="..plugin_id)
-      assert.falsy(err)
-      session:shutdown()
     end)
 
   end)
