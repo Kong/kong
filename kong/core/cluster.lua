@@ -53,7 +53,7 @@ local function async_autojoin(premature)
     end
   end
 
-  local autojoin_retries = cache.incr(cache.autojoin_retries(), 1) -- Increment retries counter
+  local autojoin_retries = cache.incr(cache.autojoin_retries_key(), 1) -- Increment retries counter
   if (autojoin_retries < ASYNC_AUTOJOIN_RETRIES) then
     create_timer(ASYNC_AUTOJOIN_INTERVAL, async_autojoin)
   end
