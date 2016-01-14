@@ -26,7 +26,8 @@ function _M.serialize(ngx)
       method = ngx.req.get_method(),
       headers = ngx.req.get_headers(),
       body = ngx.ctx.runscope.req_body,
-      timestamp = ngx.req.start_time()
+      timestamp = ngx.req.start_time(),
+      form = ngx.ctx.runscope.req_post_args
     },
     response = {
       status = ngx.status,
