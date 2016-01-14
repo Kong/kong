@@ -1,24 +1,18 @@
 local iputils = require "resty.iputils"
 local responses = require "kong.tools.responses"
-local utils = require "kong.tools.utils"
 
 local _M = {}
 
 function _M.execute(conf)
   local block = false
+  local remote_addr = ngx.var.remote_addr
 
-  if utils.table_size(conf.blacklist) > 0 then
-    if iputils.ip_in_cidrs(ngx.var.remote_addr, conf._blacklist_cache) then
-      block = true
-    end
+  if conf._blacklist_cache and #conf._blacklist_cache > 0 then
+    block = iputils.ip_in_cidrs(remote_addr, conf._blacklist_cache)
   end
 
-  if utils.table_size(conf.whitelist) > 0 then
-    if iputils.ip_in_cidrs(ngx.var.remote_addr, conf._whitelist_cache) then
-      block = false
-    else
-      block = true
-    end
+  if conf._whitelist_cache and #conf._whitelist_cache > 0 then
+    block = not iputils.ip_in_cidrs(remote_addr, conf._whitelist_cache)
   end
 
   if block then
