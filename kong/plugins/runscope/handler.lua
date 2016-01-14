@@ -56,10 +56,6 @@ function RunscopeLogHandler:body_filter(conf)
   if conf.log_body then
     ngx.ctx.runscope.res_body = ngx.ctx.runscope.res_body..chunk
   end
-
-  if eof then -- latest chunk
-    ngx.ctx.runscope.response_received = ngx_now() * 1000
-  end
 end
 
 
