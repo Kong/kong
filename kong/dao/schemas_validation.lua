@@ -24,7 +24,9 @@ local custom_types_validation = {
       return parsed_url and parsed_url.path and parsed_url.host and parsed_url.scheme
     end
   end,
-  ["array"] = function(v) return utils.is_array(v) end
+  ["array"] = function(v)
+    return utils.is_array(v)
+  end
 }
 
 local function validate_type(field_type, value)
