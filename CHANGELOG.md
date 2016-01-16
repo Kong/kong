@@ -67,11 +67,13 @@ Other additions include:
   - PATCH correctly set previously unset fields. [#861](https://github.com/Mashape/kong/pull/861)
   - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
   - Prevent the update of `created_at` fields. [#820](https://github.com/Mashape/kong/pull/820)
+  - Better `request_path` validation for APIs. "/" is not considered a valid path anymore. [#881](https://github.com/Mashape/kong/pull/881)
 - Plugins:
   - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Mashape/kong/issues/584)
   - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Mashape/kong/pull/667)
   - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Mashape/kong/issues/681)
   - Basic Authentication: do not re-hash the password field when updating a credential. [#726](https://github.com/Mashape/kong/issues/726)
+  - File log: better permissions for on file creation for file-log plugin. [#877](https://github.com/Mashape/kong/pull/877)
   - OAuth2
     - Implement correct responses when the OAuth2 challenges are refused. [#737](https://github.com/Mashape/kong/issues/737)
     - Handle querystring on `/authorize` and `/token` URLs. [#687](https://github.com/Mashape/kong/pull/667)
