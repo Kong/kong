@@ -1,6 +1,10 @@
 local url = require "socket.url"
 local stringy = require "stringy"
 
+local fmt = string.format
+local sub = string.sub
+local match = string.match
+
 local function validate_upstream_url_protocol(value)
   local parsed_url = url.parse(value)
   if parsed_url.scheme and parsed_url.host then
@@ -77,20 +81,22 @@ local function check_request_path(request_path, api_t)
   end
 
   if request_path ~= nil and request_path ~= "" then
-    request_path = string.gsub(request_path, "^/*", "")
-    request_path = string.gsub(request_path, "/*$", "")
-
-    -- Add a leading slash for the sake of consistency
-    api_t.request_path = "/"..request_path
-
-    -- Check if characters are in RFC 3986 unreserved list
-    local is_alphanumeric = string.match(api_t.request_path, "^/[%w%.%-%_~%/]*$")
-    if not is_alphanumeric then
-      return false, "request_path must only contain alphanumeric and '., -, _, ~, /' characters"
+    if request_path == "/" then
+      return false, "cannot be an empty path: '/'"
+    elseif sub(request_path, 1, 1) ~= "/" then
+      return false, fmt("must be prefixed with slash: '%s'", request_path)
+    elseif match(request_path, "//+") then
+      -- Check for empty segments (/status//123)
+      return false, fmt("invalid: '%s'", request_path)
+    elseif not match(request_path, "^/[%w%.%-%_~%/]*$") then
+      -- Check if characters are in RFC 3986 unreserved list
+      return false, "must only contain alphanumeric and '., -, _, ~, /' characters"
     end
-    local is_invalid = string.match(api_t.request_path, "//+")
-    if is_invalid then
-      return false, "request_path is invalid: "..api_t.request_path
+
+    -- From now on, the request_path is considered valid.
+    -- Remove trailing slash
+    if sub(request_path, -1) == "/" then
+      api_t.request_path = sub(request_path, 1, -2)
     end
   end
 

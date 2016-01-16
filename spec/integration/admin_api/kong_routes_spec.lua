@@ -15,7 +15,7 @@ describe("Admin API", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
-  
+
   describe("Kong routes", function()
     describe("/", function()
       local constants = require "kong.constants"
@@ -86,11 +86,10 @@ describe("Admin API", function()
 
   describe("Request size", function()
     it("should properly hanlde big POST bodies < 10MB", function()
-      local response, status = http_client.post(spec_helper.API_URL.."/apis", { request_path = "hello.com", upstream_url = "http://mockbin.org" })
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {request_host = "hello.com", upstream_url = "http://mockbin.org"})
       assert.equal(201, status)
       local api_id = json.decode(response).id
       assert.truthy(api_id)
-
 
       local big_value = string.rep("204.48.16.0,", 1000)
       big_value = string.sub(big_value, 1, string.len(big_value) - 1)
@@ -101,7 +100,7 @@ describe("Admin API", function()
     end)
 
     it("should fail with requests > 10MB", function()
-      local response, status = http_client.post(spec_helper.API_URL.."/apis", { request_path = "hello2.com", upstream_url = "http://mockbin.org" })
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {request_host = "hello2.com", upstream_url = "http://mockbin.org"})
       assert.equal(201, status)
       local api_id = json.decode(response).id
       assert.truthy(api_id)
