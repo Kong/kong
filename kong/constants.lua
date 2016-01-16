@@ -62,6 +62,9 @@ return {
       "day",
       "month",
       "year"
-    }
+    },
+    USAGE_STATUS = {
+      NO_LIMIT_VALUE = "unlimited",
+    },
   }
 }
