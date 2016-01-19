@@ -32,10 +32,10 @@ function _M.serialize(ngx)
     response = {
       status = ngx.status,
       headers = ngx.resp.get_headers(),
-      size_bytes = ngx.var.bytes_sent,
+      size_bytes = ngx.var.body_bytes_sent,
       body = ngx.ctx.runscope.res_body,
       timestamp = ngx.now(),
-      response_time = ngx.now() - ngx.req.start_time()
+      response_time = ngx.var.request_time * 1
     }
   }
 end
