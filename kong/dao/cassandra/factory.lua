@@ -135,7 +135,7 @@ end
 -- @return {table} error if any
 function CassandraFactory:execute_queries(queries, no_keyspace)
   local options = self:get_session_options()
-  options.query_options.same_coordinator = true
+  options.query_options.prepare = false
 
   if no_keyspace then
     options.keyspace = nil
