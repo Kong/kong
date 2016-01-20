@@ -6,15 +6,15 @@ local _CORE_MIGRATIONS_IDENTIFIER = "core"
 
 local Migrations = Object:extend()
 
-function Migrations:new(dao, kong_config, core_migrations_module, plugins_namespace)
-  core_migrations_module = core_migrations_module or "kong.dao."..dao.type..".schema.migrations"
+function Migrations:new(dao_factory, kong_config, core_migrations_module, plugins_namespace)
+  core_migrations_module = core_migrations_module or "kong.dao."..dao_factory.type..".schema.migrations"
   plugins_namespace = plugins_namespace or "kong.plugins"
 
   -- Load the DAO which interacts with the migrations table
-  dao:load_daos(require("kong.dao."..dao.type..".migrations"))
+  dao_factory:attach_daos(require("kong.dao."..dao_factory.type..".migrations"))
+  dao_factory.migrations.factory = dao_factory
 
-  self.dao = dao
-  self.dao_properties = dao.properties
+  self.dao_factory = dao_factory
   self.migrations = {
     [_CORE_MIGRATIONS_IDENTIFIER] = require(core_migrations_module)
   }
@@ -28,7 +28,7 @@ function Migrations:new(dao, kong_config, core_migrations_module, plugins_namesp
 end
 
 function Migrations:get_migrations(identifier)
-  return self.dao.migrations:get_migrations(identifier)
+  return self.dao_factory.migrations:get_migrations(identifier)
 end
 
 function Migrations:run_all_migrations(before, on_each_success)
@@ -59,7 +59,7 @@ function Migrations:run_migrations(identifier, before, on_each_success)
   end
 
   -- Retrieve already executed migrations
-  local old_migrations, err = self.dao.migrations:get_migrations(identifier)
+  local old_migrations, err = self.dao_factory.migrations:get_migrations(identifier)
   if err then
     return err
   end
@@ -91,13 +91,13 @@ function Migrations:run_migrations(identifier, before, on_each_success)
 
   -- Execute all new migrations, in order
   for _, migration in ipairs(diff_migrations) do
-    local err = migration.up(self.dao_properties, self.dao)
+    local err = migration.up(self.dao_factory)
     if err then
       return fmt('Error executing migration for "%s": %s', identifier, err)
     end
 
     -- Record migration in db
-    err = select(2, self.dao.migrations:add_migration(migration.name, identifier))
+    err = select(2, self.dao_factory.migrations:add_migration(migration.name, identifier))
     if err then
       return fmt('Cannot record successful migration "%s" (%s): %s', migration.name, identifier, err)
     end
@@ -116,7 +116,7 @@ function Migrations:run_rollback(identifier, before, on_success)
   end
 
   -- Retrieve already executed migrations
-  local old_migrations, err = self.dao.migrations:get_migrations(identifier)
+  local old_migrations, err = self.dao_factory.migrations:get_migrations(identifier)
   if err then
     return err
   end
@@ -146,7 +146,7 @@ function Migrations:run_rollback(identifier, before, on_success)
     before(identifier)
   end
 
-  local err = migration_to_rollback.down(self.dao_properties, self.dao)
+  local err = migration_to_rollback.down(self.dao_factory)
   if err then
     return fmt('Error rollbacking migration for "%s": %s', identifier, err)
   end
@@ -154,7 +154,7 @@ function Migrations:run_rollback(identifier, before, on_success)
   -- delete migration from schema changes records if it's not the first one
   -- (otherwise the schema_migrations table doesn't exist anymore)
   if not migration_to_rollback.init then
-    err = select(2, self.dao.migrations:delete_migration(migration_to_rollback.name, identifier))
+    err = select(2, self.dao_factory.migrations:delete_migration(migration_to_rollback.name, identifier))
     if err then
       return fmt('Cannot record migration deletion "%s" (%s): %s', migration_to_rollback.name, identifier, err)
     end

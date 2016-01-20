@@ -1,11 +1,8 @@
 local cassandra = require "cassandra"
-local DAO = require "kong.dao.cassandra.factory"
-local Migrations = require "kong.tools.migrations"
+local DAOFactory = require "kong.dao.cassandra.dao_factory"
+local Migrations = require "kong.dao.migrations"
 local spec_helper = require "spec.spec_helpers"
-
---
--- Fixtures, setup and custom assertions
---
+local say = require "say"
 
 local FIXTURES = {
   keyspace = "kong_migrations_tests",
@@ -16,15 +13,26 @@ local FIXTURES = {
   }
 }
 
-local test_env = spec_helper.get_env() -- test environment
-local test_configuration = test_env.configuration
-local test_cassandra_properties = test_configuration.dao_config
-test_cassandra_properties.keyspace = FIXTURES.keyspace
+-- Get default Cassandra properties
+local DEFAULT_CONFIG = spec_helper.default_config()
+local DEFAULT_CASSANDRA_CONFIG = DEFAULT_CONFIG.cassandra
 
-local test_dao = DAO(test_cassandra_properties)
+-- Get test properties for contact_points
+local TEST_ENV = spec_helper.get_env()
+local TEST_CONFIG = TEST_ENV.configuration
+local TEST_CASSANDRA_CONFIG = TEST_CONFIG.cassandra
+
+local properties = DEFAULT_CASSANDRA_CONFIG
+properties.keyspace = FIXTURES.keyspace
+properties.contact_points = TEST_CASSANDRA_CONFIG.contact_points
+
+-- DAO Factory being tested
+local dao_factory = DAOFactory(properties)
+
+-- Session to check our results
 local session, err = cassandra.spawn_session {
   shm = "factory_specs",
-  contact_points = test_configuration.dao_config.contact_points
+  contact_points = properties.contact_points
 }
 if err then
   error(err)
@@ -46,7 +54,6 @@ local function has_table(state, arguments)
   return found
 end
 
-local say = require "say"
 say:set("assertion.has_table.positive", "Expected keyspace to have table %s")
 say:set("assertion.has_table.negative", "Expected keyspace not to have table %s")
 assert:register("assertion", "has_table", has_table, "assertion.has_table.positive", "assertion.has_table.negative")
@@ -86,7 +93,7 @@ local function has_migration(state, arguments)
   local identifier = arguments[1]
   local migration = arguments[2]
 
-  local rows, err = test_dao.migrations:get_migrations()
+  local rows, err = dao_factory.migrations:get_migrations()
   if err then
     error(err)
   end
@@ -112,7 +119,7 @@ assert:register("assertion", "has_migration", has_migration, "assertion.has_migr
 -- Migrations test suite
 --
 
-describe("Migrations", function()
+describe("Migrations #dao #cass", function()
   local migrations
 
   teardown(function()
@@ -120,7 +127,7 @@ describe("Migrations", function()
   end)
 
   it("should be instanciable", function()
-    migrations = Migrations(test_dao, FIXTURES.kong_config, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
+    migrations = Migrations(dao_factory, FIXTURES.kong_config, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
     assert.truthy(migrations)
   end)
 
@@ -128,6 +135,8 @@ describe("Migrations", function()
     local core_migrations, plugin_migrations
 
     setup(function()
+      migrations = Migrations(dao_factory, FIXTURES.kong_config, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
+      assert.truthy(migrations)
       core_migrations = migrations.migrations.core
       plugin_migrations = migrations.migrations.plugin_fixture
     end)
@@ -314,7 +323,7 @@ describe("Migrations", function()
 
   describe("migrations with DML statements", function()
     setup(function()
-      migrations = Migrations(test_dao, {plugins = {"plugin_fixture_dml_migrations"}}, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
+      migrations = Migrations(dao_factory, {plugins = {"plugin_fixture_dml_migrations"}}, FIXTURES.core_migrations_module, FIXTURES.plugins_namespace)
     end)
     it("should be able to execute migrations modifying the stored data", function()
       local err = migrations:run_migrations("plugin_fixture_dml_migrations")
@@ -344,16 +353,18 @@ describe("Migrations", function()
       assert.equal(0, #rows)
     end)
   end)
-  describe("keyspace replication strategy", function()
+  describe("real migrations with keyspace replication strategy", function()
     local KEYSPACE_NAME = "kong_replication_strategy_tests"
 
     setup(function()
-      migrations = Migrations(test_dao, FIXTURES.kong_config)
-      migrations.dao_properties.keyspace = KEYSPACE_NAME
+      TEST_CASSANDRA_CONFIG.keyspace = KEYSPACE_NAME
+      dao_factory = DAOFactory(TEST_CASSANDRA_CONFIG)
+      migrations = Migrations(dao_factory, FIXTURES.kong_config)
     end)
     after_each(function()
       session:execute("DROP KEYSPACE "..KEYSPACE_NAME)
     end)
+
     it("should create a keyspace with SimpleStrategy by default", function()
       local err = migrations:run_migrations("core")
       assert.falsy(err)
@@ -361,10 +372,10 @@ describe("Migrations", function()
       assert.has_replication_options(KEYSPACE_NAME, "SimpleStrategy", "{\"replication_factor\":\"1\"}")
     end)
     it("should catch an invalid replication strategy", function()
-      migrations.dao_properties.replication_strategy = "foo"
+      migrations.dao_factory.properties.replication_strategy = "foo"
       local err = migrations:run_migrations("core")
       assert.truthy(err)
-      assert.equal('Error executing migration for "core": invalid replication_strategy class', err)
+      assert.equal('Error executing migration for "core": invalid replication_strategy class: foo', err)
     end)
   end)
 end)

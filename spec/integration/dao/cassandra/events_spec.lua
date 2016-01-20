@@ -6,7 +6,7 @@ local env = spec_helper.get_env() -- test environment
 local dao_factory = env.dao_factory
 local events = env.events
 
-describe("Events", function()
+describe("Events #dao #cass", function()
 
   setup(function()
     spec_helper.start_kong()
@@ -19,7 +19,7 @@ describe("Events", function()
   before_each(function()
     spec_helper.prepare_db()
   end)
-  
+
   it("should fire event on insert", function()
     local received = false
 
@@ -30,7 +30,6 @@ describe("Events", function()
         assert.truthy(message_t.entity)
         assert.equals(1, utils.table_size(message_t.entity))
         assert.truthy(message_t.entity.id)
-        
         received = true
       end
     end)
@@ -48,7 +47,7 @@ describe("Events", function()
     end
     assert.True(received)
   end)
-  
+
   it("should fire event on update", function()
     local received = false
 

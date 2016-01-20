@@ -125,7 +125,7 @@ function Kong.init()
   local status, err = pcall(function()
     singletons.configuration  = config_loader.load(os.getenv("KONG_CONF"))
     singletons.events         = Events()
-    singletons.dao            = dao_loader.load(singletons.configuration, true, singletons.events)
+    singletons.dao            = dao_loader.load(singletons.configuration, singletons.events, true)
     singletons.loaded_plugins = load_node_plugins(singletons.configuration)
     singletons.serf           = Serf(singletons.configuration)
 

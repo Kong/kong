@@ -1,7 +1,7 @@
 local Migrations = {
   {
     name = "2015-07-31-172400_init_keyauth",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS keyauth_credentials(
           id uuid,
@@ -15,7 +15,7 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS keyauth_consumer_id ON keyauth_credentials(consumer_id);
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE keyauth_credentials;
       ]]

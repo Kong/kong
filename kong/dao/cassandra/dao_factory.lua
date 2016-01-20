@@ -4,32 +4,45 @@
 -- Also provides helper methods for preparing queries among the DAOs, migrating the
 -- database and dropping it.
 
+local AbstractDAOFactory = require "kong.abstract.dao_factory"
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local types = require "cassandra.types"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
-local Object = require "classic"
-local utils = require "kong.tools.utils"
 
-local CassandraFactory = Object:extend()
+local CassandraDAOFactory = AbstractDAOFactory:extend()
 
 -- Shorthand for accessing one of the underlying DAOs
-function CassandraFactory:__index(key)
+function CassandraDAOFactory:__index(key)
   if key ~= "daos" and self.daos and self.daos[key] then
     return self.daos[key]
   else
-    return CassandraFactory[key]
+    return CassandraDAOFactory[key]
   end
 end
 
 -- Instantiate a Cassandra Factory and all its DAOs for various entities
 -- @param `properties` Cassandra properties
-function CassandraFactory:new(properties, plugins, spawn_cluster, events_handler)
-  self.events_handler = events_handler
-  self.properties = properties
-  self.type = "cassandra"
-  self.daos = {}
+function CassandraDAOFactory:new(properties, plugins, events_handler, spawn_cluster)
+  local session_options = {
+    shm = "cassandra",
+    prepared_shm = "cassandra_prepared",
+    contact_points = properties.contact_points,
+    keyspace = properties.keyspace,
+    query_options = {
+      prepare = true
+    },
+    username = properties.username,
+    password = properties.password,
+    ssl_options = {
+      enabled = properties.ssl.enabled,
+      verify = properties.ssl.verify,
+      ca = properties.ssl.certificate_authority
+    }
+  }
+
+  CassandraDAOFactory.super.new(self, "cassandra", properties, session_options, plugins, events_handler)
 
   if properties.username and properties.password then
     self.properties.auth = cassandra.auth.PlainTextProvider(properties.username, properties.password)
@@ -41,65 +54,42 @@ function CassandraFactory:new(properties, plugins, spawn_cluster, events_handler
       error(err)
     end
   end
-
-  -- Load core entities DAOs
-  for _, entity in ipairs({"apis", "consumers", "plugins", "nodes"}) do
-    self:load_daos(require("kong.dao.cassandra."..entity))
-  end
-
-  -- Load plugins DAOs
-  if plugins then
-    self:load_plugins(plugins)
-  end
 end
 
--- Load an array of plugins (array of plugins names). If any of those plugins have DAOs,
--- they will be loaded into the factory.
--- @param plugins Array of plugins names
-function CassandraFactory:load_plugins(plugins)
-  for _, v in ipairs(plugins) do
-    local loaded, plugin_daos_mod = utils.load_module_if_exists("kong.plugins."..v..".daos")
-    if loaded then
-      if ngx then
-        ngx.log(ngx.DEBUG, "Loading DAO for plugin: "..v)
-      end
-      self:load_daos(plugin_daos_mod)
-    elseif ngx then
-      ngx.log(ngx.DEBUG, "No DAO loaded for plugin: "..v)
-    end
-  end
+function CassandraDAOFactory:attach_core_entities_daos(...)
+  CassandraDAOFactory.super.attach_core_entities_daos(self, ...)
+  self:ugly_hack()
 end
 
--- Load a plugin's DAOs (plugins can have more than one DAO) in the factory and create cascade delete hooks.
--- Cascade delete hooks are triggered when a parent of a foreign row is deleted.
--- @param plugin_daos A table with key/values representing daos names and instances.
-function CassandraFactory:load_daos(plugin_daos)
-  local dao
-  for name, plugin_dao in pairs(plugin_daos) do
-    dao = plugin_dao(self.properties, self.events_handler)
-    dao._factory = self
-    self.daos[name] = dao
-    if dao._schema then
+function CassandraDAOFactory:attach_plugins_daos(...)
+  CassandraDAOFactory.super.attach_plugins_daos(self, ...)
+  self:ugly_hack()
+end
+
+function CassandraDAOFactory:ugly_hack()
+  for dao_name, dao in pairs(self.daos) do
+    self.daos[dao_name].factory = self
+    if dao.schema then
       -- Check for any foreign relations to trigger cascade deletes
-      for field_name, field in pairs(dao._schema.fields) do
+      for field_name, field in pairs(dao.schema.fields) do
         if field.foreign ~= nil then
           -- Foreign key columns need to be queryable, hence they need to have an index
-          assert(field.queryable, "Foreign property "..field_name.." of shema "..name.." must be queryable (have an index)")
+          assert(field.queryable, "Foreign property "..field_name.." of schema "..dao_name.." must be queryable (have an index)")
 
           local parent_dao_name, parent_column = unpack(stringy.split(field.foreign, ":"))
-          assert(parent_dao_name ~= nil, "Foreign property "..field_name.." of schema "..name.." must contain 'parent_dao:parent_column")
-          assert(parent_column ~= nil, "Foreign property "..field_name.." of schema "..name.." must contain 'parent_dao:parent_column")
+          assert(parent_dao_name ~= nil, "Foreign property "..field_name.." of schema "..dao_name.." must contain 'parent_dao:parent_column'")
+          assert(parent_column ~= nil, "Foreign property "..field_name.." of schema "..dao_name.." must contain 'parent_dao:parent_column'")
 
           -- Add delete hook to the parent DAO
-          local parent_dao = self[parent_dao_name]
-          parent_dao:add_delete_hook(name, field_name, parent_column)
+          local parent_dao = self.daos[parent_dao_name]
+          parent_dao:add_delete_hook(dao_name, field_name, parent_column)
         end
       end
     end
   end
 end
 
-function CassandraFactory:drop()
+function CassandraDAOFactory:drop()
   local err
   for _, dao in pairs(self.daos) do
     err = select(2, dao:drop())
@@ -109,7 +99,7 @@ function CassandraFactory:drop()
   end
 end
 
-function CassandraFactory:get_session_options()
+function CassandraDAOFactory:get_session_options()
   return {
     shm = "cassandra",
     prepared_shm = "cassandra_prepared",
@@ -137,7 +127,7 @@ end
 -- @param {string} queries Semicolon separated string of queries
 -- @param {boolean} no_keyspace Won't set the keyspace if true
 -- @return {table} error if any
-function CassandraFactory:execute_queries(queries, no_keyspace)
+function CassandraDAOFactory:execute_queries(queries, no_keyspace)
   local options = self:get_session_options()
   options.query_options.prepare = false
 
@@ -169,4 +159,4 @@ function CassandraFactory:execute_queries(queries, no_keyspace)
   end
 end
 
-return CassandraFactory
+return CassandraDAOFactory

@@ -63,27 +63,22 @@ local OAUTH2_TOKENS_SCHEMA = {
 }
 
 local OAuth2Credentials = BaseDao:extend()
-function OAuth2Credentials:new(properties, events_handler)
-  self._table = "oauth2_credentials"
-  self._schema = OAUTH2_CREDENTIALS_SCHEMA
-
-  OAuth2Credentials.super.new(self, properties, events_handler)
+function OAuth2Credentials:new(...)
+  OAuth2Credentials.super.new(self, "oauth2_credentials", OAUTH2_CREDENTIALS_SCHEMA, ...)
 end
 
 local OAuth2AuthorizationCodes = BaseDao:extend()
-function OAuth2AuthorizationCodes:new(properties, events_handler)
-  self._table = "oauth2_authorization_codes"
-  self._schema = OAUTH2_AUTHORIZATION_CODES_SCHEMA
-
-  OAuth2AuthorizationCodes.super.new(self, properties, events_handler)
+function OAuth2AuthorizationCodes:new(...)
+  OAuth2AuthorizationCodes.super.new(self, "oauth2_authorization_codes", OAUTH2_AUTHORIZATION_CODES_SCHEMA, ...)
 end
 
 local OAuth2Tokens = BaseDao:extend()
-function OAuth2Tokens:new(properties, events_handler)
-  self._table = "oauth2_tokens"
-  self._schema = OAUTH2_TOKENS_SCHEMA
-
-  OAuth2Tokens.super.new(self, properties, events_handler)
+function OAuth2Tokens:new(...)
+  OAuth2Tokens.super.new(self, "oauth2_tokens", OAUTH2_TOKENS_SCHEMA, ...)
 end
 
-return { oauth2_credentials = OAuth2Credentials, oauth2_authorization_codes = OAuth2AuthorizationCodes, oauth2_tokens = OAuth2Tokens }
+return {
+  oauth2_credentials = OAuth2Credentials,
+  oauth2_authorization_codes = OAuth2AuthorizationCodes,
+  oauth2_tokens = OAuth2Tokens
+}

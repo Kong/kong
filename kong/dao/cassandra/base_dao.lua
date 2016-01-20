@@ -5,6 +5,7 @@
 --
 -- @see http://thibaultcha.github.io/lua-cassandra/manual/README.md.html
 
+local AbstractBaseDAO = require "kong.abstract.base_dao"
 local query_builder = require "kong.dao.cassandra.query_builder"
 local validations = require "kong.dao.schemas_validation"
 local constants = require "kong.constants"
@@ -12,7 +13,6 @@ local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
-local Object = require "classic"
 local utils = require "kong.tools.utils"
 local uuid = require "lua_uuid"
 local event_types = require("kong.core.events").TYPES
@@ -23,7 +23,7 @@ local error_types = constants.DATABASE_ERROR_TYPES
 --- Base DAO
 -- @section base_dao
 
-local BaseDao = Object:extend()
+local CassandraBaseDao = AbstractBaseDAO:extend()
 
 --- Public interface.
 -- Public methods developers can use in Kong core or in any plugin.
@@ -34,6 +34,7 @@ local function page_iterator(self, session, query, args, query_options)
   return function(query, previous_rows)
     local rows, err, page = iter(query, previous_rows)
     if rows == nil or err ~= nil then
+      session:set_keep_alive()
       session:set_keep_alive()
     else
       for i, row in ipairs(rows) do
@@ -54,8 +55,8 @@ end
 -- @param[type=string] keyspace (Optional) Override the keyspace for this query if specified.
 -- @treturn table If the result consists of ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results has a `paging_state`. If the result is of type "VOID", a boolean representing the success of the query. Otherwise, the raw result as given by lua-cassandra.
 -- @treturn table An error if any during the execution.
-function BaseDao:execute(query, args, query_options, keyspace)
-  local options = self._factory:get_session_options()
+function CassandraBaseDao:execute(query, args, query_options, keyspace)
+  local options = self:get_session_options()
   if keyspace then
     options.keyspace = keyspace
   end
@@ -107,22 +108,22 @@ end
 -- @section inherited
 
 ---
--- Insert a row in the defined column family (defined by the **_table** attribute).
+-- Insert a row in the defined column family (defined by the **table** attribute).
 -- Perform schema validation, 'UNIQUE' checks, 'FOREIGN' checks.
 -- @see check_unique_fields
 -- @see check_foreign_fields
 -- @param[table=table] t A table representing the entity to insert.
 -- @treturn table Inserted entity or nil.
 -- @treturn table Error if any during the execution.
-function BaseDao:insert(t)
+function CassandraBaseDao:insert(t)
   assert(t ~= nil, "Cannot insert a nil element")
   assert(type(t) == "table", "Entity to insert must be a table")
 
   local ok, db_err, errors, self_err
 
   -- Populate the entity with any default/overriden values and validate it
-  ok, errors, self_err = validations.validate_entity(t, self._schema, {
-    dao = self._factory,
+  ok, errors, self_err = validations.validate_entity(t, self.schema, {
+    dao = self.factory,
     dao_insert = function(field)
       if field.type == "id" then
         return uuid()
@@ -151,7 +152,7 @@ function BaseDao:insert(t)
     return nil, DaoError(errors, error_types.FOREIGN)
   end
 
-  local insert_q, columns = query_builder.insert(self._table, t)
+  local insert_q, columns = query_builder.insert(self.table, t)
   local _, stmt_err = self:build_args_and_execute(insert_q, columns, self:_marshall(t))
   if stmt_err then
     return nil, stmt_err
@@ -219,7 +220,7 @@ end
 -- @param[type=table] where_t A table containing the PRIMARY KEY fields of the row to update.
 -- @treturn table `result`: Updated entity or nil.
 -- @treturn table `error`: Error if any during the execution.
-function BaseDao:update(t, full, where_t)
+function CassandraBaseDao:update(t, full, where_t)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
 
@@ -240,15 +241,15 @@ function BaseDao:update(t, full, where_t)
   end
 
   if not full then
-    complete_partial_entity(t, old_entity, self._schema)
+    complete_partial_entity(t, old_entity, self.schema)
   end
 
   -- Validate schema
-  local ok, errors, err = validations.validate_entity(t, self._schema, {
+  local ok, errors, err = validations.validate_entity(t, self.schema, {
     update = true,
     old_t = old_entity,
     full_update = full,
-    dao = self._factory
+    dao = self.factory
   })
   if err then
     return nil, err
@@ -275,14 +276,14 @@ function BaseDao:update(t, full, where_t)
 
   -- If full, add CQL `null` to the SET part of the query for nil columns
   if full then
-    for k, v in pairs(self._schema.fields) do
+    for k, v in pairs(self.schema.fields) do
       if t[k] == nil and not v.immutable then
         t_no_primary_key[k] = cassandra.unset
       end
     end
   end
 
-  local update_q, columns = query_builder.update(self._table, t_no_primary_key, t_primary_key)
+  local update_q, columns = query_builder.update(self.table, t_no_primary_key, t_primary_key)
 
   local _, err = self:build_args_and_execute(update_q, columns, self:_marshall(t))
   if err then
@@ -299,7 +300,7 @@ end
 -- @param[type=table] where_t A table containing the PRIMARY KEY (it can be composite, hence be multiple columns as keys and their values) of the row to retrieve.
 -- @treturn table The first row of the result.
 -- @treturn table Error if any during the execution
-function BaseDao:find_by_primary_key(where_t)
+function CassandraBaseDao:find_by_primary_key(where_t)
   assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
   assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
 
@@ -309,7 +310,7 @@ function BaseDao:find_by_primary_key(where_t)
     return nil
   end
 
-  local select_q, where_columns = query_builder.select(self._table, t_primary_key, self._column_family_details, nil, true)
+  local select_q, where_columns = query_builder.select(self.table, t_primary_key, self._column_family_details, nil, true)
   local data, err = self:build_args_and_execute(select_q, where_columns, t_primary_key)
 
   -- Return the 1st and only element of the result set
@@ -331,8 +332,8 @@ end
 -- @treturn table An array (of possible length 0) of entities as the result of the query
 -- @treturn table An error if any
 -- @treturn boolean A boolean indicating if the 'ALLOW FILTERING' clause was needed by the query
-function BaseDao:find_by_keys(where_t, page_size, paging_state)
-  local select_q, where_columns, filtering = query_builder.select(self._table, where_t, self._column_family_details)
+function CassandraBaseDao:find_by_keys(where_t, page_size, paging_state)
+  local select_q, where_columns, filtering = query_builder.select(self.table, where_t, self._column_family_details)
   local res, err = self:build_args_and_execute(select_q, where_columns, where_t, {
     page_size = page_size,
     paging_state = paging_state
@@ -348,8 +349,8 @@ end
 -- @treturn number The number of rows matching the specified criteria.
 -- @treturn table An error if any.
 -- @treturn boolean A boolean indicating if the 'ALLOW FILTERING' clause was needed by the query.
-function BaseDao:count_by_keys(where_t, paging_state)
-  local count_q, where_columns, filtering = query_builder.count(self._table, where_t, self._column_family_details)
+function CassandraBaseDao:count_by_keys(where_t, paging_state)
+  local count_q, where_columns, filtering = query_builder.count(self.table, where_t, self._column_family_details)
   local res, err = self:build_args_and_execute(count_q, where_columns, where_t, {
     paging_state = paging_state
   })
@@ -366,16 +367,16 @@ end
 -- @param[type=string] paging_state Start page from given offset. It'll be passed along to lua-cassandra `execute()` query_options.
 -- @return return values of find_by_keys()
 -- @see find_by_keys
-function BaseDao:find(page_size, paging_state)
+function CassandraBaseDao:find(page_size, paging_state)
   return self:find_by_keys(nil, page_size, paging_state)
 end
 
 ---
--- Delete the row with PRIMARY KEY from the configured table (**_table** attribute).
+-- Delete the row with PRIMARY KEY from the configured table (**table** attribute).
 -- @param[table=table] primary_key_t A table containing the PRIMARY KEY (columns/values) of the row to delete
 -- @treturn boolean True if deleted, false if otherwise or not found.
 -- @treturn table Error if any during the query execution or the cascade delete hook.
-function BaseDao:delete(primary_key_t, where_t)
+function CassandraBaseDao:delete(primary_key_t, where_t)
   -- Test if exists first
   local row, err
   if where_t ~= nil then
@@ -392,7 +393,7 @@ function BaseDao:delete(primary_key_t, where_t)
   end
 
   local t_primary_key = extract_primary_key(row, self._primary_key, self._clustering_key)
-  local delete_q, where_columns = query_builder.delete(self._table, t_primary_key)
+  local delete_q, where_columns = query_builder.delete(self.table, t_primary_key)
   local ok, err = self:build_args_and_execute(delete_q, where_columns, row)
   if not ok then
     return false, err
@@ -407,17 +408,17 @@ function BaseDao:delete(primary_key_t, where_t)
   end
 
   self:event(event_types.ENTITY_DELETED, row)
-  
+
   return true
 end
 
 ---
--- Truncate the table related to this DAO (the **_table** attribute).
+-- Truncate the table related to this DAO (the **table** attribute).
 -- Only executes a 'TRUNCATE' query using the @{execute} method.
 -- @return Return values of execute().
 -- @see execute
-function BaseDao:drop()
-  local truncate_q = query_builder.truncate(self._table)
+function CassandraBaseDao:drop()
+  local truncate_q = query_builder.truncate(self.table)
   return self:execute(truncate_q)
 end
 
@@ -430,12 +431,14 @@ end
 -- child class and called once the child class has a schema set.
 -- @param properties Cassandra properties from the configuration file.
 -- @treturn table Instanciated DAO.
-function BaseDao:new(properties, events_handler)
-  if self._schema then
-    self._primary_key = self._schema.primary_key
-    self._clustering_key = self._schema.clustering_key
+function CassandraBaseDao:new(...)
+  CassandraBaseDao.super.new(self, ...)
+
+  if self.schema then
+    self._primary_key = self.schema.primary_key
+    self._clustering_key = self.schema.clustering_key
     local indexes = {}
-    for field_k, field_v in pairs(self._schema.fields) do
+    for field_k, field_v in pairs(self.schema.fields) do
       if field_v.queryable then
         indexes[field_k] = true
       end
@@ -448,8 +451,6 @@ function BaseDao:new(properties, events_handler)
     }
   end
 
-  self.properties = properties
-  self.events_handler = events_handler
   self.cascade_delete_hooks = {}
 end
 
@@ -461,7 +462,7 @@ end
 -- @see _unmarshall
 -- @param[type=table] t Entity to marshall.
 -- @treturn table Serialized entity.
-function BaseDao:_marshall(t)
+function CassandraBaseDao:_marshall(t)
   return t
 end
 
@@ -473,7 +474,7 @@ end
 -- @see _marshall
 -- @param[type=table] t Entity to unmarshall.
 -- @treturn table Deserialized entity.
-function BaseDao:_unmarshall(t)
+function CassandraBaseDao:_unmarshall(t)
   return t
 end
 
@@ -528,12 +529,12 @@ end
 -- @param[type=table] query_options Options to pass to lua-cassandra `execute()` query_options.
 -- @return return values of `execute()`.
 -- @see _execute
-function BaseDao:build_args_and_execute(query, columns, args_to_bind, query_options)
+function CassandraBaseDao:build_args_and_execute(query, columns, args_to_bind, query_options)
   -- Build args array if operation has some
   local args
   if columns and args_to_bind then
     local errors
-    args, errors = encode_cassandra_args(self._schema, args_to_bind, columns)
+    args, errors = encode_cassandra_args(self.schema, args_to_bind, columns)
     if errors then
       return nil, DaoError(errors, error_types.INVALID_TYPE)
     end
@@ -549,10 +550,10 @@ end
 -- @param[type=boolean] is_update If true, ignore an identical value if the row containing it is the one we are trying to update.
 -- @treturn boolean True if all unique fields are not already present, false if any already exists with the same value.
 -- @treturn table A key/value table of all columns (as keys) having values already in the database.
-function BaseDao:check_unique_fields(t, is_update)
+function CassandraBaseDao:check_unique_fields(t, is_update)
     local errors
 
-  for k, field in pairs(self._schema.fields) do
+  for k, field in pairs(self.schema.fields) do
     if field.unique and t[k] ~= nil then
       local res, err = self:find_by_keys {[k] = t[k]}
       if err then
@@ -587,14 +588,17 @@ end
 -- @param[type=table] t Key/value representation of the entity.
 -- @treturn boolean True if all fields marked as foreign have a parent row.
 -- @treturn table A key/value table of all columns (as keys) not having a parent row.
-function BaseDao:check_foreign_fields(t)
+function CassandraBaseDao:check_foreign_fields(t)
+  if self.factory == nil then
+    print(self.table)
+  end
   local errors, foreign_type, foreign_field, res, err
 
-  for k, field in pairs(self._schema.fields) do
+  for k, field in pairs(self.schema.fields) do
     if field.foreign ~= nil and type(field.foreign) == "string" then
       foreign_type, foreign_field = unpack(stringy.split(field.foreign, ":"))
-      if foreign_type and foreign_field and self._factory[foreign_type] and t[k] ~= nil and t[k] ~= constants.DATABASE_NULL_ID then
-        res, err = self._factory[foreign_type]:find_by_keys {[foreign_field] = t[k]}
+      if foreign_type and foreign_field and self.factory[foreign_type] and t[k] ~= nil and t[k] ~= constants.DATABASE_NULL_ID then
+        res, err = self.factory[foreign_type]:find_by_keys {[foreign_field] = t[k]}
         if err then
           return false, nil, "Error during FOREIGN check: "..err.message
         elseif not res or #res == 0 then
@@ -613,14 +617,14 @@ end
 -- @param[type=string] foreign_dao_name Name of the parent DAO.
 -- @param[type=string] foreign_column Name of the foreign column.
 -- @param[type=string] parent_column Name of the parent column identifying the parent row.
-function BaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column)
+function CassandraBaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column)
 
   -- The actual delete hook.
   -- @param[type=table] deleted_primary_key The value of the deleted row's primary key.
   -- @treturn boolean True if success, false otherwise.
   -- @treturn table A DAOError in case of error.
   local delete_hook = function(deleted_primary_key)
-    local foreign_dao = self._factory[foreign_dao_name]
+    local foreign_dao = self.factory[foreign_dao_name]
     local select_args = {
       [foreign_column] = deleted_primary_key[parent_column]
     }
@@ -628,7 +632,7 @@ function BaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column
     -- Iterate over all rows with the foreign key and delete them.
     -- Rows need to be deleted by PRIMARY KEY, and we only have the value of the foreign key, hence we need
     -- to retrieve all rows with the foreign key, and then delete them, identifier by their own primary key.
-    local select_q, columns = query_builder.select(foreign_dao._table, select_args, foreign_dao._column_family_details )
+    local select_q, columns = query_builder.select(foreign_dao.table, select_args, foreign_dao._column_family_details )
     for rows, err in foreign_dao:build_args_and_execute(select_q, columns, select_args, {auto_paging = true}) do
       if err then
         return false, err
@@ -651,16 +655,16 @@ end
 -- Currently this propagates the events cluster-wide.
 -- @param[type=string] type The event type to publish
 -- @param[type=table] data_t The payload to publish in the event
-function BaseDao:event(type, data_t)
+function CassandraBaseDao:event(type, data_t)
   if self.events_handler then
-    if self._schema.marshall_event then
-      data_t = self._schema.marshall_event(self._schema, data_t)
+    if self.schema.marshall_event then
+      data_t = self.schema.marshall_event(self.schema, data_t)
     else
       data_t = {}
     end
 
     local payload = {
-      collection = self._table,
+      collection = self.table,
       type = type,
       entity = data_t
     }
@@ -669,4 +673,4 @@ function BaseDao:event(type, data_t)
   end
 end
 
-return BaseDao
+return CassandraBaseDao

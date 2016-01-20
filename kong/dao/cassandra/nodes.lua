@@ -7,15 +7,13 @@ local table_insert = table.insert
 
 local Nodes = BaseDao:extend()
 
-function Nodes:new(properties, events_handler)
-  self._table = "nodes"
-  self._schema = nodes_schema
-  Nodes.super.new(self, properties, events_handler)
+function Nodes:new(...)
+  Nodes.super.new(self, "nodes", nodes_schema, ...)
 end
 
 function Nodes:find_all()
   local nodes = {}
-  local select_q = query_builder.select(self._table)
+  local select_q = query_builder.select(self.table)
 
   for rows, err in self:execute(select_q, nil, {auto_paging = true}) do
     if err then

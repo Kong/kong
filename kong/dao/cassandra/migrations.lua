@@ -4,8 +4,10 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local Migrations = BaseDao:extend()
 
-function Migrations:new(properties, events_handler)
-  self._table = "schema_migrations"
+function Migrations:new(...)
+  -- No schema
+  Migrations.super.new(self, "schema_migrations", nil, ...)
+
   self.queries = {
     get_keyspace = [[
       SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?;
@@ -23,8 +25,6 @@ function Migrations:new(properties, events_handler)
       UPDATE schema_migrations SET migrations = migrations - ? WHERE id = ?;
     ]]
   }
-
-  Migrations.super.new(self, properties, events_handler)
 end
 
 function Migrations:execute(query, args, keyspace)
@@ -32,7 +32,7 @@ function Migrations:execute(query, args, keyspace)
 end
 
 function Migrations:keyspace_exists(keyspace)
-  local rows, err = self:execute(self.queries.get_keyspace, {self.properties.keyspace}, "system")
+  local rows, err = self:execute(self.queries.get_keyspace, {self:get_session_options().keyspace}, "system")
   if err then
     return nil, err
   else

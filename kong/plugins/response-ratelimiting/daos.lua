@@ -8,8 +8,10 @@ local tostring = tostring
 
 local ResponseRateLimitingMetrics = BaseDao:extend()
 
-function ResponseRateLimitingMetrics:new(properties, events_handler)
-  self._table = "response_ratelimiting_metrics"
+function ResponseRateLimitingMetrics:new(...)
+  -- No schema
+  ResponseRateLimitingMetrics.super.new(self, "response_ratelimiting_metrics", nil, ...)
+
   self.queries = {
     increment_counter = [[ UPDATE response_ratelimiting_metrics SET value = value + ? WHERE api_id = ? AND
                             identifier = ? AND
@@ -24,13 +26,11 @@ function ResponseRateLimitingMetrics:new(properties, events_handler)
                   period_date = ? AND
                   period = ?; ]]
   }
-
-  ResponseRateLimitingMetrics.super.new(self, properties, events_handler)
 end
 
 function ResponseRateLimitingMetrics:increment(api_id, identifier, current_timestamp, value, name)
   local periods = timestamp.get_timestamps(current_timestamp)
-  local options = self._factory:get_session_options()
+  local options = self.factory:get_session_options()
   local session, err = cassandra.spawn_session(options)
   if err then
     ngx_log(ngx_err, "[response-rate-limiting] could not spawn session to Cassandra: "..tostring(err))

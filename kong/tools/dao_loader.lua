@@ -1,8 +1,8 @@
 local _M = {}
 
-function _M.load(config, spawn_cluster, events_handler)
-  local DaoFactory = require("kong.dao."..config.database..".factory")
-  return DaoFactory(config.dao_config, config.plugins, spawn_cluster, events_handler)
+function _M.load(config, events_handler, spawn_cluster)
+  local DaoFactory = require("kong.dao."..config.database..".dao_factory")
+  return DaoFactory(config.dao_config, config.plugins, events_handler, spawn_cluster)
 end
 
 return _M

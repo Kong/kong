@@ -2,12 +2,12 @@ local CORE_MIGRATIONS_FIXTURES = {
   {
     name = "stub_skeleton",
     init = true,
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       -- Format final keyspace creation query
       local keyspace_str = string.format([[
           CREATE KEYSPACE IF NOT EXISTS "%s"
           WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};
-      ]], options.keyspace)
+      ]], dao_factory.properties.keyspace)
 
       local err = dao_factory:execute_queries(keyspace_str, true)
       if err then
@@ -21,15 +21,15 @@ local CORE_MIGRATIONS_FIXTURES = {
         );
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
-        DROP KEYSPACE "]]..options.keyspace..[[";
+        DROP KEYSPACE "]]..dao_factory.properties.keyspace..[[";
       ]]
     end
   },
   {
     name = "stub_mig1",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE users1(
           id uuid PRIMARY KEY,
@@ -38,7 +38,7 @@ local CORE_MIGRATIONS_FIXTURES = {
         );
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE users1;
       ]]
@@ -46,7 +46,7 @@ local CORE_MIGRATIONS_FIXTURES = {
   },
   {
     name = "stub_mig2",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE users2(
           id uuid PRIMARY KEY,
@@ -55,7 +55,7 @@ local CORE_MIGRATIONS_FIXTURES = {
         );
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE users2;
       ]]

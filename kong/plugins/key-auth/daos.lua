@@ -24,11 +24,8 @@ local SCHEMA = {
 
 local KeyAuth = BaseDao:extend()
 
-function KeyAuth:new(properties, events_handler)
-  self._table = "keyauth_credentials"
-  self._schema = SCHEMA
-
-  KeyAuth.super.new(self, properties, events_handler)
+function KeyAuth:new(...)
+  KeyAuth.super.new(self, "keyauth_credentials", SCHEMA, ...)
 end
 
 return { keyauth_credentials = KeyAuth }

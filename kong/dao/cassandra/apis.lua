@@ -5,17 +5,15 @@ local query_builder = require "kong.dao.cassandra.query_builder"
 local ipairs = ipairs
 local table_insert = table.insert
 
-local Apis = BaseDao:extend()
+local ApiDAO = BaseDao:extend()
 
-function Apis:new(properties, events_handler)
-  self._table = "apis"
-  self._schema = apis_schema
-  Apis.super.new(self, properties, events_handler)
+function ApiDAO:new(...)
+  ApiDAO.super.new(self, "apis", apis_schema, ...)
 end
 
-function Apis:find_all()
+function ApiDAO:find_all()
   local apis = {}
-  local select_q = query_builder.select(self._table)
+  local select_q = query_builder.select(self.table)
 
   for rows, err in self:execute(select_q, nil, {auto_paging = true}) do
     if err then
@@ -30,4 +28,4 @@ function Apis:find_all()
   return apis
 end
 
-return {apis = Apis}
+return {apis = ApiDAO}

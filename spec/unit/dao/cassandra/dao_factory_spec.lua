@@ -1,22 +1,24 @@
 local Factory = require "kong.dao.cassandra.factory"
-local utils = require "kong.tools.utils"
 local cassandra = require "cassandra"
 local types = require "cassandra.types"
-local spec_helpers = require "spec.spec_helpers"
-local env = spec_helpers.get_env()
-local default_dao_properties = env.configuration.cassandra
 
-describe("Cassadra factory", function()
-  describe("get_session_options()", function()
+-- Test behavior specific to CassandraDAOFactory only.
+local CassandraDAOFactory = require "kong.dao.cassandra.dao_factory"
+local config = require "kong.tools.config_loader"
+
+local DEFAULT_CONFIG = config.default_config()
+local DEFAULT_CASSANDRA_CONFIG = DEFAULT_CONFIG.cassandra
+
+describe("CassandraDAOfactory #dao #cass", function()
+  describe("session options", function()
     local dao_properties
     before_each(function()
-      -- TODO switch to new default config getter and shallow copy in feature/postgres
-      dao_properties = utils.deep_copy(default_dao_properties)
+      dao_properties = DEFAULT_CASSANDRA_CONFIG
     end)
-    it("should reflect the default config", function()
-      local factory = Factory(dao_properties)
-      assert.truthy(factory)
-      local options = factory:get_session_options()
+    it("should serialize default properties to create session_options", function()
+      local CassandraDAOfactory = CassandraDAOFactory(dao_properties)
+      assert.truthy(CassandraDAOfactory)
+      local options = CassandraDAOfactory.session_options
       assert.truthy(options)
       assert.same({
         shm = "cassandra",
@@ -37,13 +39,13 @@ describe("Cassadra factory", function()
         }
       }, options)
     end)
-    it("should accept some overriden properties", function()
+    it("should serialize some overriden properties to create session_options", function()
       dao_properties.contact_points = {"127.0.0.1:9042"}
       dao_properties.keyspace = "my_keyspace"
 
-      local factory = Factory(dao_properties)
-      assert.truthy(factory)
-      local options = factory:get_session_options()
+      local CassandraDAOfactory = CassandraDAOFactory(dao_properties)
+      assert.truthy(CassandraDAOfactory)
+      local options = CassandraDAOfactory.session_options
       assert.truthy(options)
       assert.same({
         shm = "cassandra",
@@ -97,9 +99,9 @@ describe("Cassadra factory", function()
       dao_properties.ssl.enabled = false
       dao_properties.ssl.verify = true
 
-      local factory = Factory(dao_properties)
-      assert.truthy(factory)
-      local options = factory:get_session_options()
+      local CassandraDAOfactory = CassandraDAOFactory(dao_properties)
+      assert.truthy(CassandraDAOfactory)
+      local options = CassandraDAOfactory.session_options
       assert.truthy(options)
       assert.same({
         shm = "cassandra",
@@ -122,9 +124,9 @@ describe("Cassadra factory", function()
 
       -- TEST 2
       dao_properties.ssl.enabled = true
-      factory = Factory(dao_properties)
-      assert.truthy(factory)
-      options = factory:get_session_options()
+      CassandraDAOfactory = CassandraDAOFactory(dao_properties)
+      assert.truthy(CassandraDAOfactory)
+      local options = CassandraDAOfactory.session_options
       assert.truthy(options)
       assert.same({
         shm = "cassandra",

@@ -1,7 +1,7 @@
 return {
   {
     name = "stub_fixture_mig1",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE plugins1(
           id uuid PRIMARY KEY,
@@ -9,7 +9,7 @@ return {
         );
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE plugins1;
       ]]
@@ -17,7 +17,7 @@ return {
   },
   {
     name = "stub_fixture_mig2",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE plugins2(
           id uuid PRIMARY KEY,
@@ -25,7 +25,7 @@ return {
         );
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE plugins2;
       ]]

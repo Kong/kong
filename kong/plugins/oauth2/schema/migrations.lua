@@ -1,7 +1,7 @@
 local Migrations = {
   {
     name = "2015-08-03-132400_init_oauth2",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS oauth2_credentials(
           id uuid,
@@ -48,7 +48,7 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON oauth2_tokens(authenticated_userid);
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE oauth2_credentials;
         DROP TABLE oauth2_authorization_codes;
@@ -58,12 +58,12 @@ local Migrations = {
   },
   {
     name = "2015-08-24-215800_cascade_delete_index",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE INDEX IF NOT EXISTS oauth2_credential_id_idx ON oauth2_tokens(credential_id);
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP INDEX oauth2_credential_id_idx;
       ]]

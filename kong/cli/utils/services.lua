@@ -4,7 +4,7 @@ local IO = require "kong.tools.io"
 
 local _M = {}
 
-_M.STATUSES = { 
+_M.STATUSES = {
   ALL_RUNNING = "ALL_RUNNING",
   SOME_RUNNING = "SOME_RUNNING",
   NOT_RUNNINT = "NOT_RUNNING"
@@ -22,7 +22,7 @@ local function prepare_database(configuration)
   logger:info(string.format([[database...........%s %s]], configuration.database, tostring(configuration.dao_config)))
 
   local dao_factory = dao.load(configuration)
-  local migrations = require("kong.tools.migrations")(dao_factory, configuration)
+  local migrations = require("kong.dao.migrations")(dao_factory, configuration)
 
   local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
   if err then

@@ -22,17 +22,14 @@ local SCHEMA = {
     group = { type = "string", required = true, func = check_unique }
   },
   marshall_event = function(self, t)
-    return { id = t.id, consumer_id = t.consumer_id } -- We don't need any data in the event
+    return {id = t.id, consumer_id = t.consumer_id} -- We don't need any data in the event
   end
 }
 
 local ACLs = BaseDao:extend()
 
-function ACLs:new(properties, events_handler)
-  self._table = "acls"
-  self._schema = SCHEMA
-
-  ACLs.super.new(self, properties, events_handler)
+function ACLs:new(...)
+  ACLs.super.new(self, "acls", SCHEMA, ...)
 end
 
-return { acls = ACLs }
+return {acls = ACLs}

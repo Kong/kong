@@ -8,17 +8,14 @@ local pairs = pairs
 local ipairs = ipairs
 local table_insert = table.insert
 
-local Plugins = BaseDao:extend()
+local PluginsDAO = BaseDao:extend()
 
-function Plugins:new(properties, events_handler)
-  self._table = "plugins"
-  self._schema = plugins_schema
-
-  Plugins.super.new(self, properties, events_handler)
+function PluginsDAO:new(...)
+  PluginsDAO.super.new(self, "plugins", plugins_schema, ...)
 end
 
 -- @override
-function Plugins:_marshall(t)
+function PluginsDAO:_marshall(t)
   if type(t.config) == "table" then
     t.config = cjson.encode(t.config)
   end
@@ -27,7 +24,7 @@ function Plugins:_marshall(t)
 end
 
 -- @override
-function Plugins:_unmarshall(t)
+function PluginsDAO:_unmarshall(t)
   -- deserialize configs (tables) string to json
   if type(t.config) == "string" then
     t.config = cjson.decode(t.config)
@@ -41,16 +38,16 @@ function Plugins:_unmarshall(t)
 end
 
 -- @override
-function Plugins:update(t, full)
+function PluginsDAO:update(t, full)
   if not t.consumer_id then
     t.consumer_id = constants.DATABASE_NULL_ID
   end
-  return Plugins.super.update(self, t, full)
+  return PluginsDAO.super.update(self, t, full)
 end
 
-function Plugins:find_distinct()
+function PluginsDAO:find_distinct()
   local distinct_names = {}
-  local select_q = query_builder.select(self._table)
+  local select_q = query_builder.select(self.table)
   for rows, err in self:execute(select_q, nil, {auto_paging = true}) do
     if err then
       return nil, err
@@ -72,4 +69,4 @@ function Plugins:find_distinct()
   return result, nil
 end
 
-return {plugins = Plugins}
+return {plugins = PluginsDAO}

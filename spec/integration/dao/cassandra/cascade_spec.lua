@@ -3,9 +3,9 @@ local spec_helper = require "spec.spec_helpers"
 local env = spec_helper.get_env()
 local dao_factory = env.dao_factory
 
-dao_factory:load_plugins({"keyauth", "basicauth", "oauth2"})
+dao_factory:attach_plugins_daos({"keyauth", "basicauth", "oauth2"})
 
-describe("Cassandra cascade delete", function()
+describe("Cassandra cascade delete #dao #cass", function()
   setup(function()
     spec_helper.prepare_db()
   end)

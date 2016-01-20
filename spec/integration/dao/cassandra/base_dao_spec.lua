@@ -34,7 +34,7 @@ say:set("assertion.daoError.positive", "Expected %s\nto be a DaoError")
 say:set("assertion.daoError.negative", "Expected %s\nto not be a DaoError")
 assert:register("assertion", "daoError", daoError, "assertion.daoError.positive", "assertion.daoError.negative")
 
-describe("Cassandra", function()
+describe("Cassandra #dao #cass", function()
   -- Create a parallel session to verify the dao's behaviour
   local session
   setup(function()
@@ -785,47 +785,30 @@ describe("Cassandra", function()
     -- Nodes tests
     --
 
-    describe("Nodes", function()
-
+    describe("nodes", function()
       setup(function()
         spec_helper.drop_db()
-        spec_helper.seed_db(100)
+        spec_helper.drop_db()
+        for i = 1, 100 do
+          local err = select(2, session:execute("INSERT INTO nodes(name, cluster_listening_address) VALUES(?, ?)", {
+            "node_"..i,
+            "cluster_addr_"..i
+          }))
+          assert.falsy(err)
+        end
       end)
-
-      describe(":insert()", function()
-        local node, err = dao_factory.nodes:insert({
-          cluster_listening_address = "wot.hello.com:1111",
-          name = "wot"
-        })
-        assert.falsy(err)
-        assert.truthy(node)
-        assert.equal("wot.hello.com:1111", node.cluster_listening_address)
-      end)
-
-      describe(":find_by_keys() and :delete()", function()
-        local nodes, err = dao_factory.nodes:find_by_keys({
-          cluster_listening_address = "wot.hello.com:1111"
-        })
-
-        assert.falsy(err)
-        assert.truthy(nodes)
-        assert.equal(1, #nodes)
-
-        local ok, err = dao_factory.nodes:delete({
-          name = table.remove(nodes, 1).name
-        })
-
-        assert.True(ok)
-        assert.falsy(err)
+      teardown(function()
+        spec_helper.drop_db()
       end)
 
       describe(":find_all()", function()
-        local nodes, err = dao_factory.nodes:find_all()
-        assert.falsy(err)
-        assert.truthy(nodes)
-        assert.equal(100, #nodes)
+        it("should retrieve all nodes", function()
+          local nodes, err = dao_factory.nodes:find_all()
+          assert.falsy(err)
+          assert.truthy(nodes)
+          assert.equal(100, #nodes)
+        end)
       end)
-
     end)
 
     --

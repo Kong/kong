@@ -19,9 +19,8 @@ describe("Core Hooks", function()
   end)
 
   before_each(function()
-    spec_helper.restart_kong()
-
     spec_helper.drop_db()
+    spec_helper.restart_kong()
     spec_helper.insert_fixtures {
       api = {
         {request_host = "hooks1.com", upstream_url = "http://mockbin.com"},
@@ -44,7 +43,6 @@ describe("Core Hooks", function()
   end)
 
   describe("Plugin entity invalidation", function()
-
     it("should invalidate a plugin when deleting", function()
       -- Making a request to populate the cache
       local _, status = http_client.get(STUB_GET_URL, {}, {host = "hooks-consumer.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
@@ -81,6 +79,7 @@ describe("Core Hooks", function()
       local _, status = http_client.get(STUB_GET_URL, {}, {host = "hooks-consumer.com"})
       assert.equals(200, status)
     end)
+
     it("should invalidate a consumer-specific plugin when deleting", function()
       -- Making a request to populate the cache
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "hooks-plugins.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
@@ -162,7 +161,7 @@ describe("Core Hooks", function()
           exists = false
         end
       end
-  
+
       -- Consuming the API again
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "hooks-plugins.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
       assert.equals(200, status)
@@ -205,9 +204,8 @@ describe("Core Hooks", function()
       local _, status = http_client.get(STUB_GET_URL, {}, {host = "hooks-consumer.com"})
       assert.equals(200, status)
     end)
-
   end)
-  
+
   describe("Consumer entity invalidation", function()
     it("should invalidate a consumer when deleting", function()
       -- Making a request to populate the cache
@@ -223,7 +221,7 @@ describe("Core Hooks", function()
       local response, status = http_client.get(API_URL.."/cache/"..cache.consumer_key(consumer_id))
       assert.equals(200, status)
       assert.equals("consumer1", json.decode(response).username)
-      
+
       -- Delete consumer
       local _, status = http_client.delete(API_URL.."/consumers/consumer1")
       assert.equals(204, status)
@@ -256,7 +254,7 @@ describe("Core Hooks", function()
       local response, status = http_client.get(API_URL.."/cache/"..cache.consumer_key(consumer_id))
       assert.equals(200, status)
       assert.equals("consumer1", json.decode(response).username)
-      
+
       -- Update consumer
       local _, status = http_client.patch(API_URL.."/consumers/consumer1", {username="updated_consumer1"})
       assert.equals(200, status)
@@ -280,7 +278,7 @@ describe("Core Hooks", function()
       assert.equals("updated_consumer1", json.decode(response).username)
     end)
   end)
-  
+
   describe("API entity invalidation", function()
     it("should invalidate ALL_APIS_BY_DICT when adding a new API", function()
       -- Making a request to populate ALL_APIS_BY_DICT
@@ -449,7 +447,7 @@ describe("Core Hooks", function()
         end
       end
       assert.True(found)
-    
+
       -- Killing serf
       stop_serf()
 
@@ -480,5 +478,4 @@ describe("Core Hooks", function()
       assert.True(found)
     end)
   end)
-  
 end)

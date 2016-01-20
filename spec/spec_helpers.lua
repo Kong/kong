@@ -10,7 +10,7 @@ local Faker = require "kong.tools.faker"
 local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
 local Events = require "kong.core.events"
-local Migrations = require "kong.tools.migrations"
+local Migrations = require "kong.dao.migrations"
 
 local _M = {}
 
@@ -35,7 +35,7 @@ _M.envs = {}
 function _M.add_env(conf_file)
   local env_configuration = config.load(conf_file)
   local events = Events()
-  local env_factory = dao.load(env_configuration, false, events)
+  local env_factory = dao.load(env_configuration, events, false)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,
@@ -224,6 +224,18 @@ end
 function _M.insert_fixtures(fixtures, conf_file)
   local env = _M.get_env(conf_file)
   return env.faker:insert_from_table(fixtures)
+end
+
+function _M.default_config()
+  return config.default_config()
+end
+
+function _M.for_each_dao(f)
+  for _, v in ipairs({"cassandra", "postgres"}) do
+    local default_config = config.default_config()
+    local properties = default_config[v]
+    f(v, properties)
+  end
 end
 
 -- Add the default env to our spec_helper

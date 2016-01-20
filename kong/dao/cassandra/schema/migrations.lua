@@ -2,16 +2,17 @@ local Migrations = {
   {
     init = true,
     name = "2015-01-12-175310_skeleton",
-    up = function(options, dao_factory)
-      local keyspace_name = options.keyspace
-      local strategy, strategy_properties = options.replication_strategy, ""
+    up = function(dao_factory)
+      local properties = dao_factory.properties
+      local keyspace_name = properties.keyspace
+      local strategy, strategy_properties = properties.replication_strategy, ""
 
       -- Format strategy options
       if strategy == "SimpleStrategy" then
-        strategy_properties = string.format(", 'replication_factor': %s", options.replication_factor)
+        strategy_properties = string.format(", 'replication_factor': %s", properties.replication_factor)
       elseif strategy == "NetworkTopologyStrategy" then
         local dcs = {}
-        for dc_name, dc_repl in pairs(options.data_centers) do
+        for dc_name, dc_repl in pairs(properties.data_centers) do
           table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
         end
         if #dcs > 0 then
@@ -19,7 +20,7 @@ local Migrations = {
         end
       else
         -- Strategy unknown
-        return "invalid replication_strategy class"
+        return "invalid replication_strategy class: "..strategy
       end
 
       -- Format final keyspace creation query
@@ -40,16 +41,16 @@ local Migrations = {
         );
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
-        DROP KEYSPACE "]]..options.keyspace..[[";
+        DROP KEYSPACE "]]..dao_factory.properties.keyspace..[[";
       ]]
     end
   },
   -- init schema migration
   {
     name = "2015-01-12-175310_init_schema",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS consumers(
           id uuid,
@@ -94,7 +95,7 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON plugins(consumer_id);
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE consumers;
         DROP TABLE apis;
@@ -105,7 +106,7 @@ local Migrations = {
   -- Clustering nodes
   {
     name = "2015-11-23-817313_nodes",
-    up = function(options, dao_factory)
+    up = function(dao_factory)
       return dao_factory:execute_queries [[
         CREATE TABLE IF NOT EXISTS nodes(
           name text,
@@ -116,7 +117,7 @@ local Migrations = {
         CREATE INDEX IF NOT EXISTS ON nodes(cluster_listening_address);
       ]]
     end,
-    down = function(options, dao_factory)
+    down = function(dao_factory)
       return dao_factory:execute_queries [[
         DROP TABLE nodes;
       ]]

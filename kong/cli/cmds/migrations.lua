@@ -1,6 +1,6 @@
 #!/usr/bin/env luajit
 
-local Migrations = require "kong.tools.migrations"
+local Migrations = require "kong.dao.migrations"
 local constants = require "kong.constants"
 local logger = require "kong.cli.utils.logger"
 local utils = require "kong.tools.utils"
