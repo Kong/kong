@@ -217,7 +217,10 @@ function Nginx:stop()
     return nil, err
   end
 
-  return self:_invoke_signal(cmd, STOP)
+  local _, err = self:_invoke_signal(cmd, STOP)
+  if not err then
+    os.execute("while [ -f "..self._pid_file_path.." ]; do sleep 0.5; done")
+  end
 end
 
 function Nginx:reload()

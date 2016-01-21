@@ -46,6 +46,9 @@ function Serf:prepare()
 
   -- Create serf event handler
   local luajit_path = BaseService.find_cmd("luajit")
+  if not luajit_path then
+    return nil, "Can't find luajit"
+  end
   
   local script = [[
 #!/bin/sh
@@ -74,7 +77,6 @@ echo $COMMAND | ]]..luajit_path..[[
 
   return true
 end
-
 
 function Serf:_join_node(address)
   local _, err = self:invoke_signal("join", {address})
@@ -226,7 +228,7 @@ function Serf:stop()
     })
 
     -- Finally stop Serf
-    Serf.super.stop(self)
+    Serf.super.stop(self, true)
   end
 end
 

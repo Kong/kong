@@ -154,3 +154,4 @@ describe("Configuration validation", function()
     assert.falsy(errors)
   end)
 end)
+

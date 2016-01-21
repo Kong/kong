@@ -30,9 +30,22 @@ return {
       return responses.send_HTTP_OK(result)
     end,
 
+    DELETE = function(self, dao_factory)
+      if not self.params.name then
+        return responses.send_HTTP_BAD_REQUEST("Missing node \"name\"")
+      end
+
+      local _, err = Serf(configuration):invoke_signal("force-leave", {self.params.name})
+      if err then
+        return responses.send_HTTP_BAD_REQUEST(err)
+      end
+      
+      return responses.send_HTTP_OK()
+    end,
+
     POST = function(self, dao_factory)
       if not self.params.address then
-        return responses.send_HTTP_BAD_REQUEST("Missing \"address\"")
+        return responses.send_HTTP_BAD_REQUEST("Missing node \"address\"")
       end
 
       local _, err = Serf(configuration):invoke_signal("join", {self.params.address})

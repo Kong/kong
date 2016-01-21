@@ -271,7 +271,7 @@ function BaseDao:update(t, full, where_t)
   end
 
   -- Extract primary key from the entity
-  local t_primary_key, t_no_primary_key = extract_primary_key(old_entity, self._primary_key, self._clustering_key)
+  local t_primary_key, t_no_primary_key = extract_primary_key(t, self._primary_key, self._clustering_key)
 
   -- If full, add CQL `null` to the SET part of the query for nil columns
   if full then

@@ -30,4 +30,10 @@ describe("CLI", function()
     assert.are.same(0, code)
   end)
 
+  it("should restart when a service has crashed", function()
+    os.execute("pkill -9 serf")
+    local _, code = spec_helper.restart_kong()
+    assert.are.same(0, code)
+  end)
+
 end)

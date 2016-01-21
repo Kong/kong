@@ -19,6 +19,7 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
   -- These are some default locations we are always looking into
   local search_dirs = utils.table_merge({
     "/usr/local/sbin",
+    "/usr/local/bin",
     "/usr/sbin",
     "/usr/bin",
     "/bin"

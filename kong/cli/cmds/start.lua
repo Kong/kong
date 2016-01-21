@@ -20,7 +20,7 @@ local configuration, configuration_path = config_loader.load_default(args.config
 
 local status = services.check_status(configuration, configuration_path)
 if status == services.STATUSES.SOME_RUNNING then
-  logger:error("Some services required by Kong are not running. Please execute \"kong restart\"!")
+  logger:error("Some services required by Kong are already running. Please execute \"kong restart\"!")
   os.exit(1)
 elseif status == services.STATUSES.ALL_RUNNING then
   logger:error("Kong is currently running")

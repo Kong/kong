@@ -18,7 +18,8 @@ return {
           available_on_server = configuration.plugins,
           enabled_in_cluster = db_plugins
         },
-        lua_version = jit and jit.version or _VERSION
+        lua_version = jit and jit.version or _VERSION,
+        configuration = configuration
       })
     end
   },

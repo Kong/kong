@@ -7,6 +7,8 @@ local UdpLogHandler = BasePlugin:extend()
 UdpLogHandler.PRIORITY = 1
 
 local function log(premature, conf, message)
+  if premature then return end
+  
   local host = conf.host
   local port = conf.port
   local timeout = conf.timeout
