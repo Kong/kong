@@ -85,6 +85,15 @@ describe("http_client", function()
       assert.are.equal("pippo", parsed_response.headers.Custom)
     end)
 
+    it("should send a valid POST request with plain text body", function()
+      local response, status, headers = http_client.post("http://httpbin.org/post", "Hello World", {["content-type"] = "text/plain"})
+      assert.are.equal(200, status)
+      assert.truthy(headers)
+      assert.truthy(response)
+      local parsed_response = cjson.decode(response)
+      assert.are.equal("Hello World", parsed_response.data)
+    end)
+
   end)
 
   describe("PUT", function()

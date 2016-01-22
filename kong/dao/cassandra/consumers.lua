@@ -3,11 +3,11 @@ local consumers_schema = require "kong.dao.schemas.consumers"
 
 local Consumers = BaseDao:extend()
 
-function Consumers:new(properties)
+function Consumers:new(properties, events_handler)
   self._table = "consumers"
   self._schema = consumers_schema
 
-  Consumers.super.new(self, properties)
+  Consumers.super.new(self, properties, events_handler)
 end
 
 return {consumers = Consumers}

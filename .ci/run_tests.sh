@@ -2,7 +2,7 @@
 
 set -e
 
-CMD="busted -v -o gtest --exclude-tags=ci"
+CMD="busted -v -o gtest --exclude-tags=ci --repeat=3"
 
 if [ "$TEST_SUITE" == "unit" ]; then
   CMD="$CMD --coverage spec/unit && luacov-coveralls -i kong"

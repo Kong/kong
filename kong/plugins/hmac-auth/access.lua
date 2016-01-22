@@ -102,14 +102,10 @@ local function validate_signature(request, hmac_params, headers)
   end
 end
 
-local function hmacauth_credential_key(username)
-  return "hmacauth_credentials/"..username
-end
-
 local function load_credential(username)
   local credential
   if username then
-      credential = cache.get_or_set(hmacauth_credential_key(username), function()
+      credential = cache.get_or_set(cache.hmacauth_credential_key(username), function()
       local keys, err = dao.hmacauth_credentials:find_by_keys { username = username }
       local result
       if err then

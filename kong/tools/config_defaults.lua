@@ -1,9 +1,11 @@
 return {
   ["custom_plugins"] = {type = "array", default = {}},
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
-  ["proxy_port"] = {type = "number", default = 8000},
-  ["proxy_ssl_port"] = {type = "number", default = 8443},
-  ["admin_api_port"] = {type = "number", default = 8001},
+  ["proxy_listen"] = {type = "string", default = "0.0.0.0:8000"},
+  ["proxy_listen_ssl"] = {type = "string", default = "0.0.0.0:8443"},
+  ["admin_api_listen"] = {type = "string", default = "0.0.0.0:8001"},
+  ["cluster_listen"] = {type = "string", default = "0.0.0.0:7946"},
+  ["cluster_listen_rpc"] = {type = "string", default = "127.0.0.1:7373"},
   ["dns_resolver"] = {type = "string", default = "dnsmasq", enum = {"server", "dnsmasq"}},
   ["dns_resolvers_available"] = {
     type = "table",
@@ -20,6 +22,14 @@ return {
           ["port"] = {type = "number", default = 8053}
         }
       }
+    }
+  },
+  ["cluster"] = {
+    type = "table",
+    content = {
+      ["auto-join"] = {type = "boolean", default = true},
+      ["advertise"] = {type = "string", nullable = true},
+      ["encrypt"] = {type = "string", nullable = true}
     }
   },
   ["database"] = {type = "string", default = "cassandra", enum = {"cassandra"}},
@@ -43,10 +53,9 @@ return {
       }
     }
   },
-  ["database_cache_expiration"] = {type = "number", default = 5},
   ["ssl_cert_path"] = {type = "string", nullable = true},
   ["ssl_key_path"] = {type = "string", nullable = true},
-  ["send_anonymous_reports"] = {type = "boolean", default = false},
+  ["send_anonymous_reports"] = {type = "boolean", default = true},
   ["memory_cache_size"] = {type = "number", default = 128, min = 32},
   ["nginx"] = {type = "string", nullable = true}
 }

@@ -8,7 +8,7 @@ local tostring = tostring
 
 local ResponseRateLimitingMetrics = BaseDao:extend()
 
-function ResponseRateLimitingMetrics:new(properties)
+function ResponseRateLimitingMetrics:new(properties, events_handler)
   self._table = "response_ratelimiting_metrics"
   self.queries = {
     increment_counter = [[ UPDATE response_ratelimiting_metrics SET value = value + ? WHERE api_id = ? AND
@@ -25,7 +25,7 @@ function ResponseRateLimitingMetrics:new(properties)
                   period = ?; ]]
   }
 
-  ResponseRateLimitingMetrics.super.new(self, properties)
+  ResponseRateLimitingMetrics.super.new(self, properties, events_handler)
 end
 
 function ResponseRateLimitingMetrics:increment(api_id, identifier, current_timestamp, value, name)

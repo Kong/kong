@@ -52,7 +52,7 @@ local function with_body(method)
       if type(body) == "table" then
         body = json.encode(body)
       end
-    else
+    elseif headers["content-type"] ~= "text/plain" then
       headers["content-type"] = "application/x-www-form-urlencoded"
       if type(body) == "table" then
         body = ngx.encode_args(body, true)

@@ -9,6 +9,8 @@ local function increment(api_id, identifier, current_timestamp, value, name)
 end
 
 local function log(premature, api_id, identifier, current_timestamp, increments, usage)
+  if premature then return end
+  
   -- Increment metrics for all periods if the request goes through
   for k, v in pairs(usage) do
     if increments[k] and increments[k] ~= 0 then

@@ -4,7 +4,7 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local Migrations = BaseDao:extend()
 
-function Migrations:new(properties)
+function Migrations:new(properties, events_handler)
   self._table = "schema_migrations"
   self.queries = {
     get_keyspace = [[
@@ -24,7 +24,7 @@ function Migrations:new(properties)
     ]]
   }
 
-  Migrations.super.new(self, properties)
+  Migrations.super.new(self, properties, events_handler)
 end
 
 function Migrations:keyspace_exists(keyspace)

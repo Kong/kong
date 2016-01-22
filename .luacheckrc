@@ -1,6 +1,6 @@
 redefined = false
 unused_args = false
-globals = {"ngx", "dao", "app", "configuration", "process_id"}
+globals = {"ngx", "dao", "app", "configuration", "events"}
 
 files["kong/"] = {
   std = "luajit"
@@ -20,5 +20,5 @@ files["kong/vendor/resty_http.lua"] = {
 }
 
 files["spec/"] = {
-  globals = {"describe", "it", "before_each", "setup", "after_each", "teardown", "stub", "mock", "spy", "finally", "pending"}
+  globals = {"describe", "it", "before_each", "setup", "after_each", "teardown", "stub", "mock", "spy", "finally", "pending", "build"}
 }

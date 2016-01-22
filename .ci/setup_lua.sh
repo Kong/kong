@@ -16,12 +16,12 @@ source .ci/platform.sh
 # Lua/LuaJIT
 ############
 
-if [ "$LUA" == "luajit" ]; then
+if [ "$LUA_VERSION" == "luajit" ]; then
   LUAJIT="yes"
-  LUA="luajit-2.0"
-elif [ "$LUA" == "luajit-2.0" ]; then
+  LUA_VERSION="luajit-2.0"
+elif [ "$LUA_VERSION" == "luajit-2.0" ]; then
   LUAJIT="yes"
-elif [ "$LUA" == "luajit-2.1" ]; then
+elif [ "$LUA_VERSION" == "luajit-2.1" ]; then
   LUAJIT="yes"
 fi
 
@@ -33,9 +33,9 @@ if [ "$LUAJIT" == "yes" ]; then
     git clone https://github.com/luajit/luajit $LUAJIT_DIR
     pushd $LUAJIT_DIR
 
-    if [ "$LUA" == "luajit-2.0" ]; then
+    if [ "$LUA_VERSION" == "luajit-2.0" ]; then
       git checkout v2.0.4
-    elif [ "$LUA" == "luajit-2.1" ]; then
+    elif [ "$LUA_VERSION" == "luajit-2.1" ]; then
       git checkout v2.1
     fi
 
@@ -43,22 +43,22 @@ if [ "$LUAJIT" == "yes" ]; then
     make install PREFIX=$LUAJIT_DIR
     popd
 
-    if [ "$LUA" == "luajit-2.1" ]; then
+    if [ "$LUA_VERSION" == "luajit-2.1" ]; then
       ln -sf $LUAJIT_DIR/bin/luajit-2.1.0-beta1 $LUAJIT_DIR/bin/luajit
     fi
 
     ln -sf $LUAJIT_DIR/bin/luajit $LUAJIT_DIR/bin/lua
   fi
 
-  LUA_INCLUDE="$LUAJIT_DIR/include/$LUA"
+  LUA_INCLUDE="$LUAJIT_DIR/include/$LUA_VERSION"
 else
-  if [ "$LUA" == "lua5.1" ]; then
+  if [ "$LUA_VERSION" == "lua5.1" ]; then
     curl http://www.lua.org/ftp/lua-5.1.5.tar.gz | tar xz
     pushd lua-5.1.5
-  elif [ "$LUA" == "lua5.2" ]; then
+  elif [ "$LUA_VERSION" == "lua5.2" ]; then
     curl http://www.lua.org/ftp/lua-5.2.3.tar.gz | tar xz
     pushd lua-5.2.3
-  elif [ "$LUA" == "lua5.3" ]; then
+  elif [ "$LUA_VERSION" == "lua5.3" ]; then
     curl http://www.lua.org/ftp/lua-5.3.0.tar.gz | tar xz
     pushd lua-5.3.0
   fi
@@ -84,11 +84,11 @@ git checkout v$LUAROCKS_VERSION
 
 if [ "$LUAJIT" == "yes" ]; then
   LUA_DIR=$LUAJIT_DIR
-elif [ "$LUA" == "lua5.1" ]; then
+elif [ "$LUA_VERSION" == "lua5.1" ]; then
   CONFIGURE_FLAGS=$CONFIGURE_FLAGS" --lua-version=5.1"
-elif [ "$LUA" == "lua5.2" ]; then
+elif [ "$LUA_VERSION" == "lua5.2" ]; then
   CONFIGURE_FLAGS=$CONFIGURE_FLAGS" --lua-version=5.2"
-elif [ "$LUA" == "lua5.3" ]; then
+elif [ "$LUA_VERSION" == "lua5.3" ]; then
   CONFIGURE_FLAGS=$CONFIGURE_FLAGS" --lua-version=5.3"
 fi
 

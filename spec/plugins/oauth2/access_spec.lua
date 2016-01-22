@@ -34,8 +34,8 @@ end
 
 describe("Authentication Plugin", function()
 
-  local function prepare()
-    spec_helper.drop_db()
+  setup(function()
+    spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
         { name = "tests-oauth2", request_host = "oauth2.com", upstream_url = "http://mockbin.com" },
@@ -60,19 +60,11 @@ describe("Authentication Plugin", function()
         { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 }
       }
     }
-  end
-
-  setup(function()
-    spec_helper.prepare_db()
+    spec_helper.start_kong()
   end)
 
   teardown(function()
     spec_helper.stop_kong()
-  end)
-
-  before_each(function()
-    spec_helper.restart_kong() -- Required because the uuid function doesn't seed itself every millisecond, but every second
-    prepare()
   end)
 
   describe("OAuth2 Authorization", function()

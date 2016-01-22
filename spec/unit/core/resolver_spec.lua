@@ -1,7 +1,7 @@
-local resolver = require "kong.core.resolver"
-
 -- Stubs
 require "kong.tools.ngx_stub"
+
+local resolver = require "kong.core.resolver"
 
 local APIS_FIXTURES = {
   -- request_host

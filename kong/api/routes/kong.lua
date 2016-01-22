@@ -1,5 +1,6 @@
 local constants = require "kong.constants"
 local route_helpers = require "kong.api.route_helpers"
+local utils = require "kong.tools.utils"
 
 return {
   ["/"] = {
@@ -12,12 +13,13 @@ return {
       return helpers.responses.send_HTTP_OK({
         tagline = "Welcome to Kong",
         version = constants.VERSION,
-        hostname = route_helpers.get_hostname(),
+        hostname = utils.get_hostname(),
         plugins = {
           available_on_server = configuration.plugins,
           enabled_in_cluster = db_plugins
         },
-        lua_version = jit and jit.version or _VERSION
+        lua_version = jit and jit.version or _VERSION,
+        configuration = configuration
       })
     end
   },

@@ -123,4 +123,56 @@ describe("OAuth 2 Credentials API", function()
     end)
 
   end)
+
+  describe("/oauth2_tokens/", function()
+
+    -- Create credential
+    local response, status = http_client.post(BASE_URL, {name = "Test APP", redirect_uri = "http://google.com/"})
+    assert.equal(201, status)
+    credential = json.decode(response)
+
+    local token
+
+    BASE_URL = spec_helper.API_URL.."/oauth2_tokens/"
+
+    describe("POST", function()
+
+      it("[SUCCESS] should create a oauth2 token", function()
+        local response, status = http_client.post(BASE_URL, {credential_id = credential.id, expires_in = 10})
+        assert.equal(201, status)
+        token = json.decode(response)
+        assert.equal(credential.id, token.credential_id)
+        assert.equal(10, token.expires_in)
+        assert.truthy(token.access_token)
+        assert.truthy(token.refresh_token)
+        assert.equal("bearer", token.token_type)
+      end)
+
+      it("[FAILURE] should return proper errors", function()
+        local response, status = http_client.post(BASE_URL, {})
+        assert.equal(400, status)
+        assert.equal('{"credential_id":"credential_id is required","expires_in":"expires_in is required"}\n', response)
+      end)
+
+    end)
+
+    describe("GET", function()
+
+      it("should retrieve by id", function()
+        local response, status = http_client.get(BASE_URL..token.id)
+        assert.equal(200, status)
+        local body = json.decode(response)
+        assert.equals(credential.id, body.credential_id)
+      end)
+
+      it("should retrieve all", function()
+        local response, status = http_client.get(BASE_URL)
+        assert.equal(200, status)
+        local body = json.decode(response)
+        assert.equals(1, body.total)
+      end)
+
+    end)
+
+  end)
 end)

@@ -115,5 +115,4 @@ describe("ACLs API", function()
     end)
 
   end)
-
 end)
