@@ -1,4 +1,4 @@
-# Microservice & API Management Layer
+# Microservice & API Management Layer [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
 Kong runs in production at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices), while handling billions of requests per month. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability.
@@ -269,12 +269,11 @@ limitations under the License.
 
 [kong-url]: https://getkong.org/
 [mashape-url]: https://www.mashape.com
-
 [kong-logo]: http://i.imgur.com/4jyQQAZ.png
 [kong-benefits]: http://cl.ly/image/1B3J3b3h1H1c/Image%202015-07-07%20at%206.57.25%20PM.png
-
 [gitter-url]: https://gitter.im/Mashape/kong
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
-
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
+[badge-travis-url]: https://travis-ci.org/Mashape/kong
+[badge-travis-image]: https://travis-ci.org/Mashape/kong.svg?branch=master
 
