@@ -1,4 +1,4 @@
-local VERSION = "0.6.0rc3"
+local VERSION = "0.6.0"
 
 return {
   NAME = "kong",
@@ -32,7 +32,7 @@ return {
     "ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
     "mashape-analytics", "request-transformer", "response-transformer",
-    "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog", 
+    "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
     "loggly", "datadog"
   },
   -- Non standard headers, specific to Kong

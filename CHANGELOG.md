@@ -1,5 +1,7 @@
 ## [Unreleased][unreleased]
 
+## [0.6.0] - 2016/01/22
+
 ### Breaking changes
 
  We would recommended to consult the suggested [0.6 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-06x) for this release.
