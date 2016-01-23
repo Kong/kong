@@ -1,11 +1,15 @@
 # Microservice & API Management Layer [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
-Kong runs in production at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices), while handling billions of requests per month. Kong is backed by the battle-tested **NGINX** with a focus on scalability, high performance & reliability.
+Kong was originally built at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs & Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) for the API Marketplace, which generates billions of requests per month. 
+
+Backed by the battle-tested **NGINX** with a focus on high performance, Kong was made available as an open-source platform in 2015. Under active development, Kong is now used in production at hundreds of organizations from startups, to large enterprises and government departments. 
+
 
 [Website][kong-url] |
 [Documentation](https://getkong.org/docs) |
 [Installation](https://getkong.org/install) |
+[News](http://blog.mashape.com/category/kong/) |
 [Mailing List][google-groups-url] |
 [Gitter Chat][gitter-url] |
 freenode: [#kong](http://webchat.freenode.net/?channels=kong)
@@ -27,6 +31,8 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
 - **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
 - **Geo-Replicated**: Configs are always up-to-date across different regions.
+- **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra nodes goes down.
+- **Cluster Awarness**: All Kongs auto-join the cluster keeping config updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
@@ -37,8 +43,12 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
   - **ACL**: Acccess Control for your API Consumers.
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Response-Rate-Limiting**: Rate limiting based on custom response header value.
-  - **Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
-  - **SSL**: Setup a specific SSL certificate for an underlying service or API.
+  - **API Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
+  - **Dev Portal**: [Gelato](https://getgelato.io) builds beutiful Dev Portal and on-board developers easily.
+  - **Loggly Integration**: Push your traffic data through your Loggly account.
+  - **DataDog Integration**: Easy Data monitoring through DataDog. DevOps will love it!
+  - **Syslog**: Logging to System log.
+  - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
   - **Authentication**: Manage consumer credentials query string and header tokens.
   - **Rate-limiting**: Block and throttle requests based on IP, authentication or body size.
@@ -86,12 +96,14 @@ Resources:
 - [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
 - [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
 - [Learn Lua in 15 minutes](http://tylerneylon.com/a/learn-lua/)
+- [A Question about Microservices](http://www.marcotroisi.com/questions-about-microservices/)
 
 Videos:
 
-- [VIDEO - Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
-- [VIDEO - OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
-- [VIDEO - Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
+- [Kong Intro Tutorial](https://www.youtube.com/watch?v=S6CeWL2qvl4)
+- [Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
+- [OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
+- [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
 Podcasts:
 - [Changelog #185](https://changelog.com/185)
@@ -105,12 +117,20 @@ Tools:
 - [Konga CLI Tool](https://github.com/Floby/konga-cli)
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
 - [Kong GUI in JS](https://github.com/rsdevigo/jungle)
-- [Kong GUI in Py](https://github.com/vikingco/django-kong-admin)
+- [Kong Admin in Python](https://github.com/vikingco/django-kong-admin)
 - [Kong UI](https://github.com/msaraf/kong-ui)
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
+- [Puppet recipie for Kong](https://github.com/scottefein/puppet-nyt-kong)
+- [Ansible role for Kong/Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
 - [Python Client for Kong](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
 - [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
+- [Bonobo: Kong Key Managment (with Mashery migration scripts)](https://github.com/guardian/bonobo)
+- [Adds Monit to base Kong Image](https://github.com/articulate/docker-kong-wait)
+- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
+- [Extended File Loggin Plugin](https://github.com/nazarhussain/kong-file-log-extended)
+- [Extended Log Serializer Plugin](https://github.com/nazarhussain/kong-log-serializers-extended)
+
 
 ## Roadmap
 
@@ -245,9 +265,9 @@ When developing, you can use the `Makefile` for doing the following operations:
 | `test-all`         | Run all unit + integration tests at once                |
 | `coverage`         | Run all tests + coverage report                         |
 
-## Enterprise Support
+## Enterprise Support & Demo
 
-Support, Demo, Training, API Certifications and Consulting available at https://getkong.org/enterprise.
+[Learn more](https://getkong.org/enterprise) about Kong Priority Support, Products, HA, Demo, Training, API Certifications and Professional Services.
 
 ## License
 
