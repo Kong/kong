@@ -5,7 +5,7 @@
 require "kong.tools.ngx_stub"
 
 local IO = require "kong.tools.io"
-local dao = require "kong.tools.dao_loader"
+local dao_loader = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
@@ -35,7 +35,7 @@ _M.envs = {}
 function _M.add_env(conf_file)
   local env_configuration = config.load(conf_file)
   local events = Events()
-  local env_factory = dao.load(env_configuration, events, false)
+  local env_factory = dao_loader.load(env_configuration, events)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,

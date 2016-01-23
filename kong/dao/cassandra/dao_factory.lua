@@ -48,7 +48,7 @@ function CassandraDAOFactory:new(properties, plugins, events_handler, spawn_clus
     self.properties.auth = cassandra.auth.PlainTextProvider(properties.username, properties.password)
   end
 
-  if spawn_cluster then
+  if ngx ~= nil and ngx.get_phase() == "init" then
     local ok, err = cassandra.spawn_cluster(self:get_session_options())
     if not ok then
       error(err)

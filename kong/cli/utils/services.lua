@@ -1,6 +1,6 @@
 local logger = require "kong.cli.utils.logger"
-local dao = require "kong.tools.dao_loader"
 local IO = require "kong.tools.io"
+local dao_loader = require "kong.tools.dao_loader"
 
 local _M = {}
 
@@ -21,7 +21,7 @@ local function prepare_database(configuration)
   setmetatable(configuration.dao_config, require "kong.tools.printable")
   logger:info(string.format([[database...........%s %s]], configuration.database, tostring(configuration.dao_config)))
 
-  local dao_factory = dao.load(configuration)
+  local dao_factory = dao_loader.load(configuration)
   local migrations = require("kong.dao.migrations")(dao_factory, configuration)
 
   local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
