@@ -5,7 +5,7 @@
 --
 -- @see http://thibaultcha.github.io/lua-cassandra/manual/README.md.html
 
-local AbstractBaseDAO = require "kong.abstract.base_dao"
+local BaseDAO = require "kong.base.dao"
 local query_builder = require "kong.dao.cassandra.query_builder"
 local validations = require "kong.dao.schemas_validation"
 local constants = require "kong.constants"
@@ -23,7 +23,7 @@ local error_types = constants.DATABASE_ERROR_TYPES
 --- Base DAO
 -- @section base_dao
 
-local CassandraBaseDao = AbstractBaseDAO:extend()
+local CassandraDAO = BaseDAO:extend()
 
 --- Public interface.
 -- Public methods developers can use in Kong core or in any plugin.
@@ -55,7 +55,7 @@ end
 -- @param[type=string] keyspace (Optional) Override the keyspace for this query if specified.
 -- @treturn table If the result consists of ROWS, a table with an array of unmarshalled rows and a `next_page` property if the results has a `paging_state`. If the result is of type "VOID", a boolean representing the success of the query. Otherwise, the raw result as given by lua-cassandra.
 -- @treturn table An error if any during the execution.
-function CassandraBaseDao:execute(query, args, query_options, keyspace)
+function CassandraDAO:execute(query, args, query_options, keyspace)
   local options = self:get_session_options()
   if keyspace then
     options.keyspace = keyspace
@@ -115,7 +115,7 @@ end
 -- @param[table=table] t A table representing the entity to insert.
 -- @treturn table Inserted entity or nil.
 -- @treturn table Error if any during the execution.
-function CassandraBaseDao:insert(t)
+function CassandraDAO:insert(t)
   assert(t ~= nil, "Cannot insert a nil element")
   assert(type(t) == "table", "Entity to insert must be a table")
 
@@ -220,7 +220,7 @@ end
 -- @param[type=table] where_t A table containing the PRIMARY KEY fields of the row to update.
 -- @treturn table `result`: Updated entity or nil.
 -- @treturn table `error`: Error if any during the execution.
-function CassandraBaseDao:update(t, full, where_t)
+function CassandraDAO:update(t, full, where_t)
   assert(t ~= nil, "Cannot update a nil element")
   assert(type(t) == "table", "Entity to update must be a table")
 
@@ -300,7 +300,7 @@ end
 -- @param[type=table] where_t A table containing the PRIMARY KEY (it can be composite, hence be multiple columns as keys and their values) of the row to retrieve.
 -- @treturn table The first row of the result.
 -- @treturn table Error if any during the execution
-function CassandraBaseDao:find_by_primary_key(where_t)
+function CassandraDAO:find_by_primary_key(where_t)
   assert(self._primary_key ~= nil and type(self._primary_key) == "table" , "Entity does not have a primary_key")
   assert(where_t ~= nil and type(where_t) == "table", "where_t must be a table")
 
@@ -332,7 +332,7 @@ end
 -- @treturn table An array (of possible length 0) of entities as the result of the query
 -- @treturn table An error if any
 -- @treturn boolean A boolean indicating if the 'ALLOW FILTERING' clause was needed by the query
-function CassandraBaseDao:find_by_keys(where_t, page_size, paging_state)
+function CassandraDAO:find_by_keys(where_t, page_size, paging_state)
   local select_q, where_columns, filtering = query_builder.select(self.table, where_t, self._column_family_details)
   local res, err = self:build_args_and_execute(select_q, where_columns, where_t, {
     page_size = page_size,
@@ -349,7 +349,7 @@ end
 -- @treturn number The number of rows matching the specified criteria.
 -- @treturn table An error if any.
 -- @treturn boolean A boolean indicating if the 'ALLOW FILTERING' clause was needed by the query.
-function CassandraBaseDao:count_by_keys(where_t, paging_state)
+function CassandraDAO:count_by_keys(where_t, paging_state)
   local count_q, where_columns, filtering = query_builder.count(self.table, where_t, self._column_family_details)
   local res, err = self:build_args_and_execute(count_q, where_columns, where_t, {
     paging_state = paging_state
@@ -367,7 +367,7 @@ end
 -- @param[type=string] paging_state Start page from given offset. It'll be passed along to lua-cassandra `execute()` query_options.
 -- @return return values of find_by_keys()
 -- @see find_by_keys
-function CassandraBaseDao:find(page_size, paging_state)
+function CassandraDAO:find(page_size, paging_state)
   return self:find_by_keys(nil, page_size, paging_state)
 end
 
@@ -376,7 +376,7 @@ end
 -- @param[table=table] primary_key_t A table containing the PRIMARY KEY (columns/values) of the row to delete
 -- @treturn boolean True if deleted, false if otherwise or not found.
 -- @treturn table Error if any during the query execution or the cascade delete hook.
-function CassandraBaseDao:delete(primary_key_t, where_t)
+function CassandraDAO:delete(primary_key_t, where_t)
   -- Test if exists first
   local row, err
   if where_t ~= nil then
@@ -417,7 +417,7 @@ end
 -- Only executes a 'TRUNCATE' query using the @{execute} method.
 -- @return Return values of execute().
 -- @see execute
-function CassandraBaseDao:drop()
+function CassandraDAO:drop()
   local truncate_q = query_builder.truncate(self.table)
   return self:execute(truncate_q)
 end
@@ -431,8 +431,8 @@ end
 -- child class and called once the child class has a schema set.
 -- @param properties Cassandra properties from the configuration file.
 -- @treturn table Instanciated DAO.
-function CassandraBaseDao:new(...)
-  CassandraBaseDao.super.new(self, ...)
+function CassandraDAO:new(...)
+  CassandraDAO.super.new(self, ...)
 
   if self.schema then
     self._primary_key = self.schema.primary_key
@@ -462,7 +462,7 @@ end
 -- @see _unmarshall
 -- @param[type=table] t Entity to marshall.
 -- @treturn table Serialized entity.
-function CassandraBaseDao:_marshall(t)
+function CassandraDAO:_marshall(t)
   return t
 end
 
@@ -474,7 +474,7 @@ end
 -- @see _marshall
 -- @param[type=table] t Entity to unmarshall.
 -- @treturn table Deserialized entity.
-function CassandraBaseDao:_unmarshall(t)
+function CassandraDAO:_unmarshall(t)
   return t
 end
 
@@ -529,7 +529,7 @@ end
 -- @param[type=table] query_options Options to pass to lua-cassandra `execute()` query_options.
 -- @return return values of `execute()`.
 -- @see _execute
-function CassandraBaseDao:build_args_and_execute(query, columns, args_to_bind, query_options)
+function CassandraDAO:build_args_and_execute(query, columns, args_to_bind, query_options)
   -- Build args array if operation has some
   local args
   if columns and args_to_bind then
@@ -550,7 +550,7 @@ end
 -- @param[type=boolean] is_update If true, ignore an identical value if the row containing it is the one we are trying to update.
 -- @treturn boolean True if all unique fields are not already present, false if any already exists with the same value.
 -- @treturn table A key/value table of all columns (as keys) having values already in the database.
-function CassandraBaseDao:check_unique_fields(t, is_update)
+function CassandraDAO:check_unique_fields(t, is_update)
     local errors
 
   for k, field in pairs(self.schema.fields) do
@@ -588,7 +588,7 @@ end
 -- @param[type=table] t Key/value representation of the entity.
 -- @treturn boolean True if all fields marked as foreign have a parent row.
 -- @treturn table A key/value table of all columns (as keys) not having a parent row.
-function CassandraBaseDao:check_foreign_fields(t)
+function CassandraDAO:check_foreign_fields(t)
   if self.factory == nil then
     print(self.table)
   end
@@ -617,7 +617,7 @@ end
 -- @param[type=string] foreign_dao_name Name of the parent DAO.
 -- @param[type=string] foreign_column Name of the foreign column.
 -- @param[type=string] parent_column Name of the parent column identifying the parent row.
-function CassandraBaseDao:add_delete_hook(foreign_dao_name, foreign_column, parent_column)
+function CassandraDAO:add_delete_hook(foreign_dao_name, foreign_column, parent_column)
 
   -- The actual delete hook.
   -- @param[type=table] deleted_primary_key The value of the deleted row's primary key.
@@ -655,7 +655,7 @@ end
 -- Currently this propagates the events cluster-wide.
 -- @param[type=string] type The event type to publish
 -- @param[type=table] data_t The payload to publish in the event
-function CassandraBaseDao:event(type, data_t)
+function CassandraDAO:event(type, data_t)
   if self.events_handler then
     if self.schema.marshall_event then
       data_t = self.schema.marshall_event(self.schema, data_t)
@@ -673,4 +673,4 @@ function CassandraBaseDao:event(type, data_t)
   end
 end
 
-return CassandraBaseDao
+return CassandraDAO

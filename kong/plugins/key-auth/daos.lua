@@ -11,6 +11,7 @@ end
 
 local SCHEMA = {
   primary_key = {"id"},
+  table = "keyauth_credentials",
   fields = {
     id = { type = "id", dao_insert_value = true },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true },
@@ -25,7 +26,7 @@ local SCHEMA = {
 local KeyAuth = BaseDao:extend()
 
 function KeyAuth:new(...)
-  KeyAuth.super.new(self, "keyauth_credentials", SCHEMA, ...)
+  KeyAuth.super.new(self, SCHEMA, ...)
 end
 
 return { keyauth_credentials = KeyAuth }

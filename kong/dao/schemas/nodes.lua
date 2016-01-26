@@ -1,5 +1,6 @@
 return {
   name = "Node",
+  table = "nodes",
   primary_key = {"name"},
   fields = {
     name = { type = "string" },

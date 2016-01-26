@@ -1,17 +1,17 @@
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local CassandraDAO = require "kong.dao.cassandra.dao"
 local nodes_schema = require "kong.dao.schemas.nodes"
 local query_builder = require "kong.dao.cassandra.query_builder"
 
 local ipairs = ipairs
 local table_insert = table.insert
 
-local Nodes = BaseDao:extend()
+local NodesDAO = CassandraDAO:extend()
 
-function Nodes:new(...)
-  Nodes.super.new(self, "nodes", nodes_schema, ...)
+function NodesDAO:new(...)
+  NodesDAO.super.new(self, nodes_schema, ...)
 end
 
-function Nodes:find_all()
+function NodesDAO:find_all()
   local nodes = {}
   local select_q = query_builder.select(self.table)
 
@@ -28,4 +28,4 @@ function Nodes:find_all()
   return nodes
 end
 
-return {nodes = Nodes}
+return {nodes = NodesDAO}

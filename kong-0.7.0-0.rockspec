@@ -91,8 +91,8 @@ build = {
     ["kong.core.events"] = "kong/core/events.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
 
-    ["kong.abstract.base_dao"] = "kong/abstract/base_dao.lua",
-    ["kong.abstract.dao_factory"] = "kong/abstract/dao_factory.lua",
+    ["kong.base.dao"] = "kong/base/dao.lua",
+    ["kong.base.dao_factory"] = "kong/base/dao_factory.lua",
 
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
@@ -105,7 +105,7 @@ build = {
     ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",
     ["kong.dao.cassandra.dao_factory"] = "kong/dao/cassandra/dao_factory.lua",
     ["kong.dao.cassandra.query_builder"] = "kong/dao/cassandra/query_builder.lua",
-    ["kong.dao.cassandra.base_dao"] = "kong/dao/cassandra/base_dao.lua",
+    ["kong.dao.cassandra.dao"] = "kong/dao/cassandra/dao.lua",
     ["kong.dao.cassandra.migrations"] = "kong/dao/cassandra/migrations.lua",
     ["kong.dao.cassandra.apis"] = "kong/dao/cassandra/apis.lua",
     ["kong.dao.cassandra.nodes"] = "kong/dao/cassandra/nodes.lua",
@@ -115,7 +115,7 @@ build = {
     ["kong.dao.postgres.schema.migrations"] = "kong/dao/postgres/schema/migrations.lua",
     ["kong.dao.postgres.dao_factory"] = "kong/dao/postgres/dao_factory.lua",
     ["kong.dao.postgres.query_builder"] = "kong/dao/postgres/query_builder.lua",
-    ["kong.dao.postgres.base_dao"] = "kong/dao/postgres/base_dao.lua",
+    ["kong.dao.postgres.dao"] = "kong/dao/postgres/dao.lua",
 
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",

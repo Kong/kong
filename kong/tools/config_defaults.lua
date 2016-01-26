@@ -39,8 +39,9 @@ return {
     content = {
       ["host"] = {type = "string", default = "127.0.0.1"},
       ["port"] = {type = "number", default = 5432},
-      ["user"] = {type = "string", default = "postgres"},
-      ["database"] = {type = "string", default = "kong"}
+      ["user"] = {type = "string", default = "kong"},
+      ["database"] = {type = "string", default = "kong"},
+      ["password"] = {type = "string", default = "kong"}
     }
   },
   ["cassandra"] = {

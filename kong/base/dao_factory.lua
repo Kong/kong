@@ -7,20 +7,20 @@ local function log(msg)
   end
 end
 
-local AbstractDAOFactory = Object:extend()
+local DAOFactory = Object:extend()
 
 -- Shorthand for accessing one of the underlying DAOs
-function AbstractDAOFactory:__index(key)
+function DAOFactory:__index(key)
   if key ~= "daos" and self.daos and self.daos[key] then
     return self.daos[key]
   else
-    return AbstractDAOFactory[key]
+    return DAOFactory[key]
   end
 end
 
 --- Instanciate a DAO Factory.
 -- Should be called by subclasses on instanciation.
-function AbstractDAOFactory:new(db_name, properties, session_options, plugins, events_handler)
+function DAOFactory:new(db_name, properties, session_options, plugins, events_handler)
   assert(type(properties) == "table", "arg #1 must be a table")
 
   self.type = db_name
@@ -30,16 +30,16 @@ function AbstractDAOFactory:new(db_name, properties, session_options, plugins, e
   self.daos = {}
 
   -- The BaseDAO class for this DB
-  local BaseDAO = require("kong.dao."..db_name..".base_dao")
+  local BaseDAO = require("kong.dao."..db_name..".dao")
 
   self:attach_core_entities_daos(BaseDAO)
 
   if plugins ~= nil then
-    self:attach_plugins_daos(plugins)
+    --self:attach_plugins_daos(plugins)
   end
 end
 
-function AbstractDAOFactory:get_session_options()
+function DAOFactory:get_session_options()
   return utils.shallow_copy(self.session_options)
 end
 
@@ -47,7 +47,7 @@ local CORE_ENTITIES = {"apis", "consumers", "plugins", "nodes"}
 
 --- Retrieve core entities DAOs to attach to this factory.
 --
-function AbstractDAOFactory:attach_core_entities_daos(BaseDAO)
+function DAOFactory:attach_core_entities_daos(BaseDAO)
   for _, v in ipairs(CORE_ENTITIES) do
     -- This is a subclass of the BaseDAO, probably with DB-specific methods.
     local ok, core_dao = utils.load_module_if_exists("kong.dao."..self.type.."."..v)
@@ -56,14 +56,14 @@ function AbstractDAOFactory:attach_core_entities_daos(BaseDAO)
     else
       -- Nothing particular with this DAO, its just an instance of the BaseDAO.
       local schema = require("kong.dao.schemas."..v)
-      self:attach_daos({[v] = BaseDAO}, v, schema)
+      self:attach_daos({[v] = BaseDAO}, schema)
     end
   end
 end
 
 --- Retrieve plugins entities DAOs to attach to this factory.
 --
-function AbstractDAOFactory:attach_plugins_daos(plugins)
+function DAOFactory:attach_plugins_daos(plugins)
   for _, v in ipairs(plugins) do
     local ok, plugin_daos = utils.load_module_if_exists("kong.plugins."..v..".daos")
     if ok then
@@ -79,11 +79,11 @@ end
 -- Receives a table where key is name of DAO, value is class of this DAO.
 -- The class of a DAO could be BaseDAO (aka. db-specific DAO), or a subclass of BaseDAO.
 -- A subclass of BaseDAO means this entity does particular things, for ex: `apis:find_all()`.
-function AbstractDAOFactory:attach_daos(daos, table, schema)
+function DAOFactory:attach_daos(daos, schema)
   for name, DAOClass in pairs(daos) do
-    if schema ~= nil and table ~= nil then
+    if schema ~= nil then
       -- Instanciating a BaseDAO
-      self.daos[name] = DAOClass(table, schema, self.session_options, self.events_handler)
+      self.daos[name] = DAOClass(schema, self.session_options, self.events_handler)
     else
       -- Instanciating a subclass of BaseDAO
       self.daos[name] = DAOClass(self.session_options, self.events_handler)
@@ -91,7 +91,7 @@ function AbstractDAOFactory:attach_daos(daos, table, schema)
   end
 end
 
-function AbstractDAOFactory:drop()
+function DAOFactory:drop()
   for _, dao in pairs(self.daos) do
     local err = select(2, dao:drop())
     if err then
@@ -100,4 +100,4 @@ function AbstractDAOFactory:drop()
   end
 end
 
-return AbstractDAOFactory
+return DAOFactory

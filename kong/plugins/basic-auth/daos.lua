@@ -21,6 +21,7 @@ end
 
 local SCHEMA = {
   primary_key = {"id"},
+  table = "basicauth_credentials",
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
@@ -36,7 +37,7 @@ local SCHEMA = {
 local BasicAuthCredentials = BaseDao:extend()
 
 function BasicAuthCredentials:new(...)
-  BasicAuthCredentials.super.new(self, "basicauth_credentials", SCHEMA, ...)
+  BasicAuthCredentials.super.new(self, SCHEMA, ...)
 end
 
 return {basicauth_credentials = BasicAuthCredentials}

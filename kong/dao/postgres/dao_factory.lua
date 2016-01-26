@@ -1,4 +1,4 @@
-local AbstractDAOFactory = require "kong.abstract.dao_factory"
+local AbstractDAOFactory = require "kong.base.dao_factory"
 
 local PostgresDAOFactory = AbstractDAOFactory:extend()
 

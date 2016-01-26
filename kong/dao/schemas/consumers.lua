@@ -13,6 +13,7 @@ end
 
 return {
   name = "Consumer",
+  table = "consumers",
   primary_key = {"id"},
   fields = {
     id = { type = "id", dao_insert_value = true },

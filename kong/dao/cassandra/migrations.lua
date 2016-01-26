@@ -1,12 +1,12 @@
 local cassandra = require "cassandra"
 local stringy = require "stringy"
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local CassandraDAO = require "kong.dao.cassandra.dao"
 
-local Migrations = BaseDao:extend()
+local Migrations = CassandraDAO:extend()
 
 function Migrations:new(...)
   -- No schema
-  Migrations.super.new(self, "schema_migrations", nil, ...)
+  Migrations.super.new(self, nil, ...)
 
   self.queries = {
     get_keyspace = [[

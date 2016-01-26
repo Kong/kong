@@ -18,6 +18,7 @@ end
 
 local OAUTH2_CREDENTIALS_SCHEMA = {
   primary_key = {"id"},
+  table = "oauth2_credentials",
   fields = {
     id = { type = "id", dao_insert_value = true },
     consumer_id = { type = "id", required = true, queryable = true, foreign = "consumers:id" },
@@ -34,6 +35,7 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
 
 local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   primary_key = {"id"},
+  table = "oauth2_authorization_codes",
   fields = {
     id = { type = "id", dao_insert_value = true },
     code = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
@@ -46,6 +48,7 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
 local BEARER = "bearer"
 local OAUTH2_TOKENS_SCHEMA = {
   primary_key = {"id"},
+  table = "oauth2_tokens",
   fields = {
     id = { type = "id", dao_insert_value = true },
     credential_id = { type = "id", required = true, queryable = true, foreign = "oauth2_credentials:id" },
@@ -64,17 +67,17 @@ local OAUTH2_TOKENS_SCHEMA = {
 
 local OAuth2Credentials = BaseDao:extend()
 function OAuth2Credentials:new(...)
-  OAuth2Credentials.super.new(self, "oauth2_credentials", OAUTH2_CREDENTIALS_SCHEMA, ...)
+  OAuth2Credentials.super.new(self, OAUTH2_CREDENTIALS_SCHEMA, ...)
 end
 
 local OAuth2AuthorizationCodes = BaseDao:extend()
 function OAuth2AuthorizationCodes:new(...)
-  OAuth2AuthorizationCodes.super.new(self, "oauth2_authorization_codes", OAUTH2_AUTHORIZATION_CODES_SCHEMA, ...)
+  OAuth2AuthorizationCodes.super.new(self, OAUTH2_AUTHORIZATION_CODES_SCHEMA, ...)
 end
 
 local OAuth2Tokens = BaseDao:extend()
 function OAuth2Tokens:new(...)
-  OAuth2Tokens.super.new(self, "oauth2_tokens", OAUTH2_TOKENS_SCHEMA, ...)
+  OAuth2Tokens.super.new(self, OAUTH2_TOKENS_SCHEMA, ...)
 end
 
 return {

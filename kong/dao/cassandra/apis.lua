@@ -1,14 +1,14 @@
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local CassandraDAO = require "kong.dao.cassandra.dao"
 local apis_schema = require "kong.dao.schemas.apis"
 local query_builder = require "kong.dao.cassandra.query_builder"
 
 local ipairs = ipairs
 local table_insert = table.insert
 
-local ApiDAO = BaseDao:extend()
+local ApiDAO = CassandraDAO:extend()
 
 function ApiDAO:new(...)
-  ApiDAO.super.new(self, "apis", apis_schema, ...)
+  ApiDAO.super.new(self, apis_schema, ...)
 end
 
 function ApiDAO:find_all()

@@ -3,6 +3,7 @@ local utils = require "kong.tools.utils"
 
 local SCHEMA = {
   primary_key = {"id"},
+  table = "jwt_secrets",
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
@@ -18,7 +19,7 @@ local SCHEMA = {
 local Jwt = BaseDao:extend()
 
 function Jwt:new(...)
-  Jwt.super.new(self, "jwt_secrets", SCHEMA, ...)
+  Jwt.super.new(self, SCHEMA, ...)
 end
 
 return {jwt_secrets = Jwt}

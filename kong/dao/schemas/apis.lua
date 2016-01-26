@@ -149,6 +149,7 @@ end
 
 return {
   name = "API",
+  table = "apis",
   primary_key = {"id"},
   fields = {
     id = {type = "id", dao_insert_value = true},

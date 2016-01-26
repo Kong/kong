@@ -4,7 +4,7 @@
 -- Also provides helper methods for preparing queries among the DAOs, migrating the
 -- database and dropping it.
 
-local AbstractDAOFactory = require "kong.abstract.dao_factory"
+local BaseDAOFactory = require "kong.base.dao_factory"
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
 local types = require "cassandra.types"

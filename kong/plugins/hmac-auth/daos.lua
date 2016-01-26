@@ -2,6 +2,7 @@ local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local SCHEMA = {
   primary_key = {"id"},
+  table = "hmacauth_credentials",
   fields = {
     id = { type = "id", dao_insert_value = true },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true },
@@ -17,7 +18,7 @@ local SCHEMA = {
 local HMACAuthCredentials = BaseDao:extend()
 
 function HMACAuthCredentials:new(...)
-  HMACAuthCredentials.super.new(self, "hmacauth_credentials", SCHEMA, ...)
+  HMACAuthCredentials.super.new(self, SCHEMA, ...)
 end
 
 return { hmacauth_credentials = HMACAuthCredentials }

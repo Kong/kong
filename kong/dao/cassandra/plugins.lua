@@ -1,17 +1,17 @@
 local plugins_schema = require "kong.dao.schemas.plugins"
 local query_builder = require "kong.dao.cassandra.query_builder"
 local constants = require "kong.constants"
-local BaseDao = require "kong.dao.cassandra.base_dao"
+local CassandraDAO = require "kong.dao.cassandra.dao"
 local cjson = require "cjson"
 
 local pairs = pairs
 local ipairs = ipairs
 local table_insert = table.insert
 
-local PluginsDAO = BaseDao:extend()
+local PluginsDAO = CassandraDAO:extend()
 
 function PluginsDAO:new(...)
-  PluginsDAO.super.new(self, "plugins", plugins_schema, ...)
+  PluginsDAO.super.new(self, plugins_schema, ...)
 end
 
 -- @override

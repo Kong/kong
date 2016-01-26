@@ -1,16 +1,15 @@
-local AbstractBaseDAO = require "kong.abstract.base_dao"
+local BaseDAO = require "kong.base.dao"
 
-describe("AbstractBaseDAO #dao", function()
+describe("BaseDAO #dao", function()
   it("should be instanciable", function()
-    local base_dao = AbstractBaseDAO("table", {})
+    local base_dao = BaseDAO({})
     assert.truthy(base_dao)
-    assert.equal("table", base_dao.table)
     assert.same({}, base_dao.schema)
   end)
   describe("instance", function()
     local base_dao
     before_each(function()
-      base_dao = AbstractBaseDAO("table", {}, {option_foo = "foo"}, nil)
+      base_dao = BaseDAO({}, {option_foo = "foo"}, nil)
     end)
     it("should have :get_session_options() return a copy of session_options", function()
       assert.is_function(base_dao.get_session_options)

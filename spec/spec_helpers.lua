@@ -231,14 +231,22 @@ function _M.default_config()
 end
 
 function _M.for_each_dao(f)
-  for _, v in ipairs({"cassandra", "postgres"}) do
+  local defaults = require "kong.tools.config_defaults"
+  local databases = defaults.database.enum
+  local DB_TYPES = {}
+
+  for _, v in ipairs(databases) do
+    DB_TYPES[v:upper()] = v
+  end
+
+  for _, v in ipairs(databases) do
     local default_config = config.default_config()
     local properties = default_config[v]
-    f(v, properties)
+    f(v, properties, DB_TYPES)
   end
 end
 
 -- Add the default env to our spec_helper
-_M.add_env(_M.TEST_CONF_FILE)
+--_M.add_env(_M.TEST_CONF_FILE)
 
 return _M

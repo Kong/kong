@@ -15,6 +15,7 @@ end
 
 return {
   name = "Plugin configuration",
+  table = "plugins",
   primary_key = {"id"},
   clustering_key = {"name"},
   fields = {
@@ -69,7 +70,6 @@ return {
         result.config = {}
       end
     end
-    
     return result
   end,
   self_check = function(self, plugin_t, dao, is_update)
