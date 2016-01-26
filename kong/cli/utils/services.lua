@@ -61,7 +61,6 @@ function _M.check_status(configuration, configuration_path)
   for index, service in ipairs(services) do
     if service(configuration, configuration_path):is_running() then
       running = true
-      print("INDEX "..index.." IS RUNNING")
     else
       not_running = true
     end
