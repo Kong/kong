@@ -23,7 +23,7 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - [**Community Resources and Tools**](#community-resources-and-tools)
 - [**Roadmap**](#roadmap)
 - [**Development**](#development)
-- [**Enterprise Support**](#enterprise-support)
+- [**Enterprise Support & Demo**](#enterprise-support--demo)
 - [**License**](#license)
 
 ## Features
@@ -35,6 +35,7 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - **Cluster Awarness**: All Kongs auto-join the cluster keeping config updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
+- **Developer Portal**: With [Gelato](https://docs.gelato.io/guides/using-gelato-with-kong), build beautiful portals for easy developer on-boarding.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
   - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs.
   - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
@@ -44,7 +45,6 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
   - **IP-restriction**: Whitelist or blacklist IPs that can make requests.
   - **Response-Rate-Limiting**: Rate limiting based on custom response header value.
   - **API Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
-  - **Dev Portal**: [Gelato](https://getgelato.io) builds beutiful Dev Portal and on-board developers easily.
   - **Loggly Integration**: Push your traffic data through your Loggly account.
   - **DataDog Integration**: Easy Data monitoring through DataDog. DevOps will love it!
   - **Syslog**: Logging to System log.
@@ -101,6 +101,7 @@ Resources:
 Videos:
 
 - [Kong Intro Tutorial](https://www.youtube.com/watch?v=S6CeWL2qvl4)
+- [Kong mentioned at Hashicorp Conf](https://www.youtube.com/watch?v=0r24K_0BGBY&feature=youtu.be&t=18m36s)
 - [Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
 - [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
@@ -130,7 +131,6 @@ Tools:
 - [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
 - [Extended File Loggin Plugin](https://github.com/nazarhussain/kong-file-log-extended)
 - [Extended Log Serializer Plugin](https://github.com/nazarhussain/kong-log-serializers-extended)
-
 
 ## Roadmap
 
