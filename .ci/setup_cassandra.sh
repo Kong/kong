@@ -14,6 +14,6 @@ git clone https://github.com/pcmanus/ccm.git
 pushd ccm
 ./setup.py install --user
 popd
-ccm create test -v binary:$CASSANDRA_VERSION -n ${#arr[@]} -d
+ccm create test -v binary:$CASSANDRA -n ${#arr[@]} -d
 ccm start -v
 ccm status
