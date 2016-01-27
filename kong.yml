@@ -77,9 +77,10 @@
   ## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
   ## Only IPv4 addresses are allowed (no hostnames).
   ## The advertise flag is used to change the address that we advertise to other nodes in the
-  ## cluster. By default, the cluster_listen address is advertised. However, in some cases 
-  ## (specifically NAT traversal), there may be a routable address that cannot be bound to.  
-  ## This flag enables gossiping a different address to support this.
+  ## cluster. By default, the cluster_listen address is advertised. If the cluster_listen host is "0.0.0.0", 
+  ## then the first local, non-loopback, IPv4 address will be advertised to the other nodes. However, in some 
+  ## cases (specifically NAT traversal), there may be a routable address that cannot be bound to. This flag 
+  ## enables gossiping a different address to support this.
   # advertise: ""
 
   ######
