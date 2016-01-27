@@ -11,11 +11,11 @@ mkdir -p $OPENRESTY_DIR
 
 if [ ! "$(ls -A $OPENRESTY_DIR)" ]; then
   # Download OpenSSL
-  OPENSSL_BASE=openssl-$OPENSSL_VERSION
+  OPENSSL_BASE=openssl-$OPENSSL
   curl http://www.openssl.org/source/$OPENSSL_BASE.tar.gz | tar xz
 
   # Download OpenResty
-  OPENRESTY_BASE=ngx_openresty-$OPENRESTY_VERSION
+  OPENRESTY_BASE=ngx_openresty-$OPENRESTY
   curl https://openresty.org/download/$OPENRESTY_BASE.tar.gz | tar xz
   pushd $OPENRESTY_BASE
 
@@ -37,7 +37,7 @@ if [ ! "$(ls -A $OPENRESTY_DIR)" ]; then
 
   ./configure \
     --prefix=$OPENRESTY_DIR \
-    --with-luajit=$LUAJIT_DIR \
+    --with-luajit=$LUA_DIR \
     --with-openssl=../$OPENSSL_BASE \
     --with-pcre-jit \
     --with-ipv6 \

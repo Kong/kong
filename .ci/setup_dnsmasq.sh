@@ -11,10 +11,10 @@ mkdir -p $DNSMASQ_DIR
 
 if [ ! "$(ls -A $DNSMASQ_DIR)" ]; then
   pushd $DNSMASQ_DIR
-  wget http://www.thekelleys.org.uk/dnsmasq/dnsmasq-${DNSMASQ_VERSION}.tar.gz
-  tar xzf dnsmasq-${DNSMASQ_VERSION}.tar.gz
+  wget http://www.thekelleys.org.uk/dnsmasq/dnsmasq-${DNSMASQ}.tar.gz
+  tar xzf dnsmasq-${DNSMASQ}.tar.gz
 
-  pushd dnsmasq-${DNSMASQ_VERSION}
+  pushd dnsmasq-${DNSMASQ}
   make install DESTDIR=$DNSMASQ_DIR
   popd
 
