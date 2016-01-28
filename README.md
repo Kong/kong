@@ -35,7 +35,7 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - **Cluster Awarness**: All Kongs auto-join the cluster keeping config updated across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
 - **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
-- **Developer Portal**: With [Gelato](https://docs.gelato.io/guides/using-gelato-with-kong), build beautiful portals for easy developer on-boarding.
+- **Developer Portal**: With [Gelato](https://docs.gelato.io/guides/using-gelato-with-kong) integration, build beautiful portals for easy developer on-boarding.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
   - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs.
   - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
@@ -118,18 +118,18 @@ Tools:
 - [Konga CLI Tool](https://github.com/Floby/konga-cli)
 - [Kong on Tutum](https://github.com/Sillelien/docker-kong)
 - [Kong GUI in JS](https://github.com/rsdevigo/jungle)
-- [Kong Admin in Python](https://github.com/vikingco/django-kong-admin)
-- [Kong UI](https://github.com/msaraf/kong-ui)
+- [Kong Admin UI in Py](https://github.com/vikingco/django-kong-admin)
+- [Kong Admin UI in JS](https://github.com/msaraf/kong-ui)
 - [Chef Cookbook for Kong](https://github.com/zuazo/kong-cookbook)
-- [Puppet recipie for Kong](https://github.com/scottefein/puppet-nyt-kong)
+- [Puppet recipe for Kong](https://github.com/scottefein/puppet-nyt-kong)
 - [Ansible role for Kong/Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
 - [Python Client for Kong](https://pypi.python.org/pypi/python-kong/)
 - [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
 - [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
 - [Bonobo: Kong Key Managment (with Mashery migration scripts)](https://github.com/guardian/bonobo)
-- [Adds Monit to base Kong Image](https://github.com/articulate/docker-kong-wait)
+- [Kong Image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
 - [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
-- [Extended File Loggin Plugin](https://github.com/nazarhussain/kong-file-log-extended)
+- [Extended File Logging Plugin](https://github.com/nazarhussain/kong-file-log-extended)
 - [Extended Log Serializer Plugin](https://github.com/nazarhussain/kong-log-serializers-extended)
 
 ## Roadmap
