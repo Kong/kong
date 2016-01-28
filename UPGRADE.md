@@ -54,15 +54,17 @@ cassandra:
     - ...
 ```
 
-Secondly, you will need to have [Serf](https://www.serfdom.io) installed on your system and available in your `$PATH`.
+Secondly, if you installed Kong from source or maintain a development installation, you will need to have [Serf](https://www.serfdom.io) installed on your system and available in your `$PATH`. Serf is included with all the distribution packages and images available at [getkong.org/install](https://getkong.org/install/).
 
-Finally, this should already be the case, but make sure that LuaJIT is in your `$PATH` too as the CLI interpreter switched from Lua 5.1 to LuaJIT.
+The same way, this should already be the case but make sure that LuaJIT is in your `$PATH` too as the CLI interpreter switched from Lua 5.1 to LuaJIT. Distribution packages also include LuaJIT.
 
 In order to start Kong with its new clustering and cache invalidation capabilities, you will need to restart your node(s) (and not reload):
 
 ```shell
 $ kong restart [-c configuration_file]
 ```
+
+Read more about the new clustering capabilities of Kong 0.6.0 and its configurations in the [Clustering documentation](https://getkong.org/docs/0.6.x/clustering/).
 
 ## Upgrade to `0.5.x`
 
