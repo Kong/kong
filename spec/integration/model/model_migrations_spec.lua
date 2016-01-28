@@ -63,5 +63,58 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
         assert.True(ok)
       end)
     end)
+
+    ---
+    -- Integration behavior.
+    -- Must run in order.
+    describe("migration integration", function()
+      local flatten_migrations = {}
+      setup(function()
+        factory:drop_schema()
+        for identifier, migs in pairs(factory:migrations_modules()) do
+          for _, mig in ipairs(migs) do
+            flatten_migrations[#flatten_migrations + 1] = {identifier = identifier, name = mig.name}
+          end
+        end
+      end)
+      teardown(function()
+        factory:drop_schema()
+      end)
+      it("should run the migrations with callbacks", function()
+        local on_migration = spy.new(function() end)
+        local on_success = spy.new(function() end)
+
+        local ok, err = factory:run_migrations(on_migration, on_success)
+        assert.falsy(err)
+        assert.True(ok)
+
+        assert.spy(on_migration).was_called(1)
+        assert.spy(on_success).was_called(#flatten_migrations)
+
+        for _, mig in ipairs(flatten_migrations) do
+          assert.spy(on_migration).was_called_with(mig.identifier)
+          assert.spy(on_success).was_called_with(mig.identifier, mig.name)
+        end
+      end)
+      it("should return the migrations recorded as executed", function()
+        local cur_migrations, err = factory:current_migrations()
+        assert.falsy(err)
+
+        assert.truthy(next(cur_migrations))
+        assert.is_table(cur_migrations.core)
+        assert.same({"2015-01-12-175310_skeleton", "2015-01-12-175310_init_schema"}, cur_migrations.core)
+      end)
+      it("should not run any migration on subsequent run", function()
+        local on_migration = spy.new(function() end)
+        local on_success = spy.new(function() end)
+
+        local ok, err = factory:run_migrations()
+        assert.falsy(err)
+        assert.True(ok)
+
+        assert.spy(on_migration).was_not_called()
+        assert.spy(on_success).was_not_called()
+      end)
+    end)
   end)
 end)

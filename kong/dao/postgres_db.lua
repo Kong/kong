@@ -79,6 +79,10 @@ end
 
 -- Migrations
 
+function PostgresDB:queries(queries)
+  return select(2, self:query(queries))
+end
+
 function PostgresDB:drop_table(table_name)
   return select(2, self:query("DROP TABLE "..table_name))
 end
@@ -91,7 +95,7 @@ function PostgresDB:current_migrations()
   end
 
   if #rows > 0 and rows[1].to_regclass == "schema_migrations" then
-    return
+    return self:query "SELECT * FROM schema_migrations"
   else
     return {}
   end

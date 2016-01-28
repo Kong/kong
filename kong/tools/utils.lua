@@ -7,6 +7,7 @@
 
 local url = require "socket.url"
 local uuid = require "lua_uuid"
+local stringy = require "stringy"
 
 local type = type
 local pairs = pairs
@@ -37,6 +38,9 @@ end
 function _M.random_string()
   return uuid():gsub("-", "")
 end
+
+_M.split = stringy.split
+_M.strip = stringy.strip
 
 --- URL escape and format key and value
 -- An obligatory url.unescape pass must be done to prevent double-encoding

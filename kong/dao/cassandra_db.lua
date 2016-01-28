@@ -1,6 +1,7 @@
 local inspect = require "inspect"
 
 local BaseDB = require "kong.dao.base_db"
+local utils = require "kong.tools.utils"
 local cassandra = require "cassandra"
 
 cassandra.set_log_level("QUIET")
@@ -70,11 +71,23 @@ end
 
 -- Migrations
 
+function CassandraDB:queries(queries)
+  for _, query in ipairs(utils.split(queries, ";")) do
+    if utils.strip(query) ~= "" then
+      local err = select(2, self:query(query))
+      if err then
+        return err
+      end
+    end
+  end
+end
+
 function CassandraDB:drop_table(table_name)
   return select(2, self:query("DROP TABLE "..table_name))
 end
 
 function CassandraDB:current_migrations()
+  -- Check if schema_migrations table exists first
   local rows, err = self:query([[
     SELECT COUNT(*) FROM system.schema_columnfamilies
     WHERE keyspace_name = ? AND columnfamily_name = ?
@@ -87,7 +100,7 @@ function CassandraDB:current_migrations()
   end
 
   if rows[1].count > 0 then
-    return
+    return self:query "SELECT * FROM schema_migrations"
   else
     return {}
   end
