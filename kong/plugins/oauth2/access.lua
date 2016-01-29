@@ -113,10 +113,9 @@ end
 
 local function authorize(conf)
   local response_params = {}
-
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
-  local redirect_uri, client
+  local redirect_uri, client, parsed_redirect_uri
 
   if not is_https(conf) then
     response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
@@ -140,8 +139,15 @@ local function authorize(conf)
 
       -- Check client_id and redirect_uri
       redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
+      parsed_redirect_uri = require("socket.url").parse(redirect_uri)
       if not redirect_uri then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
+      elseif not parsed_redirect_uri then
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI }
+        redirect_uri = nil
+      elseif parsed_redirect_uri.fragment ~= nil then
+        response_params = {[ERROR] = "invalid_request", error_description = "Fragment not allowed in "..REDIRECT_URI }
+        redirect_uri = nil
       elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
       end
@@ -172,9 +178,17 @@ local function authorize(conf)
   -- Adding the state if it exists. If the state == nil then it won't be added
   response_params.state = state
 
+  -- Appending kong generated params to redirect_uri query string
+  if parsed_redirect_uri then
+    if not parsed_redirect_uri.query then
+      parsed_redirect_uri.query = ""
+    end
+    parsed_redirect_uri.query = ngx.encode_args(utils.table_merge(ngx.decode_args(parsed_redirect_uri.query), response_params))
+  end
+
   -- Sending response in JSON format
   return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
-    redirect_uri = redirect_uri.."?"..ngx.encode_args(response_params)
+    redirect_uri = require("socket.url").build(parsed_redirect_uri)
   } or response_params, false, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
