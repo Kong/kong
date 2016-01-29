@@ -173,7 +173,7 @@ $ make dev
 $ kong start -c kong_DEVELOPMENT.yml
 ```
 
-If you encounter Luarocks [dependency issues](./issues/909), add more servers to your `~/.luarocks/config.lua` configuration:
+If you encounter Luarocks [dependency issues](https://github.com/Mashape/kong/issues/909), add more servers to your `~/.luarocks/config.lua` configuration:
 
 ```
 rocks_servers={
