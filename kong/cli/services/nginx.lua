@@ -72,7 +72,7 @@ local function prepare_nginx_configuration(configuration, ssl_config)
     ssl_cert = ssl_config.ssl_cert_path,
     ssl_key = ssl_config.ssl_key_path,
     lua_ssl_trusted_certificate = ssl_config.trusted_ssl_cert_path and
-                                  'lua_ssl_trusted_certificate "'..configuration.dao_config.ssl.certificate_authority..'";'
+                                  'lua_ssl_trusted_certificate "'..configuration.dao_config.ssl.certificate_authority..'";' or ""
   }
 
   -- Auto-tune
