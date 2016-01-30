@@ -48,7 +48,7 @@ local function replace_conf_property(t, output_file)
     yaml_value = replace_property(yaml_value, k, v)
   end
   local new_config_content = yaml.dump(yaml_value)
-  
+
   -- Workaround for https://github.com/lubyk/yaml/issues/2
   -- This workaround is in two places. To remove it "Find and replace" in the code
   new_config_content = string.gsub(new_config_content, "(%w+:%s*)([%w%.]+:%d+)", "%1\"%2\"")
@@ -80,7 +80,7 @@ describe("Cluster", function()
   end)
 
   after_each(function()
-    pcall(spec_helper.stop_kong, TEST_CONF) 
+    pcall(spec_helper.stop_kong, TEST_CONF)
     pcall(spec_helper.stop_kong, SERVER_CONF)
   end)
 
@@ -106,8 +106,8 @@ describe("Cluster", function()
     assert.equal(200, status)
     assert.equal(1, cjson.decode(res).total)
   end)
-  
-  it("should register the node on startup with the advertised address", function()
+
+  it("#ci should register the node on startup with the advertised address", function()
     SECOND_SERVER_PROPERTIES.cluster = {advertise = "5.5.5.5:1234"}
     replace_conf_property(SECOND_SERVER_PROPERTIES)
 
@@ -184,7 +184,7 @@ describe("Cluster", function()
     assert.equal(200, status)
     assert.equal(2, cjson.decode(res).total)
   end)
-  
+
   it("should register the second node on startup and auto-join asyncronously", function()
     local _, exit_code = spec_helper.start_kong(TEST_CONF, true)
     assert.are.same(0, exit_code)
@@ -268,7 +268,7 @@ describe("Cluster", function()
     assert.equal(1, cjson.decode(res).total)
   end)
 
-  it("cache should be purged on the node that joins", function()
+  it("#ci cache should be purged on the node that joins", function()
     replace_conf_property({cluster = {["auto-join"] = false}}, TEST_CONF)
     SECOND_SERVER_PROPERTIES.cluster = {["auto-join"] = false}
     replace_conf_property(SECOND_SERVER_PROPERTIES)

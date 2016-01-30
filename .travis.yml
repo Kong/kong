@@ -15,7 +15,7 @@ env:
     - LUAROCKS=2.3.0
     - OPENRESTY=1.9.3.1
     - CASSANDRA=2.2.4
-    - OPENSSL=1.0.2e
+    - OPENSSL=1.0.2f
     - SERF=0.7.0
     - DNSMASQ=2.75
     - CASSANDRA_HOSTS=127.0.0.1
