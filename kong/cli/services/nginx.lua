@@ -45,11 +45,14 @@ local function prepare_ssl_certificates(configuration)
     return false, err
   end
 
-  local trusted_ssl_cert_path = configuration.dao_config.ssl_certificate -- DAO ssl cert
+  local trusted_ssl_cert_path = configuration.dao_config.ssl and
+                                configuration.dao_config.ssl.certificate_authority or nil
 
-  return { ssl_cert_path = res.ssl_cert_path, 
-           ssl_key_path = res.ssl_key_path, 
-           trusted_ssl_cert_path = trusted_ssl_cert_path }
+  return {
+    ssl_cert_path = res.ssl_cert_path,
+    ssl_key_path = res.ssl_key_path,
+    trusted_ssl_cert_path = trusted_ssl_cert_path
+  }
 end
 
 local function get_current_user()
@@ -57,13 +60,6 @@ local function get_current_user()
 end
 
 local function prepare_nginx_configuration(configuration, ssl_config)
-  -- DAO SSL certificate
-  local lua_ssl_trusted_certificate = (configuration[configuration.database] and 
-                                       configuration[configuration.database].ssl and
-                                       configuration[configuration.database].ssl.enabled and
-                                       configuration[configuration.database].ssl.certificate_authority) and 
-                                       configuration[configuration.database].ssl.certificate_authority or nil
-
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = configuration.nginx
   local nginx_inject = {
@@ -75,7 +71,8 @@ local function prepare_nginx_configuration(configuration, ssl_config)
     memory_cache_size = configuration.memory_cache_size,
     ssl_cert = ssl_config.ssl_cert_path,
     ssl_key = ssl_config.ssl_key_path,
-    lua_ssl_trusted_certificate = lua_ssl_trusted_certificate ~= nil and "lua_ssl_trusted_certificate \""..lua_ssl_trusted_certificate.."\";" or ""
+    lua_ssl_trusted_certificate = ssl_config.trusted_ssl_cert_path and
+                                  'lua_ssl_trusted_certificate "'..configuration.dao_config.ssl.certificate_authority..'";'
   }
 
   -- Auto-tune
@@ -181,10 +178,10 @@ function Nginx:_get_cmd()
     "/usr/local/opt/openresty/bin/",
     "/usr/local/bin/",
     "/usr/sbin/"
-  }, function(path) 
+  }, function(path)
     local res, code = IO.os_execute(path.." -v")
     if code == 0 then
-      return res:match("^nginx version: ngx_openresty/") or 
+      return res:match("^nginx version: ngx_openresty/") or
              res:match("^nginx version: openresty/")
     end
 
