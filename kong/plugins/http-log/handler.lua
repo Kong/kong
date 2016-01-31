@@ -68,7 +68,7 @@ local function log(premature, conf, message)
     end
   end
 
-  ok, err = sock:send(generate_post_payload(conf.method, parsed_url, message).."\r\n")
+  ok, err = sock:send(generate_post_payload(conf.method, parsed_url, message))
   if not ok then
     ngx.log(ngx.ERR, "[http-log] failed to send data to "..host..":"..tostring(port)..": ", err)
   end
