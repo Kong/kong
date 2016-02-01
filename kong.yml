@@ -59,7 +59,7 @@
 ######
 ## A dictionary of DNS resolvers Kong can use, and their respective properties.
 ## Currently `dnsmasq` (default, http://www.thekelleys.org.uk/dnsmasq/doc.html) and `server` are supported.
-## By choosing `dnsmasq`, Kong will resolve hostnames using the local `/etc/hosts` file and `resolv.conf` 
+## By choosing `dnsmasq`, Kong will resolve hostnames using the local `/etc/hosts` file and `resolv.conf`
 ## configuration. By choosing `server`, you can specify a custom DNS server.
 # dns_resolvers_available:
   # server:
@@ -68,7 +68,7 @@
     # port: 8053
 
 ######
-## Cluster settings between Kong nodes. 
+## Cluster settings between Kong nodes.
 ## For more information take a look at the Clustering Reference: https://getkong.org/docs/latest/clustering/
 # cluster:
 
@@ -77,9 +77,9 @@
   ## TCP messages. All the nodes in the cluster must be able to communicate with this node on this address.
   ## Only IPv4 addresses are allowed (no hostnames).
   ## The advertise flag is used to change the address that we advertise to other nodes in the
-  ## cluster. By default, the cluster_listen address is advertised. If the cluster_listen host is "0.0.0.0", 
-  ## then the first local, non-loopback, IPv4 address will be advertised to the other nodes. However, in some 
-  ## cases (specifically NAT traversal), there may be a routable address that cannot be bound to. This flag 
+  ## cluster. By default, the cluster_listen address is advertised. If the cluster_listen host is "0.0.0.0",
+  ## then the first local, non-loopback, IPv4 address will be advertised to the other nodes. However, in some
+  ## cases (specifically NAT traversal), there may be a routable address that cannot be bound to. This flag
   ## enables gossiping a different address to support this.
   # advertise: ""
 
@@ -137,18 +137,18 @@
   ######
   ## Cluster authentication options. Provide a user and a password here if your cluster uses the
   ## PasswordAuthenticator scheme.
-  # user: cassandra
+  # username: cassandra
   # password: cassandra
 
 ######
-## Kong will send anonymous reports to Mashape. This helps Mashape fixing bugs/errors and improving Kong. 
+## Kong will send anonymous reports to Mashape. This helps Mashape fixing bugs/errors and improving Kong.
 ## By default is `true`.
 # send_anonymous_reports: true
 
 ######
-## A value specifying (in MB) the size of the internal preallocated in-memory cache. Kong uses an in-memory 
-## cache to store database entities in order to optimize access to the underlying datastore. The cache size 
-## needs to be as big as the size of the entities being used by Kong at any given time. The default value 
+## A value specifying (in MB) the size of the internal preallocated in-memory cache. Kong uses an in-memory
+## cache to store database entities in order to optimize access to the underlying datastore. The cache size
+## needs to be as big as the size of the entities being used by Kong at any given time. The default value
 ## is `128`, and the potential maximum value is the total size of the datastore.
 ## This value may not be smaller than 32MB.
 # memory_cache_size: 128
