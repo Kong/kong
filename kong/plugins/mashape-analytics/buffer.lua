@@ -194,7 +194,7 @@ end
 -- If the connection to the collector fails, use the retry policy.
 function buffer_mt.send_batch(premature, self)
   if premature or self.lock_sending then return end
-  
+
   self.lock_sending = true -- simple lock
 
   if table_getn(self.sending_queue) < 1 then

@@ -89,7 +89,7 @@ function _M.serialize_entry(ngx)
   -- other properties are used to compute the ALF properties.
 
   -- bodies
-  local analytics_data = ngx.ctx.analytics
+  local analytics_data = ngx.ctx.analytics or {}
 
   local alf_req_body = analytics_data.req_body or ""
   local alf_res_body = analytics_data.res_body or ""
