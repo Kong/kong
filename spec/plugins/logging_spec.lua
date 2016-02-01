@@ -39,7 +39,7 @@ describe("Logging Plugins #ci", function()
         {name = "tcp-log", config = {host = "127.0.0.1", port = TCP_PORT}, __api = 1},
         {name = "tcp-log", config = {host = "127.0.0.1", port = TCP_PORT}, __api = 2},
         {name = "udp-log", config = {host = "127.0.0.1", port = UDP_PORT}, __api = 3},
-        {name = "http-log", config = {http_endpoint = "http://localhost:"..HTTP_PORT.."/"}, __api = 4},
+        {name = "http-log", config = {http_endpoint = "http://mockbin.org/bin/"..mock_bin}, __api = 4},
         {name = "http-log", config = {http_endpoint = "https://mockbin.org/bin/"..mock_bin}, __api = 5},
         {name = "file-log", config = {path = FILE_LOG_PATH }, __api = 6}
       }
@@ -109,20 +109,26 @@ describe("Logging Plugins #ci", function()
   end)
 
   it("should log to HTTP", function()
-    local thread = spec_helper.start_http_server(HTTP_PORT) -- Starting the mock TCP server
-
     -- Making the request
     local _, status = http_client.get(STUB_GET_URL, nil, { host = "http_logging.com" })
     assert.equal(200, status)
 
-    -- Getting back the TCP server input
-    local ok, res = thread:join()
-    assert.truthy(ok)
-    assert.truthy(res)
+    local total_time = 0
+    local res, status, body
+    repeat
+      assert.truthy(total_time <= 10) -- Fail after 10 seconds
+      res, status = http_client.get("http://mockbin.org/bin/"..mock_bin.."/log", nil, { accept = "application/json" })
+      assert.equal(200, status)
+      body = cjson.decode(res)
+      local wait = 1
+      os.execute("sleep "..tostring(wait))
+      total_time = total_time + wait
+    until(#body.log.entries > 0)
+
+    assert.equal(1, #body.log.entries)
+    local log_message = cjson.decode(body.log.entries[1].request.postData.text)
 
     -- Making sure it's alright
-    assert.same("POST / HTTP/1.1", res[1])
-    local log_message = cjson.decode(res[7])
     assert.same("127.0.0.1", log_message.client_ip)
   end)
 
