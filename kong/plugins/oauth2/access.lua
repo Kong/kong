@@ -4,6 +4,7 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
+local url       = require "socket.url"
 
 local _M = {}
 
@@ -139,7 +140,7 @@ local function authorize(conf)
 
       -- Check client_id and redirect_uri
       redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
-      parsed_redirect_uri = require("socket.url").parse(redirect_uri)
+      parsed_redirect_uri = url.parse(redirect_uri)
       if not redirect_uri then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
       elseif not parsed_redirect_uri then
@@ -183,12 +184,12 @@ local function authorize(conf)
     if not parsed_redirect_uri.query then
       parsed_redirect_uri.query = ""
     end
-    parsed_redirect_uri.query = ngx.encode_args(utils.table_merge(ngx.decode_args(parsed_redirect_uri.query), response_params))
+    parsed_redirect_uri.query = utils.encode_args(utils.table_merge(ngx.decode_args(parsed_redirect_uri.query), response_params))
   end
 
   -- Sending response in JSON format
   return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
-    redirect_uri = require("socket.url").build(parsed_redirect_uri)
+    redirect_uri = url.build(parsed_redirect_uri)
   } or response_params, false, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
