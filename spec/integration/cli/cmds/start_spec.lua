@@ -42,14 +42,14 @@ describe("CLI", function()
   describe("Generic", function()
     it("should start up all the services", function()
       assert.has_no.errors(function()
-        spec_helper.start_kong(TEST_CONF, true)
+        spec_helper.start_kong(TEST_CONF)
       end)
 
       local _, status = http_client.get(API_URL)
       assert.equal(200, status) -- is running
 
       assert.has.errors(function()
-        spec_helper.start_kong(TEST_CONF, true)
+        spec_helper.start_kong(TEST_CONF)
       end)
 
       local _, status = http_client.get(API_URL)
@@ -62,7 +62,7 @@ describe("CLI", function()
     it("should register and de-register the node into the datastore", function()
 
       assert.has_no.errors(function()
-        spec_helper.start_kong(TEST_CONF, true)
+        spec_helper.start_kong(TEST_CONF)
       end)
 
       local env = spec_helper.get_env() -- test environment
@@ -81,7 +81,7 @@ describe("CLI", function()
       assert.truthy(#nodes > 0)
 
       assert.has_no.errors(function()
-        spec_helper.stop_kong(TEST_CONF, true)
+        spec_helper.stop_kong(TEST_CONF)
       end)
 
       nodes = {}
@@ -102,7 +102,7 @@ describe("CLI", function()
 
     it("should start with the default configuration", function()
       assert.has_no.errors(function()
-        spec_helper.start_kong(TEST_CONF, true)
+        spec_helper.start_kong(TEST_CONF)
       end)
 
       finally(function()
@@ -113,7 +113,7 @@ describe("CLI", function()
     it("should work when no plugins are enabled and the DB is empty", function()
       replace_conf_property("custom_plugins", {})
 
-      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF)
       assert.are.same(0, exit_code)
     end)
 
@@ -121,14 +121,14 @@ describe("CLI", function()
       replace_conf_property("custom_plugins", {"wot-wat"})
 
       assert.error_matches(function()
-        spec_helper.start_kong(SERVER_CONF, true)
+        spec_helper.start_kong(SERVER_CONF)
       end, "The following plugin has been enabled in the configuration but it is not installed on the system: wot-wat", nil, true)
     end)
 
     it("should not fail when an existing plugin is being enabled", function()
       replace_conf_property("custom_plugins", {"key-auth"})
 
-      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF)
       assert.are.same(0, exit_code)
     end)
 
@@ -136,7 +136,7 @@ describe("CLI", function()
       replace_conf_property("custom_plugins", {"key-auth", "wot-wat"})
 
       assert.error_matches(function()
-        spec_helper.start_kong(SERVER_CONF, true)
+        spec_helper.start_kong(SERVER_CONF)
       end, "The following plugin has been enabled in the configuration but it is not installed on the system: wot-wat", nil, true)
     end)
 
@@ -152,7 +152,7 @@ describe("CLI", function()
 
       replace_conf_property("custom_plugins", {"ssl", "key-auth", "basic-auth", "oauth2", "tcp-log", "udp-log", "file-log", "http-log", "request-transformer", "cors"})
 
-      local _, exit_code = spec_helper.start_kong(SERVER_CONF, true)
+      local _, exit_code = spec_helper.start_kong(SERVER_CONF)
       assert.are.same(0, exit_code)
     end)
 
@@ -192,7 +192,7 @@ describe("CLI", function()
       replace_conf_property("custom_plugins", {})
 
       assert.error_matches(function()
-        spec_helper.start_kong(SERVER_CONF, true)
+        spec_helper.start_kong(SERVER_CONF)
       end, "You are using a plugin that has not been enabled in the configuration: custom-rate-limiting", nil, true)
     end)
 

@@ -122,7 +122,7 @@ local function member_join(message_t)
   end
 
   -- Purge the cache when a new node joins
-  if dao.nodes:count_by_keys({}) > 1 then -- If it's only one node, no need to delete the cache
+  if #get_cluster_members() > 1 then -- If it's only one node, no need to delete the cache
     cache.delete_all()
   end
 end

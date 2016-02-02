@@ -29,7 +29,8 @@ return {
     content = {
       ["auto-join"] = {type = "boolean", default = true},
       ["advertise"] = {type = "string", nullable = true},
-      ["encrypt"] = {type = "string", nullable = true}
+      ["encrypt"] = {type = "string", nullable = true},
+      ["profile"] = {type = "string", default = "wan", enum = {"wan", "lan", "local"}}
     }
   },
   ["database"] = {type = "string", default = "cassandra", enum = {"cassandra"}},
