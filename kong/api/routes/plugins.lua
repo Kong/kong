@@ -52,7 +52,7 @@ return {
   ["/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
       local err
-      self.plugin_conf, err = dao_factory.plugins:find_by_primary_key({ id = self.params.id })
+      self.plugin_conf, err = dao_factory.plugins:find_by_primary_key {id = self.params.id}
       if err then
         return helpers.yield_error(err)
       elseif not self.plugin_conf then
@@ -65,17 +65,19 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, self.plugin_conf, dao_factory.plugins)
+      crud.patch(self.params, dao_factory.plugins)
     end,
 
     DELETE = function(self, dao_factory)
       crud.delete(self.plugin_conf, dao_factory.plugins)
     end
-  },  ["/plugins/enabled"] = {
+  },
+
+  ["/plugins/enabled"] = {
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK {
         enabled_plugins = configuration.plugins
       }
     end
-  },
+  }
 }
