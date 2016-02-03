@@ -27,8 +27,12 @@ function Migrations:new(properties, events_handler)
   Migrations.super.new(self, properties, events_handler)
 end
 
+function Migrations:execute(query, args, keyspace)
+  return Migrations.super.execute(self, query, args, {prepare = false}, keyspace)
+end
+
 function Migrations:keyspace_exists(keyspace)
-  local rows, err = Migrations.super.execute(self, self.queries.get_keyspace, {self.properties.keyspace}, nil, "system")
+  local rows, err = self:execute(self.queries.get_keyspace, {self.properties.keyspace}, "system")
   if err then
     return nil, err
   else
@@ -41,7 +45,7 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:add_migration(migration_name, identifier)
-  return Migrations.super.execute(self, self.queries.add_migration, {cassandra.list({migration_name}), identifier})
+  return self:execute(self.queries.add_migration, {cassandra.list({migration_name}), identifier})
 end
 
 -- Return all logged migrations with a filter by identifier optionally. Check if keyspace exists before to avoid error during the first migration.
@@ -59,9 +63,9 @@ function Migrations:get_migrations(identifier)
 
   local rows, err
   if identifier ~= nil then
-    rows, err = Migrations.super.execute(self, self.queries.get_migrations, {identifier})
+    rows, err = self:execute(self.queries.get_migrations, {identifier})
   else
-    rows, err = Migrations.super.execute(self, self.queries.get_all_migrations)
+    rows, err = self:execute(self.queries.get_all_migrations)
   end
 
   if err and stringy.find(err.message, "unconfigured columnfamily schema_migrations") ~= nil then
@@ -77,14 +81,14 @@ end
 -- @return query result
 -- @return error if any
 function Migrations:delete_migration(migration_name, identifier)
-  return Migrations.super.execute(self, self.queries.delete_migration, {cassandra.list({migration_name}), identifier})
+  return self:execute(self.queries.delete_migration, {cassandra.list({migration_name}), identifier})
 end
 
 -- Drop the entire keyspace
 -- @param `keyspace` Name of the keyspace to drop
 -- @return query result
 function Migrations:drop_keyspace(keyspace)
-  return Migrations.super.execute(self, string.format("DROP keyspace \"%s\"", keyspace))
+  return self:execute(string.format("DROP keyspace \"%s\"", keyspace))
 end
 
 function Migrations:drop()

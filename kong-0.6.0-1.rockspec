@@ -19,7 +19,7 @@ dependencies = {
   "yaml ~> 1.1.2-1",
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
-  "lua-cassandra ~> 0.4.2-0",
+  "lua-cassandra ~> 0.5.0",
   "multipart ~> 0.2-1",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
