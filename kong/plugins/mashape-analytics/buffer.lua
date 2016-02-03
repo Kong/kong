@@ -48,7 +48,7 @@ local EMPTY_ARRAY_PLACEHOLDER = "__empty_array_placeholder__"
 -- The policy will give a delay that grows everytime
 -- Galileo fails to respond. As soon as Galileo responds,
 -- the delay is reset to its base.
-local dict = ngx.shared.locks
+local dict = ngx.shared.cache
 local RETRY_INDEX_KEY = "mashape_analytics_retry_index"
 local RETRY_BASE_DELAY = 1 -- seconds
 local RETRY_MAX_DELAY = 60 -- seconds
@@ -194,7 +194,7 @@ end
 -- If the connection to the collector fails, use the retry policy.
 function buffer_mt.send_batch(premature, self)
   if premature or self.lock_sending then return end
-  
+
   self.lock_sending = true -- simple lock
 
   if table_getn(self.sending_queue) < 1 then
