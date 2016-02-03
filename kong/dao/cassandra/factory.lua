@@ -117,8 +117,10 @@ function CassandraFactory:get_session_options()
     query_options = {
       prepare = true
     },
-    username = self.properties.username,
-    password = self.properties.password,
+    socket_options = {
+      connect_timeout = self.properties.timeout,
+      read_timeout = self.properties.timeout
+    },
     ssl_options = {
       enabled = self.properties.ssl.enabled,
       verify = self.properties.ssl.verify,

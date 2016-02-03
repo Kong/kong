@@ -103,6 +103,10 @@
   ## Name of the keyspace used by Kong. Will be created if it does not exist.
   # keyspace: kong
 
+  #####
+  ## Connection and reading timeout (in ms).
+  # timeout: 5000
+
   ######
   ## Keyspace options. Set those before running Kong or any migration.
   ## Those settings will be used to create a keyspace with the desired options

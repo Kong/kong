@@ -1,5 +1,6 @@
 local Factory = require "kong.dao.cassandra.factory"
 local utils = require "kong.tools.utils"
+local cassandra = require "cassandra"
 local spec_helpers = require "spec.spec_helpers"
 local env = spec_helpers.get_env()
 local default_dao_properties = env.configuration.cassandra
@@ -24,6 +25,10 @@ describe("Cassadra factory", function()
         query_options = {
           prepare = true
         },
+        socket_options = {
+          connect_timeout = 5000,
+          read_timeout = 5000
+        },
         ssl_options = {
           enabled = false,
           verify = false
@@ -45,6 +50,10 @@ describe("Cassadra factory", function()
         keyspace = "my_keyspace",
         query_options = {
           prepare = true
+        },
+        socket_options = {
+          connect_timeout = 5000,
+          read_timeout = 5000
         },
         ssl_options = {
           enabled = false,
@@ -68,12 +77,15 @@ describe("Cassadra factory", function()
         query_options = {
           prepare = true
         },
+        socket_options = {
+          connect_timeout = 5000,
+          read_timeout = 5000
+        },
         ssl_options = {
           enabled = false,
           verify = false
         },
-        username = "cassie",
-        password = "cassiepwd"
+        auth = cassandra.auth.PlainTextProvider("cassie", "cassiepwd")
       }, options)
     end)
     it("should accept SSL properties", function()
@@ -92,6 +104,10 @@ describe("Cassadra factory", function()
         keyspace = "kong_tests",
         query_options = {
           prepare = true
+        },
+        socket_options = {
+          connect_timeout = 5000,
+          read_timeout = 5000
         },
         ssl_options = {
           enabled = false,
@@ -112,6 +128,10 @@ describe("Cassadra factory", function()
         keyspace = "kong_tests",
         query_options = {
           prepare = true
+        },
+        socket_options = {
+          connect_timeout = 5000,
+          read_timeout = 5000
         },
         ssl_options = {
           enabled = true,
