@@ -24,6 +24,10 @@ return {
       crud.patch(self.params, dao_factory.oauth2_tokens)
     end,
 
+    PUT = function(self, dao_factory)
+      crud.put(self.params, dao_factory.oauth2_tokens)
+    end,
+
     DELETE = function(self, dao_factory)
       crud.delete(self.params, dao_factory.oauth2_tokens)
     end
