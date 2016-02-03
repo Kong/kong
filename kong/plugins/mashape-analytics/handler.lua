@@ -69,10 +69,12 @@ end
 function AnalyticsHandler:body_filter(conf)
   AnalyticsHandler.super.body_filter(self)
 
-  local chunk = ngx.arg[1]
   -- concatenate response chunks for ALF's `response.content.text`
   if conf.log_body then
-    ngx.ctx.analytics.res_body = ngx.ctx.analytics.res_body..chunk
+    local chunk = ngx.arg[1]
+    local analytics_data = ngx.ctx.analytics or {res_body = ""} -- minimize the number of calls to ngx.ctx while fallbacking on default value
+    analytics_data.res_body = analytics_data.res_body..chunk
+    ngx.ctx.analytics = analytics_data
   end
 end
 
