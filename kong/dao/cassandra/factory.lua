@@ -11,12 +11,6 @@ local stringy = require "stringy"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
 
-if ngx ~= nil and type(ngx.get_phase) == "function" and ngx.get_phase() == "init" and not ngx.stub then
-  cassandra.set_log_level("INFO")
-else
-  cassandra.set_log_level("QUIET")
-end
-
 local CassandraFactory = Object:extend()
 
 -- Shorthand for accessing one of the underlying DAOs
@@ -35,6 +29,10 @@ function CassandraFactory:new(properties, plugins, spawn_cluster, events_handler
   self.properties = properties
   self.type = "cassandra"
   self.daos = {}
+
+  if properties.username and properties.password then
+    self.properties.auth = cassandra.auth.PlainTextProvider(properties.username, properties.password)
+  end
 
   if spawn_cluster then
     local ok, err = cassandra.spawn_cluster(self:get_session_options())
@@ -119,13 +117,16 @@ function CassandraFactory:get_session_options()
     query_options = {
       prepare = true
     },
-    username = self.properties.username,
-    password = self.properties.password,
+    socket_options = {
+      connect_timeout = self.properties.timeout,
+      read_timeout = self.properties.timeout
+    },
     ssl_options = {
       enabled = self.properties.ssl.enabled,
       verify = self.properties.ssl.verify,
       ca = self.properties.ssl.certificate_authority
-    }
+    },
+    auth = self.properties.auth
   }
 end
 
