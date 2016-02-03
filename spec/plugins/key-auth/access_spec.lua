@@ -5,6 +5,7 @@ local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_POST_URL = spec_helper.STUB_POST_URL
+local PROXY_URL = spec_helper.PROXY_URL
 
 describe("key-auth plugin", function()
 
@@ -13,14 +14,18 @@ describe("key-auth plugin", function()
     spec_helper.insert_fixtures {
       api = {
         {name = "tests-auth1", request_host = "keyauth1.com", upstream_url = "http://mockbin.com"},
-        {name = "tests-auth2", request_host = "keyauth2.com", upstream_url = "http://mockbin.com"}
+        {name = "tests-auth2", request_host = "keyauth2.com", upstream_url = "http://mockbin.com"},
+        { name = "tests-key-auth-with-include-paths", upstream_url = "http://mockbin.com", request_path = "/with-include-paths/" },
+        { name = "tests-key-auth-with-exclude-paths", upstream_url = "http://mockbin.com", request_path = "/with-exclude-paths/" },
       },
       consumer = {
         {username = "auth_tests_consumer"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"}}, __api = 1},
-        {name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 2}
+        {name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 2},
+        {name = "key-auth", config = {key_names = {"apikey"}, include_paths = {"^/foo.*$"}}, __api = 3},
+        {name = "key-auth", config = {key_names = {"apikey"}, exclude_paths = {"^/excluded$", "^/excluded/.*$"}}, __api = 4}
       },
       keyauth_credential = {
         {key = "apikey123", __consumer = 1}
@@ -164,5 +169,37 @@ describe("key-auth plugin", function()
       end)
 
     end)
+  end)
+
+  describe("Included/Excluded paths", function ()
+
+    it("should require authorization when hitting a path that is not excluded", function ()
+      local response, status, headers = http_client.get(PROXY_URL.."/with-include-paths/foo", {}, {})
+      local body = cjson.decode(response)
+      assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal("No API Key found in headers, body or querystring", body.message)
+    end)
+
+    it("should not require authorization when hitting a path that is excluded", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-include-paths/excluded/foo", {}, {})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
+    end)
+
+    it("should require authorization when hitting a path that is included", function ()
+      local response, status, headers = http_client.get(PROXY_URL.."/with-exclude-paths/foo", {}, {})
+      local body = cjson.decode(response)
+      assert.equal(401, status)
+      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal("No API Key found in headers, body or querystring", body.message)
+    end)
+
+    it("should not require authorization when hitting a path that is not included", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-exclude-paths/excluded/foo", {}, {})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
+    end)
+
   end)
 end)

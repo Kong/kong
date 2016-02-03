@@ -12,14 +12,18 @@ describe("Authentication Plugin", function()
     spec_helper.insert_fixtures {
       api = {
         {name = "tests-basicauth", request_host = "basicauth.com", upstream_url = "http://httpbin.org"},
-        {name = "tests-basicauth2", request_host = "basicauth2.com", upstream_url = "http://httpbin.org"}
+        {name = "tests-basicauth2", request_host = "basicauth2.com", upstream_url = "http://httpbin.org"},
+        {name = "tests-basicauth3", request_host = "basicauth3.com", request_path = "/my-api", upstream_url = "http://httpbin.org"},
+        {name = "tests-basicauth4", request_host = "basicauth4.com", request_path = "/my-api2", upstream_url = "http://httpbin.org"}
       },
       consumer = {
         {username = "basicauth_tests_consuser"}
       },
       plugin = {
         {name = "basic-auth", config = {}, __api = 1},
-        {name = "basic-auth", config = {hide_credentials = true}, __api = 2}
+        {name = "basic-auth", config = {hide_credentials = true}, __api = 2},
+        {name = "basic-auth", config = {exclude_paths = {"^/excluded$", "^/excluded/.*$"}}, __api = 3},
+        {name = "basic-auth", config = {include_paths = {"^/foo.*$"}}, __api = 4}
       },
       basicauth_credential = {
         {username = "username", password = "password", __consumer = 1}
@@ -144,4 +148,37 @@ describe("Authentication Plugin", function()
       end)
 
     end)
+
+  describe("Included/Excluded paths", function ()
+
+      it("should require authorization when hitting a path that is not excluded", function ()
+        local response, status, headers = http_client.get(PROXY_URL.."/my-api/foo", {}, {host = "basicauth3.com"})
+        local body = cjson.decode(response)
+        assert.equal(401, status)
+        assert.equal(headers["www-authenticate"], "Basic realm=\""..constants.NAME.."\"")
+        assert.equal("Unauthorized", body.message)
+      end)
+
+      it("should not require authorization when hitting a path that is excluded", function ()
+        local response, status = http_client.get(PROXY_URL.."/my-api/excluded/foo", {}, {host = "basicauth3.com"})
+        assert.equal(404, status)
+        assert.truthy(response:match("Not Found"))
+      end)
+
+      it("should require authorization when hitting a path that is included", function ()
+        local response, status, headers = http_client.get(PROXY_URL.."/my-api2/foo", {}, {host = "basicauth4.com"})
+        local body = cjson.decode(response)
+        assert.equal(401, status)
+        assert.equal(headers["www-authenticate"], "Basic realm=\""..constants.NAME.."\"")
+        assert.equal("Unauthorized", body.message)
+      end)
+
+      it("should not require authorization when hitting a path that is not included", function ()
+        local response, status = http_client.get(PROXY_URL.."/my-api2/excluded/foo", {}, {host = "basicauth4.com"})
+        assert.equal(404, status)
+        assert.truthy(response:match("Not Found"))
+      end)
+
+  end)
+
 end)

@@ -20,14 +20,18 @@ describe("Authentication Plugin", function()
     spec_helper.insert_fixtures {
       api = {
         {name = "tests-hmac-auth", request_host = "hmacauth.com", upstream_url = "http://mockbin.org/"},
-        {name = "tests-hmac-auth2", request_host = "hmacauth2.com", upstream_url = "http://httpbin.org/"}
+        {name = "tests-hmac-auth2", request_host = "hmacauth2.com", upstream_url = "http://httpbin.org/"},
+        { name = "tests-hmac-with-include-paths", upstream_url = "http://mockbin.com", request_path = "/with-include-paths/" },
+        { name = "tests-hmac-with-exclude-paths", upstream_url = "http://mockbin.com", request_path = "/with-exclude-paths/" },
       },
       consumer = {
         {username = "hmacauth_tests_consuser"}
       },
       plugin = {
         {name = "hmac-auth", config = {clock_skew = 3000}, __api = 1},
-        {name = "hmac-auth", config = {clock_skew = 3000}, __api = 2}
+        {name = "hmac-auth", config = {clock_skew = 3000}, __api = 2},
+        {name = "hmac-auth", config = {clock_skew = 3000, include_paths = {"^/foo.*$"}}, __api = 3},
+        {name = "hmac-auth", config = {clock_skew = 3000, exclude_paths = {"^/excluded$", "^/excluded/.*$"}}, __api = 4}
       },
       hmacauth_credential = {
         {username = "bob", secret = "secret", __consumer = 1}
@@ -354,6 +358,36 @@ describe("Authentication Plugin", function()
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal(hmacAuth, parsed_response.headers["authorization"])
+    end)
+
+  end)
+
+  describe("Included/Excluded paths", function ()
+
+    it("should require authorization when hitting a path that is not excluded", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-include-paths/foo", {}, {})
+      local parsed_response = cjson.decode(response)
+      assert.equal(401, status)
+      assert.equal("Unauthorized", parsed_response.message)
+    end)
+
+    it("should not require authorization when hitting a path that is excluded", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-include-paths/excluded/foo", {}, {})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
+    end)
+
+    it("should require authorization when hitting a path that is included", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-exclude-paths/foo", {}, {})
+      local parsed_response = cjson.decode(response)
+      assert.equal(401, status)
+      assert.equal("Unauthorized", parsed_response.message)
+    end)
+
+    it("should not require authorization when hitting a path that is not included", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-exclude-paths/excluded/foo", {}, {})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
     end)
 
   end)

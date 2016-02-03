@@ -5,6 +5,7 @@ local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 local base64 = require "base64"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
+local PROXY_URL = spec_helper.PROXY_URL
 
 local PAYLOAD = {
   iss = nil,
@@ -24,7 +25,9 @@ describe("JWT access", function()
         {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"},
         {name = "tests-jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"},
         {name = "tests-jwt4", request_host = "jwt4.com", upstream_url = "http://mockbin.com"},
-        {name = "tests-jwt5", request_host = "jwt5.com", upstream_url = "http://mockbin.com"}
+        {name = "tests-jwt5", request_host = "jwt5.com", upstream_url = "http://mockbin.com"},
+        { name = "tests-jwt-with-include-paths", upstream_url = "http://mockbin.com", request_path = "/with-include-paths/" },
+        { name = "tests-jwt-with-exclude-paths", upstream_url = "http://mockbin.com", request_path = "/with-exclude-paths/" },
       },
       consumer = {
         {username = "jwt_tests_consumer"},
@@ -35,7 +38,9 @@ describe("JWT access", function()
         {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, __api = 2},
         {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, __api = 3},
         {name = "jwt", config = {key_claim_name = "aud"}, __api = 4},
-        {name = "jwt", config = {secret_is_base64 = true}, __api = 5}
+        {name = "jwt", config = {secret_is_base64 = true}, __api = 5},
+        {name = "jwt", config = {include_paths = {"^/foo.*$"}}, __api = 6},
+        {name = "jwt", config = {exclude_paths = {"^/excluded$", "^/excluded/.*$"}}, __api = 7}
       },
       jwt_secret = {
         {__consumer = 1},
@@ -160,6 +165,32 @@ describe("JWT access", function()
       local res, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt3.com"})
       assert.equal(403, status)
       assert.equal('{"exp":"token expired"}\n', res)
+    end)
+
+  end)
+
+  describe("Included/Excluded paths", function ()
+
+    it("should require authorization when hitting a path that is not excluded", function ()
+      local _, status = http_client.get(PROXY_URL.."/with-include-paths/foo", {}, {})
+      assert.equal(401, status)
+    end)
+
+    it("should not require authorization when hitting a path that is excluded", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-include-paths/excluded/foo", {}, {})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
+    end)
+
+    it("should require authorization when hitting a path that is included", function ()
+      local _, status = http_client.get(PROXY_URL.."/with-exclude-paths/foo", {}, {})
+      assert.equal(401, status)
+    end)
+
+    it("should not require authorization when hitting a path that is not included", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-exclude-paths/excluded/foo", {}, {})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
     end)
 
   end)
