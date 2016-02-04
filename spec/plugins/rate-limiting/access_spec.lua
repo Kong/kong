@@ -24,7 +24,8 @@ describe("RateLimiting Plugin", function()
         { name = "tests-rate-limiting1", request_host = "test3.com", upstream_url = "http://mockbin.com" },
         { name = "tests-rate-limiting2", request_host = "test4.com", upstream_url = "http://mockbin.com" },
         { name = "tests-rate-limiting3", request_host = "test5.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting4", request_host = "test6.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-rate-limiting4", request_host = "test6.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-rate-limiting5", request_host = "test7.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
@@ -36,7 +37,8 @@ describe("RateLimiting Plugin", function()
         { name = "rate-limiting", config = { minute = 8 }, __api = 1, __consumer = 1 },
         { name = "rate-limiting", config = { minute = 6 }, __api = 2 },
         { name = "rate-limiting", config = { minute = 3, hour = 5 }, __api = 3 },
-        { name = "rate-limiting", config = { minute = 33 }, __api = 4 }
+        { name = "rate-limiting", config = { minute = 33 }, __api = 4 },
+        { name = "rate-limiting", config = { minute = 6, async = true }, __api = 5 }
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
@@ -143,5 +145,28 @@ describe("RateLimiting Plugin", function()
       end)
 
     end)
+  end)
+
+  describe("Async increment", function()
+
+    it("should increment asynchronously", function()
+      -- Default rate-limiting plugin for this API says 6/minute
+        local limit = 6
+
+        for i = 1, limit do
+          local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
+          assert.are.equal(200, status)
+          assert.are.same(tostring(limit), headers["x-ratelimit-limit-minute"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining-minute"])
+        end
+
+        os.execute("sleep 2") -- Wait for timers to increment
+
+        local response, status = http_client.get(STUB_GET_URL, {}, {host = "test7.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(429, status)
+        assert.are.equal("API rate limit exceeded", body.message)
+    end)
+
   end)
 end)
