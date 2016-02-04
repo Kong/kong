@@ -35,6 +35,9 @@ local DEFAULT_ENV_VALUES = {
       ["cluster_listen_rpc"] = "0.0.0.0:9101",
       ["cassandra"] = {
         ["keyspace"] = "kong_tests"
+      },
+      ["cluster"] = {
+        ["profile"] = "local"
       }
     },
     nginx = {
@@ -47,6 +50,9 @@ local DEFAULT_ENV_VALUES = {
     yaml = {
       ["cassandra"] = {
         ["keyspace"] = "kong_development"
+      },
+      ["cluster"] = {
+        ["profile"] = "local"
       }
     },
     nginx = {

@@ -148,7 +148,7 @@ function Serf:start()
     ["-advertise"] = self._configuration.cluster.advertise,
     ["-encrypt"] = self._configuration.cluster.encrypt,
     ["-log-level"] = "err",
-    ["-profile"] = "wan",
+    ["-profile"] = self._configuration.cluster.profile,
     ["-node"] = node_name,
     ["-event-handler"] = "member-join,member-leave,member-failed,member-update,member-reap,user:"..EVENT_NAME.."="..self._script_path
   }

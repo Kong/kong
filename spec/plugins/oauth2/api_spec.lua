@@ -136,7 +136,6 @@ describe("OAuth 2 Credentials API", function()
     BASE_URL = spec_helper.API_URL.."/oauth2_tokens/"
 
     describe("POST", function()
-
       it("[SUCCESS] should create a oauth2 token", function()
         local response, status = http_client.post(BASE_URL, {credential_id = credential.id, expires_in = 10})
         assert.equal(201, status)
@@ -153,7 +152,25 @@ describe("OAuth 2 Credentials API", function()
         assert.equal(400, status)
         assert.equal('{"credential_id":"credential_id is required","expires_in":"expires_in is required"}\n', response)
       end)
+    end)
 
+    describe("PUT", function()
+      it("[SUCCESS] should create a oauth2 token", function()
+        local response, status = http_client.put(BASE_URL, {credential_id = credential.id, expires_in = 10})
+        assert.equal(201, status)
+        token = json.decode(response)
+        assert.equal(credential.id, token.credential_id)
+        assert.equal(10, token.expires_in)
+        assert.truthy(token.access_token)
+        assert.truthy(token.refresh_token)
+        assert.equal("bearer", token.token_type)
+      end)
+
+      it("[FAILURE] should return proper errors", function()
+        local response, status = http_client.put(BASE_URL, {})
+        assert.equal(400, status)
+        assert.equal('{"credential_id":"credential_id is required","expires_in":"expires_in is required"}\n', response)
+      end)
     end)
 
     describe("GET", function()
@@ -169,7 +186,48 @@ describe("OAuth 2 Credentials API", function()
         local response, status = http_client.get(BASE_URL)
         assert.equal(200, status)
         local body = json.decode(response)
-        assert.equals(1, body.total)
+        assert.equals(2, body.total)
+      end)
+
+    end)
+
+    describe("PATCH", function()
+
+      it("should update partial fields", function()
+        local response, status = http_client.patch(BASE_URL..token.id, { access_token = "helloworld" })
+        assert.equal(200, status)
+        local body = json.decode(response)
+        assert.equals("helloworld", body.access_token)
+
+        -- Check it has really been updated
+        response, status = http_client.get(BASE_URL..token.id)
+        assert.equal(200, status)
+        body = json.decode(response)
+        assert.equals("helloworld", body.access_token)
+      end)
+
+    end)
+
+     describe("PUT", function()
+
+      it("should update the entire object", function()
+        local response, status = http_client.get(BASE_URL..token.id)
+        assert.equal(200, status)
+        local body = json.decode(response)
+        body.access_token = "puthelloworld"
+        body.created_at = nil
+
+        response, status = http_client.put(BASE_URL..token.id, body)
+        assert.equal(200, status)
+        body = json.decode(response)
+        assert.equals("puthelloworld", body.access_token)
+
+        -- Check it has really been updated
+        response, status = http_client.get(BASE_URL..token.id)
+        assert.equal(200, status)
+        body = json.decode(response)
+        assert.equals("puthelloworld", body.access_token)
+        assert.truthy(body.created_at)
       end)
 
     end)
