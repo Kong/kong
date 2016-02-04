@@ -11,7 +11,7 @@ addons:
       - build-essential
 env:
   global:
-    - LUA=luajit-2.1
+    - LUAJIT=2.1
     - LUAROCKS=2.3.0
     - OPENRESTY=1.9.3.1
     - CASSANDRA=2.2.4
@@ -19,6 +19,11 @@ env:
     - SERF=0.7.0
     - DNSMASQ=2.75
     - CASSANDRA_HOSTS=127.0.0.1
+    - OPENRESTY_DIR=$HOME/openresty-$OPENRESTY
+    - SERF_DIR=$HOME/serf
+    - DNSMASQ_DIR=$HOME/dnsmasq
+    - LUA_DIR=$HOME/lua
+    - LUAROCKS_DIR=$HOME/luarocks
   matrix:
     - TEST_SUITE=unit
     - TEST_SUITE=integration
@@ -40,8 +45,8 @@ cache:
   pip: true
   directories:
     - $LUA_DIR
+    - $LUAROCKS_DIR
     - $SERF_DIR
     - $DNSMASQ_DIR
-    - $LUAROCKS_DIR
     - $OPENRESTY_DIR
     - $HOME/.ccm/repository
