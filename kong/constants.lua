@@ -1,9 +1,9 @@
-local VERSION = "0.6.0"
+local VERSION = "0.6.1"
 
 return {
   NAME = "kong",
   VERSION = VERSION,
-  ROCK_VERSION = VERSION.."-1",
+  ROCK_VERSION = VERSION.."-0",
   SYSLOG = {
     ADDRESS = "kong-hf.mashape.com",
     PORT = 61828,
