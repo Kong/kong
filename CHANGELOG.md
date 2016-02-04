@@ -1,5 +1,24 @@
 ## [Unreleased][unreleased]
 
+## [0.6.1] - 2016/02/03
+
+This release contains tiny bug fixes that were especially annoying for complex Cassandra setups and power users of the Admin API!
+
+### Added
+
+- A `timeout` property for the Cassandra configuration. In ms, this timeout is effective as a connection and a reading timeout. [#937](https://github.com/Mashape/kong/pull/937)
+
+### Fixed
+
+- Correctly set the Cassandra SSL certificate in the Nginx configuration while starting Kong. [#921](https://github.com/Mashape/kong/pull/921)
+- Rename the `user` Cassandra property to `username` (Kong looks for `username`, hence `user` would fail). [#922](https://github.com/Mashape/kong/pull/922)
+- Allow Cassandra authentication with arbitrary plain text auth providers (such as Instaclustr uses), fixing authentication with them. [#937](https://github.com/Mashape/kong/pull/937)
+- Admin API
+  - Fix the `/plugins/:id` route for `PATCH` method. [#941](https://github.com/Mashape/kong/pull/941)
+- Plugins
+  - HTTP logging: remove the additional `\r\n` at the end of the logging request body. [#926](https://github.com/Mashape/kong/pull/926)
+  - Galileo: catch occasional internal errors happening when a request was cancelled by the client and fix missing shm for the retry policy. [#931](https://github.com/Mashape/kong/pull/931)
+
 ## [0.6.0] - 2016/01/22
 
 ### Breaking changes
@@ -452,7 +471,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.6.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.6.1...next
+[0.6.1]: https://github.com/mashape/kong/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/mashape/kong/compare/0.5.4...0.6.0
 [0.5.4]: https://github.com/mashape/kong/compare/0.5.3...0.5.4
 [0.5.3]: https://github.com/mashape/kong/compare/0.5.2...0.5.3
