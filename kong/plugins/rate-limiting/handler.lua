@@ -9,7 +9,6 @@ local RateLimitingHandler = BasePlugin:extend()
 
 RateLimitingHandler.PRIORITY = 900
 
-
 local function get_identifier()
   local identifier
 
@@ -28,6 +27,15 @@ local function increment(api_id, identifier, current_timestamp, value)
   local _, stmt_err = dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
   if stmt_err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(stmt_err)
+  end
+end
+
+local function increment_async(premature, api_id, identifier, current_timestamp, value)
+  if premature then return end
+  
+  local _, stmt_err = dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
+  if stmt_err then
+    ngx.log(ngx.ERR, "failed to increment: ", tostring(stmt_err))
   end
 end
 
@@ -59,7 +67,6 @@ local function get_usage(api_id, identifier, current_timestamp, limits)
   return usage, stop
 end
 
-
 function RateLimitingHandler:new()
   RateLimitingHandler.super.new(self, "rate-limiting")
 end
@@ -70,10 +77,11 @@ function RateLimitingHandler:access(conf)
 
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier()
-
   local api_id = ngx.ctx.api.id
+  local is_async = conf.async
 
   -- Load current metric for configured period
+  conf.async = nil
   local usage, stop = get_usage(api_id, identifier, current_timestamp, conf)
 
   -- Adding headers
@@ -88,7 +96,14 @@ function RateLimitingHandler:access(conf)
   end
 
   -- Increment metrics for all periods if the request goes through
-  increment(api_id, identifier, current_timestamp, 1)
+  if is_async then
+    local ok, err = ngx.timer.at(0, increment_async, api_id, identifier, current_timestamp, 1)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to create timer: ", err)
+    end
+  else
+    increment(api_id, identifier, current_timestamp, 1)
+  end
 end
 
 return RateLimitingHandler
