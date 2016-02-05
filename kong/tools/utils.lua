@@ -7,6 +7,7 @@
 
 local url = require "socket.url"
 local uuid = require "lua_uuid"
+local stringy = require "stringy"
 
 local type = type
 local pairs = pairs
@@ -210,6 +211,48 @@ function _M.load_module_if_exists(module_name)
   else
     error(res)
   end
+end
+
+function _M.is_path_included(path, conf)
+  local is_included = true
+
+  -- If there are include paths, then default to excluded
+  if next(conf.include_paths) then
+    is_included = false
+  end
+
+  -- Get the path prefix, so we can strip it off when matching included/excluded paths
+  local path_prefix = (ngx.ctx.api.request_path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
+  if stringy.endswith(path_prefix, "/") then
+    path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
+  end
+
+  -- String out the path prefix
+  if stringy.startswith(path, path_prefix) then
+    path = path:sub(path_prefix:len() + 1)
+  end
+
+  -- Strip out the query string
+  path = stringy.split(path, "?")[1]
+
+  ngx.log(ngx.DEBUG, "checking if path \""..path.."\" is included")
+  if conf.include_paths then
+    for _, v in ipairs(conf.include_paths) do
+      if ngx.re.match(path, v) then
+        is_included = true
+      end
+    end
+  end
+
+  if conf.exclude_paths then
+    for _, v in ipairs(conf.exclude_paths) do
+      if ngx.re.match(path, v) then
+        is_included = false
+      end
+    end
+  end
+
+  return is_included
 end
 
 return _M

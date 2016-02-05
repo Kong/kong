@@ -3,6 +3,7 @@ local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local crypto = require "kong.plugins.basic-auth.crypto"
+local utils = require "kong.tools.utils"
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -82,10 +83,16 @@ local function load_credential_from_db(username)
 end
 
 function _M.execute(conf)
+  local require_auth = utils.is_path_included(ngx.var.request_uri, conf)
+
   -- If both headers are missing, return 401
   if not (ngx.req.get_headers()[AUTHORIZATION] or ngx.req.get_headers()[PROXY_AUTHORIZATION]) then
-    ngx.header["WWW-Authenticate"] = "Basic realm=\""..constants.NAME.."\""
-    return responses.send_HTTP_UNAUTHORIZED()
+    if require_auth then
+      ngx.header["WWW-Authenticate"] = "Basic realm=\""..constants.NAME.."\""
+      return responses.send_HTTP_UNAUTHORIZED()
+    else
+      return
+    end
   end
 
   local credential

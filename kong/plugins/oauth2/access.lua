@@ -362,6 +362,7 @@ local function parse_access_token(conf)
 end
 
 function _M.execute(conf)
+
   -- Check if the API has a request_path and if it's being invoked with the path resolver
   local path_prefix = (ngx.ctx.api.request_path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
   if stringy.endswith(path_prefix, "/") then
@@ -376,9 +377,11 @@ function _M.execute(conf)
     end
   end
 
+  local require_auth = utils.is_path_included(ngx.var.request_uri, conf)
+
   local accessToken = parse_access_token(conf);
   if not accessToken then
-    return responses.send_HTTP_UNAUTHORIZED({}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
+    return require_auth and responses.send_HTTP_UNAUTHORIZED({}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 
   local token = retrieve_token(accessToken)

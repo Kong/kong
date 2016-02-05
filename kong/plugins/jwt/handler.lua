@@ -3,6 +3,7 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
+local utils = require "kong.tools.utils"
 local string_format = string.format
 local dao = dao
 local ngx_re_gmatch = ngx.re.gmatch
@@ -51,13 +52,15 @@ end
 
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
+  local require_auth = utils.is_path_included(ngx.var.request_uri, conf)
+
   local token, err = retrieve_token(ngx.req, conf)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   if not token then
-    return responses.send_HTTP_UNAUTHORIZED()
+    return require_auth and responses.send_HTTP_UNAUTHORIZED()
   end
 
   -- Decode token to find out who the consumer is

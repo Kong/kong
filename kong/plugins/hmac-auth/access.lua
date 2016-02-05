@@ -2,6 +2,7 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
+local utils = require "kong.tools.utils"
 
 local math_abs = math.abs
 local ngx_time = ngx.time
@@ -138,10 +139,12 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
 end
 
 function _M.execute(conf)
+  local require_auth = utils.is_path_included(ngx.var.request_uri, conf)
+
   local headers = ngx_set_headers();
   -- If both headers are missing, return 401
   if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
-    return responses.send_HTTP_UNAUTHORIZED()
+    return require_auth and responses.send_HTTP_UNAUTHORIZED()
   end
 
   -- validate clock skew

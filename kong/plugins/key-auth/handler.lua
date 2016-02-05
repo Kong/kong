@@ -2,6 +2,7 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local BasePlugin = require "kong.plugins.base_plugin"
+local utils = require "kong.tools.utils"
 
 local KeyAuthHandler = BasePlugin:extend()
 
@@ -58,6 +59,8 @@ end
 
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
+  local require_auth = utils.is_path_included(ngx.var.request_uri, conf)
+
   local key, key_found, credential
   for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do
     key = retrieve_credentials[v](ngx.req, conf)
@@ -79,8 +82,12 @@ function KeyAuthHandler:access(conf)
 
   -- No key found in the request's headers or parameters
   if not key_found then
-    ngx.header["WWW-Authenticate"] = "Key realm=\""..constants.NAME.."\""
-    return responses.send_HTTP_UNAUTHORIZED("No API Key found in headers, body or querystring")
+    if require_auth then
+      ngx.header["WWW-Authenticate"] = "Key realm=\""..constants.NAME.."\""
+      return responses.send_HTTP_UNAUTHORIZED("No API Key found in headers, body or querystring")
+    else
+      return
+    end
   end
 
   -- No key found in the DB, this credential is invalid

@@ -44,6 +44,8 @@ describe("Authentication Plugin", function()
         { name = "tests-oauth2-client-credentials", request_host = "oauth2_4.com", upstream_url = "http://mockbin.com" },
         { name = "tests-oauth2-password-grant", request_host = "oauth2_5.com", upstream_url = "http://mockbin.com" },
         { name = "tests-oauth2-accept_http_if_already_terminated", request_host = "oauth2_6.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-oauth2-with-include-paths", request_host = "mockbin-include-paths.com", upstream_url = "http://mockbin.com", request_path = "/with-include-paths/" },
+        { name = "tests-oauth2-with-exclude-paths", request_host = "mockbin-exclude-paths.com", upstream_url = "http://mockbin.com", request_path = "/with-exclude-paths/" },
       },
       consumer = {
         { username = "auth_tests_consumer" }
@@ -55,6 +57,8 @@ describe("Authentication Plugin", function()
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_client_credentials = true, enable_authorization_code = false }, __api = 4 },
         { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_password_grant = true, enable_authorization_code = false }, __api = 5 },
         { name = "oauth2", config = { scopes = { "email", "profile", "user.email" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, accept_http_if_already_terminated = true }, __api = 6 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, include_paths = {"^/foo.*$"} }, __api = 7 },
+        { name = "oauth2", config = { scopes = { "email", "profile" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, exclude_paths = {"^/excluded$", "^/excluded/.*$"} }, __api = 8 },
       },
       oauth2_credential = {
         { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 }
@@ -819,6 +823,38 @@ describe("Authentication Plugin", function()
       local body = cjson.decode(response)
       assert.are.equal(200, status)
       assert.falsy(body.headers.authorization)
+    end)
+
+  end)
+
+  describe("Included/Excluded paths", function ()
+
+    it("should require authorization when hitting a path that is not excluded", function ()
+      local response, status, headers = http_client.get(PROXY_URL.."/with-include-paths/foo", {}, {host = "mockbin-include-paths.com"})
+      local body = cjson.decode(response)
+      assert.equal(401, status)
+      assert.are.equal('Bearer realm="service"', headers['www-authenticate'])
+      assert.are.equal(0, utils.table_size(body))
+    end)
+
+    it("should not require authorization when hitting a path that is excluded", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-include-paths/excluded/foo", {}, {host = "mockbin-include-paths.com"})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
+    end)
+
+    it("should require authorization when hitting a path that is included", function ()
+      local response, status, headers = http_client.get(PROXY_URL.."/with-exclude-paths/foo", {}, {host = "mockbin-exclude-paths.com"})
+      local body = cjson.decode(response)
+      assert.equal(401, status)
+      assert.are.equal('Bearer realm="service"', headers['www-authenticate'])
+      assert.are.equal(0, utils.table_size(body))
+    end)
+
+    it("should not require authorization when hitting a path that is not included", function ()
+      local response, status = http_client.get(PROXY_URL.."/with-exclude-paths/excluded/foo", {}, {host = "mockbin-exclude-paths.com"})
+      assert.equal(404, status)
+      assert.truthy(response:len() > 0)
     end)
 
   end)
