@@ -24,7 +24,7 @@ local function get_current_usage(api_id, identifier, current_timestamp, limits)
     for lk, lv in pairs(v) do -- Iterare over periods
       local current_metric, err = dao.response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, lk, k)
       if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        return false, err
       end
 
       local current_usage = current_metric and current_metric.value or 0
@@ -54,7 +54,15 @@ function _M.execute(conf)
   ngx.ctx.identifier = identifier -- For later use
 
   -- Load current metric for configured period
-  local usage = get_current_usage(api_id, identifier, current_timestamp, conf.limits)
+  local usage, err = get_current_usage(api_id, identifier, current_timestamp, conf.limits)
+  if err then
+    if conf.continue_on_error then
+      ngx.log(ngx.ERR, "failed to get usage: ", tostring(err))
+      return
+    else
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+  end
   ngx.ctx.usage = usage -- For later use
 end
 

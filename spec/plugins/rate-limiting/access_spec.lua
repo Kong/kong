@@ -17,7 +17,7 @@ end
 
 describe("RateLimiting Plugin", function()
 
-  setup(function()
+  local function prepare_db()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
@@ -25,7 +25,9 @@ describe("RateLimiting Plugin", function()
         { name = "tests-rate-limiting2", request_host = "test4.com", upstream_url = "http://mockbin.com" },
         { name = "tests-rate-limiting3", request_host = "test5.com", upstream_url = "http://mockbin.com" },
         { name = "tests-rate-limiting4", request_host = "test6.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting5", request_host = "test7.com", upstream_url = "http://mockbin.com" }
+        { name = "tests-rate-limiting5", request_host = "test7.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-rate-limiting6", request_host = "test8.com", upstream_url = "http://mockbin.com" },
+        { name = "tests-rate-limiting7", request_host = "test9.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
@@ -38,16 +40,20 @@ describe("RateLimiting Plugin", function()
         { name = "rate-limiting", config = { minute = 6 }, __api = 2 },
         { name = "rate-limiting", config = { minute = 3, hour = 5 }, __api = 3 },
         { name = "rate-limiting", config = { minute = 33 }, __api = 4 },
-        { name = "rate-limiting", config = { minute = 6, async = true }, __api = 5 }
+        { name = "rate-limiting", config = { minute = 6, async = true }, __api = 5 },
+        { name = "rate-limiting", config = { minute = 6, continue_on_error = false }, __api = 6 },
+        { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 7 }
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
         { key = "apikey123", __consumer = 2 }
       }
     }
+  end
 
+  setup(function()
+    prepare_db()
     spec_helper.start_kong()
-
     wait()
   end)
 
@@ -148,7 +154,6 @@ describe("RateLimiting Plugin", function()
   end)
 
   describe("Async increment", function()
-
     it("should increment asynchronously", function()
       -- Default rate-limiting plugin for this API says 6/minute
         local limit = 6
@@ -167,6 +172,63 @@ describe("RateLimiting Plugin", function()
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
     end)
+  end)
 
+  describe("Continue on error", function()
+
+    local session, err, configuration
+
+    setup(function()
+      local cassandra = require "cassandra"
+      local TEST_CONF = spec_helper.get_env().conf_file
+      local env = spec_helper.get_env(TEST_CONF)
+      configuration = env.configuration
+      session, err = cassandra.spawn_session {
+        shm = "ratelimiting_specs",
+        keyspace = configuration.dao_config.keyspace,
+        contact_points = configuration.dao_config.contact_points
+      }
+      assert.falsy(err)
+    end)
+
+    after_each(function()
+      session:execute("DROP KEYSPACE "..configuration.dao_config.keyspace)
+      prepare_db()
+    end)
+
+    teardown(function()
+      session:shutdown()
+    end)
+
+    it("should not continue if an error occurs", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test8.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
+      
+      -- Simulate an error on the database
+      session:execute("DROP TABLE ratelimiting_metrics")
+
+      -- Make another request
+      local res, status, _ = http_client.get(STUB_GET_URL, {}, {host = "test8.com"})
+      assert.equal("An unexpected error occurred", cjson.decode(res).message)
+      assert.are.equal(500, status)
+    end)
+
+    it("should continue if an error occurs", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test9.com"})
+      assert.are.equal(200, status)
+      assert.falsy(headers["x-ratelimit-limit-minute"])
+      assert.falsy(headers["x-ratelimit-remaining-minute"])
+      
+      -- Simulate an error on the database
+      session:execute("DROP TABLE ratelimiting_metrics")
+
+      -- Make another request
+      local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test9.com"})
+      assert.are.equal(200, status)
+      assert.falsy(headers["x-ratelimit-limit-minute"])
+      assert.falsy(headers["x-ratelimit-remaining-minute"])
+    end)
   end)
 end)
