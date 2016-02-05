@@ -12,25 +12,28 @@ local string_gsub = string.gsub
 local pairs = pairs
 local NGX_ERR = ngx.ERR
 
-local function request_counter(api_name, logger)
-  local stat = api_name..".request.count"
-  logger:counter(stat, 1, 1)
-end
-
-local function status_counter(api_name, message, logger)
-  local stat = api_name..".request.status."..message.response.status
-  logger:counter(stat, 1, 1)
-end
-
-local function request_size_gauge(api_name, message, logger)
-  local stat = api_name..".request.size"
-  logger:gauge(stat, message.request.size, 1)
-end
-
-local function latency_gauge(api_name, message, logger)
-  local stat = api_name..".latency"
-  logger:gauge(stat, message.latencies.request, 1)
-end
+local gauges = {
+  request_size = function (api_name, message, logger)
+    local stat = api_name..".request.size"
+    logger:gauge(stat, message.request.size, 1)
+  end,
+  response_size = function (api_name, message, logger)
+    local stat = api_name..".response.size"
+    logger:gauge(stat, message.response.size, 1)
+  end,
+  status_count = function (api_name, message, logger)
+    local stat = api_name..".request.status."..message.response.status
+    logger:counter(stat, 1, 1)
+  end,
+  latency = function (api_name, message, logger)
+    local stat = api_name..".latency"
+    logger:gauge(stat, message.latencies.request, 1)
+  end,
+  request_count = function (api_name, message, logger)
+    local stat = api_name..".request.count"
+    logger:counter(stat, 1, 1)
+  end
+}
 
 local function log(premature, conf, message)
   if premature then return end
@@ -43,17 +46,9 @@ local function log(premature, conf, message)
   
   local api_name = string_gsub(message.api.name, "%.", "_")
   for _, metric in pairs(conf.metrics) do
-    if metric == "request_size" then
-      request_size_gauge(api_name, message, logger)
-    end
-    if metric == "status_count" then
-      status_counter(api_name, message, logger)
-    end
-    if metric == "latency" then
-      latency_gauge(api_name, message, logger)
-    end
-    if metric == "request_count" then
-      request_counter(api_name, logger)
+    local gauge = gauges[metric]
+    if gauge ~= nil then
+      gauge(api_name, message, logger)
     end
   end
  
