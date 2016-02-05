@@ -41,7 +41,6 @@ build = {
 
     ["classic"] = "kong/vendor/classic.lua",
     ["lapp"] = "kong/vendor/lapp.lua",
-    ["ngx.ssl"] = "kong/vendor/ssl.lua",
     ["resty_http"] = "kong/vendor/resty_http.lua",
 
     ["kong.constants"] = "kong/constants.lua",

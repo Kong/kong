@@ -13,7 +13,7 @@ env:
   global:
     - LUAJIT=2.1
     - LUAROCKS=2.3.0
-    - OPENRESTY=1.9.3.1
+    - OPENRESTY=1.9.7.2
     - CASSANDRA=2.2.4
     - OPENSSL=1.0.2f
     - SERF=0.7.0

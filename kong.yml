@@ -240,7 +240,9 @@ nginx: |
       listen {{proxy_listen}};
       listen {{proxy_listen_ssl}} ssl;
 
-      ssl_certificate_by_lua 'kong.ssl_certificate()';
+      ssl_certificate_by_lua_block {
+        kong.ssl_certificate()
+      }
 
       ssl_certificate {{ssl_cert}};
       ssl_certificate_key {{ssl_key}};
@@ -256,7 +258,6 @@ nginx: |
         # Authenticate the user and load the API info
         access_by_lua 'kong.access()';
 
-        # Proxy the request
         # Proxy the request
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
