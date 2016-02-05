@@ -15,7 +15,7 @@ if [ ! "$(ls -A $OPENRESTY_DIR)" ]; then
   curl http://www.openssl.org/source/$OPENSSL_BASE.tar.gz | tar xz
 
   # Download OpenResty
-  OPENRESTY_BASE=ngx_openresty-$OPENRESTY
+  OPENRESTY_BASE=openresty-$OPENRESTY
   curl https://openresty.org/download/$OPENRESTY_BASE.tar.gz | tar xz
   pushd $OPENRESTY_BASE
 
