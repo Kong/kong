@@ -20,6 +20,7 @@ dependencies = {
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.5.0",
+  "pgmoon ~> 1.2.0",
   "multipart ~> 0.2-1",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
@@ -94,6 +95,7 @@ build = {
     ["kong.base.dao"] = "kong/base/dao.lua",
     ["kong.base.dao_factory"] = "kong/base/dao_factory.lua",
 
+    ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.error"] = "kong/dao/error.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
     ["kong.dao.schemas.apis"] = "kong/dao/schemas/apis.lua",

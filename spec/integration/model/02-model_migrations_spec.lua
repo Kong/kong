@@ -37,7 +37,7 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
         assert.is_string(err)
 
         if db_type == TYPES.CASSANDRA then
-          assert.truthy(string.find(err, "Keyspace '_inexistent_' does not exist."))
+          assert.truthy(string.find(err, "Keyspace '_inexistent_' does not exist"))
         elseif db_type == TYPES.POSTGRES then
           assert.equal('FATAL: database "_inexistent_" does not exist', err)
         end
@@ -67,7 +67,7 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
     ---
     -- Integration behavior.
     -- Must run in order.
-    describe("migration integration", function()
+    describe("[INTEGRATION]", function()
       local flatten_migrations = {}
       setup(function()
         factory:drop_schema()

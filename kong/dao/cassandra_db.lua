@@ -1,12 +1,25 @@
 local inspect = require "inspect"
 
+local timestamp = require "kong.tools.timestamp"
 local BaseDB = require "kong.dao.base_db"
 local utils = require "kong.tools.utils"
-local cassandra = require "cassandra"
+local uuid = require "lua_uuid"
 
-cassandra.set_log_level("QUIET")
+local ngx_stub = _G.ngx
+_G.ngx = nil
+local cassandra = require "cassandra"
+_G.ngx = ngx_stub
 
 local CassandraDB = BaseDB:extend()
+
+CassandraDB.dao_insert_values = {
+  id = function()
+    return uuid()
+  end,
+  timestamp = function()
+    return timestamp.get_utc()
+  end
+}
 
 function CassandraDB:new(options)
   local conn_opts = {
@@ -33,6 +46,31 @@ function CassandraDB:init_db()
 
 end
 
+-- Formatting
+
+function CassandraDB:_get_args(model)
+  local fields = model.__schema.fields
+  local cols, bind_args, args = {}, {}, {}
+
+  for col, field in pairs(fields) do
+    -- cassandra serializers
+    local value = model[col]
+    if value == nil then
+      value = cassandra.unset
+    elseif field.type == "id" then
+      value = cassandra.uuid(value)
+    elseif field.type == "timestamp" then
+      value = cassandra.timestamp(value)
+    end
+
+    cols[#cols + 1] = col
+    args[#args + 1] = value
+    bind_args[#bind_args + 1] = "?"
+  end
+
+  return table.concat(cols, ", "), table.concat(bind_args, ", "), args
+end
+
 function CassandraDB:query(query, args)
   CassandraDB.super.query(self, query, args)
 
@@ -51,22 +89,16 @@ function CassandraDB:query(query, args)
   return res
 end
 
-function CassandraDB:insert(table_name, tbl)
-  local values_buf = {}
-  for col in pairs(tbl) do
-    values_buf[#values_buf + 1] = "?"
-  end
-
+function CassandraDB:insert(model)
+  local cols, binds, args = self:_get_args(model)
   local query = string.format("INSERT INTO %s(%s) VALUES(%s)",
-                              table_name,
-                              self:_get_columns(tbl),
-                              table.concat(values_buf, ", "))
-  local err = select(2, self:query(query, tbl))
+                              model.__table, cols, binds)
+  local err = select(2, self:query(query, args))
   if err then
     return nil, err
   end
 
-  return tbl
+  return model
 end
 
 -- Migrations

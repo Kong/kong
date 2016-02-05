@@ -1,9 +1,20 @@
 local inspect = require "inspect"
 
 local BaseDB = require "kong.dao.base_db"
+local uuid = require "lua_uuid"
+
+local ngx_stub = _G.ngx
+_G.ngx = nil
 local pgmoon = require "pgmoon"
+_G.ngx = ngx_stub
 
 local PostgresDB = BaseDB:extend()
+
+PostgresDB.dao_insert_values = {
+  id = function()
+    return uuid()
+  end
+}
 
 function PostgresDB:new(...)
   PostgresDB.super.new(self, "postgres", ...)
@@ -35,7 +46,7 @@ end
 
 function PostgresDB:_escape_literals(tbl)
   local buf = {}
-  for _, value in ipairs(tbl) do
+  for _, value in pairs(tbl) do
     buf[#buf + 1] = escape_literal(value)
   end
   return table.concat(buf, ", ")
@@ -53,7 +64,7 @@ function PostgresDB:query(...)
   end
 
   local res, err = pg:query(...)
-  if ngx then
+  if ngx and ngx.get_phase() ~= "init" then
     pg:keepalive()
   end
 
@@ -64,17 +75,17 @@ function PostgresDB:query(...)
   return res
 end
 
-function PostgresDB:insert(table_name, tbl)
+function PostgresDB:insert(model)
   local query = string.format("INSERT INTO %s(%s) VALUES(%s)",
-                              table_name,
-                              self:_get_columns(tbl),
-                              self:_escape_literals(values_buf))
-  local err = select(2, self:query(query, tbl))
+                              model.__table,
+                              self:_get_columns(model),
+                              self:_escape_literals(model))
+  local res, err = self:query(query, model)
   if err then
     return nil, err
   end
 
-  return tbl
+  return res
 end
 
 -- Migrations

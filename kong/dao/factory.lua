@@ -1,5 +1,6 @@
-local BaseModel = require "kong.dao.base_model"
+local DAO = require "kong.dao.dao"
 local Object = require "classic"
+local ModelFactory = require "kong.dao.model_factory"
 
 local CORE_MODELS = {"apis", "consumers", "plugins"}
 local _db
@@ -7,9 +8,9 @@ local _db
 local Factory = Object:extend()
 
 function Factory:__index(key)
-  local models = rawget(self, "models")
-  if models and models[key] then
-    return models[key]
+  local daos = rawget(self, "daos")
+  if daos and daos[key] then
+    return daos[key]
   else
     return Factory[key]
   end
@@ -17,24 +18,25 @@ end
 
 function Factory:new(db_type, options)
   self.db_type = db_type
-  self.models = {}
+  self.daos = {}
 
   local DB = require("kong.dao."..db_type.."_db")
   _db = DB(options)
 
-  -- Create models and give them the db instance
+  -- Create daos and give them the db instance
   for _, m_name in ipairs(CORE_MODELS) do
     local m_schema = require("kong.dao.schemas."..m_name)
-    local model = BaseModel(_db, m_schema)
-    self.models[m_name] = model
+    local model_mt = ModelFactory(m_schema)
+    local dao = DAO(_db, model_mt)
+    self.daos[m_name] = dao
   end
 end
 
 -- Migrations
 
 function Factory:drop_schema()
-  for _, model in ipairs(self.models) do
-    _db:drop_table(model.table)
+  for _, dao in ipairs(self.daos) do
+    _db:drop_table(dao.table)
   end
 
   _db:drop_table("schema_migrations")

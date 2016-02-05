@@ -1,12 +1,15 @@
 local inspect = require "inspect"
 
+local timestamp = require "kong.tools.timestamp"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
+local uuid = require "lua_uuid"
 
 local function debug_log(self, ...)
   local prefix = "[DB:"..self.db_type.."]"
   if ngx ~= nil then
-    ngx.log(ngx.DEBUG, prefix, inspect(...))
+    --ngx.log(ngx.DEBUG, prefix, inspect(...))
+    --print(prefix, inspect(...))
   else
     print(prefix, inspect(...))
   end
@@ -40,7 +43,7 @@ function BaseDB:query(query)
   -- to be implemented in child
 end
 
-function BaseDB:insert(table_name, tbl)
+function BaseDB:insert(model)
   -- to be implemented in child
 end
 

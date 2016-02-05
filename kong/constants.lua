@@ -14,10 +14,10 @@ return {
     NGINX_CONFIG = "nginx.conf"
   },
   DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
-  DATABASE_ERROR_TYPES = setmetatable ({
+  DB_ERROR_TYPES = setmetatable ({
     SCHEMA = "schema",
-    INVALID_TYPE = "invalid_type",
-    DATABASE = "database",
+    INVALID_TYPE = "type",
+    db = "db",
     UNIQUE = "unique",
     FOREIGN = "foreign"
   }, { __index = function(t, key)
