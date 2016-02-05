@@ -22,7 +22,7 @@ function ResponseRateLimitingHandler:header_filter(conf)
 end
 
 function ResponseRateLimitingHandler:log(conf)
-  if not ngx.ctx.stop_log then
+  if not ngx.ctx.stop_log and ngx.ctx.usage then
     ResponseRateLimitingHandler.super.log(self)
     log.execute(ngx.ctx.api.id, ngx.ctx.identifier, ngx.ctx.current_timestamp, ngx.ctx.increments, ngx.ctx.usage)
   end

@@ -1,6 +1,7 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local timestamp = require "kong.tools.timestamp"
+local cjson = require "cjson"
 
 local PROXY_URL = spec_helper.PROXY_URL
 local SLEEP_VALUE = "0.5"
@@ -17,13 +18,15 @@ end
 
 describe("RateLimiting Plugin", function()
 
-  setup(function()
+  local function prepare_db()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
         { name = "tests-response-ratelimiting1", request_host = "test1.com", upstream_url = "http://httpbin.org/" },
         { name = "tests-response-ratelimiting2", request_host = "test2.com", upstream_url = "http://httpbin.org/" },
-        { name = "tests-response-ratelimiting3", request_host = "test3.com", upstream_url = "http://httpbin.org/" }
+        { name = "tests-response-ratelimiting3", request_host = "test3.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests-response-ratelimiting4", request_host = "test4.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests-response-ratelimiting5", request_host = "test5.com", upstream_url = "http://httpbin.org/" }
       },
       consumer = {
         { custom_id = "consumer_123" },
@@ -35,7 +38,9 @@ describe("RateLimiting Plugin", function()
         { name = "response-ratelimiting", config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 2 },
         { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 3 },
         { name = "response-ratelimiting", config = { limits = { video = { minute = 6 } } }, __api = 3 },
-        { name = "response-ratelimiting", config = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 }
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 },
+        { name = "response-ratelimiting", config = { continue_on_error = false, limits = { video = { minute = 6 } } }, __api = 4 },
+        { name = "response-ratelimiting", config = { continue_on_error = true, limits = { video = { minute = 6 } } }, __api = 5 }
       },
       keyauth_credential = {
         { key = "apikey123", __consumer = 1 },
@@ -43,9 +48,11 @@ describe("RateLimiting Plugin", function()
         { key = "apikey125", __consumer = 3 }
       }
     }
+  end
 
+  setup(function()
+    prepare_db()
     spec_helper.start_kong()
-
     wait()
   end)
 
@@ -54,7 +61,6 @@ describe("RateLimiting Plugin", function()
   end)
 
   describe("Without authentication (IP address)", function()
-
     it("should get blocked if exceeding limit", function()
       -- Default ratelimiting plugin for this API says 6/minute
       local limit = 6
@@ -72,7 +78,6 @@ describe("RateLimiting Plugin", function()
       assert.are.equal(429, status)
 
     end)
-
 
     it("should handle multiple limits", function()
       for i = 1, 3 do
@@ -95,13 +100,10 @@ describe("RateLimiting Plugin", function()
       assert.are.equal("4", headers["x-ratelimit-remaining-video-hour"])
       assert.are.equal("1", headers["x-ratelimit-remaining-image-minute"])
     end)
-
   end)
 
   describe("With authentication", function()
-
     describe("Default plugin", function()
-
       it("should get blocked if exceeding limit and a per consumer setting", function()
         -- Default ratelimiting plugin for this API says 6/minute
         local limit = 2
@@ -158,7 +160,64 @@ describe("RateLimiting Plugin", function()
         assert.are.equal("0", headers["x-ratelimit-remaining-video-minute"])
         assert.are.equal("6", headers["x-ratelimit-limit-video-minute"])
       end)
+    end)
+  end)
 
+  describe("Continue on error", function()
+
+    local session, err, configuration
+
+    setup(function()
+      local cassandra = require "cassandra"
+      local TEST_CONF = spec_helper.get_env().conf_file
+      local env = spec_helper.get_env(TEST_CONF)
+      configuration = env.configuration
+      session, err = cassandra.spawn_session {
+        shm = "response_ratelimiting_specs",
+        keyspace = configuration.dao_config.keyspace,
+        contact_points = configuration.dao_config.contact_points
+      }
+      assert.falsy(err)
+    end)
+
+    after_each(function()
+      session:execute("DROP KEYSPACE "..configuration.dao_config.keyspace)
+      prepare_db()
+    end)
+
+    teardown(function()
+      session:shutdown()
+    end)
+
+    it("should not continue if an error occurs", function()
+      local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test4.com"})
+      assert.are.equal(200, status)
+      assert.are.same('6', headers["x-ratelimit-limit-video-minute"])
+      assert.are.same('5', headers["x-ratelimit-remaining-video-minute"])
+      
+      -- Simulate an error on the database
+      session:execute("DROP TABLE response_ratelimiting_metrics")
+
+      -- Make another request
+      local res, status, _ = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test4.com"})
+      assert.equal("An unexpected error occurred", cjson.decode(res).message)
+      assert.are.equal(500, status)
+    end)
+
+    it("should continue if an error occurs", function()
+      local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test5.com"})
+      assert.are.equal(200, status)
+      assert.falsy(headers["x-ratelimit-limit-video-minute"])
+      assert.falsy(headers["x-ratelimit-remaining-video-minute"])
+      
+      -- Simulate an error on the database
+      session:execute("DROP TABLE response_ratelimiting_metrics")
+
+      -- Make another request
+      local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test5.com"})
+      assert.are.equal(200, status)
+      assert.falsy(headers["x-ratelimit-limit-video-minute"])
+      assert.falsy(headers["x-ratelimit-remaining-video-minute"])
     end)
 
   end)
