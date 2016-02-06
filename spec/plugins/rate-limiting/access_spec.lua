@@ -10,7 +10,7 @@ local function wait()
   -- fail. So we give it this test 30 seconds to execute, and if the second
   -- of the current minute is > 30, then we wait till the new minute kicks in
   local current_second = timestamp.get_timetable().sec
-  if current_second > 30 then
+  if current_second > 20 then
     os.execute("sleep "..tostring(60 - current_second))
   end
 end
