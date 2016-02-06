@@ -1,5 +1,6 @@
 local logger = require "kong.cli.utils.logger"
 local dao = require "kong.tools.dao_loader"
+local IO = require "kong.tools.io"
 
 local _M = {}
 
@@ -55,6 +56,45 @@ local function prepare_database(configuration)
   return true
 end
 
+local function prepare_working_dir(configuration)
+  local working_dir = configuration.nginx_working_dir
+
+  -- Check if the folder exists
+  if not IO.file_exists(working_dir) then
+    logger:info("Creating working directory at "..working_dir)
+    local _, exit_code = IO.os_execute("mkdir -p "..working_dir)
+    if exit_code ~= 0 then
+      return false, "Cannot create the working directory at "..working_dir
+    end
+  end
+
+  logger:info("Setting working directory to "..working_dir)
+
+  -- Check if it's a folder
+  local _, exit_code = IO.os_execute("[[ -d "..working_dir.." ]]")
+  if exit_code ~= 0 then
+    return false, "The working directory must point to a directory and not to a file"
+  end
+
+  -- Check if we can read in the folder
+  local _, exit_code = IO.os_execute("[[ -r "..working_dir.." ]]")
+  if exit_code ~= 0 then
+    return false, "The working directory must have read permissions"
+  end
+
+  -- Check if we can write in the folder
+  local _, exit_code = IO.os_execute("[[ -w "..working_dir.." ]]")
+  if exit_code ~= 0 then
+    return false, "The working directory must have write permissions"
+  end
+
+  -- Check if we can execute in the folder
+  local _, exit_code = IO.os_execute("[[ -x "..working_dir.." ]]")
+  if exit_code ~= 0 then
+    return false, "The working directory must have executable permissions"
+  end
+end
+
 function _M.check_status(configuration, configuration_path)
   local running, not_running
 
@@ -82,6 +122,12 @@ function _M.stop_all(configuration, configuration_path)
 end
 
 function _M.start_all(configuration, configuration_path)
+  -- Prepare and check working directory
+  local _, err = prepare_working_dir(configuration)
+  if err then
+    return false, err
+  end
+
   -- Prepare database if not initialized yet
   local _, err = prepare_database(configuration)
   if err then
