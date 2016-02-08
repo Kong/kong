@@ -59,11 +59,23 @@ local function get_current_user()
   return IO.os_execute("whoami")
 end
 
+local function get_primary_group(user)
+  return IO.os_execute("id -g -n "..user)
+end
+
+local function is_root()
+  local _, exit_code = IO.os_execute("[[ $EUID -eq 0 ]]")
+  return exit_code == 0
+end
+
 local function prepare_nginx_configuration(configuration, ssl_config)
+
+  local current_user = get_current_user()
+
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = configuration.nginx
   local nginx_inject = {
-    user = get_current_user(),
+    user = is_root() and "user "..current_user.." "..get_primary_group(current_user)..";" or "",
     proxy_listen = configuration.proxy_listen,
     proxy_listen_ssl = configuration.proxy_listen_ssl,
     admin_api_listen = configuration.admin_api_listen,
