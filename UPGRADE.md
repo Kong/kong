@@ -24,6 +24,8 @@ $ kong reload [-c configuration_file]
 
 ## Upgrade to `0.6.x`
 
+**Note**: if you are using Kong 0.4.x or earlier, you must first upgrade to Kong 0.5.x.
+
 The configuration file changed in this release. Make sure to check out the new default one and update it to your needs. In particular, make sure that:
 
 ```yaml
@@ -127,7 +129,7 @@ $ git clone https://github.com/Mashape/kong.git
 $ cd kong/scripts
 
 # Install the Python script dependencies:
-$ pip install cassandra-driver pyyaml
+$ pip install cassandra-driver==2.7.2 pyyaml
 
 # The script will use the first Cassandra contact point in your Kong configuration file
 # (the first of the 'contact_points' property) so make sure it is valid and has the format 'host:port'.
