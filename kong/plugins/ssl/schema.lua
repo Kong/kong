@@ -1,20 +1,21 @@
-local ssl_util = require "kong.plugins.ssl.ssl_util"
 local base64 = require "base64"
 
 local function validate_cert(v)
-  local der, err = ssl_util.cert_to_der(v)
+  local ssl = require "ngx.ssl"
+  local der = ssl.cert_pem_to_der(v)
   if der then
     return true, nil, { _cert_der_cache = base64.encode(der) }
   end
-  return false, "Invalid data: "..err
+  return false, "Invalid SSL certificate"
 end
 
 local function validate_key(v)
-  local der, err = ssl_util.key_to_der(v)
+  local ssl = require "ngx.ssl"
+  local der = ssl.priv_key_pem_to_der(v)
   if der then
     return true, nil, { _key_der_cache = base64.encode(der) }
   end
-  return false, "Invalid data: "..err
+  return false, "Invalid SSL certificate key"
 end
 
 return {

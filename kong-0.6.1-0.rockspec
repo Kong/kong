@@ -191,7 +191,6 @@ build = {
 
     ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
     ["kong.plugins.ssl.hooks"] = "kong/plugins/ssl/hooks.lua",
-    ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
 
     ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",
