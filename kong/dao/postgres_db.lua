@@ -1,6 +1,7 @@
 local inspect = require "inspect"
 
 local BaseDB = require "kong.dao.base_db"
+local Errors = require "kong.dao.errors"
 local uuid = require "lua_uuid"
 
 local ngx_stub = _G.ngx
@@ -44,12 +45,38 @@ local function escape_literal(val)
   error("don't know how to escape value: "..tostring(val))
 end
 
-function PostgresDB:_escape_literals(tbl)
+local function escape_literals(tbl)
   local buf = {}
   for _, value in pairs(tbl) do
     buf[#buf + 1] = escape_literal(value)
   end
   return table.concat(buf, ", ")
+end
+
+local function get_select_args_primary_keys(model)
+  local schema = model.__schema
+  local fields = schema.fields
+  local where = {}
+
+  for _, col in ipairs(schema.primary_key) do
+    where[#where + 1] = string.format("%s = %s",
+                        escape_identifier(col),
+                        escape_literal(model[col]))
+  end
+
+  return table.concat(where, " AND ")
+end
+
+local function parse_error(err_str)
+  local err
+  if string.find(err_str, "Key .* already exists") then
+    local col, value = string.match(err_str, "%((%w+)%)=%((%w+)%)")
+    err = Errors.unique {[col] = value}
+  else
+    err = Errors.db(err)
+  end
+
+  return err
 end
 
 -- Querying
@@ -60,32 +87,47 @@ function PostgresDB:query(...)
   local pg = pgmoon.new(self:_get_conn_options())
   local ok, err = pg:connect()
   if not ok then
-    return nil, err
+    return nil, Errors.db(err)
   end
 
-  local res, err = pg:query(...)
+  local res, err, a, b = pg:query(...)
   if ngx and ngx.get_phase() ~= "init" then
     pg:keepalive()
   end
 
   if res == nil then
-    return nil, err
+    return nil, parse_error(err)
   end
 
   return res
 end
 
 function PostgresDB:insert(model)
-  local query = string.format("INSERT INTO %s(%s) VALUES(%s)",
+  local query = string.format("INSERT INTO %s(%s) VALUES(%s) RETURNING *",
                               model.__table,
                               self:_get_columns(model),
-                              self:_escape_literals(model))
+                              escape_literals(model))
   local res, err = self:query(query, model)
   if err then
     return nil, err
+  elseif #res > 0 then
+    return res[1]
   end
+end
 
-  return res
+local function _select(self, table, where)
+  local query = string.format("SELECT * FROM %s WHERE %s", table, where)
+  return self:query(query)
+end
+
+function PostgresDB:find(model)
+  local where = get_select_args_primary_keys(model)
+  local rows, err = _select(self, model.__table, where)
+  if err then
+    return nil, err
+  elseif #rows > 0 then
+    return rows[1]
+  end
 end
 
 -- Migrations
@@ -96,6 +138,10 @@ end
 
 function PostgresDB:drop_table(table_name)
   return select(2, self:query("DROP TABLE "..table_name))
+end
+
+function PostgresDB:truncate_table(table_name)
+  return select(2, self:query("TRUNCATE "..table_name.." CASCADE"))
 end
 
 function PostgresDB:current_migrations()

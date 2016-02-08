@@ -12,7 +12,7 @@ return setmetatable({}, {
     }
 
     function Model_mt.__index(self, key)
-      if string.find(key, "__") == 1 then
+      if key and string.find(key, "__") == 1 then
         local meta_field = Model_mt.__meta[key]
         if meta_field then
           return meta_field

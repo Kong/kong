@@ -10,9 +10,10 @@ local Errors = require "kong.dao.errors"
 
 local DAO = Object:extend()
 
-function DAO:new(db, model_mt)
+function DAO:new(db, model_mt, table)
   self.db = db
   self.model_mt = model_mt
+  self.table = table
 end
 
 function DAO:insert(tbl)
@@ -31,12 +32,12 @@ function DAO:insert(tbl)
     end
   end
 
-  local res, err = self.db:insert(model)
-  if err ~= nil then
-    return nil, Errors.db(err)
-  end
+  return self.db:insert(model)
+end
 
-  return res
+function DAO:find(tbl)
+  local model = self.model_mt(tbl)
+  return self.db:find(model)
 end
 
 return DAO

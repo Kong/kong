@@ -39,15 +39,33 @@ describe("Errors", function()
       assert.equal("foo some error", "foo "..err)
       assert.equal("some error foo", err.." foo")
     end)
-    it("should handle a table as error message", function()
-      local tbl = {
-        foo = "foostr",
-        bar = "barstr"
-      }
-      local err = Errors[v](tbl)
-      assert.same(tbl, err.err_tbl)
-      assert.is_string(err.message)
-      assert.equal("foo=foostr bar=barstr", err.message)
-    end)
+    if v ~= constants.DB_ERROR_TYPES.UNIQUE then
+      it("should handle a table as error message", function()
+        local tbl = {
+          foo = "foostr",
+          bar = "barstr"
+        }
+        local err = Errors[v](tbl)
+        assert.same(tbl, err.err_tbl)
+        assert.is_string(err.message)
+        assert.equal("foo=foostr bar=barstr", err.message)
+      end)
+    end
   end
+
+  describe("unique", function()
+    it("create a unique error", function()
+      local tbl = {
+        name = "foo",
+        unique_field = "bar"
+      }
+      local err = Errors.unique(tbl)
+      assert.True(err.unique)
+      assert.same({
+        name = "already exists with value 'foo'",
+        unique_field = "already exists with value 'bar'"
+      }, err.err_tbl)
+      assert.equal("name=already exists with value 'foo' unique_field=already exists with value 'bar'", tostring(err))
+    end)
+  end)
 end)

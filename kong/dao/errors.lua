@@ -20,18 +20,36 @@ function error_mt.__concat(a, b)
   end
 end
 
+local ERRORS = {
+  [constants.DB_ERROR_TYPES.UNIQUE] = function(tbl)
+    local ret = {}
+    for k, v in pairs(tbl) do
+      ret[k] = "already exists with value '"..v.."'"
+    end
+    return ret
+  end
+}
+
 local function build_error(err_type)
   return function(err)
-    local err_tbl -- in case arg1 is a table
-
     if err == nil then
       return nil
     elseif getmetatable(err) == error_mt then
       return err
-    elseif type(err) == "table" then
-      err_tbl = err
-      setmetatable(err, printable_mt)
-      err = tostring(err) -- convert to string
+    end
+
+    local err_tbl
+
+    if type(err) == "table" then
+      if ERRORS[err_type] ~= nil then
+        err_tbl = ERRORS[err_type](err)
+        setmetatable(err_tbl, printable_mt)
+        err = tostring(err_tbl)
+      else
+        err_tbl = err
+        setmetatable(err, printable_mt)
+        err = tostring(err)
+      end
     end
 
     local err_obj = {

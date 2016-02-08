@@ -27,7 +27,7 @@ function Factory:new(db_type, options)
   for _, m_name in ipairs(CORE_MODELS) do
     local m_schema = require("kong.dao.schemas."..m_name)
     local model_mt = ModelFactory(m_schema)
-    local dao = DAO(_db, model_mt)
+    local dao = DAO(_db, model_mt, m_schema.table)
     self.daos[m_name] = dao
   end
 end
@@ -35,11 +35,20 @@ end
 -- Migrations
 
 function Factory:drop_schema()
-  for _, dao in ipairs(self.daos) do
+  for _, dao in pairs(self.daos) do
     _db:drop_table(dao.table)
   end
 
   _db:drop_table("schema_migrations")
+end
+
+function Factory:truncate_tables()
+  for _, dao in pairs(self.daos) do
+    local err = _db:truncate_table(dao.table)
+    if err then
+      error(err)
+    end
+  end
 end
 
 function Factory:migrations_modules()

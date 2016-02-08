@@ -2,7 +2,7 @@ local utils = require "spec.spec_helpers"
 local Factory = require "kong.dao.factory"
 
 utils.for_each_dao(function(db_type, default_options)
-  describe("Model Factory with DB: "..db_type, function()
+  describe("Model Factory with DB: #"..db_type, function()
     it("should be instanciable", function()
       local factory
       assert.has_no_errors(function()
