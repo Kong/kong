@@ -164,7 +164,7 @@
 ## This file can tweaked to some extent, but many directives are necessary for Kong to work.
 ## /!\ BE CAREFUL
 nginx: |
-  user {{user}};
+  {{user}}
   worker_processes auto;
   error_log logs/error.log error;
   daemon on;
