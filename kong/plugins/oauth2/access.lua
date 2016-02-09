@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local stringy = require "stringy"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
@@ -34,7 +35,7 @@ local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
-  local token, err = dao.oauth2_tokens:insert({
+  local token, err = singletons.dao.oauth2_tokens:insert({
     credential_id = credential.id,
     authenticated_userid = authenticated_userid,
     expires_in = token_expiration,
@@ -63,7 +64,7 @@ local function get_redirect_uri(client_id)
   local client
   if client_id then
     client = cache.get_or_set(cache.oauth2_credential_key(client_id), function()
-      local credentials, err = dao.oauth2_credentials:find_by_keys { client_id = client_id }
+      local credentials, err = singletons.dao.oauth2_credentials:find_by_keys { client_id = client_id }
       local result
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -149,7 +150,7 @@ local function authorize(conf)
       -- If there are no errors, keep processing the request
       if not response_params[ERROR] then
         if response_type == CODE then
-          local authorization_code, err = dao.oauth2_authorization_codes:insert({
+          local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = table.concat(scopes, " ")
           })
@@ -247,7 +248,7 @@ local function issue_token(conf)
     if not response_params[ERROR] then
       if grant_type == GRANT_AUTHORIZATION_CODE then
         local code = parameters[CODE]
-        local authorization_code = code and dao.oauth2_authorization_codes:find_by_keys({code = code})[1] or nil
+        local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_by_keys({code = code})[1] or nil
         if not authorization_code then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         else
@@ -283,12 +284,12 @@ local function issue_token(conf)
         end
       elseif grant_type == GRANT_REFRESH_TOKEN then
         local refresh_token = parameters[REFRESH_TOKEN]
-        local token = refresh_token and dao.oauth2_tokens:find_by_keys({refresh_token = refresh_token})[1] or nil
+        local token = refresh_token and singletons.dao.oauth2_tokens:find_by_keys({refresh_token = refresh_token})[1] or nil
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
         else
           response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state)
-          dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
+          singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
         end
       end
     end
@@ -308,7 +309,7 @@ local function retrieve_token(access_token)
   local token
   if access_token then
     token = cache.get_or_set(cache.oauth2_token_key(access_token), function()
-      local credentials, err = dao.oauth2_tokens:find_by_keys { access_token = access_token }
+      local credentials, err = singletons.dao.oauth2_tokens:find_by_keys { access_token = access_token }
       local result
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -396,7 +397,7 @@ function _M.execute(conf)
 
   -- Retrive the credential from the token
   local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), function()
-    local result, err = dao.oauth2_credentials:find_by_primary_key({id = token.credential_id})
+    local result, err = singletons.dao.oauth2_credentials:find_by_primary_key({id = token.credential_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -405,7 +406,7 @@ function _M.execute(conf)
 
   -- Retrive the consumer from the credential
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = dao.consumers:find_by_primary_key({id = credential.consumer_id})
+    local result, err = singletons.dao.consumers:find_by_primary_key({id = credential.consumer_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

@@ -25,6 +25,7 @@
 -- ==========
 
 local core = require "kong.core.handler"
+local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
 local dao_loader = require "kong.tools.dao_loader"
 local config_loader = require "kong.tools.config_loader"
@@ -34,11 +35,6 @@ local Events = require "kong.core.events"
 local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
-
-local loaded_plugins = {}
--- @TODO make those locals too
--- local configuration
--- local dao_factory
 
 --- Attach a hooks table to the event bus
 local function attach_hooks(events, hooks)
@@ -54,7 +50,7 @@ end
 -- @treturn table Array of plugins to execute in context handlers.
 local function load_node_plugins(configuration)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
-  local db_plugins, err = dao.plugins:find_distinct()
+  local db_plugins, err = singletons.dao.plugins:find_distinct()
   if err then
     error(err)
   end
@@ -83,7 +79,7 @@ local function load_node_plugins(configuration)
     -- Attaching hooks
     local loaded, plugin_hooks = utils.load_module_if_exists("kong.plugins."..v..".hooks")
     if loaded then
-      attach_hooks(events, plugin_hooks)
+      attach_hooks(singletons.events, plugin_hooks)
     end
   end
 
@@ -127,9 +123,9 @@ function Kong.init()
       loaded_plugins = load_node_plugins(configuration)
 
       -- Attach core hooks
-      attach_hooks(events, require("kong.core.hooks"))
+      attach_hooks(singletons.events, require("kong.core.hooks"))
 
-      if configuration.send_anonymous_reports then
+      if singletons.configuration.send_anonymous_reports then
         -- Generate the unique_str inside the module
         local reports = require "kong.core.reports"
         reports.enable()
@@ -146,7 +142,7 @@ end
 function Kong.init_worker()
   core.init_worker.before()
 
-  for _, plugin in ipairs(loaded_plugins) do
+  for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()
   end
 end
@@ -154,7 +150,7 @@ end
 function Kong.ssl_certificate()
   core.certificate.before()
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "certificate") do
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, "certificate") do
     plugin.handler:certificate(plugin_conf)
   end
 end
@@ -162,7 +158,7 @@ end
 function Kong.access()
   core.access.before()
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "access") do
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, "access") do
     plugin.handler:access(plugin_conf)
   end
 
@@ -172,7 +168,7 @@ end
 function Kong.header_filter()
   core.header_filter.before()
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "header_filter") do
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, "header_filter") do
     plugin.handler:header_filter(plugin_conf)
   end
 
@@ -180,7 +176,7 @@ function Kong.header_filter()
 end
 
 function Kong.body_filter()
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "body_filter") do
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, "body_filter") do
     plugin.handler:body_filter(plugin_conf)
   end
 
@@ -188,7 +184,7 @@ function Kong.body_filter()
 end
 
 function Kong.log()
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "log") do
+  for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, "log") do
     plugin.handler:log(plugin_conf)
   end
 
