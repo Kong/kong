@@ -26,11 +26,15 @@ describe("SSL Hooks", function()
     spec_helper.insert_fixtures {
       api = {
         { request_host = "ssl1.com", upstream_url = "http://mockbin.com" }
-      },
-      plugin = {
-        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 }
       }
     }
+
+    -- The SSL plugin needs to be added manually because we are requiring ngx.ssl
+    local _, status = http_client.post_multipart(API_URL.."/apis/ssl1.com/plugins/", { 
+      name = "ssl", 
+      ["config.cert"] = ssl_fixtures.cert, 
+      ["config.key"] = ssl_fixtures.key})
+    assert.equals(201, status)
   end)
 
   describe("SSL plugin entity invalidation", function()
