@@ -1,4 +1,5 @@
 local IO = require "kong.tools.io"
+local ssl = require "ngx.ssl"
 
 local _M = {}
 
@@ -7,7 +8,7 @@ local function execute_openssl(data, cmd)
   -- Create temp files
   local input = os.tmpname()
   local output = os.tmpname()
-  
+
   -- Populate input file
   IO.write_to_file(input, data)
 
@@ -27,7 +28,7 @@ local function execute_openssl(data, cmd)
 end
 
 function _M.cert_to_der(data)
-  return execute_openssl(data, "openssl x509 -outform der -in %s -out %s")
+  return ssl.cert_pem_to_der(data)
 end
 
 function _M.key_to_der(data)
