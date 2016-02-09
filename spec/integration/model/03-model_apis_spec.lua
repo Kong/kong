@@ -143,6 +143,8 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
 
     describe("find_all()", function()
       setup(function()
+        factory:truncate_tables()
+
         for i = 1, 100 do
           local api, err = apis:insert {
             name = "fixture_"..i,
@@ -208,8 +210,66 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       end)
     end)
 
+    describe("find_page()", function()
+      setup(function()
+        factory:truncate_tables()
+
+        for i = 1, 100 do
+          local api, err = apis:insert {
+            name = "fixture_"..i,
+            request_host = "fixture"..i..".com",
+            upstream_url = "http://fixture.org"
+          }
+          assert.falsy(err)
+          assert.truthy(api)
+        end
+      end)
+      teardown(function()
+        factory:truncate_tables()
+      end)
+
+      it("has a default_page size (100)", function()
+        local rows, err = apis:find_page()
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.equal(100, #rows)
+      end)
+      it("support page_size", function()
+        local rows, err = apis:find_page(nil, nil, 25)
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.equal(25, #rows)
+      end)
+      it("support page_offset", function()
+        local rows, err, offset
+        for i = 1, 3 do
+          rows, err, offset = apis:find_page(nil, offset, 30)
+          assert.falsy(err)
+          assert.equal(30, #rows)
+          assert.truthy(offset)
+        end
+
+        rows, err, offset = apis:find_page(nil, offset, 30)
+        assert.falsy(err)
+        assert.equal(10, #rows)
+        assert.falsy(offset)
+      end)
+      it("support a filter", function()
+        local rows, err, offset = apis:find_page {
+          name = "fixture_2"
+        }
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.falsy(offset)
+        assert.equal(1, #rows)
+        assert.equal("fixture_2", rows[1].name)
+      end)
+    end)
+
     describe("count()", function()
       setup(function()
+        factory:truncate_tables()
+
         for i = 1, 100 do
           local api, err = apis:insert {
             name = "fixture_"..i,

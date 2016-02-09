@@ -74,7 +74,7 @@ function DAO:find(tbl)
   return self.db:find(model)
 end
 
-function DAO:find_all(tbl)
+function DAO:find_all(tbl, page_offset, page_size)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
@@ -82,6 +82,16 @@ function DAO:find_all(tbl)
   end
 
   return self.db:find_all(self.table, tbl, self.schema)
+end
+
+function DAO:find_page(tbl, page_offset, page_size)
+  if page_size == nil then
+    page_size = 100
+  end
+
+  check_arg(page_size, 3, "number")
+
+  return self.db:find_page(self.table, tbl, page_offset, page_size, self.schema)
 end
 
 function DAO:count(tbl)

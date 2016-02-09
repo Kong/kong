@@ -109,17 +109,8 @@ local function get_select_args_custom(schema, tbl)
   return table.concat(where, " AND "), args
 end
 
-local function get_select_query(table_name, where)
-  local query = "SELECT * FROM "..table_name
-  if where ~= nil then
-    query = query.." WHERE "..where.." ALLOW FILTERING"
-  end
-
-  return query
-end
-
-local function get_count_query(table_name, where)
-  local query = "SELECT COUNT(*) FROM "..table_name
+local function get_select_query(table_name, where, select_clause)
+  local query = string.format("SELECT %s FROM %s", select_clause or "*", table_name)
   if where ~= nil then
     query = query.." WHERE "..where.." ALLOW FILTERING"
   end
@@ -149,7 +140,7 @@ local function check_unique_constraints(self, model)
   return errors
 end
 
-function CassandraDB:query(query, args)
+function CassandraDB:query(query, args, opts)
   CassandraDB.super.query(self, query, args)
 
   local conn_opts = self:_get_conn_options()
@@ -158,11 +149,13 @@ function CassandraDB:query(query, args)
     return nil, Errors.db(tostring(err))
   end
 
-  local res, err = session:execute(query, args)
+  local res, err = session:execute(query, args, opts)
   session:set_keep_alive()
   if err then
     return nil, Errors.db(tostring(err))
   end
+
+  res.type = nil
 
   return res
 end
@@ -215,13 +208,14 @@ function CassandraDB:find_all(table_name, tbl, schema)
   end
 
   local query = get_select_query(table_name, where)
-  local res_rows = {}
+  local res_rows, err = {}
+
   for rows, err in session:execute(query, args, {auto_paging = true}) do
     if err then
-      session:set_keep_alive()
-      return nil, Errors.db(tostring(err))
+      err = Errors.db(tostring(err))
+      res_rows = nil
+      break
     end
-
     for _, row in ipairs(rows) do
       table.insert(res_rows, row)
     end
@@ -229,7 +223,27 @@ function CassandraDB:find_all(table_name, tbl, schema)
 
   session:set_keep_alive()
 
-  return res_rows
+  return res_rows, err
+end
+
+function CassandraDB:find_page(table_name, tbl, paging_state, page_size, schema)
+  local where, args
+  if tbl ~= nil then
+    where, args = get_select_args_custom(schema, tbl)
+  end
+
+  local query = get_select_query(table_name, where)
+  local rows, err = self:query(query, args, {page_size = page_size, paging_state = paging_state})
+  if err then
+    return nil, err
+  elseif rows ~= nil then
+    local paging_state
+    if rows.meta and rows.meta.has_more_pages then
+      paging_state = rows.meta.paging_state
+    end
+    rows.meta = nil
+    return rows, nil, paging_state
+  end
 end
 
 function CassandraDB:count(table_name, tbl, schema)
@@ -238,7 +252,7 @@ function CassandraDB:count(table_name, tbl, schema)
     where, args = get_select_args_custom(schema, tbl)
   end
 
-  local query = get_count_query(table_name, where)
+  local query = get_select_query(table_name, where, "COUNT(*)")
   local res, err = self:query(query, args)
   if err then
     return nil, err

@@ -98,18 +98,16 @@ local function parse_error(err_str)
   return err
 end
 
-local function get_select_query(table, where)
-  local query = "SELECT * FROM "..table
+local function get_select_query(select_clause, table, where, offset, limit)
+  local query = string.format("SELECT %s FROM %s", select_clause, table)
   if where ~= nil then
     query = query.." WHERE "..where
   end
-  return query
-end
-
-local function get_count_query(table, where)
-  local query = "SELECT COUNT(*) FROM "..table
-  if where ~= nil then
-    query = query.." WHERE "..where
+  if limit ~= nil then
+    query = query.." LIMIT "..limit
+  end
+  if offset ~= nil and offset > 0 then
+    query = query.." OFFSET "..offset
   end
   return query
 end
@@ -136,7 +134,7 @@ function PostgresDB:query(...)
     return nil, parse_error(err)
   end
 
-  return res, nil
+  return res
 end
 
 function PostgresDB:insert(model)
@@ -155,7 +153,7 @@ end
 
 function PostgresDB:find(model)
   local where = get_select_args_primary_keys(model)
-  local query = get_select_query(model.__table, where)
+  local query = get_select_query("*", model.__table, where)
   local rows, err = self:query(query)
   if err then
     return nil, err
@@ -170,8 +168,36 @@ function PostgresDB:find_all(table_name, tbl)
     where = get_select_args_custom(tbl)
   end
 
-  local query = get_select_query(table_name, where)
+  local query = get_select_query("*", table_name, where)
   return self:query(query)
+end
+
+function PostgresDB:find_page(table_name, tbl, page, page_size)
+  if page == nil then
+    page = 1
+  end
+
+  local total_count, err = self:count(table_name, tbl)
+  if err then
+    return nil, err
+  end
+
+  local total_pages = math.ceil(total_count/page_size)
+  local offset = page_size * (page - 1)
+
+  local where
+  if tbl ~= nil then
+    where = get_select_args_custom(tbl)
+  end
+
+  local query = get_select_query("*", table_name, where, offset, page_size)
+  local rows, err = self:query(query)
+  if err then
+    return nil, err
+  end
+
+  local next_page = page + 1
+  return rows, nil, (next_page <= total_pages and next_page or nil)
 end
 
 function PostgresDB:count(table_name, tbl)
@@ -180,7 +206,7 @@ function PostgresDB:count(table_name, tbl)
     where = get_select_args_custom(tbl)
   end
 
-  local query = get_count_query(table_name, where)
+  local query = get_select_query("COUNT(*)", table_name, where, page_size, page_offset)
   local res, err =  self:query(query)
   if err then
     return nil, err
