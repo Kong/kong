@@ -280,12 +280,39 @@ nginx: |
         return 200 'User-agent: *\nDisallow: /';
       }
 
-      error_page 500 /500.html;
-      location = /500.html {
+      error_page 500 /500.json;
+      location = /500.json {
         internal;
         content_by_lua '
           local responses = require "kong.tools.responses"
           responses.send_HTTP_INTERNAL_SERVER_ERROR("An unexpected error occurred")
+        ';
+      }
+
+      error_page 502 /502.json;
+      location = /502.json {
+        internal;
+        content_by_lua '
+          local responses = require "kong.tools.responses"
+          responses.send_HTTP_BAD_GATEWAY("An invalid response was received from the upstream server")
+        ';
+      }
+
+      error_page 503 /503.json;
+      location = /503.json {
+        internal;
+        content_by_lua '
+          local responses = require "kong.tools.responses"
+          responses.send_HTTP_SERVICE_UNAVAILABLE("The upstream server is currently unavailable")
+        ';
+      }
+
+      error_page 504 /504.json;
+      location = /504.json {
+        internal;
+        content_by_lua '
+          local responses = require "kong.tools.responses"
+          responses.send_HTTP_GATEWAY_TIMEOUT("The upstream server is timing out")
         ';
       }
     }
