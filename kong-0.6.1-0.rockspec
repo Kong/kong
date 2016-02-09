@@ -89,6 +89,7 @@ build = {
     ["kong.core.reports"] = "kong/core/reports.lua",
     ["kong.core.cluster"] = "kong/core/cluster.lua",
     ["kong.core.events"] = "kong/core/events.lua",
+    ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
 
     ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",
     ["kong.dao.error"] = "kong/dao/error.lua",
