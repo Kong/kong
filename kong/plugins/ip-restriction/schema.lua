@@ -36,8 +36,5 @@ return {
     end
 
     return true
-  end,
-  marshall_event = function(self, t)
-    return {} -- We don't need any value in the cache event
   end
 }

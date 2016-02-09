@@ -28,8 +28,5 @@ return {
     -- Internal use
     _cert_der_cache = { type = "string" },
     _key_der_cache = { type = "string" }
-  },
-  marshall_event = function(self, t)
-    return {} -- We don't need any value in the cache event
-  end
+  }
 }

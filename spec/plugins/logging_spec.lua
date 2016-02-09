@@ -20,7 +20,8 @@ local function create_mock_bin()
   return res:sub(2, res:len() - 1)
 end
 
-local mock_bin = create_mock_bin()
+local mock_bin_http = create_mock_bin()
+local mock_bin_https = create_mock_bin()
 
 describe("Logging Plugins #ci", function()
 
@@ -39,8 +40,8 @@ describe("Logging Plugins #ci", function()
         {name = "tcp-log", config = {host = "127.0.0.1", port = TCP_PORT}, __api = 1},
         {name = "tcp-log", config = {host = "127.0.0.1", port = TCP_PORT}, __api = 2},
         {name = "udp-log", config = {host = "127.0.0.1", port = UDP_PORT}, __api = 3},
-        {name = "http-log", config = {http_endpoint = "http://mockbin.org/bin/"..mock_bin}, __api = 4},
-        {name = "http-log", config = {http_endpoint = "https://mockbin.org/bin/"..mock_bin}, __api = 5},
+        {name = "http-log", config = {http_endpoint = "http://mockbin.org/bin/"..mock_bin_http}, __api = 4},
+        {name = "http-log", config = {http_endpoint = "https://mockbin.org/bin/"..mock_bin_https}, __api = 5},
         {name = "file-log", config = {path = FILE_LOG_PATH }, __api = 6}
       }
     }
@@ -117,7 +118,7 @@ describe("Logging Plugins #ci", function()
     local res, status, body
     repeat
       assert.truthy(total_time <= 10) -- Fail after 10 seconds
-      res, status = http_client.get("http://mockbin.org/bin/"..mock_bin.."/log", nil, { accept = "application/json" })
+      res, status = http_client.get("http://mockbin.org/bin/"..mock_bin_http.."/log", nil, { accept = "application/json" })
       assert.equal(200, status)
       body = cjson.decode(res)
       local wait = 1
@@ -141,7 +142,7 @@ describe("Logging Plugins #ci", function()
     local res, status, body
     repeat
       assert.truthy(total_time <= 10) -- Fail after 10 seconds
-      res, status = http_client.get("http://mockbin.org/bin/"..mock_bin.."/log", nil, { accept = "application/json" })
+      res, status = http_client.get("http://mockbin.org/bin/"..mock_bin_https.."/log", nil, { accept = "application/json" })
       assert.equal(200, status)
       body = cjson.decode(res)
       local wait = 1
