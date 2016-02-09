@@ -45,12 +45,13 @@ local function escape_literal(val)
   error("don't know how to escape value: "..tostring(val))
 end
 
-local function escape_literals(tbl)
-  local buf = {}
-  for _, value in pairs(tbl) do
-    buf[#buf + 1] = escape_literal(value)
+local function get_insert_columns_and_args(tbl)
+  local cols, args = {}, {}
+  for col, value in pairs(tbl) do
+    cols[#cols + 1] = escape_identifier(col)
+    args[#args + 1] = escape_literal(value)
   end
-  return table.concat(buf, ", ")
+  return table.concat(cols, ", "), table.concat(args, ", ")
 end
 
 local function get_select_args_primary_keys(model)
@@ -59,9 +60,27 @@ local function get_select_args_primary_keys(model)
   local where = {}
 
   for _, col in ipairs(schema.primary_key) do
+    if model[col] ~= nil then
+      where[#where + 1] = string.format("%s = %s",
+                          escape_identifier(col),
+                          escape_literal(model[col]))
+    end
+  end
+
+  if next(where) == nil then
+    error("Missing PRIMARY KEY field", 3)
+  end
+
+  return table.concat(where, " AND ")
+end
+
+local function get_select_args_custom(tbl)
+  local where = {}
+
+  for col, value in pairs(tbl) do
     where[#where + 1] = string.format("%s = %s",
                         escape_identifier(col),
-                        escape_literal(model[col]))
+                        escape_literal(value))
   end
 
   return table.concat(where, " AND ")
@@ -70,13 +89,29 @@ end
 local function parse_error(err_str)
   local err
   if string.find(err_str, "Key .* already exists") then
-    local col, value = string.match(err_str, "%((%w+)%)=%((%w+)%)")
+    local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
     err = Errors.unique {[col] = value}
   else
     err = Errors.db(err)
   end
 
   return err
+end
+
+local function get_select_query(table, where)
+  local query = "SELECT * FROM "..table
+  if where ~= nil then
+    query = query.." WHERE "..where
+  end
+  return query
+end
+
+local function get_count_query(table, where)
+  local query = "SELECT COUNT(*) FROM "..table
+  if where ~= nil then
+    query = query.." WHERE "..where
+  end
+  return query
 end
 
 -- Querying
@@ -90,24 +125,27 @@ function PostgresDB:query(...)
     return nil, Errors.db(err)
   end
 
-  local res, err, a, b = pg:query(...)
+  local res, err = pg:query(...)
   if ngx and ngx.get_phase() ~= "init" then
     pg:keepalive()
+  else
+    pg:disconnect()
   end
 
   if res == nil then
     return nil, parse_error(err)
   end
 
-  return res
+  return res, nil
 end
 
 function PostgresDB:insert(model)
+  local cols, args = get_insert_columns_and_args(model)
   local query = string.format("INSERT INTO %s(%s) VALUES(%s) RETURNING *",
                               model.__table,
-                              self:_get_columns(model),
-                              escape_literals(model))
-  local res, err = self:query(query, model)
+                              cols,
+                              args)
+  local res, err = self:query(query)
   if err then
     return nil, err
   elseif #res > 0 then
@@ -115,18 +153,39 @@ function PostgresDB:insert(model)
   end
 end
 
-local function _select(self, table, where)
-  local query = string.format("SELECT * FROM %s WHERE %s", table, where)
+function PostgresDB:find(model)
+  local where = get_select_args_primary_keys(model)
+  local query = get_select_query(model.__table, where)
+  local rows, err = self:query(query)
+  if err then
+    return nil, err
+  elseif rows and #rows > 0 then
+    return rows[1]
+  end
+end
+
+function PostgresDB:find_all(table_name, tbl)
+  local where
+  if tbl ~= nil then
+    where = get_select_args_custom(tbl)
+  end
+
+  local query = get_select_query(table_name, where)
   return self:query(query)
 end
 
-function PostgresDB:find(model)
-  local where = get_select_args_primary_keys(model)
-  local rows, err = _select(self, model.__table, where)
+function PostgresDB:count(table_name, tbl)
+  local where
+  if tbl ~= nil then
+    where = get_select_args_custom(tbl)
+  end
+
+  local query = get_count_query(table_name, where)
+  local res, err =  self:query(query)
   if err then
     return nil, err
-  elseif #rows > 0 then
-    return rows[1]
+  elseif res and #res > 0 then
+    return res[1].count
   end
 end
 

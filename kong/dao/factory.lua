@@ -27,7 +27,7 @@ function Factory:new(db_type, options)
   for _, m_name in ipairs(CORE_MODELS) do
     local m_schema = require("kong.dao.schemas."..m_name)
     local model_mt = ModelFactory(m_schema)
-    local dao = DAO(_db, model_mt, m_schema.table)
+    local dao = DAO(_db, model_mt, m_schema)
     self.daos[m_name] = dao
   end
 end

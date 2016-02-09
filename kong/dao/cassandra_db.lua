@@ -62,31 +62,20 @@ local function serialize_arg(field, value)
 end
 
 -- (%s, %s) VALUES(?, ?) / {arg1, arg2}
-local function get_insert_args(model)
+local function get_insert_columns_and_args(model)
   local fields = model.__schema.fields
   local cols, bind_args, args = {}, {}, {}
 
   for col, field in pairs(fields) do
-    local arg = serialize_arg(field, model[col])
-    cols[#cols + 1] = col
-    args[#args + 1] = arg
-    bind_args[#bind_args + 1] = "?"
+    if model[col] ~= nil then
+      local arg = serialize_arg(field, model[col])
+      cols[#cols + 1] = col
+      args[#args + 1] = arg
+      bind_args[#bind_args + 1] = "?"
+    end
   end
 
   return table.concat(cols, ", "), table.concat(bind_args, ", "), args
-end
-
--- WHERE %s = ? AND %s = ? / {arg1, arg2}
-local function get_select_args(model)
-  local fields = model.__schema.fields
-  local where, args = {}, {}
-
-  for col, val in pairs(model) do
-    where[#where + 1] = col.." = ?"
-    args[#args + 1] = serialize_arg(fields[col], val)
-  end
-
-  return table.concat(where, " AND "), args
 end
 
 local function get_select_args_primary_keys(model)
@@ -95,46 +84,64 @@ local function get_select_args_primary_keys(model)
   local where, args = {}, {}
 
   for _, col in ipairs(schema.primary_key) do
-    where[#where + 1] = col.." = ?"
-    args[#args + 1] = serialize_arg(fields[col], model[col])
+    if model[col] ~= nil then
+      where[#where + 1] = col.." = ?"
+      args[#args + 1] = serialize_arg(fields[col], model[col])
+    end
+  end
+
+  if next(args) == nil then
+    error("Missing PRIMARY KEY field", 3)
   end
 
   return table.concat(where, " AND "), args
 end
 
-local function get_select_args_custom(model, columns)
-  local schema = model.__schema
+local function get_select_args_custom(schema, tbl)
   local fields = schema.fields
   local where, args = {}, {}
 
-  for _, col in ipairs(columns) do
+  for col, value in pairs(tbl) do
     where[#where + 1] = col.." = ?"
-    args[#args + 1] = serialize_arg(fields[col], model[col])
+    args[#args + 1] = serialize_arg(fields[col], value)
   end
 
   return table.concat(where, " AND "), args
 end
 
---- Querying
+local function get_select_query(table_name, where)
+  local query = "SELECT * FROM "..table_name
+  if where ~= nil then
+    query = query.." WHERE "..where.." ALLOW FILTERING"
+  end
 
-local function _select(self, table, where, args)
-  local query = string.format("SELECT * FROM %s WHERE %s ALLOW FILTERING",
-                              table, where)
-  return self:query(query, args)
+  return query
 end
+
+local function get_count_query(table_name, where)
+  local query = "SELECT COUNT(*) FROM "..table_name
+  if where ~= nil then
+    query = query.." WHERE "..where.." ALLOW FILTERING"
+  end
+
+  return query
+end
+
+--- Querying
 
 local function check_unique_constraints(self, model)
   local fields = model.__schema.fields
   local errors
 
   for col, field in pairs(fields) do
-    if field.unique then
-      local where, args = get_select_args_custom(model, {col})
-      local rows, err = _select(self, model.__table, where, args)
+    if field.unique and model[col] ~= nil then
+      local where, args = get_select_args_custom(model.__schema, {[col] = model[col]})
+      local query = get_select_query(model.__table, where)
+      local rows, err = self:query(query, args)
       if err then
         return nil, err
       elseif #rows > 0 then
-        errors = utils.add_error(errors, col, col.." already exists with value '"..model[col].."'")
+        errors = utils.add_error(errors, col, model[col])
       end
     end
   end
@@ -168,7 +175,7 @@ function CassandraDB:insert(model)
     return nil, Errors.unique(u_errors)
   end
 
-  local cols, binds, args = get_insert_args(model)
+  local cols, binds, args = get_insert_columns_and_args(model)
   local query = string.format("INSERT INTO %s(%s) VALUES(%s)",
                               model.__table, cols, binds)
   local err = select(2, self:query(query, args))
@@ -186,11 +193,57 @@ end
 
 function CassandraDB:find(model)
   local where, args = get_select_args_primary_keys(model)
-  local rows, err = _select(self, model.__table, where, args)
+  local query = get_select_query(model.__table, where)
+  local rows, err = self:query(query, args)
   if err then
     return nil, err
   elseif #rows > 0 then
     return rows[1]
+  end
+end
+
+function CassandraDB:find_all(table_name, tbl, schema)
+  local conn_opts = self:_get_conn_options()
+  local session, err = cassandra.spawn_session(conn_opts)
+  if err then
+    return nil, Errors.db(tostring(err))
+  end
+
+  local where, args
+  if tbl ~= nil then
+    where, args = get_select_args_custom(schema, tbl)
+  end
+
+  local query = get_select_query(table_name, where)
+  local res_rows = {}
+  for rows, err in session:execute(query, args, {auto_paging = true}) do
+    if err then
+      session:set_keep_alive()
+      return nil, Errors.db(tostring(err))
+    end
+
+    for _, row in ipairs(rows) do
+      table.insert(res_rows, row)
+    end
+  end
+
+  session:set_keep_alive()
+
+  return res_rows
+end
+
+function CassandraDB:count(table_name, tbl, schema)
+  local where, args
+  if tbl ~= nil then
+    where, args = get_select_args_custom(schema, tbl)
+  end
+
+  local query = get_count_query(table_name, where)
+  local res, err = self:query(query, args)
+  if err then
+    return nil, err
+  elseif res and #res > 0 then
+    return res[1].count
   end
 end
 

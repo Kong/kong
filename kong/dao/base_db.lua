@@ -26,14 +26,6 @@ function BaseDB:_get_conn_options()
   return utils.shallow_copy(self.options)
 end
 
-function BaseDB:_get_columns(tbl)
-  local buf = {}
-  for col in pairs(tbl) do
-    buf[#buf + 1] = col
-  end
-  return table.concat(buf, ", ")
-end
-
 function BaseDB:init_db()
 
 end
