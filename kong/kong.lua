@@ -73,10 +73,15 @@ local function load_node_plugins(configuration)
     if not loaded then
       error("The following plugin has been enabled in the configuration but it is not installed on the system: "..v)
     else
+      local loaded, plugin_schema_mod = utils.load_module_if_exists("kong.plugins."..v..".schema")
+      if not loaded then
+        error("Cannot find the schema for the following plugin: "..v)
+      end
       ngx.log(ngx.DEBUG, "Loading plugin: "..v)
       table_insert(sorted_plugins, {
         name = v,
-        handler = plugin_handler_mod()
+        handler = plugin_handler_mod(),
+        schema = plugin_schema_mod
       })
     end
 
@@ -154,7 +159,7 @@ end
 function Kong.ssl_certificate()
   core.certificate.before()
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "certificate") do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
   end
 end
@@ -162,7 +167,7 @@ end
 function Kong.access()
   core.access.before()
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "access") do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins, true) do
     plugin.handler:access(plugin_conf)
   end
 
@@ -172,7 +177,7 @@ end
 function Kong.header_filter()
   core.header_filter.before()
 
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "header_filter") do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     plugin.handler:header_filter(plugin_conf)
   end
 
@@ -180,7 +185,7 @@ function Kong.header_filter()
 end
 
 function Kong.body_filter()
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "body_filter") do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     plugin.handler:body_filter(plugin_conf)
   end
 
@@ -188,7 +193,7 @@ function Kong.body_filter()
 end
 
 function Kong.log()
-  for plugin, plugin_conf in plugins_iterator(loaded_plugins, "log") do
+  for plugin, plugin_conf in plugins_iterator(loaded_plugins) do
     plugin.handler:log(plugin_conf)
   end
 
