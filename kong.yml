@@ -280,13 +280,13 @@ nginx: |
         return 200 'User-agent: *\nDisallow: /';
       }
 
-      error_page 500 /500.html;
-      location = /500.html {
+      error_page 500 502 503 504 /50x;
+
+      location = /50x {
         internal;
-        content_by_lua '
-          local responses = require "kong.tools.responses"
-          responses.send_HTTP_INTERNAL_SERVER_ERROR("An unexpected error occurred")
-        ';
+        content_by_lua_block {
+          require("kong.core.error_handlers")(ngx)
+        }
       }
     }
 
