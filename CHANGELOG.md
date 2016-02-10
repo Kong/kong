@@ -1,5 +1,35 @@
 ## [Unreleased][unreleased]
 
+### Breaking changes
+
+Due to the NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747), OpenResty was bumped to `1.9.7.3` which is not backwards compatible, and thus requires changes to be made to the `nginx` property of Kong's configuration file. See the [0.7 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-07x) for instructions.
+
+However by upgrading the underlying OpenResty version, source installations do not have to patch the NGINX core and use the old `ssl-cert-by-lua` branch of ngx_lua anymore. This will make source installations much easier.
+
+### Added
+
+- Support for OpenResty `1.9.7.*`. This includes NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747). [#906](https://github.com/Mashape/kong/pull/906)
+- Plugins
+  - **New Datadog plugin**: Send metrics to Datadog statsd server. [#758](https://github.com/Mashape/kong/pull/758)
+  - **New Runscope plugin**: Monitor your APIs from Kong with Runscope. Courtesy of [@mansilladev](https://github.com/mansilladev). [#924](https://github.com/Mashape/kong/pull/924)
+  - Support for asynchronous incrementation of rate-limiting (request and response) counters. [#912](https://github.com/Mashape/kong/pull/912) [#953](https://github.com/Mashape/kong/pull/953)
+  - New option in rate-limiting (request and response) plugins to authorize requests when Cassandra appears to be down. [#912](https://github.com/Mashape/kong/pull/912)
+- Send 500 errors in the appropriate format. [#927](https://github.com/Mashape/kong/pull/927) [#970](https://github.com/Mashape/kong/pull/970)
+- CLI
+  - Perform a simple permission check on the NGINX working directory when starting, to prevent errors during execution. [#939](https://github.com/Mashape/kong/pull/939)
+
+### Fixed
+
+- Plugins
+  - OAuth2
+    - Better handling of `redirect_uri` (prevent the use of fragments and correctly handle querystrings). Courtesy of [@PGBI](https://github.com/PGBI). [#930](https://github.com/Mashape/kong/pull/930)
+    - Add `PUT` support to the `/auth2_tokens` route. [#897](https://github.com/Mashape/kong/pull/897)
+  - IP restriction: Fix an issue that could arise when restarting Kong. Now Kong does not need to be restarted for the ip-restriction configuration to take effect. [#782](https://github.com/Mashape/kong/pull/782) [#960](https://github.com/Mashape/kong/pull/960)
+  - SSL: Replace shelled out openssl calls with native `ngx.ssl` conversion utilities, which preserve the certificate chain. [#968](https://github.com/Mashape/kong/pull/968)
+- Avoid user warning on start when the user is not root. [#964](https://github.com/Mashape/kong/pull/964)
+- Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Mashape/kong/pull/975)
+- Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Mashape/kong/issues/978) [#980](https://github.com/Mashape/kong/pull/980)
+
 ## [0.6.1] - 2016/02/03
 
 This release contains tiny bug fixes that were especially annoying for complex Cassandra setups and power users of the Admin API!
