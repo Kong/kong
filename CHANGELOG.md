@@ -1,5 +1,36 @@
 ## [Unreleased][unreleased]
 
+### Breaking changes
+
+Due to the NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747), OpenResty was bumped to `1.9.7.3` which is not backwards compatible, and thus requires changes to be made to the `nginx` property of Kong's configuration file. See the [0.7 upgrade path](https://github.com/Mashape/kong/blob/master/UPGRADE.md#upgrade-to-07x) for instructions.
+
+However by upgrading the underlying OpenResty version, source installations do not have to patch the NGINX core and use the old `ssl-cert-by-lua` branch of ngx_lua anymore. This will make source installations much easier.
+
+### Added
+
+- Support for OpenResty `1.9.7.*`. This includes NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747). [#906](https://github.com/Mashape/kong/pull/906)
+- Plugins
+  - **New Runscope plugin**: Monitor your APIs from Kong with Runscope. Courtesy of [@mansilladev](https://github.com/mansilladev). [#924](https://github.com/Mashape/kong/pull/924)
+  - Datadog: New `response.size` metric. [#923](https://github.com/Mashape/kong/pull/923)
+  - Rate-Limiting and Response Rate-Limiting
+    - New `config.async` option to asynchronously increment counters to reduce latency at the cost of slighly reducing the accuracy. [#912](https://github.com/Mashape/kong/pull/912)
+    - New `config.continue_on_error` option to keep proxying requests in case the datastore is unreachable. rate-limiting operations will be disabled until the datastore is responsive again. [#953](https://github.com/Mashape/kong/pull/953)
+- CLI
+  - Perform a simple permission check on the NGINX working directory when starting, to prevent errors during execution. [#939](https://github.com/Mashape/kong/pull/939)
+- Send 50x errors with the appropriate format. [#927](https://github.com/Mashape/kong/pull/927) [#970](https://github.com/Mashape/kong/pull/970)
+
+### Fixed
+
+- Plugins
+  - OAuth2
+    - Better handling of `redirect_uri` (prevent the use of fragments and correctly handle querystrings). Courtesy of [@PGBI](https://github.com/PGBI). [#930](https://github.com/Mashape/kong/pull/930)
+    - Add `PUT` support to the `/auth2_tokens` route. [#897](https://github.com/Mashape/kong/pull/897)
+  - IP restriction: Fix an issue that could arise when restarting Kong. Now Kong does not need to be restarted for the ip-restriction configuration to take effect. [#782](https://github.com/Mashape/kong/pull/782) [#960](https://github.com/Mashape/kong/pull/960)
+  - SSL: Replace shelled out openssl calls with native `ngx.ssl` conversion utilities, which preserve the certificate chain. [#968](https://github.com/Mashape/kong/pull/968)
+- Avoid user warning on start when the user is not root. [#964](https://github.com/Mashape/kong/pull/964)
+- Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Mashape/kong/pull/975)
+- Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Mashape/kong/issues/978) [#980](https://github.com/Mashape/kong/pull/980)
+
 ## [0.6.1] - 2016/02/03
 
 This release contains tiny bug fixes that were especially annoying for complex Cassandra setups and power users of the Admin API!
@@ -57,7 +88,7 @@ Other additions include:
   - OAuth2
     - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
     - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Mashape/kong/pull/729)
-  - JWT:
+  - JWT
     - Support for base64 encoded secrets. [#838](https://github.com/Mashape/kong/pull/838) [#577](https://github.com/Mashape/kong/issues/577)
     - Support to configure the claim in which the key is given into the token (not `iss` only anymore). [#838](https://github.com/Mashape/kong/pull/838)
   - Request transformer
@@ -89,7 +120,7 @@ Other additions include:
   - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
   - Prevent the update of `created_at` fields. [#820](https://github.com/Mashape/kong/pull/820)
   - Better `request_path` validation for APIs. "/" is not considered a valid path anymore. [#881](https://github.com/Mashape/kong/pull/881)
-- Plugins:
+- Plugins
   - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Mashape/kong/issues/584)
   - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Mashape/kong/pull/667)
   - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Mashape/kong/issues/681)
