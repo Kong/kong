@@ -228,12 +228,14 @@ nginx: |
     lua_socket_log_errors off;
     {{lua_ssl_trusted_certificate}}
 
-    init_by_lua '
+    init_by_lua_block {
       kong = require "kong"
       kong.init()
-    ';
+    }
 
-    init_worker_by_lua 'kong.init_worker()';
+    init_worker_by_lua_block {
+      kong.init_worker()
+    }
 
     server {
       server_name _;
@@ -256,7 +258,9 @@ nginx: |
         set $upstream_url nil;
 
         # Authenticate the user and load the API info
-        access_by_lua 'kong.access()';
+        access_by_lua_block {
+          kong.access()
+        }
 
         # Proxy the request
         proxy_set_header X-Real-IP $remote_addr;
@@ -267,13 +271,19 @@ nginx: |
         proxy_pass_header Server;
 
         # Add additional response headers
-        header_filter_by_lua 'kong.header_filter()';
+        header_filter_by_lua_block {
+          kong.header_filter()
+        }
 
         # Change the response body
-        body_filter_by_lua 'kong.body_filter()';
+        body_filter_by_lua_block {
+          kong.body_filter()
+        }
 
         # Log the request
-        log_by_lua 'kong.log()';
+        log_by_lua_block {
+          kong.log()
+        }
       }
 
       location /robots.txt {
@@ -298,7 +308,7 @@ nginx: |
 
       location / {
         default_type application/json;
-        content_by_lua '
+        content_by_lua_block {
           ngx.header["Access-Control-Allow-Origin"] = "*"
           if ngx.req.get_method() == "OPTIONS" then
             ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
@@ -306,8 +316,8 @@ nginx: |
             ngx.exit(204)
           end
           local lapis = require "lapis"
-          lapis.serve("kong.api.app")
-        ';
+          lapis.serve "kong.api.app"
+        }
       }
 
       location /nginx_status {
