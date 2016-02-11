@@ -5,7 +5,6 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 local string_format = string.format
-local dao = dao
 local ngx_re_gmatch = ngx.re.gmatch
 
 
