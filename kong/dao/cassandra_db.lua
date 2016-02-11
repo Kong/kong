@@ -240,6 +240,7 @@ function CassandraDB:find_page(table_name, tbl, paging_state, page_size, schema)
       paging_state = rows.meta.paging_state
     end
     rows.meta = nil
+    rows.type = nil
     return rows, nil, paging_state
   end
 end
@@ -292,13 +293,28 @@ function CassandraDB:update(table_name, schema, primary_keys, values, nils, full
   where, args = get_where_primary_keys(primary_keys, schema.fields, args)
   local query = string.format("UPDATE %s SET %s WHERE %s",
                               table_name, sets, where)
-  --print(query)
-  --print(inspect(args))
   local res, err = self:query(query, args)
   if err then
     return nil, err
   elseif res and res.type == "VOID" then
     return self:find(table_name, schema, primary_keys)
+  end
+end
+
+function CassandraDB:delete(table_name, schema, primary_keys)
+  local row, err = self:find(table_name, schema, primary_keys)
+  if err or row == nil then
+    return false, err
+  end
+
+  local where, args = get_where_primary_keys(primary_keys, schema.fields)
+  local query = string.format("DELETE FROM %s WHERE %s",
+                              table_name, where)
+  local res, err =  self:query(query, args)
+  if err then
+    return nil, err
+  elseif res and res.type == "VOID" then
+    return true
   end
 end
 

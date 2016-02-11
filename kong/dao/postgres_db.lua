@@ -230,6 +230,18 @@ function PostgresDB:update(table_name, schema, primary_keys, values, nils, full)
   end
 end
 
+function PostgresDB:delete(table_name, schema, primary_keys)
+  local where = get_where_primary_keys(primary_keys)
+  local query = string.format("DELETE FROM %s WHERE %s",
+                              table_name, where)
+  local res, err = self:query(query)
+  if err then
+    return nil, err
+  end
+
+  return res and res.affected_rows == 1
+end
+
 -- Migrations
 
 function PostgresDB:queries(queries)

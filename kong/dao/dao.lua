@@ -87,6 +87,12 @@ function DAO:find_all(tbl, page_offset, page_size)
 end
 
 function DAO:find_page(tbl, page_offset, page_size)
+  if tbl ~= nil then
+    check_arg(tbl, 1, "table")
+    check_not_empty(tbl, 1)
+    check_subset_of_schema(tbl, 1, self.schema.fields)
+  end
+
   if page_size == nil then
     page_size = 100
   end
@@ -129,6 +135,19 @@ function DAO:update(tbl, full)
   elseif res then
     return setmetatable(res, nil)
   end
+end
+
+function DAO:delete(tbl)
+  check_arg(tbl, 1, "table")
+
+  local model = self.model_mt(tbl)
+
+  local primary_keys, values, nils = model:extract_keys()
+  if next(primary_keys) == nil then
+    error("Missing PRIMARY KEY field", 2)
+  end
+
+  return self.db:delete(self.table, self.schema, primary_keys)
 end
 
 return DAO
