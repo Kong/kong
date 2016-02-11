@@ -104,13 +104,6 @@ end
 
 local Kong = {}
 
-local function prepare_module_variables()
-  singletons.configuration   = singletons.configuration   or config_loader.load(os.getenv("KONG_CONF"))
-  singletons.events          = singletons.events          or Events()
-  singletons.dao             = singletons.dao             or dao_loader.load(singletons.configuration, true, singletons.events)
-  singletons.loaded_plugins  = singletons.loaded_plugins  or load_node_plugins(singletons.configuration)
-end
-
 --- Init Kong's environment in the Nginx master process.
 -- To be called by the lua-nginx-module `init_by_lua` directive.
 -- Execution:
@@ -124,7 +117,10 @@ end
 -- it return an nginx error and exit.
 function Kong.init()
   local status, err = pcall(function() 
-      prepare_module_variables()
+      singletons.configuration   = config_loader.load(os.getenv("KONG_CONF"))
+      singletons.events          = Events()
+      singletons.dao             = dao_loader.load(singletons.configuration, true, singletons.events)
+      singletons.loaded_plugins  = load_node_plugins(singletons.configuration)
 
       -- Attach core hooks
       attach_hooks(singletons.events, require("kong.core.hooks"))
@@ -144,8 +140,6 @@ function Kong.init()
 end
 
 function Kong.init_worker()
-  prepare_module_variables()
-
   core.init_worker.before()
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
