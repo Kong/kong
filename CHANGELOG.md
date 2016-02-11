@@ -10,13 +10,14 @@ However by upgrading the underlying OpenResty version, source installations do n
 
 - Support for OpenResty `1.9.7.*`. This includes NGINX security fixes (CVE-2016-0742, CVE-2016-0746, CVE-2016-0747). [#906](https://github.com/Mashape/kong/pull/906)
 - Plugins
-  - **New Datadog plugin**: Send metrics to Datadog statsd server. [#758](https://github.com/Mashape/kong/pull/758)
   - **New Runscope plugin**: Monitor your APIs from Kong with Runscope. Courtesy of [@mansilladev](https://github.com/mansilladev). [#924](https://github.com/Mashape/kong/pull/924)
-  - Support for asynchronous incrementation of rate-limiting (request and response) counters. [#912](https://github.com/Mashape/kong/pull/912) [#953](https://github.com/Mashape/kong/pull/953)
-  - New option in rate-limiting (request and response) plugins to authorize requests when Cassandra appears to be down. [#912](https://github.com/Mashape/kong/pull/912)
-- Send 500 errors in the appropriate format. [#927](https://github.com/Mashape/kong/pull/927) [#970](https://github.com/Mashape/kong/pull/970)
+  - Datadog: New `response.size` metric. [#923](https://github.com/Mashape/kong/pull/923)
+  - Rate-Limiting and Response Rate-Limiting
+    - New `config.async` option to asynchronously increment counters to reduce latency at the cost of slighly reducing the accuracy. [#912](https://github.com/Mashape/kong/pull/912)
+    - New `config.continue_on_error` option to keep proxying requests in case the datastore is unreachable. rate-limiting operations will be disabled until the datastore is responsive again. [#953](https://github.com/Mashape/kong/pull/953)
 - CLI
   - Perform a simple permission check on the NGINX working directory when starting, to prevent errors during execution. [#939](https://github.com/Mashape/kong/pull/939)
+- Send 50x errors with the appropriate format. [#927](https://github.com/Mashape/kong/pull/927) [#970](https://github.com/Mashape/kong/pull/970)
 
 ### Fixed
 
@@ -87,7 +88,7 @@ Other additions include:
   - OAuth2
     - Add support for `X-Forwarded-Proto` header. [#650](https://github.com/Mashape/kong/pull/650)
     - Expose a new `/oauth2_tokens` endpoint with the possibility to retrieve, update or delete OAuth 2.0 access tokens. [#729](https://github.com/Mashape/kong/pull/729)
-  - JWT:
+  - JWT
     - Support for base64 encoded secrets. [#838](https://github.com/Mashape/kong/pull/838) [#577](https://github.com/Mashape/kong/issues/577)
     - Support to configure the claim in which the key is given into the token (not `iss` only anymore). [#838](https://github.com/Mashape/kong/pull/838)
   - Request transformer
@@ -119,7 +120,7 @@ Other additions include:
   - In the responses, the `next` link is not being displayed anymore if there are no more entities to be returned. [#635](https://github.com/Mashape/kong/pull/635)
   - Prevent the update of `created_at` fields. [#820](https://github.com/Mashape/kong/pull/820)
   - Better `request_path` validation for APIs. "/" is not considered a valid path anymore. [#881](https://github.com/Mashape/kong/pull/881)
-- Plugins:
+- Plugins
   - Galileo: ensure the `mimeType` value is always a string in ALFs. [#584](https://github.com/Mashape/kong/issues/584)
   - JWT: allow to update JWT credentials using the PATCH method. It previously used to reply with `405 Method not allowed` because the PATCH method was not implemented. [#667](https://github.com/Mashape/kong/pull/667)
   - Rate limiting: fix a warning when many periods are configured. [#681](https://github.com/Mashape/kong/issues/681)
