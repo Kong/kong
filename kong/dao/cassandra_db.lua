@@ -61,43 +61,7 @@ local function serialize_arg(field, value)
   end
 end
 
--- (%s, %s) VALUES(?, ?) / {arg1, arg2}
-local function get_insert_columns_and_args(model)
-  local fields = model.__schema.fields
-  local cols, bind_args, args = {}, {}, {}
-
-  for col, field in pairs(fields) do
-    if model[col] ~= nil then
-      local arg = serialize_arg(field, model[col])
-      cols[#cols + 1] = col
-      args[#args + 1] = arg
-      bind_args[#bind_args + 1] = "?"
-    end
-  end
-
-  return table.concat(cols, ", "), table.concat(bind_args, ", "), args
-end
-
-local function get_select_args_primary_keys(model)
-  local schema = model.__schema
-  local fields = schema.fields
-  local where, args = {}, {}
-
-  for _, col in ipairs(schema.primary_key) do
-    if model[col] ~= nil then
-      where[#where + 1] = col.." = ?"
-      args[#args + 1] = serialize_arg(fields[col], model[col])
-    end
-  end
-
-  if next(args) == nil then
-    error("Missing PRIMARY KEY field", 3)
-  end
-
-  return table.concat(where, " AND "), args
-end
-
-local function get_select_args_primary_keys2(primary_keys, fields, args)
+local function get_where_primary_keys(primary_keys, fields, args)
   args = args or {}
   local where = {}
 
@@ -109,7 +73,7 @@ local function get_select_args_primary_keys2(primary_keys, fields, args)
   return table.concat(where, " AND "), args
 end
 
-local function get_select_args_custom(schema, tbl)
+local function get_where_custom(schema, tbl)
   local fields = schema.fields
   local where, args = {}, {}
 
@@ -132,14 +96,13 @@ end
 
 --- Querying
 
-local function check_unique_constraints(self, model, update)
-  local schema = model.__schema
+local function check_unique_constraints(self, table_name, schema, values, primary_keys, update)
   local errors
 
   for col, field in pairs(schema.fields) do
-    if field.unique and model[col] ~= nil then
-      local where, args = get_select_args_custom(model.__schema, {[col] = model[col]})
-      local query = get_select_query(model.__table, where)
+    if field.unique and values[col] ~= nil then
+      local where, args = get_where_custom(schema, {[col] = values[col]})
+      local query = get_select_query(table_name, where)
       local rows, err = self:query(query, args)
       if err then
         return err
@@ -147,18 +110,18 @@ local function check_unique_constraints(self, model, update)
         -- if in update, it's fine if the retrieved row is the same as the one updated
         if update then
           local same_row = true
-          for _, key in ipairs(schema.primary_key) do
-            if model[key] ~= rows[1][key] then
+          for col, val in pairs(primary_keys) do
+            if val ~= rows[1][col] then
               same_row = false
               break
             end
           end
 
           if not same_row then
-            errors = utils.add_error(errors, col, model[col])
+            errors = utils.add_error(errors, col, values[col])
           end
         else
-          errors = utils.add_error(errors, col, model[col])
+          errors = utils.add_error(errors, col, values[col])
         end
       end
     end
@@ -185,21 +148,33 @@ function CassandraDB:query(query, args, opts)
   return res
 end
 
-function CassandraDB:insert(model)
-  local err = check_unique_constraints(self, model)
+function CassandraDB:insert(table_name, schema, model)
+  local err = check_unique_constraints(self, table_name, schema, model)
   if err then
     return nil, err
   end
 
-  local cols, binds, args = get_insert_columns_and_args(model)
+  local cols, binds, args = {}, {}, {}
+  for col, value in pairs(model) do
+    local field = schema.fields[col]
+    cols[#cols + 1] = col
+    args[#args + 1] = serialize_arg(field, value)
+    binds[#binds + 1] = "?"
+  end
+
+  cols = table.concat(cols, ", ")
+  binds = table.concat(binds, ", ")
+
   local query = string.format("INSERT INTO %s(%s) VALUES(%s)",
-                              model.__table, cols, binds)
+                              table_name, cols, binds)
   local err = select(2, self:query(query, args))
   if err then
     return nil, err
   end
 
-  local row, err = self:find(model)
+  local primary_keys = model:extract_keys()
+
+  local row, err = self:find(table_name, schema, primary_keys)
   if err then
     return nil, err
   end
@@ -207,9 +182,9 @@ function CassandraDB:insert(model)
   return row
 end
 
-function CassandraDB:find(model)
-  local where, args = get_select_args_primary_keys(model)
-  local query = get_select_query(model.__table, where)
+function CassandraDB:find(table_name, schema, primary_keys)
+  local where, args = get_where_primary_keys(primary_keys, schema.fields)
+  local query = get_select_query(table_name, where)
   local rows, err = self:query(query, args)
   if err then
     return nil, err
@@ -227,11 +202,11 @@ function CassandraDB:find_all(table_name, tbl, schema)
 
   local where, args
   if tbl ~= nil then
-    where, args = get_select_args_custom(schema, tbl)
+    where, args = get_where_custom(schema, tbl)
   end
 
   local query = get_select_query(table_name, where)
-  local res_rows, err = {}
+  local res_rows, err = {}, nil
 
   for rows, err in session:execute(query, args, {auto_paging = true}) do
     if err then
@@ -252,7 +227,7 @@ end
 function CassandraDB:find_page(table_name, tbl, paging_state, page_size, schema)
   local where, args
   if tbl ~= nil then
-    where, args = get_select_args_custom(schema, tbl)
+    where, args = get_where_custom(schema, tbl)
   end
 
   local query = get_select_query(table_name, where)
@@ -272,7 +247,7 @@ end
 function CassandraDB:count(table_name, tbl, schema)
   local where, args
   if tbl ~= nil then
-    where, args = get_select_args_custom(schema, tbl)
+    where, args = get_where_custom(schema, tbl)
   end
 
   local query = get_select_query(table_name, where, "COUNT(*)")
@@ -284,22 +259,19 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(model, full)
+function CassandraDB:update(table_name, schema, primary_keys, values, nils, full)
   -- row exists, must check manually
-  local row, err = self:find(model)
+  local row, err = self:find(table_name, schema, primary_keys)
   if err or row == nil then
     return nil, err
   end
   -- must check unique constaints manually too
-  err = check_unique_constraints(self, model, true)
+  err = check_unique_constraints(self, table_name, schema, values, primary_keys, true)
   if err then
     return nil, err
   end
 
-  local schema = model.__schema
   local sets, args, where = {}, {}
-
-  local primary_keys, values, nils = model:extract_keys()
 
   for col, value in pairs(values) do
     local field = schema.fields[col]
@@ -317,16 +289,16 @@ function CassandraDB:update(model, full)
 
   sets = table.concat(sets, ", ")
 
-  where, args = get_select_args_primary_keys2(primary_keys, schema.fields, args)
+  where, args = get_where_primary_keys(primary_keys, schema.fields, args)
   local query = string.format("UPDATE %s SET %s WHERE %s",
-                              model.__table, sets, where)
+                              table_name, sets, where)
   --print(query)
   --print(inspect(args))
   local res, err = self:query(query, args)
   if err then
     return nil, err
   elseif res and res.type == "VOID" then
-    return self:find(model)
+    return self:find(table_name, schema, primary_keys)
   end
 end
 

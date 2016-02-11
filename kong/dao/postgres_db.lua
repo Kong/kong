@@ -45,30 +45,13 @@ local function escape_literal(val)
   error("don't know how to escape value: "..tostring(val))
 end
 
-local function get_insert_columns_and_args(tbl)
-  local cols, args = {}, {}
-  for col, value in pairs(tbl) do
-    cols[#cols + 1] = escape_identifier(col)
-    args[#args + 1] = escape_literal(value)
-  end
-  return table.concat(cols, ", "), table.concat(args, ", ")
-end
-
-local function get_where_primary_keys(model)
-  local schema = model.__schema
-  local fields = schema.fields
+local function get_where_primary_keys(primary_keys)
   local where = {}
 
-  for _, col in ipairs(schema.primary_key) do
-    if model[col] ~= nil then
+  for col, value in pairs(primary_keys) do
       where[#where + 1] = string.format("%s = %s",
                           escape_identifier(col),
-                          escape_literal(model[col]))
-    end
-  end
-
-  if next(where) == nil then
-    error("Missing PRIMARY KEY field", 3)
+                          escape_literal(value))
   end
 
   return table.concat(where, " AND ")
@@ -137,10 +120,18 @@ function PostgresDB:query(...)
   return res
 end
 
-function PostgresDB:insert(model)
-  local cols, args = get_insert_columns_and_args(model)
+function PostgresDB:insert(table_name, schema, values)
+  local cols, args = {}, {}
+  for col, value in pairs(values) do
+    cols[#cols + 1] = escape_identifier(col)
+    args[#args + 1] = escape_literal(value)
+  end
+
+  cols = table.concat(cols, ", ")
+  args = table.concat(args, ", ")
+
   local query = string.format("INSERT INTO %s(%s) VALUES(%s) RETURNING *",
-                              model.__table, cols, args)
+                              table_name, cols, args)
   local res, err = self:query(query)
   if err then
     return nil, err
@@ -149,9 +140,9 @@ function PostgresDB:insert(model)
   end
 end
 
-function PostgresDB:find(model)
-  local where = get_where_primary_keys(model)
-  local query = get_select_query("*", model.__table, where)
+function PostgresDB:find(table_name, schema, primary_keys)
+  local where = get_where_primary_keys(primary_keys)
+  local query = get_select_query("*", table_name, where)
   local rows, err = self:query(query)
   if err then
     return nil, err
@@ -204,7 +195,7 @@ function PostgresDB:count(table_name, tbl)
     where = get_where_custom(tbl)
   end
 
-  local query = get_select_query("COUNT(*)", table_name, where, page_size, page_offset)
+  local query = get_select_query("COUNT(*)", table_name, where)
   local res, err =  self:query(query)
   if err then
     return nil, err
@@ -213,27 +204,24 @@ function PostgresDB:count(table_name, tbl)
   end
 end
 
-function PostgresDB:update(model, full)
-  local fields = model.__schema.fields
+function PostgresDB:update(table_name, schema, primary_keys, values, nils, full)
   local args = {}
-  for col in pairs(fields) do
-    local value = model[col]
-    if value == nil and full then
-      value = "NULL"
-    elseif value ~= nil then
-      value = escape_literal(value)
-    end
+  for col, value in pairs(values) do
+    args[#args + 1] = string.format("%s = %s",
+                      escape_identifier(col), escape_literal(value))
+  end
 
-    if value ~= nil then
-      args[#args + 1] = string.format("%s = %s",
-                        escape_identifier(col), value)
+  if full then
+    for col in pairs(nils) do
+      args[#args + 1] = escape_identifier(col).." = NULL"
     end
   end
+
   args = table.concat(args, ", ")
 
-  local where = get_where_primary_keys(model)
+  local where = get_where_primary_keys(primary_keys)
   local query = string.format("UPDATE %s SET %s WHERE %s RETURNING *",
-                              model.__table, args, where)
+                              table_name, args, where)
   local res, err = self:query(query)
   if err then
     return nil, err

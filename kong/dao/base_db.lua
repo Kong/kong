@@ -1,9 +1,7 @@
 local inspect = require "inspect"
 
-local timestamp = require "kong.tools.timestamp"
 local Object = require "classic"
 local utils = require "kong.tools.utils"
-local uuid = require "lua_uuid"
 
 local function debug_log(self, ...)
   local prefix = "[DB:"..self.db_type.."]"

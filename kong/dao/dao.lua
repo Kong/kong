@@ -1,9 +1,6 @@
 local inspect = require "inspect"
 
-local uuid = require "lua_uuid"
-local utils = require "kong.tools.utils"
 local Object = require "classic"
-local Errors = require "kong.dao.errors"
 
 local function check_arg(arg, arg_n, exp_type)
   if type(arg) ~= exp_type then
@@ -64,14 +61,19 @@ function DAO:insert(tbl)
     end
   end
 
-  return self.db:insert(model)
+  return self.db:insert(self.table, self.schema, model)
 end
 
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)
-  return self.db:find(model)
+  local primary_keys = model:extract_keys()
+  if next(primary_keys) == nil then
+    error("Missing PRIMARY KEY field", 2)
+  end
+
+  return self.db:find(model.__table, model.__schema, primary_keys)
 end
 
 function DAO:find_all(tbl, page_offset, page_size)
@@ -116,7 +118,12 @@ function DAO:update(tbl, full)
     return nil, err
   end
 
-  local res, err = self.db:update(model, full)
+  local primary_keys, values, nils = model:extract_keys()
+  if next(primary_keys) == nil then
+    error("Missing PRIMARY KEY field", 2)
+  end
+
+  local res, err = self.db:update(self.table, self.schema, primary_keys, values, nils, full)
   if err then
     return nil, err
   elseif res then
