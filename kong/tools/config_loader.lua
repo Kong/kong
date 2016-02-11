@@ -150,7 +150,7 @@ function _M.load(config_path)
 
   local status,config = pcall(yaml.load,config_contents)
   if not status then
-    logger:error("configuration file is not well formed ,couldn't load the file")
+    logger:error("Could not parse configuration at: "..config_path)
     os.exit(1)
   end
 
