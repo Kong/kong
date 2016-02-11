@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local cluster_utils = require "kong.tools.cluster"
 local Serf = require "kong.cli.services.serf"
 local cache = require "kong.tools.database_cache"
@@ -26,7 +27,7 @@ local function async_autojoin(premature)
   -- If this node is the only node in the cluster, but other nodes are present, then try to join them
   -- This usually happens when two nodes are started very fast, and the first node didn't write his
   -- information into the datastore yet. When the second node starts up, there is nothing to join yet.
-  if not configuration.cluster["auto-join"] then return end
+  if not singletons.configuration.cluster["auto-join"] then return end
 
   local lock = resty_lock:new("cluster_autojoin_locks", {
     exptime = ASYNC_AUTOJOIN_INTERVAL - 0.001
@@ -35,11 +36,11 @@ local function async_autojoin(premature)
   if elapsed and elapsed == 0 then
     -- If the current member count on this node's cluster is 1, but there are more than 1 active nodes in 
     -- the DAO, then try to join them
-    local count, err = dao.nodes:count_by_keys()
+    local count, err = singletons.dao.nodes:count_by_keys()
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif count > 1 then
-      local serf = Serf(configuration)
+      local serf = Serf(singletons.configuration)
       local res, err = serf:invoke_signal("members", {["-format"] = "json"})
       if err then
         ngx.log(ngx.ERR, tostring(err))
@@ -48,7 +49,7 @@ local function async_autojoin(premature)
       local members = cjson.decode(res).members
       if #members < 2 then
         -- Trigger auto-join
-        local _, err = serf:_autojoin(cluster_utils.get_node_name(configuration))
+        local _, err = serf:_autojoin(cluster_utils.get_node_name(singletons.configuration))
         if err then
           ngx.log(ngx.ERR, tostring(err))
         end
@@ -78,13 +79,13 @@ local function send_keepalive(premature)
   local elapsed = lock:lock("keepalive")
   if elapsed and elapsed == 0 then
     -- Send keepalive
-    local node_name = cluster_utils.get_node_name(configuration)
-    local nodes, err = dao.nodes:find_by_keys({name = node_name})
+    local node_name = cluster_utils.get_node_name(singletons.configuration)
+    local nodes, err = singletons.dao.nodes:find_by_keys({name = node_name})
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif #nodes == 1 then
       local node = table.remove(nodes, 1)
-      local _, err = dao.nodes:update(node)
+      local _, err = singletons.dao.nodes:update(node)
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end

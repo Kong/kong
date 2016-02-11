@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
@@ -75,7 +76,7 @@ function JwtHandler:access(conf)
 
   -- Retrieve the secret
   local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), function()
-    local rows, err = dao.jwt_secrets:find_by_keys {key = jwt_secret_key}
+    local rows, err = singletons.dao.jwt_secrets:find_by_keys {key = jwt_secret_key}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     elseif #rows > 0 then
@@ -105,7 +106,7 @@ function JwtHandler:access(conf)
 
   -- Retrieve the consumer
   local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), function()
-    local consumer, err = dao.consumers:find_by_primary_key {id = jwt_secret.consumer_id}
+    local consumer, err = singletons.dao.consumers:find_by_primary_key {id = jwt_secret.consumer_id}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
