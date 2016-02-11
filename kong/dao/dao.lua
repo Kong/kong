@@ -104,4 +104,19 @@ function DAO:count(tbl)
   return self.db:count(self.table, tbl, self.schema)
 end
 
+function DAO:update(tbl, full)
+  check_arg(tbl, 1, "table")
+  if full ~= nil then
+    check_arg(full, 2, "boolean")
+  end
+
+  local model = self.model_mt(tbl)
+  local ok, err = model:validate {}
+  if not ok then
+    return nil, err
+  end
+
+  return self.db:update(model, full)
+end
+
 return DAO

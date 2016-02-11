@@ -2,19 +2,15 @@ local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 
 local POSSIBLE_TYPES = {
-  id = true,
   table = true,
   array = true,
   string = true,
   number = true,
   boolean = true,
-  url = true,
-  timestamp = true
+  url = true
 }
 
 local custom_types_validation = {
-  ["id"] = function(v) return type(v) == "string" end,
-  ["timestamp"] = function(v) return type(v) == "number" end,
   ["url"] = function(v)
     if v and type(v) == "string" then
       local parsed_url = require("socket.url").parse(v)
@@ -89,10 +85,6 @@ function _M.validate_entity(tbl, schema, options)
               t[column] = utils.deep_copy(v.default)
             end
           end
-          -- [INSERT_VALUE]
-          if v.dao_insert_value and type(options.dao_insert) == "function" then
-            t[column] = options.dao_insert(v)
-          end
         end
       end
 
@@ -109,10 +101,7 @@ function _M.validate_entity(tbl, schema, options)
           -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
           if type(t[column]) == "string" then
             t[column] = stringy.strip(t[column])
-            if v.type == "number" or v .type == "timestamp" then
-              t[column] = tonumber(t[column])
-              is_valid_type = t[column] ~= nil
-            elseif v.type == "boolean" then
+            if v.type == "boolean" then
               local bool = t[column]:lower()
               is_valid_type = bool == "true" or bool == "false"
               t[column] = bool == "true"

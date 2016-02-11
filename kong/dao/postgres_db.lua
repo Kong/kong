@@ -54,7 +54,7 @@ local function get_insert_columns_and_args(tbl)
   return table.concat(cols, ", "), table.concat(args, ", ")
 end
 
-local function get_select_args_primary_keys(model)
+local function get_where_primary_keys(model)
   local schema = model.__schema
   local fields = schema.fields
   local where = {}
@@ -74,7 +74,7 @@ local function get_select_args_primary_keys(model)
   return table.concat(where, " AND ")
 end
 
-local function get_select_args_custom(tbl)
+local function get_where_custom(tbl)
   local where = {}
 
   for col, value in pairs(tbl) do
@@ -92,7 +92,7 @@ local function parse_error(err_str)
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
     err = Errors.unique {[col] = value}
   else
-    err = Errors.db(err)
+    err = Errors.db(err_str)
   end
 
   return err
@@ -140,9 +140,7 @@ end
 function PostgresDB:insert(model)
   local cols, args = get_insert_columns_and_args(model)
   local query = string.format("INSERT INTO %s(%s) VALUES(%s) RETURNING *",
-                              model.__table,
-                              cols,
-                              args)
+                              model.__table, cols, args)
   local res, err = self:query(query)
   if err then
     return nil, err
@@ -152,7 +150,7 @@ function PostgresDB:insert(model)
 end
 
 function PostgresDB:find(model)
-  local where = get_select_args_primary_keys(model)
+  local where = get_where_primary_keys(model)
   local query = get_select_query("*", model.__table, where)
   local rows, err = self:query(query)
   if err then
@@ -165,7 +163,7 @@ end
 function PostgresDB:find_all(table_name, tbl)
   local where
   if tbl ~= nil then
-    where = get_select_args_custom(tbl)
+    where = get_where_custom(tbl)
   end
 
   local query = get_select_query("*", table_name, where)
@@ -187,7 +185,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size)
 
   local where
   if tbl ~= nil then
-    where = get_select_args_custom(tbl)
+    where = get_where_custom(tbl)
   end
 
   local query = get_select_query("*", table_name, where, offset, page_size)
@@ -203,7 +201,7 @@ end
 function PostgresDB:count(table_name, tbl)
   local where
   if tbl ~= nil then
-    where = get_select_args_custom(tbl)
+    where = get_where_custom(tbl)
   end
 
   local query = get_select_query("COUNT(*)", table_name, where, page_size, page_offset)
@@ -212,6 +210,35 @@ function PostgresDB:count(table_name, tbl)
     return nil, err
   elseif res and #res > 0 then
     return res[1].count
+  end
+end
+
+function PostgresDB:update(model, full)
+  local fields = model.__schema.fields
+  local args = {}
+  for col in pairs(fields) do
+    local value = model[col]
+    if value == nil and full then
+      value = "NULL"
+    elseif value ~= nil then
+      value = escape_literal(value)
+    end
+
+    if value ~= nil then
+      args[#args + 1] = string.format("%s = %s",
+                        escape_identifier(col), value)
+    end
+  end
+  args = table.concat(args, ", ")
+
+  local where = get_where_primary_keys(model)
+  local query = string.format("UPDATE %s SET %s WHERE %s RETURNING *",
+                              model.__table, args, where)
+  local res, err = self:query(query)
+  if err then
+    return nil, err
+  elseif res and res.affected_rows == 1 then
+    return res[1]
   end
 end
 

@@ -261,6 +261,10 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
+function CassandraDB:update(model)
+
+end
+
 -- Migrations
 
 function CassandraDB:queries(queries)

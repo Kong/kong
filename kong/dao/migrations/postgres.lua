@@ -37,9 +37,9 @@ return {
         name text UNIQUE,
         request_host text UNIQUE,
         request_path text UNIQUE,
-        strip_request_path boolean,
+        strip_request_path boolean NOT NULL,
         upstream_url text,
-        preserve_host boolean,
+        preserve_host boolean NOT NULL,
         created_at timestamp without time zone default (now() at time zone 'utc')
       );
       DO $$
@@ -63,7 +63,7 @@ return {
         api_id uuid REFERENCES apis(id) ON DELETE CASCADE,
         consumer_id uuid REFERENCES consumers(id) ON DELETE CASCADE,
         config jsonb,
-        enabled boolean,
+        enabled boolean NOT NULL,
         created_at timestamp without time zone default (now() at time zone 'utc'),
         PRIMARY KEY (id, name)
       );

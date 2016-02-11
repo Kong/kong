@@ -22,8 +22,8 @@ return setmetatable({}, {
       return Model_mt[key]
     end
 
-    function Model_mt:validate()
-      local ok, errors, self_check_err = validate(self, self.__schema)
+    function Model_mt:validate(opts)
+      local ok, errors, self_check_err = validate(self, self.__schema, opts)
       if errors ~= nil then
         return nil, Errors.schema(errors)
       elseif self_check_err ~= nil then

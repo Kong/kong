@@ -41,12 +41,14 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.is_table(api)
         assert.equal("httpbin", api.name)
+        assert.falsy(getmetatable(api))
       end)
       it("add DAO-inserted values", function()
         local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         assert.is_table(api)
         assert.truthy(api.id)
+        assert.False(api.preserve_host)
         if db_type == TYPES.CASSANDRA then
           assert.is_number(api.created_at)
         elseif db_type == TYPES.POSTGRES then
@@ -111,6 +113,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         local api, err = apis:find(api_fixture)
         assert.falsy(err)
         assert.same(api_fixture, api)
+        assert.falsy(getmetatable(api))
       end)
       it("handle invalid field", function()
         local api, err = apis:find {
@@ -128,7 +131,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       describe("errors", function()
-        it("select returns nothing if no primary key", function()
+        it("error if no primary key", function()
           assert.has_error(function()
             apis:find {name = "mockbin"}
           end, "Missing PRIMARY KEY field")
@@ -173,6 +176,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.is_table(apis)
         assert.equal(1, #apis)
         assert.equal("fixture1.com", apis[1].request_host)
+        assert.unique(apis)
       end)
       it("return matching rows bis", function()
         local apis, err = apis:find_all {
@@ -241,18 +245,28 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.equal(25, #rows)
       end)
       it("support page_offset", function()
+        local all_rows = {}
         local rows, err, offset
         for i = 1, 3 do
           rows, err, offset = apis:find_page(nil, offset, 30)
           assert.falsy(err)
           assert.equal(30, #rows)
           assert.truthy(offset)
+          for _, row in ipairs(rows) do
+            table.insert(all_rows, row)
+          end
         end
 
         rows, err, offset = apis:find_page(nil, offset, 30)
         assert.falsy(err)
         assert.equal(10, #rows)
         assert.falsy(offset)
+
+        for _, row in ipairs(rows) do
+          table.insert(all_rows, row)
+        end
+
+        assert.unique(all_rows)
       end)
       it("support a filter", function()
         local rows, err, offset = apis:find_page {
@@ -263,6 +277,13 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(offset)
         assert.equal(1, #rows)
         assert.equal("fixture_2", rows[1].name)
+      end)
+      describe("errors", function()
+        it("handle invalid arg", function()
+          assert.has_error(function()
+            apis:find_page(nil, nil, "")
+          end, "bad argument #3 to 'find_page' (number expected, got string)")
+        end)
       end)
     end)
 
@@ -300,5 +321,132 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.equal(0, count)
       end)
     end)
-  end)
-end)
+
+    describe("update()", function()
+      local api_fixture
+      before_each(function()
+        factory:truncate_tables()
+
+        local api, err = apis:insert {
+          name = "update-me",
+          request_host = "update-me.com",
+          request_path = "/update-me",
+          upstream_url = "http://update-me.com"
+        }
+        assert.falsy(err)
+        api_fixture = api
+      end)
+      after_each(function()
+        factory:truncate_tables()
+      end)
+
+      it("update by primary key", function()
+        api_fixture.name = "updated"
+
+        local api, err = apis:update(api_fixture)
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+        assert.falsy(getmetatable(api))
+
+        api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+      end)
+      it("update multiple fields", function()
+        api_fixture.name = "updated"
+        api_fixture.request_host = "updated.com"
+        api_fixture.upstream_url = "http://updated.com"
+
+        local api, err = apis:update(api_fixture)
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+
+        api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+      end)
+      it("return nil if no rows were affected", function()
+        local api, err = apis:update {
+          id = "6f204116-d052-11e5-bec8-5bc780ae6c56",
+          name = "inexistent",
+          request_host = "inexistent.com",
+          upstream_url = "http://inexistent.com"
+        }
+        assert.falsy(err)
+        assert.falsy(api)
+      end)
+      it("check constraints", function()
+        local api, err = apis:insert {
+          name = "i_am_unique",
+          request_host = "unique.com",
+          upstream_url = "http://unique.com"
+        }
+        assert.falsy(err)
+        assert.truthy(api)
+
+        api_fixture.name = "i_am_unique"
+
+        api, err = apis:update(api_fixture)
+        assert.truthy(err)
+        assert.falsy(api)
+        assert.equal("already exists with value 'i_am_unique'", err.err_tbl.name)
+      end)
+      it("check schema", function()
+        api_fixture.name = 1
+
+        local api, err = apis:update(api_fixture)
+        assert.truthy(err)
+        assert.falsy(api)
+        assert.True(err.schema)
+        assert.equal("name is not a string", err.err_tbl.name)
+      end)
+
+      describe("full", function()
+        it("unset nil fields", function()
+          api_fixture.request_path = nil
+
+          local api, err = apis:update(api_fixture, true)
+          assert.falsy(err)
+          assert.truthy(api)
+          assert.same(api_fixture, api)
+
+          api, err = apis:find(api_fixture)
+          assert.falsy(err)
+          assert.same(api_fixture, api)
+        end)
+        it("check schema", function()
+          api_fixture.request_path = nil
+          api_fixture.request_host = nil
+
+          local api, err = apis:update(api_fixture, true)
+          assert.truthy(err)
+          assert.falsy(api)
+          assert.True(err.schema)
+
+          api, err = apis:find(api_fixture)
+          assert.falsy(err)
+          assert.is_string(api.request_host)
+          assert.is_string(api.request_path)
+        end)
+      end)
+
+      describe("errors", function()
+        it("error if no primary key", function()
+          api_fixture.id = nil
+          assert.has_error(function()
+            apis:update(api_fixture)
+          end, "Missing PRIMARY KEY field")
+        end)
+        it("handle invalid arg", function()
+          assert.has_error(function()
+            apis:update "foo"
+          end, "bad argument #1 to 'update' (table expected, got string)")
+
+          assert.has_error(function()
+            apis:update({}, "")
+          end, "bad argument #2 to 'update' (boolean expected, got string)")
+        end)
+      end)
+    end)
+  end) -- describe
+end) -- for each
