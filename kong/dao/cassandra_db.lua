@@ -97,6 +97,18 @@ local function get_select_args_primary_keys(model)
   return table.concat(where, " AND "), args
 end
 
+local function get_select_args_primary_keys2(primary_keys, fields, args)
+  args = args or {}
+  local where = {}
+
+  for col, value in pairs(primary_keys) do
+    where[#where + 1] = col.." = ?"
+    args[#args + 1] = serialize_arg(fields[col], value)
+  end
+
+  return table.concat(where, " AND "), args
+end
+
 local function get_select_args_custom(schema, tbl)
   local fields = schema.fields
   local where, args = {}, {}
@@ -120,24 +132,39 @@ end
 
 --- Querying
 
-local function check_unique_constraints(self, model)
-  local fields = model.__schema.fields
+local function check_unique_constraints(self, model, update)
+  local schema = model.__schema
   local errors
 
-  for col, field in pairs(fields) do
+  for col, field in pairs(schema.fields) do
     if field.unique and model[col] ~= nil then
       local where, args = get_select_args_custom(model.__schema, {[col] = model[col]})
       local query = get_select_query(model.__table, where)
       local rows, err = self:query(query, args)
       if err then
-        return nil, err
+        return err
       elseif #rows > 0 then
-        errors = utils.add_error(errors, col, model[col])
+        -- if in update, it's fine if the retrieved row is the same as the one updated
+        if update then
+          local same_row = true
+          for _, key in ipairs(schema.primary_key) do
+            if model[key] ~= rows[1][key] then
+              same_row = false
+              break
+            end
+          end
+
+          if not same_row then
+            errors = utils.add_error(errors, col, model[col])
+          end
+        else
+          errors = utils.add_error(errors, col, model[col])
+        end
       end
     end
   end
 
-  return errors
+  return Errors.unique(errors)
 end
 
 function CassandraDB:query(query, args, opts)
@@ -155,17 +182,13 @@ function CassandraDB:query(query, args, opts)
     return nil, Errors.db(tostring(err))
   end
 
-  res.type = nil
-
   return res
 end
 
 function CassandraDB:insert(model)
-  local u_errors, err = check_unique_constraints(self, model)
+  local err = check_unique_constraints(self, model)
   if err then
     return nil, err
-  elseif u_errors ~= nil then
-    return nil, Errors.unique(u_errors)
   end
 
   local cols, binds, args = get_insert_columns_and_args(model)
@@ -261,8 +284,50 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(model)
+function CassandraDB:update(model, full)
+  -- row exists, must check manually
+  local row, err = self:find(model)
+  if err or row == nil then
+    return nil, err
+  end
+  -- must check unique constaints manually too
+  err = check_unique_constraints(self, model, true)
+  if err then
+    return nil, err
+  end
 
+  local schema = model.__schema
+  local sets, args, where = {}, {}
+
+  local primary_keys, values, nils = model:extract_keys()
+
+  for col, value in pairs(values) do
+    local field = schema.fields[col]
+    sets[#sets + 1] = col.." = ?"
+    args[#args + 1] = serialize_arg(field, value)
+  end
+
+  -- unset nil fields if asked for
+  if full then
+    for col in pairs(nils) do
+      sets[#sets + 1] = col.." = ?"
+      args[#args + 1] = cassandra.unset
+    end
+  end
+
+  sets = table.concat(sets, ", ")
+
+  where, args = get_select_args_primary_keys2(primary_keys, schema.fields, args)
+  local query = string.format("UPDATE %s SET %s WHERE %s",
+                              model.__table, sets, where)
+  --print(query)
+  --print(inspect(args))
+  local res, err = self:query(query, args)
+  if err then
+    return nil, err
+  elseif res and res.type == "VOID" then
+    return self:find(model)
+  end
 end
 
 -- Migrations

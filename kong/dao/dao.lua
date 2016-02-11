@@ -116,7 +116,12 @@ function DAO:update(tbl, full)
     return nil, err
   end
 
-  return self.db:update(model, full)
+  local res, err = self.db:update(model, full)
+  if err then
+    return nil, err
+  elseif res then
+    return setmetatable(res, nil)
+  end
 end
 
 return DAO

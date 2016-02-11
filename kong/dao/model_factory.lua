@@ -33,6 +33,24 @@ return setmetatable({}, {
       return ok
     end
 
+    function Model_mt:extract_keys()
+      local schema = self.__schema
+      local primary_keys, values, nils = {}, {}, {}
+      for _, key in pairs(schema.primary_key) do
+        primary_keys[key] = self[key]
+      end
+      for col in pairs(schema.fields) do
+        if primary_keys[col] == nil then
+          if self[col] ~= nil then
+            values[col] = self[col]
+          else
+            nils[col] = true
+          end
+        end
+      end
+      return primary_keys, values, nils
+    end
+
     return setmetatable({}, {
       __call = function(_, tbl)
         local m = {}

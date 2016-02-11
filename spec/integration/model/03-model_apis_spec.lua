@@ -366,6 +366,8 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.same(api_fixture, api)
       end)
       it("return nil if no rows were affected", function()
+        local inspect = require "inspect"
+        --print(inspect(apis))
         local api, err = apis:update {
           id = "6f204116-d052-11e5-bec8-5bc780ae6c56",
           name = "inexistent",
@@ -399,6 +401,22 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(api)
         assert.True(err.schema)
         assert.equal("name is not a string", err.err_tbl.name)
+        assert.falsy(getmetatable(api))
+      end)
+      it("does not unset nil fields", function()
+        api_fixture.request_path = nil
+
+        local api, err = apis:update(api_fixture)
+        assert.falsy(err)
+        assert.truthy(api)
+        assert.not_same(api_fixture, api)
+        assert.truthy(api.request_path)
+        assert.falsy(getmetatable(api))
+
+        api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.not_same(api_fixture, api)
+        assert.truthy(api.request_path)
       end)
 
       describe("full", function()
@@ -409,6 +427,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           assert.falsy(err)
           assert.truthy(api)
           assert.same(api_fixture, api)
+          assert.falsy(getmetatable(api))
 
           api, err = apis:find(api_fixture)
           assert.falsy(err)
@@ -422,6 +441,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           assert.truthy(err)
           assert.falsy(api)
           assert.True(err.schema)
+          assert.falsy(getmetatable(api))
 
           api, err = apis:find(api_fixture)
           assert.falsy(err)
