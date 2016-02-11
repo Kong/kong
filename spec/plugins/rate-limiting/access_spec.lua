@@ -21,13 +21,14 @@ describe("RateLimiting Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "tests-rate-limiting1", request_host = "test3.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting2", request_host = "test4.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting3", request_host = "test5.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting4", request_host = "test6.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting5", request_host = "test7.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting6", request_host = "test8.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-rate-limiting7", request_host = "test9.com", upstream_url = "http://mockbin.com" }
+        { request_host = "test3.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test4.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test5.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test6.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test7.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test8.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test9.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test10.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
@@ -42,7 +43,9 @@ describe("RateLimiting Plugin", function()
         { name = "rate-limiting", config = { minute = 33 }, __api = 4 },
         { name = "rate-limiting", config = { minute = 6, async = true }, __api = 5 },
         { name = "rate-limiting", config = { minute = 6, continue_on_error = false }, __api = 6 },
-        { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 7 }
+        { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 7 },
+        { name = "key-auth", config = {}, __api = 8 },
+        { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 8, __consumer = 1 }
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
@@ -108,9 +111,7 @@ describe("RateLimiting Plugin", function()
   end)
 
   describe("With authentication", function()
-
     describe("Default plugin", function()
-
       it("should get blocked if exceeding limit", function()
         -- Default rate-limiting plugin for this API says 6/minute
         local limit = 6
@@ -128,11 +129,9 @@ describe("RateLimiting Plugin", function()
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
       end)
-
     end)
 
     describe("Plugin customized for specific consumer", function()
-
       it("should get blocked if exceeding limit", function()
         -- This plugin says this consumer can make 4 requests/minute, not 6 like the default
         local limit = 8
@@ -149,8 +148,23 @@ describe("RateLimiting Plugin", function()
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
       end)
+      it("should get blocked if the only rate-limiting plugin existing is per consumer and not per API", function()
+        -- This plugin says this consumer can make 4 requests/minute, not 6 like the default
+        local limit = 6
 
-    end)
+        for i = 1, limit do
+          local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test10.com"})
+          assert.are.equal(200, status)
+          assert.are.same(tostring(limit), headers["x-ratelimit-limit-minute"])
+          assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining-minute"])
+        end
+
+        local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey122"}, {host = "test10.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(429, status)
+        assert.are.equal("API rate limit exceeded", body.message)
+      end)
+    end) 
   end)
 
   describe("Async increment", function()
@@ -231,4 +245,5 @@ describe("RateLimiting Plugin", function()
       assert.falsy(headers["x-ratelimit-remaining-minute"])
     end)
   end)
+
 end)
