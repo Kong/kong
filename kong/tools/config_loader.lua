@@ -148,7 +148,11 @@ function _M.load(config_path)
     os.exit(1)
   end
 
-  local config = yaml.load(config_contents)
+  local status,config = pcall(yaml.load,config_contents)
+  if not status then
+    logger:error("configuration file is not well formed ,couldn't load the file")
+    os.exit(1)
+  end
 
   local ok, errors = _M.validate(config)
   if not ok then
