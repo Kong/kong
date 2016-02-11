@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
@@ -23,7 +24,7 @@ function ACLHandler:access(conf)
 
   -- Retrieve ACL
   local acls = cache.get_or_set(cache.acls_key(consumer_id), function()
-    local results, err = dao.acls:find_by_keys({consumer_id = consumer_id})
+    local results, err = singletons.dao.acls:find_by_keys({consumer_id = consumer_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
