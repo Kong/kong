@@ -14,6 +14,10 @@ return {
         tagline = "Welcome to Kong",
         version = constants.VERSION,
         hostname = utils.get_hostname(),
+        timers = {
+          running = ngx.timer.running_count(),
+          pending = ngx.timer.pending_count()
+        },
         plugins = {
           available_on_server = configuration.plugins,
           enabled_in_cluster = db_plugins

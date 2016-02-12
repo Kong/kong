@@ -41,7 +41,6 @@ build = {
 
     ["classic"] = "kong/vendor/classic.lua",
     ["lapp"] = "kong/vendor/lapp.lua",
-    ["ngx.ssl"] = "kong/vendor/ssl.lua",
     ["resty_http"] = "kong/vendor/resty_http.lua",
 
     ["kong.constants"] = "kong/constants.lua",
@@ -90,6 +89,7 @@ build = {
     ["kong.core.reports"] = "kong/core/reports.lua",
     ["kong.core.cluster"] = "kong/core/cluster.lua",
     ["kong.core.events"] = "kong/core/events.lua",
+    ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
 
     ["kong.dao.cassandra.schema.migrations"] = "kong/dao/cassandra/schema/migrations.lua",
     ["kong.dao.error"] = "kong/dao/error.lua",
@@ -144,6 +144,7 @@ build = {
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
     ["kong.plugins.log-serializers.alf"] = "kong/plugins/log-serializers/alf.lua",
+    ["kong.plugins.log-serializers.runscope"] = "kong/plugins/log-serializers/runscope.lua",
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
     ["kong.plugins.tcp-log.schema"] = "kong/plugins/tcp-log/schema.lua",
@@ -156,6 +157,10 @@ build = {
 
     ["kong.plugins.file-log.handler"] = "kong/plugins/file-log/handler.lua",
     ["kong.plugins.file-log.schema"] = "kong/plugins/file-log/schema.lua",
+
+    ["kong.plugins.runscope.handler"] = "kong/plugins/runscope/handler.lua",
+    ["kong.plugins.runscope.schema"] = "kong/plugins/runscope/schema.lua",
+    ["kong.plugins.runscope.buffer"] = "kong/plugins/runscope/log.lua",
 
     ["kong.plugins.mashape-analytics.schema.migrations"] = "kong/plugins/mashape-analytics/schema/migrations.lua",
     ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
@@ -192,7 +197,6 @@ build = {
 
     ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
     ["kong.plugins.ssl.hooks"] = "kong/plugins/ssl/hooks.lua",
-    ["kong.plugins.ssl.ssl_util"] = "kong/plugins/ssl/ssl_util.lua",
     ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
 
     ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",

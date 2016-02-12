@@ -28,9 +28,8 @@ describe("Events", function()
         assert.equals(event_types.ENTITY_CREATED, message_t.type)
         assert.equals("apis", message_t.collection)
         assert.truthy(message_t.entity)
-        assert.equals(5, utils.table_size(message_t.entity))
-        assert.equals("test.com", message_t.entity.request_host)
-        assert.equals("http://mockbin.org", message_t.entity.upstream_url)
+        assert.equals(1, utils.table_size(message_t.entity))
+        assert.truthy(message_t.entity.id)
         
         received = true
       end
@@ -59,9 +58,8 @@ describe("Events", function()
         assert.equals(event_types.ENTITY_UPDATED, message_t.type)
         assert.equals("apis", message_t.collection)
         assert.truthy(message_t.entity)
-        assert.equals(5, utils.table_size(message_t.entity))
-        assert.equals("test.com", message_t.entity.request_host)
-        assert.equals("http://mockbin.org", message_t.entity.upstream_url)
+        assert.equals(1, utils.table_size(message_t.entity))
+        assert.truthy(message_t.entity.id)
 
         local new_entity = dao_factory.apis:find_by_primary_key({id=message_t.entity.id})
         assert.equals("http://mockbin2.org", new_entity.upstream_url)
@@ -97,9 +95,8 @@ describe("Events", function()
         assert.equals(event_types.ENTITY_DELETED, message_t.type)
         assert.equals("apis", message_t.collection)
         assert.truthy(message_t.entity)
-        assert.equals(5, utils.table_size(message_t.entity))
-        assert.equals("test.com", message_t.entity.request_host)
-        assert.equals("http://mockbin.org", message_t.entity.upstream_url)
+        assert.equals(1, utils.table_size(message_t.entity))
+        assert.truthy(message_t.entity.id)
 
         received = true
       end

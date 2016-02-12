@@ -1,8 +1,10 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
+local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
+local API_URL = spec_helper.API_URL
 
 describe("IP Restriction", function()
   setup(function()
@@ -31,6 +33,7 @@ describe("IP Restriction", function()
   teardown(function()
     spec_helper.stop_kong()
   end)
+
   it("should block request when IP is in blacklist", function()
     local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com"})
     local body = cjson.decode(response)
@@ -66,5 +69,32 @@ describe("IP Restriction", function()
     local body = cjson.decode(response)
     assert.equal(200, status)
     assert.equal("127.0.0.1", body.clientIPAddress)
+  end)
+  it("should keep working when configuration changes without needing a restart", function()
+    local response, status = http_client.get(STUB_GET_URL, {}, {host = "test2.com"})
+    local body = cjson.decode(response)
+    assert.equal(200, status)
+    assert.equal("127.0.0.1", body.clientIPAddress)
+
+    -- Adding 127.0.0.1 to the blacklist
+    local response, status = http_client.get(API_URL.."/apis/iprestriction2/plugins/")
+    assert.equal(200, status)
+    local plugin = cjson.decode(response).data[1]
+    assert.truthy(plugin)
+    local _, status = http_client.patch(API_URL.."/apis/iprestriction2/plugins/"..plugin.id, 
+                                              {["config.blacklist"]="127.0.0.1, 127.0.0.2"})
+    assert.equal(200, status)
+
+    -- Wait for event to propagate
+    local cache_key = cache.plugin_key(plugin.name, plugin.api_id, plugin.consumer_id)
+    repeat
+      local _, status = http_client.get(API_URL.."/cache/"..cache_key)
+    until(status ~= 200)
+
+    -- Now the request should not work
+    local response, status = http_client.get(STUB_GET_URL, {}, {host = "test2.com"})
+    local body = cjson.decode(response)
+    assert.equal(403, status)
+    assert.equal("Your IP address is not allowed", body.message)
   end)
 end)

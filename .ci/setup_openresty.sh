@@ -15,25 +15,9 @@ if [ ! "$(ls -A $OPENRESTY_DIR)" ]; then
   curl http://www.openssl.org/source/$OPENSSL_BASE.tar.gz | tar xz
 
   # Download OpenResty
-  OPENRESTY_BASE=ngx_openresty-$OPENRESTY
+  OPENRESTY_BASE=openresty-$OPENRESTY
   curl https://openresty.org/download/$OPENRESTY_BASE.tar.gz | tar xz
   pushd $OPENRESTY_BASE
-
-  # Download and apply nginx patch
-  pushd bundle/nginx-*
-  wget https://raw.githubusercontent.com/openresty/lua-nginx-module/ssl-cert-by-lua/patches/nginx-ssl-cert.patch --no-check-certificate
-  patch -p1 < nginx-ssl-cert.patch
-  popd
-
-  # Download `ssl-cert-by-lua` branch
-  pushd bundle
-  wget https://github.com/openresty/lua-nginx-module/archive/ssl-cert-by-lua.tar.gz -O ssl-cert-by-lua.tar.gz --no-check-certificate
-  tar xzf ssl-cert-by-lua.tar.gz
-  # Replace `ngx_lua-*` with `ssl-cert-by-lua` branch
-  NGX_LUA=`ls | grep ngx_lua-*`
-  rm -rf $NGX_LUA
-  mv lua-nginx-module-ssl-cert-by-lua $NGX_LUA
-  popd
 
   ./configure \
     --prefix=$OPENRESTY_DIR \

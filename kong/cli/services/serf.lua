@@ -9,7 +9,6 @@ local dao = require "kong.tools.dao_loader"
 local Serf = BaseService:extend()
 
 local SERVICE_NAME = "serf"
-local LOG_FILE = "/tmp/"..SERVICE_NAME..".log"
 local START_TIMEOUT = 10
 local EVENT_NAME = "kong"
 
@@ -17,9 +16,10 @@ function Serf:new(configuration)
   local nginx_working_dir = configuration.nginx_working_dir
 
   self._configuration = configuration
-  self._script_path = nginx_working_dir
+  local path_prefix = nginx_working_dir
                         ..(stringy.endswith(nginx_working_dir, "/") and "" or "/")
-                        .."serf_event.sh"
+  self._script_path = path_prefix.."serf_event.sh"
+  self._log_path = path_prefix.."serf.log"
   self._dao_factory = dao.load(self._configuration)
   Serf.super.new(self, SERVICE_NAME, nginx_working_dir)
 end
@@ -60,7 +60,7 @@ fi
 
 echo $PAYLOAD > /tmp/payload
 
-COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[['${PAYLOAD}']]"..[[, {["content-type"] = "application/json"})'
+COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[=['${PAYLOAD}']=]"..[[, {["content-type"] = "application/json"})'
 
 echo $COMMAND | ]]..luajit_path..[[
 ]]
@@ -148,19 +148,19 @@ function Serf:start()
     ["-advertise"] = self._configuration.cluster.advertise,
     ["-encrypt"] = self._configuration.cluster.encrypt,
     ["-log-level"] = "err",
-    ["-profile"] = "wan",
+    ["-profile"] = self._configuration.cluster.profile,
     ["-node"] = node_name,
     ["-event-handler"] = "member-join,member-leave,member-failed,member-update,member-reap,user:"..EVENT_NAME.."="..self._script_path
   }
 
   setmetatable(cmd_args, require "kong.tools.printable")
   local str_cmd_args = tostring(cmd_args)
-  local res, code = IO.os_execute("nohup "..cmd.." agent "..str_cmd_args.." > "..LOG_FILE.." 2>&1 & echo $! > "..self._pid_file_path)
+  local res, code = IO.os_execute("nohup "..cmd.." agent "..str_cmd_args.." > "..self._log_path.." 2>&1 & echo $! > "..self._pid_file_path)
   if code == 0 then
 
     -- Wait for process to start, with a timeout
     local start = os.time()
-    while not (IO.file_exists(LOG_FILE) and string.match(IO.read_file(LOG_FILE), "running") or (os.time() > start + START_TIMEOUT)) do
+    while not (IO.file_exists(self._log_path) and string.match(IO.read_file(self._log_path), "running") or (os.time() > start + START_TIMEOUT)) do
       -- Wait
     end
 
@@ -171,7 +171,7 @@ function Serf:start()
       return self:_autojoin(node_name)
     else
       -- Get last error message
-      local parts = stringy.split(IO.read_file(LOG_FILE), "\n")
+      local parts = stringy.split(IO.read_file(self._log_path), "\n")
       return nil, "Could not start serf: "..string.gsub(parts[#parts - 1], "==> ", "")
     end
   else
