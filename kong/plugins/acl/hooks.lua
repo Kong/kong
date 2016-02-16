@@ -14,6 +14,9 @@ local function invalidate(message_t)
 end
 
 return {
+  [events.TYPES.ENTITY_CREATED] = function(message_t)
+     invalidate(message_t)
+  end,
   [events.TYPES.ENTITY_UPDATED] = function(message_t)
     invalidate(message_t)
   end,
