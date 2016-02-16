@@ -1,8 +1,10 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local cjson = require "cjson"
+local cache = require "kong.tools.database_cache"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
+local API_URL = spec_helper.API_URL
 
 describe("ACL Plugin", function()
 
@@ -95,7 +97,6 @@ describe("ACL Plugin", function()
   end)
 
   describe("Multi lists", function()
-
     it("should work when in whitelist", function()
       local _, status = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "acl4.com"})
       assert.equal(200, status)
@@ -138,7 +139,47 @@ describe("ACL Plugin", function()
       assert.equal(403, status)
       assert.equal("You cannot consume this service", body.message)
     end)
+  end)
 
+  describe("Real-world usage", function()
+    it("should not fail", function()
+      -- Create consumer
+      local response, status = http_client.post(API_URL.."/consumers/", {username="acl_consumer"})
+      assert.equals(201, status)
+      local consumer_id = cjson.decode(response).id
+      assert.truthy(consumer_id)
+
+      -- Create key for consumer
+      local _, status = http_client.post(API_URL.."/consumers/acl_consumer/key-auth/", {key="secret123"})
+      assert.equals(201, status)
+
+      for i=1,10 do
+        -- Create API
+        local _, status = http_client.post(API_URL.."/apis/", {name = "acl_test"..i, request_host="acl_test"..i..".com", upstream_url="http://mockbin.com"})
+        assert.equals(201, status)
+
+        -- Add the ACL plugin to the new API with the new group
+        local _, status = http_client.post(API_URL.."/apis/acl_test"..i.."/plugins/", {name="acl", ["config.whitelist"] = "admin"..i})
+        assert.equals(201, status)
+
+        -- Add key-authentication to API
+        local _, status = http_client.post(API_URL.."/apis/acl_test"..i.."/plugins/", {name="key-auth"})
+        assert.equals(201, status)
+
+        -- Add a new group the the consumer
+        local _, status = http_client.post(API_URL.."/consumers/acl_consumer/acls/", {group="admin"..i})
+        assert.equals(201, status)
+
+        -- Wait for cache to be invalidate
+        repeat
+          local _, status = http_client.get(API_URL.."/cache/"..cache.acls_key(consumer_id))
+        until(status ~= 200)
+
+        -- Make the request, and it should work
+        local _, status = http_client.get(STUB_GET_URL, {apikey = "secret123"}, {host = "acl_test"..i..".com"})
+        assert.equal(200, status)
+      end
+    end)
   end)
 
 end)
