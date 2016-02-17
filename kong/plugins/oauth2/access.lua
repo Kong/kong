@@ -393,7 +393,7 @@ function _M.execute(conf)
 
   local accessToken = parse_access_token(conf);
   if not accessToken then
-    return responses.send_HTTP_UNAUTHORIZED({}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 
   local token = retrieve_token(accessToken)
