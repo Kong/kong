@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
@@ -24,7 +23,7 @@ local function invalidate(message_t)
 end
 
 local function get_cluster_members()
-  local serf = require("kong.cli.services.serf")(singletons.configuration)
+  local serf = require("kong.cli.services.serf")(configuration)
   local res, err = serf:invoke_signal("members", { ["-format"] = "json" })
   if err then
     ngx.log(ngx.ERR, err)
@@ -61,7 +60,7 @@ end
 local function member_leave(message_t)
   local member = parse_member(message_t.entity)
 
-  local _, err = singletons.dao.nodes:delete({
+  local _, err = dao.nodes:delete({
     name = member.name
   })
   if err then
@@ -72,7 +71,7 @@ end
 local function member_update(message_t, is_reap)
   local member = parse_member(message_t.entity)
 
-  local nodes, err = singletons.dao.nodes:find_by_keys({
+  local nodes, err = dao.nodes:find_by_keys({
     name = member.name
   })
   if err then
@@ -83,14 +82,14 @@ local function member_update(message_t, is_reap)
   if #nodes == 1 then
     local node = table.remove(nodes, 1)
     node.cluster_listening_address = member.cluster_listening_address
-    local _, err = singletons.dao.nodes:update(node)
+    local _, err = dao.nodes:update(node)
     if err then
       ngx.log(ngx.ERR, tostring(err))
       return
     end
   end
 
-  if is_reap and singletons.dao.nodes:count_by_keys({}) > 1 then
+  if is_reap and dao.nodes:count_by_keys({}) > 1 then
     -- Purge the cache when a failed node re-appears 
     cache.delete_all()
   end
@@ -99,7 +98,7 @@ end
 local function member_join(message_t)
   local member = parse_member(message_t.entity)
 
-  local nodes, err = singletons.dao.nodes:find_by_keys({
+  local nodes, err = dao.nodes:find_by_keys({
     name = member.name
   })
   if err then
@@ -108,7 +107,7 @@ local function member_join(message_t)
   end
 
   if #nodes == 0 then -- Insert
-    local _, err = singletons.dao.nodes:insert({
+    local _, err = dao.nodes:insert({
       name = stringy.strip(member.name),
       cluster_listening_address = stringy.strip(member.cluster_listening_address)
     })
@@ -123,7 +122,7 @@ local function member_join(message_t)
   end
 
   -- Purge the cache when a new node joins
-  if singletons.dao.nodes:count_by_keys({}) > 1 then -- If it's only one node, no need to delete the cache
+  if dao.nodes:count_by_keys({}) > 1 then -- If it's only one node, no need to delete the cache
     cache.delete_all()
   end
 end
@@ -139,7 +138,7 @@ return {
     invalidate(message_t)
   end,
   [events.TYPES.CLUSTER_PROPAGATE] = function(message_t)
-    local serf = Serf(singletons.configuration)
+    local serf = Serf(configuration)
     local ok, err = serf:event(message_t)
     if not ok then
       ngx.log(ngx.ERR, err)

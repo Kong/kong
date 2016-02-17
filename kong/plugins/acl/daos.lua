@@ -1,10 +1,9 @@
-local singletons = require "kong.singletons"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local function check_unique(group, acl)
   -- If dao required to make this work in integration tests when adding fixtures
-  if singletons.dao and acl.consumer_id and group then
-    local res, err = singletons.dao.acls:find_by_keys({consumer_id=acl.consumer_id, group=group})
+  if dao and acl.consumer_id and group then
+    local res, err = dao.acls:find_by_keys({consumer_id=acl.consumer_id, group=group})
     if not err and #res > 0 then
       return false, "ACL group already exist for this consumer"
     elseif not err then

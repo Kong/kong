@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local BaseDao = require "kong.dao.cassandra.base_dao"
 local crypto = require "kong.plugins.basic-auth.crypto"
 
@@ -7,8 +6,8 @@ local function encrypt_password(password, credential)
   -- This causes a bug when a new password is effectively equal the to previous digest
   -- TODO: Better handle this scenario
   if credential.id then
-    if singletons.dao then -- Check to make this work with tests
-      local result = singletons.dao.basicauth_credentials:find_by_primary_key({id=credential.id})
+    if dao then -- Check to make this work with tests
+      local result = dao.basicauth_credentials:find_by_primary_key({id=credential.id})
       if result and result.password == credential.password then
         return true
       end

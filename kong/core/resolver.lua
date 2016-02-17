@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local url = require "socket.url"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
@@ -64,7 +63,7 @@ end
 -- Load all APIs in memory.
 -- Sort the data for faster lookup: dictionary per request_host and an array of wildcard request_host.
 function _M.load_apis_in_memory()
-  local apis, err = singletons.dao.apis:find_all()
+  local apis, err = dao.apis:find_all()
   if err then
     return nil, err
   end

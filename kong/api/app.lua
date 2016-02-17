@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local lapis = require "lapis"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
@@ -131,7 +130,7 @@ local function attach_routes(routes)
 
     for k, v in pairs(methods) do
       local method = function(self)
-        return v(self, singletons.dao, handler_helpers)
+        return v(self, dao, handler_helpers)
       end
       methods[k] = parse_params(method)
     end
@@ -147,8 +146,8 @@ for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster" }
 end
 
 -- Loading plugins routes
-if singletons.configuration and singletons.configuration.plugins then
-  for _, v in ipairs(singletons.configuration.plugins) do
+if configuration and configuration.plugins then
+  for _, v in ipairs(configuration.plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)

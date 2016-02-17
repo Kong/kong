@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 
@@ -10,7 +9,7 @@ local function find_api(hosts)
     local sanitized_host = stringy.split(host, ":")[1]
 
     retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host), function()
-      local apis, err = singletons.dao.apis:find_by_keys {request_host = sanitized_host}
+      local apis, err = dao.apis:find_by_keys {request_host = sanitized_host}
       if err then
         return nil, err
       elseif apis and #apis == 1 then
