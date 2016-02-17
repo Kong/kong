@@ -59,10 +59,10 @@ return {
 
       CREATE TABLE IF NOT EXISTS plugins(
         id uuid,
-        name text,
+        name text NOT NULL,
         api_id uuid REFERENCES apis(id) ON DELETE CASCADE,
         consumer_id uuid REFERENCES consumers(id) ON DELETE CASCADE,
-        config jsonb,
+        config json NOT NULL,
         enabled boolean NOT NULL,
         created_at timestamp without time zone default (now() at time zone 'utc'),
         PRIMARY KEY (id, name)

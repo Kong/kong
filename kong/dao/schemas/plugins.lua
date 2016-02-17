@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local Errors = require "kong.dao.errors"
 local DaoError = require "kong.dao.error"
 local constants = require "kong.constants"
 
@@ -16,7 +17,7 @@ end
 return {
   name = "Plugin configuration",
   table = "plugins",
-  primary_key = {"id"},
+  primary_key = {"id", "name"},
   clustering_key = {"name"},
   fields = {
     id = {
@@ -38,7 +39,7 @@ return {
       type = "id",
       foreign = "consumers:id",
       queryable = true,
-      default = constants.DATABASE_NULL_ID
+      --default = constants.DATABASE_NULL_ID
     },
     name = {
       type = "string",
@@ -92,18 +93,15 @@ return {
     end
 
     if not is_update then
-      local res, err = dao.plugins:find_by_keys({
+      local rows, err = dao:filter {
         name = plugin_t.name,
         api_id = plugin_t.api_id,
         consumer_id = plugin_t.consumer_id
-      })
-
+      }
       if err then
-        return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
-      end
-
-      if res and #res > 0 then
-        return false, DaoError("Plugin configuration already exists", constants.DATABASE_ERROR_TYPES.UNIQUE)
+        return false, err
+      elseif #rows > 0 then
+        return false, Errors.unique "Plugin configuration already exists"
       end
     end
   end

@@ -34,12 +34,15 @@ local api_tbl = {
 }
 
 utils.for_each_dao(function(db_type, default_options, TYPES)
-  describe("Model (APIs) with DB: #"..db_type, function()
+  describe("Model (CRUD) with DB: #"..db_type, function()
     local factory, apis
     setup(function()
       factory = Factory(db_type, default_options)
       apis = factory.apis
       assert(factory:run_migrations())
+    end)
+    teardown(function()
+      factory:truncate_tables()
     end)
 
     describe("insert()", function()
@@ -389,12 +392,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       before_each(function()
         factory:truncate_tables()
 
-        local api, err = apis:insert {
-          name = "update-me",
-          request_host = "update-me.com",
-          request_path = "/update-me",
-          upstream_url = "http://update-me.com"
-        }
+        local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         api_fixture = api
       end)
@@ -537,12 +535,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       before_each(function()
         factory:truncate_tables()
 
-        local api, err = apis:insert {
-          name = "update-me",
-          request_host = "update-me.com",
-          request_path = "/update-me",
-          upstream_url = "http://update-me.com"
-        }
+        local api, err = apis:insert(api_tbl)
         assert.falsy(err)
         api_fixture = api
       end)

@@ -36,18 +36,19 @@ end
 
 local DAO = Object:extend()
 
-function DAO:new(db, model_mt, schema)
+function DAO:new(db, model_mt, schema, constraints)
   self.db = db
   self.model_mt = model_mt
   self.schema = schema
   self.table = schema.table
+  self.constraints = constraints
 end
 
 function DAO:insert(tbl)
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)
-  local ok, err = model:validate()
+  local ok, err = model:validate {dao = self}
   if not ok then
     return nil, err
   end
@@ -61,7 +62,7 @@ function DAO:insert(tbl)
     end
   end
 
-  return self.db:insert(self.table, self.schema, model)
+  return self.db:insert(self.table, self.schema, model, self.constraints)
 end
 
 function DAO:find(tbl)
@@ -73,7 +74,16 @@ function DAO:find(tbl)
     error("Missing PRIMARY KEY field", 2)
   end
 
-  return self.db:find(model.__table, model.__schema, primary_keys)
+  return self.db:find(self.table, self.schema, primary_keys)
+end
+
+function DAO:filter(tbl)
+  check_arg(tbl, 1, "table")
+
+  local model = self.model_mt(tbl)
+  local primary_keys, values = model:extract_keys()
+
+  return self.db:find_all(self.table, values, self.schema)
 end
 
 function DAO:find_all(tbl, page_offset, page_size)
@@ -119,7 +129,7 @@ function DAO:update(tbl, full)
   end
 
   local model = self.model_mt(tbl)
-  local ok, err = model:validate {}
+  local ok, err = model:validate {dao = self}
   if not ok then
     return nil, err
   end
@@ -129,7 +139,7 @@ function DAO:update(tbl, full)
     error("Missing PRIMARY KEY field", 2)
   end
 
-  local res, err = self.db:update(self.table, self.schema, primary_keys, values, nils, full)
+  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full)
   if err then
     return nil, err
   elseif res then

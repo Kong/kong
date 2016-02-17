@@ -6,7 +6,7 @@ local tostring = tostring
 local type = type
 
 local error_mt = {}
-error_mt.__index = error_mt
+--error_mt.__index = error_mt
 
 function error_mt:__tostring()
   return tostring(self.message)
@@ -25,6 +25,13 @@ local ERRORS = {
     local ret = {}
     for k, v in pairs(tbl) do
       ret[k] = "already exists with value '"..v.."'"
+    end
+    return ret
+  end,
+  [constants.DB_ERROR_TYPES.FOREIGN] = function(tbl)
+    local ret = {}
+    for k, v in pairs(tbl) do
+      ret[k] = "does not exist with value '"..v.."'"
     end
     return ret
   end

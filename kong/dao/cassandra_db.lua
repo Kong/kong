@@ -43,10 +43,6 @@ function CassandraDB:new(options)
   CassandraDB.super.new(self, "cassandra", conn_opts)
 end
 
-function CassandraDB:init_db()
-
-end
-
 -- Formatting
 
 local function serialize_arg(field, value)
@@ -56,26 +52,29 @@ local function serialize_arg(field, value)
     return cassandra.uuid(value)
   elseif field.type == "timestamp" then
     return cassandra.timestamp(value)
+  elseif field.type == "table" then
+    local json = require "cjson"
+    return json.encode(value)
   else
     return value
   end
 end
 
-local function get_where_primary_keys(primary_keys, fields, args)
-  args = args or {}
-  local where = {}
-
-  for col, value in pairs(primary_keys) do
-    where[#where + 1] = col.." = ?"
-    args[#args + 1] = serialize_arg(fields[col], value)
+local function deserialize_rows(rows, schema)
+  local json = require "cjson"
+  for i, row in ipairs(rows) do
+    for col, value in pairs(row) do
+      if schema.fields[col].type == "table" then
+        rows[i][col] = json.decode(value)
+      end
+    end
   end
-
-  return table.concat(where, " AND "), args
 end
 
-local function get_where_custom(schema, tbl)
+local function get_where(schema, tbl, args)
+  args = args or {}
   local fields = schema.fields
-  local where, args = {}, {}
+  local where = {}
 
   for col, value in pairs(tbl) do
     where[#where + 1] = col.." = ?"
@@ -96,14 +95,15 @@ end
 
 --- Querying
 
-local function check_unique_constraints(self, table_name, schema, values, primary_keys, update)
+local function check_unique_constraints(self, table_name, constraints, values, primary_keys, update)
   local errors
 
-  for col, field in pairs(schema.fields) do
-    if field.unique and values[col] ~= nil then
-      local where, args = get_where_custom(schema, {[col] = values[col]})
+  for col, constraint in pairs(constraints.unique) do
+    -- Only check constraints if value is non-null
+    if values[col] ~= nil then
+      local where, args = get_where(constraint.schema, {[col] = values[col]})
       local query = get_select_query(table_name, where)
-      local rows, err = self:query(query, args)
+      local rows, err = self:query(query, args, nil, constraint.schema)
       if err then
         return err
       elseif #rows > 0 then
@@ -130,7 +130,25 @@ local function check_unique_constraints(self, table_name, schema, values, primar
   return Errors.unique(errors)
 end
 
-function CassandraDB:query(query, args, opts)
+local function check_foreign_constaints(self, values, constraints)
+  local errors
+
+  for col, constraint in pairs(constraints.foreign) do
+    -- Only check foreign keys if value is non-null, if must not be null, field should be required
+    if values[col] ~= nil then
+      local res, err = self:find(constraint.table, constraint.schema, {[constraint.col] = values[col]})
+      if err then
+        return err
+      elseif res == nil then
+        errors = utils.add_error(errors, col, values[col])
+      end
+    end
+  end
+
+  return Errors.foreign(errors)
+end
+
+function CassandraDB:query(query, args, opts, schema)
   CassandraDB.super.query(self, query, args)
 
   local conn_opts = self:_get_conn_options()
@@ -145,11 +163,20 @@ function CassandraDB:query(query, args, opts)
     return nil, Errors.db(tostring(err))
   end
 
+  if schema ~= nil and res.type == "ROWS" then
+    deserialize_rows(res, schema)
+  end
+
   return res
 end
 
-function CassandraDB:insert(table_name, schema, model)
-  local err = check_unique_constraints(self, table_name, schema, model)
+function CassandraDB:insert(table_name, schema, model, constraints)
+  local err = check_unique_constraints(self, table_name, constraints, model)
+  if err then
+    return nil, err
+  end
+
+  err = check_foreign_constaints(self, model, constraints)
   if err then
     return nil, err
   end
@@ -183,9 +210,9 @@ function CassandraDB:insert(table_name, schema, model)
 end
 
 function CassandraDB:find(table_name, schema, primary_keys)
-  local where, args = get_where_primary_keys(primary_keys, schema.fields)
+  local where, args = get_where(schema, primary_keys)
   local query = get_select_query(table_name, where)
-  local rows, err = self:query(query, args)
+  local rows, err = self:query(query, args, nil, schema)
   if err then
     return nil, err
   elseif #rows > 0 then
@@ -202,7 +229,7 @@ function CassandraDB:find_all(table_name, tbl, schema)
 
   local where, args
   if tbl ~= nil then
-    where, args = get_where_custom(schema, tbl)
+    where, args = get_where(schema, tbl)
   end
 
   local query = get_select_query(table_name, where)
@@ -227,11 +254,11 @@ end
 function CassandraDB:find_page(table_name, tbl, paging_state, page_size, schema)
   local where, args
   if tbl ~= nil then
-    where, args = get_where_custom(schema, tbl)
+    where, args = get_where(schema, tbl)
   end
 
   local query = get_select_query(table_name, where)
-  local rows, err = self:query(query, args, {page_size = page_size, paging_state = paging_state})
+  local rows, err = self:query(query, args, {page_size = page_size, paging_state = paging_state}, schema)
   if err then
     return nil, err
   elseif rows ~= nil then
@@ -248,7 +275,7 @@ end
 function CassandraDB:count(table_name, tbl, schema)
   local where, args
   if tbl ~= nil then
-    where, args = get_where_custom(schema, tbl)
+    where, args = get_where(schema, tbl)
   end
 
   local query = get_select_query(table_name, where, "COUNT(*)")
@@ -260,14 +287,18 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(table_name, schema, primary_keys, values, nils, full)
+function CassandraDB:update(table_name, schema, constraints, primary_keys, values, nils, full)
   -- row exists, must check manually
   local row, err = self:find(table_name, schema, primary_keys)
   if err or row == nil then
     return nil, err
   end
   -- must check unique constaints manually too
-  err = check_unique_constraints(self, table_name, schema, values, primary_keys, true)
+  err = check_unique_constraints(self, table_name, constraints, values, primary_keys, true)
+  if err then
+    return nil, err
+  end
+  err = check_foreign_constaints(self, values, constraints)
   if err then
     return nil, err
   end
@@ -290,7 +321,7 @@ function CassandraDB:update(table_name, schema, primary_keys, values, nils, full
 
   sets = table.concat(sets, ", ")
 
-  where, args = get_where_primary_keys(primary_keys, schema.fields, args)
+  where, args = get_where(schema, primary_keys, args)
   local query = string.format("UPDATE %s SET %s WHERE %s",
                               table_name, sets, where)
   local res, err = self:query(query, args)
@@ -307,7 +338,7 @@ function CassandraDB:delete(table_name, schema, primary_keys)
     return false, err
   end
 
-  local where, args = get_where_primary_keys(primary_keys, schema.fields)
+  local where, args = get_where(schema, primary_keys)
   local query = string.format("DELETE FROM %s WHERE %s",
                               table_name, where)
   local res, err =  self:query(query, args)

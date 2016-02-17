@@ -21,10 +21,6 @@ function PostgresDB:new(...)
   PostgresDB.super.new(self, "postgres", ...)
 end
 
-function PostgresDB:init_db()
-
-end
-
 -- Formatting
 
 -- @see pgmoon
@@ -33,7 +29,7 @@ local function escape_identifier(ident)
 end
 
 -- @see pgmoon
-local function escape_literal(val)
+local function escape_literal(val, field)
   local t_val = type(val)
   if t_val == "number" then
     return tostring(val)
@@ -41,23 +37,14 @@ local function escape_literal(val)
     return "'"..tostring((val:gsub("'", "''"))).."'"
   elseif t_val == "boolean" then
     return val and "TRUE" or "FALSE"
+  elseif t_val == "table" and field and field.type == "table" then
+    local json = require "cjson"
+    return escape_literal(json.encode(val))
   end
   error("don't know how to escape value: "..tostring(val))
 end
 
-local function get_where_primary_keys(primary_keys)
-  local where = {}
-
-  for col, value in pairs(primary_keys) do
-      where[#where + 1] = string.format("%s = %s",
-                          escape_identifier(col),
-                          escape_literal(value))
-  end
-
-  return table.concat(where, " AND ")
-end
-
-local function get_where_custom(tbl)
+local function get_where(tbl)
   local where = {}
 
   for col, value in pairs(tbl) do
@@ -74,6 +61,9 @@ local function parse_error(err_str)
   if string.find(err_str, "Key .* already exists") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
     err = Errors.unique {[col] = value}
+  elseif string.find(err_str, "violates foreign key constraint") then
+    local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
+    err = Errors.foreign {[col] = value}
   else
     err = Errors.db(err_str)
   end
@@ -124,7 +114,7 @@ function PostgresDB:insert(table_name, schema, values)
   local cols, args = {}, {}
   for col, value in pairs(values) do
     cols[#cols + 1] = escape_identifier(col)
-    args[#args + 1] = escape_literal(value)
+    args[#args + 1] = escape_literal(value, schema.fields[col])
   end
 
   cols = table.concat(cols, ", ")
@@ -141,7 +131,7 @@ function PostgresDB:insert(table_name, schema, values)
 end
 
 function PostgresDB:find(table_name, schema, primary_keys)
-  local where = get_where_primary_keys(primary_keys)
+  local where = get_where(primary_keys)
   local query = get_select_query("*", table_name, where)
   local rows, err = self:query(query)
   if err then
@@ -154,7 +144,7 @@ end
 function PostgresDB:find_all(table_name, tbl)
   local where
   if tbl ~= nil then
-    where = get_where_custom(tbl)
+    where = get_where(tbl)
   end
 
   local query = get_select_query("*", table_name, where)
@@ -176,7 +166,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size)
 
   local where
   if tbl ~= nil then
-    where = get_where_custom(tbl)
+    where = get_where(tbl)
   end
 
   local query = get_select_query("*", table_name, where, offset, page_size)
@@ -192,7 +182,7 @@ end
 function PostgresDB:count(table_name, tbl)
   local where
   if tbl ~= nil then
-    where = get_where_custom(tbl)
+    where = get_where(tbl)
   end
 
   local query = get_select_query("COUNT(*)", table_name, where)
@@ -204,11 +194,11 @@ function PostgresDB:count(table_name, tbl)
   end
 end
 
-function PostgresDB:update(table_name, schema, primary_keys, values, nils, full)
+function PostgresDB:update(table_name, schema, _, primary_keys, values, nils, full)
   local args = {}
   for col, value in pairs(values) do
     args[#args + 1] = string.format("%s = %s",
-                      escape_identifier(col), escape_literal(value))
+                      escape_identifier(col), escape_literal(value, schema.fields[col]))
   end
 
   if full then
@@ -219,7 +209,7 @@ function PostgresDB:update(table_name, schema, primary_keys, values, nils, full)
 
   args = table.concat(args, ", ")
 
-  local where = get_where_primary_keys(primary_keys)
+  local where = get_where(primary_keys)
   local query = string.format("UPDATE %s SET %s WHERE %s RETURNING *",
                               table_name, args, where)
   local res, err = self:query(query)
@@ -231,7 +221,7 @@ function PostgresDB:update(table_name, schema, primary_keys, values, nils, full)
 end
 
 function PostgresDB:delete(table_name, schema, primary_keys)
-  local where = get_where_primary_keys(primary_keys)
+  local where = get_where(primary_keys)
   local query = string.format("DELETE FROM %s WHERE %s",
                               table_name, where)
   local res, err = self:query(query)

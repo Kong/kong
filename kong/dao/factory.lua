@@ -1,5 +1,6 @@
 local DAO = require "kong.dao.dao"
 local Object = require "classic"
+local stringy = require "stringy"
 local ModelFactory = require "kong.dao.model_factory"
 
 local CORE_MODELS = {"apis", "consumers", "plugins"}
@@ -16,6 +17,30 @@ function Factory:__index(key)
   end
 end
 
+local function build_constraints(schema)
+  local constraints = {foreign = {}, unique = {}}
+  for col, field in pairs(schema.fields) do
+    if type(field.foreign) == "string" then
+      local f_entity, f_field = unpack(stringy.split(field.foreign, ":"))
+      if f_entity ~= nil and f_field ~= nil then
+        local f_schema = require("kong.dao.schemas."..f_entity)
+        constraints.foreign[col] = {
+          table = f_schema.table,
+          schema = f_schema,
+          col = f_field
+        }
+      end
+    end
+    if field.unique then
+      constraints.unique[col] = {
+        table = schema.table,
+        schema = schema
+      }
+    end
+  end
+  return constraints
+end
+
 function Factory:new(db_type, options)
   self.db_type = db_type
   self.daos = {}
@@ -27,7 +52,12 @@ function Factory:new(db_type, options)
   for _, m_name in ipairs(CORE_MODELS) do
     local m_schema = require("kong.dao.schemas."..m_name)
     local model_mt = ModelFactory(m_schema)
-    local dao = DAO(_db, model_mt, m_schema)
+
+    -- Create a table of constraints (unique, foreign) to check if the DB does
+    -- not support such constraints
+    local constraints = build_constraints(m_schema)
+
+    local dao = DAO(_db, model_mt, m_schema, constraints)
     self.daos[m_name] = dao
   end
 end
