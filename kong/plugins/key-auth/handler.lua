@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
@@ -65,7 +64,7 @@ function KeyAuthHandler:access(conf)
     if key then
       key_found = true
       credential = cache.get_or_set(cache.keyauth_credential_key(key), function()
-        local credentials, err = singletons.dao.keyauth_credentials:find_by_keys {key = key}
+        local credentials, err = dao.keyauth_credentials:find_by_keys {key = key}
         local result
         if err then
           return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -91,7 +90,7 @@ function KeyAuthHandler:access(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = singletons.dao.consumers:find_by_primary_key({id = credential.consumer_id})
+    local result, err = dao.consumers:find_by_primary_key({id = credential.consumer_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

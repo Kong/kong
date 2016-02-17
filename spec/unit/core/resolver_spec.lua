@@ -1,7 +1,6 @@
 -- Stubs
 require "kong.tools.ngx_stub"
 
-local singletons = require "kong.singletons"
 local resolver = require "kong.core.resolver"
 
 local APIS_FIXTURES = {
@@ -20,7 +19,7 @@ local APIS_FIXTURES = {
   {name = "preserve-host", request_path = "/preserve-host", request_host = "preserve-host.com", upstream_url = "http://mockbin.com", preserve_host = true}
 }
 
-singletons.dao = {
+_G.dao = {
   apis = {
     find_all = function()
       return APIS_FIXTURES

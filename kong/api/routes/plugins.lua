@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local crud = require "kong.api.crud_helpers"
 local utils = require "kong.tools.utils"
 local syslog = require "kong.tools.syslog"
@@ -29,7 +28,7 @@ return {
 
     POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
-        if singletons.configuration.send_anonymous_reports then
+        if configuration.send_anonymous_reports then
           data.signal = constants.SYSLOG.API
           syslog.log(syslog.format_entity(data))
         end
@@ -77,7 +76,7 @@ return {
   ["/plugins/enabled"] = {
     GET = function(self, dao_factory, helpers)
       return helpers.responses.send_HTTP_OK {
-        enabled_plugins = singletons.configuration.plugins
+        enabled_plugins = configuration.plugins
       }
     end
   }

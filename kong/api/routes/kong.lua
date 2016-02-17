@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 local route_helpers = require "kong.api.route_helpers"
 local utils = require "kong.tools.utils"
@@ -16,11 +15,11 @@ return {
         version = constants.VERSION,
         hostname = utils.get_hostname(),
         plugins = {
-          available_on_server = singletons.configuration.plugins,
+          available_on_server = configuration.plugins,
           enabled_in_cluster = db_plugins
         },
         lua_version = jit and jit.version or _VERSION,
-        configuration = singletons.configuration
+        configuration = configuration
       })
     end
   },
