@@ -44,6 +44,7 @@ build = {
     ["resty_http"] = "kong/vendor/resty_http.lua",
 
     ["kong.constants"] = "kong/constants.lua",
+    ["kong.singletons"] = "kong/singletons.lua",
 
     ["kong.cli.utils.logger"] = "kong/cli/utils/logger.lua",
     ["kong.cli.utils.luarocks"] = "kong/cli/utils/luarocks.lua",
