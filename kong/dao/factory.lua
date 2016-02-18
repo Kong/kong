@@ -27,7 +27,8 @@ local function build_constraints(schema)
         constraints.foreign[col] = {
           table = f_schema.table,
           schema = f_schema,
-          col = f_field
+          col = f_field,
+          f_entity = f_entity
         }
       end
     end
@@ -41,6 +42,40 @@ local function build_constraints(schema)
   return constraints
 end
 
+local function load_daos(self, tbl)
+  local model_mts, constraints = {}, {}
+  for _, m_name in ipairs(tbl) do
+    local m_schema = require("kong.dao.schemas."..m_name)
+    model_mts[m_name] = ModelFactory(m_schema)
+    constraints[m_name] = build_constraints(m_schema)
+  end
+
+  for m_name, m_constraints in pairs(constraints) do
+    if m_constraints.foreign ~= nil then
+      local m_schema = require("kong.dao.schemas."..m_name)
+      for col, f_constraint in pairs(m_constraints.foreign) do
+        local parent_model = f_constraint.f_entity
+        local parent_constraints = constraints[parent_model]
+        if parent_constraints.cascade == nil then
+          parent_constraints.cascade = {}
+        end
+
+        parent_constraints.cascade[m_name] = {
+          table = m_schema.table,
+          schema = m_schema,
+          f_col = col,
+          col = f_constraint.col
+        }
+      end
+    end
+  end
+
+  for _, m_name in ipairs(tbl) do
+    local m_schema = require("kong.dao.schemas."..m_name)
+    self.daos[m_name] = DAO(_db, model_mts[m_name], m_schema, constraints[m_name])
+  end
+end
+
 function Factory:new(db_type, options)
   self.db_type = db_type
   self.daos = {}
@@ -48,18 +83,7 @@ function Factory:new(db_type, options)
   local DB = require("kong.dao."..db_type.."_db")
   _db = DB(options)
 
-  -- Create daos and give them the db instance
-  for _, m_name in ipairs(CORE_MODELS) do
-    local m_schema = require("kong.dao.schemas."..m_name)
-    local model_mt = ModelFactory(m_schema)
-
-    -- Create a table of constraints (unique, foreign) to check if the DB does
-    -- not support such constraints
-    local constraints = build_constraints(m_schema)
-
-    local dao = DAO(_db, model_mt, m_schema, constraints)
-    self.daos[m_name] = dao
-  end
+  load_daos(self, CORE_MODELS)
 end
 
 -- Migrations

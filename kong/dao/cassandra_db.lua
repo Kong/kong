@@ -297,7 +297,7 @@ function CassandraDB:update(table_name, schema, constraints, primary_keys, value
   err = check_unique_constraints(self, table_name, constraints, values, primary_keys, true)
   if err then
     return nil, err
-  end
+    end
   err = check_foreign_constaints(self, values, constraints)
   if err then
     return nil, err
@@ -332,7 +332,31 @@ function CassandraDB:update(table_name, schema, constraints, primary_keys, value
   end
 end
 
-function CassandraDB:delete(table_name, schema, primary_keys)
+local function cascade_delete(self, primary_keys, constraints)
+  if constraints.cascade == nil then return end
+
+  for f_entity, cascade in pairs(constraints.cascade) do
+    local tbl = {[cascade.f_col] = primary_keys[cascade.col]}
+    local rows, err = self:find_all(cascade.table, tbl, cascade.schema)
+    if err then
+      return nil, err
+    end
+
+    for _, row in ipairs(rows) do
+      local primary_keys_to_delete = {}
+      for _, primary_key in ipairs(cascade.schema.primary_key) do
+        primary_keys_to_delete[primary_key] = row[primary_key]
+      end
+
+      local ok, err = self:delete(cascade.table, cascade.schema, primary_keys_to_delete)
+      if not ok then
+        return nil, err
+      end
+    end
+  end
+end
+
+function CassandraDB:delete(table_name, schema, primary_keys, constraints)
   local row, err = self:find(table_name, schema, primary_keys)
   if err or row == nil then
     return false, err
@@ -345,6 +369,9 @@ function CassandraDB:delete(table_name, schema, primary_keys)
   if err then
     return nil, err
   elseif res and res.type == "VOID" then
+    if constraints ~= nil then
+      cascade_delete(self, primary_keys, constraints)
+    end
     return true
   end
 end

@@ -157,7 +157,7 @@ function DAO:delete(tbl)
     error("Missing PRIMARY KEY field", 2)
   end
 
-  return self.db:delete(self.table, self.schema, primary_keys)
+  return self.db:delete(self.table, self.schema, primary_keys, self.constraints)
 end
 
 return DAO

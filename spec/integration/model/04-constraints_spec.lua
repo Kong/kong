@@ -143,5 +143,71 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.equal("api_id=does not exist with value '"..fake_api_id.."'", tostring(err))
       end)
     end)
+
+    describe("CASCADE delete", function()
+      local api_fixture, consumer_fixture
+      before_each(function()
+        local err
+        api_fixture, err = apis:insert {
+          name = "to-delete",
+          request_host = "to-delete.com",
+          request_path = "/to-delete",
+          upstream_url = "https://mockbin.com"
+        }
+        assert.falsy(err)
+
+        consumer_fixture, err = factory.consumers:insert {
+          username = "bob"
+        }
+        assert.falsy(err)
+      end)
+      after_each(function()
+        factory:truncate_tables()
+      end)
+
+      it("delete", function()
+        local plugin, err = plugins:insert {
+          name = "key-auth",
+          api_id = api_fixture.id
+        }
+        assert.falsy(err)
+
+        local ok, err = apis:delete(api_fixture)
+        assert.falsy(err)
+        assert.True(ok)
+
+        -- no more API
+        local api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.falsy(api)
+
+        -- no more plugin
+        local plugin, err = plugins:find(plugin)
+        assert.falsy(err)
+        assert.falsy(plugin)
+      end)
+
+      it("delete bis", function()
+        local plugin, err = plugins:insert {
+          name = "rate-limiting",
+          api_id = api_fixture.id,
+          consumer_id = consumer_fixture.id,
+          config = {minute = 1}
+        }
+        assert.falsy(err)
+
+        local ok, err = factory.consumers:delete(consumer_fixture)
+        assert.falsy(err)
+        assert.True(ok)
+
+        local consumer, err = factory.consumers:find(consumer_fixture)
+        assert.falsy(err)
+        assert.falsy(consumer)
+
+        local plugin, err = plugins:find(plugin_fixture)
+        assert.falsy(err)
+        assert.falsy(plugin)
+      end)
+    end)
   end) -- describe
 end) -- for each db
