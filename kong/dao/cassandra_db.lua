@@ -241,6 +241,9 @@ function CassandraDB:find_all(table_name, tbl, schema)
       res_rows = nil
       break
     end
+    if schema ~= nil then
+      deserialize_rows(rows, schema)
+    end
     for _, row in ipairs(rows) do
       table.insert(res_rows, row)
     end

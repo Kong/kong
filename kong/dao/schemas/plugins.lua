@@ -101,7 +101,11 @@ return {
       if err then
         return false, err
       elseif #rows > 0 then
-        return false, Errors.unique "Plugin configuration already exists"
+        for _, row in ipairs(rows) do
+          if row.name == plugin_t.name and row.api_id == plugin_t.api_id and row.consumer_id == plugin_t.consumer_id then
+            return false, Errors.unique "Plugin configuration already exists"
+          end
+        end
       end
     end
   end
