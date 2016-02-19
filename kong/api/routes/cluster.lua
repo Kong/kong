@@ -1,5 +1,4 @@
 local responses = require "kong.tools.responses"
-local cjson = require "cjson"
 local Serf = require "kong.cli.services.serf"
 
 local pairs = pairs
@@ -9,12 +8,11 @@ local string_upper = string.upper
 return {
   ["/cluster/"] = {
     GET = function(self, dao_factory, helpers)
-      local res, err = Serf(configuration):invoke_signal("members", {["-format"] = "json"})
+      local members, err = Serf(configuration):_members()
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
 
-      local members = cjson.decode(res).members
       local result = {data = {}}
       for _, v in pairs(members) do
         if not self.params.status or (self.params.status and v.status == self.params.status) then

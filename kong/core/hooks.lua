@@ -1,7 +1,6 @@
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
-local cjson = require "cjson"
 local Serf = require "kong.cli.services.serf"
 
 local function invalidate_plugin(entity)
@@ -24,11 +23,11 @@ end
 
 local function get_cluster_members()
   local serf = require("kong.cli.services.serf")(configuration)
-  local res, err = serf:invoke_signal("members", { ["-format"] = "json" })
+  local members, err = serf:_members()
   if err then
     ngx.log(ngx.ERR, err)
   else
-    return cjson.decode(res).members
+    return members
   end
 end
 
@@ -106,18 +105,9 @@ local function member_join(message_t)
     return
   end
 
-  if #nodes == 0 then -- Insert
-    local _, err = dao.nodes:insert({
-      name = stringy.strip(member.name),
-      cluster_listening_address = stringy.strip(member.cluster_listening_address)
-    })
-    if err then
-      ngx.log(ngx.ERR, tostring(err))
-      return
-    end
-  elseif #nodes == 1 then -- Update
+  if #nodes == 1 then -- Update
     member_update(message_t)
-  else
+  elseif #nodes > 1 then
     error("Inconsistency error. More than one node found with name "..member.name)
   end
 

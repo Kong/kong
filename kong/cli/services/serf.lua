@@ -86,6 +86,15 @@ function Serf:_join_node(address)
   return true
 end
 
+function Serf:_members()
+  local res, err = self:invoke_signal("members", {["-format"] = "json"})
+  if err then
+    return false, err
+  end
+
+  return cjson.decode(res).members
+end
+
 function Serf:_autojoin(current_node_name)
   if self._configuration.cluster["auto-join"] then
     logger:info("Trying to auto-join Kong nodes, please wait..")
@@ -129,6 +138,36 @@ function Serf:_autojoin(current_node_name)
   return true
 end
 
+function Serf:_add_node()
+  local members, err = self:_members()
+  if err then
+    return false, err
+  end
+
+  local name = cluster_utils.get_node_name(self._configuration)
+  local addr
+  for _, member in ipairs(members) do
+    if member.name == name then
+      addr = member.addr
+      break
+    end
+  end
+
+  if not addr then
+     return false, "Can't find current member address"
+  end
+
+  local _, err = self._dao_factory.nodes:insert({
+    name = name,
+    cluster_listening_address = stringy.strip(addr)
+  })
+  if err then
+    return false, err
+  end
+
+  return true
+end
+
 function Serf:start()
   if self:is_running() then
     return nil, SERVICE_NAME.." is already running"
@@ -168,7 +207,13 @@ function Serf:start()
       logger:info(string.format([[serf ..............%s]], str_cmd_args))
 
       -- Auto-Join nodes
-      return self:_autojoin(node_name)
+      local ok, err = self:_autojoin(node_name)
+      if not ok then
+        return nil, err
+      end
+
+      -- Adding node to nodes table
+      return self:_add_node()
     else
       -- Get last error message
       local parts = stringy.split(IO.read_file(self._log_path), "\n")
