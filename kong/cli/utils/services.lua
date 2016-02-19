@@ -13,8 +13,8 @@ _M.STATUSES = {
 -- Services ordered by priority
 local services = {
   require "kong.cli.services.dnsmasq",
-  require "kong.cli.services.nginx",
-  require "kong.cli.services.serf"
+  require "kong.cli.services.serf",
+  require "kong.cli.services.nginx"
 }
 
 local function prepare_database(configuration)
@@ -116,8 +116,9 @@ function _M.check_status(configuration, configuration_path)
 end
 
 function _M.stop_all(configuration, configuration_path)
-  for _, service in ipairs(services) do
-    service(configuration, configuration_path):stop()
+  -- Backwards
+  for i=#services, 1, -1 do
+    services[i](configuration, configuration_path):stop()
   end
 end
 
