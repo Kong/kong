@@ -30,6 +30,9 @@ However by upgrading the underlying OpenResty version, source installations do n
 - Avoid user warning on start when the user is not root. [#964](https://github.com/Mashape/kong/pull/964)
 - Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Mashape/kong/pull/975)
 - Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Mashape/kong/issues/978) [#980](https://github.com/Mashape/kong/pull/980)
+- Properly invalidating entities when assigning a new ACL group. [#996](https://github.com/Mashape/kong/pull/996)
+- Better error message when the `access_token` is missing in the OAuth 2.0 plugin. [#1003](https://github.com/Mashape/kong/pull/1003)
+- Fixed an edge-case where Kong nodes would not be registered in the `nodes` table. [#1008](https://github.com/Mashape/kong/pull/1008)
 
 ## [0.6.1] - 2016/02/03
 
