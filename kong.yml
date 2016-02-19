@@ -7,6 +7,10 @@
 ## Beware of YAML formatting for nested properties.
 
 ######
+## Instructs Kong to run in background or in foreground
+# daemon: true
+
+######
 ## Additional plugins that this node needs to load.
 ## If you want to load custom plugins that are not supported by Kong, uncomment and update
 ## this property with the names of the plugins to load.

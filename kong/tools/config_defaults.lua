@@ -1,4 +1,5 @@
 return {
+  ["daemon"] = {type = "boolean", default = true},
   ["custom_plugins"] = {type = "array", default = {}},
   ["nginx_working_dir"] = {type = "string", default = "/usr/local/kong"},
   ["proxy_listen"] = {type = "string", default = "0.0.0.0:8000"},

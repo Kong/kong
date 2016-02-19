@@ -27,6 +27,17 @@ elseif status == services.STATUSES.ALL_RUNNING then
   os.exit(1)
 end
 
+if not configuration.daemon then
+  local terminate_daemon = function()
+    services.stop_all(configuration, configuration_path)
+    logger:success("Stopped")
+    os.exit(0)
+  end
+  local signal = require "posix.signal"
+  signal.signal(signal.SIGTERM, function() terminate_daemon() end)
+  signal.signal(signal.SIGINT, function() terminate_daemon() end)
+end
+
 local ok, err = services.start_all(configuration, configuration_path)
 if not ok then
   services.stop_all(configuration, configuration_path)
@@ -35,4 +46,11 @@ if not ok then
   os.exit(1)
 end
 
-logger:success("Started")
+logger:success("Started"..((configuration.daemon) and "" or " in foreground mode"))
+
+if not configuration.daemon then
+  while(true) do
+    io.read()
+  end
+end
+
