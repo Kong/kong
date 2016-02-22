@@ -1,6 +1,8 @@
 local inspect = require "inspect"
 
 local Object = require "classic"
+local Errors = require "kong.dao.errors"
+local schemas_validation = require "kong.dao.schemas_validation"
 
 local function check_arg(arg, arg_n, exp_type)
   if type(arg) ~= exp_type then
@@ -17,17 +19,6 @@ local function check_not_empty(tbl, arg_n)
     local err = string.format("bad argument #%d to '%s' (expected table to not be empty)",
                               arg_n, info.name)
     error(err, 3)
-  end
-end
-
-local function check_subset_of_schema(tbl, arg_n, fields)
-  for col in pairs(tbl) do
-    if fields[col] == nil then
-      local info = debug.getinfo(2)
-      local err = string.format("bad argument #%d to '%s' (field '%s' not in schema)",
-                                arg_n, info.name, col)
-      error(err, 3)
-    end
   end
 end
 
@@ -69,38 +60,36 @@ function DAO:find(tbl)
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)
-  local primary_keys = model:extract_keys()
-  if next(primary_keys) == nil then
+  if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
   end
 
+  local primary_keys = model:extract_keys()
+
   return self.db:find(self.table, self.schema, primary_keys)
-end
-
-function DAO:filter(tbl)
-  check_arg(tbl, 1, "table")
-
-  local model = self.model_mt(tbl)
-  local primary_keys, values = model:extract_keys()
-
-  return self.db:find_all(self.table, values, self.schema)
 end
 
 function DAO:find_all(tbl, page_offset, page_size)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
-    check_subset_of_schema(tbl, 1, self.schema.fields)
+    local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
+    if not ok then
+      return nil, Errors.schema(err)
+    end
   end
 
   return self.db:find_all(self.table, tbl, self.schema)
 end
 
 function DAO:find_page(tbl, page_offset, page_size)
-  if tbl ~= nil then
+   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
-    check_subset_of_schema(tbl, 1, self.schema.fields)
+    local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
+    if not ok then
+      return nil, Errors.schema(err)
+    end
   end
 
   if page_size == nil then
@@ -116,30 +105,74 @@ function DAO:count(tbl)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
     check_not_empty(tbl, 1)
-    check_subset_of_schema(tbl, 1, self.schema.fields)
+    local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
+    if not ok then
+      return nil, Errors.schema(err)
+    end
+  end
+
+  if tbl ~= nil and next(tbl) == nil then
+    tbl = nil
   end
 
   return self.db:count(self.table, tbl, self.schema)
 end
 
-function DAO:update(tbl, full)
+local function fix(old, new, schema)
+  for col, field in pairs(schema.fields) do
+    if old[col] ~= nil and new[col] ~= nil and field.schema ~= nil then
+      local f_schema, err = type(field.schema) == "function" and field.schema(old) or field.schema
+      if err then
+        error(err)
+      end
+      for f_k in pairs(f_schema.fields) do
+        if new[col][f_k] == nil and old[col][f_k] ~= nil then
+          new[col][f_k] = old[col][f_k]
+        end
+      end
+
+      fix(old[col], new[col], f_schema)
+    end
+  end
+end
+
+function DAO:update(tbl, filter_keys)
   check_arg(tbl, 1, "table")
-  if full ~= nil then
-    check_arg(full, 2, "boolean")
+  check_not_empty(tbl, 1)
+
+  local full_update = false
+  if type(filter_keys) ~= "boolean" then
+    check_arg(filter_keys, 2, "table")
+    check_not_empty(filter_keys, 2)
+    for k, v in pairs(filter_keys) do
+      if tbl[k] == nil then
+        tbl[k] = v
+      end
+    end
+  else
+    full_update = filter_keys
   end
 
   local model = self.model_mt(tbl)
-  local ok, err = model:validate {dao = self}
+  local ok, err = model:validate {dao = self, update = true, full_update = full_update}
   if not ok then
     return nil, err
   end
 
   local primary_keys, values, nils = model:extract_keys()
-  if next(primary_keys) == nil then
-    error("Missing PRIMARY KEY field", 2)
+
+  local old, err = self.db:find(self.table, self.schema, primary_keys)
+  if err then
+    return nil, err
+  elseif old == nil then
+    return
   end
 
-  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full)
+  if not full_update then
+    fix(old, values, self.schema)
+  end
+
+  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full_update)
   if err then
     return nil, err
   elseif res then
@@ -151,11 +184,11 @@ function DAO:delete(tbl)
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)
-
-  local primary_keys, values, nils = model:extract_keys()
-  if next(primary_keys) == nil then
+  if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
   end
+
+  local primary_keys, values, nils = model:extract_keys()
 
   return self.db:delete(self.table, self.schema, primary_keys, self.constraints)
 end

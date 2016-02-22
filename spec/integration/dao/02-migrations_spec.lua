@@ -104,7 +104,7 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
 
         assert.truthy(next(cur_migrations))
         assert.is_table(cur_migrations.core)
-        assert.same({"2015-01-12-175310_skeleton", "2015-01-12-175310_init_schema"}, cur_migrations.core)
+        assert.same({"2015-01-12-175310_skeleton", "2015-01-12-175310_init_schema", "2015-11-23-817313_nodes"}, cur_migrations.core)
       end)
       it("should not run any migration on subsequent run", function()
         local on_migration = spy.new(function() end)

@@ -85,9 +85,9 @@ local function member_update(message_t, is_reap)
     return
   end
 
-  local nodes, err = singletons.dao.nodes:find_by_keys({
+  local nodes, err = singletons.dao.nodes:find_all {
     name = member.name
-  })
+  }
   if err then
     ngx.log(ngx.ERR, tostring(err))
     return
@@ -116,9 +116,9 @@ local function member_join(message_t)
     return
   end
 
-  local nodes, err = singletons.dao.nodes:find_by_keys({
+  local nodes, err = singletons.dao.nodes:find_all {
     name = member.name
-  })
+  }
   if err then
     ngx.log(ngx.ERR, tostring(err))
     return

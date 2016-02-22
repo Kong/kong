@@ -51,13 +51,23 @@ end
 -- @treturn table Array of plugins to execute in context handlers.
 local function load_node_plugins(configuration)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
-  local db_plugins, err = singletons.dao.plugins:find_distinct()
+  local rows, err = dao.plugins:find_all()
   if err then
     error(err)
   end
 
+  local m = {}
+  for _, row in ipairs(rows) do
+    m[row.name] = true
+  end
+
+  local distinct_plugins = {}
+  for plugin_name in pairs(m) do
+    distinct_plugins[#distinct_plugins + 1] = plugin_name
+  end
+
   -- Checking that the plugins in the DB are also enabled
-  for _, v in ipairs(db_plugins) do
+  for _, v in ipairs(distinct_plugins) do
     if not utils.table_contains(configuration.plugins, v) then
       error("You are using a plugin that has not been enabled in the configuration: "..v)
     end

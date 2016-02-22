@@ -53,7 +53,7 @@ function _M.validate_entity(tbl, schema, options)
 
   local errors
   local partial_update = options.update and not options.full_update
-  --local full_update = options.update and options.full_update
+  local full_update = options.update and options.full_update
 
   local key_values = {[""] = tbl} -- By default is only one element
 
@@ -110,6 +110,9 @@ function _M.validate_entity(tbl, schema, options)
               for arr_k, arr_v in ipairs(t[column]) do
                 t[column][arr_k] = stringy.strip(arr_v)
               end
+              is_valid_type = validate_type(v.type, t[column])
+            elseif v.type == "number" then
+              t[column] = tonumber(t[column])
               is_valid_type = validate_type(v.type, t[column])
             else -- if string
               is_valid_type = validate_type(v.type, t[column])
@@ -231,6 +234,24 @@ function _M.validate_entity(tbl, schema, options)
         if ok == false then
           return false, nil, err
         end
+      end
+    end
+  end
+
+  return errors == nil, errors
+end
+
+function _M.is_schema_subset(tbl, schema)
+  local errors
+
+  for k in pairs(tbl) do
+    if schema.fields[k] == nil then
+      if schema.flexible then
+        if stringy.strip(tk) ~= "" and k ~= tk then
+          errors = utils.add_error(errors, k, "unknown field")
+        end
+      else
+        errors = utils.add_error(errors, k, "unknown field")
       end
     end
   end

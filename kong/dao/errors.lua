@@ -1,4 +1,3 @@
-local constants = require "kong.constants"
 local printable_mt = require "kong.tools.printable"
 local setmetatable = setmetatable
 local getmetatable = getmetatable
@@ -6,10 +5,9 @@ local tostring = tostring
 local type = type
 
 local error_mt = {}
---error_mt.__index = error_mt
 
-function error_mt:__tostring()
-  return tostring(self.message)
+function error_mt.__tostring(t)
+  return tostring(t.message)
 end
 
 function error_mt.__concat(a, b)
@@ -21,14 +19,21 @@ function error_mt.__concat(a, b)
 end
 
 local ERRORS = {
-  [constants.DB_ERROR_TYPES.UNIQUE] = function(tbl)
+  unique = "unique",
+  foreign = "foreign",
+  schema = "schema",
+  db = "db"
+}
+
+local serializers = {
+  [ERRORS.unique] = function(tbl)
     local ret = {}
     for k, v in pairs(tbl) do
       ret[k] = "already exists with value '"..v.."'"
     end
     return ret
   end,
-  [constants.DB_ERROR_TYPES.FOREIGN] = function(tbl)
+  [ERRORS.foreign] = function(tbl)
     local ret = {}
     for k, v in pairs(tbl) do
       ret[k] = "does not exist with value '"..v.."'"
@@ -40,39 +45,38 @@ local ERRORS = {
 local function build_error(err_type)
   return function(err)
     if err == nil then
-      return nil
+      return
     elseif getmetatable(err) == error_mt then
       return err
     end
 
-    local err_tbl
+    local err_obj = {
+      [err_type] = true
+    }
 
     if type(err) == "table" then
-      if ERRORS[err_type] ~= nil then
-        err_tbl = ERRORS[err_type](err)
-        setmetatable(err_tbl, printable_mt)
-        err = tostring(err_tbl)
+      if serializers[err_type] ~= nil then
+        err_obj.tbl = serializers[err_type](err)
       else
-        err_tbl = err
-        setmetatable(err, printable_mt)
-        err = tostring(err)
+        err_obj.tbl = err
       end
     end
 
-    local err_obj = {
-      message = err,
-      err_tbl = err_tbl,
-      [err_type] = true
-    }
+    if err_obj.tbl then
+      setmetatable(err_obj.tbl, printable_mt)
+      err_obj.message = tostring(err_obj.tbl)
+    else
+      err_obj.message = err
+    end
 
     return setmetatable(err_obj, error_mt)
   end
 end
 
-local Errors = {}
+local _M = {}
 
-for _, v in pairs(constants.DB_ERROR_TYPES) do
-  Errors[v] = build_error(v)
+for _, v in pairs(ERRORS) do
+  _M[v] = build_error(v)
 end
 
-return Errors
+return _M

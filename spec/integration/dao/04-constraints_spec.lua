@@ -136,7 +136,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
 
         local fake_api_id = uuid()
         plugin.api_id = fake_api_id
-        plugin, err = plugins:update(plugin)
+        plugin, err = plugins:update(plugin, {id = plugin.id})
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
@@ -204,7 +204,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.falsy(consumer)
 
-        local plugin, err = plugins:find(plugin_fixture)
+        plugin, err = plugins:find(plugin)
         assert.falsy(err)
         assert.falsy(plugin)
       end)

@@ -71,5 +71,47 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
       assert.equal(1, #rows)
       assert.same(rate_limiting_for_consumer, rows[1])
     end)
+
+    it("update a plugin config", function()
+      local api, err = factory.apis:insert {
+        name = "mockbin", request_host = "mockbin.com",
+        upstream_url = "http://mockbin.com"
+      }
+      assert.falsy(err)
+
+      local key_auth, err = factory.plugins:insert {
+        name = "key-auth", api_id = api.id
+      }
+      assert.falsy(err)
+
+      local updated_key_auth, err = factory.plugins:update({
+        config = {key_names = {"key_updated"}}
+      }, key_auth)
+      assert.falsy(err)
+      assert.same({"key_updated"}, updated_key_auth.config.key_names)
+    end)
+
+    it("does not override plugin config if partial update", function()
+      local api, err = factory.apis:insert {
+        name = "mockbin", request_host = "mockbin.com",
+        upstream_url = "http://mockbin.com"
+      }
+      assert.falsy(err)
+
+      local key_auth, err = factory.plugins:insert {
+        name = "key-auth", api_id = api.id,
+        config = {
+          hide_credentials = true
+        }
+      }
+      assert.falsy(err)
+
+      local updated_key_auth, err = factory.plugins:update({
+        config = {key_names = {"key_set_null_test_updated"}}
+      }, key_auth)
+      assert.falsy(err)
+      assert.same({"key_set_null_test_updated"}, updated_key_auth.config.key_names)
+      assert.True(updated_key_auth.config.hide_credentials)
+    end)
   end)
 end)

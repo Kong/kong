@@ -71,12 +71,12 @@ local function deserialize_rows(rows, schema)
   end
 end
 
-local function get_where(schema, tbl, args)
+local function get_where(schema, filter_keys, args)
   args = args or {}
   local fields = schema.fields
   local where = {}
 
-  for col, value in pairs(tbl) do
+  for col, value in pairs(filter_keys) do
     where[#where + 1] = col.." = ?"
     args[#args + 1] = serialize_arg(fields[col], value)
   end
@@ -148,10 +148,13 @@ local function check_foreign_constaints(self, values, constraints)
   return Errors.foreign(errors)
 end
 
-function CassandraDB:query(query, args, opts, schema)
+function CassandraDB:query(query, args, opts, schema, no_keyspace)
   CassandraDB.super.query(self, query, args)
 
   local conn_opts = self:_get_conn_options()
+  if no_keyspace then
+    conn_opts.keyspace = nil
+  end
   local session, err = cassandra.spawn_session(conn_opts)
   if err then
     return nil, Errors.db(tostring(err))
@@ -209,8 +212,8 @@ function CassandraDB:insert(table_name, schema, model, constraints)
   return row
 end
 
-function CassandraDB:find(table_name, schema, primary_keys)
-  local where, args = get_where(schema, primary_keys)
+function CassandraDB:find(table_name, schema, filter_keys)
+  local where, args = get_where(schema, filter_keys)
   local query = get_select_query(table_name, where)
   local rows, err = self:query(query, args, nil, schema)
   if err then
@@ -290,14 +293,9 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(table_name, schema, constraints, primary_keys, values, nils, full)
-  -- row exists, must check manually
-  local row, err = self:find(table_name, schema, primary_keys)
-  if err or row == nil then
-    return nil, err
-  end
+function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full)
   -- must check unique constaints manually too
-  err = check_unique_constraints(self, table_name, constraints, values, primary_keys, true)
+  err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if err then
     return nil, err
     end
@@ -307,7 +305,6 @@ function CassandraDB:update(table_name, schema, constraints, primary_keys, value
   end
 
   local sets, args, where = {}, {}
-
   for col, value in pairs(values) do
     local field = schema.fields[col]
     sets[#sets + 1] = col.." = ?"
@@ -324,14 +321,14 @@ function CassandraDB:update(table_name, schema, constraints, primary_keys, value
 
   sets = table.concat(sets, ", ")
 
-  where, args = get_where(schema, primary_keys, args)
+  where, args = get_where(schema, filter_keys, args)
   local query = string.format("UPDATE %s SET %s WHERE %s",
                               table_name, sets, where)
   local res, err = self:query(query, args)
   if err then
     return nil, err
   elseif res and res.type == "VOID" then
-    return self:find(table_name, schema, primary_keys)
+    return self:find(table_name, schema, filter_keys)
   end
 end
 
@@ -381,10 +378,10 @@ end
 
 -- Migrations
 
-function CassandraDB:queries(queries)
+function CassandraDB:queries(queries, no_keyspace)
   for _, query in ipairs(utils.split(queries, ";")) do
     if utils.strip(query) ~= "" then
-      local err = select(2, self:query(query))
+      local err = select(2, self:query(query, nil, nil, nil, no_keyspace))
       if err then
         return err
       end
@@ -401,8 +398,18 @@ function CassandraDB:truncate_table(table_name)
 end
 
 function CassandraDB:current_migrations()
-  -- Check if schema_migrations table exists first
+  -- Check if keyspace exists
   local rows, err = self:query([[
+    SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?
+  ]], {self.options.keyspace}, nil, nil, true)
+  if err then
+    return nil, err
+  elseif #rows == 0 then
+    return {}
+  end
+
+  -- Check if schema_migrations table exists first
+  rows, err = self:query([[
     SELECT COUNT(*) FROM system.schema_columnfamilies
     WHERE keyspace_name = ? AND columnfamily_name = ?
   ]], {

@@ -10,7 +10,6 @@ local Faker = require "kong.tools.faker"
 local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
 local Events = require "kong.core.events"
-local Migrations = require "kong.dao.migrations"
 
 local _M = {}
 
@@ -40,7 +39,6 @@ function _M.add_env(conf_file)
     configuration = env_configuration,
     dao_factory = env_factory,
     events = events,
-    migrations = Migrations(env_factory, env_configuration),
     conf_file = conf_file,
     faker = Faker(env_factory)
   }
@@ -199,8 +197,8 @@ function _M.prepare_db(conf_file)
   local env = _M.get_env(conf_file)
 
   -- 1. Migrate our keyspace
-  local err = env.migrations:run_all_migrations()
-  if err then
+  local ok, err = env.dao_factory:run_migrations()
+  if not ok then
     error(err)
   end
 
@@ -210,10 +208,7 @@ end
 
 function _M.drop_db(conf_file)
   local env = _M.get_env(conf_file)
-  local err = env.dao_factory:drop()
-  if err then
-    error(err)
-  end
+  env.dao_factory:truncate_tables()
 end
 
 function _M.seed_db(amount, conf_file)
@@ -247,6 +242,6 @@ function _M.for_each_dao(f)
 end
 
 -- Add the default env to our spec_helper
---_M.add_env(_M.TEST_CONF_FILE)
+_M.add_env(_M.TEST_CONF_FILE)
 
 return _M

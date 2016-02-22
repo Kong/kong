@@ -89,7 +89,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(api)
         assert.truthy(err)
         assert.True(err.unique)
-        assert.equal("already exists with value 'mockbin'", err.err_tbl.name)
+        assert.equal("already exists with value 'mockbin'", err.tbl.name)
       end)
 
       describe("errors", function()
@@ -179,6 +179,31 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       end)
     end)
 
+    pending("filter()", function()
+      local api_fixture
+      before_each(function()
+        local api, err = apis:insert(api_tbl)
+        assert.falsy(err)
+        assert.truthy(api)
+        api_fixture = api
+      end)
+      after_each(function()
+        factory:truncate_tables()
+      end)
+      it("select by primary key", function()
+        local api, err = apis:filter(api_fixture)
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+        assert.raw_table(api)
+      end)
+      it("select without primary key", function()
+        local api, err = apis:filter {name = "mockbin"}
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+        assert.raw_table(api)
+      end)
+    end)
+
     describe("find_all()", function()
       setup(function()
         factory:truncate_tables()
@@ -242,10 +267,14 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
             apis:find_all {}
           end, "bad argument #1 to 'find_all' (expected table to not be empty)")
         end)
-        it("handle invalid field", function()
-          assert.has_error(function()
-            apis:find_all {foo = "bar"}
-          end, "bad argument #1 to 'find_all' (field 'foo' not in schema)")
+        it("handle invalid filter field", function()
+          local rows, err = apis:find_all {
+            foo = "bar",
+            name = "fixture_100"
+          }
+          assert.truthy(err)
+          assert.falsy(rows)
+          assert.equal("unknown field", err.tbl.foo)
         end)
       end)
     end)
@@ -315,6 +344,22 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.equal(1, #rows)
         assert.equal("fixture_2", rows[1].name)
       end)
+      it("filter supports primary keys", function()
+        local rows, err, offset = apis:find_page {
+          name = "fixture_2"
+        }
+        assert.falsy(err)
+        local first_api = rows[1]
+
+        local rows, err, offset = apis:find_page {
+          id = first_api.id
+        }
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.falsy(offset)
+        assert.equal(1, #rows)
+        assert.same(first_api, rows[1])
+      end)
       describe("errors", function()
         it("handle invalid arg", function()
           assert.has_error(function()
@@ -328,10 +373,15 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           assert.has_error(function()
             apis:find_page {}
           end, "bad argument #1 to 'find_page' (expected table to not be empty)")
-
-          assert.has_error(function()
-            apis:find_page {foo = "bar"}
-          end, "bad argument #1 to 'find_page' (field 'foo' not in schema)")
+        end)
+        it("handle invalid filter field", function()
+          local rows, err = apis:find_page {
+            foo = "bar",
+            name = "fixture_100"
+          }
+          assert.truthy(err)
+          assert.falsy(rows)
+          assert.equal("unknown field", err.tbl.foo)
         end)
       end)
     end)
@@ -379,10 +429,15 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           assert.has_error(function()
             apis:count {}
           end, "bad argument #1 to 'count' (expected table to not be empty)")
-
-          assert.has_error(function()
-            apis:count {foo = "bar"}
-          end, "bad argument #1 to 'count' (field 'foo' not in schema)")
+        end)
+        it("handle invalid filter field", function()
+          local rows, err = apis:count {
+            foo = "bar",
+            name = "fixture_100"
+          }
+          assert.truthy(err)
+          assert.falsy(rows)
+          assert.equal("unknown field", err.tbl.foo)
         end)
       end)
     end)
@@ -403,7 +458,19 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       it("update by primary key", function()
         api_fixture.name = "updated"
 
-        local api, err = apis:update(api_fixture)
+        local api, err = apis:update(api_fixture, {id = api_fixture.id})
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+        assert.raw_table(api)
+
+        api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.same(api_fixture, api)
+      end)
+      it("update with arbitrary filtering keys", function()
+        api_fixture.name = "updated"
+
+        local api, err = apis:update(api_fixture, {name = "mockbin"})
         assert.falsy(err)
         assert.same(api_fixture, api)
         assert.raw_table(api)
@@ -417,7 +484,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         api_fixture.request_host = "updated.com"
         api_fixture.upstream_url = "http://updated.com"
 
-        local api, err = apis:update(api_fixture)
+        local api, err = apis:update(api_fixture, {id = api_fixture.id})
         assert.falsy(err)
         assert.same(api_fixture, api)
 
@@ -425,13 +492,35 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.same(api_fixture, api)
       end)
+      it("update partial entity (pass schema validation)", function()
+        local api, err = apis:update({name = "updated"}, {id = api_fixture.id})
+        assert.falsy(err)
+        assert.equal("updated", api.name)
+        assert.raw_table(api)
+
+        api, err = apis:find(api_fixture)
+        assert.falsy(err)
+        assert.equal("updated", api.name)
+      end)
+      pending("when multiple match", function()
+        local api_2, err = apis:insert {
+          name = "mockbin2",
+          request_host = "mockbin2.com",
+          request_path = "/mockbin2",
+          upstream_url = api_fixture.upstream_url
+        }
+        assert.falsy(err)
+
+        local api, err = apis:update({name = "updated"}, {upstream_url = api_fixture.upstream_url})
+        print(inspect(api))
+        print(inspect(err))
+      end)
       it("return nil if no rows were affected", function()
-        local api, err = apis:update {
-          id = "6f204116-d052-11e5-bec8-5bc780ae6c56",
+        local api, err = apis:update({
           name = "inexistent",
           request_host = "inexistent.com",
           upstream_url = "http://inexistent.com"
-        }
+        }, {id = "6f204116-d052-11e5-bec8-5bc780ae6c56",})
         assert.falsy(err)
         assert.falsy(api)
       end)
@@ -446,24 +535,24 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
 
         api_fixture.name = "i_am_unique"
 
-        api, err = apis:update(api_fixture)
+        api, err = apis:update(api_fixture, {id = api_fixture.id})
         assert.truthy(err)
         assert.falsy(api)
-        assert.equal("already exists with value 'i_am_unique'", err.err_tbl.name)
+        assert.equal("already exists with value 'i_am_unique'", err.tbl.name)
       end)
       it("check schema", function()
         api_fixture.name = 1
 
-        local api, err = apis:update(api_fixture)
+        local api, err = apis:update(api_fixture, {id = api_fixture.id})
         assert.truthy(err)
         assert.falsy(api)
         assert.True(err.schema)
-        assert.equal("name is not a string", err.err_tbl.name)
+        assert.equal("name is not a string", err.tbl.name)
       end)
       it("does not unset nil fields", function()
         api_fixture.request_path = nil
 
-        local api, err = apis:update(api_fixture)
+        local api, err = apis:update(api_fixture, {id = api_fixture.id})
         assert.falsy(err)
         assert.truthy(api)
         assert.not_same(api_fixture, api)
@@ -477,6 +566,20 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       describe("full", function()
+        it("update with nil fetch_keys", function()
+          -- primary key is contained in entity body
+          api_fixture.name = "updated-full"
+
+          local api, err = apis:update(api_fixture, true)
+          assert.falsy(err)
+          assert.truthy(api)
+          assert.same(api_fixture, api)
+          assert.raw_table(api)
+
+          api, err = apis:find(api_fixture)
+          assert.falsy(err)
+          assert.same(api_fixture, api)
+        end)
         it("unset nil fields", function()
           api_fixture.request_path = nil
 
@@ -507,20 +610,18 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       describe("errors", function()
-        it("error if no primary key", function()
-          api_fixture.id = nil
-          assert.has_error(function()
-            apis:update(api_fixture)
-          end, "Missing PRIMARY KEY field")
-        end)
         it("handle invalid arg", function()
           assert.has_error(function()
             apis:update "foo"
           end, "bad argument #1 to 'update' (table expected, got string)")
 
           assert.has_error(function()
-            apis:update({}, "")
-          end, "bad argument #2 to 'update' (boolean expected, got string)")
+            apis:update {}
+          end, "bad argument #1 to 'update' (expected table to not be empty)")
+
+          assert.has_error(function()
+            apis:update({a = ""}, "")
+          end, "bad argument #2 to 'update' (table expected, got string)")
         end)
         it("handle nil arg", function()
           assert.has_error(function()

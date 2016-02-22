@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
-local DaoError = require "kong.dao.error"
 local constants = require "kong.constants"
 
 local function load_config_schema(plugin_t)
@@ -62,7 +61,7 @@ return {
     if plugin_t and plugin_t.config then
       local config_schema, err = self.fields.config.schema(plugin_t)
       if err then
-        return false, DaoError(err, constants.DATABASE_ERROR_TYPES.SCHEMA)
+        return false, Errors.schema(err)
       end
 
       if config_schema.marshall_event and type(config_schema.marshall_event) == "function" then
@@ -77,12 +76,12 @@ return {
     -- Load the config schema
     local config_schema, err = self.fields.config.schema(plugin_t)
     if err then
-      return false, DaoError(err, constants.DATABASE_ERROR_TYPES.SCHEMA)
+      return false, Errors.schema(err)
     end
 
     -- Check if the schema has a `no_consumer` field
     if config_schema.no_consumer and plugin_t.consumer_id ~= nil and plugin_t.consumer_id ~= constants.DATABASE_NULL_ID then
-      return false, DaoError("No consumer can be configured for that plugin", constants.DATABASE_ERROR_TYPES.SCHEMA)
+      return false, Errors.schema "No consumer can be configured for that plugin"
     end
 
     if config_schema.self_check and type(config_schema.self_check) == "function" then
@@ -93,7 +92,7 @@ return {
     end
 
     if not is_update then
-      local rows, err = dao:filter {
+      local rows, err = dao:find_all {
         name = plugin_t.name,
         api_id = plugin_t.api_id,
         consumer_id = plugin_t.consumer_id

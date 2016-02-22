@@ -1,6 +1,5 @@
 #!/usr/bin/env luajit
 
-local Migrations = require "kong.dao.migrations"
 local constants = require "kong.constants"
 local logger = require "kong.cli.utils.logger"
 local utils = require "kong.tools.utils"
@@ -29,8 +28,7 @@ if args.command == "migrations" then
 end
 
 local configuration = config_loader.load_default(args.config)
-local dao_factory = dao_loader.load(configuration)
-local migrations = Migrations(dao_factory, configuration)
+local factory = dao_loader.load(configuration)
 
 local kind = args.type
 if kind ~= "all" and kind ~= "core" then
@@ -43,15 +41,14 @@ end
 
 if args.command == "list" then
 
-  local migrations, err = dao_factory.migrations:get_migrations()
+  local migrations, err = factory:current_migrations()
   if err then
     logger:error(err)
     os.exit(1)
   elseif migrations then
     logger:info(string.format(
-      "Executed migrations for keyspace %s (%s):",
-      logger.colors.yellow(dao_factory.properties.keyspace),
-      dao_factory.type
+      "Executed migrations (%s):",
+      factory.db_type
     ))
 
     for _, row in ipairs(migrations) do
@@ -62,34 +59,32 @@ if args.command == "list" then
     end
   else
     logger:info(string.format(
-      "No migrations have been run yet for %s on keyspace: %s",
-      logger.colors.yellow(dao_factory.type),
-      logger.colors.yellow(dao_factory.properties.keyspace)
+      "No migrations have been run yet for %s",
+      logger.colors.yellow(factory.db_type)
     ))
   end
 
 elseif args.command == "up" then
 
-  local function before(identifier)
+  local function on_migrate(identifier)
     logger:info(string.format(
-      "Migrating %s on keyspace \"%s\" (%s)",
+      "Migrating %s (%s)",
       logger.colors.yellow(identifier),
-      logger.colors.yellow(dao_factory.properties.keyspace),
-      dao_factory.type
+      factory.db_type
     ))
   end
 
-  local function on_each_success(identifier, migration)
+  local function on_success(identifier, migration_name)
     logger:info(string.format(
       "%s migrated up to: %s",
       identifier,
-      logger.colors.yellow(migration.name)
+      logger.colors.yellow(migration_name)
     ))
   end
 
   if kind == "all" then
-    local err = migrations:run_all_migrations(before, on_each_success)
-    if err then
+    local ok, err = factory:run_migrations(on_migrate, on_success)
+    if not ok then
       logger:error(err)
       os.exit(1)
     end
@@ -102,36 +97,6 @@ elseif args.command == "up" then
   end
 
   logger:success("Schema up to date")
-
-elseif args.command == "down" then
-
-  if kind == "all" then
-    logger:error("You must specify 'core' or a plugin name for this command.")
-    os.exit(1)
-  end
-
-  local function before(identifier)
-    logger:info(string.format(
-      "Rollbacking %s in keyspace \"%s\" (%s)",
-      logger.colors.yellow(identifier),
-      logger.colors.yellow(dao_factory.properties.keyspace),
-      dao_factory.type
-    ))
-  end
-
-  local function on_success(identifier, migration)
-    if migration then
-      logger:success("\""..identifier.."\" rollbacked: "..logger.colors.yellow(migration.name))
-    else
-      logger:success("No migration to rollback")
-    end
-  end
-
-  local err = migrations:run_rollback(kind, before, on_success)
-  if err then
-    logger:error(err)
-    os.exit(1)
-  end
 
 elseif args.command == "reset" then
 

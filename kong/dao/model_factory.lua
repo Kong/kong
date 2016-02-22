@@ -35,12 +35,14 @@ return setmetatable({}, {
 
     function Model_mt:extract_keys()
       local schema = self.__schema
+      local primary_keys_idx = {}
       local primary_keys, values, nils = {}, {}, {}
       for _, key in pairs(schema.primary_key) do
         primary_keys[key] = self[key]
+        primary_keys_idx[key] = true
       end
       for col in pairs(schema.fields) do
-        if primary_keys[col] == nil then
+        if not primary_keys_idx[col] then
           if self[col] ~= nil then
             values[col] = self[col]
           else
@@ -49,6 +51,16 @@ return setmetatable({}, {
         end
       end
       return primary_keys, values, nils
+    end
+
+    function Model_mt:has_primary_keys()
+      local schema = self.__schema
+      for _, key in pairs(schema.primary_key) do
+        if self[key] == nil then
+          return false
+        end
+      end
+      return true
     end
 
     return setmetatable({}, {

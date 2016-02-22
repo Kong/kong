@@ -194,7 +194,7 @@ function PostgresDB:count(table_name, tbl)
   end
 end
 
-function PostgresDB:update(table_name, schema, _, primary_keys, values, nils, full)
+function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full)
   local args = {}
   for col, value in pairs(values) do
     args[#args + 1] = string.format("%s = %s",
@@ -209,7 +209,7 @@ function PostgresDB:update(table_name, schema, _, primary_keys, values, nils, fu
 
   args = table.concat(args, ", ")
 
-  local where = get_where(primary_keys)
+  local where = get_where(filter_keys)
   local query = string.format("UPDATE %s SET %s WHERE %s RETURNING *",
                               table_name, args, where)
   local res, err = self:query(query)

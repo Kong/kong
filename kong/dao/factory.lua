@@ -3,7 +3,7 @@ local Object = require "classic"
 local stringy = require "stringy"
 local ModelFactory = require "kong.dao.model_factory"
 
-local CORE_MODELS = {"apis", "consumers", "plugins"}
+local CORE_MODELS = {"apis", "consumers", "plugins", "nodes"}
 local _db
 
 local Factory = Object:extend()
@@ -79,6 +79,7 @@ end
 function Factory:new(db_type, options)
   self.db_type = db_type
   self.daos = {}
+  self.properties = options
 
   local DB = require("kong.dao."..db_type.."_db")
   _db = DB(options)
@@ -149,11 +150,13 @@ function Factory:run_migrations(on_migrate, on_success)
     for _, migration in ipairs(to_run) do
       local mig_type = type(migration.up)
       if mig_type == "string" then
-        -- exec string migration
         err = _db:queries(migration.up)
-        if err then
-          return false, string.format("Error during migration %s: %s", migration.name, err)
-        end
+      elseif mig_type == "function" then
+        err = migration.up(_db, self.properties)
+      end
+
+      if err then
+        return false, string.format("Error during migration %s: %s", migration.name, err)
       end
 
       -- record success

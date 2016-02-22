@@ -1,4 +1,4 @@
-local DaoError = require "kong.dao.error"
+local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local constants = require "kong.constants"
 
@@ -24,11 +24,11 @@ local function check_ordered_limits(limit_value)
   end
 
   if not has_value then
-    return false, DaoError("You need to set at least one limit: second, minute, hour, day, month, year", constants.DATABASE_ERROR_TYPES.SCHEMA)
+    return false, Errors.schema "You need to set at least one limit: second, minute, hour, day, month, year"
   elseif invalid_value then
-    return false, DaoError(invalid_value, constants.DATABASE_ERROR_TYPES.SCHEMA)
+    return false, Errors.schema(invalid_value)
   elseif invalid_order then
-    return false, DaoError(invalid_order, constants.DATABASE_ERROR_TYPES.SCHEMA)
+    return false, Errors.schema(invalid_order)
   end
 
   return true
@@ -54,7 +54,7 @@ return {
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.limits or utils.table_size(plugin_t.limits) == 0 then
-      return false, DaoError("You need to set at least one limit name", constants.DATABASE_ERROR_TYPES.SCHEMA)
+      return false, Errors.schema "You need to set at least one limit name"
     else
       for k,v in pairs(plugin_t.limits) do
         local ok, err = check_ordered_limits(v)

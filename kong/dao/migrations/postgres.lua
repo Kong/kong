@@ -85,5 +85,26 @@ return {
       DROP TABLE apis;
       DROP TABLE plugins;
     ]]
+  },
+    {
+    name = "2015-11-23-817313_nodes",
+    up = [[
+      CREATE TABLE IF NOT EXISTS nodes(
+        name text,
+        cluster_listening_address text,
+        created_at timestamp without time zone default (now() at time zone 'utc'),
+        PRIMARY KEY (name)
+      );
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('public.nodes_cluster_listening_address_idx')) IS NULL THEN
+          CREATE INDEX nodes_cluster_listening_address_idx ON nodes(cluster_listening_address);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP TABLE nodes;
+    ]]
   }
+
 }
