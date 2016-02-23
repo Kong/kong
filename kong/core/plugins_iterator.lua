@@ -15,9 +15,9 @@ local table_remove = table.remove
 local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
   local plugin = cache.get_or_set(cache_key, function()
-    local rows, err = singletons.dao.plugins:find_by_keys {
+    local rows, err = singletons.dao.plugins:find_all {
       api_id = api_id,
-      consumer_id = consumer_id ~= nil and consumer_id or constants.DATABASE_NULL_ID,
+      consumer_id = consumer_id ~= nil and consumer_id or nil,
       name = plugin_name
     }
     if err then
@@ -42,8 +42,8 @@ end
 -- @param[type=boolean] is_access_or_certificate_context Tells if the context is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can avoid it.
 -- @treturn function iterator
 local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_context)
-  if not ngx.ctx.plugins_for_request then 
-    ngx.ctx.plugins_for_request = {} 
+  if not ngx.ctx.plugins_for_request then
+    ngx.ctx.plugins_for_request = {}
   end
 
   local i = 0

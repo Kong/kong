@@ -49,7 +49,7 @@ return {
         }
 
         for k, v in pairs(dao.daos) do
-          local count, err = v:count_by_keys()
+          local count, err = v:count()
           if err then
             return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
           end
