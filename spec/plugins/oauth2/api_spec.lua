@@ -227,7 +227,6 @@ describe("OAuth 2 Credentials API", function()
         assert.equal(200, status)
         body = json.decode(response)
         assert.equals("puthelloworld", body.access_token)
-        assert.truthy(body.created_at)
       end)
 
     end)

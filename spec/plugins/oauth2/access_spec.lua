@@ -21,7 +21,7 @@ local function provision_code()
   for line in matches do
     code = line
   end
-  local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
+  local data = dao_factory.oauth2_authorization_codes:find_all {code = code}
   return data[1].code
 end
 
@@ -248,7 +248,7 @@ describe("Authentication Plugin", function()
         for line in matches do
           code = line
         end
-        local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
+        local data = dao_factory.oauth2_authorization_codes:find_all {code = code}
         assert.are.equal(1, #data)
         assert.are.equal(code, data[1].code)
 
@@ -268,7 +268,7 @@ describe("Authentication Plugin", function()
         for line in matches do
           code = line
         end
-        local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
+        local data = dao_factory.oauth2_authorization_codes:find_all {code = code}
         assert.are.equal(1, #data)
         assert.are.equal(code, data[1].code)
 
@@ -312,7 +312,7 @@ describe("Authentication Plugin", function()
         for line in matches do
           access_token = line
         end
-        local data = dao_factory.oauth2_tokens:find_by_keys({access_token = access_token})
+        local data = dao_factory.oauth2_tokens:find_all {access_token = access_token}
         assert.are.equal(1, #data)
         assert.are.equal(access_token, data[1].access_token)
 
@@ -690,7 +690,7 @@ describe("Authentication Plugin", function()
       local body = cjson.decode(response)
       assert.are.equal(200, status)
 
-      local consumer = dao_factory.consumers:find_by_keys({username = "auth_tests_consumer"})[1]
+      local consumer = dao_factory.consumers:find_all({username = "auth_tests_consumer"})[1]
 
       assert.are.equal(consumer.id, body.headers["x-consumer-id"])
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
@@ -771,8 +771,8 @@ describe("Authentication Plugin", function()
       local _, status = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       assert.are.equal(200, status)
 
-      local id = dao_factory.oauth2_tokens:find_by_keys({access_token = token.access_token })[1].id
-      assert.truthy(dao_factory.oauth2_tokens:find_by_primary_key({id=id}))
+      local id = dao_factory.oauth2_tokens:find_all({access_token = token.access_token })[1].id
+      assert.truthy(dao_factory.oauth2_tokens:find({id=id}))
 
       -- But waiting after the cache expiration (5 seconds) should block the request
       os.execute("sleep "..tonumber(6))
@@ -795,7 +795,7 @@ describe("Authentication Plugin", function()
       assert.falsy(token.access_token == body.access_token)
       assert.falsy(token.refresh_token == body.refresh_token)
 
-      assert.falsy(dao_factory.oauth2_tokens:find_by_primary_key({id=id}))
+      assert.falsy(dao_factory.oauth2_tokens:find({id=id}))
     end)
 
   end)

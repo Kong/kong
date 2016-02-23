@@ -1,6 +1,7 @@
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local validate = schemas_validation.validate_entity
+local valid_uuid = schemas_validation.is_valid_uuid
 
 return setmetatable({}, {
   __call = function(_, schema)
@@ -38,6 +39,10 @@ return setmetatable({}, {
       local primary_keys_idx = {}
       local primary_keys, values, nils = {}, {}, {}
       for _, key in pairs(schema.primary_key) do
+        -- check for uuid here. not all dbs might have ids of type uuid however
+        if schema.fields[key].type == "id" and not valid_uuid(self[key]) then
+          return nil, nil, nil, self[key].." is not a valid uuid"
+        end
         primary_keys[key] = self[key]
         primary_keys_idx[key] = true
       end

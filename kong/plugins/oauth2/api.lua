@@ -21,7 +21,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.oauth2_tokens)
+      crud.patch(self.params, dao_factory.oauth2_tokens, self.params)
     end,
 
     PUT = function(self, dao_factory)
@@ -69,7 +69,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.oauth2_credentials)
+      crud.patch(self.params, dao_factory.oauth2_credentials, self.params)
     end,
 
     DELETE = function(self, dao_factory)

@@ -64,7 +64,10 @@ function DAO:find(tbl)
     error("Missing PRIMARY KEY field", 2)
   end
 
-  local primary_keys = model:extract_keys()
+  local primary_keys, _, _, err = model:extract_keys()
+  if err then
+    return nil, Errors.schema(err)
+  end
 
   return self.db:find(self.table, self.schema, primary_keys)
 end
@@ -159,7 +162,10 @@ function DAO:update(tbl, filter_keys)
     return nil, err
   end
 
-  local primary_keys, values, nils = model:extract_keys()
+  local primary_keys, values, nils, err = model:extract_keys()
+  if err then
+    return nil, Errors.schema(err)
+  end
 
   local old, err = self.db:find(self.table, self.schema, primary_keys)
   if err then
@@ -188,7 +194,10 @@ function DAO:delete(tbl)
     error("Missing PRIMARY KEY field", 2)
   end
 
-  local primary_keys, values, nils = model:extract_keys()
+  local primary_keys, values, nils, err = model:extract_keys()
+  if err then
+    return nil, Errors.schema(err)
+  end
 
   return self.db:delete(self.table, self.schema, primary_keys, self.constraints)
 end

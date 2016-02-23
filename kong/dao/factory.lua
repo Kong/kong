@@ -78,7 +78,7 @@ function Factory:new(db_type, options, plugins)
   self.db_type = db_type
   self.daos = {}
   self.properties = options
-  self.plugins = plugins
+  self.plugins_names = plugins
 
   local schemas = {}
   local DB = require("kong.dao."..db_type.."_db")
@@ -128,7 +128,7 @@ function Factory:migrations_modules()
     core = require("kong.dao.migrations."..self.db_type)
   }
 
-  for _, plugin_name in ipairs(self.plugins) do
+  for _, plugin_name in ipairs(self.plugins_names) do
     local ok, plugin_mig = utils.load_module_if_exists("kong.plugins."..plugin_name..".migrations."..self.db_type)
     if ok then
       migrations[plugin_name] = plugin_mig

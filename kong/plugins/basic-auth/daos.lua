@@ -5,12 +5,10 @@ local function encrypt_password(password, credential)
   -- Don't re-encrypt the password digest on update, if the password hasn't changed
   -- This causes a bug when a new password is effectively equal the to previous digest
   -- TODO: Better handle this scenario
-  if credential.id then
-    if singletons.dao then -- Check to make this work with tests
-      local result = singletons.dao.basicauth_credentials:find {id = credential.id}
-      if result and result.password == credential.password then
-        return true
-      end
+  if credential.id and singletons.dao then
+    local result = singletons.dao.basicauth_credentials:find {id = credential.id}
+    if result and result.password == credential.password then
+      return true
     end
   end
 
