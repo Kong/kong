@@ -1,4 +1,3 @@
-local BaseDao = require "kong.dao.cassandra.base_dao"
 local utils = require "kong.tools.utils"
 
 local SCHEMA = {
@@ -12,14 +11,8 @@ local SCHEMA = {
     secret = {type = "string", unique = true, default = utils.random_string}
   },
   marshall_event = function(self, t)
-    return { id = t.id, consumer_id = t.consumer_id, key = t.key }
+    return {id = t.id, consumer_id = t.consumer_id, key = t.key}
   end
 }
 
-local Jwt = BaseDao:extend()
-
-function Jwt:new(...)
-  Jwt.super.new(self, SCHEMA, ...)
-end
-
-return {jwt_secrets = Jwt}
+return {jwt_secrets = SCHEMA}

@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
-local BaseDao = require "kong.dao.cassandra.base_dao"
 
 local function generate_if_missing(v, t, column)
   if not v or stringy.strip(v) == "" then
@@ -65,23 +64,8 @@ local OAUTH2_TOKENS_SCHEMA = {
   end
 }
 
-local OAuth2Credentials = BaseDao:extend()
-function OAuth2Credentials:new(...)
-  OAuth2Credentials.super.new(self, OAUTH2_CREDENTIALS_SCHEMA, ...)
-end
-
-local OAuth2AuthorizationCodes = BaseDao:extend()
-function OAuth2AuthorizationCodes:new(...)
-  OAuth2AuthorizationCodes.super.new(self, OAUTH2_AUTHORIZATION_CODES_SCHEMA, ...)
-end
-
-local OAuth2Tokens = BaseDao:extend()
-function OAuth2Tokens:new(...)
-  OAuth2Tokens.super.new(self, OAUTH2_TOKENS_SCHEMA, ...)
-end
-
 return {
-  oauth2_credentials = OAuth2Credentials,
-  oauth2_authorization_codes = OAuth2AuthorizationCodes,
-  oauth2_tokens = OAuth2Tokens
+  oauth2_credentials = OAUTH2_CREDENTIALS_SCHEMA,
+  oauth2_authorization_codes = OAUTH2_AUTHORIZATION_CODES_SCHEMA,
+  oauth2_tokens = OAUTH2_TOKENS_SCHEMA
 }

@@ -1,5 +1,4 @@
 local singletons = require "kong.singletons"
-local BaseDao = require "kong.dao.cassandra.base_dao"
 local crypto = require "kong.plugins.basic-auth.crypto"
 
 local function encrypt_password(password, credential)
@@ -8,7 +7,7 @@ local function encrypt_password(password, credential)
   -- TODO: Better handle this scenario
   if credential.id then
     if singletons.dao then -- Check to make this work with tests
-      local result = singletons.dao.basicauth_credentials:find_by_primary_key({id=credential.id})
+      local result = singletons.dao.basicauth_credentials:find {id = credential.id}
       if result and result.password == credential.password then
         return true
       end
@@ -30,14 +29,8 @@ local SCHEMA = {
     password = {type = "string", func = encrypt_password}
   },
   marshall_event = function(self, t)
-    return { id = t.id, consumer_id = t.consumer_id, username = t.username }
+    return {id = t.id, consumer_id = t.consumer_id, username = t.username}
   end
 }
 
-local BasicAuthCredentials = BaseDao:extend()
-
-function BasicAuthCredentials:new(...)
-  BasicAuthCredentials.super.new(self, SCHEMA, ...)
-end
-
-return {basicauth_credentials = BasicAuthCredentials}
+return {basicauth_credentials = SCHEMA}
