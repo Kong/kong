@@ -17,7 +17,7 @@ return {
       CREATE TABLE IF NOT EXISTS consumers(
         id uuid PRIMARY KEY,
         custom_id text,
-        username text,
+        username text UNIQUE,
         created_at timestamp without time zone default (now() at time zone 'utc')
       );
       DO $$

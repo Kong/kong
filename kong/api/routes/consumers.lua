@@ -18,23 +18,20 @@ return {
   },
 
   ["/consumers/:username_or_id"] = {
-    before = function(self, dao_factory)
-      self.fetch_keys = {
-        [is_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
-      }
-      self.params.username_or_id = nil
+    before = function(self, dao_factory, helpers)
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     end,
 
-    GET = function(self, dao_factory)
-      crud.get(self.fetch_keys, dao_factory.consumers)
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.consumer)
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.consumers, self.fetch_keys)
+      crud.patch(self.params, dao_factory.consumers, self.consumer)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(nil, dao_factory.consumers, self.fetch_keys)
+      crud.delete(self.consumer, dao_factory.consumers)
     end
   }
 }
