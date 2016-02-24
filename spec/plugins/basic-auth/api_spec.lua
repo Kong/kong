@@ -30,8 +30,8 @@ describe("Basic Auth Credentials API", function()
       teardown(function()
         if credential == nil then return end -- teardown gets executed even if the tag was excluded
         local dao = spec_helper.get_env().dao_factory
-        local ok, err = dao.basicauth_credentials:delete(credential)
-        assert.True(ok)
+        local res, err = dao.basicauth_credentials:delete(credential)
+        assert.is_table(res)
         assert.falsy(err)
       end)
 
