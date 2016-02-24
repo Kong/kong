@@ -48,7 +48,7 @@ local function build_constraints(schemas)
   return all_constraints
 end
 
-local function load_daos(self, schemas, constraints)
+local function load_daos(self, schemas, constraints, events_handler)
   for m_name, schema in pairs(schemas) do
     if constraints[m_name] ~= nil and constraints[m_name].foreign ~= nil then
       for col, f_constraint in pairs(constraints[m_name].foreign) do
@@ -70,11 +70,11 @@ local function load_daos(self, schemas, constraints)
   end
 
   for m_name, schema in pairs(schemas) do
-    self.daos[m_name] = DAO(_db, ModelFactory(schema), schema, constraints[m_name])
+    self.daos[m_name] = DAO(_db, ModelFactory(schema), schema, constraints[m_name], events_handler)
   end
 end
 
-function Factory:new(db_type, options, plugins)
+function Factory:new(db_type, options, plugins, events_handler)
   self.db_type = db_type
   self.daos = {}
   self.properties = options
@@ -99,7 +99,7 @@ function Factory:new(db_type, options, plugins)
 
   local constraints = build_constraints(schemas)
 
-  load_daos(self, schemas, constraints)
+  load_daos(self, schemas, constraints, events_handler)
 end
 
 -- Migrations

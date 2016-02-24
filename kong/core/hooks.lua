@@ -96,14 +96,14 @@ local function member_update(message_t, is_reap)
   if #nodes == 1 then
     local node = table.remove(nodes, 1)
     node.cluster_listening_address = member.cluster_listening_address
-    local _, err = singletons.dao.nodes:update(node)
+    local _, err = singletons.dao.nodes:update(node, node)
     if err then
       ngx.log(ngx.ERR, tostring(err))
       return
     end
   end
 
-  if is_reap and singletons.dao.nodes:count_by_keys({}) > 1 then
+  if is_reap and singletons.dao.nodes:count() > 1 then
     -- Purge the cache when a failed node re-appears
     cache.delete_all()
   end

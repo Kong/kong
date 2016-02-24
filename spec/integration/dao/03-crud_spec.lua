@@ -606,23 +606,23 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       it("delete a row", function()
-        local ok, err = apis:delete(api_fixture)
+        local res, err = apis:delete(api_fixture)
         assert.falsy(err)
-        assert.True(ok)
+        assert.same(res, api_fixture)
 
         local api, err = apis:find(api_fixture)
         assert.falsy(err)
         assert.falsy(api)
       end)
       it("return false if no rows were deleted", function()
-        local ok, err = apis:delete {
+        local res, err = apis:delete {
           id = "6f204116-d052-11e5-bec8-5bc780ae6c56",
           name = "inexistent",
           request_host = "inexistent.com",
           upstream_url = "http://inexistent.com"
         }
         assert.falsy(err)
-        assert.False(ok)
+        assert.falsy(res)
 
         local api, err = apis:find(api_fixture)
         assert.falsy(err)

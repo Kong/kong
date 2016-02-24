@@ -172,9 +172,9 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         }
         assert.falsy(err)
 
-        local ok, err = apis:delete(api_fixture)
+        local res, err = apis:delete(api_fixture)
         assert.falsy(err)
-        assert.True(ok)
+        assert.is_table(res)
 
         -- no more API
         local api, err = apis:find(api_fixture)
@@ -196,9 +196,9 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         }
         assert.falsy(err)
 
-        local ok, err = factory.consumers:delete(consumer_fixture)
+        local res, err = factory.consumers:delete(consumer_fixture)
         assert.falsy(err)
-        assert.True(ok)
+        assert.is_table(res)
 
         local consumer, err = factory.consumers:find(consumer_fixture)
         assert.falsy(err)

@@ -359,7 +359,7 @@ end
 function CassandraDB:delete(table_name, schema, primary_keys, constraints)
   local row, err = self:find(table_name, schema, primary_keys)
   if err or row == nil then
-    return false, err
+    return nil, err
   end
 
   local where, args = get_where(schema, primary_keys)
@@ -372,7 +372,7 @@ function CassandraDB:delete(table_name, schema, primary_keys, constraints)
     if constraints ~= nil then
       cascade_delete(self, primary_keys, constraints)
     end
-    return true
+    return row
   end
 end
 

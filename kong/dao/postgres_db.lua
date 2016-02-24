@@ -222,14 +222,16 @@ end
 
 function PostgresDB:delete(table_name, schema, primary_keys)
   local where = get_where(primary_keys)
-  local query = string.format("DELETE FROM %s WHERE %s",
+  local query = string.format("DELETE FROM %s WHERE %s RETURNING *",
                               table_name, where)
   local res, err = self:query(query)
   if err then
     return nil, err
   end
 
-  return res and res.affected_rows == 1
+  if res and res.affected_rows == 1 then
+    return res[1]
+  end
 end
 
 -- Migrations

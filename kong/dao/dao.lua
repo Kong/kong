@@ -3,6 +3,7 @@ local inspect = require "inspect"
 local Object = require "classic"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
+local event_types = require("kong.core.events").TYPES
 
 local function check_arg(arg, arg_n, exp_type)
   if type(arg) ~= exp_type then
@@ -22,17 +23,40 @@ local function check_not_empty(tbl, arg_n)
   end
 end
 
+-- Publishes an event, if an event handler has been specified.
+-- Currently this propagates the events cluster-wide.
+-- @param[type=string] type The event type to publish
+-- @param[type=table] data_t The payload to publish in the event
+local function event(self, type, data_t)
+  if self.events_handler then
+    if self.schema.marshall_event then
+      data_t = self.schema.marshall_event(self.schema, data_t)
+    else
+      data_t = {}
+    end
+
+    local payload = {
+      collection = self.table,
+      type = type,
+      entity = data_t
+    }
+
+    self.events_handler:publish(self.events_handler.TYPES.CLUSTER_PROPAGATE, payload)
+  end
+end
+
 --- DAO
 -- this just avoids having to deal with instanciating models
 
 local DAO = Object:extend()
 
-function DAO:new(db, model_mt, schema, constraints)
+function DAO:new(db, model_mt, schema, constraints, events_handler)
   self.db = db
   self.model_mt = model_mt
   self.schema = schema
   self.table = schema.table
   self.constraints = constraints
+  self.events_handler = events_handler
 end
 
 function DAO:insert(tbl)
@@ -53,7 +77,11 @@ function DAO:insert(tbl)
     end
   end
 
-  return self.db:insert(self.table, self.schema, model, self.constraints)
+  local res, err = self.db:insert(self.table, self.schema, model, self.constraints)
+  if not err then
+    event(self, event_types.ENTITY_CREATED, res)
+  end
+  return res, err
 end
 
 function DAO:find(tbl)
@@ -182,6 +210,7 @@ function DAO:update(tbl, filter_keys)
   if err then
     return nil, err
   elseif res then
+    event(self, event_types.ENTITY_UPDATED, old)
     return setmetatable(res, nil)
   end
 end
@@ -199,7 +228,11 @@ function DAO:delete(tbl)
     return nil, Errors.schema(err)
   end
 
-  return self.db:delete(self.table, self.schema, primary_keys, self.constraints)
+  local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
+  if not err then
+    event(self, event_types.ENTITY_DELETED, row)
+  end
+  return row, err
 end
 
 return DAO
