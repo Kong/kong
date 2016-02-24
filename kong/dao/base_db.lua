@@ -24,10 +24,6 @@ function BaseDB:_get_conn_options()
   return utils.shallow_copy(self.options)
 end
 
-function BaseDB:init_db()
-
-end
-
 function BaseDB:query(query)
   --debug_log(self, query)
   -- to be implemented in child
@@ -37,7 +33,23 @@ function BaseDB:insert(model)
   -- to be implemented in child
 end
 
-function BaseDB:select()
+function BaseDB:find()
+  -- to be implemented in child
+end
+
+function BaseDB:find_all()
+  -- to be implemented in child
+end
+
+function BaseDB:count()
+  -- to be implemented in child
+end
+
+function BaseDB:update()
+  -- to be implemented in child
+end
+
+function BaseDB:delete()
   -- to be implemented in child
 end
 

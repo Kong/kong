@@ -78,7 +78,7 @@ function Factory:new(db_type, options, plugins)
   self.db_type = db_type
   self.daos = {}
   self.properties = options
-  self.plugins_names = plugins
+  self.plugins_names = plugins or {}
 
   local schemas = {}
   local DB = require("kong.dao."..db_type.."_db")
@@ -88,13 +88,11 @@ function Factory:new(db_type, options, plugins)
     schemas[m_name] = require("kong.dao.schemas."..m_name)
   end
 
-  if plugins ~= nil then
-    for _, plugin_name in ipairs(plugins) do
-      local loaded, plugin_schemas = utils.load_module_if_exists("kong.plugins."..plugin_name..".daos")
-      if loaded then
-        for k, v in pairs(plugin_schemas) do
-          schemas[k] = v
-        end
+  for _, plugin_name in ipairs(self.plugins_names) do
+    local loaded, plugin_schemas = utils.load_module_if_exists("kong.plugins."..plugin_name..".daos")
+    if loaded then
+      for k, v in pairs(plugin_schemas) do
+        schemas[k] = v
       end
     end
   end

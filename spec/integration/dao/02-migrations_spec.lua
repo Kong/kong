@@ -34,13 +34,12 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
         local xfactory = Factory(db_type, invalid_opts)
 
         local cur_migrations, err = xfactory:current_migrations()
-        assert.falsy(cur_migrations)
-        assert.truthy(err)
-        assert.True(err.db)
-
         if db_type == TYPES.CASSANDRA then
-          assert.equal("[Invalid] Keyspace '_inexistent_' does not exist", tostring(err))
+          assert.same({}, cur_migrations)
         elseif db_type == TYPES.POSTGRES then
+          assert.truthy(err)
+          assert.falsy(cur_migrations)
+          assert.True(err.db)
           assert.equal('FATAL: database "_inexistent_" does not exist', tostring(err))
         end
       end)

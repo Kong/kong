@@ -153,8 +153,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(api)
         if db_type == TYPES.CASSANDRA then
           assert.truthy(err)
-          assert.True(err.db)
-          assert.equal("[Invalid] UUID should be 16 or 0 bytes (2)", tostring(err))
+          assert.True(err.schema)
         elseif db_err == TYPES.POSTGRES then
           assert.falsy(err)
         end
@@ -176,31 +175,6 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
             apis:find ""
           end, "bad argument #1 to 'find' (table expected, got string)")
         end)
-      end)
-    end)
-
-    pending("filter()", function()
-      local api_fixture
-      before_each(function()
-        local api, err = apis:insert(api_tbl)
-        assert.falsy(err)
-        assert.truthy(api)
-        api_fixture = api
-      end)
-      after_each(function()
-        factory:truncate_tables()
-      end)
-      it("select by primary key", function()
-        local api, err = apis:filter(api_fixture)
-        assert.falsy(err)
-        assert.same(api_fixture, api)
-        assert.raw_table(api)
-      end)
-      it("select without primary key", function()
-        local api, err = apis:filter {name = "mockbin"}
-        assert.falsy(err)
-        assert.same(api_fixture, api)
-        assert.raw_table(api)
       end)
     end)
 
@@ -501,19 +475,6 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         api, err = apis:find(api_fixture)
         assert.falsy(err)
         assert.equal("updated", api.name)
-      end)
-      pending("when multiple match", function()
-        local api_2, err = apis:insert {
-          name = "mockbin2",
-          request_host = "mockbin2.com",
-          request_path = "/mockbin2",
-          upstream_url = api_fixture.upstream_url
-        }
-        assert.falsy(err)
-
-        local api, err = apis:update({name = "updated"}, {upstream_url = api_fixture.upstream_url})
-        print(inspect(api))
-        print(inspect(err))
       end)
       it("return nil if no rows were affected", function()
         local api, err = apis:update({
