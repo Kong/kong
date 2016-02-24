@@ -27,16 +27,16 @@ end
 -- Currently this propagates the events cluster-wide.
 -- @param[type=string] type The event type to publish
 -- @param[type=table] data_t The payload to publish in the event
-local function event(self, type, data_t)
+local function event(self, type, table, schema, data_t)
   if self.events_handler then
-    if self.schema.marshall_event then
-      data_t = self.schema.marshall_event(self.schema, data_t)
+    if schema.marshall_event then
+      data_t = schema.marshall_event(schema, data_t)
     else
       data_t = {}
     end
 
     local payload = {
-      collection = self.table,
+      collection = table,
       type = type,
       entity = data_t
     }
@@ -79,7 +79,7 @@ function DAO:insert(tbl)
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints)
   if not err then
-    event(self, event_types.ENTITY_CREATED, res)
+    event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
   end
   return res, err
 end
@@ -210,7 +210,7 @@ function DAO:update(tbl, filter_keys)
   if err then
     return nil, err
   elseif res then
-    event(self, event_types.ENTITY_UPDATED, old)
+    event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
     return setmetatable(res, nil)
   end
 end
@@ -223,6 +223,22 @@ function DAO:delete(tbl)
     error("Missing PRIMARY KEY field", 2)
   end
 
+  -- Find associated entities
+  local associated_entites = {}
+  if self.constraints.cascade ~= nil then
+    for f_entity, cascade in pairs(self.constraints.cascade) do
+      local f_fetch_keys = {[cascade.f_col] = tbl[cascade.col]}
+      local rows, err = self.db:find_all(cascade.table, f_fetch_keys, cascade.schema)
+      if err then
+        return nil, err
+      end
+      associated_entites[cascade.table] = {
+        schema = cascade.schema,
+        entities = rows
+      }
+    end
+  end
+
   local primary_keys, values, nils, err = model:extract_keys()
   if err then
     return nil, Errors.schema(err)
@@ -230,7 +246,14 @@ function DAO:delete(tbl)
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
   if not err then
-    event(self, event_types.ENTITY_DELETED, row)
+    event(self, event_types.ENTITY_DELETED, self.table, self.schema, row)
+
+    -- Also propagate the deletion for the associated entities
+    for k, v in pairs(associated_entites) do
+      for _, entity in ipairs(v.entities) do
+        event(self, event_types.ENTITY_DELETED, k, v.schema, entity)
+      end
+    end
   end
   return row, err
 end
