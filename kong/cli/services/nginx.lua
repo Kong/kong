@@ -181,8 +181,13 @@ function Nginx:_get_cmd()
   }, function(path)
     local res, code = IO.os_execute(path.." -v")
     if code == 0 then
-      return res:match("^nginx version: ngx_openresty/") or
-             res:match("^nginx version: openresty/")
+      local version_match = res:match("^nginx version: ngx_openresty/") or
+                              res:match("^nginx version: openresty/")
+      if not version_match then
+        logger:error("Incompatible nginx found. Kong requires OpenResty.")
+        os.exit(1)
+      end
+      return version_match
     end
 
     return false
