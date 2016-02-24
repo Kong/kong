@@ -30,7 +30,8 @@ function Serf:_get_cmd()
     if code == 0 then
       local version_match = res:match("^Serf v0.7.0")
       if not version_match then
-        logger:warn("Incompatible Serf version. Kong requires v0.7.0.")
+        logger:error("Incompatible Serf version. Kong requires v0.7.0.")
+        os.exit(1)
       end
       return version_match
     end
@@ -53,7 +54,7 @@ function Serf:prepare()
   if not luajit_path then
     return nil, "Can't find luajit"
   end
-  
+
   local script = [[
 #!/bin/sh
 PAYLOAD=`cat` # Read from stdin
@@ -214,7 +215,7 @@ function Serf:event(t_payload)
   if string.len(encoded_payload) > 512 then
     -- Serf can't send a payload greater than 512 bytes
     return false, "Encoded payload is "..string.len(encoded_payload).." and it exceeds the limit of 512 bytes!"
-  end 
+  end
 
   return self:invoke_signal("event "..tostring(args).." kong", {"'"..encoded_payload.."'"}, true)
 end
