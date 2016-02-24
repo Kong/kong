@@ -257,7 +257,7 @@ function Serf:event(t_payload)
     return false, "Encoded payload is "..string.len(encoded_payload).." and it exceeds the limit of 512 bytes!"
   end 
 
-  return self:invoke_signal("event "..tostring(args).." kong", {"'"..encoded_payload.."'"}, true)
+  return self:invoke_signal("event "..tostring(args).." kong", {"'"..encoded_payload.."'", "&"}, true)
 end
 
 function Serf:stop()
