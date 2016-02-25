@@ -30,6 +30,7 @@ local dao_loader = require "kong.tools.dao_loader"
 local config_loader = require "kong.tools.config_loader"
 local plugins_iterator = require "kong.core.plugins_iterator"
 local Events = require "kong.core.events"
+local Serf = require "kong.cli.services.serf"
 
 local ipairs = ipairs
 local table_insert = table.insert
@@ -127,6 +128,7 @@ local Kong = {}
 function Kong.init()
   local status, err = pcall(function() 
       configuration = config_loader.load(os.getenv("KONG_CONF"))
+      serf = Serf(configuration)
       events = Events()
       dao = dao_loader.load(configuration, true, events)
       loaded_plugins = load_node_plugins(configuration)

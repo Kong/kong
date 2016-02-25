@@ -1,5 +1,4 @@
 local cluster_utils = require "kong.tools.cluster"
-local Serf = require "kong.cli.services.serf"
 local cache = require "kong.tools.database_cache"
 
 local resty_lock
@@ -38,7 +37,6 @@ local function async_autojoin(premature)
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif count > 1 then
-      local serf = Serf(configuration)
       local members, err = serf:_members()
       if err then
         ngx.log(ngx.ERR, tostring(err))
