@@ -25,14 +25,11 @@ However by upgrading the underlying OpenResty version, source installations do n
   - OAuth2
     - Better handling of `redirect_uri` (prevent the use of fragments and correctly handle querystrings). Courtesy of [@PGBI](https://github.com/PGBI). [#930](https://github.com/Mashape/kong/pull/930)
     - Add `PUT` support to the `/auth2_tokens` route. [#897](https://github.com/Mashape/kong/pull/897)
-    - Better error message when the `access_token` is missing. [#1003](https://github.com/Mashape/kong/pull/1003)
   - IP restriction: Fix an issue that could arise when restarting Kong. Now Kong does not need to be restarted for the ip-restriction configuration to take effect. [#782](https://github.com/Mashape/kong/pull/782) [#960](https://github.com/Mashape/kong/pull/960)
   - SSL: Replace shelled out openssl calls with native `ngx.ssl` conversion utilities, which preserve the certificate chain. [#968](https://github.com/Mashape/kong/pull/968)
-  - ACL: Properly invalidating entities when assigning a new ACL group. [#996](https://github.com/Mashape/kong/pull/996)
 - Avoid user warning on start when the user is not root. [#964](https://github.com/Mashape/kong/pull/964)
 - Store Serf logs in NGINX working directory to prevent eventual permission issues. [#975](https://github.com/Mashape/kong/pull/975)
 - Allow plugins configured on a Consumer *without* being configured on an API to run. [#978](https://github.com/Mashape/kong/issues/978) [#980](https://github.com/Mashape/kong/pull/980)
-- Fixed an edge-case where Kong nodes would not be registered in the `nodes` table. [#1008](https://github.com/Mashape/kong/pull/1008)
 
 ## [0.6.1] - 2016/02/03
 
