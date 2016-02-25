@@ -63,4 +63,8 @@ function _M:find(api_id, identifier, current_timestamp, period, name)
   end
 end
 
+function _M:count()
+  return _M.super.count(self, _M.table)
+end
+
 return {response_ratelimiting_metrics = _M}
