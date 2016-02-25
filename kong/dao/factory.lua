@@ -89,8 +89,15 @@ function Factory:new(db_type, options, plugins, events_handler)
   end
 
   for _, plugin_name in ipairs(self.plugins_names) do
-    local loaded, plugin_schemas = utils.load_module_if_exists("kong.plugins."..plugin_name..".daos")
-    if loaded then
+    local has_dao, plugin_daos = utils.load_module_if_exists("kong.plugins."..plugin_name..".dao."..self.db_type)
+    if has_dao then
+      for k, v in pairs(plugin_daos) do
+        self.daos[k] = v(options)
+      end
+    end
+
+    local has_schema, plugin_schemas = utils.load_module_if_exists("kong.plugins."..plugin_name..".daos")
+    if has_schema then
       for k, v in pairs(plugin_schemas) do
         schemas[k] = v
       end
@@ -114,10 +121,7 @@ end
 
 function Factory:truncate_tables()
   for _, dao in pairs(self.daos) do
-    local err = _db:truncate_table(dao.table)
-    if err then
-      error(err)
-    end
+    _db:truncate_table(dao.table)
   end
 end
 

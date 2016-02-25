@@ -248,7 +248,7 @@ function CassandraDB:find_all(table_name, tbl, schema)
       deserialize_rows(rows, schema)
     end
     for _, row in ipairs(rows) do
-      table.insert(res_rows, row)
+      res_rows[#res_rows + 1] = row
     end
   end
 

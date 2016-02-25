@@ -3,6 +3,9 @@ local http_client = require "kong.tools.http_client"
 local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
 
+local env = spec_helper.get_env()
+local dao_factory = env.dao_factory
+
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 
 local function wait()
@@ -55,6 +58,7 @@ describe("RateLimiting Plugin", function()
   end
 
   setup(function()
+    dao_factory:drop_schema()
     prepare_db()
     spec_helper.start_kong()
     wait()
@@ -164,7 +168,7 @@ describe("RateLimiting Plugin", function()
         assert.are.equal(429, status)
         assert.are.equal("API rate limit exceeded", body.message)
       end)
-    end) 
+    end)
   end)
 
   describe("Async increment", function()
@@ -189,29 +193,9 @@ describe("RateLimiting Plugin", function()
   end)
 
   describe("Continue on error", function()
-
-    local session, err, configuration
-
-    setup(function()
-      local cassandra = require "cassandra"
-      local TEST_CONF = spec_helper.get_env().conf_file
-      local env = spec_helper.get_env(TEST_CONF)
-      configuration = env.configuration
-      session, err = cassandra.spawn_session {
-        shm = "ratelimiting_specs",
-        keyspace = configuration.dao_config.keyspace,
-        contact_points = configuration.dao_config.contact_points
-      }
-      assert.falsy(err)
-    end)
-
     after_each(function()
-      session:execute("DROP KEYSPACE "..configuration.dao_config.keyspace)
+      dao_factory:drop_schema()
       prepare_db()
-    end)
-
-    teardown(function()
-      session:shutdown()
     end)
 
     it("should not continue if an error occurs", function()
@@ -219,9 +203,10 @@ describe("RateLimiting Plugin", function()
       assert.are.equal(200, status)
       assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
       assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
-      
+
       -- Simulate an error on the database
-      session:execute("DROP TABLE ratelimiting_metrics")
+      local err = dao_factory.ratelimiting_metrics:drop_table(dao_factory.ratelimiting_metrics.table)
+      assert.falsy(err)
 
       -- Make another request
       local res, status, _ = http_client.get(STUB_GET_URL, {}, {host = "test8.com"})
@@ -234,9 +219,10 @@ describe("RateLimiting Plugin", function()
       assert.are.equal(200, status)
       assert.falsy(headers["x-ratelimit-limit-minute"])
       assert.falsy(headers["x-ratelimit-remaining-minute"])
-      
+
       -- Simulate an error on the database
-      session:execute("DROP TABLE ratelimiting_metrics")
+      local err = dao_factory.ratelimiting_metrics:drop_table(dao_factory.ratelimiting_metrics.table)
+      assert.falsy(err)
 
       -- Make another request
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test9.com"})

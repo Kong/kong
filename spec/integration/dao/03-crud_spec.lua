@@ -21,7 +21,6 @@ say:set("assertion.raw_table.positive", "Expected %s\nto be a raw table")
 say:set("assertion.raw_table.negative", "Expected %s\nto not be a raw_table")
 assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positive", "assertion.raw_table.negative")
 
-
 local utils = require "spec.spec_helpers"
 local Factory = require "kong.dao.factory"
 
