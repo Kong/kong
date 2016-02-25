@@ -47,6 +47,12 @@ function _M.paginated_set(self, dao_collection)
   self.params.size = nil
   self.params.offset = nil
 
+  for k, _ in pairs(self.params) do
+    if not dao_collection._schema.fields[k] then
+      self.params[k] = nil
+    end
+  end
+
   local data, err = dao_collection:find_by_keys(self.params, size, offset)
   if err then
     return app_helpers.yield_error(err)
