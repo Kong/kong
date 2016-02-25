@@ -1,8 +1,6 @@
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
-local cjson = require "cjson"
-local Serf = require "kong.cli.services.serf"
 
 local function invalidate_plugin(entity)
   cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))
@@ -23,12 +21,11 @@ local function invalidate(message_t)
 end
 
 local function get_cluster_members()
-  local serf = require("kong.cli.services.serf")(configuration)
-  local res, err = serf:invoke_signal("members", { ["-format"] = "json" })
+  local members, err = serf:_members()
   if err then
     ngx.log(ngx.ERR, err)
   else
-    return cjson.decode(res).members
+    return members
   end
 end
 
@@ -106,23 +103,14 @@ local function member_join(message_t)
     return
   end
 
-  if #nodes == 0 then -- Insert
-    local _, err = dao.nodes:insert({
-      name = stringy.strip(member.name),
-      cluster_listening_address = stringy.strip(member.cluster_listening_address)
-    })
-    if err then
-      ngx.log(ngx.ERR, tostring(err))
-      return
-    end
-  elseif #nodes == 1 then -- Update
+  if #nodes == 1 then -- Update
     member_update(message_t)
-  else
+  elseif #nodes > 1 then
     error("Inconsistency error. More than one node found with name "..member.name)
   end
 
   -- Purge the cache when a new node joins
-  if dao.nodes:count_by_keys({}) > 1 then -- If it's only one node, no need to delete the cache
+  if #get_cluster_members() > 1 then -- If it's only one node, no need to delete the cache
     cache.delete_all()
   end
 end
@@ -138,11 +126,7 @@ return {
     invalidate(message_t)
   end,
   [events.TYPES.CLUSTER_PROPAGATE] = function(message_t)
-    local serf = Serf(configuration)
-    local ok, err = serf:event(message_t)
-    if not ok then
-      ngx.log(ngx.ERR, err)
-    end
+    serf:event(message_t)
   end,
   [events.TYPES["MEMBER-JOIN"]] = function(message_t)
     member_join(message_t)

@@ -655,6 +655,8 @@ function BaseDao:event(type, data_t)
   if self.events_handler then
     if self._schema.marshall_event then
       data_t = self._schema.marshall_event(self._schema, data_t)
+    else
+      data_t = {}
     end
 
     local payload = {

@@ -1,7 +1,5 @@
 local cluster_utils = require "kong.tools.cluster"
-local Serf = require "kong.cli.services.serf"
 local cache = require "kong.tools.database_cache"
-local cjson = require "cjson"
 
 local resty_lock
 local status, res = pcall(require, "resty.lock")
@@ -39,13 +37,11 @@ local function async_autojoin(premature)
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif count > 1 then
-      local serf = Serf(configuration)
-      local res, err = serf:invoke_signal("members", {["-format"] = "json"})
+      local members, err = serf:_members()
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end
 
-      local members = cjson.decode(res).members
       if #members < 2 then
         -- Trigger auto-join
         local _, err = serf:_autojoin(cluster_utils.get_node_name(configuration))

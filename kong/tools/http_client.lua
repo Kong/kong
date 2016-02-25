@@ -99,8 +99,9 @@ function _M.post_multipart(url, form, headers)
 
   local boundary = "8fd84e9444e3946c"
   local body = ""
+
   for k, v in pairs(form) do
-    body = body.."--"..boundary.."\r\nContent-Disposition: form-data; name=\""..k.."\"\r\n\r\n"..v.."\r\n"
+    body = body.."--"..boundary.."\r\nContent-Disposition: form-data; name=\""..k.."\"\r\n\r\n"..tostring(v).."\r\n"
   end
 
   if body ~= "" then

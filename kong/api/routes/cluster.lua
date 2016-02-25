@@ -1,6 +1,4 @@
 local responses = require "kong.tools.responses"
-local cjson = require "cjson"
-local Serf = require "kong.cli.services.serf"
 
 local pairs = pairs
 local table_insert = table.insert
@@ -9,12 +7,11 @@ local string_upper = string.upper
 return {
   ["/cluster/"] = {
     GET = function(self, dao_factory, helpers)
-      local res, err = Serf(configuration):invoke_signal("members", {["-format"] = "json"})
+      local members, err = serf:_members()
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
 
-      local members = cjson.decode(res).members
       local result = {data = {}}
       for _, v in pairs(members) do
         if not self.params.status or (self.params.status and v.status == self.params.status) then
@@ -35,7 +32,7 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"name\"")
       end
 
-      local _, err = Serf(configuration):invoke_signal("force-leave", {self.params.name})
+      local _, err = serf:invoke_signal("force-leave", {self.params.name})
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
       end
@@ -48,7 +45,7 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"address\"")
       end
 
-      local _, err = Serf(configuration):invoke_signal("join", {self.params.address})
+      local _, err = serf:invoke_signal("join", {self.params.address})
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
       end

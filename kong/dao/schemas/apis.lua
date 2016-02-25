@@ -159,5 +159,8 @@ return {
     strip_request_path = {type = "boolean"},
     upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
     preserve_host = {type = "boolean"}
-  }
+  },
+  marshall_event = function(self, t)
+    return { id = t.id }
+  end
 }

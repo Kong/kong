@@ -56,6 +56,7 @@ return {
     }
   },
   marshall_event = function(self, plugin_t)
+    local result = utils.deep_copy(plugin_t)
     if plugin_t and plugin_t.config then
       local config_schema, err = self.fields.config.schema(plugin_t)
       if err then
@@ -63,11 +64,13 @@ return {
       end
 
       if config_schema.marshall_event and type(config_schema.marshall_event) == "function" then
-        plugin_t.config = config_schema.marshall_event(plugin_t.config)
+        result.config = config_schema.marshall_event(plugin_t.config)
+      else
+        result.config = {}
       end
     end
     
-    return plugin_t
+    return result
   end,
   self_check = function(self, plugin_t, dao, is_update)
     -- Load the config schema

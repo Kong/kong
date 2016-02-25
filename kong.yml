@@ -164,7 +164,7 @@
 ## This file can tweaked to some extent, but many directives are necessary for Kong to work.
 ## /!\ BE CAREFUL
 nginx: |
-  user {{user}};
+  {{user}}
   worker_processes auto;
   error_log logs/error.log error;
   daemon on;
@@ -228,19 +228,23 @@ nginx: |
     lua_socket_log_errors off;
     {{lua_ssl_trusted_certificate}}
 
-    init_by_lua '
+    init_by_lua_block {
       kong = require "kong"
       kong.init()
-    ';
+    }
 
-    init_worker_by_lua 'kong.init_worker()';
+    init_worker_by_lua_block {
+      kong.init_worker()
+    }
 
     server {
       server_name _;
       listen {{proxy_listen}};
       listen {{proxy_listen_ssl}} ssl;
 
-      ssl_certificate_by_lua 'kong.ssl_certificate()';
+      ssl_certificate_by_lua_block {
+        kong.ssl_certificate()
+      }
 
       ssl_certificate {{ssl_cert}};
       ssl_certificate_key {{ssl_key}};
@@ -254,9 +258,10 @@ nginx: |
         set $upstream_url nil;
 
         # Authenticate the user and load the API info
-        access_by_lua 'kong.access()';
+        access_by_lua_block {
+          kong.access()
+        }
 
-        # Proxy the request
         # Proxy the request
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -266,26 +271,32 @@ nginx: |
         proxy_pass_header Server;
 
         # Add additional response headers
-        header_filter_by_lua 'kong.header_filter()';
+        header_filter_by_lua_block {
+          kong.header_filter()
+        }
 
         # Change the response body
-        body_filter_by_lua 'kong.body_filter()';
+        body_filter_by_lua_block {
+          kong.body_filter()
+        }
 
         # Log the request
-        log_by_lua 'kong.log()';
+        log_by_lua_block {
+          kong.log()
+        }
       }
 
       location /robots.txt {
         return 200 'User-agent: *\nDisallow: /';
       }
 
-      error_page 500 /500.html;
-      location = /500.html {
+      error_page 500 502 503 504 /50x;
+
+      location = /50x {
         internal;
-        content_by_lua '
-          local responses = require "kong.tools.responses"
-          responses.send_HTTP_INTERNAL_SERVER_ERROR("An unexpected error occurred")
-        ';
+        content_by_lua_block {
+          require("kong.core.error_handlers")(ngx)
+        }
       }
     }
 
@@ -297,7 +308,7 @@ nginx: |
 
       location / {
         default_type application/json;
-        content_by_lua '
+        content_by_lua_block {
           ngx.header["Access-Control-Allow-Origin"] = "*"
           if ngx.req.get_method() == "OPTIONS" then
             ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
@@ -305,8 +316,8 @@ nginx: |
             ngx.exit(204)
           end
           local lapis = require "lapis"
-          lapis.serve("kong.api.app")
-        ';
+          lapis.serve "kong.api.app"
+        }
       }
 
       location /nginx_status {

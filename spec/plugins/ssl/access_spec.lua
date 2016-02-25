@@ -1,5 +1,4 @@
 local spec_helper = require "spec.spec_helpers"
-local ssl_util = require "kong.plugins.ssl.ssl_util"
 local url = require "socket.url"
 local IO = require "kong.tools.io"
 local http_client = require "kong.tools.http_client"
@@ -16,45 +15,61 @@ describe("SSL Plugin", function()
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
-        { name = "ssl-test", request_host = "ssl1.com", upstream_url = "http://mockbin.com" },
-        { name = "ssl-test2", request_host = "ssl2.com", upstream_url = "http://mockbin.com" },
-        { name = "ssl-test3", request_host = "ssl3.com", upstream_url = "http://mockbin.com" },
-        { name = "ssl-test4", request_host = "ssl4.com", upstream_url = "http://mockbin.com" },
-      },
-      plugin = {
-        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key }, __api = 1 },
-        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true }, __api = 2 },
-        { name = "ssl", config = { cert = ssl_fixtures.cert, key = ssl_fixtures.key, only_https = true, accept_http_if_already_terminated = true }, __api = 4 }
+        { request_host = "ssl1.com", upstream_url = "http://mockbin.com" },
+        { request_host = "ssl2.com", upstream_url = "http://mockbin.com" },
+        { request_host = "ssl3.com", upstream_url = "http://mockbin.com" },
+        { request_host = "ssl4.com", upstream_url = "http://mockbin.com" },
       }
     }
 
     spec_helper.start_kong()
+
+    -- The SSL plugin needs to be added manually because we are requiring ngx.ssl
+    local _, status = http_client.post_multipart(API_URL.."/apis/ssl1.com/plugins/", { 
+      name = "ssl", 
+      ["config.cert"] = ssl_fixtures.cert, 
+      ["config.key"] = ssl_fixtures.key})
+    assert.equals(201, status)
+
+    local _, status = http_client.post_multipart(API_URL.."/apis/ssl2.com/plugins/", { 
+      name = "ssl", 
+      ["config.cert"] = ssl_fixtures.cert, 
+      ["config.key"] = ssl_fixtures.key,
+      ["config.only_https"] = true})
+    assert.equals(201, status)
+
+    local _, status = http_client.post_multipart(API_URL.."/apis/ssl4.com/plugins/", { 
+      name = "ssl", 
+      ["config.cert"] = ssl_fixtures.cert, 
+      ["config.key"] = ssl_fixtures.key,
+      ["config.only_https"] = true,
+      ["config.accept_http_if_already_terminated"] = true})
+    assert.equals(201, status)
   end)
 
   teardown(function()
     spec_helper.stop_kong()
   end)
 
-  describe("SSL Util", function()
-
+  describe("SSL conversions", function()
     it("should not convert an invalid cert to DER", function()
-      assert.falsy(ssl_util.cert_to_der("asd"))
+      local res, status = http_client.post_multipart(API_URL.."/apis/ssl1.com/plugins/", { 
+      name = "ssl", 
+      ["config.cert"] = "asd", 
+      ["config.key"] = ssl_fixtures.key})
+      assert.equals(400, status)
+      assert.equals("Invalid SSL certificate", cjson.decode(res)["config.cert"])
     end)
-
-     it("should convert a valid cert to DER", function()
-      assert.truthy(ssl_util.cert_to_der(ssl_fixtures.cert))
-    end)
-
     it("should not convert an invalid key to DER", function()
-      assert.falsy(ssl_util.key_to_der("asd"))
+      local res, status = http_client.post_multipart(API_URL.."/apis/ssl1.com/plugins/", { 
+      name = "ssl", 
+      ["config.cert"] = ssl_fixtures.cert, 
+      ["config.key"] = "hello"})
+      assert.equals(400, status)
+      assert.equals("Invalid SSL certificate key", cjson.decode(res)["config.key"])
     end)
-
-    it("should convert a valid key to DER", function()
-      assert.truthy(ssl_util.key_to_der(ssl_fixtures.key))
-    end)
-
   end)
-
+  
   describe("SSL Resolution", function()
 
     it("should return default CERTIFICATE when requesting other APIs", function()
@@ -117,5 +132,5 @@ describe("SSL Plugin", function()
     local res = IO.os_execute("curl -s -o /dev/null -w \"%{http_code}\" "..API_URL.."/apis/"..api_id.."/plugins/ --form \"name=ssl\" --form \"config.cert=@"..ssl_cert_path.."\" --form \"config.key=@"..ssl_key_path.."\"")
     assert.are.equal(201, tonumber(res))
   end)
-
+  
 end)
