@@ -1,7 +1,6 @@
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
-local Serf = require "kong.cli.services.serf"
 
 local function invalidate_plugin(entity)
   cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))
@@ -22,7 +21,6 @@ local function invalidate(message_t)
 end
 
 local function get_cluster_members()
-  local serf = require("kong.cli.services.serf")(configuration)
   local members, err = serf:_members()
   if err then
     ngx.log(ngx.ERR, err)
@@ -128,11 +126,7 @@ return {
     invalidate(message_t)
   end,
   [events.TYPES.CLUSTER_PROPAGATE] = function(message_t)
-    local serf = Serf(configuration)
-    local ok, err = serf:event(message_t)
-    if not ok then
-      ngx.log(ngx.ERR, err)
-    end
+    serf:event(message_t)
   end,
   [events.TYPES["MEMBER-JOIN"]] = function(message_t)
     member_join(message_t)
