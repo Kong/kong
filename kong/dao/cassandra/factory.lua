@@ -6,6 +6,7 @@
 
 local constants = require "kong.constants"
 local cassandra = require "cassandra"
+local types = require "cassandra.types"
 local DaoError = require "kong.dao.error"
 local stringy = require "stringy"
 local Object = require "classic"
@@ -115,7 +116,8 @@ function CassandraFactory:get_session_options()
     contact_points = self.properties.contact_points,
     keyspace = self.properties.keyspace,
     query_options = {
-      prepare = true
+      prepare = true,
+      consistency = types.consistencies[self.properties.consistency:lower()]
     },
     socket_options = {
       connect_timeout = self.properties.timeout,

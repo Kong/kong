@@ -128,6 +128,11 @@
   #   dc2: 3
 
   #####
+  ## Consistency level to use.
+  ## See http://docs.datastax.com/en/cassandra/2.0/cassandra/dml/dml_config_consistency_c.html
+  # consistency: ONE 
+
+  #####
   ## Client-to-node TLS options.
   ## `enabled`: if true, will connect to your Cassandra instance using TLS.
   ## `verify`: if true, will verify the server certificate using the given CA file.
