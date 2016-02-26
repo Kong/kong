@@ -88,6 +88,7 @@ describe("Admin API", function()
           local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
           assert.equal(200, status)
           local body = json.decode(response)
+          assert.False(body.enabled)
 
           -- Update one field
           body.enabled = true

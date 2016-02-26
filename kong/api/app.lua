@@ -117,6 +117,16 @@ app.handle_error = function(self, err, trace)
   return responses.send_HTTP_INTERNAL_SERVER_ERROR()
 end
 
+app:before_filter(function(self)
+  local method = ngx.req.get_method()
+  if method ~= "GET" and method ~= "DELETE" then
+    local content_type = self.req.headers["content-type"]
+    if not content_type or stringy.strip(content_type) == "" then
+      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
+    end
+  end
+end)
+
 local handler_helpers = {
   responses = responses,
   yield_error = app_helpers.yield_error
