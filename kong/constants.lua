@@ -13,7 +13,6 @@ return {
     GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
     NGINX_CONFIG = "nginx.conf"
   },
-  DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
   PLUGINS_AVAILABLE = {
     "ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",

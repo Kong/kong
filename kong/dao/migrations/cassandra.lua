@@ -109,5 +109,22 @@ return {
     down = [[
       DROP TABLE nodes;
     ]]
+  },
+  {
+    name = "2016-02-25-160900_remove_null_consumer_id",
+    up = function(_, _, dao)
+      local rows, err = dao.plugins:find_all {consumer_id = "00000000-0000-0000-0000-000000000000"}
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        row.consumer_id = nil
+        local _, err = dao.plugins:update(row, true)
+        if err then
+          return err
+        end
+      end
+    end
   }
 }

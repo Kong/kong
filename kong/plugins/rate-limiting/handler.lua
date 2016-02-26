@@ -98,8 +98,6 @@ function RateLimitingHandler:access(conf)
   if usage then
     -- Adding headers
     for k, v in pairs(usage) do
-      local inspect = require "inspect"
-      print(inspect(v))
       ngx.header[constants.HEADERS.RATELIMIT_LIMIT.."-"..k] = v.limit
       ngx.header[constants.HEADERS.RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
     end

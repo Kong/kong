@@ -173,7 +173,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     if mig_type == "string" then
       err = _db:queries(migration.up)
     elseif mig_type == "function" then
-      err = migration.up(_db, self.properties)
+      err = migration.up(_db, self.properties, self)
     end
 
     if err then

@@ -37,8 +37,7 @@ return {
     consumer_id = {
       type = "id",
       foreign = "consumers:id",
-      queryable = true,
-      --default = constants.DATABASE_NULL_ID
+      queryable = true
     },
     name = {
       type = "string",
