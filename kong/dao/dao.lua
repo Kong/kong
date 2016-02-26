@@ -1,5 +1,3 @@
-local inspect = require "inspect"
-
 local Object = require "classic"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
@@ -152,9 +150,14 @@ end
 local function fix(old, new, schema)
   for col, field in pairs(schema.fields) do
     if old[col] ~= nil and new[col] ~= nil and field.schema ~= nil then
-      local f_schema, err = type(field.schema) == "function" and field.schema(old) or field.schema
-      if err then
-        error(err)
+      local f_schema, err
+      if type(field.schema) == "function" then
+        f_schema, err = field.schema(old)
+        if err then
+          error(err)
+        end
+      else
+        f_schema = field.schema
       end
       for f_k in pairs(f_schema.fields) do
         if new[col][f_k] == nil and old[col][f_k] ~= nil then
@@ -239,7 +242,7 @@ function DAO:delete(tbl)
     end
   end
 
-  local primary_keys, values, nils, err = model:extract_keys()
+  local primary_keys, _, _, err = model:extract_keys()
   if err then
     return nil, Errors.schema(err)
   end

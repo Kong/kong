@@ -24,6 +24,8 @@ return{
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
+
+      local err
       self.hmacauth_credential, err = dao_factory.hmacauth_credentials:find(self.params)
       if err then
         return helpers.yield_error(err)

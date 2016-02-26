@@ -1,6 +1,5 @@
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
-local constants = require "kong.constants"
 
 local function check_ordered_limits(limit_value)
   local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}

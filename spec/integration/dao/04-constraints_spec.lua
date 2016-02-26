@@ -1,5 +1,3 @@
-local inspect = require "inspect"
-
 local utils = require "kong.tools.utils"
 local helpers = require "spec.spec_helpers"
 local Factory = require "kong.dao.factory"

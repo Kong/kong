@@ -2,8 +2,6 @@ local singletons = require "kong.singletons"
 local crud = require "kong.api.crud_helpers"
 local syslog = require "kong.tools.syslog"
 local constants = require "kong.constants"
-local validations = require "kong.dao.schemas_validation"
-local is_uuid = validations.is_valid_uuid
 
 return {
   ["/apis/"] = {

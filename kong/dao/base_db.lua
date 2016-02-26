@@ -1,17 +1,5 @@
-local inspect = require "inspect"
-
 local Object = require "classic"
 local utils = require "kong.tools.utils"
-
-local function debug_log(self, ...)
-  local prefix = "[DB:"..self.db_type.."]"
-  if ngx ~= nil then
-    --ngx.log(ngx.DEBUG, prefix, inspect(...))
-    --print(prefix, inspect(...))
-  else
-    print(prefix, inspect(...))
-  end
-end
 
 local BaseDB = Object:extend()
 

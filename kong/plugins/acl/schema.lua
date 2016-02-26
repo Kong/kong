@@ -1,6 +1,5 @@
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
-local constants = require "kong.constants"
 
 return {
   no_consumer = true,

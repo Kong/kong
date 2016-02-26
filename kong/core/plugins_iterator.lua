@@ -1,6 +1,5 @@
 local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
-local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 
 local table_remove = table.remove

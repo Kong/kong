@@ -1,5 +1,4 @@
 local Errors = require "kong.dao.errors"
-local constants = require "kong.constants"
 
 return {
   fields = {

@@ -1,6 +1,4 @@
-local validations = require "kong.dao.schemas_validation"
 local crud = require "kong.api.crud_helpers"
-local is_uuid = validations.is_valid_uuid
 
 return {
   ["/consumers/"] = {

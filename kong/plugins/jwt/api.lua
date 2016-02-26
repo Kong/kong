@@ -24,6 +24,8 @@ return {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
+
+      local err
       self.jwt_secret, err = dao_factory.jwt_secrets:find(self.params)
       if err then
         return helpers.yield_error(err)

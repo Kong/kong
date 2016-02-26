@@ -1,6 +1,3 @@
-local inspect = require "inspect"
-
-local utils = require "kong.tools.utils"
 local helpers = require "spec.spec_helpers"
 local Factory = require "kong.dao.factory"
 
@@ -32,7 +29,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
       }
       assert.falsy(err)
 
-      local rate_limiting_for_api, err = factory.plugins:insert {
+      local _, err = factory.plugins:insert {
         name = "rate-limiting", api_id = api.id,
         config = {minute = 1}
       }

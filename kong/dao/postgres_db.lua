@@ -1,5 +1,3 @@
-local inspect = require "inspect"
-
 local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local uuid = require "lua_uuid"
@@ -19,6 +17,13 @@ PostgresDB.dao_insert_values = {
 
 function PostgresDB:new(...)
   PostgresDB.super.new(self, "postgres", ...)
+end
+
+function PostgresDB:infos()
+  return {
+    desc = "database",
+    name = self:_get_conn_options().database
+  }
 end
 
 -- Formatting

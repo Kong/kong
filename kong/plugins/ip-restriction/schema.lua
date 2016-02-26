@@ -1,6 +1,5 @@
 local iputils = require "resty.iputils"
 local Errors = require "kong.dao.errors"
-local constants = require "kong.constants"
 
 local function validate_ips(v, t, column)
   local new_fields

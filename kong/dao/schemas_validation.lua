@@ -53,7 +53,6 @@ function _M.validate_entity(tbl, schema, options)
 
   local errors
   local partial_update = options.update and not options.full_update
-  local full_update = options.update and options.full_update
 
   local key_values = {[""] = tbl} -- By default is only one element
 
@@ -246,13 +245,7 @@ function _M.is_schema_subset(tbl, schema)
 
   for k in pairs(tbl) do
     if schema.fields[k] == nil then
-      if schema.flexible then
-        if stringy.strip(tk) ~= "" and k ~= tk then
-          errors = utils.add_error(errors, k, "unknown field")
-        end
-      else
-        errors = utils.add_error(errors, k, "unknown field")
-      end
+      errors = utils.add_error(errors, k, "unknown field")
     end
   end
 

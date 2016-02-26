@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
-local constants = require "kong.constants"
 
 local function load_config_schema(plugin_t)
   if plugin_t.name then

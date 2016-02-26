@@ -1,7 +1,6 @@
 local CassandraDB = require "kong.dao.cassandra_db"
 local cassandra = require "cassandra"
 local timestamp = require "kong.tools.timestamp"
-local Errors = require "kong.dao.errors"
 
 local _M = CassandraDB:extend()
 

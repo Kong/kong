@@ -1,5 +1,3 @@
-local inspect = require "inspect"
-
 local timestamp = require "kong.tools.timestamp"
 local Errors = require "kong.dao.errors"
 local BaseDB = require "kong.dao.base_db"
@@ -41,6 +39,13 @@ function CassandraDB:new(options)
   }
 
   CassandraDB.super.new(self, "cassandra", conn_opts)
+end
+
+function CassandraDB:infos()
+  return {
+    desc = "keyspace",
+    name = self:_get_conn_options().keyspace
+  }
 end
 
 -- Formatting
@@ -238,9 +243,9 @@ function CassandraDB:find_all(table_name, tbl, schema)
   local query = get_select_query(table_name, where)
   local res_rows, err = {}, nil
 
-  for rows, err in session:execute(query, args, {auto_paging = true}) do
+  for rows, page_err in session:execute(query, args, {auto_paging = true}) do
     if err then
-      err = Errors.db(tostring(err))
+      err = Errors.db(tostring(page_err))
       res_rows = nil
       break
     end
@@ -295,7 +300,7 @@ end
 
 function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full)
   -- must check unique constaints manually too
-  err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
+  local err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if err then
     return nil, err
     end

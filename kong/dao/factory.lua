@@ -53,7 +53,6 @@ local function load_daos(self, schemas, constraints, events_handler)
     if constraints[m_name] ~= nil and constraints[m_name].foreign ~= nil then
       for col, f_constraint in pairs(constraints[m_name].foreign) do
         local parent_name = f_constraint.f_entity
-        local parent_schema = schemas[parent_name]
         local parent_constraints = constraints[parent_name]
         if parent_constraints.cascade == nil then
           parent_constraints.cascade = {}
@@ -110,6 +109,10 @@ function Factory:new(db_type, options, plugins, events_handler)
 end
 
 -- Migrations
+
+function Factory:infos()
+  return _db:infos()
+end
 
 function Factory:drop_schema()
   for _, dao in pairs(self.daos) do
@@ -169,6 +172,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
   end
 
   for _, migration in ipairs(to_run) do
+    local err
     local mig_type = type(migration.up)
     if mig_type == "string" then
       err = _db:queries(migration.up)

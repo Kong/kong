@@ -1,5 +1,3 @@
-local inspect = require "inspect"
-
 local helpers = require "spec.spec_helpers"
 local Factory = require "kong.dao.factory"
 
@@ -59,7 +57,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       it("run_migrations()", function()
-        local ok, err = factory:run_migrations(on_migrate, on_success)
+        local ok, err = factory:run_migrations()
         assert.falsy(err)
         assert.True(ok)
       end)

@@ -1,5 +1,3 @@
-local inspect = require "inspect"
-
 local function raw_table(state, arguments)
   local tbl = arguments[1]
   if not pcall(assert.falsy, getmetatable(tbl)) then
@@ -150,12 +148,8 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           foo = "bar"
         }
         assert.falsy(api)
-        if db_type == TYPES.CASSANDRA then
-          assert.truthy(err)
-          assert.True(err.schema)
-        elseif db_err == TYPES.POSTGRES then
-          assert.falsy(err)
-        end
+        assert.truthy(err)
+        assert.True(err.schema)
       end)
 
       describe("errors", function()
@@ -318,7 +312,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.equal("fixture_2", rows[1].name)
       end)
       it("filter supports primary keys", function()
-        local rows, err, offset = apis:find_page {
+        local rows, err = apis:find_page {
           name = "fixture_2"
         }
         assert.falsy(err)

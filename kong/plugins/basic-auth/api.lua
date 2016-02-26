@@ -23,6 +23,8 @@ local single_route = {
   before = function(self, dao_factory, helpers)
     crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     self.params.consumer_id = self.consumer.id
+
+    local err
     self.basicauth_credential, err = dao_factory.basicauth_credentials:find(self.params)
     if err then
       return helpers.yield_error(err)
