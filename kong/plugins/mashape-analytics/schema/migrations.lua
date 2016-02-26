@@ -4,7 +4,7 @@ local Migrations = {
     up = function(dao_factory)
       local schema = require "kong.plugins.mashape-analytics.schema"
 
-      local plugins, err = dao_factory.plugins:find_by_keys {name = "mashape-analytics"}
+      local plugins, err = dao_factory.plugins:find_all {name = "mashape-analytics"}
       if err then
         return err
       end
@@ -21,7 +21,7 @@ local Migrations = {
       end
     end,
     down = function(dao_factory)
-      local plugins, err = dao_factory.plugins:find_by_keys {name = "mashape-analytics"}
+      local plugins, err = dao_factory.plugins:find_all {name = "mashape-analytics"}
       if err then
         return err
       end

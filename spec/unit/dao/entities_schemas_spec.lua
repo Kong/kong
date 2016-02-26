@@ -307,11 +307,9 @@ describe("Entities Schemas", function()
   describe("Plugins Configurations", function()
 
     local dao_stub = {
-      plugins = {
-        find_by_keys = function()
-          return nil
-        end
-      }
+      find_all = function()
+        return {}
+      end
     }
 
     it("should not validate if the plugin doesn't exist (not installed)", function()
