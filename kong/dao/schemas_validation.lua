@@ -98,11 +98,6 @@ function _M.validate_entity(tbl, schema, options)
 
       -- Check the given table against a given schema
       for column, v in pairs(schema.fields) do
-        -- [IMMUTABLE] check immutability of a field if updating
-        if v.immutable and options.update and (t[column] ~= nil and options.old_t[column] ~= nil and t[column] ~= options.old_t[column]) and not v.required then
-          errors = utils.add_error(errors, error_prefix..column, column.." cannot be updated")
-        end
-
         -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
         if t[column] ~= nil and v.type ~= nil then
           local is_valid_type
@@ -132,6 +127,11 @@ function _M.validate_entity(tbl, schema, options)
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
             errors = utils.add_error(errors, error_prefix..column, column.." is not a "..v.type)
           end
+        end
+
+        -- [IMMUTABLE] check immutability of a field if updating
+        if v.immutable and options.update and (t[column] ~= nil and options.old_t[column] ~= nil and t[column] ~= options.old_t[column]) and not v.required then
+          errors = utils.add_error(errors, error_prefix..column, column.." cannot be updated")
         end
 
         -- [ENUM] Check if the value is allowed in the enum.
