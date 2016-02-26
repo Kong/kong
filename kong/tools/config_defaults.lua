@@ -45,6 +45,8 @@ return {
       ["data_centers"] = {type = "table", default = {}},
       ["username"] = {type = "string", nullable = true},
       ["password"] = {type = "string", nullable = true},
+      ["consistency"] = {type = "string", default = "ONE", enum = {"ANY", "ONE", "TWO", "THREE", "QUORUM", "ALL", "LOCAL_QUORUM", 
+                                                                   "EACH_QUORUM", "SERIAL", "LOCAL_SERIAL", "LOCAL_ONE"}},
       ["ssl"] = {
         type = "table",
         content = {

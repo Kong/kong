@@ -1,6 +1,7 @@
 local Factory = require "kong.dao.cassandra.factory"
 local utils = require "kong.tools.utils"
 local cassandra = require "cassandra"
+local types = require "cassandra.types"
 local spec_helpers = require "spec.spec_helpers"
 local env = spec_helpers.get_env()
 local default_dao_properties = env.configuration.cassandra
@@ -23,6 +24,7 @@ describe("Cassadra factory", function()
         contact_points = dao_properties.contact_points,
         keyspace = dao_properties.keyspace,
         query_options = {
+          consistency = types.consistencies.one,
           prepare = true
         },
         socket_options = {
@@ -49,6 +51,7 @@ describe("Cassadra factory", function()
         contact_points = {"127.0.0.1:9042"},
         keyspace = "my_keyspace",
         query_options = {
+          consistency = types.consistencies.one,
           prepare = true
         },
         socket_options = {
@@ -75,6 +78,7 @@ describe("Cassadra factory", function()
         contact_points = {"127.0.0.1:9042"},
         keyspace = "kong_tests",
         query_options = {
+          consistency = types.consistencies.one,
           prepare = true
         },
         socket_options = {
@@ -103,6 +107,7 @@ describe("Cassadra factory", function()
         contact_points = {"127.0.0.1:9042"},
         keyspace = "kong_tests",
         query_options = {
+          consistency = types.consistencies.one,
           prepare = true
         },
         socket_options = {
@@ -127,6 +132,7 @@ describe("Cassadra factory", function()
         contact_points = {"127.0.0.1:9042"},
         keyspace = "kong_tests",
         query_options = {
+          consistency = types.consistencies.one,
           prepare = true
         },
         socket_options = {
