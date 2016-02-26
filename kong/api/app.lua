@@ -69,7 +69,7 @@ local function on_error(self)
     elseif err.foreign then
       return responses.send_HTTP_NOT_FOUND(err.tbl)
     else
-      return responses.send_HTTP_BAD_REQUEST(err.tbl)
+      return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
     end
   end
 end

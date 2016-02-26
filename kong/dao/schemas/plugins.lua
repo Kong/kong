@@ -80,7 +80,7 @@ return {
     end
 
     -- Check if the schema has a `no_consumer` field
-    if config_schema.no_consumer and plugin_t.consumer_id ~= nil and plugin_t.consumer_id ~= constants.DATABASE_NULL_ID then
+    if config_schema.no_consumer and plugin_t.consumer_id ~= nil then
       return false, Errors.schema "No consumer can be configured for that plugin"
     end
 

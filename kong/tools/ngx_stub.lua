@@ -108,6 +108,7 @@ _G.ngx = {
   ctx = {},
   header = {},
   get_phase = function() return "init" end,
+  socket = {},
   exit = function() end,
   say = function() end,
   log = function() end,
