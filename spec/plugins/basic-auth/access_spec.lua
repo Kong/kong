@@ -116,7 +116,7 @@ describe("Authentication Plugin", function()
     end)
 
     it("should pass the right headers to the upstream server", function()
-      local response, status = http_client.get(PROXY_URL.."/headers", {}, {host = "basicauth.com", authorization = "hello", ["authorization"] = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
+      local response, status = http_client.get(PROXY_URL.."/headers", {}, {host = "basicauth.com", ["authorization"] = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.truthy(parsed_response.headers["X-Consumer-Id"])

@@ -44,7 +44,7 @@ describe("OAuth2 Authentication Hooks", function()
   end)
 
   local function provision_code(client_id)
-    local response = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = client_id, scope = "email", response_type = "code", state = "hello", authenticated_userid = "userid123" }, {host = "oauth2.com"})
+    local response = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", client_id = client_id, scope = "email", response_type = "code", state = "hello", authenticated_userid = "userid123" }, {host = "oauth2.com"})
     local body = json.decode(response)
     if body.redirect_uri then
       local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
