@@ -40,9 +40,7 @@ local function async_autojoin(premature)
       local members, err = serf:_members()
       if err then
         ngx.log(ngx.ERR, tostring(err))
-      end
-
-      if #members < 2 then
+      elseif #members < 2 then
         -- Trigger auto-join
         local _, err = serf:_autojoin(cluster_utils.get_node_name(configuration))
         if err then

@@ -89,7 +89,7 @@ end
 function Serf:_members()
   local res, err = self:invoke_signal("members", {["-format"] = "json"})
   if err then
-    return false, err
+    return nil, err
   end
 
   return cjson.decode(res).members
