@@ -31,19 +31,16 @@ return {
     api_id = {
       type = "id",
       required = true,
-      foreign = "apis:id",
-      queryable = true
+      foreign = "apis:id"
     },
     consumer_id = {
       type = "id",
-      foreign = "consumers:id",
-      queryable = true
+      foreign = "consumers:id"
     },
     name = {
       type = "string",
       required = true,
-      immutable = true,
-      queryable = true
+      immutable = true
     },
     config = {
       type = "table",

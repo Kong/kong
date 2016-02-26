@@ -20,9 +20,9 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
   table = "oauth2_credentials",
   fields = {
     id = { type = "id", dao_insert_value = true },
-    consumer_id = { type = "id", required = true, queryable = true, foreign = "consumers:id" },
+    consumer_id = { type = "id", required = true, foreign = "consumers:id" },
     name = { type = "string", required = true },
-    client_id = { type = "string", required = false, unique = true, queryable = true, func = generate_if_missing },
+    client_id = { type = "string", required = false, unique = true, func = generate_if_missing },
     client_secret = { type = "string", required = false, unique = true, func = generate_if_missing },
     redirect_uri = { type = "url", required = true },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
@@ -37,8 +37,8 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   table = "oauth2_authorization_codes",
   fields = {
     id = { type = "id", dao_insert_value = true },
-    code = { type = "string", required = false, unique = true, queryable = true, immutable = true, func = generate_if_missing },
-    authenticated_userid = { type = "string", required = false, queryable = true },
+    code = { type = "string", required = false, unique = true, immutable = true, func = generate_if_missing },
+    authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   }
@@ -50,12 +50,12 @@ local OAUTH2_TOKENS_SCHEMA = {
   table = "oauth2_tokens",
   fields = {
     id = { type = "id", dao_insert_value = true },
-    credential_id = { type = "id", required = true, queryable = true, foreign = "oauth2_credentials:id" },
+    credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     token_type = { type = "string", required = true, enum = { BEARER }, default = BEARER },
     expires_in = { type = "number", required = true },
-    access_token = { type = "string", required = false, unique = true, queryable = true, func = generate_if_missing },
-    refresh_token = { type = "string", required = false, unique = true, queryable = true, func = generate_refresh_token },
-    authenticated_userid = { type = "string", required = false, queryable = true },
+    access_token = { type = "string", required = false, unique = true, func = generate_if_missing },
+    refresh_token = { type = "string", required = false, unique = true, func = generate_refresh_token },
+    authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },

@@ -6,8 +6,8 @@ local SCHEMA = {
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
-    consumer_id = {type = "id", required = true, queryable = true, foreign = "consumers:id"},
-    key = {type = "string", unique = true, queryable = true, default = utils.random_string},
+    consumer_id = {type = "id", required = true, foreign = "consumers:id"},
+    key = {type = "string", unique = true, default = utils.random_string},
     secret = {type = "string", unique = true, default = utils.random_string}
   },
   marshall_event = function(self, t)

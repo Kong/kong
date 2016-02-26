@@ -18,8 +18,8 @@ return {
   fields = {
     id = { type = "id", dao_insert_value = true },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true },
-    custom_id = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username },
-    username = { type = "string", unique = true, queryable = true, func = check_custom_id_and_username }
+    custom_id = { type = "string", unique = true, func = check_custom_id_and_username },
+    username = { type = "string", unique = true, func = check_custom_id_and_username }
   },
   marshall_event = function(self, t)
     return { id = t.id }
