@@ -16,21 +16,26 @@ local CACHE_KEYS = {
   REQUESTS = "requests",
   AUTOJOIN_RETRIES = "autojoin_retries",
   TIMERS = "timers",
-  ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC"
+  ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
+  LDAP_CREDENTIAL = "ldap_credentials",
 }
 
 local _M = {}
 
-function _M.rawset(key, value)
-  return cache:set(key, value)
+function _M.rawset(key, value, exptime)
+  if exptime == nil then
+    exptime = 0
+  end
+  
+  return cache:set(key, value, exptime)
 end
 
-function _M.set(key, value)
+function _M.set(key, value, exptime)
   if value then
     value = cjson.encode(value)
   end
 
-  return _M.rawset(key, value)
+  return _M.rawset(key, value, exptime)
 end
 
 function _M.rawget(key)
@@ -113,7 +118,11 @@ function _M.all_apis_by_dict_key()
   return CACHE_KEYS.ALL_APIS_BY_DIC
 end
 
-function _M.get_or_set(key, cb)
+function _M.ldap_credential_key(username)
+  return CACHE_KEYS.LDAP_CREDENTIAL.."/"..username
+end
+
+function _M.get_or_set(key, cb, exptime)
   local value, err
   -- Try to get
   value = _M.get(key)
@@ -123,7 +132,7 @@ function _M.get_or_set(key, cb)
     if err then
       return nil, err
     elseif value then
-      local ok, err = _M.set(key, value)
+      local ok, err = _M.set(key, value, exptime)
       if not ok then
         ngx.log(ngx.ERR, err)
       end
