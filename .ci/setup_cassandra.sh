@@ -2,8 +2,8 @@
 
 set -e
 
-if [ "$TEST_SUITE" == "unit" ]; then
-  echo "Exiting, no integration tests"
+if [ "$TEST_SUITE" == "unit" ] || [ "$DATABASE" != "cassandra" ]; then
+  echo "Exiting, no need for Cassandra"
   exit
 fi
 

@@ -2,6 +2,16 @@
 
 set -e
 
+if [ "$TEST_SUITE" == "unit" ]; then
+  kong config -c kong.yml -e TEST -s TEST
+else
+  kong config -c kong.yml -d $DATABASE -e TEST -s TEST
+  if [ "$DATABASE" == "postgres" ]; then
+    createuser --createdb kong
+    createdb -U kong kong_tests
+  fi
+fi
+
 CMD="busted -v -o gtest --exclude-tags=ci"
 
 if [ "$TEST_SUITE" == "unit" ]; then

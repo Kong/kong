@@ -2,6 +2,7 @@ sudo: false
 notifications:
   email: false
 addons:
+  postgresql: "9.4"
   apt:
     packages:
       - sed
@@ -27,7 +28,13 @@ env:
   matrix:
     - TEST_SUITE=unit
     - TEST_SUITE=integration
+      DATABASE=cassandra
     - TEST_SUITE=plugins
+      DATABASE=cassandra
+    - TEST_SUITE=integration
+      DATABASE=postgres
+    - TEST_SUITE=plugins
+      DATABASE=postgres
 before_install:
   - source .ci/setenv_kong.sh
   - bash .ci/setup_cassandra.sh
@@ -35,8 +42,7 @@ install:
   - luarocks install busted
   - luarocks install luacov-coveralls
   - luarocks install luacheck
-  - luarocks make kong-*.rockspec
-  - "kong config -c kong.yml -e TEST"
+  - luarocks make
 script:
   - make lint
   - .ci/run_tests.sh
