@@ -126,5 +126,14 @@ return {
         end
       end
     end
+  },
+  {
+    name = "2016-02-29-121813_remove_ttls",
+    up = [[
+      ALTER TABLE nodes WITH default_time_to_live = 0;
+    ]],
+    down = [[
+      ALTER TABLE nodes WITH default_time_to_live = 3600;
+    ]]
   }
 }

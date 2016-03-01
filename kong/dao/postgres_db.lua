@@ -115,9 +115,9 @@ function PostgresDB:query(...)
   return res
 end
 
-function PostgresDB:insert(table_name, schema, values)
+function PostgresDB:insert(table_name, schema, model, _, options)
   local cols, args = {}, {}
-  for col, value in pairs(values) do
+  for col, value in pairs(model) do
     cols[#cols + 1] = escape_identifier(col)
     args[#args + 1] = escape_literal(value, schema.fields[col])
   end

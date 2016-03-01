@@ -178,7 +178,7 @@ function CassandraDB:query(query, args, opts, schema, no_keyspace)
   return res
 end
 
-function CassandraDB:insert(table_name, schema, model, constraints)
+function CassandraDB:insert(table_name, schema, model, constraints, options)
   local err = check_unique_constraints(self, table_name, constraints, model)
   if err then
     return nil, err
@@ -200,8 +200,8 @@ function CassandraDB:insert(table_name, schema, model, constraints)
   cols = table.concat(cols, ", ")
   binds = table.concat(binds, ", ")
 
-  local query = string.format("INSERT INTO %s(%s) VALUES(%s)",
-                              table_name, cols, binds)
+  local query = string.format("INSERT INTO %s(%s) VALUES(%s)%s",
+                              table_name, cols, binds, (options and options.ttl) and string.format(" USING TTL %d", options.ttl) or "")
   local err = select(2, self:query(query, args))
   if err then
     return nil, err
@@ -298,7 +298,7 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full)
+function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full, options)
   -- must check unique constaints manually too
   local err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if err then
@@ -327,8 +327,8 @@ function CassandraDB:update(table_name, schema, constraints, filter_keys, values
   sets = table.concat(sets, ", ")
 
   where, args = get_where(schema, filter_keys, args)
-  local query = string.format("UPDATE %s SET %s WHERE %s",
-                              table_name, sets, where)
+  local query = string.format("UPDATE %s%s SET %s WHERE %s",
+                              table_name, (options and options.ttl) and string.format(" USING TTL %d", options.ttl) or "", sets, where)
   local res, err = self:query(query, args)
   if err then
     return nil, err

@@ -160,7 +160,7 @@ function Serf:_add_node()
   local _, err = self._dao_factory.nodes:insert({
     name = name,
     cluster_listening_address = stringy.strip(addr)
-  })
+  }, {ttl = 3600})
   if err then
     return false, err
   end

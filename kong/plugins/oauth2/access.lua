@@ -160,7 +160,7 @@ local function authorize(conf)
           local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = table.concat(scopes, " ")
-          })
+          }, {ttl = 300})
 
           if err then
             return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

@@ -60,5 +60,14 @@ return {
     down = [[
       DROP INDEX oauth2_credential_id_idx;
     ]]
+  },
+  {
+    name = "2016-02-29-435612_remove_ttl",
+    up = [[
+      ALTER TABLE oauth2_authorization_codes WITH default_time_to_live = 0;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_authorization_codes WITH default_time_to_live = 3600;
+    ]]
   }
 }
