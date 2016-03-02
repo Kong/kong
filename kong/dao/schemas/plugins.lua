@@ -13,10 +13,8 @@ local function load_config_schema(plugin_t)
 end
 
 return {
-  name = "Plugin configuration",
   table = "plugins",
   primary_key = {"id", "name"},
-  clustering_key = {"name"},
   fields = {
     id = {
       type = "id",

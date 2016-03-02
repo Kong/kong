@@ -12,7 +12,6 @@ local function check_custom_id_and_username(value, consumer_t)
 end
 
 return {
-  name = "Consumer",
   table = "consumers",
   primary_key = {"id"},
   fields = {

@@ -17,8 +17,6 @@ PostgresDB.dao_insert_values = {
 
 PostgresDB.additional_tables = {"ttls"}
 
-local primary_key_types = {}
-
 function PostgresDB:new(...)
   PostgresDB.super.new(self, "postgres", ...)
 end
@@ -121,10 +119,10 @@ end
 function PostgresDB:retrieve_primary_key_type(schema, table_name)
   if schema.primary_key and #schema.primary_key == 1 then
     if not self.column_types then self.column_types = {} end
-    
+
     local result = self.column_types[table_name]
     if not result then
-      local query = string.format("SELECT data_type FROM information_schema.columns WHERE table_name = '%s' and column_name = '%s' LIMIT 1", 
+      local query = string.format("SELECT data_type FROM information_schema.columns WHERE table_name = '%s' and column_name = '%s' LIMIT 1",
                     table_name, schema.primary_key[1])
       local res, err = self:query(query)
       if err then
@@ -142,7 +140,7 @@ end
 function PostgresDB:get_select_query(select_clause, schema, table, primary_key_type, where, offset, limit)
   local query
 
-  local join_ttl = schema.primary_key and #schema.primary_key == 1 
+  local join_ttl = schema.primary_key and #schema.primary_key == 1
   if join_ttl then
     local primary_key_type = self:retrieve_primary_key_type(schema, table)
     query = string.format([[SELECT %s FROM %s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_key_value::%s) WHERE

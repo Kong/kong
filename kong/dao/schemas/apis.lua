@@ -148,7 +148,6 @@ local function check_name(name)
 end
 
 return {
-  name = "API",
   table = "apis",
   primary_key = {"id"},
   fields = {
