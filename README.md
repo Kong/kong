@@ -1,13 +1,13 @@
 # Microservice & API Management Layer [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
-Kong was originally built at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs & Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices) for its API Marketplace, which generates billions of requests per month.
+ Kong is a scalable, open source API Layer *(also known as an API Gateway, or API Middleware)*. Kong was originally built at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs & Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices) for its API Marketplace, which generates billions of requests per month.
 
 Backed by the battle-tested **NGINX** with a focus on high performance, Kong was made available as an open-source platform in 2015. Under active development, Kong is now used in production at hundreds of organizations from startups, to large enterprises and government departments.
 
 
 [Website][kong-url] |
-[Documentation](https://getkong.org/docs) |
+[Docs](https://getkong.org/docs) |
 [Installation](https://getkong.org/install) |
 [Blog](http://blog.mashape.com/category/kong/) |
 [Mailing List][google-groups-url] |
@@ -47,6 +47,7 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
   - **API Analytics**: Visualize, Inspect and Monitor API traffic with [Galileo](https://getgalileo.io).
   - **Loggly Integration**: Push your traffic data through your Loggly account.
   - **DataDog Integration**: Easy Data monitoring through DataDog. DevOps will love it!
+  - **Runscope Integration**: Test and Monitor your APIs.
   - **Syslog**: Logging to System log.
   - **SSL**: Setup a Specific SSL Certificate for an underlying service or API.
   - **Monitoring**: Live monitoring provides key load and performance server metrics.
@@ -79,6 +80,7 @@ Kong comes in many shapes. While this repository contains its core's source code
 - [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation): Kong in a 1-click deployment for AWS EC2
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
 - [Kong on Microsoft Azure](https://github.com/Mashape/kong-azure): Run Kong using Azure Resource Manager.
+- [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on Heroku in one click.
 
 
 ## Community Resources and Tools
@@ -97,11 +99,12 @@ Resources:
 - [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
 - [Learn Lua in 15 minutes](http://tylerneylon.com/a/learn-lua/)
 - [A Question about Microservices](http://www.marcotroisi.com/questions-about-microservices/)
+- [Kong Intro in Chinese](https://www.sdk.cn/news/1596)
 
 Videos:
 
 - [Kong Intro Tutorial](https://www.youtube.com/watch?v=S6CeWL2qvl4)
-- [Kong mentioned at Hashicorp Conf](https://www.youtube.com/watch?v=0r24K_0BGBY&feature=youtu.be&t=18m36s)
+- [Kong mentioned at Hashicorp Conf](https://www.youtube.com/watch?v=0r24K_0BGBY&feature=youtu.be&t=22m03s)
 - [Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
 - [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
