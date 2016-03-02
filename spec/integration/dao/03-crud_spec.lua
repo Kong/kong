@@ -53,6 +53,8 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         for k in pairs(api_tbl) do
           assert.truthy(api[k])
         end
+        -- Check that the timestamp is properly deserialized
+        assert.truthy(type(api.created_at) == "number")
       end)
       it("insert a valid API bis", function()
         local api, err = apis:insert {
@@ -74,7 +76,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         if db_type == TYPES.CASSANDRA then
           assert.is_number(api.created_at)
         elseif db_type == TYPES.POSTGRES then
-          assert.is_string(api.created_at)
+          assert.is_number(api.created_at)
         end
       end)
       it("respect UNIQUE fields", function()

@@ -7,7 +7,7 @@ return {
         consumer_id uuid REFERENCES consumers (id) ON DELETE CASCADE,
         username text,
         password text,
-        created_at timestamp without time zone default (now() at time zone 'utc'),
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id)
       );
 

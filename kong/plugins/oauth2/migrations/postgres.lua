@@ -9,7 +9,7 @@ return {
         client_id text UNIQUE,
         client_secret text UNIQUE,
         redirect_uri text,
-        created_at timestamp without time zone default (now() at time zone 'utc'),
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id)
       );
 
@@ -33,7 +33,7 @@ return {
         code text UNIQUE,
         authenticated_userid text,
         scope text,
-        created_at timestamp without time zone default (now() at time zone 'utc'),
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id)
       );
 
@@ -58,7 +58,7 @@ return {
         expires_in int,
         authenticated_userid text,
         scope text,
-        created_at timestamp without time zone default (now() at time zone 'utc'),
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id)
       );
 

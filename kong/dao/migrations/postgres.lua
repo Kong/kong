@@ -18,7 +18,7 @@ return {
         id uuid PRIMARY KEY,
         custom_id text,
         username text UNIQUE,
-        created_at timestamp without time zone default (now() at time zone 'utc')
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
       );
       DO $$
       BEGIN
@@ -40,7 +40,7 @@ return {
         strip_request_path boolean NOT NULL,
         upstream_url text,
         preserve_host boolean NOT NULL,
-        created_at timestamp without time zone default (now() at time zone 'utc')
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
       );
       DO $$
       BEGIN
@@ -64,7 +64,7 @@ return {
         consumer_id uuid REFERENCES consumers(id) ON DELETE CASCADE,
         config json NOT NULL,
         enabled boolean NOT NULL,
-        created_at timestamp without time zone default (now() at time zone 'utc'),
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (id, name)
       );
       DO $$
@@ -86,13 +86,13 @@ return {
       DROP TABLE plugins;
     ]]
   },
-    {
+  {
     name = "2015-11-23-817313_nodes",
     up = [[
       CREATE TABLE IF NOT EXISTS nodes(
         name text,
         cluster_listening_address text,
-        created_at timestamp without time zone default (now() at time zone 'utc'),
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
         PRIMARY KEY (name)
       );
       DO $$
@@ -105,6 +105,18 @@ return {
     down = [[
       DROP TABLE nodes;
     ]]
+  },
+  {
+    name = "2016-02-29-142793_ttls",
+    up = [[
+      CREATE TABLE IF NOT EXISTS ttls(
+        primary_key text PRIMARY KEY,
+        table_name text NOT NULL,
+        expire_at timestamp without time zone NOT NULL
+      );
+    ]],
+    down = [[
+      DROP TABLE ttls;
+    ]]
   }
-
 }

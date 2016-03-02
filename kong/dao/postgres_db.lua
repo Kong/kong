@@ -76,6 +76,19 @@ local function parse_error(err_str)
   return err
 end
 
+local function get_select_fields(schema)
+  local fields = {}
+  local timestamp_fields = {}
+  for k, v in pairs(schema.fields) do
+    if v.type == "timestamp" then
+      table.insert(timestamp_fields, string.format("extract(epoch from %s)::bigint*1000 as %s", k, k))
+    else
+      table.insert(fields, k)
+    end
+  end
+  return table.concat(fields, ",")..(#timestamp_fields > 0 and ","..table.concat(timestamp_fields, ",") or "")
+end
+
 local function get_select_query(select_clause, table, where, offset, limit)
   local query = string.format("SELECT %s FROM %s", select_clause, table)
   if where ~= nil then
@@ -115,6 +128,38 @@ function PostgresDB:query(...)
   return res
 end
 
+function PostgresDB:deserialize_timestamps(row, schema)
+  local result = row
+  for k, v in pairs(schema.fields) do
+    if v.type == "timestamp" and result[k] then
+      local query = string.format("SELECT extract(epoch from timestamp '%s')::bigint*1000 as %s;", result[k], k)
+      local res, err = self:query(query)
+      if err then
+        return nil, err
+      elseif #res > 0 then
+        result[k] = res[1][k]
+      end
+    end
+  end
+  return result
+end
+
+function PostgresDB:serialize_timestamps(tbl, schema)
+  local result = tbl
+  for k, v in pairs(schema.fields) do
+    if v.type == "timestamp" and result[k] then
+      local query = string.format("SELECT to_timestamp(%d/1000) at time zone 'UTC' as %s;", result[k], k)
+      local res, err = self:query(query)
+      if err then
+        return nil, err
+      elseif #res > 0 then
+        result[k] = res[1][k]
+      end
+    end
+  end
+  return result
+end
+
 function PostgresDB:insert(table_name, schema, model, _, options)
   local cols, args = {}, {}
   for col, value in pairs(model) do
@@ -131,13 +176,18 @@ function PostgresDB:insert(table_name, schema, model, _, options)
   if err then
     return nil, err
   elseif #res > 0 then
-    return res[1]
+    local res, err = self:deserialize_timestamps(res[1], schema)
+    if err then
+      return nil, err
+    else
+      return res
+    end
   end
 end
 
 function PostgresDB:find(table_name, schema, primary_keys)
   local where = get_where(primary_keys)
-  local query = get_select_query("*", table_name, where)
+  local query = get_select_query(get_select_fields(schema), table_name, where)
   local rows, err = self:query(query)
   if err then
     return nil, err
@@ -146,17 +196,17 @@ function PostgresDB:find(table_name, schema, primary_keys)
   end
 end
 
-function PostgresDB:find_all(table_name, tbl)
+function PostgresDB:find_all(table_name, tbl, schema)
   local where
   if tbl ~= nil then
     where = get_where(tbl)
   end
 
-  local query = get_select_query("*", table_name, where)
+  local query = get_select_query(get_select_fields(schema), table_name, where)
   return self:query(query)
 end
 
-function PostgresDB:find_page(table_name, tbl, page, page_size)
+function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
   if page == nil then
     page = 1
   end
@@ -174,7 +224,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size)
     where = get_where(tbl)
   end
 
-  local query = get_select_query("*", table_name, where, offset, page_size)
+  local query = get_select_query(get_select_fields(schema), table_name, where, offset, page_size)
   local rows, err = self:query(query)
   if err then
     return nil, err
@@ -201,6 +251,10 @@ end
 
 function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full)
   local args = {}
+  local values, err = self:serialize_timestamps(values, schema)
+  if err then
+    return nil, err
+  end
   for col, value in pairs(values) do
     args[#args + 1] = string.format("%s = %s",
                       escape_identifier(col), escape_literal(value, schema.fields[col]))
@@ -221,7 +275,7 @@ function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, ful
   if err then
     return nil, err
   elseif res and res.affected_rows == 1 then
-    return res[1]
+    return self:deserialize_timestamps(res[1], schema)
   end
 end
 
@@ -235,7 +289,7 @@ function PostgresDB:delete(table_name, schema, primary_keys)
   end
 
   if res and res.affected_rows == 1 then
-    return res[1]
+    return self:deserialize_timestamps(res[1], schema)
   end
 end
 
