@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
 
 local pairs = pairs
@@ -7,7 +8,7 @@ local string_upper = string.upper
 return {
   ["/cluster/"] = {
     GET = function(self, dao_factory, helpers)
-      local members, err = serf:_members()
+      local members, err = singletons.serf:_members()
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
@@ -32,11 +33,11 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"name\"")
       end
 
-      local _, err = serf:invoke_signal("force-leave", {self.params.name})
+      local _, err = singletons.serf:invoke_signal("force-leave", {self.params.name})
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
       end
-      
+
       return responses.send_HTTP_OK()
     end,
 
@@ -45,15 +46,15 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"address\"")
       end
 
-      local _, err = serf:invoke_signal("join", {self.params.address})
+      local _, err = singletons.serf:invoke_signal("join", {self.params.address})
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
       end
-      
+
       return responses.send_HTTP_OK()
     end
   },
-  
+
   ["/cluster/events/"] = {
     POST = function(self, dao_factory)
       local message_t = self.params
@@ -64,9 +65,9 @@ return {
       end
 
       -- If it's an update, load the new entity too so it's available in the hooks
-      if message_t.type == events.TYPES.ENTITY_UPDATED then
+      if message_t.type == singletons.events.TYPES.ENTITY_UPDATED then
         message_t.old_entity = message_t.entity
-        message_t.entity = dao[message_t.collection]:find_by_primary_key({id = message_t.old_entity.id})
+        message_t.entity = singletons.dao[message_t.collection]:find_by_primary_key({id = message_t.old_entity.id})
         if not message_t.entity then
           -- This means that the entity has been deleted immediately after an update in the meanwhile that
           -- the system was still processing the update. A delete invalidation will come immediately after
@@ -74,9 +75,9 @@ return {
           return responses.send_HTTP_OK()
         end
       end
-      
+
       -- Trigger event in the node
-      events:publish(message_t.type, message_t)
+      singletons.events:publish(message_t.type, message_t)
 
       return responses.send_HTTP_OK()
     end
