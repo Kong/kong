@@ -73,11 +73,8 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         assert.is_table(api)
         assert.truthy(api.id)
         assert.False(api.preserve_host)
-        if db_type == TYPES.CASSANDRA then
-          assert.is_number(api.created_at)
-        elseif db_type == TYPES.POSTGRES then
-          assert.is_number(api.created_at)
-        end
+        assert.is_number(api.created_at)
+        assert.equal(13, tostring(api.created_at))-- Make sure the timestamp has millisecond precision when returned
       end)
       it("respect UNIQUE fields", function()
         local api, err = apis:insert(api_tbl)
@@ -435,6 +432,8 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         api, err = apis:find(api_fixture)
         assert.falsy(err)
         assert.same(api_fixture, api)
+        assert.is_number(api.created_at)
+        assert.equal(13, tostring(api.created_at))-- Make sure the timestamp has millisecond precision when returned
       end)
       it("update with arbitrary filtering keys", function()
         api_fixture.name = "updated"

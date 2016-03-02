@@ -40,6 +40,10 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       it("on update", function()
+
+        local inspect = require "inspect"
+        print(inspect(factory))
+
         local api, err = factory.apis:insert({
           name = "mockbin", request_host = "mockbin.com",
           upstream_url = "http://mockbin.com"
@@ -73,6 +77,14 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.falsy(row)
       end)
+
+      if db_type == "postgres" then
+        it("should clear old entities", function()
+
+          --TODO
+
+        end)
+      end
     end)
   end)
 end)

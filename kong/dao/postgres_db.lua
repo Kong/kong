@@ -15,6 +15,10 @@ PostgresDB.dao_insert_values = {
   end
 }
 
+PostgresDB.additional_tables = {"ttls"}
+
+local primary_key_types = {}
+
 function PostgresDB:new(...)
   PostgresDB.super.new(self, "postgres", ...)
 end
@@ -89,20 +93,6 @@ local function get_select_fields(schema)
   return table.concat(fields, ",")..(#timestamp_fields > 0 and ","..table.concat(timestamp_fields, ",") or "")
 end
 
-local function get_select_query(select_clause, table, where, offset, limit)
-  local query = string.format("SELECT %s FROM %s", select_clause, table)
-  if where ~= nil then
-    query = query.." WHERE "..where
-  end
-  if limit ~= nil then
-    query = query.." LIMIT "..limit
-  end
-  if offset ~= nil and offset > 0 then
-    query = query.." OFFSET "..offset
-  end
-  return query
-end
-
 -- Querying
 
 function PostgresDB:query(...)
@@ -126,6 +116,53 @@ function PostgresDB:query(...)
   end
 
   return res
+end
+
+function PostgresDB:retrieve_primary_key_type(schema, table_name)
+  if schema.primary_key and #schema.primary_key == 1 then
+    if not self.column_types then self.column_types = {} end
+    
+    local result = self.column_types[table_name]
+    if not result then
+      local query = string.format("SELECT data_type FROM information_schema.columns WHERE table_name = '%s' and column_name = '%s' LIMIT 1", 
+                    table_name, schema.primary_key[1])
+      local res, err = self:query(query)
+      if err then
+        return nil, err
+      elseif #res > 0 then
+        result = res[1].data_type
+        self.column_types[table_name] = result
+      end
+    end
+
+    return result
+  end
+end
+
+function PostgresDB:get_select_query(select_clause, schema, table, primary_key_type, where, offset, limit)
+  local query
+
+  local join_ttl = schema.primary_key and #schema.primary_key == 1 
+  if join_ttl then
+    local primary_key_type = self:retrieve_primary_key_type(schema, table)
+    query = string.format([[SELECT %s FROM %s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_key_value::%s) WHERE
+    (ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc'))]],
+            select_clause, table, table, schema.primary_key[1], primary_key_type, table)
+  else
+    query = string.format("SELECT %s FROM %s", select_clause, table)
+  end
+
+  if where ~= nil then
+    query = query..(join_ttl and " AND " or " WHERE ")..where
+  end
+  if limit ~= nil then
+    query = query.." LIMIT "..limit
+  end
+  if offset ~= nil and offset > 0 then
+    query = query.." OFFSET "..offset
+  end
+
+  return query
 end
 
 function PostgresDB:deserialize_timestamps(row, schema)
@@ -160,6 +197,45 @@ function PostgresDB:serialize_timestamps(tbl, schema)
   return result
 end
 
+function PostgresDB:ttl(tbl, table_name, schema, ttl)
+  if not schema.primary_key or #schema.primary_key > 1 then
+    return false, "Cannot set a TTL if the entity has no primary key, or has more than one primary key"
+  end
+
+  local expire_at = tbl.created_at + (ttl * 1000)
+  local query = string.format("INSERT INTO ttls(primary_key_value, primary_key_name, table_name, expire_at) VALUES('%s', '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC') ON CONFLICT(primary_key_value, table_name) DO UPDATE SET expire_at=excluded.expire_at",
+                tbl[schema.primary_key[1]], schema.primary_key[1], table_name, expire_at)
+  local _, err = self:query(query)
+  if err then
+    return false, err
+  end
+  return true
+end
+
+-- Delete old expired TTL entities
+function PostgresDB:clear_expired_ttl()
+  local query = "SELECT * FROM ttls WHERE expire_at > CURRENT_TIMESTAMP(0)"
+  local res, err = self:query(query)
+  if err then
+    return false, err
+  end
+
+  for _, v in ipairs(res) do
+    local delete_entity_query = string.format("DELETE FROM %s WHERE %s='%s'", res.table_name, res.primary_key_name, res.primary_key_value)
+    local _, err = self:query(delete_entity_query)
+    if err then
+      return false, err
+    end
+    local delete_ttl_query = string.format("DELETE FROM ttls WHERE primary_key_value='%s' AND table_name='%s'", res.primary_key_value, res.table_name)
+    local _, err = self:query(delete_ttl_query)
+    if err then
+      return false, err
+    end
+  end
+  
+  return true
+end
+
 function PostgresDB:insert(table_name, schema, model, _, options)
   local cols, args = {}, {}
   for col, value in pairs(model) do
@@ -180,6 +256,13 @@ function PostgresDB:insert(table_name, schema, model, _, options)
     if err then
       return nil, err
     else
+      -- Handle options
+      if options and options.ttl then
+        local _, err = self:ttl(res, table_name, schema, options.ttl)
+        if err then
+          return nil, err
+        end
+      end
       return res
     end
   end
@@ -187,7 +270,7 @@ end
 
 function PostgresDB:find(table_name, schema, primary_keys)
   local where = get_where(primary_keys)
-  local query = get_select_query(get_select_fields(schema), table_name, where)
+  local query = self:get_select_query(get_select_fields(schema), schema, table_name, where)
   local rows, err = self:query(query)
   if err then
     return nil, err
@@ -202,7 +285,7 @@ function PostgresDB:find_all(table_name, tbl, schema)
     where = get_where(tbl)
   end
 
-  local query = get_select_query(get_select_fields(schema), table_name, where)
+  local query = self:get_select_query(get_select_fields(schema), schema, table_name, where)
   return self:query(query)
 end
 
@@ -224,7 +307,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
     where = get_where(tbl)
   end
 
-  local query = get_select_query(get_select_fields(schema), table_name, where, offset, page_size)
+  local query = self:get_select_query(get_select_fields(schema), schema, table_name, where, offset, page_size)
   local rows, err = self:query(query)
   if err then
     return nil, err
@@ -234,13 +317,13 @@ function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
   return rows, nil, (next_page <= total_pages and next_page or nil)
 end
 
-function PostgresDB:count(table_name, tbl)
+function PostgresDB:count(table_name, tbl, schema)
   local where
   if tbl ~= nil then
     where = get_where(tbl)
   end
 
-  local query = get_select_query("COUNT(*)", table_name, where)
+  local query = self:get_select_query("COUNT(*)", schema, table_name, where)
   local res, err =  self:query(query)
   if err then
     return nil, err
@@ -249,7 +332,7 @@ function PostgresDB:count(table_name, tbl)
   end
 end
 
-function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full)
+function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full, options)
   local args = {}
   local values, err = self:serialize_timestamps(values, schema)
   if err then
@@ -275,7 +358,19 @@ function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, ful
   if err then
     return nil, err
   elseif res and res.affected_rows == 1 then
-    return self:deserialize_timestamps(res[1], schema)
+    local res, err = self:deserialize_timestamps(res[1], schema)
+    if err then
+      return nil, err
+    else
+      -- Handle options
+      if options and options.ttl then
+        local _, err = self:ttl(res, table_name, schema, options.ttl)
+        if err then
+          return nil, err
+        end
+      end
+      return res
+    end
   end
 end
 

@@ -110,9 +110,11 @@ return {
     name = "2016-02-29-142793_ttls",
     up = [[
       CREATE TABLE IF NOT EXISTS ttls(
-        primary_key text PRIMARY KEY,
+        primary_key_value text NOT NULL,
         table_name text NOT NULL,
-        expire_at timestamp without time zone NOT NULL
+        primary_key_name text NOT NULL,
+        expire_at timestamp without time zone NOT NULL,
+        PRIMARY KEY(primary_key_value, table_name)
       );
     ]],
     down = [[

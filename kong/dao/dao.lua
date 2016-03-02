@@ -57,7 +57,7 @@ function DAO:new(db, model_mt, schema, constraints, events_handler)
   self.events_handler = events_handler
 end
 
-function DAO:insert(tbl, ttl)
+function DAO:insert(tbl, options)
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)
@@ -75,7 +75,7 @@ function DAO:insert(tbl, ttl)
     end
   end
 
-  local res, err = self.db:insert(self.table, self.schema, model, self.constraints, ttl)
+  local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
   if not err then
     event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
   end
@@ -170,7 +170,7 @@ local function fix(old, new, schema)
   end
 end
 
-function DAO:update(tbl, filter_keys, ttl)
+function DAO:update(tbl, filter_keys, options)
   check_arg(tbl, 1, "table")
   check_not_empty(tbl, 1)
 
@@ -209,7 +209,7 @@ function DAO:update(tbl, filter_keys, ttl)
     fix(old, values, self.schema)
   end
 
-  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full_update, ttl)
+  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full_update, options)
   if err then
     return nil, err
   elseif res then

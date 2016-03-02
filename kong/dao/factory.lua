@@ -119,6 +119,12 @@ function Factory:drop_schema()
     _db:drop_table(dao.table)
   end
 
+  if _db.additional_tables then
+    for _, v in ipairs(_db.additional_tables) do
+      _db:drop_table(v)
+    end
+  end
+
   _db:drop_table("schema_migrations")
 end
 
