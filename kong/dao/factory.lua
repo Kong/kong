@@ -108,6 +108,10 @@ function Factory:new(db_type, options, plugins, events_handler)
   load_daos(self, schemas, constraints, events_handler)
 end
 
+function Factory:init()
+  return _db:init()
+end
+
 -- Migrations
 
 function Factory:infos()
@@ -131,6 +135,12 @@ end
 function Factory:truncate_tables()
   for _, dao in pairs(self.daos) do
     _db:truncate_table(dao.table)
+  end
+
+  if _db.additional_tables then
+    for _, v in ipairs(_db.additional_tables) do
+      _db:truncate_table(v)
+    end
   end
 end
 

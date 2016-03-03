@@ -2,6 +2,8 @@ local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local uuid = require "lua_uuid"
 
+local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
+
 local ngx_stub = _G.ngx
 _G.ngx = nil
 local pgmoon = require "pgmoon"
@@ -19,6 +21,31 @@ PostgresDB.additional_tables = {"ttls"}
 
 function PostgresDB:new(...)
   PostgresDB.super.new(self, "postgres", ...)
+end
+
+-- TTL clean up timer functions
+
+local function do_clean_ttl(premature, postgres)
+  if premature then return end
+  postgres:clear_expired_ttl()
+  local ok, err = ngx.timer.at(TTL_CLEANUP_INTERVAL, do_clean_ttl, postgres)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to create timer: ", err)
+  end
+end
+
+function PostgresDB:start_ttl_timer()
+  if ngx then
+    local ok, err = ngx.timer.at(TTL_CLEANUP_INTERVAL, do_clean_ttl, self)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to create timer: ", err)
+    end
+    self.timer_started = true
+  end
+end
+
+function PostgresDB:init()
+  self:start_ttl_timer()
 end
 
 function PostgresDB:infos()
@@ -137,7 +164,7 @@ function PostgresDB:retrieve_primary_key_type(schema, table_name)
   end
 end
 
-function PostgresDB:get_select_query(select_clause, schema, table, primary_key_type, where, offset, limit)
+function PostgresDB:get_select_query(select_clause, schema, table, where, offset, limit)
   local query
 
   local join_ttl = schema.primary_key and #schema.primary_key == 1
@@ -212,19 +239,19 @@ end
 
 -- Delete old expired TTL entities
 function PostgresDB:clear_expired_ttl()
-  local query = "SELECT * FROM ttls WHERE expire_at > CURRENT_TIMESTAMP(0)"
+  local query = "SELECT * FROM ttls WHERE expire_at < CURRENT_TIMESTAMP(0) at time zone 'utc'"
   local res, err = self:query(query)
   if err then
     return false, err
   end
 
   for _, v in ipairs(res) do
-    local delete_entity_query = string.format("DELETE FROM %s WHERE %s='%s'", res.table_name, res.primary_key_name, res.primary_key_value)
+    local delete_entity_query = string.format("DELETE FROM %s WHERE %s='%s'", v.table_name, v.primary_key_name, v.primary_key_value)
     local _, err = self:query(delete_entity_query)
     if err then
       return false, err
     end
-    local delete_ttl_query = string.format("DELETE FROM ttls WHERE primary_key_value='%s' AND table_name='%s'", res.primary_key_value, res.table_name)
+    local delete_ttl_query = string.format("DELETE FROM ttls WHERE primary_key_value='%s' AND table_name='%s'", v.primary_key_value, v.table_name)
     local _, err = self:query(delete_ttl_query)
     if err then
       return false, err
@@ -292,7 +319,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
     page = 1
   end
 
-  local total_count, err = self:count(table_name, tbl)
+  local total_count, err = self:count(table_name, tbl, schema)
   if err then
     return nil, err
   end
@@ -308,6 +335,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
   local query = self:get_select_query(get_select_fields(schema), schema, table_name, where, offset, page_size)
   local rows, err = self:query(query)
   if err then
+    print(query)
     return nil, err
   end
 

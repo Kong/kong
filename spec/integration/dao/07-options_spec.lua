@@ -15,6 +15,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
     end)
 
     describe("TTL", function()
+      
       it("on insert", function()
         local api, err = factory.apis:insert({
           name = "mockbin", request_host = "mockbin.com",
@@ -40,10 +41,6 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       it("on update", function()
-
-        local inspect = require "inspect"
-        print(inspect(factory))
-
         local api, err = factory.apis:insert({
           name = "mockbin", request_host = "mockbin.com",
           upstream_url = "http://mockbin.com"
@@ -77,12 +74,47 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.falsy(row)
       end)
-
+      
       if db_type == "postgres" then
         it("should clear old entities", function()
+          local DB = require("kong.dao.postgres_db")
+          local _db = DB(default_options)
 
-          --TODO
+          for i= 1, 4 do
+            local _, err = factory.apis:insert({
+              request_host = "mockbin"..i..".com",
+              upstream_url = "http://mockbin.com"
+            }, {ttl = 5})
+            assert.falsy(err)
+          end
 
+          local _, err = factory.apis:insert({
+            request_host = "mockbin-longttl.com",
+            upstream_url = "http://mockbin.com"
+          }, {ttl = 10})
+          assert.falsy(err)
+
+          local res, err = _db:query("SELECT COUNT(*) FROM apis")
+          assert.falsy(err)
+          assert.equal(5, res[1].count)
+
+          local res, err = _db:query("SELECT COUNT(*) FROM ttls")
+          assert.falsy(err)
+          assert.truthy(res[1].count >= 5)
+
+          os.execute("sleep 6")
+
+          local ok, err = _db:clear_expired_ttl()
+          assert.falsy(err)
+          assert.truthy(ok)
+
+          local res, err = _db:query("SELECT COUNT(*) FROM apis")
+          assert.falsy(err)
+          assert.equal(1, res[1].count)
+
+          local res, err = _db:query("SELECT COUNT(*) FROM ttls")
+          assert.falsy(err)
+          assert.equal(1, res[1].count)
         end)
       end
     end)

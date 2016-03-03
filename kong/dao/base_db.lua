@@ -8,12 +8,16 @@ function BaseDB:new(db_type, conn_opts)
   self.db_type = db_type
 end
 
+function BaseDB:init()
+  -- to be implemented in child
+  -- called by init_by_worker for DB specific initialization
+end
+
 function BaseDB:_get_conn_options()
   return utils.shallow_copy(self.options)
 end
 
 function BaseDB:query(query)
-  --debug_log(self, query)
   -- to be implemented in child
 end
 
