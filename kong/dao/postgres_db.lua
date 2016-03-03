@@ -228,8 +228,8 @@ function PostgresDB:ttl(tbl, table_name, schema, ttl)
   end
 
   local expire_at = tbl.created_at + (ttl * 1000)
-  local query = string.format("INSERT INTO ttls(primary_key_value, primary_key_name, table_name, expire_at) VALUES('%s', '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC') ON CONFLICT(primary_key_value, table_name) DO UPDATE SET expire_at=excluded.expire_at",
-                tbl[schema.primary_key[1]], schema.primary_key[1], table_name, expire_at)
+  local query = string.format("SELECT upsert_ttl('%s', '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC')",
+                              tbl[schema.primary_key[1]], schema.primary_key[1], table_name, expire_at)
   local _, err = self:query(query)
   if err then
     return false, err

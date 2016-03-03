@@ -116,9 +116,27 @@ return {
         expire_at timestamp without time zone NOT NULL,
         PRIMARY KEY(primary_key_value, table_name)
       );
+
+      CREATE OR REPLACE FUNCTION upsert_ttl(v_primary_key_value text, v_primary_key_name text, v_table_name text, v_expire_at timestamp) RETURNS VOID AS $$
+      BEGIN
+        LOOP
+          UPDATE ttls SET expire_at = v_expire_at WHERE primary_key_value = v_primary_key_value AND table_name = v_table_name;
+          IF found then
+            RETURN;
+          END IF;
+          BEGIN
+            INSERT INTO ttls(primary_key_value, primary_key_name, table_name, expire_at) VALUES(v_primary_key_value, v_primary_key_name, v_table_name, v_expire_at);
+            RETURN;
+          EXCEPTION WHEN unique_violation THEN
+            -- Do nothing, and loop to try the UPDATE again.
+          END;
+        END LOOP;
+      END;
+      $$ LANGUAGE 'plpgsql';
     ]],
     down = [[
       DROP TABLE ttls;
+      DROP FUNCTION upsert_ttl(text, text, text, timestamp);
     ]]
   }
 }
