@@ -40,7 +40,7 @@ function BaseService.find_cmd(app_name, additional_paths, check_path_func)
     end
   elseif #found_file_paths > 0 then
     -- Just return the first path
-    return table.remove(found_file_paths, 1)
+    return found_file_paths[1]
   end
 
   return nil

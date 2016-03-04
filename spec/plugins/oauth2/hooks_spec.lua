@@ -72,7 +72,7 @@ describe("OAuth2 Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/auth_tests_consumer/oauth2/")
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
 
       -- Delete OAuth2 credential (which triggers invalidation)
@@ -112,7 +112,7 @@ describe("OAuth2 Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/auth_tests_consumer/oauth2/")
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
 
       -- Update OAuth2 credential (which triggers invalidation)
@@ -277,7 +277,7 @@ describe("OAuth2 Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/auth_tests_consumer/oauth2/", {client_id="clientid123"})
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
 
       -- Delete OAuth2 client (which triggers invalidation)

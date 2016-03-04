@@ -50,7 +50,12 @@ return {
     }
   },
   marshall_event = function(self, plugin_t)
-    local result = utils.deep_copy(plugin_t)
+    local result = {
+      id = plugin_t.id,
+      api_id = plugin_t.api_id,
+      consumer_id = plugin_t.consumer_id,
+      name = plugin_t.name
+    }
     if plugin_t and plugin_t.config then
       local config_schema, err = self.fields.config.schema(plugin_t)
       if err then

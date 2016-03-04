@@ -61,7 +61,7 @@ describe("ACL Hooks", function()
     assert.equals(200, status)
     local body = json.decode(response)
     if #body.data == 1 then
-      return table.remove(body.data, 1).id
+      return body.data[1].id
     end
   end
 

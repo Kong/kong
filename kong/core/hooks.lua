@@ -94,7 +94,7 @@ local function member_update(message_t, is_reap)
   end
 
   if #nodes == 1 then
-    local node = table.remove(nodes, 1)
+    local node = nodes[1]
     node.cluster_listening_address = member.cluster_listening_address
     local _, err = singletons.dao.nodes:update(node, node)
     if err then
