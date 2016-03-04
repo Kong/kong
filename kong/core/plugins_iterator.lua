@@ -16,7 +16,7 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local plugin = cache.get_or_set(cache_key, function()
     local rows, err = singletons.dao.plugins:find_all {
       api_id = api_id,
-      consumer_id = consumer_id ~= nil and consumer_id or nil,
+      consumer_id = consumer_id,
       name = plugin_name
     }
     if err then
@@ -24,7 +24,15 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
     end
 
     if #rows > 0 then
-      return table_remove(rows, 1)
+      if consumer_id == nil then
+        for _, row in ipairs(rows) do
+          if row.consumer_id == nil then
+            return row
+          end
+        end
+      else
+        return rows[1]
+      end
     else
       -- insert a cached value to not trigger too many DB queries.
       return {null = true}
