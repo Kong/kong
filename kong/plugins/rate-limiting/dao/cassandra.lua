@@ -5,6 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local _M = CassandraDB:extend()
 
 _M.table = "ratelimiting_metrics"
+_M.schema = require("kong.plugins.response-ratelimiting.schema")
 
 function _M:increment(api_id, identifier, current_timestamp, value)
   local periods = timestamp.get_timestamps(current_timestamp)
@@ -63,7 +64,7 @@ function _M:find(api_id, identifier, current_timestamp, period)
 end
 
 function _M:count()
-  return _M.super.count(self, _M.table)
+  return _M.super.count(self, _M.table, nil, _M.schema)
 end
 
 return {ratelimiting_metrics = _M}

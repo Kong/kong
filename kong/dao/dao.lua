@@ -218,7 +218,7 @@ function DAO:update(tbl, filter_keys, options)
   end
 end
 
-function DAO:delete(tbl)
+function DAO:delete(tbl)  
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)

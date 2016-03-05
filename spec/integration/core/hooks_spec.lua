@@ -124,7 +124,7 @@ describe("Core Hooks", function()
       assert.equals(10, tonumber(headers["x-ratelimit-limit-minute"]))
     end)
 
-    it("#only should invalidate a consumer-specific plugin when updating", function()
+    it("should invalidate a consumer-specific plugin when updating", function()
       -- Making a request to populate the cache
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "hooks-plugins.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
       assert.equals(200, status)
@@ -226,10 +226,19 @@ describe("Core Hooks", function()
       local _, status = http_client.delete(API_URL.."/consumers/consumer1")
       assert.equals(204, status)
 
-      -- Wait for cache to be invalidated
+      -- Wait for consumer be invalidated
       local exists = true
       while(exists) do
         local _, status = http_client.get(API_URL.."/cache/"..cache.consumer_key(consumer_id))
+        if status ~= 200 then
+          exists = false
+        end
+      end
+
+      -- Wait for Basic Auth credential to be invalidated
+      local exists = true
+      while(exists) do
+        local _, status = http_client.get(API_URL.."/cache/"..cache.basicauth_credential_key("user123"))
         if status ~= 200 then
           exists = false
         end

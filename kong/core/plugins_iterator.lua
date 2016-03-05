@@ -2,8 +2,6 @@ local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 
-local table_remove = table.remove
-
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's configuration if it exists.
 -- Results are cached in ngx.dict

@@ -112,7 +112,7 @@ local function get_select_fields(schema)
     if v.type == "timestamp" then
       table.insert(timestamp_fields, string.format("extract(epoch from %s)::bigint*1000 as %s", k, k))
     else
-      table.insert(fields, k)
+      table.insert(fields, "\""..k.."\"")
     end
   end
   return table.concat(fields, ",")..(#timestamp_fields > 0 and ","..table.concat(timestamp_fields, ",") or "")
@@ -170,9 +170,9 @@ function PostgresDB:get_select_query(select_clause, schema, table, where, offset
   local join_ttl = schema.primary_key and #schema.primary_key == 1
   if join_ttl then
     local primary_key_type = self:retrieve_primary_key_type(schema, table)
-    query = string.format([[SELECT %s FROM %s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_key_value::%s) WHERE
+    query = string.format([[SELECT %s FROM %s LEFT OUTER JOIN ttls ON (%s.%s = ttls.primary_%s_value) WHERE
     (ttls.primary_key_value IS NULL OR (ttls.table_name = '%s' AND expire_at > CURRENT_TIMESTAMP(0) at time zone 'utc'))]],
-            select_clause, table, table, schema.primary_key[1], primary_key_type, table)
+            select_clause, table, table, schema.primary_key[1], primary_key_type == "uuid" and "uuid" or "key", table)
   else
     query = string.format("SELECT %s FROM %s", select_clause, table)
   end
@@ -186,7 +186,6 @@ function PostgresDB:get_select_query(select_clause, schema, table, where, offset
   if offset ~= nil and offset > 0 then
     query = query.." OFFSET "..offset
   end
-
   return query
 end
 
@@ -227,9 +226,11 @@ function PostgresDB:ttl(tbl, table_name, schema, ttl)
     return false, "Cannot set a TTL if the entity has no primary key, or has more than one primary key"
   end
 
+  local primary_key_type = self:retrieve_primary_key_type(schema, table_name)
   local expire_at = tbl.created_at + (ttl * 1000)
-  local query = string.format("SELECT upsert_ttl('%s', '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC')",
-                              tbl[schema.primary_key[1]], schema.primary_key[1], table_name, expire_at)
+  local query = string.format("SELECT upsert_ttl('%s', %s, '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC')",
+                              tbl[schema.primary_key[1]], primary_key_type == "uuid" and "'"..tbl[schema.primary_key[1]].."'" or "NULL", 
+                              schema.primary_key[1], table_name, expire_at)
   local _, err = self:query(query)
   if err then
     return false, err
@@ -335,7 +336,6 @@ function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
   local query = self:get_select_query(get_select_fields(schema), schema, table_name, where, offset, page_size)
   local rows, err = self:query(query)
   if err then
-    print(query)
     return nil, err
   end
 
@@ -350,7 +350,7 @@ function PostgresDB:count(table_name, tbl, schema)
   end
 
   local query = self:get_select_query("COUNT(*)", schema, table_name, where)
-  local res, err =  self:query(query)
+  local res, err = self:query(query)
   if err then
     return nil, err
   elseif res and #res > 0 then

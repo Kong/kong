@@ -111,13 +111,14 @@ return {
     up = [[
       CREATE TABLE IF NOT EXISTS ttls(
         primary_key_value text NOT NULL,
+        primary_uuid_value uuid,
         table_name text NOT NULL,
         primary_key_name text NOT NULL,
         expire_at timestamp without time zone NOT NULL,
         PRIMARY KEY(primary_key_value, table_name)
       );
 
-      CREATE OR REPLACE FUNCTION upsert_ttl(v_primary_key_value text, v_primary_key_name text, v_table_name text, v_expire_at timestamp) RETURNS VOID AS $$
+      CREATE OR REPLACE FUNCTION upsert_ttl(v_primary_key_value text, v_primary_uuid_value uuid, v_primary_key_name text, v_table_name text, v_expire_at timestamp) RETURNS VOID AS $$
       BEGIN
         LOOP
           UPDATE ttls SET expire_at = v_expire_at WHERE primary_key_value = v_primary_key_value AND table_name = v_table_name;
@@ -125,7 +126,7 @@ return {
             RETURN;
           END IF;
           BEGIN
-            INSERT INTO ttls(primary_key_value, primary_key_name, table_name, expire_at) VALUES(v_primary_key_value, v_primary_key_name, v_table_name, v_expire_at);
+            INSERT INTO ttls(primary_key_value, primary_uuid_value, primary_key_name, table_name, expire_at) VALUES(v_primary_key_value, v_primary_uuid_value, v_primary_key_name, v_table_name, v_expire_at);
             RETURN;
           EXCEPTION WHEN unique_violation THEN
             -- Do nothing, and loop to try the UPDATE again.
@@ -136,7 +137,7 @@ return {
     ]],
     down = [[
       DROP TABLE ttls;
-      DROP FUNCTION upsert_ttl(text, text, text, timestamp);
+      DROP FUNCTION upsert_ttl(text, uuid, text, text, text, timestamp);
     ]]
   }
 }
