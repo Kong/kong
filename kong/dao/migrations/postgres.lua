@@ -137,7 +137,7 @@ return {
     ]],
     down = [[
       DROP TABLE ttls;
-      DROP FUNCTION upsert_ttl(text, uuid, text, text, text, timestamp);
+      DROP FUNCTION upsert_ttl(text, uuid, text, text, timestamp);
     ]]
   }
 }
