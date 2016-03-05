@@ -218,12 +218,17 @@ function DAO:update(tbl, filter_keys, options)
   end
 end
 
-function DAO:delete(tbl)  
+function DAO:delete(tbl)
   check_arg(tbl, 1, "table")
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
     error("Missing PRIMARY KEY field", 2)
+  end
+
+  local primary_keys, _, _, err = model:extract_keys()
+  if err then
+    return nil, Errors.schema(err)
   end
 
   -- Find associated entities
@@ -242,13 +247,8 @@ function DAO:delete(tbl)
     end
   end
 
-  local primary_keys, _, _, err = model:extract_keys()
-  if err then
-    return nil, Errors.schema(err)
-  end
-
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
-  if not err then
+  if not err and row ~= nil then
     event(self, event_types.ENTITY_DELETED, self.table, self.schema, row)
 
     -- Also propagate the deletion for the associated entities
