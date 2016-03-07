@@ -12,7 +12,7 @@ function _M:increment(api_id, identifier, current_timestamp, value, name)
   local buf = {}
   local periods = timestamp.get_timestamps(current_timestamp)
   for period, period_date in pairs(periods) do
-    buf[#buf + 1] = fmt("SELECT increment_response_rate_limits('%s', '%s', '%s', to_timestamp('%s'), %d)",
+    buf[#buf + 1] = fmt("SELECT increment_response_rate_limits('%s', '%s', '%s', to_timestamp('%s') at time zone 'UTC', %d)",
                         api_id, identifier, name.."_"..period, period_date/1000, value)
   end
 
@@ -31,7 +31,7 @@ function _M:find(api_id, identifier, current_timestamp, period, name)
   local q = fmt([[SELECT *, extract(epoch from period_date)*1000 AS period_date FROM response_ratelimiting_metrics WHERE
                   api_id = '%s' AND
                   identifier = '%s' AND
-                  period_date = to_timestamp('%s') AND
+                  period_date = to_timestamp('%s') at time zone 'UTC' AND
                   period = '%s'
   ]], api_id, identifier, periods[period]/1000, name.."_"..period)
 
