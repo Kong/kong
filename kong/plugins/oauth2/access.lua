@@ -32,7 +32,6 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
 local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
--- TODO: Expire token (using TTL ?)
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
@@ -41,7 +40,8 @@ local function generate_token(conf, credential, authenticated_userid, scope, sta
     authenticated_userid = authenticated_userid,
     expires_in = token_expiration,
     scope = scope
-  })
+  }, {ttl = token_expiration > 0 and 1209600 or nil}) -- Access tokens (and their associated refresh token) are being 
+                                                      -- permanently deleted after 14 days (1209600 seconds)
 
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -232,7 +232,7 @@ end
 local function issue_token(conf)
   local response_params = {}
 
-  local parameters = retrieve_parameters() --TODO: Also from authorization header
+  local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
   if not is_https(conf) then
@@ -399,14 +399,14 @@ function _M.execute(conf)
 
   local token = retrieve_token(accessToken)
   if not token then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid"'})
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token expired"'})
+      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
     end
   end
 
