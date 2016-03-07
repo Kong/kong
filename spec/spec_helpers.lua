@@ -227,6 +227,7 @@ end
 
 function _M.for_each_dao(f)
   local defaults = require "kong.tools.config_defaults"
+  local env = _M.get_env()
   local databases = defaults.database.enum
   local DB_TYPES = {}
 
@@ -235,8 +236,7 @@ function _M.for_each_dao(f)
   end
 
   for _, v in ipairs(databases) do
-    local default_config = config.default_config()
-    local properties = default_config[v]
+    local properties = env.configuration[v]
     f(v, properties, DB_TYPES)
   end
 end
