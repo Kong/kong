@@ -39,6 +39,7 @@ before_install:
   - source .ci/setenv_kong.sh
   - bash .ci/setup_cassandra.sh
 install:
+  - luarocks purge --tree=$LUAROCKS_DIR
   - luarocks install busted
   - luarocks install luacov-coveralls
   - luarocks install luacheck
