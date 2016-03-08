@@ -80,6 +80,8 @@ local function kong_bin(signal, conf_file)
     wait_process(env.configuration.nginx_working_dir.."/nginx.pid")
     wait_process(env.configuration.nginx_working_dir.."/serf.pid")
     wait_process(env.configuration.nginx_working_dir.."/dnsmasq.pid")
+  elseif signal == "quit" then
+    wait_process(env.configuration.nginx_working_dir.."/nginx.pid")
   end
 
   return result, exit_code
@@ -195,12 +197,12 @@ end
 function _M.start_udp_server(port, ...)
   local thread = Threads.new({
     function(port)
-      local socket = require("socket")
-      local udp = socket.udp()
-      udp:setoption('reuseaddr', true)
-      udp:setsockname("*", port)
-      local data = udp:receivefrom()
-      udp:close()
+      local socket = require "socket"
+      local server = assert(socket.udp())
+      server:setoption('reuseaddr', true)
+      server:setsockname("*", port)
+      local data = server:receivefrom()
+      server:close()
       return data
     end;
   }, port)

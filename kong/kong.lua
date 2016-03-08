@@ -51,7 +51,7 @@ end
 -- @treturn table Array of plugins to execute in context handlers.
 local function load_node_plugins(configuration)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
-  local rows, err = dao.plugins:find_all()
+  local rows, err = singletons.dao.plugins:find_all()
   if err then
     error(err)
   end
@@ -159,7 +159,7 @@ end
 function Kong.init_worker()
   core.init_worker.before()
 
-  dao:init() -- Executes any initialization by the DB
+  singletons.dao:init() -- Executes any initialization by the DB
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()

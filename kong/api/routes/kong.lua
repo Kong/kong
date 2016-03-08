@@ -30,7 +30,7 @@ return {
           pending = ngx.timer.pending_count()
         },
         plugins = {
-          available_on_server = configuration.plugins,
+          available_on_server = singletons.configuration.plugins,
           enabled_in_cluster = distinct_plugins
         },
         lua_version = jit and jit.version or _VERSION,

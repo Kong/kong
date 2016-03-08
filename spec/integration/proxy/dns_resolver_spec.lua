@@ -29,7 +29,7 @@ describe("DNS", function()
 
       thread:join()
     end)
-    it("should work when calling local hostname #ci", function()
+    it("should work when calling local hostname", function()
       local thread = spec_helper.start_http_server(TCP_PORT) -- Starting the mock TCP server
       local _, status = http_client.get(spec_helper.STUB_GET_URL, nil, { host = "dns2.com" })
       assert.are.equal(200, status)

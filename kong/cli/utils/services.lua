@@ -104,7 +104,11 @@ end
 function _M.stop_all(configuration, configuration_path)
   -- Backwards
   for i=#services, 1, -1 do
-    services[i](configuration, configuration_path):stop()
+    local service = services[i](configuration, configuration_path)
+    service:stop()
+    while service:is_running() do
+      -- Wait
+    end
   end
 end
 

@@ -157,7 +157,9 @@ describe("CLI", function()
       assert.are.same(0, exit_code)
     end)
 
-    it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
+    it("#ci should not work when a plugin is being used in the DB but it's not in the configuration", function()
+      spec_helper.prepare_db()
+
       local cassandra = require "cassandra"
       local UUID = "d7dcf800-f155-417e-a282-b6189d7d901b"
       
