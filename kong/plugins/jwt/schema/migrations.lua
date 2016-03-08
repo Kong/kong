@@ -22,6 +22,19 @@ local Migration = {
         DROP TABLE jwt_secrets;
       ]]
     end
+  },
+  {
+    name = "2016-03-07-jwt-auth",
+    up = function(options, dao_factory)
+      return dao_factory:execute_queries [[
+        ALTER TABLE jwt_secrets ADD algorithm text;
+      ]]
+    end,
+    down = function(options, dao_factory)
+      return dao_factory:execute_queries [[
+        ALTER TABLE jwt_secrets DROP algorithm;
+      ]]
+    end
   }
 }
 
