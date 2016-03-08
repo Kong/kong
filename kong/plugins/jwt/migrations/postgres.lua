@@ -27,5 +27,14 @@ return {
     down = [[
       DROP TABLE jwt_secrets;
     ]]
+  },
+  {
+    name = "2016-03-07-jwt-auth",
+    up = [[
+      ALTER TABLE jwt_secrets ADD COLUMN algorithm varchar(5);
+    ]],
+    down = [[
+      ALTER TABLE jwt_secrets DROP COLUMN algorithm;
+    ]]
   }
 }
