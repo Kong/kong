@@ -10,6 +10,7 @@ local Faker = require "kong.tools.faker"
 local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
 local Events = require "kong.core.events"
+local stringy = require "stringy"
 
 local _M = {}
 
@@ -54,6 +55,16 @@ function _M.remove_env(conf_file)
   _M.envs[conf_file] = nil
 end
 
+local function wait_process(pid_file)
+  while(IO.file_exists(pid_file)) do
+    local pid = IO.read_file(pid_file)
+    local _, code = IO.os_execute("kill -0 "..stringy.strip(pid))
+    if code and code ~= 0 then
+      break
+    end
+  end
+end
+
 --
 -- OS and bin/kong helpers
 --
@@ -62,6 +73,13 @@ local function kong_bin(signal, conf_file)
   local result, exit_code = IO.os_execute(_M.KONG_BIN.." "..signal.." -c "..env.conf_file)
   if exit_code ~= 0 then
     error("spec_helper cannot "..signal.." kong: \n"..result)
+  end
+
+  -- Wait for processes to exit
+  if signal == "stop" then
+    wait_process(env.configuration.nginx_working_dir.."/nginx.pid")
+    wait_process(env.configuration.nginx_working_dir.."/serf.pid")
+    wait_process(env.configuration.nginx_working_dir.."/dnsmasq.pid")
   end
 
   return result, exit_code
