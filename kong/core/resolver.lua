@@ -239,7 +239,7 @@ function _M.execute(request_uri, request_headers)
   upstream_url = upstream_url..uri
 
   if api.preserve_host then
-    upstream_host = matched_host
+    upstream_host = matched_host or ngx.req.get_headers()["host"]
   end
 
   if upstream_host == nil then
