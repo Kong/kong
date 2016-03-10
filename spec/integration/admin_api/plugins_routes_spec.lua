@@ -72,10 +72,38 @@ describe("Admin API", function()
           assert.equal(200, status)
           local body = json.decode(response)
           assert.False(body.enabled)
+
+          -- Make sure it really updated it
+          local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
+          assert.equal(200, status)
+          local body = json.decode(response)
+          assert.False(body.enabled)
         end)
         it("[FAILURE] should return 404 if not found", function()
           local _, status = http_client.patch(BASE_URL.."2f49143e-caba-11e5-9d08-03a86066f7a4")
           assert.equal(404, status)
+        end)
+        it("[SUCCESS] should update when an immutable field does not change", function()
+          -- Retrieve plugin
+          local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
+          assert.equal(200, status)
+          local body = json.decode(response)
+          assert.False(body.enabled)
+
+          -- Update one field
+          body.enabled = true
+
+          -- Do Update
+          local response, status = http_client.patch(BASE_URL..fixtures.plugin[2].id, body)
+          assert.equal(200, status)
+          local body = json.decode(response)
+          assert.True(body.enabled)
+
+          -- Make sure it really updated it
+          local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
+          assert.equal(200, status)
+          local body = json.decode(response)
+          assert.True(body.enabled)
         end)
       end)
 
