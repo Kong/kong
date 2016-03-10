@@ -177,8 +177,7 @@ describe("RateLimiting Plugin", function()
           assert.are.equal(200, status)
           assert.are.same(tostring(limit), headers["x-ratelimit-limit-minute"])
           assert.are.same(tostring(limit - i), headers["x-ratelimit-remaining-minute"])
-          
-          os.execute("sleep 2") -- Wait for timers to increment
+          os.execute("sleep 3") -- Wait for timers to increment
         end
 
         local response, status = http_client.get(STUB_GET_URL, {}, {host = "test7.com"})

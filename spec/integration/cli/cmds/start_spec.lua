@@ -28,6 +28,8 @@ describe("CLI", function()
 
       os.execute("cp "..TEST_CONF.." "..SERVER_CONF)
       spec_helper.add_env(SERVER_CONF)
+      pcall(spec_helper.stop_kong, TEST_CONF)
+      pcall(spec_helper.stop_kong, SERVER_CONF)
     end)
 
     teardown(function()
