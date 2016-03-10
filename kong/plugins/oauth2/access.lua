@@ -143,7 +143,7 @@ local function authorize(conf)
       redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
       parsed_redirect_uri = url.parse(redirect_uri)
       if not redirect_uri then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
+        response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       elseif not parsed_redirect_uri then
         response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI }
         redirect_uri = nil
@@ -198,12 +198,13 @@ local function authorize(conf)
 end
 
 local function retrieve_client_credentials(parameters)
-  local client_id, client_secret
+  local client_id, client_secret, from_authorization_header
   local authorization_header = ngx.req.get_headers()["authorization"]
   if parameters[CLIENT_ID] then
     client_id = parameters[CLIENT_ID]
     client_secret = parameters[CLIENT_SECRET]
   elseif authorization_header then
+    from_authorization_header = true
     local iterator, iter_err = ngx.re.gmatch(authorization_header, "\\s*[Bb]asic\\s*(.+)")
     if not iterator then
       ngx.log(ngx.ERR, iter_err)
@@ -226,11 +227,12 @@ local function retrieve_client_credentials(parameters)
     end
   end
 
-  return client_id, client_secret
+  return client_id, client_secret, from_authorization_header
 end
 
 local function issue_token(conf)
   local response_params = {}
+  local invalid_client_properties = {}
 
   local parameters = retrieve_parameters() --TODO: Also from authorization header
   local state = parameters[STATE]
@@ -243,21 +245,27 @@ local function issue_token(conf)
             grant_type == GRANT_REFRESH_TOKEN or
             (conf.enable_client_credentials and grant_type == GRANT_CLIENT_CREDENTIALS) or
             (conf.enable_password_grant and grant_type == GRANT_PASSWORD)) then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..GRANT_TYPE}
+      response_params = {[ERROR] = "unsupported_grant_type", error_description = "Invalid "..GRANT_TYPE}
     end
 
-    local client_id, client_secret = retrieve_client_credentials(parameters)
+    local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
 
     -- Check client_id and redirect_uri
     local redirect_uri, client = get_redirect_uri(client_id)
     if not redirect_uri then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_ID}
+      response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
+      if from_authorization_header then
+        invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
+      end
     elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
       response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
     end
 
     if client and client.client_secret ~= client_secret then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CLIENT_SECRET}
+      response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
+      if from_authorization_header then
+        invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
+      end
     end
 
     if not response_params[ERROR] then
@@ -314,9 +322,11 @@ local function issue_token(conf)
   response_params.state = state
 
   -- Sending response in JSON format
-  return responses.send(response_params[ERROR] and 400 or 200, response_params, false, {
+  return responses.send(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400) 
+                        or 200, response_params, false, {
     ["cache-control"] = "no-store",
-    ["pragma"] = "no-cache"
+    ["pragma"] = "no-cache",
+    ["www-authenticate"] = invalid_client_properties and invalid_client_properties.www_authenticate
   })
 end
 
