@@ -172,6 +172,16 @@ end
 
 local err_list_mt = {}
 
+--- Concatenates lists into a new table.
+function _M.concat(...)
+  local result = {}
+  local insert = table.insert
+  for _, t in ipairs({...}) do
+    for _, v in ipairs(t) do insert(result, v) end
+  end
+  return result
+end
+
 --- Add an error message to a key/value table.
 -- If the key already exists, a sub table is created with the original and the new value.
 -- @param errors (Optional) Table to attach the error to. If `nil`, the table will be created.

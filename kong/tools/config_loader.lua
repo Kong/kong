@@ -186,7 +186,7 @@ function _M.load(config_path)
     config.nginx_working_dir = fs.current_dir().."/"..config.nginx_working_dir
   end
 
-  config.plugins = utils.table_merge(constants.PLUGINS_AVAILABLE, config.custom_plugins)
+  config.plugins = utils.concat(constants.PLUGINS_AVAILABLE, config.custom_plugins)
 
   return config, config_path
 end
