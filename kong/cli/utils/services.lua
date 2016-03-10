@@ -140,9 +140,13 @@ function _M.start_all(configuration, configuration_path)
   end
 
   for _, v in ipairs(services) do
-    local obj = v(configuration, configuration_path)
-    obj:prepare()
-    local ok, err = obj:start()
+    local service = v(configuration, configuration_path)
+    local ok, err
+    ok, err = service:prepare()
+    if not ok then
+      return ok, err
+    end
+    ok, err = service:start()
     if not ok then
       return ok, err
     end
