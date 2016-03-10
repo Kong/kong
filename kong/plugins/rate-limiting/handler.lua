@@ -35,7 +35,7 @@ end
 local function increment_async(premature, api_id, identifier, current_timestamp, value)
   if premature then return end
   
-  local _, stmt_err = dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
+  local _, stmt_err = singletons.dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
   if stmt_err then
     ngx.log(ngx.ERR, "failed to increment: ", tostring(stmt_err))
   end

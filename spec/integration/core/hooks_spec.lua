@@ -11,15 +11,12 @@ local API_URL = spec_helper.API_URL
 describe("Core Hooks", function()
 
   setup(function()
+    pcall(spec_helper.stop_kong)
     spec_helper.prepare_db()
   end)
 
-  teardown(function()
-    spec_helper.stop_kong()
-  end)
-
   before_each(function()
-    spec_helper.restart_kong()
+    spec_helper.start_kong()
 
     spec_helper.drop_db()
     spec_helper.insert_fixtures {
@@ -41,6 +38,10 @@ describe("Core Hooks", function()
         {username = "user123", password = "pass123", __consumer = 1}
       }
     }
+  end)
+
+  after_each(function()
+    pcall(spec_helper.stop_kong)
   end)
 
   describe("Plugin entity invalidation", function()
