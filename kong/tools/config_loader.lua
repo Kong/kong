@@ -151,6 +151,7 @@ function _M.load(config_path)
   local status,config = pcall(yaml.load,config_contents)
   if not status then
     logger:error("Could not parse configuration at: "..config_path)
+    logger:error(config)
     os.exit(1)
   end
 
