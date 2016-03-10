@@ -1,5 +1,11 @@
 ## [Unreleased][unreleased]
 
+### Added
+
+- Support for PostgreSQL as Kong's primary datastore. [#331](https://github.com/Mashape/kong/issues/331) [#1054](https://github.com/Mashape/kong/issues/1054)
+- Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Mashape/kong/pull/1026)
+- Admin API: oncluding pending and running timers count in the response to `/`. [#992](https://github.com/Mashape/kong/pull/992)
+
 ## [0.7.0] - 2016/02/24
 
 ### Breaking changes
