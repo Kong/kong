@@ -104,7 +104,11 @@ local shared_mt = {
 
 _G.ngx = {
   stub = true,
-  req = {},
+  req = {
+    get_headers = function()
+      return {}
+    end
+  },
   ctx = {},
   header = {},
   get_phase = function() return "init" end,
