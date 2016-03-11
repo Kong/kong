@@ -87,7 +87,7 @@ Kong comes in many shapes. While this repository contains its core's source code
 
 Resources:
 
-- [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15-000-apis-microservices)
+- [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
 - [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to create your own Kong plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
