@@ -2,8 +2,6 @@ require "kong.tools.ngx_stub"
 
 local jwt_parser = require "kong.plugins.jwt.jwt_parser"
 local fixtures = require "spec.plugins.jwt.fixtures"
-local fixtures = require "spec.plugins.jwt.fixtures"
-
 
 describe("JWT parser", function()
   describe("Encoding", function()
