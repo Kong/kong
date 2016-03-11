@@ -450,6 +450,14 @@ describe("Authentication Plugin", function()
         assert.are.equal("hello", body.headers["x-authenticated-userid"])
       end)
 
+      it("#only should work in a multipart request", function()
+        local response, status = http_client.post_multipart(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials", authenticated_userid = "hello", provision_key = "provision123" }, {host = "oauth2_4.com"})
+        assert.are.equal(200, status)
+
+        local _, status = http_client.post_multipart(PROXY_SSL_URL.."/request", { access_token = cjson.decode(response).access_token }, {host = "oauth2_4.com"})
+        assert.are.equal(200, status)
+      end)
+
     end)
 
     describe("Password Grant", function()

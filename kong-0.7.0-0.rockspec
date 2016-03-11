@@ -20,7 +20,7 @@ dependencies = {
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.5.0",
-  "multipart ~> 0.2-1",
+  "multipart ~> 0.3-2",
   "lua-path ~> 0.2.3-1",
   "lua-cjson ~> 2.1.0-1",
   "ansicolors ~> 1.0.2-3",
