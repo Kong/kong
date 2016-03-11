@@ -549,6 +549,27 @@ describe("Admin API", function()
               local body = json.decode(response)
               assert.same(plugin, body)
             end)
+            it("[SUCCESS] should not retrieve a plugin that is not associated to the right API", function()
+              local response, status = http_client.get(BASE_URL)
+              assert.equal(200, status)
+              local body = json.decode(response)
+              assert.equal(2, body.total)
+
+              local api_id_1 = body.data[1].id
+              local api_id_2 = body.data[2].id
+
+              local response, status = http_client.get(spec_helper.API_URL.."/plugins")
+              assert.equal(200, status)
+              local body = json.decode(response)
+              local plugin_id = body.data[1].id
+
+              local _, status = http_client.get(spec_helper.API_URL.."/apis/"..(body.data[1].api_id == api_id_1 and api_id_1 or api_id_2).."/plugins/"..plugin_id)
+              assert.equal(200, status)
+
+              -- Let's try to request it with the other API
+              local _, status = http_client.get(spec_helper.API_URL.."/apis/"..(body.data[1].api_id == api_id_1 and api_id_2 or api_id_1).."/plugins/"..plugin_id)
+              assert.equal(404, status)
+            end)
           end)
 
           describe("PATCH", function()
