@@ -50,6 +50,12 @@ test-plugins:
 test-all:
 	@busted -v spec/
 
+test-model:
+	@busted -v -o gtest spec/integration/model
+
+test-model-only:
+	@busted -v -o gtest --tags=only spec/integration/model
+
 coverage:
 	@rm -f luacov.*
 	@busted --coverage spec/

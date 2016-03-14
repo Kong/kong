@@ -52,13 +52,14 @@ return {
 
   ["/plugins/:id"] = {
     before = function(self, dao_factory, helpers)
-      local err
-      self.plugin_conf, err = dao_factory.plugins:find_by_primary_key {id = self.params.id}
+      local rows, err = dao_factory.plugins:find_all {id = self.params.id}
       if err then
         return helpers.yield_error(err)
-      elseif not self.plugin_conf then
+      elseif #rows == 0 then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+
+      self.plugin_conf = rows[1]
     end,
 
     GET = function(self, dao_factory, helpers)
@@ -66,7 +67,7 @@ return {
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.plugins)
+      crud.patch(self.params, dao_factory.plugins, self.plugin_conf)
     end,
 
     DELETE = function(self, dao_factory)

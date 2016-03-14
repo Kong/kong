@@ -52,7 +52,7 @@ describe("OAuth2 Authentication Hooks", function()
       for line in matches do
         code = line
       end
-      local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
+      local data = dao_factory.oauth2_authorization_codes:find_all({code = code})
       return data[1].code
     end
   end
@@ -72,7 +72,7 @@ describe("OAuth2 Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/auth_tests_consumer/oauth2/")
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
 
       -- Delete OAuth2 credential (which triggers invalidation)
@@ -112,9 +112,9 @@ describe("OAuth2 Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/auth_tests_consumer/oauth2/")
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
-      
+
       -- Update OAuth2 credential (which triggers invalidation)
       local _, status = http_client.patch(API_URL.."/consumers/auth_tests_consumer/oauth2/"..credential_id, {client_id="updclientid123"})
       assert.equals(200, status)
@@ -151,7 +151,7 @@ describe("OAuth2 Authentication Hooks", function()
       local cache_key = cache.oauth2_credential_key("clientid123")
       local _, status = http_client.get(API_URL.."/cache/"..cache_key)
       assert.equals(200, status)
-      
+
       -- Delete Consumer (which triggers invalidation)
       local _, status = http_client.delete(API_URL.."/consumers/auth_tests_consumer")
       assert.equals(204, status)
@@ -190,7 +190,7 @@ describe("OAuth2 Authentication Hooks", function()
       assert.equals(200, status)
 
       -- Delete token (which triggers invalidation)
-      local res = dao_factory.oauth2_tokens:find_by_keys({access_token=token.access_token})
+      local res = dao_factory.oauth2_tokens:find_all({access_token=token.access_token})
       local token_id = res[1].id
       assert.truthy(token_id)
 
@@ -231,7 +231,7 @@ describe("OAuth2 Authentication Hooks", function()
       assert.equals(200, status)
 
       -- Update OAuth 2 token (which triggers invalidation)
-      local res = dao_factory.oauth2_tokens:find_by_keys({access_token=token.access_token})
+      local res = dao_factory.oauth2_tokens:find_all({access_token=token.access_token})
       local token_id = res[1].id
       assert.truthy(token_id)
 
@@ -256,7 +256,7 @@ describe("OAuth2 Authentication Hooks", function()
       assert.are.equal(401, status)
     end)
   end)
-  
+
   describe("OAuth2 client entity invalidation", function()
     it("should invalidate token when OAuth2 client entity is deleted", function()
       -- It should work
@@ -273,11 +273,11 @@ describe("OAuth2 Authentication Hooks", function()
       local cache_key = cache.oauth2_token_key(token.access_token)
       local _, status = http_client.get(API_URL.."/cache/"..cache_key)
       assert.equals(200, status)
-      
+
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/auth_tests_consumer/oauth2/", {client_id="clientid123"})
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
 
       -- Delete OAuth2 client (which triggers invalidation)
@@ -298,5 +298,5 @@ describe("OAuth2 Authentication Hooks", function()
       assert.are.equal(401, status)
     end)
   end)
-  
+
 end)

@@ -102,11 +102,11 @@ describe("Cluster", function()
       local _, status = http_client.get(api_url)
       assert.equal(200, status) -- is running
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 1) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 1) do
         -- Wait
       end
 
-      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({})
+      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all()
       assert.falsy(err)
       assert.equal(1, #res)
       assert.truthy(res[1].created_at)
@@ -130,11 +130,11 @@ describe("Cluster", function()
       local _, status = http_client.get(api_url)
       assert.equal(200, status) -- is running
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 1) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 1) do
         -- Wait
       end
 
-      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({})
+      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all()
       assert.falsy(err)
       assert.equal(1, #res)
       assert.truthy(res[1].created_at)
@@ -158,7 +158,7 @@ describe("Cluster", function()
       local _, status = http_client.get(api_url1)
       assert.equal(200, status) -- is running
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 1) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 1) do
         -- Wait
       end
 
@@ -169,11 +169,11 @@ describe("Cluster", function()
       local _, status = http_client.get(api_url2)
       assert.equal(200, status) -- is running
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 2) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 2) do
         -- Wait
       end
 
-      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({})
+      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all()
       assert.falsy(err)
       assert.equal(2, #res)
       assert.truthy(res[1].created_at)
@@ -206,14 +206,14 @@ describe("Cluster", function()
       local _, exit_code = spec_helper.start_kong(SERVER_CONFS[2])
       assert.are.same(0, exit_code)
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 2) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 2) do
         -- Wait
       end
 
       -- We need to wait a few seconds for the async job kick in and join the nodes together
       os.execute("sleep 5")
 
-      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({})
+      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all()
       assert.falsy(err)
       assert.equal(2, #res)
       assert.truthy(res[1].created_at)
@@ -253,18 +253,18 @@ describe("Cluster", function()
       local _, exit_code = spec_helper.start_kong(SERVER_CONFS[1])
       assert.are.same(0, exit_code)
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 1) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 1) do
         -- Wait
       end
 
       local _, exit_code = spec_helper.start_kong(SERVER_CONFS[2])
       assert.are.same(0, exit_code)
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 2) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 2) do
         -- Wait
       end
 
-      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({})
+      local res, err = spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all()
       assert.falsy(err)
       assert.equal(2, #res)
       assert.truthy(res[1].created_at)
@@ -298,7 +298,7 @@ describe("Cluster", function()
       local _, exit_code = spec_helper.start_kong(SERVER_CONFS[1])
       assert.are.equal(0, exit_code)
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 1) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 1) do
         -- Wait
       end
 
@@ -325,7 +325,7 @@ describe("Cluster", function()
       local _, exit_code = spec_helper.start_kong(SERVER_CONFS[2])
       assert.are.equal(0, exit_code)
 
-      while(#spec_helper.envs[SERVER_CONFS[2]].dao_factory.nodes:find_by_keys({}) ~= 2) do
+      while(#spec_helper.envs[SERVER_CONFS[2]].dao_factory.nodes:find_all() ~= 2) do
         -- Wait
       end
 
@@ -354,7 +354,7 @@ describe("Cluster", function()
       local _, exit_code = spec_helper.start_kong(SERVER_CONFS[3])
       assert.are.same(0, exit_code)
 
-      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_by_keys({}) ~= 3) do
+      while(#spec_helper.envs[SERVER_CONFS[1]].dao_factory.nodes:find_all() ~= 3) do
         -- Wait
       end
 

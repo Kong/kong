@@ -51,13 +51,23 @@ end
 -- @treturn table Array of plugins to execute in context handlers.
 local function load_node_plugins(configuration)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
-  local db_plugins, err = singletons.dao.plugins:find_distinct()
+  local rows, err = singletons.dao.plugins:find_all()
   if err then
     error(err)
   end
 
+  local m = {}
+  for _, row in ipairs(rows) do
+    m[row.name] = true
+  end
+
+  local distinct_plugins = {}
+  for plugin_name in pairs(m) do
+    distinct_plugins[#distinct_plugins + 1] = plugin_name
+  end
+
   -- Checking that the plugins in the DB are also enabled
-  for _, v in ipairs(db_plugins) do
+  for _, v in ipairs(distinct_plugins) do
     if not utils.table_contains(configuration.plugins, v) then
       error("You are using a plugin that has not been enabled in the configuration: "..v)
     end
@@ -125,7 +135,7 @@ function Kong.init()
   local status, err = pcall(function()
     singletons.configuration  = config_loader.load(os.getenv("KONG_CONF"))
     singletons.events         = Events()
-    singletons.dao            = dao_loader.load(singletons.configuration, true, singletons.events)
+    singletons.dao            = dao_loader.load(singletons.configuration, singletons.events)
     singletons.loaded_plugins = load_node_plugins(singletons.configuration)
     singletons.serf           = Serf(singletons.configuration)
 
@@ -148,6 +158,8 @@ end
 
 function Kong.init_worker()
   core.init_worker.before()
+
+  singletons.dao:init() -- Executes any initialization by the DB
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()

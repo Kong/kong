@@ -56,7 +56,7 @@ return {
   },
 
   ["/cluster/events/"] = {
-    POST = function(self, dao_factory)
+    POST = function(self, dao_factory, helpers)
       local message_t = self.params
 
       -- The type is always upper case
@@ -67,8 +67,12 @@ return {
       -- If it's an update, load the new entity too so it's available in the hooks
       if message_t.type == singletons.events.TYPES.ENTITY_UPDATED then
         message_t.old_entity = message_t.entity
-        message_t.entity = singletons.dao[message_t.collection]:find_by_primary_key({id = message_t.old_entity.id})
-        if not message_t.entity then
+        local res, err = singletons.dao[message_t.collection]:find_all {id = message_t.old_entity.id}
+        if err then
+          return helpers.yield_error(err)
+        elseif #res == 1 then
+          message_t.entity = res[1]
+        else
           -- This means that the entity has been deleted immediately after an update in the meanwhile that
           -- the system was still processing the update. A delete invalidation will come immediately after
           -- so we can ignore this event

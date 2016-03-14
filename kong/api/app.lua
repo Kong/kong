@@ -59,19 +59,17 @@ local function normalize_nested_params(obj)
   return new_obj
 end
 
-local function default_on_error(self)
+local function on_error(self)
   local err = self.errors[1]
   if type(err) == "table" then
-    if err.database then
+    if err.db then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
     elseif err.unique then
-      return responses.send_HTTP_CONFLICT(err.message)
+      return responses.send_HTTP_CONFLICT(err.tbl)
     elseif err.foreign then
-      return responses.send_HTTP_NOT_FOUND(err.message)
-    elseif err.invalid_type and err.message.id then
-      return responses.send_HTTP_BAD_REQUEST(err.message)
+      return responses.send_HTTP_NOT_FOUND(err.tbl)
     else
-      return responses.send_HTTP_BAD_REQUEST(err.message)
+      return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
     end
   end
 end
@@ -136,7 +134,7 @@ local handler_helpers = {
 local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
     if not methods.on_error then
-      methods.on_error = default_on_error
+      methods.on_error = on_error
     end
 
     for k, v in pairs(methods) do

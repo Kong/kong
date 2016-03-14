@@ -92,6 +92,14 @@
 # database: cassandra
 
 ######
+## PostgreSQL configuration
+# postgres:
+#    host: "127.0.0.1"
+#    port: 5432
+#    user: kong
+#    database: kong
+
+######
 ## Cassandra configuration (keyspace, authentication, client-to-node encryption)
 # cassandra:
   ######
@@ -130,7 +138,7 @@
   #####
   ## Consistency level to use.
   ## See http://docs.datastax.com/en/cassandra/2.0/cassandra/dml/dml_config_consistency_c.html
-  # consistency: ONE 
+  # consistency: ONE
 
   #####
   ## Client-to-node TLS options.

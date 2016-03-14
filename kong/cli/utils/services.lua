@@ -1,10 +1,10 @@
 local logger = require "kong.cli.utils.logger"
-local dao = require "kong.tools.dao_loader"
 local IO = require "kong.tools.io"
+local dao_loader = require "kong.tools.dao_loader"
 
 local _M = {}
 
-_M.STATUSES = { 
+_M.STATUSES = {
   ALL_RUNNING = "ALL_RUNNING",
   SOME_RUNNING = "SOME_RUNNING",
   NOT_RUNNINT = "NOT_RUNNING"
@@ -21,39 +21,25 @@ local function prepare_database(configuration)
   setmetatable(configuration.dao_config, require "kong.tools.printable")
   logger:info(string.format([[database...........%s %s]], configuration.database, tostring(configuration.dao_config)))
 
-  local dao_factory = dao.load(configuration)
-  local migrations = require("kong.tools.migrations")(dao_factory, configuration)
+  local factory = dao_loader.load(configuration)
 
-  local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
-  if err then
-    return false, err
-  elseif not keyspace_exists then
-    logger:info("Database not initialized. Running migrations...")
-  end
-
-  local function before(identifier)
+  local function on_migrate(identifier)
     logger:info(string.format(
-      "Migrating %s on keyspace \"%s\" (%s)",
+      "Migrating %s (%s)",
       logger.colors.yellow(identifier),
-      logger.colors.yellow(dao_factory.properties.keyspace),
-      dao_factory.type
+      factory.db_type
     ))
   end
 
-  local function on_each_success(identifier, migration)
+  local function on_success(identifier, migration_name)
     logger:info(string.format(
       "%s migrated up to: %s",
       identifier,
-      logger.colors.yellow(migration.name)
+      logger.colors.yellow(migration_name)
     ))
   end
 
-  local err = migrations:run_all_migrations(before, on_each_success)
-  if err then
-    return false, err
-  end
-
-  return true
+  return factory:run_migrations(on_migrate, on_success)
 end
 
 local function prepare_working_dir(configuration)

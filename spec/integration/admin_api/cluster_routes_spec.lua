@@ -41,7 +41,7 @@ describe("Admin API", function()
         assert.equal(1, #body.data)
         assert.equal(1, body.total)
 
-        local member = table.remove(body.data, 1)
+        local member = body.data[1]
         assert.equal(3, utils.table_size(member))
         assert.truthy(member.address)
         assert.truthy(member.name)
