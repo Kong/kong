@@ -141,6 +141,16 @@ function _M.validate(config)
   return true
 end
 
+local DEFAULT_CONFIG = {}
+
+function _M.default_config()
+  if next(DEFAULT_CONFIG) == nil then
+    _M.validate(DEFAULT_CONFIG)
+  end
+
+  return DEFAULT_CONFIG
+end
+
 function _M.load(config_path)
   local config_contents = IO.read_file(config_path)
   if not config_contents then

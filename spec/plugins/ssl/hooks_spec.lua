@@ -48,7 +48,7 @@ describe("SSL Hooks", function()
       -- Check that cache is populated
       local response, status = http_client.get(API_URL.."/apis/", {request_host="ssl1.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data, 1).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local cache_key = cache.ssl_data(api_id)
@@ -58,7 +58,7 @@ describe("SSL Hooks", function()
       -- Retrieve SSL plugin
       local response, status = http_client.get(API_URL.."/plugins/", {api_id=api_id, name="ssl"})
       assert.equals(200, status)
-      local plugin_id = table.remove(json.decode(response).data, 1).id
+      local plugin_id = json.decode(response).data[1].id
       assert.truthy(plugin_id)
 
       -- Delete SSL plugin (which triggers invalidation)
@@ -90,7 +90,7 @@ describe("SSL Hooks", function()
       -- Check that cache is populated
       local response, status = http_client.get(API_URL.."/apis/", {request_host="ssl1.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data, 1).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local cache_key = cache.ssl_data(api_id)
@@ -100,7 +100,7 @@ describe("SSL Hooks", function()
       -- Retrieve SSL plugin
       local response, status = http_client.get(API_URL.."/plugins/", {api_id=api_id, name="ssl"})
       assert.equals(200, status)
-      local plugin_id = table.remove(json.decode(response).data, 1).id
+      local plugin_id = json.decode(response).data[1].id
       assert.truthy(plugin_id)
       
       -- Update SSL plugin (which triggers invalidation)
@@ -140,7 +140,7 @@ describe("SSL Hooks", function()
        -- Check that cache is populated
       local response, status = http_client.get(API_URL.."/apis/", {request_host="ssl1.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data, 1).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local cache_key = cache.ssl_data(api_id)

@@ -5,12 +5,11 @@
 require "kong.tools.ngx_stub"
 
 local IO = require "kong.tools.io"
-local dao = require "kong.tools.dao_loader"
+local dao_loader = require "kong.tools.dao_loader"
 local Faker = require "kong.tools.faker"
 local config = require "kong.tools.config_loader"
 local Threads = require "llthreads2.ex"
 local Events = require "kong.core.events"
-local Migrations = require "kong.tools.migrations"
 local stringy = require "stringy"
 
 local _M = {}
@@ -36,12 +35,11 @@ _M.envs = {}
 function _M.add_env(conf_file)
   local env_configuration = config.load(conf_file)
   local events = Events()
-  local env_factory = dao.load(env_configuration, false, events)
+  local env_factory = dao_loader.load(env_configuration, events)
   _M.envs[conf_file] = {
     configuration = env_configuration,
     dao_factory = env_factory,
     events = events,
-    migrations = Migrations(env_factory, env_configuration),
     conf_file = conf_file,
     faker = Faker(env_factory)
   }
@@ -199,12 +197,12 @@ end
 function _M.start_udp_server(port, ...)
   local thread = Threads.new({
     function(port)
-      local socket = require("socket")
-      local udp = socket.udp()
-      udp:setoption('reuseaddr', true)
-      udp:setsockname("*", port)
-      local data = udp:receivefrom()
-      udp:close()
+      local socket = require "socket"
+      local server = assert(socket.udp())
+      server:setoption('reuseaddr', true)
+      server:setsockname("*", port)
+      local data = server:receivefrom()
+      server:close()
       return data
     end;
   }, port)
@@ -219,8 +217,8 @@ function _M.prepare_db(conf_file)
   local env = _M.get_env(conf_file)
 
   -- 1. Migrate our keyspace
-  local err = env.migrations:run_all_migrations()
-  if err then
+  local ok, err = env.dao_factory:run_migrations()
+  if not ok then
     error(err)
   end
 
@@ -230,10 +228,7 @@ end
 
 function _M.drop_db(conf_file)
   local env = _M.get_env(conf_file)
-  local err = env.dao_factory:drop()
-  if err then
-    error(err)
-  end
+  env.dao_factory:truncate_tables()
 end
 
 function _M.seed_db(amount, conf_file)
@@ -244,6 +239,26 @@ end
 function _M.insert_fixtures(fixtures, conf_file)
   local env = _M.get_env(conf_file)
   return env.faker:insert_from_table(fixtures)
+end
+
+function _M.default_config()
+  return config.default_config()
+end
+
+function _M.for_each_dao(f)
+  local defaults = require "kong.tools.config_defaults"
+  local env = _M.get_env()
+  local databases = defaults.database.enum
+  local DB_TYPES = {}
+
+  for _, v in ipairs(databases) do
+    DB_TYPES[v:upper()] = v
+  end
+
+  for _, v in ipairs(databases) do
+    local properties = env.configuration[v]
+    f(v, properties, DB_TYPES)
+  end
 end
 
 -- Add the default env to our spec_helper

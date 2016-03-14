@@ -61,7 +61,7 @@ describe("ACL Hooks", function()
     assert.equals(200, status)
     local body = json.decode(response)
     if #body.data == 1 then
-      return table.remove(body.data, 1).id
+      return body.data[1].id
     end
   end
 
@@ -145,10 +145,19 @@ describe("ACL Hooks", function()
       local _, status = http_client.delete(API_URL.."/consumers/consumer1")
       assert.equals(204, status)
 
-      -- Wait for cache to be invalidated
+      -- Wait for consumer to be invalidated
       local exists = true
       while(exists) do
         local _, status = http_client.get(API_URL.."/cache/"..cache_key)
+        if status ~= 200 then
+          exists = false
+        end
+      end
+
+      -- Wait for key to be invalidated
+      local exists = true
+      while(exists) do
+        local _, status = http_client.get(API_URL.."/cache/"..cache.keyauth_credential_key("apikey123"))
         if status ~= 200 then
           exists = false
         end

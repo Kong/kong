@@ -112,10 +112,11 @@ _G.ngx = {
   ctx = {},
   header = {},
   get_phase = function() return "init" end,
+  socket = {},
   exit = function() end,
   say = function() end,
   log = function() end,
-  socket = { tcp = {} },
+  --socket = { tcp = {} },
   now = function() return os.time() end,
   time = function() return os.time() end,
   timer = {

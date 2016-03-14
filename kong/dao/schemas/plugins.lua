@@ -1,6 +1,5 @@
 local utils = require "kong.tools.utils"
-local DaoError = require "kong.dao.error"
-local constants = require "kong.constants"
+local Errors = require "kong.dao.errors"
 
 local function load_config_schema(plugin_t)
   if plugin_t.name then
@@ -14,9 +13,8 @@ local function load_config_schema(plugin_t)
 end
 
 return {
-  name = "Plugin configuration",
-  primary_key = {"id"},
-  clustering_key = {"name"},
+  table = "plugins",
+  primary_key = {"id", "name"},
   fields = {
     id = {
       type = "id",
@@ -30,20 +28,16 @@ return {
     api_id = {
       type = "id",
       required = true,
-      foreign = "apis:id",
-      queryable = true
+      foreign = "apis:id"
     },
     consumer_id = {
       type = "id",
-      foreign = "consumers:id",
-      queryable = true,
-      default = constants.DATABASE_NULL_ID
+      foreign = "consumers:id"
     },
     name = {
       type = "string",
       required = true,
-      immutable = true,
-      queryable = true
+      immutable = true
     },
     config = {
       type = "table",
@@ -56,11 +50,16 @@ return {
     }
   },
   marshall_event = function(self, plugin_t)
-    local result = utils.deep_copy(plugin_t)
+    local result = {
+      id = plugin_t.id,
+      api_id = plugin_t.api_id,
+      consumer_id = plugin_t.consumer_id,
+      name = plugin_t.name
+    }
     if plugin_t and plugin_t.config then
       local config_schema, err = self.fields.config.schema(plugin_t)
       if err then
-        return false, DaoError(err, constants.DATABASE_ERROR_TYPES.SCHEMA)
+        return false, Errors.schema(err)
       end
 
       if config_schema.marshall_event and type(config_schema.marshall_event) == "function" then
@@ -69,19 +68,18 @@ return {
         result.config = {}
       end
     end
-    
     return result
   end,
   self_check = function(self, plugin_t, dao, is_update)
     -- Load the config schema
     local config_schema, err = self.fields.config.schema(plugin_t)
     if err then
-      return false, DaoError(err, constants.DATABASE_ERROR_TYPES.SCHEMA)
+      return false, Errors.schema(err)
     end
 
     -- Check if the schema has a `no_consumer` field
-    if config_schema.no_consumer and plugin_t.consumer_id ~= nil and plugin_t.consumer_id ~= constants.DATABASE_NULL_ID then
-      return false, DaoError("No consumer can be configured for that plugin", constants.DATABASE_ERROR_TYPES.SCHEMA)
+    if config_schema.no_consumer and plugin_t.consumer_id ~= nil then
+      return false, Errors.schema "No consumer can be configured for that plugin"
     end
 
     if config_schema.self_check and type(config_schema.self_check) == "function" then
@@ -92,18 +90,19 @@ return {
     end
 
     if not is_update then
-      local res, err = dao.plugins:find_by_keys({
+      local rows, err = dao:find_all {
         name = plugin_t.name,
         api_id = plugin_t.api_id,
         consumer_id = plugin_t.consumer_id
-      })
-
+      }
       if err then
-        return nil, DaoError(err, constants.DATABASE_ERROR_TYPES.DATABASE)
-      end
-
-      if res and #res > 0 then
-        return false, DaoError("Plugin configuration already exists", constants.DATABASE_ERROR_TYPES.UNIQUE)
+        return false, err
+      elseif #rows > 0 then
+        for _, row in ipairs(rows) do
+          if row.name == plugin_t.name and row.api_id == plugin_t.api_id and row.consumer_id == plugin_t.consumer_id then
+            return false, Errors.unique "Plugin configuration already exists"
+          end
+        end
       end
     end
   end

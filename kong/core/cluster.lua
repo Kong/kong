@@ -34,7 +34,7 @@ local function async_autojoin(premature)
   if elapsed and elapsed == 0 then
     -- If the current member count on this node's cluster is 1, but there are more than 1 active nodes in
     -- the DAO, then try to join them
-    local count, err = singletons.dao.nodes:count_by_keys()
+    local count, err = singletons.dao.nodes:count()
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif count > 1 then
@@ -43,7 +43,7 @@ local function async_autojoin(premature)
         ngx.log(ngx.ERR, tostring(err))
       elseif #members < 2 then
         -- Trigger auto-join
-        local _, err = serf:_autojoin(cluster_utils.get_node_name(singletons.configuration))
+        local _, err = singletons.serf:_autojoin(cluster_utils.get_node_name(singletons.configuration))
         if err then
           ngx.log(ngx.ERR, tostring(err))
         end
@@ -74,12 +74,12 @@ local function send_keepalive(premature)
   if elapsed and elapsed == 0 then
     -- Send keepalive
     local node_name = cluster_utils.get_node_name(singletons.configuration)
-    local nodes, err = singletons.dao.nodes:find_by_keys({name = node_name})
+    local nodes, err = singletons.dao.nodes:find_all {name = node_name}
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif #nodes == 1 then
-      local node = table.remove(nodes, 1)
-      local _, err = singletons.dao.nodes:update(node)
+      local node = nodes[1]
+      local _, err = singletons.dao.nodes:update(node, node)
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end

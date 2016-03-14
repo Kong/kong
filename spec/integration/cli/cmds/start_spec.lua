@@ -2,6 +2,7 @@ local spec_helper = require "spec.spec_helpers"
 local yaml = require "yaml"
 local IO = require "kong.tools.io"
 local http_client = require "kong.tools.http_client"
+local Factory = require "kong.dao.factory"
 
 local TEST_CONF = spec_helper.get_env().conf_file
 local SERVER_CONF = "kong_TEST_SERVER.yml"
@@ -158,20 +159,22 @@ describe("CLI", function()
       assert.are.same(0, exit_code)
     end)
 
-    it("should not work when a plugin is being used in the DB but it's not in the configuration", function()
+    it("#ci should not work when a plugin is being used in the DB but it's not in the configuration", function()
+      spec_helper.prepare_db()
+
       local cassandra = require "cassandra"
       local UUID = "d7dcf800-f155-417e-a282-b6189d7d901b"
       
       -- Load everything we need from the spec_helper
       local env = spec_helper.get_env(SERVER_CONF)
       local faker = env.faker
-      local dao_factory = env.dao_factory
       local configuration = env.configuration
+      local dao_factory = Factory("cassandra", configuration["cassandra"])
 
       local session, err = cassandra.spawn_session {
         shm = "cli_specs",
-        keyspace = configuration.dao_config.keyspace,
-        contact_points = configuration.dao_config.contact_points
+        keyspace = configuration["cassandra"].keyspace,
+        contact_points = configuration["cassandra"].contact_points
       }
       assert.falsy(err)
 
@@ -194,6 +197,7 @@ describe("CLI", function()
       replace_conf_property("custom_plugins", {})
 
       assert.error_matches(function()
+        replace_conf_property("database", "cassandra")
         spec_helper.start_kong(SERVER_CONF)
       end, "You are using a plugin that has not been enabled in the configuration: custom-rate-limiting", nil, true)
     end)

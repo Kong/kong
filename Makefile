@@ -22,8 +22,8 @@ dev: install
       echo $$rock already installed, skipping ; \
     fi \
 	done;
-	bin/kong config -c kong.yml -e TEST
-	bin/kong config -c kong.yml -e DEVELOPMENT
+	bin/kong config -c kong.yml -e TEST -s TEST
+	bin/kong config -c kong.yml -e DEVELOPMENT -s DEVELOPMENT
 	bin/kong migrations -c $(DEVELOPMENT_CONF) up
 
 clean:
@@ -49,6 +49,12 @@ test-plugins:
 
 test-all:
 	@busted -v spec/
+
+test-model:
+	@busted -v -o gtest spec/integration/model
+
+test-model-only:
+	@busted -v -o gtest --tags=only spec/integration/model
 
 coverage:
 	@rm -f luacov.*

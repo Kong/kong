@@ -33,7 +33,17 @@ return {
       ["profile"] = {type = "string", default = "wan", enum = {"wan", "lan", "local"}}
     }
   },
-  ["database"] = {type = "string", default = "cassandra", enum = {"cassandra"}},
+  ["database"] = {type = "string", default = "cassandra", enum = {"cassandra", "postgres"}},
+  ["postgres"] = {
+    type = "table",
+    content = {
+      ["host"] = {type = "string", default = "127.0.0.1"},
+      ["port"] = {type = "number", default = 5432},
+      ["user"] = {type = "string", default = "kong"},
+      ["database"] = {type = "string", default = "kong"},
+      ["password"] = {type = "string", default = "kong"}
+    }
+  },
   ["cassandra"] = {
     type = "table",
     content = {

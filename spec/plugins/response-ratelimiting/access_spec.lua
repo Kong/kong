@@ -3,6 +3,9 @@ local http_client = require "kong.tools.http_client"
 local timestamp = require "kong.tools.timestamp"
 local cjson = require "cjson"
 
+local env = spec_helper.get_env()
+local dao_factory = env.dao_factory
+
 local PROXY_URL = spec_helper.PROXY_URL
 local SLEEP_VALUE = "0.5"
 
@@ -51,6 +54,7 @@ describe("RateLimiting Plugin", function()
   end
 
   setup(function()
+    dao_factory:drop_schema()
     prepare_db()
     spec_helper.start_kong()
     wait()
@@ -164,29 +168,9 @@ describe("RateLimiting Plugin", function()
   end)
 
   describe("Continue on error", function()
-
-    local session, err, configuration
-
-    setup(function()
-      local cassandra = require "cassandra"
-      local TEST_CONF = spec_helper.get_env().conf_file
-      local env = spec_helper.get_env(TEST_CONF)
-      configuration = env.configuration
-      session, err = cassandra.spawn_session {
-        shm = "response_ratelimiting_specs",
-        keyspace = configuration.dao_config.keyspace,
-        contact_points = configuration.dao_config.contact_points
-      }
-      assert.falsy(err)
-    end)
-
     after_each(function()
-      session:execute("DROP KEYSPACE "..configuration.dao_config.keyspace)
+      dao_factory:drop_schema()
       prepare_db()
-    end)
-
-    teardown(function()
-      session:shutdown()
     end)
 
     it("should not continue if an error occurs", function()
@@ -194,9 +178,10 @@ describe("RateLimiting Plugin", function()
       assert.are.equal(200, status)
       assert.are.same('6', headers["x-ratelimit-limit-video-minute"])
       assert.are.same('5', headers["x-ratelimit-remaining-video-minute"])
-      
+
       -- Simulate an error on the database
-      session:execute("DROP TABLE response_ratelimiting_metrics")
+      local err = dao_factory.response_ratelimiting_metrics:drop_table(dao_factory.response_ratelimiting_metrics.table)
+      assert.falsy(err)
 
       -- Make another request
       local res, status, _ = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test4.com"})
@@ -209,9 +194,10 @@ describe("RateLimiting Plugin", function()
       assert.are.equal(200, status)
       assert.falsy(headers["x-ratelimit-limit-video-minute"])
       assert.falsy(headers["x-ratelimit-remaining-video-minute"])
-      
+
       -- Simulate an error on the database
-      session:execute("DROP TABLE response_ratelimiting_metrics")
+      local err = dao_factory.response_ratelimiting_metrics:drop_table(dao_factory.response_ratelimiting_metrics.table)
+      assert.falsy(err)
 
       -- Make another request
       local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test5.com"})

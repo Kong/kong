@@ -68,7 +68,7 @@ local function load_credential_from_db(username)
   local credential
   if username then
     credential = cache.get_or_set(cache.basicauth_credential_key(username), function()
-      local credentials, err = singletons.dao.basicauth_credentials:find_by_keys {username = username}
+      local credentials, err = singletons.dao.basicauth_credentials:find_all {username = username}
       local result
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -107,7 +107,7 @@ function _M.execute(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = singletons.dao.consumers:find_by_primary_key({ id = credential.consumer_id })
+    local result, err = singletons.dao.consumers:find { id = credential.consumer_id }
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

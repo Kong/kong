@@ -24,18 +24,26 @@ return {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
+
+      local err
+      self.jwt_secret, err = dao_factory.jwt_secrets:find(self.params)
+      if err then
+        return helpers.yield_error(err)
+      elseif self.jwt_secret == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
     end,
 
-    GET = function(self, dao_factory)
-      crud.get(self.params, dao_factory.jwt_secrets)
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.jwt_secret)
     end,
 
     PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.jwt_secrets)
+      crud.patch(self.params, dao_factory.jwt_secrets, self.jwt_secret)
     end,
 
     DELETE = function(self, dao_factory)
-      crud.delete(self.params, dao_factory.jwt_secrets)
+      crud.delete(self.jwt_secret, dao_factory.jwt_secrets)
     end
   }
 }
