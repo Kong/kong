@@ -1,5 +1,6 @@
 local iputils = require "resty.iputils"
-local Errors = require "kong.dao.errors"
+local DaoError = require "kong.dao.error"
+local constants = require "kong.constants"
 
 local function validate_ips(v, t, column)
   local new_fields
@@ -29,9 +30,9 @@ return {
     local bl = type(plugin_t.blacklist) == "table" and plugin_t.blacklist or {}
 
     if #wl > 0 and #bl > 0 then
-      return false, Errors.schema "you cannot set both a whitelist and a blacklist"
+      return false, DaoError("you cannot set both a whitelist and a blacklist", constants.DATABASE_ERROR_TYPES.SCHEMA)
     elseif #wl == 0 and #bl == 0 then
-      return false, Errors.schema "you must set at least a whitelist or blacklist"
+      return false, DaoError("you must set at least a whitelist or blacklist", constants.DATABASE_ERROR_TYPES.SCHEMA)
     end
 
     return true

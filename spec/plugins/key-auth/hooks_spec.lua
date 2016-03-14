@@ -50,7 +50,7 @@ describe("Key Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/consumer1/key-auth/")
       assert.equals(200, status)
-      local credential_id = json.decode(response).data[1].id
+      local credential_id = table.remove(json.decode(response).data, 1).id
       assert.truthy(credential_id)
 
       -- Delete Key Auth credential (which triggers invalidation)
@@ -87,7 +87,7 @@ describe("Key Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/consumer1/key-auth/")
       assert.equals(200, status)
-      local credential_id = json.decode(response).data[1].id
+      local credential_id = table.remove(json.decode(response).data, 1).id
       assert.truthy(credential_id)
       
       -- Delete Key Auth credential (which triggers invalidation)

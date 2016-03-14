@@ -14,7 +14,7 @@ end
 
 function ACLHandler:access(conf)
   ACLHandler.super.access(self)
-
+  
   local consumer_id
   if ngx.ctx.authenticated_credential then
     consumer_id = ngx.ctx.authenticated_credential.consumer_id
@@ -24,7 +24,7 @@ function ACLHandler:access(conf)
 
   -- Retrieve ACL
   local acls = cache.get_or_set(cache.acls_key(consumer_id), function()
-    local results, err = singletons.dao.acls:find_all {consumer_id = consumer_id}
+    local results, err = singletons.dao.acls:find_by_keys({consumer_id = consumer_id})
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

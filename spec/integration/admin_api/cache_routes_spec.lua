@@ -60,7 +60,7 @@ describe("Admin API", function()
         -- Delete
         local _, status = http_client.delete(BASE_URL..cache.all_apis_by_dict_key())
         assert.equal(204, status)
-
+        
         -- Make sure it doesn't exist
         local _, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
         assert.equal(404, status)
@@ -79,7 +79,7 @@ describe("Admin API", function()
         -- Delete
         local _, status = http_client.delete(BASE_URL)
         assert.equal(204, status)
-
+        
         -- Make sure it doesn't exist
         local _, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
         assert.equal(404, status)

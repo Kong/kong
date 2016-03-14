@@ -14,8 +14,6 @@
 --
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
-local constants = require "kong.constants"
-local cjson = require "cjson"
 
 --- Define the most common HTTP status codes for sugar methods.
 -- Each of those status will generate a helper method (sugar)
@@ -83,6 +81,9 @@ local response_default_content = {
 -- @local
 -- @param[type=number] status_code The status for which to define a function
 local function send_response(status_code)
+  local constants = require "kong.constants"
+  local cjson = require "cjson"
+
   -- Send a JSON response for the closure's status code with the given content.
   -- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
   -- @see https://github.com/openresty/lua-nginx-module

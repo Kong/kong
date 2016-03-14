@@ -148,17 +148,17 @@ local function check_name(name)
 end
 
 return {
-  table = "apis",
+  name = "API",
   primary_key = {"id"},
   fields = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
-    name = {type = "string", unique = true, default = default_name, func = check_name},
-    request_host = {type = "string", unique = true, func = check_request_host},
+    name = {type = "string", unique = true, queryable = true, default = default_name, func = check_name},
+    request_host = {type = "string", unique = true, queryable = true, func = check_request_host},
     request_path = {type = "string", unique = true, func = check_request_path},
-    strip_request_path = {type = "boolean", default = false},
+    strip_request_path = {type = "boolean"},
     upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
-    preserve_host = {type = "boolean", default = false}
+    preserve_host = {type = "boolean"}
   },
   marshall_event = function(self, t)
     return { id = t.id }

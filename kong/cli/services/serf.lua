@@ -1,10 +1,10 @@
-local cluster_utils = require "kong.tools.cluster"
 local BaseService = require "kong.cli.services.base_service"
-local dao_loader = require "kong.tools.dao_loader"
-local stringy = require "stringy"
 local logger = require "kong.cli.utils.logger"
-local cjson = require "cjson"
 local IO = require "kong.tools.io"
+local stringy = require "stringy"
+local cjson = require "cjson"
+local cluster_utils = require "kong.tools.cluster"
+local dao = require "kong.tools.dao_loader"
 
 local Serf = BaseService:extend()
 
@@ -20,7 +20,7 @@ function Serf:new(configuration)
                         ..(stringy.endswith(nginx_working_dir, "/") and "" or "/")
   self._script_path = path_prefix.."serf_event.sh"
   self._log_path = path_prefix.."serf.log"
-  self._dao_factory = dao_loader.load(self._configuration)
+  self._dao_factory = dao.load(self._configuration)
   Serf.super.new(self, SERVICE_NAME, nginx_working_dir)
 end
 
@@ -49,7 +49,7 @@ function Serf:prepare()
   if not luajit_path then
     return nil, "Can't find luajit"
   end
-
+  
   local script = [[
 #!/bin/sh
 PAYLOAD=`cat` # Read from stdin
@@ -160,7 +160,7 @@ function Serf:_add_node()
   local _, err = self._dao_factory.nodes:insert({
     name = name,
     cluster_listening_address = stringy.strip(addr)
-  }, {ttl = 3600})
+  })
   if err then
     return false, err
   end
@@ -255,7 +255,7 @@ function Serf:event(t_payload)
   if string.len(encoded_payload) > 512 then
     -- Serf can't send a payload greater than 512 bytes
     return false, "Encoded payload is "..string.len(encoded_payload).." and it exceeds the limit of 512 bytes!"
-  end
+  end 
 
   return self:invoke_signal("event "..tostring(args).." kong", {"'"..encoded_payload.."'", "&"}, true)
 end

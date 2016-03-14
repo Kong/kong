@@ -2,25 +2,10 @@ local stringy = require "stringy"
 local IO = require "kong.tools.io"
 local fs = require "luarocks.fs"
 
--- Function that checks if the path has been imported as a module
-local is_in_rockspec = function(path)
-  if stringy.startswith(path, "./") then
-    path = string.sub(path, 3)
-  end
-  local found = false
-  for _, v in pairs(build.modules) do
-    if v == path then
-      found = true
-      break
-    end
-  end
-  return found
-end
+describe("Rockspec file", function()
 
-describe("Rockspec", function()
-  local rockspec_path, files
-
-  setup(function()
+  it("should include all the Lua modules", function()
+    local rockspec_path
     for _, filename in ipairs(fs.list_dir(".")) do
       if stringy.endswith(filename, "rockspec") then
         rockspec_path = filename
@@ -33,22 +18,35 @@ describe("Rockspec", function()
 
     loadfile(rockspec_path)()
 
+    -- Function that checks if the path has been imported as a module
+    local is_in_rockspec = function(path)
+      if stringy.startswith(path, "./") then
+        path = string.sub(path, 3)
+      end
+      local found = false
+      for _, v in pairs(build.modules) do
+        if v == path then
+          found = true
+          break
+        end
+      end
+      return found
+    end
+
     local res = IO.os_execute("find . -type f -name *.lua", true)
     if not res or stringy.strip(res) == "" then
       error("Error executing the command")
     end
 
-    files = stringy.split(res, "\n")
-  end)
-
-  describe("modules", function()
+    local files = stringy.split(res, "\n")
     for _, v in ipairs(files) do
-      it("should include "..v, function()
-        local path = stringy.strip(v)
-        if path ~= "" and stringy.startswith(path, "./kong") then
-          assert.True(is_in_rockspec(path))
+      local path = stringy.strip(v)
+      if path ~= "" and stringy.startswith(path, "./kong") then
+        if not is_in_rockspec(path) then
+          error("Module "..path.." is not declared in rockspec")
         end
-      end)
+      end
     end
   end)
+
 end)

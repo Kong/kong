@@ -6,19 +6,9 @@ local utils = require "kong.tools.utils"
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local rows, err = dao.plugins:find_all()
+      local db_plugins, err = dao.plugins:find_distinct()
       if err then
         return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      end
-
-      local m = {}
-      for _, row in ipairs(rows) do
-        m[row.name] = true
-      end
-
-      local distinct_plugins = {}
-      for plugin_name in pairs(m) do
-        distinct_plugins[#distinct_plugins + 1] = plugin_name
       end
 
       return helpers.responses.send_HTTP_OK({
@@ -31,7 +21,7 @@ return {
         },
         plugins = {
           available_on_server = singletons.configuration.plugins,
-          enabled_in_cluster = distinct_plugins
+          enabled_in_cluster = db_plugins
         },
         lua_version = jit and jit.version or _VERSION,
         configuration = singletons.configuration
@@ -49,7 +39,7 @@ return {
         }
 
         for k, v in pairs(dao.daos) do
-          local count, err = v:count()
+          local count, err = v:count_by_keys()
           if err then
             return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
           end

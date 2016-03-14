@@ -1,15 +1,5 @@
 ## [Unreleased][unreleased]
 
-### Breaking changes
-
-- Remove support for the long deprecated `/consumers/:consumer/keyauth/` and `/consumers/:consumer/basicauth/` routes (deprecated in `0.5.0`). The new routes (available since `0.5.0` too) use the real name of the plugin: `/consumers/:consumer/key-auth` and `/consumers/:consumer/basic-auth`.
-
-### Added
-
-- Support for PostgreSQL as Kong's primary datastore. [#331](https://github.com/Mashape/kong/issues/331) [#1054](https://github.com/Mashape/kong/issues/1054)
-- Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Mashape/kong/pull/1026)
-- Admin API: oncluding pending and running timers count in the response to `/`. [#992](https://github.com/Mashape/kong/pull/992)
-
 ## [0.7.0] - 2016/02/24
 
 ### Breaking changes

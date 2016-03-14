@@ -21,7 +21,7 @@ local function provision_code()
   for line in matches do
     code = line
   end
-  local data = dao_factory.oauth2_authorization_codes:find_all {code = code}
+  local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
   return data[1].code
 end
 
@@ -248,7 +248,7 @@ describe("Authentication Plugin", function()
         for line in matches do
           code = line
         end
-        local data = dao_factory.oauth2_authorization_codes:find_all {code = code}
+        local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
         assert.are.equal(1, #data)
         assert.are.equal(code, data[1].code)
 
@@ -268,7 +268,7 @@ describe("Authentication Plugin", function()
         for line in matches do
           code = line
         end
-        local data = dao_factory.oauth2_authorization_codes:find_all {code = code}
+        local data = dao_factory.oauth2_authorization_codes:find_by_keys({code = code})
         assert.are.equal(1, #data)
         assert.are.equal(code, data[1].code)
 
@@ -312,7 +312,7 @@ describe("Authentication Plugin", function()
         for line in matches do
           access_token = line
         end
-        local data = dao_factory.oauth2_tokens:find_all {access_token = access_token}
+        local data = dao_factory.oauth2_tokens:find_by_keys({access_token = access_token})
         assert.are.equal(1, #data)
         assert.are.equal(access_token, data[1].access_token)
 
@@ -700,7 +700,7 @@ describe("Authentication Plugin", function()
       local body = cjson.decode(response)
       assert.are.equal(200, status)
 
-      local consumer = dao_factory.consumers:find_all({username = "auth_tests_consumer"})[1]
+      local consumer = dao_factory.consumers:find_by_keys({username = "auth_tests_consumer"})[1]
 
       assert.are.equal(consumer.id, body.headers["x-consumer-id"])
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
@@ -723,33 +723,33 @@ describe("Authentication Plugin", function()
       local response, status, headers = http_client.get(STUB_GET_URL, { access_token = "invalid" }, {host = "oauth2.com"})
       local body = cjson.decode(response)
       assert.are.equal(401, status)
-      assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
+      assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid"', headers['www-authenticate'])
       assert.are.equal("invalid_token", body.error)
-      assert.are.equal("The access token is invalid or has expired", body.error_description)
+      assert.are.equal("The access token is invalid", body.error_description)
     end)
 
     it("should return 401 Unauthorized when an invalid access token is being sent via the Authorization header", function()
       local response, status, headers = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer invalid"})
       local body = cjson.decode(response)
       assert.are.equal(401, status)
-      assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
+      assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid"', headers['www-authenticate'])
       assert.are.equal("invalid_token", body.error)
-      assert.are.equal("The access token is invalid or has expired", body.error_description)
+      assert.are.equal("The access token is invalid", body.error_description)
     end)
 
     it("should return 401 Unauthorized when token has expired", function()
       local token = provision_token()
 
       -- Token expires in (5 seconds)
-      os.execute("sleep 7")
+      os.execute("sleep "..tonumber(6))
 
       local response, status, headers = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       local body = cjson.decode(response)
       assert.are.equal(401, status)
       assert.are.equal(2, utils.table_size(body))
-      assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"', headers['www-authenticate'])
+      assert.are.equal('Bearer realm="service" error="invalid_token" error_description="The access token expired"', headers['www-authenticate'])
       assert.are.equal("invalid_token", body.error)
-      assert.are.equal("The access token is invalid or has expired", body.error_description)
+      assert.are.equal("The access token expired", body.error_description)
     end)
   end)
 
@@ -776,21 +776,21 @@ describe("Authentication Plugin", function()
       assert.are.equal(5, body.expires_in)
     end)
 
-    it("#only should expire after 5 seconds", function()
+    it("should expire after 5 seconds", function()
       local token = provision_token()
       local _, status = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       assert.are.equal(200, status)
 
-      local id = dao_factory.oauth2_tokens:find_all({access_token = token.access_token })[1].id
-      assert.truthy(dao_factory.oauth2_tokens:find({id=id}))
+      local id = dao_factory.oauth2_tokens:find_by_keys({access_token = token.access_token })[1].id
+      assert.truthy(dao_factory.oauth2_tokens:find_by_primary_key({id=id}))
 
       -- But waiting after the cache expiration (5 seconds) should block the request
-      os.execute("sleep 7")
+      os.execute("sleep "..tonumber(6))
 
       local response, status = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       local body = cjson.decode(response)
       assert.are.equal(401, status)
-      assert.are.equal("The access token is invalid or has expired", body.error_description)
+      assert.are.equal("The access token expired", body.error_description)
 
       -- Refreshing the token
       local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/token", { refresh_token = token.refresh_token, client_id = "clientid123", client_secret = "secret123", grant_type = "refresh_token" }, {host = "oauth2.com"})
@@ -805,7 +805,7 @@ describe("Authentication Plugin", function()
       assert.falsy(token.access_token == body.access_token)
       assert.falsy(token.refresh_token == body.refresh_token)
 
-      assert.falsy(dao_factory.oauth2_tokens:find({id=id}))
+      assert.falsy(dao_factory.oauth2_tokens:find_by_primary_key({id=id}))
     end)
 
   end)

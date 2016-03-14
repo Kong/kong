@@ -7,7 +7,6 @@
 
 local url = require "socket.url"
 local uuid = require "lua_uuid"
-local stringy = require "stringy"
 
 local type = type
 local pairs = pairs
@@ -38,9 +37,6 @@ end
 function _M.random_string()
   return uuid():gsub("-", "")
 end
-
-_M.split = stringy.split
-_M.strip = stringy.strip
 
 --- URL escape and format key and value
 -- An obligatory url.unescape pass must be done to prevent double-encoding
@@ -169,20 +165,6 @@ function _M.deep_copy(orig)
     end
     setmetatable(copy, _M.deep_copy(getmetatable(orig)))
   else
-    copy = orig
-  end
-  return copy
-end
-
-function _M.shallow_copy(orig)
-  local orig_type = type(orig)
-  local copy
-  if orig_type == "table" then
-    copy = {}
-    for orig_key, orig_value in pairs(orig) do
-      copy[orig_key] = orig_value
-    end
-  else -- number, string, boolean, etc
     copy = orig
   end
   return copy

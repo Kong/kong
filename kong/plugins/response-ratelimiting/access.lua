@@ -23,7 +23,7 @@ local function get_current_usage(api_id, identifier, current_timestamp, limits)
 
   for k, v in pairs(limits) do -- Iterate over limit names
     for lk, lv in pairs(v) do -- Iterare over periods
-      local current_metric, err = singletons.dao.response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, lk, k)
+      local current_metric, err = singletons.dao.response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, lk, k)
       if err then
         return false, err
       end

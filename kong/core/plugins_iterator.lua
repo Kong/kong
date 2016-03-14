@@ -1,6 +1,9 @@
 local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
+local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+
+local table_remove = table.remove
 
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's configuration if it exists.
@@ -12,9 +15,9 @@ local responses = require "kong.tools.responses"
 local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
   local plugin = cache.get_or_set(cache_key, function()
-    local rows, err = singletons.dao.plugins:find_all {
+    local rows, err = singletons.dao.plugins:find_by_keys {
       api_id = api_id,
-      consumer_id = consumer_id,
+      consumer_id = consumer_id ~= nil and consumer_id or constants.DATABASE_NULL_ID,
       name = plugin_name
     }
     if err then
@@ -22,15 +25,7 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
     end
 
     if #rows > 0 then
-      if consumer_id == nil then
-        for _, row in ipairs(rows) do
-          if row.consumer_id == nil then
-            return row
-          end
-        end
-      else
-        return rows[1]
-      end
+      return table_remove(rows, 1)
     else
       -- insert a cached value to not trigger too many DB queries.
       return {null = true}
@@ -47,8 +42,8 @@ end
 -- @param[type=boolean] is_access_or_certificate_context Tells if the context is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can avoid it.
 -- @treturn function iterator
 local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_context)
-  if not ngx.ctx.plugins_for_request then
-    ngx.ctx.plugins_for_request = {}
+  if not ngx.ctx.plugins_for_request then 
+    ngx.ctx.plugins_for_request = {} 
   end
 
   local i = 0

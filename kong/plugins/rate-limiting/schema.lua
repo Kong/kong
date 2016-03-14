@@ -1,4 +1,5 @@
-local Errors = require "kong.dao.errors"
+local DaoError = require "kong.dao.error"
+local constants = require "kong.constants"
 
 return {
   fields = {
@@ -33,11 +34,11 @@ return {
     end
 
     if not has_value then
-      return false, Errors.schema "You need to set at least one limit: second, minute, hour, day, month, year"
+      return false, DaoError("You need to set at least one limit: second, minute, hour, day, month, year", constants.DATABASE_ERROR_TYPES.SCHEMA)
     elseif invalid_value then
-      return false, Errors.schema(invalid_value)
+      return false, DaoError(invalid_value, constants.DATABASE_ERROR_TYPES.SCHEMA)
     elseif invalid_order then
-      return false, Errors.schema(invalid_order)
+      return false, DaoError(invalid_order, constants.DATABASE_ERROR_TYPES.SCHEMA)
     end
 
     return true

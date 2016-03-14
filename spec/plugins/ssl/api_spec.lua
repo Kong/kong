@@ -25,7 +25,7 @@ describe("SSL Admin API", function()
 
     it("should refuse to set a `consumer_id` if asked to", function()
       local response, status = http_client.post_multipart(BASE_URL,
-        {name = "ssl", consumer_id = "504b535e-dc1c-11e5-8554-b3852c1ec156", ["config.cert"] = ssl_fixtures.cert, ["config.key"] = ssl_fixtures.key}
+        {name = "ssl", consumer_id = "0000", ["config.cert"] = ssl_fixtures.cert, ["config.key"] = ssl_fixtures.key}
       )
       assert.equal(400, status)
       local body = json.decode(response)

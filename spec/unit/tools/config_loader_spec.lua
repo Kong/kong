@@ -61,7 +61,7 @@ describe("Configuration validation", function()
     assert.truthy(errors)
     assert.equal("must be a string", errors.proxy_listen)
     assert.equal("must be a string", errors.database[1])
-    assert.equal("must be one of: 'cassandra, postgres'", errors.database[2])
+    assert.equal("must be one of: 'cassandra'", errors.database[2])
     assert.equal("must be a array", errors["cassandra.contact_points"])
     assert.equal("must be a boolean", errors["cassandra.ssl.enabled"])
     assert.falsy(errors.ssl_cert_path)
@@ -84,127 +84,7 @@ describe("Configuration validation", function()
   it("should validate the selected database property", function()
     local ok, errors = config.validate({database = "foo"})
     assert.False(ok)
-    assert.equal("must be one of: 'cassandra, postgres'", errors.database)
-  end)
-  describe("database: cassandra", function()
-    it("should accept proper cassandra properties", function()
-      local valids = {
-        {
-          contact_points = {"127.0.0.1:9042", "120.0.0.2:9042"},
-          keyspace = "kong",
-          replication_strategy = "SimpleStrategy"
-        },
-        {
-          contact_points = {"127.0.0.1:9042"},
-          keyspace = "kong_development",
-          replication_strategy = "NetworkTopologyStrategy",
-          data_centers = {"dc1", "dc2"},
-          username = "cassandra",
-          password = "cassandra",
-          ssl = {
-            enabled = true,
-            verify = false,
-            certificate_authority = "/path/to/certificate.ca"
-          }
-        }
-      }
-
-      for _, v in ipairs(valids) do
-        local c = {
-          database = "cassandra",
-          cassandra = v
-        }
-        local ok, errors = config.validate(c)
-        assert.falsy(errors)
-        assert.True(ok)
-      end
-    end)
-    it("should not accept invalid cassandra properties", function()
-      local invalids = {
-        {
-          contact_points = "127.0.0.1:9042",
-          keyspace = "kong",
-          replication_strategy = "foo"
-        },
-        {
-          contact_points = {"127.0.0.1:9042"},
-          keyspace = "kong_development",
-          replication_strategy = "NetworkTopologyStrategy",
-          data_centers = {"dc1", "dc2"},
-          username = "cassandra",
-          password = "cassandra",
-          ssl = {
-            enabled = "true",
-            verify = false,
-            certificate_authority = "/path/to/certificate.ca"
-          }
-        }
-      }
-
-      for _, v in ipairs(invalids) do
-        local c = {
-          database = "cassandra",
-          cassandra = v
-        }
-        local ok, errors = config.validate(c)
-        assert.False(ok)
-        assert.truthy(errors)
-      end
-    end)
-  end)
-  describe("database: postgres", function()
-    it("should accept proper postgres properties", function()
-      local valids = {
-        {
-          host = "127.0.0.1",
-          port = 5423,
-          user = "postgres",
-          database = "kong"
-        },
-        {
-          host = "190.168.1.0",
-          port = 6000,
-          user = "kong",
-          database = "kong_development"
-        }
-      }
-
-      for _, v in ipairs(valids) do
-        local c = {
-          database = "postgres",
-          postgres = v
-        }
-        local ok, errors = config.validate(c)
-        assert.falsy(errors)
-        assert.True(ok)
-      end
-    end)
-    it("should not accept invalid postgres properties", function()
-      local invalids = {
-        {
-          host = "127.0.0.1",
-          port = "5423",
-          user = "postgres",
-          database = "kong"
-        },
-        {
-          host = "190.168.1.0",
-          port = 6000,
-          user = "kong",
-          database = 123
-        }
-      }
-
-      for _, v in ipairs(invalids) do
-        local c = {
-          database = "postgres",
-          postgres = v
-        }
-        local ok, errors = config.validate(c)
-        assert.False(ok)
-        assert.truthy(errors)
-      end
-    end)
+    assert.equal("must be one of: 'cassandra'", errors.database)
   end)
   it("should validate the selected dns_resolver property", function()
     local ok, errors = config.validate({dns_resolver = "foo"})
