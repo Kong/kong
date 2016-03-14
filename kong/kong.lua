@@ -37,14 +37,14 @@ local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 
---- Attach a hooks table to the event bus
+-- Attach a hooks table to the event bus
 local function attach_hooks(events, hooks)
   for k, v in pairs(hooks) do
     events:subscribe(k, v)
   end
 end
 
---- Load enabled plugins on the node.
+-- Load enabled plugins on the node.
 -- Get plugins in the DB (distinct by `name`), compare them with plugins
 -- in `configuration.plugins`. If both lists match, return a list
 -- of plugins sorted by execution priority for lua-nginx-module's context handlers.
@@ -115,12 +115,12 @@ local function load_node_plugins(configuration)
   return sorted_plugins
 end
 
---- Kong public context handlers.
+-- Kong public context handlers.
 -- @section kong_handlers
 
 local Kong = {}
 
---- Init Kong's environment in the Nginx master process.
+-- Init Kong's environment in the Nginx master process.
 -- To be called by the lua-nginx-module `init_by_lua` directive.
 -- Execution:
 --   - load the configuration from the path computed by the CLI
