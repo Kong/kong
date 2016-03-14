@@ -37,37 +37,27 @@ local ipairs = ipairs
 local table_insert = table.insert
 local table_sort = table.sort
 
--- Attach a hooks table to the event bus
+--- Attach a hooks table to the event bus
 local function attach_hooks(events, hooks)
   for k, v in pairs(hooks) do
     events:subscribe(k, v)
   end
 end
 
--- Load enabled plugins on the node.
+--- Load enabled plugins on the node.
 -- Get plugins in the DB (distinct by `name`), compare them with plugins
 -- in `configuration.plugins`. If both lists match, return a list
 -- of plugins sorted by execution priority for lua-nginx-module's context handlers.
 -- @treturn table Array of plugins to execute in context handlers.
 local function load_node_plugins(configuration)
   ngx.log(ngx.DEBUG, "Discovering used plugins")
-  local rows, err = singletons.dao.plugins:find_all()
+  local db_plugins, err = singletons.dao.plugins:find_distinct()
   if err then
     error(err)
   end
 
-  local m = {}
-  for _, row in ipairs(rows) do
-    m[row.name] = true
-  end
-
-  local distinct_plugins = {}
-  for plugin_name in pairs(m) do
-    distinct_plugins[#distinct_plugins + 1] = plugin_name
-  end
-
   -- Checking that the plugins in the DB are also enabled
-  for _, v in ipairs(distinct_plugins) do
+  for _, v in ipairs(db_plugins) do
     if not utils.table_contains(configuration.plugins, v) then
       error("You are using a plugin that has not been enabled in the configuration: "..v)
     end
@@ -115,12 +105,12 @@ local function load_node_plugins(configuration)
   return sorted_plugins
 end
 
--- Kong public context handlers.
+--- Kong public context handlers.
 -- @section kong_handlers
 
 local Kong = {}
 
--- Init Kong's environment in the Nginx master process.
+--- Init Kong's environment in the Nginx master process.
 -- To be called by the lua-nginx-module `init_by_lua` directive.
 -- Execution:
 --   - load the configuration from the path computed by the CLI
@@ -135,7 +125,7 @@ function Kong.init()
   local status, err = pcall(function()
     singletons.configuration  = config_loader.load(os.getenv("KONG_CONF"))
     singletons.events         = Events()
-    singletons.dao            = dao_loader.load(singletons.configuration, singletons.events)
+    singletons.dao            = dao_loader.load(singletons.configuration, true, singletons.events)
     singletons.loaded_plugins = load_node_plugins(singletons.configuration)
     singletons.serf           = Serf(singletons.configuration)
 
@@ -158,8 +148,6 @@ end
 
 function Kong.init_worker()
   core.init_worker.before()
-
-  singletons.dao:init() -- Executes any initialization by the DB
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()

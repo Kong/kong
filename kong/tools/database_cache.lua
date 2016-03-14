@@ -55,7 +55,6 @@ end
 
 function _M.delete_all()
   cache:flush_all() -- This does not free up the memory, only marks the items as expired
-  cache:flush_expired() -- This does actually remove the elements from the memory
 end
 
 function _M.requests_key()

@@ -13,15 +13,16 @@ Duplicate an existing configuration for given environment.
 Usage: kong config [options]
 
 Options:
-  -c,--config  (default %s) path to configuration file
-  -o,--output  (default .)                  output directory
-  -e,--env     (default DEVELOPMENT)        environment name
-  -d,--database (default cassandra)         database to use
-  -s,--suffix  (default DEVELOPMENT)        suffix name
+  -c,--config (default %s) path to configuration file
+  -o,--output (default .)                  output
+  -e,--env    (string)                     environment name
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
-args.env = args.env:upper()
-local CONFIG_FILENAME = string.format("kong_%s.yml", args.suffix)
+local CONFIG_FILENAME = string.format("kong%s.yml", args.env ~= "" and "_"..args.env or "")
+
+local configuration = config_loader.load_default(args.config)
+local env = args.env:upper()
+
 local DEFAULT_ENV_VALUES = {
   TEST = {
     yaml = {
@@ -34,9 +35,6 @@ local DEFAULT_ENV_VALUES = {
       ["cluster_listen_rpc"] = "0.0.0.0:9101",
       ["cassandra"] = {
         ["keyspace"] = "kong_tests"
-      },
-      ["postgres"] = {
-        ["database"] = "kong_tests"
       },
       ["cluster"] = {
         ["profile"] = "local"
@@ -68,44 +66,41 @@ local DEFAULT_ENV_VALUES = {
   }
 }
 
-local configuration = config_loader.load_default(args.config)
-local new_nginx_config = configuration.nginx
-local new_yaml_config = {}
-
-if DEFAULT_ENV_VALUES[args.env] ~= nil then
-  -- Populate with overriden values
-  for k, v in pairs(DEFAULT_ENV_VALUES[args.env].yaml) do
-    new_yaml_config[k] = v
-  end
+if not DEFAULT_ENV_VALUES[args.env:upper()] then
+  logger:error(string.format("Unregistered environment '%s'", args.env:upper()))
+  os.exit(1)
 end
 
-if args.database ~= "" then
-  new_yaml_config.database = args.database
+-- Create the new configuration as a new blank object
+local new_config = {}
+
+-- Populate with overriden values
+for k, v in pairs(DEFAULT_ENV_VALUES[env].yaml) do
+  new_config[k] = v
 end
 
 -- Dump into a string
-local new_config_content = yaml.dump(new_yaml_config)
+local new_config_content = yaml.dump(new_config)
 
 -- Workaround for https://github.com/lubyk/yaml/issues/2
 -- This workaround is in two places. To remove it "Find and replace" in the code
 new_config_content = string.gsub(new_config_content, "(%w+:%s*)([%w%.]+:%d+)", "%1\"%2\"")
 
-if DEFAULT_ENV_VALUES[args.env] ~= nil then
-  -- Replace nginx directives
-  for k, v in pairs(DEFAULT_ENV_VALUES[args.env].nginx) do
-    new_nginx_config = new_nginx_config:gsub(k, v)
-  end
+-- Replace nginx directives
+local nginx_config = configuration.nginx
+for k, v in pairs(DEFAULT_ENV_VALUES[env].nginx) do
+  nginx_config = nginx_config:gsub(k, v)
 end
 
 -- Indent nginx configuration
-new_nginx_config = new_nginx_config:gsub("[^\r\n]+", function(line)
+nginx_config = nginx_config:gsub("[^\r\n]+", function(line)
   return "  "..line
 end)
 
 -- Manually add the string (can't do that before yaml.dump as it messes the formatting)
 new_config_content = new_config_content..[[
 nginx: |
-]]..new_nginx_config
+]]..nginx_config
 
 local ok, err = IO.write_to_file(IO.path:join(args.output, CONFIG_FILENAME), new_config_content)
 if not ok then

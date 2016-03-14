@@ -92,7 +92,6 @@ describe("Admin API", function()
 
           -- Update one field
           body.enabled = true
-          body.created_at = nil
 
           -- Do Update
           local response, status = http_client.patch(BASE_URL..fixtures.plugin[2].id, body)

@@ -6,6 +6,7 @@ local dao_factory = env.dao_factory
 local faker = env.faker
 
 describe("key-auth credentials DAO", function()
+
   setup(function()
     spec_helper.prepare_db()
   end)
@@ -17,7 +18,7 @@ describe("key-auth credentials DAO", function()
     assert.falsy(app)
     assert.truthy(err)
     assert.True(err.schema)
-    assert.are.same("consumer_id is required", err.tbl.consumer_id)
+    assert.are.same("consumer_id is required", err.message.consumer_id)
 
     -- With an invalid consumer_id, it's a FOREIGN error
     local app_t = {key = "apikey123", consumer_id = uuid()}
@@ -25,7 +26,7 @@ describe("key-auth credentials DAO", function()
     assert.falsy(app)
     assert.truthy(err)
     assert.True(err.foreign)
-    assert.equal("does not exist with value '"..app_t.consumer_id.."'", err.tbl.consumer_id)
+    assert.equal("consumer_id "..app_t.consumer_id.." does not exist", err.message.consumer_id)
   end)
 
   it("should insert in DB and add generated values", function()
@@ -56,20 +57,19 @@ describe("key-auth credentials DAO", function()
   end)
 
   it("should find a Credential by public_key", function()
-    local rows, err = dao_factory.keyauth_credentials:find_all {
-      key = "apikey123"
+    local app, err = dao_factory.keyauth_credentials:find_by_keys {
+      key = "user122"
     }
     assert.falsy(err)
-    assert.truthy(rows[1])
-    assert.equal("apikey123", rows[1].key)
+    assert.truthy(app)
   end)
 
   it("should handle empty strings", function()
-    local rows, err = dao_factory.keyauth_credentials:find_all {
+    local apps, err = dao_factory.keyauth_credentials:find_by_keys {
       key = ""
     }
     assert.falsy(err)
-    assert.same({}, rows)
+    assert.same({}, apps)
   end)
 
 end)

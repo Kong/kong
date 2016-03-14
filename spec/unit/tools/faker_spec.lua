@@ -1,5 +1,6 @@
 local uuid = require "lua_uuid"
 local Faker = require "kong.tools.faker"
+local DaoError = require "kong.dao.error"
 
 describe("Faker", function()
 
@@ -53,7 +54,7 @@ describe("Faker", function()
       local entity_to_str = setmetatable(api_t, printable_mt)
 
       factory_mock.apis.insert = function(self, t)
-                                   return nil, "cannot insert api error test"
+                                   return nil, DaoError("cannot insert api error test", "schema")
                                  end
       assert.has_error(function()
         faker:insert_from_table({ api = { api_t } })

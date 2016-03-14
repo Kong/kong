@@ -1,10 +1,10 @@
 local logger = require "kong.cli.utils.logger"
+local dao = require "kong.tools.dao_loader"
 local IO = require "kong.tools.io"
-local dao_loader = require "kong.tools.dao_loader"
 
 local _M = {}
 
-_M.STATUSES = {
+_M.STATUSES = { 
   ALL_RUNNING = "ALL_RUNNING",
   SOME_RUNNING = "SOME_RUNNING",
   NOT_RUNNINT = "NOT_RUNNING"
@@ -21,25 +21,39 @@ local function prepare_database(configuration)
   setmetatable(configuration.dao_config, require "kong.tools.printable")
   logger:info(string.format([[database...........%s %s]], configuration.database, tostring(configuration.dao_config)))
 
-  local factory = dao_loader.load(configuration)
+  local dao_factory = dao.load(configuration)
+  local migrations = require("kong.tools.migrations")(dao_factory, configuration)
 
-  local function on_migrate(identifier)
+  local keyspace_exists, err = dao_factory.migrations:keyspace_exists()
+  if err then
+    return false, err
+  elseif not keyspace_exists then
+    logger:info("Database not initialized. Running migrations...")
+  end
+
+  local function before(identifier)
     logger:info(string.format(
-      "Migrating %s (%s)",
+      "Migrating %s on keyspace \"%s\" (%s)",
       logger.colors.yellow(identifier),
-      factory.db_type
+      logger.colors.yellow(dao_factory.properties.keyspace),
+      dao_factory.type
     ))
   end
 
-  local function on_success(identifier, migration_name)
+  local function on_each_success(identifier, migration)
     logger:info(string.format(
       "%s migrated up to: %s",
       identifier,
-      logger.colors.yellow(migration_name)
+      logger.colors.yellow(migration.name)
     ))
   end
 
-  return factory:run_migrations(on_migrate, on_success)
+  local err = migrations:run_all_migrations(before, on_each_success)
+  if err then
+    return false, err
+  end
+
+  return true
 end
 
 local function prepare_working_dir(configuration)
@@ -126,13 +140,9 @@ function _M.start_all(configuration, configuration_path)
   end
 
   for _, v in ipairs(services) do
-    local service = v(configuration, configuration_path)
-    local ok, err
-    ok, err = service:prepare()
-    if not ok then
-      return ok, err
-    end
-    ok, err = service:start()
+    local obj = v(configuration, configuration_path)
+    obj:prepare()
+    local ok, err = obj:start()
     if not ok then
       return ok, err
     end
