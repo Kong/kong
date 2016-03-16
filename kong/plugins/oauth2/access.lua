@@ -5,11 +5,15 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
-local url       = require "socket.url"
+local url = require "socket.url"
+local Multipart = require "multipart"
+local string_find = string.find
+local req_get_headers = ngx.req.get_headers
 
 local _M = {}
 
 local CONTENT_LENGTH = "content-length"
+local CONTENT_TYPE = "content-type"
 local RESPONSE_TYPE = "response_type"
 local STATE = "state"
 local CODE = "code"
@@ -91,8 +95,17 @@ end
 
 local function retrieve_parameters()
   ngx.req.read_body()
+  
   -- OAuth2 parameters could be in both the querystring or body
-  return utils.table_merge(ngx.req.get_uri_args(), ngx.req.get_post_args())
+  local body_parameters
+  local content_type = req_get_headers()[CONTENT_TYPE]
+  if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
+    body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
+  else
+    body_parameters = ngx.req.get_post_args()
+  end
+
+  return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
 end
 
 local function retrieve_scopes(parameters, conf)
