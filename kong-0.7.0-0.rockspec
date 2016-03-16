@@ -163,7 +163,7 @@ build = {
 
     ["kong.plugins.runscope.handler"] = "kong/plugins/runscope/handler.lua",
     ["kong.plugins.runscope.schema"] = "kong/plugins/runscope/schema.lua",
-    ["kong.plugins.runscope.buffer"] = "kong/plugins/runscope/log.lua",
+    ["kong.plugins.runscope.log"] = "kong/plugins/runscope/log.lua",
 
     ["kong.plugins.mashape-analytics.schema.migrations"] = "kong/plugins/mashape-analytics/schema/migrations.lua",
     ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
