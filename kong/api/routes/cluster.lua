@@ -67,7 +67,14 @@ return {
       -- If it's an update, load the new entity too so it's available in the hooks
       if message_t.type == singletons.events.TYPES.ENTITY_UPDATED then
         message_t.old_entity = message_t.entity
-        local res, err = singletons.dao[message_t.collection]:find_all {id = message_t.old_entity.id}
+
+        -- The schema may have multiple primary keys
+        local find_args = {}
+        for _, v in ipairs(message_t.primary_key) do
+          find_args[v] = message_t.old_entity[v]
+        end
+
+        local res, err = singletons.dao[message_t.collection]:find_all(find_args)
         if err then
           return helpers.yield_error(err)
         elseif #res == 1 then

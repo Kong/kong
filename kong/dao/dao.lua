@@ -47,6 +47,7 @@ local function event(self, type, table, schema, data_t)
 
     local payload = {
       collection = table,
+      primary_key = schema.primary_key,
       type = type,
       entity = data_t
     }
