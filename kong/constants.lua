@@ -14,7 +14,7 @@ return {
     NGINX_CONFIG = "nginx.conf"
   },
   PLUGINS_AVAILABLE = {
-    "ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
+    "ssl", "jwt", "acl", "correlation-id", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
     "mashape-analytics", "request-transformer", "response-transformer",
     "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
