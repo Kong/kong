@@ -206,7 +206,7 @@ function buffer_mt.send_batch(premature, self)
 
   local retry
   local client = http:new()
-  client:set_timeout(5000) -- 5 sec
+  client:set_timeout(30000) -- 30 sec
 
   local ok, err = client:connect(self.host, self.port)
   if ok then
