@@ -18,5 +18,14 @@ return {
     down = [[
       DROP TABLE jwt_secrets;
     ]]
+  },
+  {
+    name = "2016-03-07-jwt-alg",
+    up = [[
+      ALTER TABLE jwt_secrets ADD algorithm text;
+    ]],
+    down = [[
+      ALTER TABLE jwt_secrets DROP algorithm;
+    ]]
   }
 }

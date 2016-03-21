@@ -86,6 +86,16 @@ describe("JWT access", function()
     assert.equal("Invalid signature", body.message)
   end)
 
+  it("should return 403 Forbidden if the alg does not match the credential", function()
+    local header = {typ = "JWT", alg = 'RS256'}
+    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret, 'HS256', header)
+    local authorization = "Bearer "..jwt
+    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+    assert.equal(403, status)
+    local body = json.decode(response)
+    assert.equal("Invalid algorithm", body.message)
+  end)
+
   it("should proxy the request with token and consumer headers if it was verified", function()
     PAYLOAD.iss = jwt_secret.key
     local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
