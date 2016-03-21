@@ -87,6 +87,11 @@ function JwtHandler:access(conf)
     return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.key_claim_name.."'")
   end
 
+  -- Verify "alg"
+  if jwt.header.alg ~= jwt_secret.algorithm then
+    return responses.send_HTTP_FORBIDDEN("Invalid algorithm")
+  end
+
   local jwt_secret_value = jwt_secret.secret
   if conf.secret_is_base64 then
     jwt_secret_value = jwt:b64_decode(jwt_secret_value)
