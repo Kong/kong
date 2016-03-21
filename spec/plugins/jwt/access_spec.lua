@@ -2,6 +2,7 @@ local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
 local json = require "cjson"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
+local fixtures = require "spec.plugins.jwt.fixtures"
 local base64 = require "base64"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
@@ -14,7 +15,7 @@ local PAYLOAD = {
 }
 
 describe("JWT access", function()
-  local jwt_secret, base64_jwt_secret
+  local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2
 
   setup(function()
     spec_helper.prepare_db()
@@ -28,7 +29,9 @@ describe("JWT access", function()
       },
       consumer = {
         {username = "jwt_tests_consumer"},
-        {username = "jwt_tests_base64_consumer"}
+        {username = "jwt_tests_base64_consumer"},
+        {username = "jwt_tests_rsa_consumer_1"},
+        {username = "jwt_tests_rsa_consumer_2"},
       },
       plugin = {
         {name = "jwt", config = {}, __api = 1},
@@ -39,12 +42,16 @@ describe("JWT access", function()
       },
       jwt_secret = {
         {__consumer = 1},
-        {__consumer = 2}
+        {__consumer = 2},
+        {__consumer = 3, algorithm = "RS256", rsa_public_key = fixtures.rs256_public_key},
+        {__consumer = 4, algorithm = "RS256", rsa_public_key = fixtures.rs256_public_key}
       }
     }
 
     jwt_secret = fixtures.jwt_secret[1]
     base64_jwt_secret = fixtures.jwt_secret[2]
+    rsa_jwt_secret_1 = fixtures.jwt_secret[3]
+    rsa_jwt_secret_2 = fixtures.jwt_secret[4]
     spec_helper.start_kong()
   end)
 
@@ -52,104 +59,122 @@ describe("JWT access", function()
     spec_helper.stop_kong()
   end)
 
-  it("should return 401 Unauthorized if no JWT is found in the request", function()
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com"})
-    assert.equal(401, status)
+  describe("refusals", function()
+    it("should return 401 Unauthorized if no JWT is found in the request", function()
+      local _, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com"})
+      assert.equal(401, status)
+    end)
+    it("should return return 401 Unauthorized if the claims do not contain the key to identify a secret", function()
+      local jwt = jwt_encoder.encode(PAYLOAD, "foo")
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(401, status)
+      local body = json.decode(response)
+      assert.equal("No mandatory 'iss' in claims", body.message)
+    end)
+    it("should return 403 Forbidden if the iss does not match a credential", function()
+      PAYLOAD.iss = "123456789"
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(403, status)
+      local body = json.decode(response)
+      assert.equal("No credentials found for given 'iss'", body.message)
+    end)
+    it("should return 403 Forbidden if the signature is invalid", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, "foo")
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(403, status)
+      local body = json.decode(response)
+      assert.equal("Invalid signature", body.message)
+    end)
+    it("should return 403 Forbidden if the alg does not match the credential", function()
+      local header = {typ = "JWT", alg = 'RS256'}
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret, 'HS256', header)
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(403, status)
+      local body = json.decode(response)
+      assert.equal("Invalid algorithm", body.message)
+    end)
   end)
 
-  it("should return return 401 Unauthorized if the claims do not contain the key to identify a secret", function()
-    local jwt = jwt_encoder.encode(PAYLOAD, "foo")
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
-    assert.equal(401, status)
-    local body = json.decode(response)
-    assert.equal("No mandatory 'iss' in claims", body.message)
+  describe("HS256", function()
+    it("should proxy the request with token and consumer headers if it was verified", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(200, status)
+      local body = json.decode(response)
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+    end)
+    it("should proxy the request if secret key is stored in a field other than iss", function()
+      PAYLOAD.aud = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt4.com", authorization = authorization})
+      assert.equal(200, status)
+      local body = json.decode(response)
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+    end)
+    it("should proxy the request if secret is base64", function()
+      PAYLOAD.iss = base64_jwt_secret.key
+      local original_secret = base64_jwt_secret.secret
+      local base64_secret = base64.encode(base64_jwt_secret.secret)
+      local base_url = spec_helper.API_URL.."/consumers/jwt_tests_consumer/jwt/"..base64_jwt_secret.id
+      http_client.patch(base_url, {key = base64_jwt_secret.key, secret = base64_secret})
+
+      local jwt = jwt_encoder.encode(PAYLOAD, original_secret)
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt5.com", authorization = authorization})
+      assert.equal(200, status)
+      local body = json.decode(response)
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+    end)
+    it("should find the JWT if given in URL parameters", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local _, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt.com"})
+      assert.equal(200, status)
+    end)
+    it("should find the JWT if given in a custom URL parameter", function()
+      PAYLOAD.iss = jwt_secret.key
+      local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+      local _, status = http_client.get(STUB_GET_URL.."?token="..jwt, nil, {host = "jwt2.com"})
+      assert.equal(200, status)
+    end)
   end)
 
-  it("should return 403 Forbidden if the iss does not match a credential", function()
-    PAYLOAD.iss = "123456789"
-    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
-    assert.equal(403, status)
-    local body = json.decode(response)
-    assert.equal("No credentials found for given 'iss'", body.message)
-  end)
-
-  it("should return 403 Forbidden if the signature is invalid", function()
-    PAYLOAD.iss = jwt_secret.key
-    local jwt = jwt_encoder.encode(PAYLOAD, "foo")
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
-    assert.equal(403, status)
-    local body = json.decode(response)
-    assert.equal("Invalid signature", body.message)
-  end)
-
-  it("should return 403 Forbidden if the alg does not match the credential", function()
-    local header = {typ = "JWT", alg = 'RS256'}
-    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret, 'HS256', header)
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
-    assert.equal(403, status)
-    local body = json.decode(response)
-    assert.equal("Invalid algorithm", body.message)
-  end)
-
-  it("should proxy the request with token and consumer headers if it was verified", function()
-    PAYLOAD.iss = jwt_secret.key
-    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
-    assert.equal(200, status)
-    local body = json.decode(response)
-    assert.equal(authorization, body.headers.authorization)
-    assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
-  end)
-
-  it("should proxy the request if secret key is stored in a field other than iss", function()
-    PAYLOAD.aud = jwt_secret.key
-    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt4.com", authorization = authorization})
-    assert.equal(200, status)
-    local body = json.decode(response)
-    assert.equal(authorization, body.headers.authorization)
-    assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
-  end)
-
-  it("should proxy the request if secret is base64", function()
-    PAYLOAD.iss = base64_jwt_secret.key
-    local original_secret = base64_jwt_secret.secret
-    local base64_secret = base64.encode(base64_jwt_secret.secret)
-    local base_url = spec_helper.API_URL.."/consumers/jwt_tests_consumer/jwt/"..base64_jwt_secret.id
-    http_client.patch(base_url, {key = base64_jwt_secret.key, secret = base64_secret})
-
-    local jwt = jwt_encoder.encode(PAYLOAD, original_secret)
-    local authorization = "Bearer "..jwt
-    local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt5.com", authorization = authorization})
-    assert.equal(200, status)
-    local body = json.decode(response)
-    assert.equal(authorization, body.headers.authorization)
-    assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
-  end)
-
-  it("should find the JWT if given in URL parameters", function()
-    PAYLOAD.iss = jwt_secret.key
-    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-    local _, status = http_client.get(STUB_GET_URL.."?jwt="..jwt, nil, {host = "jwt.com"})
-    assert.equal(200, status)
-  end)
-
-  it("should find the JWT if given in a custom URL parameter", function()
-    PAYLOAD.iss = jwt_secret.key
-    local jwt = jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
-    local _, status = http_client.get(STUB_GET_URL.."?token="..jwt, nil, {host = "jwt2.com"})
-    assert.equal(200, status)
+  describe("RS256", function()
+    it("verifies JWT", function()
+      PAYLOAD.iss = rsa_jwt_secret_1.key
+      local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(200, status)
+      local body = json.decode(response)
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_rsa_consumer_1", body.headers["x-consumer-username"])
+    end)
+    it("identifies Consumer", function()
+      PAYLOAD.iss = rsa_jwt_secret_2.key
+      local jwt = jwt_encoder.encode(PAYLOAD, fixtures.rs256_private_key, 'RS256')
+      local authorization = "Bearer "..jwt
+      local response, status = http_client.get(STUB_GET_URL, nil, {host = "jwt.com", authorization = authorization})
+      assert.equal(200, status)
+      local body = json.decode(response)
+      assert.equal(authorization, body.headers.authorization)
+      assert.equal("jwt_tests_rsa_consumer_2", body.headers["x-consumer-username"])
+    end)
   end)
 
   describe("JWT private claims checks", function()
-
     it("should require the checked fields to be in the claims", function()
       local payload = {
         iss = jwt_secret.key
@@ -159,7 +184,6 @@ describe("JWT access", function()
       assert.equal(403, status)
       assert.equal('{"nbf":"must be a number","exp":"must be a number"}\n', res)
     end)
-
     it("should check if the fields are valid", function()
       local payload = {
         iss = jwt_secret.key,
@@ -171,6 +195,5 @@ describe("JWT access", function()
       assert.equal(403, status)
       assert.equal('{"exp":"token expired"}\n', res)
     end)
-
   end)
 end)

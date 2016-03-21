@@ -9,6 +9,7 @@ local SCHEMA = {
     consumer_id = {type = "id", required = true, foreign = "consumers:id"},
     key = {type = "string", unique = true, default = utils.random_string},
     secret = {type = "string", unique = true, default = utils.random_string},
+    rsa_public_key = {type = "string"},
     algorithm = {type = "string", enum = {"HS256", "RS256"}, default = 'HS256'}
   },
   marshall_event = function(self, t)
