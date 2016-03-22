@@ -285,7 +285,7 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&token_type=bearer$"))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
 
         -- Checking headers
         assert.are.equal("no-store", headers["cache-control"])
@@ -297,7 +297,26 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&state=wot&token_type=bearer$"))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&expires_in=[\\d]+&state=wot&token_type=bearer$"))
+      end)
+
+      it("should return success and the token should have the right expiration", function()
+        local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2.com"})
+        local body = cjson.decode(response)
+        assert.are.equal(200, status)
+        assert.are.equal(1, utils.table_size(body))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
+
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
+        local access_token
+        for line in matches do
+          access_token = line
+        end
+        local data = dao_factory.oauth2_tokens:find_all {access_token = access_token}
+        assert.are.equal(1, #data)
+        assert.are.equal(access_token, data[1].access_token)
+        assert.are.equal(5, data[1].expires_in)
+        assert.falsy(data[1].refresh_token)
       end)
 
       it("should return success and store authenticated user properties", function()
@@ -305,9 +324,9 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&token_type=bearer$"))
+        assert.truthy(rex.match(body.redirect_uri, "^http://google\\.com/kong\\?access_token=[\\w]{32,32}&expires_in=[\\d]+&token_type=bearer$"))
 
-        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?access_token=([\\w]{32,32})&token_type=bearer$")
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
         local access_token
         for line in matches do
           access_token = line
@@ -320,7 +339,7 @@ describe("Authentication Plugin", function()
         assert.are.equal("email profile", data[1].scope)
 
         -- Checking that there is no refresh token since it's an implicit grant
-        assert.are.equal(0, data[1].expires_in)
+        assert.are.equal(5, data[1].expires_in)
         assert.falsy(data[1].refresh_token)
       end)
 
@@ -328,7 +347,7 @@ describe("Authentication Plugin", function()
         local response = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", client_id = "clientid123", scope = "email  profile", response_type = "token", authenticated_userid = "userid123" }, {host = "oauth2.com"})
         local body = cjson.decode(response)
 
-        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?access_token=([\\w]{32,32})&token_type=bearer$")
+        local matches = rex.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?access_token=([\\w]{32,32})&expires_in=[\\d]+&token_type=bearer$")
         local access_token
         for line in matches do
           access_token = line
@@ -776,7 +795,7 @@ describe("Authentication Plugin", function()
       assert.are.equal(5, body.expires_in)
     end)
 
-    it("#only should expire after 5 seconds", function()
+    it("should expire after 5 seconds", function()
       local token = provision_token()
       local _, status = http_client.post(STUB_POST_URL, { }, {host = "oauth2.com", authorization = "bearer "..token.access_token})
       assert.are.equal(200, status)

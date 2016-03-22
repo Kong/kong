@@ -105,7 +105,7 @@ function _M.validate_entity(tbl, schema, options)
                 t[column][arr_k] = stringy.strip(arr_v)
               end
               is_valid_type = validate_type(v.type, t[column])
-            elseif v.type == "number" then
+            elseif v.type == "number" or v.type == "timestamp" then
               t[column] = tonumber(t[column])
               is_valid_type = validate_type(v.type, t[column])
             else -- if string
