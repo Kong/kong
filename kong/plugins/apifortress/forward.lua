@@ -4,7 +4,6 @@ local bit = require "bit"
 local cjson = require "cjson"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local serializer = require "kong.plugins.apifortress.fortress_serializer"
-local md5 = require "kong.plugins.apifortress.md5"
 local url = require "socket.url"
 
 local function parse_url(host_url)
@@ -33,7 +32,7 @@ end
 local function genToken(conf)
 	local timestamp = tostring(os.time())
 	local baseString = conf.apikey..conf.secret..timestamp
-	return md5.sumhexa(baseString)
+	return ngx.md5(baseString)
 end
 
 local function send(self,conf,message)

@@ -1,5 +1,4 @@
 -- ©2016 API Fortress Inc.
-require("kong.plugins.apifortress.base64")
 
 local _M = {}
 function string.starts(String,Start)
@@ -87,7 +86,7 @@ function _M.serialize(ngx)
 			contentType = contentType,
 			cookies = dummy_cookies,
 			failed = failed,
-			data = to_base64(ngx.ctx.captured_body),
+			data = ngx.encode_base64(ngx.ctx.captured_body),
 			metrics = metrics
     },
 		props = {
