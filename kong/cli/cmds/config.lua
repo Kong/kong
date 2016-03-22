@@ -53,6 +53,9 @@ local DEFAULT_ENV_VALUES = {
       ["cassandra"] = {
         ["keyspace"] = "kong_development"
       },
+      ["postgres"] = {
+        ["database"] = "kong_development"
+      },
       ["cluster"] = {
         ["profile"] = "local"
       }

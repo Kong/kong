@@ -34,15 +34,13 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
     end)
 
     describe("plugins migrations", function()
-      local f, factory
+      local factory
       setup(function()
-        f = Factory(db_type, default_options)
-        f:drop_schema()
-
         factory = Factory(db_type, default_options, {"key-auth", "basic-auth", "acl", "hmac-auth", "jwt", "oauth2", "rate-limiting", "response-ratelimiting"})
+        factory:drop_schema()
       end)
       teardown(function()
-        f:drop_schema()
+        factory:drop_schema()
       end)
       it("migrations_modules()", function()
         local migrations = factory:migrations_modules()
@@ -57,9 +55,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
       end)
 
       it("run_migrations()", function()
-        local ok, err = factory:run_migrations()
-        assert.falsy(err)
-        assert.True(ok)
+        assert(factory:run_migrations())
       end)
     end)
 
