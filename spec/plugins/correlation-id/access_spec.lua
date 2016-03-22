@@ -34,12 +34,12 @@ describe("Correlation ID Plugin", function()
     local response1, status1 = http_client.get(STUB_GET_URL, nil, {host = host})
     assert.equal(200, status1)
     local correlation_id1 = json.decode(response1).headers[header:lower()]
-    assert.truthy(correlation_id1:match(pattern))
+    assert.match(correlation_id1, pattern)
 
     local response2, status2 = http_client.get(STUB_GET_URL, nil, {host = host})
     assert.equal(200, status2)
     local correlation_id2 = json.decode(response2).headers[header:lower()]
-    assert.truthy(correlation_id2:match(pattern))
+    assert.match(correlation_id2, pattern)
 
     assert.are_not_equals(correlation_id1, correlation_id2)
 
