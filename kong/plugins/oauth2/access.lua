@@ -39,21 +39,22 @@ local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
+  local refresh_token
+  if not disable_refresh and token_expiration > 0 then
+    refresh_token = utils.random_string()
+  end
+
   local token, err = singletons.dao.oauth2_tokens:insert({
     credential_id = credential.id,
     authenticated_userid = authenticated_userid,
     expires_in = token_expiration,
+    refresh_token = refresh_token,
     scope = scope
   }, {ttl = token_expiration > 0 and 1209600 or nil}) -- Access tokens (and their associated refresh token) are being 
                                                       -- permanently deleted after 14 days (1209600 seconds)
 
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-  end
-
-  local refresh_token = token_expiration > 0 and token.refresh_token or nil
-  if disable_refresh then
-    refresh_token = nil
   end
 
   return {
@@ -184,7 +185,7 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, 0)
+          response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
         end
       end
     end
@@ -300,7 +301,7 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, conf.token_expiration, true)
+            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, nil, true)
           end
         end
       elseif grant_type == GRANT_PASSWORD then
