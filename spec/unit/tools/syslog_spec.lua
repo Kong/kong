@@ -1,13 +1,13 @@
-local spec_helper = require "spec.spec_helpers"
-local constants = require "kong.constants"
-local stringy = require "stringy"
-local syslog = require "kong.tools.syslog"
+local meta = require "kong.meta"
 local utils = require "kong.tools.utils"
+local syslog = require "kong.tools.syslog"
+local stringy = require "stringy"
+local constants = require "kong.constants"
+local spec_helper = require "spec.spec_helpers"
 
 local UDP_PORT = 8889
 
 describe("Syslog", function()
-
   it("should log", function()
     local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock TCP server
 
@@ -47,7 +47,7 @@ describe("Syslog", function()
         has_hostname = true
       elseif parts[1] == "hello" and parts[2] and parts[2] == "world" then
         has_hello = true
-      elseif parts[1] == "version" and parts[2] and parts[2] == constants.VERSION then
+      elseif parts[1] == "version" and parts[2] and parts[2] == tostring(meta.version) then
         has_version = true
       end
     end
@@ -60,5 +60,4 @@ describe("Syslog", function()
 
     thread:join() -- wait til it exists
   end)
-
 end)

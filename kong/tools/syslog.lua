@@ -1,7 +1,9 @@
-local constants = require "kong.constants"
 local IO = require "kong.tools.io"
-local stringy = require "stringy"
 local cjson = require "cjson"
+local stringy = require "stringy"
+local constants = require "kong.constants"
+
+local version = _KONG._VERSION
 
 local _M = {}
 
@@ -9,7 +11,7 @@ function _M.log(args)
   if not args then args = {} end
 
   -- Kong Version
-  args["version"] = constants.VERSION
+  args["version"] = version
 
   -- CPU cores
   local res, code = IO.os_execute("getconf _NPROCESSORS_ONLN")

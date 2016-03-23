@@ -1,6 +1,7 @@
 local spec_helper = require "spec.spec_helpers"
 local ssl = require "ssl"
 local url = require "socket.url"
+local meta = require "kong.meta"
 local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local socket = require "socket"
@@ -174,12 +175,12 @@ describe("Resolver", function()
       local _, status, headers = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
       assert.equal(200, status)
       assert.equal("cloudflare-nginx", headers.server)
-      assert.equal(constants.NAME.."/"..constants.VERSION, headers.via)
+      assert.equal(meta.name.."/"..tostring(meta.version), headers.via)
     end)
     it("should return the correct Server and no Via header when the request was NOT proxied", function()
       local _, status, headers = http_client.get(STUB_GET_URL, nil, {host = "mockbin-auth.com"})
       assert.equal(401, status)
-      assert.equal(constants.NAME.."/"..constants.VERSION, headers.server)
+      assert.equal(meta.name.."/"..tostring(meta.version), headers.server)
       assert.falsy(headers.via)
     end)
     it("should return correct timing headers when the request was proxied", function()

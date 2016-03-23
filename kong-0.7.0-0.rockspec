@@ -48,7 +48,6 @@ build = {
     ["kong.singletons"] = "kong/singletons.lua",
 
     ["kong.cli.utils.logger"] = "kong/cli/utils/logger.lua",
-    ["kong.cli.utils.luarocks"] = "kong/cli/utils/luarocks.lua",
     ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",
     ["kong.cli.utils.input"] = "kong/cli/utils/input.lua",
     ["kong.cli.utils.services"] = "kong/cli/utils/services.lua",

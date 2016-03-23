@@ -1,6 +1,6 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
-local constants = require "kong.constants"
+local meta = require "kong.meta"
 local cjson = require "cjson"
 
 local PROXY_URL = spec_helper.PROXY_URL
@@ -39,7 +39,7 @@ describe("Authentication Plugin", function()
       local response, status, headers = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Basic realm=\""..constants.NAME.."\"")
+      assert.equal('Basic realm="'..meta.name..'"', headers["www-authenticate"])
       assert.equal("Unauthorized", body.message)
     end)
 
@@ -75,7 +75,7 @@ describe("Authentication Plugin", function()
       local response, status, headers = http_client.get(PROXY_URL.."/get", {}, {host = "basicauth.com", authorization123 = "Basic dXNlcm5hbWU6cGFzc3dvcmQ="})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Basic realm=\""..constants.NAME.."\"")
+      assert.equal('Basic realm="'..meta.name..'"', headers["www-authenticate"])
       assert.equal("Unauthorized", body.message)
     end)
 

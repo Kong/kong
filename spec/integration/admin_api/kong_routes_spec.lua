@@ -1,7 +1,8 @@
 local json = require "cjson"
+local utils = require "kong.tools.utils"
 local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
-local utils = require "kong.tools.utils"
+
 local env = spec_helper.get_env() -- test environment
 local dao_factory = env.dao_factory
 
@@ -18,7 +19,7 @@ describe("Admin API", function()
 
   describe("Kong routes", function()
     describe("/", function()
-      local constants = require "kong.constants"
+      local meta = require "kong.meta"
 
       it("should return Kong's version and a welcome message", function()
         local response, status = http_client.get(spec_helper.API_URL)
@@ -26,32 +27,32 @@ describe("Admin API", function()
         local body = json.decode(response)
         assert.truthy(body.version)
         assert.truthy(body.tagline)
-        assert.are.same(constants.VERSION, body.version)
+        assert.equal(tostring(meta.version), body.version)
       end)
 
       it("should have a Server header", function()
         local _, status, headers = http_client.get(spec_helper.API_URL)
-        assert.are.same(200, status)
-        assert.are.same(string.format("%s/%s", constants.NAME, constants.VERSION), headers.server)
+        assert.equal(200, status)
+        assert.equal(string.format("%s/%s", meta.name, tostring(meta.version)), headers.server)
         assert.falsy(headers.via) -- Via is only set for proxied requests
       end)
 
       it("should return method not allowed", function()
         local res, status = http_client.post(spec_helper.API_URL)
-        assert.are.same(405, status)
-        assert.are.same("Method not allowed", json.decode(res).message)
+        assert.equal(405, status)
+        assert.equal("Method not allowed", json.decode(res).message)
 
         local res, status = http_client.delete(spec_helper.API_URL)
-        assert.are.same(405, status)
-        assert.are.same("Method not allowed", json.decode(res).message)
+        assert.equal(405, status)
+        assert.equal("Method not allowed", json.decode(res).message)
 
         local res, status = http_client.put(spec_helper.API_URL)
-        assert.are.same(405, status)
-        assert.are.same("Method not allowed", json.decode(res).message)
+        assert.equal(405, status)
+        assert.equal("Method not allowed", json.decode(res).message)
 
         local res, status = http_client.patch(spec_helper.API_URL)
-        assert.are.same(405, status)
-        assert.are.same("Method not allowed", json.decode(res).message)
+        assert.equal(405, status)
+        assert.equal("Method not allowed", json.decode(res).message)
       end)
     end)
   end)
@@ -59,21 +60,21 @@ describe("Admin API", function()
   describe("/status", function()
     it("should return status information", function()
       local response, status = http_client.get(spec_helper.API_URL.."/status")
-      assert.are.equal(200, status)
+      assert.equal(200, status)
       local body = json.decode(response)
       assert.truthy(body)
-      assert.are.equal(2, utils.table_size(body))
+      assert.equal(2, utils.table_size(body))
 
       -- Database stats
       -- Removing migrations DAO
       dao_factory.daos.migrations = nil
-      assert.are.equal(utils.table_size(dao_factory.daos), utils.table_size(body.database))
+      assert.equal(utils.table_size(dao_factory.daos), utils.table_size(body.database))
       for k, _ in pairs(dao_factory.daos) do
         assert.truthy(body.database[k])
       end
 
       -- Server stats
-      assert.are.equal(7, utils.table_size(body.server))
+      assert.equal(7, utils.table_size(body.server))
       assert.truthy(body.server.connections_accepted)
       assert.truthy(body.server.connections_active)
       assert.truthy(body.server.connections_handled)

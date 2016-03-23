@@ -1,7 +1,10 @@
-local singletons = require "kong.singletons"
-local constants = require "kong.constants"
-local route_helpers = require "kong.api.route_helpers"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
+local route_helpers = require "kong.api.route_helpers"
+
+local tagline = "Welcome to ".._KONG._NAME
+local version = _KONG._VERSION
+local lua_version = jit and jit.version or _VERSION
 
 return {
   ["/"] = {
@@ -21,9 +24,9 @@ return {
         distinct_plugins[#distinct_plugins + 1] = plugin_name
       end
 
-      return helpers.responses.send_HTTP_OK({
-        tagline = "Welcome to Kong",
-        version = constants.VERSION,
+      return helpers.responses.send_HTTP_OK {
+        tagline = tagline,
+        version = version,
         hostname = utils.get_hostname(),
         timers = {
           running = ngx.timer.running_count(),
@@ -33,9 +36,9 @@ return {
           available_on_server = singletons.configuration.plugins,
           enabled_in_cluster = distinct_plugins
         },
-        lua_version = jit and jit.version or _VERSION,
+        lua_version = lua_version,
         configuration = singletons.configuration
-      })
+      }
     end
   },
   ["/status"] = {

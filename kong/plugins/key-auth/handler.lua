@@ -4,6 +4,8 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local BasePlugin = require "kong.plugins.base_plugin"
 
+local realm = 'Key realm="'.._KONG._NAME..'"'
+
 local KeyAuthHandler = BasePlugin:extend()
 
 KeyAuthHandler.PRIORITY = 1000
@@ -17,7 +19,7 @@ KeyAuthHandler.PRIORITY = 1000
 -- @return {string} public_key
 -- @return {string} private_key
 local retrieve_credentials = {
-  [constants.AUTHENTICATION.HEADER] = function(request, conf)
+  header = function(request, conf)
     local key
     local headers = request.get_headers()
 
@@ -35,7 +37,7 @@ local retrieve_credentials = {
       end
     end
   end,
-  [constants.AUTHENTICATION.QUERY] = function(request, conf)
+  query = function(request, conf)
     if conf.key_names then
       local key
       local uri_params = request.get_uri_args()
@@ -60,7 +62,7 @@ end
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
   local key, key_found, credential
-  for _, v in ipairs({ constants.AUTHENTICATION.QUERY, constants.AUTHENTICATION.HEADER }) do
+  for _, v in ipairs({"query", "header"}) do
     key = retrieve_credentials[v](ngx.req, conf)
     if key then
       key_found = true
@@ -80,7 +82,7 @@ function KeyAuthHandler:access(conf)
 
   -- No key found in the request's headers or parameters
   if not key_found then
-    ngx.header["WWW-Authenticate"] = "Key realm=\""..constants.NAME.."\""
+    ngx.header["WWW-Authenticate"] = realm
     return responses.send_HTTP_UNAUTHORIZED("No API Key found in headers, body or querystring")
   end
 

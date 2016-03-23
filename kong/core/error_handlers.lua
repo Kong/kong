@@ -1,4 +1,3 @@
-local constants = require "kong.constants"
 local find = string.find
 local format = string.format
 
@@ -20,7 +19,7 @@ local BODIES = {
   default = "The upstream server responded with %d"
 }
 
-local SERVER_HEADER = constants.NAME.."/"..constants.VERSION
+local SERVER_HEADER = _KONG._NAME.."/".._KONG._VERSION
 
 return function(ngx)
   local accept_header = ngx.req.get_headers()["accept"]

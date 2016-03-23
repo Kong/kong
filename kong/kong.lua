@@ -24,14 +24,21 @@
 -- |[[    ]]|
 -- ==========
 
+local meta = require "kong.meta"
+
+_G._KONG = {
+  _NAME = meta.name,
+  _VERSION = tostring(meta.version)
+}
+
 local core = require "kong.core.handler"
-local singletons = require "kong.singletons"
+local Serf = require "kong.cli.services.serf"
 local utils = require "kong.tools.utils"
+local Events = require "kong.core.events"
+local singletons = require "kong.singletons"
 local dao_loader = require "kong.tools.dao_loader"
 local config_loader = require "kong.tools.config_loader"
 local plugins_iterator = require "kong.core.plugins_iterator"
-local Events = require "kong.core.events"
-local Serf = require "kong.cli.services.serf"
 
 local ipairs = ipairs
 local table_insert = table.insert
