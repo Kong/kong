@@ -36,12 +36,12 @@ describe("Correlation ID Plugin", function()
     local _, status1, headers1 = http_client.get(STUB_GET_URL, nil, {host = host})
     assert.equal(200, status1)
     local correlation_id1 = headers1[header:lower()]
-    assert.truthy(correlation_id1:match(pattern))
+    assert.are.matches(pattern, correlation_id1)
 
     local _, status2, headers2 = http_client.get(STUB_GET_URL, nil, {host = host})
     assert.equal(200, status2)
     local correlation_id2 = headers2[header:lower()]
-    assert.truthy(correlation_id2:match(pattern))
+    assert.are.matches(pattern, correlation_id2)
 
     assert.are_not_equals(correlation_id1, correlation_id2)
 
