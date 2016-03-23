@@ -5,6 +5,7 @@ local cjson = require "cjson"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local serializer = require "kong.plugins.apifortress.fortress_serializer"
 local url = require "socket.url"
+local stringy = require "stringy"
 
 local function parse_url(host_url)
   local parsed_url = url.parse(host_url)
@@ -40,7 +41,7 @@ local function send(self,conf,message)
   local token = genToken(conf)
   local key = conf.apikey
   local url = conf.endpoint
-  if not string.ends(url,"/") then
+  if not stringy.endswith(url,"/") then
     url = url.."/"
   end
   local url = parse_url(url..conf.projectId.."?mode=serializer")

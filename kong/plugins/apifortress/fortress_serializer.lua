@@ -1,13 +1,7 @@
 -- ©2016 API Fortress Inc.
+local stringy = require "stringy"
 
 local _M = {}
-function string.starts(String,Start)
-   return string.sub(String,1,string.len(Start))==Start
-end
-
-function string.ends(String,End)
-   return End=='' or string.sub(String,-string.len(End))==End
-end
 
 function _M.serialize(ngx)
   local authenticated_entity
@@ -61,10 +55,11 @@ function _M.serialize(ngx)
     failed = true
   end
   local uri = ngx.ctx.api.upstream_url
-  if string.ends(uri,"/") and string.starts(ngx.var.request_uri, "/") then
+  if stringy.endswith(uri,"/") and stringy.startswith(ngx.var.request_uri, "/") then
     uri = string.sub(uri,0,string.len(uri)-1)
   end
   uri = uri .. ngx.var.request_uri
+
   local metrics = {times={overall=ngx.var.request_time * 1000}}
 
   return {
@@ -72,21 +67,21 @@ function _M.serialize(ngx)
       url = uri,
       querystring = ngx.req.get_uri_args(), -- parameters, as a table
       method = ngx.req.get_method(), -- http method
-    	headers = request_headers,
-			cookies = dummy_cookies,
+      headers = request_headers,
+      cookies = dummy_cookies,
       size = ngx.var.request_length,
-			putBody = putBody,
-			postBody = postBody,
-			contentType = reqContentType
+      putBody = putBody,
+      postBody = postBody,
+      contentType = reqContentType
     },
     response = {
       statusCode = tostring(ngx.status),
       headers = response_headers,
-                contentType = contentType,
-                cookies = dummy_cookies,
-                failed = failed,
-                data = ngx.encode_base64(ngx.ctx.captured_body),
-                metrics = metrics
+      contentType = contentType,
+      cookies = dummy_cookies,
+      failed = failed,
+      data = ngx.encode_base64(ngx.ctx.captured_body),
+      metrics = metrics
     },
     props = {
       compressed = propCompressed
