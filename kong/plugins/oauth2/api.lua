@@ -1,5 +1,4 @@
 local crud = require "kong.api.crud_helpers"
-local utils = require "kong.tools.utils"
 
 return {
   ["/oauth2_tokens/"] = {

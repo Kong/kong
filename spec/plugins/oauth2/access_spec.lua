@@ -301,7 +301,7 @@ describe("Authentication Plugin", function()
       end)
 
       it("should return success and the token should have the right expiration", function()
-        local response, status, headers = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2.com"})
+        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid123", scope = "email", response_type = "token" }, {host = "oauth2.com"})
         local body = cjson.decode(response)
         assert.are.equal(200, status)
         assert.are.equal(1, utils.table_size(body))
