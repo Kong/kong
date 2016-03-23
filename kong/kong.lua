@@ -27,8 +27,8 @@
 local meta = require "kong.meta"
 
 _G._KONG = {
-  _NAME = meta.name,
-  _VERSION = tostring(meta.version)
+  _NAME = meta._NAME,
+  _VERSION = meta._VERSION
 }
 
 local core = require "kong.core.handler"
