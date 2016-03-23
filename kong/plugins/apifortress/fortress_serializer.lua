@@ -1,4 +1,6 @@
--- ©2016 API Fortress Inc.
+-- The serializer. Builds a data structure that is compatible with
+-- the API Fortress API expectations
+
 local stringy = require "stringy"
 
 local _M = {}

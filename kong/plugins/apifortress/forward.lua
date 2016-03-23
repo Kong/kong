@@ -1,5 +1,5 @@
--- ©2016 API Fortress Inc.
 -- Forwards the data to the configured API Fortress engine
+
 local bit = require "bit"
 local cjson = require "cjson"
 local basic_serializer = require "kong.plugins.log-serializers.basic"

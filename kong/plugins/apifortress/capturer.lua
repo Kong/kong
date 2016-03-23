@@ -1,4 +1,5 @@
 -- Captures the response payloads as they go through the wire
+
 local _M = {}
 
 local function capture()

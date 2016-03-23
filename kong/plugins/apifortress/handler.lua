@@ -1,4 +1,3 @@
--- ©2016 API Fortress Inc.
 -- The plugin handler
 
 local capturer = require "kong.plugins.apifortress.capturer"

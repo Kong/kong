@@ -1,5 +1,5 @@
--- ©2016 API Fortress Inc.
 -- The plugin schema
+
 local IO = require "kong.tools.io"
 
 local function validateKeys(value)
