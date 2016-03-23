@@ -30,49 +30,48 @@ local function generate_post_payload(parsed_url, key, token, message)
 end
 
 local function genToken(conf)
-	local timestamp = tostring(os.time())
-	local baseString = conf.apikey..conf.secret..timestamp
-	return ngx.md5(baseString)
+  local timestamp = tostring(os.time())
+  local baseString = conf.apikey..conf.secret..timestamp
+  return ngx.md5(baseString)
 end
 
 local function send(self,conf,message)
- 	local ok, err
-	local token = genToken(conf)
-	local key = conf.apikey
+  local ok, err
+  local token = genToken(conf)
+  local key = conf.apikey
   local url = conf.endpoint
   if not string.ends(url,"/") then
     url = url.."/"
   end
-	local url = parse_url(url..conf.projectId.."?mode=serializer")
+  local url = parse_url(url..conf.projectId.."?mode=serializer")
 
-	local host = url.host
- 	local port = tonumber(url.port)
+  local host = url.host
+  local port = tonumber(url.port)
 
- 	local sock = ngx.socket.tcp()
- 	sock:settimeout(2000)
-   ok, err = sock:connect(host, port)
-   if not ok then
-  	 ngx.log(ngx.ERR, "[apifortress-plugin] failed to connect to "..host..":"..tostring(port)..": ", err)
-  	 return
-   end
+  local sock = ngx.socket.tcp()
+  sock:settimeout(2000)
+  ok, err = sock:connect(host, port)
+  if not ok then
+    ngx.log(ngx.ERR, "[apifortress-plugin] failed to connect to "..host..":"..tostring(port)..": ", err)
+    return
+  end
 
-   if url.scheme == HTTPS then
-  	 local _, err = sock:sslhandshake(true, host, false)
-  	 if err then
-  		 ngx.log(ngx.ERR, "[apifortress-plugin] failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
-  	 end
-   end
+  if url.scheme == HTTPS then
+    local _, err = sock:sslhandshake(true, host, false)
+    if err then
+      ngx.log(ngx.ERR, "[apifortress-plugin] failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
+    end
+  end
 
-   ok, err = sock:send(generate_post_payload(url,key,token,message).."\r\n")
-   if not ok then
-  	 ngx.log(ngx.ERR, "[apifortress-plugin] failed to send data to "..host..":"..tostring(port)..": ", err)
-   end
-
-   ok, err = sock:setkeepalive(100)
-   if not ok then
-  	 ngx.log(ngx.ERR, "[apifortress-plugin] failed to keepalive to "..host..":"..tostring(port)..": ", err)
-  	 return
-   end
+  ok, err = sock:send(generate_post_payload(url,key,token,message).."\r\n")
+  if not ok then
+    ngx.log(ngx.ERR, "[apifortress-plugin] failed to send data to "..host..":"..tostring(port)..": ", err)
+  end
+  ok, err = sock:setkeepalive(100)
+  if not ok then
+    ngx.log(ngx.ERR, "[apifortress-plugin] failed to keepalive to "..host..":"..tostring(port)..": ", err)
+    return
+  end
 end
 
 local _M = {}
@@ -88,7 +87,7 @@ function _M.execute(conf)
   if (ngx[pluginContextName].currentThreshold % conf.threshold) == 0 then
     local ok, err = ngx.timer.at(0, send, conf, message)
     if not ok then
-    	ngx.log(ngx.ERR, "[apifortress-plugin] failed to create timer: ", err)
+      ngx.log(ngx.ERR, "[apifortress-plugin] failed to create timer: ", err)
     end
   end
 end

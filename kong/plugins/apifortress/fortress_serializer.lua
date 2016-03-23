@@ -18,55 +18,54 @@ function _M.serialize(ngx)
     }
   end
 
-	local contentType =  nil
-	local request_headers = {}
-	local reqBody = ngx.req.get_body_data()
+  local contentType =  nil
+  local request_headers = {}
+  local reqBody = ngx.req.get_body_data()
 
-	local postBody = nil
-	local putBody = nil
-	local method = ngx.req.get_method()
-	local reqContentType = nil
-	if method=="POST" then
-		postBody = reqBody
-	end
-	if method=="PUT" or method=="PATCH" then
-		putBody = reqBody
-	end
-	for k, v in pairs(ngx.req.get_headers()) do
-		local val = v
-		if type(val)=="table" then val = val[0] end
-		local item = {name=k,value=v}
-		if k=="content-type" then
-			reqContentType = v
-		end
-		table.insert(request_headers,item)
-	end
-	local response_headers = {}
-	local propCompressed = false
-	for k,v in pairs(ngx.resp.get_headers()) do
-		if type(val)=="table" then val = val[0] end
-		local item = {name=k,value=v}
-		if k=="content-type" then
-			contentType = v
-		end
-		if k=='content-encoding' and v=='gzip' then
-			propCompressed = true
-		end
-		table.insert(response_headers,item)
-	end
-	local dummy_cookies = {}
-	table.insert(dummy_cookies,{name="apif",value="1"})
-	local failed = false
-	if ngx.status>340 or ngx.status<200 then
-		failed = true
-	end
-	local uri = ngx.ctx.api.upstream_url
-	if string.ends(uri,"/") and string.starts(ngx.var.request_uri, "/") then
-		uri = string.sub(uri,0,string.len(uri)-1)
-	end
-	uri = uri .. ngx.var.request_uri
-
-	local metrics = {times={overall=ngx.var.request_time * 1000}}
+  local postBody = nil
+  local putBody = nil
+  local method = ngx.req.get_method()
+  local reqContentType = nil
+  if method=="POST" then
+    postBody = reqBody
+  end
+  if method=="PUT" or method=="PATCH" then
+    putBody = reqBody
+  end
+  for k, v in pairs(ngx.req.get_headers()) do
+    local val = v
+    if type(val)=="table" then val = val[0] end
+    local item = {name=k,value=v}
+    if k=="content-type" then
+      reqContentType = v
+    end
+    table.insert(request_headers,item)
+  end
+  local response_headers = {}
+  local propCompressed = false
+  for k,v in pairs(ngx.resp.get_headers()) do
+    if type(val)=="table" then val = val[0] end
+    local item = {name=k,value=v}
+    if k=="content-type" then
+      contentType = v
+    end
+    if k=='content-encoding' and v=='gzip' then
+      propCompressed = true
+    end
+    table.insert(response_headers,item)
+  end
+  local dummy_cookies = {}
+  table.insert(dummy_cookies,{name="apif",value="1"})
+  local failed = false
+  if ngx.status>340 or ngx.status<200 then
+    failed = true
+  end
+  local uri = ngx.ctx.api.upstream_url
+  if string.ends(uri,"/") and string.starts(ngx.var.request_uri, "/") then
+    uri = string.sub(uri,0,string.len(uri)-1)
+  end
+  uri = uri .. ngx.var.request_uri
+  local metrics = {times={overall=ngx.var.request_time * 1000}}
 
   return {
     request = {
@@ -83,15 +82,15 @@ function _M.serialize(ngx)
     response = {
       statusCode = tostring(ngx.status),
       headers = response_headers,
-			contentType = contentType,
-			cookies = dummy_cookies,
-			failed = failed,
-			data = ngx.encode_base64(ngx.ctx.captured_body),
-			metrics = metrics
+                contentType = contentType,
+                cookies = dummy_cookies,
+                failed = failed,
+                data = ngx.encode_base64(ngx.ctx.captured_body),
+                metrics = metrics
     },
-		props = {
-			compressed = propCompressed
-		},
+    props = {
+      compressed = propCompressed
+    },
     started_at = ngx.req.start_time() * 1000
   }
 end

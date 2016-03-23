@@ -11,17 +11,17 @@ function ApiFortressHandler:new()
   ApiFortressHandler.super.new(self, "apifortress-filter")
 end
 function ApiFortressHandler:access(conf)
-	ngx.req.read_body()
+  ngx.req.read_body()
 end
 
 function ApiFortressHandler:log(conf)
-	ApiFortressHandler.super.log(self)
-	forward.execute(conf)
+  ApiFortressHandler.super.log(self)
+  forward.execute(conf)
 end
 
 function ApiFortressHandler:body_filter(config)
-	ApiFortressHandler.super.body_filter(self)
-	capturer.execute(config)
+  ApiFortressHandler.super.body_filter(self)
+  capturer.execute(config)
 end
 ApiFortressHandler.PRIORITY = 800
 
