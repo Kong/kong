@@ -1,10 +1,10 @@
-local Migrations = {
+return {
   {
     name = "2015-12-03-161400_mashape-analytics-config",
-    up = function(dao_factory)
+    up = function(_, _, factory)
       local schema = require "kong.plugins.mashape-analytics.schema"
 
-      local plugins, err = dao_factory.plugins:find_all {name = "mashape-analytics"}
+      local plugins, err = factory.plugins:find_all {name = "mashape-analytics"}
       if err then
         return err
       end
@@ -14,14 +14,14 @@ local Migrations = {
         plugin.config.port = plugin.config.port or schema.fields.port.default
         plugin.config.path = plugin.config.path or schema.fields.path.default
         plugin.config.max_sending_queue_size = plugin.config.max_sending_queue_size or schema.fields.max_sending_queue_size.default
-        local _, err = dao_factory.plugins:update(plugin)
+        local _, err = factory.plugins:update(plugin, plugin, true)
         if err then
           return err
         end
       end
     end,
-    down = function(dao_factory)
-      local plugins, err = dao_factory.plugins:find_all {name = "mashape-analytics"}
+    down = function(_, _, factory)
+      local plugins, err = factory.plugins:find_all {name = "mashape-analytics"}
       if err then
         return err
       end
@@ -31,7 +31,7 @@ local Migrations = {
         plugin.config.port = nil
         plugin.config.path = nil
         plugin.config.max_sending_queue_size = nil
-        local _, err = dao_factory.plugins:update(plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, true)
         if err then
           return err
         end
@@ -39,5 +39,3 @@ local Migrations = {
     end
   }
 }
-
-return Migrations
