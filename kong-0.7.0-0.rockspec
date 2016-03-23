@@ -34,7 +34,8 @@ dependencies = {
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1",
-  "luasyslog >= 1.0.0-2"
+  "luasyslog >= 1.0.0-2",
+  "lua_pack ~> 1.0.4-0"
 }
 build = {
   type = "builtin",
@@ -247,7 +248,14 @@ build = {
 
     ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
-    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua"
+    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
+    
+    ["kong.plugins.ldap-auth.handler"] = "kong/plugins/ldap-auth/handler.lua",
+    ["kong.plugins.ldap-auth.access"] = "kong/plugins/ldap-auth/access.lua",
+    ["kong.plugins.ldap-auth.schema"] = "kong/plugins/ldap-auth/schema.lua",
+    ["kong.plugins.ldap-auth.ldap"] = "kong/plugins/ldap-auth/ldap.lua",
+    ["kong.plugins.ldap-auth.asn1"] = "kong/plugins/ldap-auth/asn1.lua"
+
   },
   install = {
     conf = { "kong.yml" },
