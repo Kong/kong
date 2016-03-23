@@ -12,7 +12,7 @@ local function parse_url(host_url)
   if not parsed_url.port then
     if parsed_url.scheme == "http" then
       parsed_url.port = 80
-     elseif parsed_url.scheme == HTTPS then
+    elseif parsed_url.scheme == "https" then
       parsed_url.port = 443
      end
   end
@@ -57,7 +57,7 @@ local function send(self,conf,message)
     return
   end
 
-  if url.scheme == HTTPS then
+  if url.scheme == "https" then
     local _, err = sock:sslhandshake(true, host, false)
     if err then
       ngx.log(ngx.ERR, "[apifortress-plugin] failed to do SSL handshake with "..host..":"..tostring(port)..": ", err)
