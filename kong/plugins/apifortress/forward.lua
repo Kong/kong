@@ -1,8 +1,6 @@
 -- Forwards the data to the configured API Fortress engine
 
-local bit = require "bit"
 local cjson = require "cjson"
-local basic_serializer = require "kong.plugins.log-serializers.basic"
 local serializer = require "kong.plugins.apifortress.fortress_serializer"
 local url = require "socket.url"
 local stringy = require "stringy"

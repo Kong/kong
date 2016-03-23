@@ -55,19 +55,20 @@ function _M.serialize(ngx)
   for k, v in pairs(ngx_req.get_headers()) do
     local val = v
     if type(val)=="table" then val = val[0] end
-    local item = {name=k,value=v}
+    local item = {name=k,value=val}
     if k=="content-type" then
-      reqContentType = v
+      reqContentType = val
     end
     request_headers[#request_headers+1] = item
   end
   local response_headers = {}
   local propCompressed = false
   for k,v in pairs(ngx_resp.get_headers()) do
+    local val = v
     if type(val)=="table" then val = val[0] end
-    local item = {name=k,value=v}
+    local item = {name=k,value=val}
     if k=="content-type" then
-      contentType = v
+      contentType = val
     end
     if k=='content-encoding' and v=='gzip' then
       propCompressed = true

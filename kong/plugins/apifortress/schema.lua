@@ -1,7 +1,5 @@
 -- The plugin schema
 
-local IO = require "kong.tools.io"
-
 local function validateKeys(value)
 	return string.len(value) > 0
 end
