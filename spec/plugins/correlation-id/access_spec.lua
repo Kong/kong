@@ -15,12 +15,14 @@ describe("Correlation ID Plugin", function()
       api = {
         {request_host = "correlation1.com", upstream_url = "http://mockbin.com"},
         {request_host = "correlation2.com", upstream_url = "http://mockbin.com"},
-        {request_host = "correlation3.com", upstream_url = "http://mockbin.com"}
+        {request_host = "correlation3.com", upstream_url = "http://mockbin.com"},
+        {request_host = "correlation4.com", upstream_url = "http://mockbin.com"}
       },
       plugin = {
-        {name = "correlation-id", config = {}, __api = 1},
-        {name = "correlation-id", config = {header_name = "Foo-Bar-Id"}, __api = 2},
-        {name = "correlation-id", config = {generator = "uuid"}, __api = 3}
+        {name = "correlation-id", config = {echo_downstream = true}, __api = 1},
+        {name = "correlation-id", config = {header_name = "Foo-Bar-Id", echo_downstream = true}, __api = 2},
+        {name = "correlation-id", config = {generator = "uuid", echo_downstream = true}, __api = 3},
+        {name = "correlation-id", config = {}, __api = 4},
       }
     }
     spec_helper.start_kong()
@@ -31,15 +33,15 @@ describe("Correlation ID Plugin", function()
   end)
 
   local function test_with(host, header, pattern)
-    local response1, status1 = http_client.get(STUB_GET_URL, nil, {host = host})
+    local _, status1, headers1 = http_client.get(STUB_GET_URL, nil, {host = host})
     assert.equal(200, status1)
-    local correlation_id1 = json.decode(response1).headers[header:lower()]
-    assert.match(correlation_id1, pattern)
+    local correlation_id1 = headers1[header:lower()]
+    assert.truthy(correlation_id1:match(pattern))
 
-    local response2, status2 = http_client.get(STUB_GET_URL, nil, {host = host})
+    local _, status2, headers2 = http_client.get(STUB_GET_URL, nil, {host = host})
     assert.equal(200, status2)
-    local correlation_id2 = json.decode(response2).headers[header:lower()]
-    assert.match(correlation_id2, pattern)
+    local correlation_id2 = headers2[header:lower()]
+    assert.truthy(correlation_id2:match(pattern))
 
     assert.are_not_equals(correlation_id1, correlation_id2)
 
@@ -78,5 +80,12 @@ describe("Correlation ID Plugin", function()
     assert.equal(200, status)
     local correlation_id = json.decode(response).headers[DEFAULT_HEADER_NAME:lower()]
     assert.equals(existing_correlation_id, correlation_id)
+  end)
+
+  it("should not echo back the correlation header", function()
+    local _, status, headers = http_client.get(STUB_GET_URL, nil, {host = "correlation4.com"})
+    assert.equal(200, status)
+    local correlation_id = headers[DEFAULT_HEADER_NAME:lower()]
+    assert.falsy(correlation_id)
   end)
 end)

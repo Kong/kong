@@ -44,13 +44,17 @@ function CorrelationIdHandler:access(conf)
     req_set_header(conf.header_name, header_value)
   end
 
-  -- For later use, to echo it back downstream
-  ngx.ctx.correlationid_header_value = header_value
+  if conf.echo_downstream then
+    -- For later use, to echo it back downstream
+    ngx.ctx.correlationid_header_value = header_value
+  end
 end
 
 function CorrelationIdHandler:header_filter(conf)
   CorrelationIdHandler.super.header_filter(self)
-  ngx.header[conf.header_name] = ngx.ctx.correlationid_header_value
+  if conf.echo_downstream then
+    ngx.header[conf.header_name] = ngx.ctx.correlationid_header_value
+  end
 end
 
 return CorrelationIdHandler

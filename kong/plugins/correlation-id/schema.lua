@@ -8,6 +8,10 @@ return {
       type = "string",
       default = "uuid#counter",
       enum = {"uuid", "uuid#counter"}
+    },
+    echo_downstream = {
+      type = "boolean",
+      default = false
     }
   }
 }
