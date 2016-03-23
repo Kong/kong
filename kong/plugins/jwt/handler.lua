@@ -92,7 +92,7 @@ function JwtHandler:access(conf)
     return responses.send_HTTP_FORBIDDEN("Invalid algorithm")
   end
 
-  local jwt_secret_value = jwt_secret.secret
+  local jwt_secret_value = jwt_secret.algorithm == "HS256" and jwt_secret.secret or jwt_secret.rsa_public_key
   if conf.secret_is_base64 then
     jwt_secret_value = jwt:b64_decode(jwt_secret_value)
   end
