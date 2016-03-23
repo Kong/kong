@@ -57,7 +57,7 @@ function _M.serialize(ngx)
     if k=="content-type" then
       reqContentType = v
     end
-    table_insert(request_headers,item)
+    request_headers[#request_headers+1] = item
   end
   local response_headers = {}
   local propCompressed = false
@@ -70,7 +70,7 @@ function _M.serialize(ngx)
     if k=='content-encoding' and v=='gzip' then
       propCompressed = true
     end
-    table_insert(response_headers,item)
+    response_headers[#response_headers+1] = item
   end
   local dummy_cookies = {}
   table_insert(dummy_cookies,{name="apif",value="1"})
