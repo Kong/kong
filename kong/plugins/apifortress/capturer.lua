@@ -9,9 +9,7 @@ local function capture()
     captured_body = {}
     ngx.ctx.captured_body = captured_body
   end
-  if chunk ~= "" then
-    captured_body[#captured_body + 1] = chunk
-  end
+  captured_body[#captured_body + 1] = chunk
   if eof then
     ngx.ctx.captured_body = table.concat(captured_body)
   end
