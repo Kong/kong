@@ -20,14 +20,14 @@ function _M.serialize(ngx)
   local ngx_var = ngx.var
   local ngx_ctx = ngx.ctx
 
-  local contentType
+  local content_type
   local request_headers = {}
 
   local status = ngx.status
   local method = ngx_req.get_method()
-  local reqContentType = nil
+  local req_content_type
 
-  local reqBody = ngx_req.get_body_data()
+  local req_body = ngx_req.get_body_data()
   local requestUri = ngx_var.request_uri
   local uri = ngx_ctx.api.upstream_url
 
@@ -39,46 +39,49 @@ function _M.serialize(ngx)
   -- This should represent the whole URL
   uri = uri .. requestUri
 
-  local postBody, putBody
+  local post_body, put_body
 
   if method=="POST" then
-    postBody = reqBody
+    post_body = req_body
   end
 
   -- PUT and PATCH share the same body. Subject to change later on
   if method=="PUT" or method=="PATCH" then
-    putBody = reqBody
+    put_body = req_body
   end
 
   for name, value in pairs(ngx_req.get_headers()) do
     if type(value)=="table" then value = value[0] end
     local item = {name=name,value=value}
     if name=="content-type" then
-      reqContentType = value
+      req_content_type = value
     end
     request_headers[#request_headers+1] = item
   end
   local response_headers = {}
-  local propCompressed = false
+  local prop_compressed = false
   for name,value in pairs(ngx_resp.get_headers()) do
     if type(value)=="table" then value = value[0] end
     local item = {name=name,value=value}
     if name=="content-type" then
-      contentType = value
+      content_type = value
     end
     if name=='content-encoding' and value=='gzip' then
-      propCompressed = true
+      prop_compressed = true
     end
     response_headers[#response_headers+1] = item
   end
+
+  -- The dummy_cookies workaround. Broken down cookies support will
+  -- be deprecated but still the API Fortress deserializer wants the
+  -- structure. Hence the dummy_cookies
   local dummy_cookies = {}
   table_insert(dummy_cookies,{name="apif",value="1"})
+
   local failed = false
   if status>340 or status<200 then
     failed = true
   end
-
-
 
   local metrics = {times={overall=ngx_var.request_time * 1000}}
 
@@ -90,21 +93,21 @@ function _M.serialize(ngx)
       headers = request_headers,
       cookies = dummy_cookies,
       size = ngx_var.request_length,
-      putBody = putBody,
-      postBody = postBody,
-      contentType = reqContentType
+      put_body = put_body,
+      post_body = post_body,
+      content_type = req_content_type
     },
     response = {
       statusCode = tostring(status),
       headers = response_headers,
-      contentType = contentType,
+      contentType = content_type,
       cookies = dummy_cookies,
       failed = failed,
       data = encode_base64(ngx_ctx.captured_body),
       metrics = metrics
     },
     props = {
-      compressed = propCompressed
+      compressed = prop_compressed
     },
     started_at = ngx_req.start_time() * 1000
   }

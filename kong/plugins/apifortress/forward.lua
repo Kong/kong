@@ -30,8 +30,8 @@ end
 
 local function genToken(conf)
   local timestamp = tostring(os.time())
-  local baseString = conf.apikey..conf.secret..timestamp
-  return ngx.md5(baseString)
+  local base_string = conf.apikey..conf.secret..timestamp
+  return ngx.md5(base_string)
 end
 
 local function send(self,conf,message)
