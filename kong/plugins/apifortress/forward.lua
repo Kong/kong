@@ -75,15 +75,14 @@ end
 
 local _M = {}
 
+local current_threshold = 0
+
 
 function _M.execute(conf)
   local message = serializer.serialize(ngx)
-  local pluginContextName = ngx.ctx.api.name.."apifortress"
-  if not ngx[pluginContextName] then
-    ngx[pluginContextName] = { currentThreshold = 0 }
-  end
-  ngx[pluginContextName].currentThreshold = ngx[pluginContextName].currentThreshold+1
-  if (ngx[pluginContextName].currentThreshold % conf.threshold) == 0 then
+  current_threshold = current_threshold+1
+
+  if (current_threshold % conf.threshold) == 0 then
     local ok, err = ngx.timer.at(0, send, conf, message)
     if not ok then
       ngx.log(ngx.ERR, "[apifortress-plugin] failed to create timer: ", err)
