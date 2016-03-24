@@ -47,7 +47,7 @@ describe("Syslog", function()
         has_hostname = true
       elseif parts[1] == "hello" and parts[2] and parts[2] == "world" then
         has_hello = true
-      elseif parts[1] == "version" and parts[2] and parts[2] == tostring(meta.version) then
+      elseif parts[1] == "version" and parts[2] and parts[2] == meta._VERSION then
         has_version = true
       end
     end

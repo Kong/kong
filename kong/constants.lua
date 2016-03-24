@@ -23,9 +23,7 @@ return {
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
-    CREDENTIAL_USERNAME = "X-Credential-Username",
-    RATELIMIT_LIMIT = "X-RateLimit-Limit",
-    RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+    CREDENTIAL_USERNAME = "X-Credential-Username"
   },
   RATELIMIT = {
     PERIODS = {

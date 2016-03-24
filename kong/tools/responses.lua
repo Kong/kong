@@ -15,8 +15,10 @@
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
 local cjson = require "cjson"
+local meta = require "kong.meta"
 
-local server_header = _KONG._NAME.."/".._KONG._VERSION
+--local server_header = _KONG._NAME.."/".._KONG._VERSION
+local server_header = meta._NAME.."/"..meta._VERSION
 
 --- Define the most common HTTP status codes for sugar methods.
 -- Each of those status will generate a helper method (sugar)

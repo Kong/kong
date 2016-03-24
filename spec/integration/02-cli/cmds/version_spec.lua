@@ -6,6 +6,6 @@ local spec_helper = require "spec.spec_helpers"
 describe("CLI", function()
   it("should return the right version", function()
     local result = IO.os_execute(spec_helper.KONG_BIN.." version")
-    assert.equal(meta.name.." version: "..tostring(meta.version), stringy.strip(result))
+    assert.equal(meta._NAME.." version: "..meta._VERSION, stringy.strip(result))
   end)
 end)

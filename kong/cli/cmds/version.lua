@@ -3,4 +3,4 @@
 local logger = require "kong.cli.utils.logger"
 local meta = require "kong.meta"
 
-logger:print(string.format("%s version: %s", meta.name, tostring(meta.version)))
+logger:print(string.format("%s version: %s", meta._NAME, meta._VERSION))

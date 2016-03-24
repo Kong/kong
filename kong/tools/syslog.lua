@@ -1,9 +1,10 @@
 local IO = require "kong.tools.io"
+local meta = require "kong.meta"
 local cjson = require "cjson"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 
-local version = _KONG._VERSION
+local version = meta._VERSION
 
 local _M = {}
 

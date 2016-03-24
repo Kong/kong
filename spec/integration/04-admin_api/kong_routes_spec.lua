@@ -27,16 +27,14 @@ describe("Admin API", function()
         local body = json.decode(response)
         assert.truthy(body.version)
         assert.truthy(body.tagline)
-        assert.equal(tostring(meta.version), body.version)
+        assert.equal(meta._VERSION, body.version)
       end)
-
       it("should have a Server header", function()
         local _, status, headers = http_client.get(spec_helper.API_URL)
         assert.equal(200, status)
-        assert.equal(string.format("%s/%s", meta.name, tostring(meta.version)), headers.server)
+        assert.equal(string.format("%s/%s", meta._NAME, meta._VERSION), headers.server)
         assert.falsy(headers.via) -- Via is only set for proxied requests
       end)
-
       it("should return method not allowed", function()
         local res, status = http_client.post(spec_helper.API_URL)
         assert.equal(405, status)
@@ -87,7 +85,10 @@ describe("Admin API", function()
 
   describe("Request size", function()
     it("should properly hanlde big POST bodies < 10MB", function()
-      local response, status = http_client.post(spec_helper.API_URL.."/apis", {request_host = "hello.com", upstream_url = "http://mockbin.org"})
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {
+        request_host = "hello.com",
+        upstream_url = "http://mockbin.org"
+      })
       assert.equal(201, status)
       local api_id = json.decode(response).id
       assert.truthy(api_id)
@@ -96,12 +97,17 @@ describe("Admin API", function()
       big_value = string.sub(big_value, 1, string.len(big_value) - 1)
       assert.truthy(string.len(big_value) > 10000) -- More than 10kb
 
-      local _, status = http_client.post(spec_helper.API_URL.."/apis/"..api_id.."/plugins/", { name = "ip-restriction", ["config.blacklist"] = big_value})
+      local _, status = http_client.post(spec_helper.API_URL.."/apis/"..api_id.."/plugins/", {
+        name = "ip-restriction",
+        ["config.blacklist"] = big_value
+      })
       assert.equal(201, status)
     end)
-
     it("should fail with requests > 10MB", function()
-      local response, status = http_client.post(spec_helper.API_URL.."/apis", {request_host = "hello2.com", upstream_url = "http://mockbin.org"})
+      local response, status = http_client.post(spec_helper.API_URL.."/apis", {
+        request_host = "hello2.com",
+        upstream_url = "http://mockbin.org"
+      })
       assert.equal(201, status)
       local api_id = json.decode(response).id
       assert.truthy(api_id)
@@ -111,9 +117,11 @@ describe("Admin API", function()
       big_value = string.sub(big_value, 1, string.len(big_value) - 1)
       assert.truthy(string.len(big_value) > 10000000) -- More than 10kb
 
-      local _, status = http_client.post(spec_helper.API_URL.."/apis/"..api_id.."/plugins/", { name = "ip-restriction", ["config.blacklist"] = big_value})
+      local _, status = http_client.post(spec_helper.API_URL.."/apis/"..api_id.."/plugins/", {
+        name = "ip-restriction",
+        ["config.blacklist"] = big_value
+      })
       assert.equal(413, status)
     end)
   end)
-
 end)

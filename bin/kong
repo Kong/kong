@@ -35,7 +35,7 @@ Usage: kong <command>
   kong --help            print this message
   kong <command> --help  print the help message of a command
 
-%s@%s]], meta.name, tostring(meta.version))
+%s@%s]], meta._NAME, meta._VERSION)
 
 -- Determine validity of the given command
 local cmd = arg[1]

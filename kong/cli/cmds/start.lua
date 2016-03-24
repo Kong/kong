@@ -15,7 +15,7 @@ Options:
   -c,--config (default %s) path to configuration file
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
-logger:info(meta.name.." "..tostring(meta.version))
+logger:info(meta._NAME.." "..meta._VERSION)
 
 local configuration, configuration_path = config_loader.load_default(args.config)
 

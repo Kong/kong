@@ -1,6 +1,11 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
-local route_helpers = require "kong.api.route_helpers"
+
+local find = string.find
+local pairs = pairs
+local ipairs = ipairs
+local select = select
+local tonumber = tonumber
 
 local tagline = "Welcome to ".._KONG._NAME
 local version = _KONG._VERSION
@@ -43,26 +48,36 @@ return {
   },
   ["/status"] = {
     GET = function(self, dao, helpers)
-      local res = ngx.location.capture("/nginx_status")
-      if res.status == 200 then
-
-        local status_response = {
-          server = route_helpers.parse_status(res.body),
-          database = {}
-        }
-
-        for k, v in pairs(dao.daos) do
-          local count, err = v:count()
-          if err then
-            return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-          end
-          status_response.database[k] = count
-        end
-
-        return helpers.responses.send_HTTP_OK(status_response)
-      else
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(res.body)
+      local r = ngx.location.capture "/nginx_status"
+      if r.status ~= 200 then
+        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(r.body)
       end
+
+      local var = ngx.var
+      local accepted, handled, total = select(3, find(r.body, "accepts handled requests\n (%d*) (%d*) (%d*)"))
+
+      local status_response = {
+        server = {
+          connections_active = tonumber(var.connections_active),
+          connections_reading = tonumber(var.connections_reading),
+          connections_writing = tonumber(var.connections_writing),
+          connections_waiting = tonumber(var.connections_waiting),
+          connections_accepted = tonumber(accepted),
+          connections_handled = tonumber(handled),
+          total_requests = tonumber(total)
+        },
+        database = {}
+      }
+
+      for k, v in pairs(dao.daos) do
+        local count, err = v:count()
+        if err then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+        status_response.database[k] = count
+      end
+
+      return helpers.responses.send_HTTP_OK(status_response)
     end
   }
 }

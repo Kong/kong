@@ -33,7 +33,7 @@ describe("Responses", function()
   it("should set the correct ngx values and call ngx.say and ngx.exit", function()
     responses.send_HTTP_OK("OK")
     assert.equal(ngx.status, responses.status_codes.HTTP_OK)
-    assert.equal(meta.name.."/"..tostring(meta.version), ngx.header["Server"])
+    assert.equal(meta._NAME.."/"..meta._VERSION, ngx.header["Server"])
     assert.stub(ngx.say).was.called() -- set custom content
     assert.stub(ngx.exit).was.called() -- exit nginx (or continue to the next context if 200)
   end)
