@@ -29,7 +29,7 @@ local function generate_post_payload(parsed_url, key, token, message)
 end
 
 local function genToken(conf)
-  local timestamp = tostring(os.time())
+  local timestamp = tostring(ngx.time())
   local base_string = conf.apikey..conf.secret..timestamp
   return ngx.md5(base_string)
 end
