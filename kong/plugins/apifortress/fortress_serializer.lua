@@ -14,7 +14,6 @@ local table_insert = table.insert
 local encode_base64 = ngx.encode_base64
 
 function _M.serialize(ngx)
-
   -- pre-indexing to reduce the number of lookups later on
   local ngx_req = ngx.req
   local ngx_resp = ngx.resp
@@ -34,7 +33,7 @@ function _M.serialize(ngx)
 
   -- Adjusting the URI ending character to be chained with requestUri
   if str_endswith(uri,"/") and str_startswith(requestUri, "/") then
-    uri = str_sub(uri,0,str_len(uri)-1)
+    uri = uri:sub(1,-2)
   end
 
   -- This should represent the whole URL
@@ -52,25 +51,23 @@ function _M.serialize(ngx)
     putBody = reqBody
   end
 
-  for k, v in pairs(ngx_req.get_headers()) do
-    local val = v
-    if type(val)=="table" then val = val[0] end
-    local item = {name=k,value=val}
-    if k=="content-type" then
-      reqContentType = val
+  for name, value in pairs(ngx_req.get_headers()) do
+    if type(value)=="table" then value = value[0] end
+    local item = {name=name,value=value}
+    if name=="content-type" then
+      reqContentType = value
     end
     request_headers[#request_headers+1] = item
   end
   local response_headers = {}
   local propCompressed = false
-  for k,v in pairs(ngx_resp.get_headers()) do
-    local val = v
-    if type(val)=="table" then val = val[0] end
-    local item = {name=k,value=val}
-    if k=="content-type" then
-      contentType = val
+  for name,value in pairs(ngx_resp.get_headers()) do
+    if type(value)=="table" then value = value[0] end
+    local item = {name=name,value=value}
+    if name=="content-type" then
+      contentType = value
     end
-    if k=='content-encoding' and v=='gzip' then
+    if name=='content-encoding' and value=='gzip' then
       propCompressed = true
     end
     response_headers[#response_headers+1] = item
