@@ -28,45 +28,45 @@ function _M.serialize(ngx)
   local req_content_type
 
   local req_body = ngx_req.get_body_data()
-  local requestUri = ngx_var.request_uri
+  local request_uri = ngx_var.request_uri
   local uri = ngx_ctx.api.upstream_url
 
-  -- Adjusting the URI ending character to be chained with requestUri
-  if str_endswith(uri,"/") and str_startswith(requestUri, "/") then
+  -- Adjusting the URI ending character to be chained with request_uri
+  if str_endswith(uri, "/") and str_startswith(request_uri, "/") then
     uri = uri:sub(1,-2)
   end
 
   -- This should represent the whole URL
-  uri = uri .. requestUri
+  uri = uri .. request_uri
 
   local post_body, put_body
 
-  if method=="POST" then
+  if method == "POST" then
     post_body = req_body
   end
 
   -- PUT and PATCH share the same body. Subject to change later on
-  if method=="PUT" or method=="PATCH" then
+  if method == "PUT" or method == "PATCH" then
     put_body = req_body
   end
 
   for name, value in pairs(ngx_req.get_headers()) do
-    if type(value)=="table" then value = value[0] end
-    local item = {name=name,value=value}
-    if name=="content-type" then
+    if type(value) == "table" then value = value[0] end
+    local item = { name = name,value = value }
+    if name == "content-type" then
       req_content_type = value
     end
     request_headers[#request_headers+1] = item
   end
   local response_headers = {}
   local prop_compressed = false
-  for name,value in pairs(ngx_resp.get_headers()) do
-    if type(value)=="table" then value = value[0] end
-    local item = {name=name,value=value}
-    if name=="content-type" then
+  for name, value in pairs(ngx_resp.get_headers()) do
+    if type(value) == "table" then value = value[0] end
+    local item = { name = name, value = value}
+    if name == "content-type" then
       content_type = value
     end
-    if name=='content-encoding' and value=='gzip' then
+    if name == 'content-encoding' and value == 'gzip' then
       prop_compressed = true
     end
     response_headers[#response_headers+1] = item
@@ -76,14 +76,14 @@ function _M.serialize(ngx)
   -- be deprecated but still the API Fortress deserializer wants the
   -- structure. Hence the dummy_cookies
   local dummy_cookies = {}
-  table_insert(dummy_cookies,{name="apif",value="1"})
+  table_insert(dummy_cookies, { name = "apif", value = "1"})
 
   local failed = false
-  if status>340 or status<200 then
+  if status > 340 or status < 200 then
     failed = true
   end
 
-  local metrics = {times={overall=ngx_var.request_time * 1000}}
+  local metrics = { times = { overall = ngx_var.request_time * 1000 } }
 
   return {
     request = {

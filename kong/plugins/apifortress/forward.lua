@@ -34,7 +34,7 @@ local function genToken(conf)
   return ngx.md5(base_string)
 end
 
-local function send(self,conf,message)
+local function send(self, conf, message)
   local ok, err
   local token = genToken(conf)
   local key = conf.apikey
@@ -62,7 +62,7 @@ local function send(self,conf,message)
     end
   end
 
-  ok, err = sock:send(generate_post_payload(url,key,token,message).."\r\n")
+  ok, err = sock:send(generate_post_payload(url, key, token, message).."\r\n")
   if not ok then
     ngx.log(ngx.ERR, "[apifortress-plugin] failed to send data to "..host..":"..tostring(port)..": ", err)
   end
@@ -80,7 +80,7 @@ local current_threshold = 0
 
 function _M.execute(conf)
   local message = serializer.serialize(ngx)
-  current_threshold = current_threshold+1
+  current_threshold = current_threshold + 1
 
   if (current_threshold % conf.threshold) == 0 then
     local ok, err = ngx.timer.at(0, send, conf, message)
