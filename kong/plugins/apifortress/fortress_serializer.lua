@@ -20,7 +20,7 @@ function _M.serialize(ngx)
   local ngx_var = ngx.var
   local ngx_ctx = ngx.ctx
 
-  local contentType =  nil
+  local contentType
   local request_headers = {}
 
   local status = ngx.status
@@ -39,8 +39,7 @@ function _M.serialize(ngx)
   -- This should represent the whole URL
   uri = uri .. requestUri
 
-  local postBody = nil
-  local putBody = nil
+  local postBody, putBody
 
   if method=="POST" then
     postBody = reqBody
