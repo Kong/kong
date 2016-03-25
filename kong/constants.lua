@@ -1,9 +1,4 @@
-local VERSION = "0.7.0"
-
 return {
-  NAME = "kong",
-  VERSION = VERSION,
-  ROCK_VERSION = VERSION.."-0",
   SYSLOG = {
     ADDRESS = "kong-hf.mashape.com",
     PORT = 61828,
@@ -28,14 +23,7 @@ return {
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
-    CREDENTIAL_USERNAME = "X-Credential-Username",
-    RATELIMIT_LIMIT = "X-RateLimit-Limit",
-    RATELIMIT_REMAINING = "X-RateLimit-Remaining"
-  },
-  AUTHENTICATION = {
-    QUERY = "query",
-    BASIC = "basic",
-    HEADER = "header"
+    CREDENTIAL_USERNAME = "X-Credential-Username"
   },
   RATELIMIT = {
     PERIODS = {

@@ -1,7 +1,7 @@
 local spec_helper = require "spec.spec_helpers"
 local http_client = require "kong.tools.http_client"
-local constants = require "kong.constants"
 local cjson = require "cjson"
+local meta = require "kong.meta"
 
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_POST_URL = spec_helper.STUB_POST_URL
@@ -40,7 +40,7 @@ describe("key-auth plugin", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal('Key realm="'..meta._NAME..'"', headers["www-authenticate"])
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -55,7 +55,7 @@ describe("key-auth plugin", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal('Key realm="'..meta._NAME..'"', headers["www-authenticate"])
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -63,7 +63,7 @@ describe("key-auth plugin", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal('Key realm="'..meta._NAME..'"', headers["www-authenticate"])
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -71,7 +71,7 @@ describe("key-auth plugin", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {apikey123 = "apikey123"}, {host = "keyauth1.com"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal('Key realm="'..meta._NAME..'"', headers["www-authenticate"])
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -86,7 +86,7 @@ describe("key-auth plugin", function()
       local response, status, headers = http_client.get(STUB_GET_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal('Key realm="'..meta._NAME..'"', headers["www-authenticate"])
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 
@@ -94,7 +94,7 @@ describe("key-auth plugin", function()
       local response, status, headers = http_client.post(STUB_POST_URL, {}, {host = "keyauth1.com", apikey123 = "apikey123"})
       local body = cjson.decode(response)
       assert.equal(401, status)
-      assert.equal(headers["www-authenticate"], "Key realm=\""..constants.NAME.."\"")
+      assert.equal('Key realm="'..meta._NAME..'"', headers["www-authenticate"])
       assert.equal("No API Key found in headers, body or querystring", body.message)
     end)
 

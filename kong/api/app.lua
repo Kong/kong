@@ -1,62 +1,26 @@
-local singletons = require "kong.singletons"
 local lapis = require "lapis"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
+local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
+local api_helpers = require "kong.api.api_helpers"
+
+local find = string.find
+
 local app = lapis.Application()
 
--- Parses a form value, handling multipart/data values
--- @param `v` The value object
--- @return The parsed value
-local function parse_value(v)
-  return type(v) == "table" and v.content or v -- Handle multipart
-end
-
--- Put nested keys in objects:
--- Normalize dotted keys in objects.
--- Example: {["key.value.sub"]=1234} becomes {key = {value = {sub=1234}}
--- @param `obj` Object to normalize
--- @return `normalized_object`
-local function normalize_nested_params(obj)
-  local new_obj = {}
-
-  local function attach_dotted_key(keys, attach_to, value)
-    local current_key = keys[1]
-
-    if #keys > 1 then
-      if not attach_to[current_key] then
-        attach_to[current_key] = {}
-      end
-      table.remove(keys, 1)
-      attach_dotted_key(keys, attach_to[current_key], value)
-    else
-      attach_to[current_key] = value
-    end
-  end
-
-  for k, v in pairs(obj) do
-    if type(v) == "table" then
-      -- normalize arrays since Lapis parses ?key[1]=foo as {["1"]="foo"} instead of {"foo"}
-      if utils.is_array(v) then
-        local arr = {}
-        for _, arr_v in pairs(v) do table.insert(arr, arr_v) end
-        v = arr
-      else
-        v = normalize_nested_params(v) -- recursive call on other table values
+local function parse_params(fn)
+  return app_helpers.json_params(function(self, ...)
+    local content_type = self.req.headers["content-type"]
+    if content_type and find(content_type:lower(), "application/json", nil, true) then
+      if not self.json then
+        return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
       end
     end
-
-    -- normalize sub-keys with dot notation
-    local keys = stringy.split(k, ".")
-    if #keys > 1 then -- we have a key containing a dot
-      attach_dotted_key(keys, new_obj, parse_value(v))
-    else
-      new_obj[k] = parse_value(v) -- nothing special with that key, simply attaching the value
-    end
-  end
-
-  return new_obj
+    self.params = api_helpers.normalize_nested_params(self.params)
+    return fn(self, ...)
+  end)
 end
 
 local function on_error(self)
@@ -73,21 +37,6 @@ local function on_error(self)
     end
   end
 end
-
-local function parse_params(fn)
-  return app_helpers.json_params(function(self, ...)
-    local content_type = self.req.headers["content-type"]
-    if content_type and string.find(content_type:lower(), "application/json", nil, true) then
-      if not self.json then
-        return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
-      end
-    end
-    self.params = normalize_nested_params(self.params)
-    return fn(self, ...)
-  end)
-end
-
-app.parse_params = parse_params
 
 app.default_route = function(self)
   local path = self.req.parsed_url.path:match("^(.*)/$")
