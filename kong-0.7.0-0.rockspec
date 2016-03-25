@@ -219,6 +219,9 @@ build = {
     ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
 
+    ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
+    ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",
+
     ["kong.api.app"] = "kong/api/app.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
     ["kong.api.route_helpers"] = "kong/api/route_helpers.lua",
