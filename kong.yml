@@ -94,10 +94,17 @@
 ######
 ## PostgreSQL configuration
 # postgres:
-#    host: "127.0.0.1"
-#    port: 5432
-#    user: kong
-#    database: kong
+  # host: "127.0.0.1"
+  # port: 5432
+
+  ######
+  ## Name of the database used by Kong. Will be created if it does not exist.
+  # database: kong
+
+  #####
+  ## User authentication settings
+  # user: ""
+  # password: ""
 
 ######
 ## Cassandra configuration (keyspace, authentication, client-to-node encryption)
