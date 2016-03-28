@@ -5,21 +5,25 @@ charset UTF-8;
 error_log logs/error.log error;
 access_log logs/access.log;
 
-keepalive_timeout 60s;
-client_header_timeout 60s;
-client_body_timeout 60s;
-send_timeout 60s;
-proxy_buffer_size 128k;
-proxy_buffers 4 256k;
-proxy_busy_buffers_size 256k;
+# if nginx_optimizations then
+#-- send_timeout 60s;          # default value
+#-- keepalive_timeout 75s;     # default value
+#-- client_body_timeout 60s;   # default value
+#-- client_header_timeout 60s; # default value
+#-- tcp_nopush on;             # disabled until benchmarked
+#-- proxy_buffer_size 128k;    # disabled until benchmarked
+#-- proxy_buffers 4 256k;      # disabled until benchmarked
+#-- proxy_busy_buffers_size 256k; # disabled until benchmarked
+#-- reset_timedout_connection on; # disabled until benchmarked
+# end
+
+client_max_body_size 0;
 proxy_ssl_server_name on;
+underscores_in_headers on;
+
 real_ip_header X-Forwarded-For;
 set_real_ip_from 0.0.0.0/0;
 real_ip_recursive on;
-client_max_body_size 0;
-underscores_in_headers on;
-reset_timedout_connection on;
-tcp_nopush on;
 
 lua_package_path '${{LUA_PACKAGE_PATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
@@ -32,15 +36,17 @@ lua_shared_dict cluster_autojoin_locks 100k;
 lua_shared_dict cassandra 1m;
 lua_shared_dict cassandra_prepared 5m;
 lua_socket_log_errors off;
-#--${{LUA_SSL_TRUSTED_CERTIFICATE}}
+# if lua_ssl_trusted_certificate then
+lua_ssl_trusted_certificate '${{lua_ssl_trusted_certificate}}';
+# end
 
 init_by_lua_block {
-  kong = require "kong"
-  kong.init()
+    kong = require 'kong'
+    kong.init()
 }
 
 init_worker_by_lua_block {
-  kong.init_worker()
+    kong.init_worker()
 }
 
 server {
@@ -59,7 +65,6 @@ server {
 # end
 
     location / {
-        default_type 'text/plain';
         set $upstream_host nil;
         set $upstream_url nil;
 
@@ -94,7 +99,7 @@ server {
     location = /50x {
         internal;
         content_by_lua_block {
-            require("kong.core.error_handlers")(ngx)
+            require('kong.core.error_handlers')(ngx)
         }
     }
 }
@@ -109,14 +114,14 @@ server {
     location / {
         default_type application/json;
         content_by_lua_block {
-            ngx.header["Access-Control-Allow-Origin"] = "*"
-            if ngx.req.get_method() == "OPTIONS" then
-                ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
-                ngx.header["Access-Control-Allow-Headers"] = "Content-Type"
+            ngx.header['Access-Control-Allow-Origin'] = '*'
+            if ngx.req.get_method() == 'OPTIONS' then
+                ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
+                ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
                 ngx.exit(204)
             end
 
-            require("lapis").serve("kong.api.app")
+            require('apis').serve('kong.api.app')
         }
     }
 

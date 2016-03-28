@@ -28,6 +28,7 @@ local CONF_SCHEMA = {
 
   -- nginx
   nginx_daemon = {typ = "ngx_boolean"},
+  nginx_optimizations = {typ = "boolean"},
   nginx_worker_processes = {typ = "string"}
 }
 
@@ -68,7 +69,7 @@ local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
   if conf_schema[k] ~= nil then
     local typ = conf_schema[k].typ
     if typ == "boolean" then
-      value = value == "on" or value == "true"
+      value = value == true or value == "on" or value == "true"
     elseif typ == "ngx_boolean" then
       value = (value == "on" or value == true) and "on" or "off"
     elseif typ == "string" then

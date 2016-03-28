@@ -58,6 +58,21 @@ describe("Configuration loader", function()
       assert.True(conf.anonymous_reports)
       assert.False(conf.cassandra_ssl)
       assert.False(conf.cassandra_ssl_verify)
+
+      conf = assert(conf_loader(nil, {
+        cassandra_ssl = true
+      }))
+      assert.True(conf.cassandra_ssl)
+
+      conf = assert(conf_loader(nil, {
+        cassandra_ssl = "on"
+      }))
+      assert.True(conf.cassandra_ssl)
+
+      conf = assert(conf_loader(nil, {
+        cassandra_ssl = "true"
+      }))
+      assert.True(conf.cassandra_ssl)
     end)
     it("infer arrays (comma-separated strings)", function()
       local conf = assert(conf_loader())
