@@ -1,6 +1,10 @@
 return [[
 admin_listen = 0.0.0.0:8001
 proxy_listen = 0.0.0.0:8000
+
+ssl = on
+ssl_cert = NONE
+ssl_cert_key = NONE
 proxy_listen_ssl = 0.0.0.0:8443
 
 cluster_listen = 0.0.0.0:7946
@@ -31,9 +35,6 @@ cassandra_ssl_verify = off
 cassandra_ssl_ca = NONE
 cassandra_username = kong
 cassandra_password = kong
-
-ssl_cert = NONE
-ssl_key = NONE
 
 anonymous_reports = on
 mem_cache_size = 128m

@@ -11,16 +11,16 @@ local conf = assert(conf_loader(TEST_CONF_PATH))
 
 -- Custom assertions
 local say = require "say"
-local assert = require "luassert.assert"
+local luassert = require "luassert.assert"
 
 local function fail(state, args)
   args[1] = table.concat(args, " ")
   return false
 end
 say:set("assertion.fail.negative", "%s")
-assert:register("assertion", "fail", fail,
-                "assertion.fail.negative",
-                "assertion.fail.negative")
+luassert:register("assertion", "fail", fail,
+                  "assertion.fail.negative",
+                  "assertion.fail.negative")
 
 local function res_status(state, args)
   local expected, res = unpack(args)
@@ -41,8 +41,8 @@ Status received:
 Body:
 %s
 ]])
-assert:register("assertion", "res_status", res_status,
-                "assertion.res_status.negative")
+luassert:register("assertion", "res_status", res_status,
+                  "assertion.res_status.negative")
 
 local function exec(...)
   local ok, _, _, stderr = pl_utils.executeex(...)

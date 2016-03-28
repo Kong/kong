@@ -10,13 +10,13 @@ describe("Configuration loader", function()
     assert.equal("0.0.0.0:8000", conf.proxy_listen)
     assert.equal("0.0.0.0:8443", conf.proxy_listen_ssl)
     assert.equal("", conf.ssl_cert) -- check placeholder value
-    assert.equal("", conf.ssl_key)
+    assert.equal("", conf.ssl_cert_key)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
     local conf = assert(conf_loader(helpers.test_conf_path))
     -- defaults
-    assert.True(conf.nginx_daemon)
+    assert.equal("on", conf.nginx_daemon)
     -- overrides
     assert.equal("1", conf.nginx_worker_processes)
     assert.equal("0.0.0.0:9001", conf.admin_listen)
@@ -34,7 +34,7 @@ describe("Configuration loader", function()
       nginx_worker_processes = "auto"
     }))
     -- defaults
-    assert.True(conf.nginx_daemon)
+    assert.equal("on", conf.nginx_daemon)
     -- overrides
     assert.equal("auto", conf.nginx_worker_processes)
     assert.equal("127.0.0.1:9001", conf.admin_listen)
@@ -49,22 +49,38 @@ describe("Configuration loader", function()
     assert.is_nil(conf.stub_property)
   end)
 
-  describe("transformations from file", function()
-    it("transforms booleans (on/off/true/false strings)", function()
+  describe("inferences", function()
+    it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
       assert.True(conf.dnsmasq)
-      assert.True(conf.nginx_daemon)
-      assert.True(conf.lua_code_cache)
+      assert.equal("on", conf.nginx_daemon)
+      assert.equal("on", conf.lua_code_cache)
       assert.True(conf.anonymous_reports)
       assert.False(conf.cassandra_ssl)
       assert.False(conf.cassandra_ssl_verify)
     end)
-    it("transforms arrays (comma-separated strings)", function()
+    it("infer arrays (comma-separated strings)", function()
       local conf = assert(conf_loader())
       assert.same({"127.0.0.1:9042"}, conf.cassandra_contact_points)
       assert.same({"dc1:2", "dc2:3"}, conf.cassandra_data_centers)
       assert.is_nil(getmetatable(conf.cassandra_contact_points))
       assert.is_nil(getmetatable(conf.cassandra_data_centers))
+    end)
+    it("infer ngx_boolean", function()
+      local conf = assert(conf_loader(nil, {
+        lua_code_cache = true
+      }))
+      assert.equal("on", conf.lua_code_cache)
+
+      conf = assert(conf_loader(nil, {
+        lua_code_cache = false
+      }))
+      assert.equal("off", conf.lua_code_cache)
+
+      conf = assert(conf_loader(nil, {
+        lua_code_cache = "off"
+      }))
+      assert.equal("off", conf.lua_code_cache)
     end)
   end)
 

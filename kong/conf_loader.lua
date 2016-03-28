@@ -5,6 +5,7 @@ local DEFAULT_PATHS = {
 
 local CONF_SCHEMA = {
   -- kong
+  ssl = {typ = "boolean"},
   database = {enum = {"postgres", "cassandra"}},
   dnsmasq = {typ = "boolean"},
 
@@ -23,10 +24,10 @@ local CONF_SCHEMA = {
   anonymous_reports = {typ = "boolean"},
 
   -- ngx_lua
-  lua_code_cache = {typ = "boolean"},
+  lua_code_cache = {typ = "ngx_boolean"},
 
   -- nginx
-  nginx_daemon = {typ = "boolean"},
+  nginx_daemon = {typ = "ngx_boolean"},
   nginx_worker_processes = {typ = "string"}
 }
 
@@ -38,22 +39,27 @@ local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 
-local function overrides(k, default_v, given_conf, conf_schema)
+local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
   local value -- definitive value for this property
 
   -- default values have lowest priority
-  if given_conf[k] == nil then
+  if file_conf[k] == nil then
     -- PL will ignore empty strings, so we need a placeholer (NONE)
     value = default_v == "NONE" and "" or default_v
   else
     -- given conf values have middle priority
-    value = given_conf[k]
+    value = file_conf[k]
   end
 
   -- environment variables have higher priority
   local env = os.getenv("KONG_"..string.upper(k))
   if env ~= nil then
     value = env
+  end
+
+  -- arg_conf have highest priority
+  if arg_conf[k] ~= nil then
+    value = arg_conf[k]
   end
 
   -- transform {boolean} values ("on"/"off" aliasing to true/false)
@@ -63,8 +69,12 @@ local function overrides(k, default_v, given_conf, conf_schema)
     local typ = conf_schema[k].typ
     if typ == "boolean" then
       value = value == "on" or value == "true"
+    elseif typ == "ngx_boolean" then
+      value = (value == "on" or value == true) and "on" or "off"
     elseif typ == "string" then
       value = tostring(value)
+    elseif typ == "number" then
+      value = tonumber(value) -- catch ENV variables (strings) that should be numbers
     elseif typ == "array" and type(value) == "string" then
       -- must check type because pl will already convert comma
       -- separated strings to tables (but not when the arr has
@@ -80,7 +90,8 @@ local typ_checks = {
   array = function(v) return type(v) == "table" end,
   string = function(v) return type(v) == "string" end,
   number = function(v) return type(v) == "number" end,
-  boolean = function(v) return type(v) == "boolean" end
+  boolean = function(v) return type(v) == "boolean" end,
+  ngx_boolean = function(v) return v == "on" or v == "off" end,
 }
 
 local function validate(conf, conf_schema)
@@ -148,13 +159,8 @@ local function load(path, custom_conf)
   -- Merging logic
   ----------------
 
-  -- merge default conf with file conf and ENV variables (with precedence)
-  local conf = tablex.pairmap(overrides, defaults, from_file_conf, CONF_SCHEMA)
-
-  -- now, our custom_conf has the highest priority
-  if type(custom_conf) == "table" then
-    conf = tablex.merge(conf, custom_conf, true) -- union
-  end
+  -- merge default conf with file conf, ENV variables and arg conf (with precedence)
+  local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf or {}, CONF_SCHEMA)
 
   local ok, err = validate(conf, CONF_SCHEMA)
   if not ok then return nil, err end
