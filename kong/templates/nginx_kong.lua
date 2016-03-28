@@ -1,0 +1,133 @@
+return [[
+resolver ${{DNS_RESOLVER}} ipv6=off;
+charset UTF-8;
+
+error_log logs/error.log error;
+access_log logs/access.log;
+
+keepalive_timeout 60s;
+client_header_timeout 60s;
+client_body_timeout 60s;
+send_timeout 60s;
+proxy_buffer_size 128k;
+proxy_buffers 4 256k;
+proxy_busy_buffers_size 256k;
+proxy_ssl_server_name on;
+real_ip_header X-Forwarded-For;
+set_real_ip_from 0.0.0.0/0;
+real_ip_recursive on;
+client_max_body_size 0;
+underscores_in_headers on;
+reset_timedout_connection on;
+tcp_nopush on;
+
+lua_package_path '${{LUA_PACKAGE_PATH}};;';
+lua_code_cache ${{LUA_CODE_CACHE}};
+lua_max_running_timers 4096;
+lua_max_pending_timers 16384;
+lua_shared_dict cache ${{MEM_CACHE_SIZE}};
+lua_shared_dict reports_locks 100k;
+lua_shared_dict cluster_locks 100k;
+lua_shared_dict cluster_autojoin_locks 100k;
+lua_shared_dict cassandra 1m;
+lua_shared_dict cassandra_prepared 5m;
+lua_socket_log_errors off;
+#--${{LUA_SSL_TRUSTED_CERTIFICATE}}
+
+init_by_lua_block {
+  kong = require "kong"
+  kong.init()
+}
+
+init_worker_by_lua_block {
+  kong.init_worker()
+}
+
+server {
+    server_name kong;
+    listen ${{PROXY_LISTEN}};
+    error_page 500 502 503 504 /50x;
+
+# if ssl then
+    listen ${{PROXY_LISTEN_SSL}} ssl;
+    ssl_certificate ${{SSL_CERT}};
+    ssl_certificate_key ${{SSL_CERT_KEY}};
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_certificate_by_lua_block {
+        kong.ssl_certificate()
+    }
+# end
+
+    location / {
+        default_type 'text/plain';
+        set $upstream_host nil;
+        set $upstream_url nil;
+
+        access_by_lua_block {
+            kong.access()
+        }
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $upstream_host;
+        proxy_pass_header Server;
+        proxy_pass $upstream_url;
+
+        header_filter_by_lua_block {
+            kong.header_filter()
+        }
+
+        body_filter_by_lua_block {
+            kong.body_filter()
+        }
+
+        log_by_lua_block {
+            kong.log()
+        }
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+
+    location = /50x {
+        internal;
+        content_by_lua_block {
+            require("kong.core.error_handlers")(ngx)
+        }
+    }
+}
+
+server {
+    server_name kong_admin;
+    listen ${{ADMIN_LISTEN}};
+
+    client_max_body_size 10m;
+    client_body_buffer_size 10m;
+
+    location / {
+        default_type application/json;
+        content_by_lua_block {
+            ngx.header["Access-Control-Allow-Origin"] = "*"
+            if ngx.req.get_method() == "OPTIONS" then
+                ngx.header["Access-Control-Allow-Methods"] = "GET,HEAD,PUT,PATCH,POST,DELETE"
+                ngx.header["Access-Control-Allow-Headers"] = "Content-Type"
+                ngx.exit(204)
+            end
+
+            require("lapis").serve("kong.api.app")
+        }
+    }
+
+    location /nginx_status {
+        internal;
+        access_log off;
+        stub_status;
+    }
+
+    location /robots.txt {
+        return 200 'User-agent: *\nDisallow: /';
+    }
+}
+]]
