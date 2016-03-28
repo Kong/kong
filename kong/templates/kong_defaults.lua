@@ -32,7 +32,7 @@ cassandra_timeout = 5000
 cassandra_consistency = ONE
 cassandra_ssl = off
 cassandra_ssl_verify = off
-cassandra_ssl_ca = NONE
+cassandra_ssl_trusted_cert = NONE
 cassandra_username = kong
 cassandra_password = kong
 
@@ -43,5 +43,6 @@ lua_code_cache = on
 lua_package_path = ?/init.lua;./kong/?.lua
 
 nginx_daemon = on
+nginx_optimizations = on
 nginx_worker_processes = auto
 ]]
