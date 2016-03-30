@@ -134,6 +134,7 @@ Tools:
 - [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
 - [Extended file-logging plugin](https://github.com/nazarhussain/kong-file-log-extended)
 - [Extended log-serializer plugin](https://github.com/nazarhussain/kong-log-serializers-extended)
+- [Biplane CLI tool](https://github.com/articulate/biplane)
 
 ## Roadmap
 
