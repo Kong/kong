@@ -25,8 +25,6 @@ local function async_autojoin(premature)
   -- If this node is the only node in the cluster, but other nodes are present, then try to join them
   -- This usually happens when two nodes are started very fast, and the first node didn't write his
   -- information into the datastore yet. When the second node starts up, there is nothing to join yet.
-  if not singletons.configuration.cluster["auto-join"] then return end
-
   local lock = resty_lock:new("cluster_autojoin_locks", {
     exptime = ASYNC_AUTOJOIN_INTERVAL - 0.001
   })

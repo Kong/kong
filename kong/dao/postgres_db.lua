@@ -20,8 +20,16 @@ PostgresDB.dao_insert_values = {
 
 PostgresDB.additional_tables = {"ttls"}
 
-function PostgresDB:new(...)
-  PostgresDB.super.new(self, "postgres", ...)
+function PostgresDB:new(kong_config)
+  local conn_opts = {
+    host = kong_config.pg_host,
+    port = kong_config.pg_port,
+    user = kong_config.pg_user,
+    password = kong_config.pg_password,
+    database = kong_config.pg_database
+  }
+
+  PostgresDB.super.new(self, "postgres", conn_opts)
 end
 
 -- TTL clean up timer functions
@@ -241,7 +249,7 @@ function PostgresDB:ttl(tbl, table_name, schema, ttl)
   local expire_at = res[1].timestamp + (ttl * 1000)
 
   local query = string.format("SELECT upsert_ttl('%s', %s, '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC')",
-                              tbl[schema.primary_key[1]], primary_key_type == "uuid" and "'"..tbl[schema.primary_key[1]].."'" or "NULL", 
+                              tbl[schema.primary_key[1]], primary_key_type == "uuid" and "'"..tbl[schema.primary_key[1]].."'" or "NULL",
                               schema.primary_key[1], table_name, expire_at)
   local _, err = self:query(query)
   if err then
@@ -270,7 +278,7 @@ function PostgresDB:clear_expired_ttl()
       return false, err
     end
   end
-  
+
   return true
 end
 

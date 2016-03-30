@@ -12,14 +12,8 @@ local SERVICE_NAME = "serf"
 local START_TIMEOUT = 10
 local EVENT_NAME = "kong"
 
-function Serf:new(configuration)
-  local nginx_working_dir = configuration.nginx_working_dir
-
-  self._configuration = configuration
-  local path_prefix = nginx_working_dir
-                        ..(stringy.endswith(nginx_working_dir, "/") and "" or "/")
-  self._script_path = path_prefix.."serf_event.sh"
-  self._log_path = path_prefix.."serf.log"
+function Serf:new(kong_config)
+  self._configuration = kong_config
   self._dao_factory = dao_loader.load(self._configuration)
   Serf.super.new(self, SERVICE_NAME, nginx_working_dir)
 end
@@ -35,47 +29,6 @@ function Serf:_get_cmd()
   end)
 
   return cmd, err
-end
-
-function Serf:prepare()
-  -- Create working directory if missing
-  local ok, err = Serf.super.prepare(self, self._configuration.nginx_working_dir)
-  if not ok then
-    return nil, err
-  end
-
-  -- Create serf event handler
-  local luajit_path = BaseService.find_cmd("luajit")
-  if not luajit_path then
-    return nil, "Can't find luajit"
-  end
-
-  local script = [[
-#!/bin/sh
-PAYLOAD=`cat` # Read from stdin
-
-if [ "$SERF_EVENT" != "user" ]; then
-  PAYLOAD="{\"type\":\"${SERF_EVENT}\",\"entity\": \"${PAYLOAD}\"}"
-fi
-
-echo $PAYLOAD > /tmp/payload
-
-COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[=['${PAYLOAD}']=]"..[[, {["content-type"] = "application/json"})'
-
-echo $COMMAND | ]]..luajit_path..[[
-]]
-  local _, err = IO.write_to_file(self._script_path, script)
-  if err then
-    return false, err
-  end
-
-  -- Adding executable permissions
-  local res, code = IO.os_execute("chmod +x "..self._script_path)
-  if code ~= 0 then
-    return false, res
-  end
-
-  return true
 end
 
 function Serf:_join_node(address)
@@ -258,23 +211,6 @@ function Serf:event(t_payload)
   end
 
   return self:invoke_signal("event "..tostring(args).." kong", {"'"..encoded_payload.."'", "&"}, true)
-end
-
-function Serf:stop()
-  logger:info("Leaving cluster..")
-  local _, err = self:invoke_signal("leave")
-  if err then
-    return false, err
-  else
-    -- Remove the node from the datastore.
-    -- This is useful when this is the only node running in the cluster.
-    self._dao_factory.nodes:delete({
-      name = cluster_utils.get_node_name(self._configuration)
-    })
-
-    -- Finally stop Serf
-    Serf.super.stop(self, true)
-  end
 end
 
 return Serf

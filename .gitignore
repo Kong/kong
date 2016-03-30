@@ -4,6 +4,8 @@
 .project
 .idea
 
+servroot*
+
 # kong
 nginx_tmp/
 kong*.yml
