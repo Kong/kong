@@ -24,6 +24,8 @@ local function compile_conf(kong_config, conf_template)
 
   if kong_config.cassandra_ssl and kong_config.cassandra_ssl_trusted_cert then
     compile_env["lua_ssl_trusted_certificate"] = kong_config.cassandra_ssl_trusted_cert
+    --compile_env["ssl_certificate"] =
+    --compile_env["ssl_certificate_key"] =
   end
 
   if kong_config.nginx_optimizations then

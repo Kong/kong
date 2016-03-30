@@ -73,25 +73,25 @@ local function load_daos(self, schemas, constraints, events_handler)
   end
 end
 
-function Factory:new(db_type, options, plugins, events_handler)
-  self.db_type = db_type
+function Factory:new(kong_config, plugins, events_handler)
+  self.db_type = kong_config.database
   self.daos = {}
-  self.properties = options
-  self.plugins_names = plugins or {}
+  self.kong_config = kong_config
+  self.plugin_names = plugins or {}
 
   local schemas = {}
-  local DB = require("kong.dao."..db_type.."_db")
-  _db = DB(options)
+  local DB = require("kong.dao."..self.db_type.."_db")
+  _db = DB(kong_config)
 
   for _, m_name in ipairs(CORE_MODELS) do
     schemas[m_name] = require("kong.dao.schemas."..m_name)
   end
 
-  for _, plugin_name in ipairs(self.plugins_names) do
+  for plugin_name in pairs(self.plugin_names) do
     local has_dao, plugin_daos = utils.load_module_if_exists("kong.plugins."..plugin_name..".dao."..self.db_type)
     if has_dao then
       for k, v in pairs(plugin_daos) do
-        self.daos[k] = v(options)
+        self.daos[k] = v(kong_config)
       end
     end
 
@@ -149,7 +149,7 @@ function Factory:migrations_modules()
     core = require("kong.dao.migrations."..self.db_type)
   }
 
-  for _, plugin_name in ipairs(self.plugins_names) do
+  for plugin_name in pairs(self.plugin_names) do
     local ok, plugin_mig = utils.load_module_if_exists("kong.plugins."..plugin_name..".migrations."..self.db_type)
     if ok then
       migrations[plugin_name] = plugin_mig
@@ -193,7 +193,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     if mig_type == "string" then
       err = _db:queries(migration.up)
     elseif mig_type == "function" then
-      err = migration.up(_db, self.properties, self)
+      err = migration.up(_db, self.kong_config, self)
     end
 
     if err then

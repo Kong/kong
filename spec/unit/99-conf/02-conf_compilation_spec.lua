@@ -114,9 +114,6 @@ describe("NGINX conf compiler", function()
       assert.truthy(exists(join(prefix, "logs", "access.log")))
     end)
     it("creates Kong conf", function()
-      local pl_config = require "pl.config"
-      local pl_stringio = require "pl.stringio"
-
       assert(nginx_conf_compiler.prepare_prefix(helpers.test_conf, prefix))
       local path = assert.truthy(exists(join(prefix, "kong.conf")))
 

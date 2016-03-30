@@ -9,8 +9,8 @@ describe("Configuration loader", function()
     assert.equal("0.0.0.0:8001", conf.admin_listen)
     assert.equal("0.0.0.0:8000", conf.proxy_listen)
     assert.equal("0.0.0.0:8443", conf.proxy_listen_ssl)
-    assert.equal("", conf.ssl_cert) -- check placeholder value
-    assert.equal("", conf.ssl_cert_key)
+    assert.is_nil(conf.ssl_cert) -- check placeholder value
+    assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(getmetatable(conf))
   end)
   it("loads a given file, with higher precedence", function()
@@ -47,6 +47,15 @@ describe("Configuration loader", function()
       stub_property = "leave me alone"
     }))
     assert.is_nil(conf.stub_property)
+  end)
+  it("loads custom plugins", function()
+    local conf = assert(conf_loader())
+    assert.same({}, conf.custom_plugins)
+
+    conf = assert(conf_loader(nil, {
+      custom_plugins = "hello-world,my-plugin"
+    }))
+    assert.same({"hello-world", "my-plugin"}, conf.custom_plugins)
   end)
 
   describe("inferences", function()
@@ -128,6 +137,20 @@ describe("Configuration loader", function()
     it("throws inexistent file", function()
       local conf, err = conf_loader "inexistent"
       assert.equal("no file at: inexistent", err)
+      assert.is_nil(conf)
+    end)
+    it("requires cert and key if SSL is enabled", function()
+      local conf, err = conf_loader(nil, {
+        ssl = true
+      })
+      assert.equal("ssl_cert required if SSL enabled", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        ssl = true,
+        ssl_cert = "/path/cert.pem"
+      })
+      assert.equal("ssl_cert_key required if SSL enabled", err)
       assert.is_nil(conf)
     end)
   end)

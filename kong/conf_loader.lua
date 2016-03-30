@@ -6,12 +6,13 @@ local DEFAULT_PATHS = {
 local CONF_SCHEMA = {
   -- kong
   ssl = {typ = "boolean"},
+
+  custom_plugins = {typ = "array"},
+
   database = {enum = {"postgres", "cassandra"}},
-  dnsmasq = {typ = "boolean"},
-
   pg_port = {typ = "number"},
-
   cassandra_contact_points = {typ = "array"},
+  cassandra_port = {typ = "number"},
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},
   cassandra_data_centers = {typ = "array"},
@@ -21,6 +22,8 @@ local CONF_SCHEMA = {
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
 
+  dnsmasq = {typ = "boolean"},
+
   anonymous_reports = {typ = "boolean"},
 
   -- ngx_lua
@@ -29,7 +32,7 @@ local CONF_SCHEMA = {
   -- nginx
   nginx_daemon = {typ = "ngx_boolean"},
   nginx_optimizations = {typ = "boolean"},
-  nginx_worker_processes = {typ = "string"}
+  nginx_worker_processes = {typ = "string"} -- force string inference
 }
 
 local kong_default_conf = require "kong.templates.kong_defaults"
@@ -64,6 +67,7 @@ local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
   end
 
   -- transform {boolean} values ("on"/"off" aliasing to true/false)
+  -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
   -- transform {explicit string} values (number values converted to strings)
   -- transform {array} values (comma-separated strings)
   if conf_schema[k] ~= nil then
@@ -73,7 +77,7 @@ local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
     elseif typ == "ngx_boolean" then
       value = (value == "on" or value == true) and "on" or "off"
     elseif typ == "string" then
-      value = tostring(value)
+      value = tostring(value) -- forced string inference
     elseif typ == "number" then
       value = tonumber(value) -- catch ENV variables (strings) that should be numbers
     elseif typ == "array" and type(value) == "string" then
@@ -82,6 +86,9 @@ local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
       -- only one element)
       value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
     end
+  elseif type(value) == "string" then
+    -- default type is string, and an empty if unset
+    value = value ~= "" and tostring(value) or nil
   end
 
   return value, k
@@ -111,13 +118,21 @@ local function validate(conf, conf_schema)
     end
   end
 
+  -- custom validation
+  if conf.ssl then
+    if not conf.ssl_cert then
+      return nil, "ssl_cert required if SSL enabled"
+    elseif not conf.ssl_cert_key then
+      return nil, "ssl_cert_key required if SSL enabled"
+    end
+  end
+
   return true
 end
 
 -- @param[type=string] path A path to a conf file
 -- @param[type=table] custom_conf A table taking precedence over all other sources.
 local function load(path, custom_conf)
-
   ------------------------
   -- Default configuration
   ------------------------

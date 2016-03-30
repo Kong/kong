@@ -32,94 +32,93 @@ _G._KONG = {
 }
 
 local core = require "kong.core.handler"
-local Serf = require "kong.cli.services.serf"
+local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
 local singletons = require "kong.singletons"
-local dao_loader = require "kong.tools.dao_loader"
-local config_loader = require "kong.tools.config_loader"
+local DAOFactory = require "kong.dao.factory"
+local conf_loader = require "kong.conf_loader"
 local plugins_iterator = require "kong.core.plugins_iterator"
 
 local ipairs = ipairs
-local table_insert = table.insert
-local table_sort = table.sort
 
--- Attach a hooks table to the event bus
 local function attach_hooks(events, hooks)
   for k, v in pairs(hooks) do
     events:subscribe(k, v)
   end
 end
 
--- Load enabled plugins on the node.
--- Get plugins in the DB (distinct by `name`), compare them with plugins
--- in `configuration.plugins`. If both lists match, return a list
--- of plugins sorted by execution priority for lua-nginx-module's context handlers.
--- @treturn table Array of plugins to execute in context handlers.
-local function load_node_plugins(configuration)
+local function load_plugins(kong_config, events)
+  local constants = require "kong.constants"
+  local pl_tablex = require "pl.tablex"
+
+  -- short-lived DAO just to retrieve plugins
+  local dao = DAOFactory(kong_config)
+
+  local in_db_plugins, sorted_plugins = {}, {}
+  local plugins = pl_tablex.merge(constants.PLUGINS_AVAILABLE,
+                                  kong_config.custom_plugins, true)
+
   ngx.log(ngx.DEBUG, "Discovering used plugins")
-  local rows, err = singletons.dao.plugins:find_all()
-  if err then
-    error(err)
-  end
 
-  local m = {}
-  for _, row in ipairs(rows) do
-    m[row.name] = true
-  end
+  local rows, err_t = dao.plugins:find_all()
+  if not rows then return nil, tostring(err_t) end
 
-  local distinct_plugins = {}
-  for plugin_name in pairs(m) do
-    distinct_plugins[#distinct_plugins + 1] = plugin_name
-  end
+  for _, row in ipairs(rows) do in_db_plugins[row.name] = true end
 
-  -- Checking that the plugins in the DB are also enabled
-  for _, v in ipairs(distinct_plugins) do
-    if not utils.table_contains(configuration.plugins, v) then
-      error("You are using a plugin that has not been enabled in the configuration: "..v)
+  -- check all plugins in DB are enabled/installed
+  for plugin in pairs(in_db_plugins) do
+    if not plugins[plugin] then
+      return nil, plugin.." plugin is in use but not enabled"
     end
   end
 
-  local sorted_plugins = {}
-
-  for _, v in ipairs(configuration.plugins) do
-    local loaded, plugin_handler_mod = utils.load_module_if_exists("kong.plugins."..v..".handler")
-    if not loaded then
-      error("The following plugin has been enabled in the configuration but it is not installed on the system: "..v)
-    else
-      local loaded, plugin_schema_mod = utils.load_module_if_exists("kong.plugins."..v..".schema")
-      if not loaded then
-        error("Cannot find the schema for the following plugin: "..v)
-      end
-      ngx.log(ngx.DEBUG, "Loading plugin: "..v)
-      table_insert(sorted_plugins, {
-        name = v,
-        handler = plugin_handler_mod(),
-        schema = plugin_schema_mod
-      })
+  -- load installed plugins
+  for plugin in pairs(plugins) do
+    local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
+    if not ok then
+      return nil, plugin.." plugin is enabled but not installed"
     end
+
+    local ok, schema = utils.load_module_if_exists("kong.plugins."..plugin..".schema")
+    if not ok then
+      return nil, "no configuration schema found for plugin: "..plugin
+    end
+
+    ngx.log(ngx.DEBUG, "Loading plugin: "..plugin)
+
+    sorted_plugins[#sorted_plugins+1] = {
+      name = plugin,
+      handler = handler(),
+      schema = schema
+    }
 
     -- Attaching hooks
-    local loaded, plugin_hooks = utils.load_module_if_exists("kong.plugins."..v..".hooks")
-    if loaded then
-      attach_hooks(singletons.events, plugin_hooks)
+    local ok, hooks = utils.load_module_if_exists("kong.plugins."..plugin..".hooks")
+    if ok then
+      attach_hooks(events, hooks)
     end
   end
 
-  table_sort(sorted_plugins, function(a, b)
+  -- sort plugins by order of execution
+  table.sort(sorted_plugins, function(a, b)
     local priority_a = a.handler.PRIORITY or 0
     local priority_b = b.handler.PRIORITY or 0
     return priority_a > priority_b
   end)
 
-  if configuration.send_anonymous_reports then
-    table_insert(sorted_plugins, 1, {
+  -- add reports plugin if not disabled
+  if kong_config.anonymous_reports then
+    local reports = require "kong.core.reports"
+    reports.enable()
+    sorted_plugins[#sorted_plugins+1] = {
       name = "reports",
-      handler = require("kong.core.reports")
-    })
+      handler = reports
+    }
   end
 
-  return sorted_plugins
+  -- sorted for handles, name=true for DAO
+  return {sorted = sorted_plugins, names = plugins}
 end
 
 -- Kong public context handlers.
@@ -127,40 +126,28 @@ end
 
 local Kong = {}
 
--- Init Kong's environment in the Nginx master process.
--- To be called by the lua-nginx-module `init_by_lua` directive.
--- Execution:
---   - load the configuration from the path computed by the CLI
---   - instanciate the DAO Factory
---   - load the used plugins
---     - load all plugins if used and installed
---     - sort the plugins by priority
---
--- If any error happens during the initialization of the DAO or plugins,
--- it return an nginx error and exit.
 function Kong.init()
-  local status, err = pcall(function()
-    singletons.configuration  = config_loader.load(os.getenv("KONG_CONF"))
-    singletons.events         = Events()
-    singletons.dao            = dao_loader.load(singletons.configuration, singletons.events)
-    singletons.loaded_plugins = load_node_plugins(singletons.configuration)
-    singletons.serf           = Serf(singletons.configuration)
+  local pl_path = require "pl.path"
 
-    -- Attach core hooks
-    attach_hooks(singletons.events, require("kong.core.hooks"))
+  -- retrieve kong_config
+  local conf_path = pl_path.join(ngx.config.prefix(), "kong.conf")
+  local config = assert(conf_loader(conf_path))
 
-    if singletons.configuration.send_anonymous_reports then
-      -- Generate the unique_str inside the module
-      local reports = require "kong.core.reports"
-      reports.enable()
-    end
+  -- retrieve node plugins
+  local events = Events()
+  local plugins = assert(load_plugins(config, events))
 
-    ngx.update_time()
-  end)
-  if not status then
-    ngx.log(ngx.ERR, "Startup error: "..err)
-    os.exit(1)
-  end
+  -- instanciate long-lived DAO
+  local dao = DAOFactory(config, plugins.names, events)
+
+  -- populate singletons
+  singletons.loaded_plugins = plugins.sorted
+  singletons.serf = Serf.new(config, dao)
+  singletons.dao = dao
+  singletons.events = events
+  singletons.configuration = config
+
+  attach_hooks(events, require "kong.core.hooks")
 end
 
 function Kong.init_worker()
