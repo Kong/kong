@@ -27,7 +27,7 @@ Serf.args_mt = {
 
 function Serf.new(kong_config, dao)
   return setmetatable({
-    node_name = hostname..kong_config.cluster_listen,
+    node_name = hostname.."_"..kong_config.cluster_listen,
     config = kong_config,
     dao = dao
   }, Serf)

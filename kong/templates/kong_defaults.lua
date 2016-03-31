@@ -48,4 +48,6 @@ lua_package_path = ?/init.lua;./kong/?.lua
 nginx_daemon = on
 nginx_optimizations = on
 nginx_worker_processes = auto
+
+prefix = /usr/local/kong
 ]]
