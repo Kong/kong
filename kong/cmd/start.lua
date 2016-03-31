@@ -5,10 +5,13 @@ local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 
 local function execute(args)
-  local conf = assert(conf_loader(args.conf))
-  assert(nginx_conf_compiler.prepare_prefix(conf, args.prefix))
-  assert(serf_signals.start(conf, args.prefix, DAOFactory(conf)))
-  assert(nginx_signals.start(args.prefix))
+  local conf = assert(conf_loader(args.conf, {
+    prefix = args.prefix
+  }))
+
+  assert(nginx_conf_compiler.prepare_prefix(conf, conf.prefix))
+  assert(serf_signals.start(conf, conf.prefix, DAOFactory(conf)))
+  assert(nginx_signals.start(conf.prefix))
   print("Started")
 end
 

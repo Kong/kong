@@ -8,6 +8,7 @@ local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
+local kill = require "kong.cmd.utils.kill"
 local fmt = string.format
 
 local serf_bin_name = "serf"
@@ -55,11 +56,8 @@ end
 
 local function is_running(pid_path)
   if not pl_path.exists(pid_path) then return nil end
-  local pid = pl_file.read(pid_path)
-  if pid == "" then return nil end
-
-  local ok, code = pl_utils.execute(fmt("kill -0 %s", pid))
-  return ok and code == 0, pid
+  local code = kill(pid_path, "-0")
+  return code == 0
 end
 
 local _M = {}
@@ -137,11 +135,7 @@ end
 
 function _M.stop(nginx_prefix)
   local pid_path = pl_path.join(nginx_prefix, serf_pid_name)
-  local running, pid = is_running(pid_path)
-  if not running then return true end
-
-  local ok, code = pl_utils.execute(fmt("kill %s", pid))
-  return ok and code == 0
+  return kill(pid_path, "-9")
 end
 
 return _M

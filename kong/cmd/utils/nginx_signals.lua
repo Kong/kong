@@ -1,6 +1,6 @@
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
-local pl_file = require "pl.file"
+local kill = require "kong.cmd.utils.kill"
 local fmt = string.format
 
 local nginx_bin_name = "nginx"
@@ -18,21 +18,14 @@ local function is_openresty(bin_path)
   end
 end
 
-local function get_pid(nginx_prefix)
-  local pid_path = pl_path.join(nginx_prefix, "logs", "nginx.pid")
-  if pl_path.exists(pid_path) then
-    return pl_file.read(pid_path)
-  end
-end
-
 local function send_signal(nginx_prefix, signal)
-  local pid = get_pid(nginx_prefix)
-  if not pid then return nil, "could not get Nginx pid (is Kong running?)" end
+  local pid_path = pl_path.join(nginx_prefix, "logs", "nginx.pid")
+  if not pl_path.exists(pid_path) then
+    return nil, "could not get Nginx pid (is Kong running?)"
+  end
 
-  local cmd = fmt("kill -s %s %s", signal, pid)
-
-  local ok = pl_utils.execute(cmd)
-  if not ok then return nil, "could not send signal" end
+  local code = kill(pid_path, "-s "..signal)
+  if code ~= 0 then return nil, "could not send signal" end
 
   return true
 end
