@@ -48,16 +48,10 @@ local function attach_hooks(events, hooks)
   end
 end
 
-local function load_plugins(kong_config, events)
-  local constants = require "kong.constants"
-  local pl_tablex = require "pl.tablex"
-
+local function load_plugins(kong_conf, events)
   -- short-lived DAO just to retrieve plugins
-  local dao = DAOFactory(kong_config)
-
+  local dao = DAOFactory(kong_conf)
   local in_db_plugins, sorted_plugins = {}, {}
-  local plugins = pl_tablex.merge(constants.PLUGINS_AVAILABLE,
-                                  kong_config.custom_plugins, true)
 
   ngx.log(ngx.DEBUG, "Discovering used plugins")
 
@@ -68,13 +62,13 @@ local function load_plugins(kong_config, events)
 
   -- check all plugins in DB are enabled/installed
   for plugin in pairs(in_db_plugins) do
-    if not plugins[plugin] then
+    if not kong_conf.plugins[plugin] then
       return nil, plugin.." plugin is in use but not enabled"
     end
   end
 
   -- load installed plugins
-  for plugin in pairs(plugins) do
+  for plugin in pairs(kong_conf.plugins) do
     local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
     if not ok then
       return nil, plugin.." plugin is enabled but not installed"
@@ -108,7 +102,7 @@ local function load_plugins(kong_config, events)
   end)
 
   -- add reports plugin if not disabled
-  if kong_config.anonymous_reports then
+  if kong_conf.anonymous_reports then
     local reports = require "kong.core.reports"
     reports.enable()
     sorted_plugins[#sorted_plugins+1] = {
@@ -117,8 +111,7 @@ local function load_plugins(kong_config, events)
     }
   end
 
-  -- sorted for handles, name=true for DAO
-  return {sorted = sorted_plugins, names = plugins}
+  return sorted_plugins
 end
 
 -- Kong public context handlers.
@@ -135,13 +128,13 @@ function Kong.init()
 
   -- retrieve node plugins
   local events = Events()
-  local plugins = assert(load_plugins(config, events))
+  local sorted_plugins = assert(load_plugins(config, events))
 
   -- instanciate long-lived DAO
-  local dao = DAOFactory(config, plugins.names, events)
+  local dao = DAOFactory(config, config.plugins, events)
 
   -- populate singletons
-  singletons.loaded_plugins = plugins.sorted
+  singletons.loaded_plugins = sorted_plugins
   singletons.serf = Serf.new(config, dao)
   singletons.dao = dao
   singletons.events = events

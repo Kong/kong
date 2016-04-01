@@ -48,14 +48,19 @@ describe("Configuration loader", function()
     }))
     assert.is_nil(conf.stub_property)
   end)
-  it("loads custom plugins", function()
+  it("returns a plugins table", function()
+    local constants = require "kong.constants"
     local conf = assert(conf_loader())
-    assert.same({}, conf.custom_plugins)
-
-    conf = assert(conf_loader(nil, {
+    assert.is_nil(conf.custom_plugins)
+    assert.same(constants.PLUGINS_AVAILABLE, conf.plugins)
+  end)
+  it("loads custom plugins", function()
+    local conf = assert(conf_loader(nil, {
       custom_plugins = "hello-world,my-plugin"
     }))
-    assert.same({"hello-world", "my-plugin"}, conf.custom_plugins)
+    assert.is_nil(conf.custom_plugins)
+    assert.True(conf.plugins["hello-world"])
+    assert.True(conf.plugins["my-plugin"])
   end)
 
   describe("inferences", function()

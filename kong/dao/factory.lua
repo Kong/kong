@@ -184,7 +184,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
 
   if #to_run > 0 and on_migrate ~= nil then
     -- we have some migrations to run
-    on_migrate(identifier)
+    on_migrate(identifier, _db:infos())
   end
 
   for _, migration in ipairs(to_run) do
@@ -207,7 +207,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     end
 
     if on_success ~= nil then
-      on_success(identifier, migration.name)
+      on_success(identifier, migration.name, _db:infos())
     end
   end
 
