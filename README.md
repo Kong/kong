@@ -1,10 +1,16 @@
 # Microservice & API Management Layer [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
- Kong is a scalable, open source API Layer *(also known as an API Gateway, or API Middleware)*. Kong was originally built at [Mashape][mashape-url] to secure, manage and extend over [15,000 APIs & Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices) for its API Marketplace, which generates billions of requests per month.
+Kong is a scalable, open source API Layer *(also known as an API Gateway, or
+API Middleware)*. Kong was originally built at [Mashape][mashape-url] to
+secure, manage and extend over [15,000 APIs &
+Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
+for its API Marketplace, which generates billions of requests per month.
 
-Backed by the battle-tested **NGINX** with a focus on high performance, Kong was made available as an open-source platform in 2015. Under active development, Kong is now used in production at hundreds of organizations from startups, to large enterprises and government departments.
-
+Backed by the battle-tested **NGINX** with a focus on high performance, Kong
+was made available as an open-source platform in 2015. Under active
+development, Kong is now used in production at hundreds of organizations from
+startups, to large enterprises and government departments.
 
 [Website][kong-url] |
 [Docs](https://getkong.org/docs) |
@@ -28,14 +34,22 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 
 ## Features
 
-- **CLI**: Control your Kong cluster from the command line just like Neo in The Matrix.
-- **REST API**: Kong can be operated with its RESTful API for maximum flexibility.
+- **CLI**: Control your Kong cluster from the command line just like Neo in The
+  Matrix.
+- **REST API**: Kong can be operated with its RESTful API for maximum
+  flexibility.
 - **Geo-Replicated**: Configs are always up-to-date across different regions.
-- **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra nodes goes down.
-- **Cluster Awarness**: All Kongs auto-join the cluster keeping config updated across nodes.
-- **Scalability**: Distributed by nature, Kong scales horizontally simply by adding nodes.
-- **Performance**: Kong handles load with ease by scaling and using NGINX at the core.
-- **Developer Portal**: With [Gelato](https://docs.gelato.io/guides/using-gelato-with-kong) integration, build beautiful portals for easy developer on-boarding.
+- **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra
+  nodes goes down.
+- **Cluster Awarness**: All Kongs auto-join the cluster keeping config updated
+  across nodes.
+- **Scalability**: Distributed by nature, Kong scales horizontally simply by
+  adding nodes.
+- **Performance**: Kong handles load with ease by scaling and using NGINX at
+  the core.
+- **Developer Portal**: With
+  [Gelato](https://docs.gelato.io/guides/using-gelato-with-kong) integration,
+  build beautiful portals for easy developer on-boarding.
 - **Plugins**: Extendable architecture for adding functionality to Kong and APIs.
   - **OAuth2.0**: Add easily an OAuth2.0 authentication to your APIs.
   - **Logging**: Log requests and responses to your system over HTTP, TCP, UDP or to disk.
@@ -57,36 +71,50 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
   - **CORS**: Enable cross-origin requests to your APIs that would otherwise be blocked.
   - **Anything**: Need custom functionality? Extend Kong with your own Lua plugins!
 
-For more info about plugins, you can check out the [Plugin Gallery](https://getkong.org/plugins/).
+For more info about plugins, you can check out the [Plugin
+Gallery](https://getkong.org/plugins/).
 
 ## Why Kong?
 
-If you're building for web, mobile or IoT (Internet of Things) you will likely end up needing common functionality on top of your actual software. Kong can help by acting as a gateway for HTTP requests while providing logging, authentication, rate-limiting and more through plugins.
+If you're building for web, mobile or IoT (Internet of Things) you will likely
+end up needing common functionality on top of your actual software. Kong can
+help by acting as a gateway for HTTP requests while providing logging,
+authentication, rate-limiting and more through plugins.
 
 [![][kong-benefits]][kong-url]
 
 ## Benchmarks
 
-We've load tested Kong and Cassandra on AWS; you can see our [benchmark report here](https://getkong.org/about/benchmark/).
+We've load tested Kong and Cassandra on AWS; you can see our [benchmark report
+here](https://getkong.org/about/benchmark/).
 
 ## Distributions
 
-Kong comes in many shapes. While this repository contains its core's source code, other repos are also under active development:
+Kong comes in many shapes. While this repository contains its core's source
+code, other repos are also under active development:
 
-- [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for running Kong in Docker.
-- [Kong Packages](https://github.com/Mashape/kong-distributions): Packaging scripts for deb, rpm and osx distributions.
-- [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for provisioning a development ready environment for Kong.
-- [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula for Kong.
-- [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation): Kong in a 1-click deployment for AWS EC2
-- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU/ref=srh_res_product_image?ie=UTF8&sr=0-2&qid=1440801656966): Kong AMI on the AWS Marketplace.
-- [Kong on Microsoft Azure](https://github.com/Mashape/kong-azure): Run Kong using Azure Resource Manager.
-- [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on Heroku in one click.
-
+- [Kong Docker](https://github.com/Mashape/docker-kong): A Dockerfile for
+  running Kong in Docker.
+- [Kong Packages](https://github.com/Mashape/kong-distributions): Packaging
+  scripts for deb, rpm and osx distributions.
+- [Kong Vagrant](https://github.com/Mashape/kong-vagrant): A Vagrantfile for
+  provisioning a development ready environment for Kong.
+- [Kong Homebrew](https://github.com/Mashape/homebrew-kong): Homebrew Formula
+  for Kong.
+- [Kong CloudFormation](https://github.com/Mashape/kong-dist-cloudformation):
+  Kong in a 1-click deployment for AWS EC2
+- [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
+  the AWS Marketplace.
+- [Kong on Microsoft Azure](https://github.com/Mashape/kong-azure): Run Kong
+  using Azure Resource Manager.
+- [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
+  Heroku in one click.
+- [Kong and Instaclustr](https://www.instaclustr.com/solutions/kong/): Let
+  Instaclustr manage your Cassandra cluster.
 
 ## Community Resources and Tools
 
-Resources:
-
+**Resources**:
 - [The story behind Kong](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
 - [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
@@ -101,40 +129,35 @@ Resources:
 - [A Question about Microservices](http://www.marcotroisi.com/questions-about-microservices/)
 - [Kong Intro in Chinese](https://www.sdk.cn/news/1596)
 
-Videos:
-
+**Videos**:
 - [Kong Intro Tutorial](https://www.youtube.com/watch?v=S6CeWL2qvl4)
 - [Kong mentioned at Hashicorp Conf](https://www.youtube.com/watch?v=0r24K_0BGBY&feature=youtu.be&t=22m03s)
 - [Kong Demo in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [OAuth2 with Kong](https://www.youtube.com/watch?v=nzySsFuV72M)
 - [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
-Podcasts:
+**Podcasts**:
 - [Changelog #185](https://changelog.com/185)
 - [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
 
-Tools:
-
+Here is a list of third-party **tools** maintained by the community:
 - [Ansible role for Kong on Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
-- [Biplane CLI tool](https://github.com/articulate/biplane)
-- [Bonobo: Kong key management (with Mashery migration scripts)](https://github.com/guardian/bonobo)
-- [Chef cookbook for Kong](https://github.com/zuazo/kong-cookbook)
-- [Django](https://github.com/vikingco/django-kong-admin): Kong Admin UI in Py
-- [Extended file-logging plugin](https://github.com/nazarhussain/kong-file-log-extended)
-- [Extended log-serializer plugin](https://github.com/nazarhussain/kong-log-serializers-extended)
-- [Jungle](https://github.com/rsdevigo/jungle): Kong Admin UI in JS
-- [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
+- [Biplane](https://github.com/articulate/biplane): declarative configuration in Crystal
+- [Bonobo](https://github.com/guardian/bonobo): key management (with Mashery migration scripts)
+- [Chef cookbook](https://github.com/zuazo/kong-cookbook)
+- [Django Kong Admin](https://github.com/vikingco/django-kong-admin): Admin UI in Python
+- [Jungle](https://github.com/rsdevigo/jungle): Admin UI in JavaScript
+- [Kong Dashboard](https://github.com/PGBI/kong-dashboard): Admin UI in JavaScript
 - [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
 - [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
-- [Kong on Tutum](https://github.com/Sillelien/docker-kong)
-- [Kong UI](https://github.com/msaraf/kong-ui): Kong Admin UI in JS
-- [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
-- [Konga CLI tool](https://github.com/Floby/konga-cli)
+- [Kong image for Tutum](https://github.com/Sillelien/docker-kong)
+- [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
+- [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
+- [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
 - [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
-- [Kongfig](https://github.com/mybuilder/kongfig)
-- [Puppet recipe for Kong](https://github.com/scottefein/puppet-nyt-kong)
-- [Python client for Kong](https://pypi.python.org/pypi/python-kong/)
-- [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
+- [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
+- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admint client library for Python
+- [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
 
 ## Roadmap
 
@@ -142,17 +165,27 @@ You can find a detailed Roadmap of Kong on the [Wiki](https://github.com/Mashape
 
 ## Development
 
-If you are planning on developing on Kong, you'll need a development installation. The `next` branch holds the latest unreleased source code.
+If you are planning on developing on Kong, you'll need a development
+installation. The `next` branch holds the latest unreleased source code.
 
-You can read more about writing your own plugins in the [Plugin Development Guide](https://getkong.org/docs/latest/plugin-development/), or browse an online version of Kong's source code documentation in the [Public Lua API Reference](https://getkong.org/docs/latest/lua-reference/).
+You can read more about writing your own plugins in the [Plugin Development
+Guide](https://getkong.org/docs/latest/plugin-development/), or browse an
+online version of Kong's source code documentation in the [Public Lua API
+Reference](https://getkong.org/docs/latest/lua-reference/).
 
 #### Vagrant
 
-You can use a Vagrant box running Kong and Cassandra that you can find at [Mashape/kong-vagrant](https://github.com/Mashape/kong-vagrant).
+You can use a Vagrant box running Kong and Cassandra that you can find at
+[Mashape/kong-vagrant](https://github.com/Mashape/kong-vagrant).
 
 #### Source Install
 
-First, you will need to already have Kong installed. Install Kong by following one of the methods described at [getkong.org/download](https://getkong.org/download). Then, make sure you have downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is running. These steps will override your Kong installation with the latest source code:
+First, you will need to already have Kong installed. Install Kong by following
+one of the methods described at
+[getkong.org/download](https://getkong.org/download). Then, make sure you have
+downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is
+running. These steps will override your Kong installation with the latest
+source code:
 
 ```shell
 $ git clone https://github.com/Mashape/kong
@@ -167,17 +200,27 @@ $ make install
 
 #### Running for development
 
-It is best to run Kong with a development configuration file. Such a file can easily be created following those instructions:
+It is best to run Kong with a development configuration file. Such a file can
+easily be created following those instructions:
 
 ```shell
-# Install all development dependencies and create your environment configuration files
+# Install all development dependencies and create your environment
+configuration files
 $ make dev
 
 # Finally, run Kong with the just created development configuration
 $ kong start -c kong_DEVELOPMENT.yml
 ```
 
-Since you use a configuration file dedicated to development, feel free to customize it as you wish. For example, the one generated by `make dev` includes the following changes: the [`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path) directive specifies that the Lua modules in your current directory will be used in favor of the system installation. The [`lua_code_cache`](https://github.com/openresty/lua-nginx-module#lua_code_cache) directive being turned off, you can start Kong, edit your local files, and test your code without restarting Kong.
+Since you use a configuration file dedicated to development, feel free to
+customize it as you wish. For example, the one generated by `make dev` includes
+the following changes: the
+[`lua_package_path`](https://github.com/openresty/lua-nginx-module#lua_package_path)
+directive specifies that the Lua modules in your current directory will be used
+in favor of the system installation. The
+[`lua_code_cache`](https://github.com/openresty/lua-nginx-module#lua_code_cache)
+directive being turned off, you can start Kong, edit your local files, and test
+your code without restarting Kong.
 
 To stop Kong, you will need to specify the configuration file too:
 
@@ -187,7 +230,8 @@ $ kong stop -c kong_DEVELOPMENT.yml
 $ kong reload -c kong_DEVELOPMENT.yml
 ```
 
-Learn more about the CLI and configuration options in the [documentation](https://getkong.org/docs/latest/cli/).
+Learn more about the CLI and configuration options in the
+[documentation](https://getkong.org/docs/latest/cli/).
 
 #### Tests
 
@@ -195,15 +239,21 @@ Kong relies on three test suites:
 
 * Unit tests
 * Integration tests, which require a running Cassandra cluster
-* Plugins tests, which are a mix of unit and integration tests, which also require a Cassandra cluster
+* Plugins tests, which are a mix of unit and integration tests, which also
+  require a Cassandra cluster
 
-The first can simply be run after installing [busted](https://github.com/Olivine-Labs/busted) and running:
+The first can simply be run afte  installing
+[busted](https://github.com/Olivine-Labs/busted) and running:
 
 ```
 $ busted spec/unit
 ```
 
-The integration tests require you to have a configuration file at `./kong_TEST.yml` and to make it point to a running Cassandra cluster (it will use a keyspace of its own). Such a file is also created by `make dev`, but you can create one of your own or customize it (you might want to change the logging settings, for example):
+The integration tests require you to have a configuration file at
+`./kong_TEST.yml` and to make it point to a running Cassandra cluster (it will
+use a keyspace of its own). Such a file is also created by `make dev`, but you
+can create one of your own or customize it (you might want to change the
+logging settings, for example):
 
 ```
 $ busted spec/integration
@@ -211,7 +261,8 @@ $ busted spec/integration
 
 The `make dev` command can create a default `kong_TEST.yml` file.
 
-The plugins tests also require a `./kong_TEST.yml` file and a running Cassandra cluster, and be be run with:
+The plugins tests also require a `./kong_TEST.yml` file and a running Cassandra
+cluster, and be be run with:
 
 ```
 $ busted spec/plugins
@@ -221,13 +272,15 @@ Finally, all suites can be run at once by simply running `busted`.
 
 #### Tools
 
-Various tools are used for documentation and code quality. They can all be easily installed by running:
+Various tools are used for documentation and code quality. They can all be
+easily installed by running:
 
 ```
 $ make dev
 ```
 
-Code coverage is analyzed by [luacov](http://keplerproject.github.io/luacov/) from the busted **unit tests**:
+Code coverage is analyzed by [luacov](http://keplerproject.github.io/luacov/)
+from the busted **unit tests**:
 
 ```
 $ busted --coverage
@@ -236,13 +289,16 @@ $ luacov kong
 $ make coverage
 ```
 
-The code is statically analyzed and linted by [luacheck](https://github.com/mpeterv/luacheck). It is easier to use the Makefile to run it:
+The code is statically analyzed and linted by
+[luacheck](https://github.com/mpeterv/luacheck). It is easier to use the
+Makefile to run it:
 
 ```
 $ make lint
 ```
 
-The documentation is written according to the [ldoc](https://github.com/stevedonovan/LDoc) format and can be generated with:
+The documentation is written according to the
+[ldoc](https://github.com/stevedonovan/LDoc) format and can be generated with:
 
 ```
 $ ldoc -c config.ld kong/
@@ -250,28 +306,32 @@ $ ldoc -c config.ld kong/
 $ make doc
 ```
 
-We maintain this documentation on the  [Public Lua API Reference](https://getkong.org/docs/latest/lua-reference/) so it is unlikely that you will have to generate it, but it is useful to keep that information in mind when documenting your modules if you wish to contribute.
+We maintain this documentation on the [Public Lua API
+Reference](https://getkong.org/docs/latest/lua-reference/) so it is unlikely
+that you will have to generate it, but it is useful to keep that information in
+mind when documenting your modules if you wish to contribute.
 
 #### Makefile
 
 When developing, you can use the `Makefile` for doing the following operations:
 
-| Name               | Description                                             |
-| ------------------:| --------------------------------------------------------|
-| `install`          | Install the Kong luarock globally                       |
-| `dev`              | Setup your development environment                      |
-| `clean`            | Clean your development environment                      |
-| `doc`              | Generate the ldoc documentation                         |
-| `lint`             | Lint Lua files in `kong/` and `spec/`                   |
-| `test`             | Run the unit tests suite                                |
-| `test-integration` | Run the integration tests suite                         |
-| `test-plugins`     | Run the plugins test suite                              |
-| `test-all`         | Run all unit + integration tests at once                |
-| `coverage`         | Run all tests + coverage report                         |
+| Name               | Description                                            |
+| ------------------:| -------------------------------------------------------|
+| `install`          | Install the Kong luarock globally                      |
+| `dev`              | Setup your development environment                     |
+| `clean`            | Clean your development environment                     |
+| `doc`              | Generate the ldoc documentation                        |
+| `lint`             | Lint Lua files in `kong/` and `spec/`                  |
+| `test`             | Run the unit tests suite                               |
+| `test-integration` | Run the integration tests suite                        |
+| `test-plugins`     | Run the plugins test suite                             |
+| `test-all`         | Run all unit + integration tests at once               |
+| `coverage`         | Run all tests + coverage report                        |
 
 ## Enterprise Support & Demo
 
-[Learn more](https://getkong.org/enterprise) about Kong Priority Support, Products, HA, Demo, Training, API Certifications and Professional Services.
+[Learn more](https://getkong.org/enterprise) about Kong Priority Support,
+Products, HA, Demo, Training, API Certifications and Professional Services.
 
 ## License
 
