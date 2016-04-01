@@ -5,6 +5,7 @@ Usage: kong COMMAND [OPTIONS]
 The available commands are:
  start
  stop
+ migrate
 
 Options:
  --trace (optional boolean) with traceback
@@ -14,7 +15,7 @@ local cmds = {
   start = "start",
   stop = "stop",
   --reload = "reload",
-  --migrate = "migrate",
+  migrate = "migrate",
   --reset = "reset"
 }
 
@@ -34,6 +35,18 @@ return function(args)
 
   cmd_lapp = cmd_lapp.." --trace (optional boolean) with traceback\n"
   args = pl_app(cmd_lapp)
+
+  -- check sub-commands
+  if cmd.sub_commands then
+    local sub_cmd = table.remove(args, 2)
+    if not sub_cmd then
+      pl_app.quit()
+    elseif not cmd.sub_commands[sub_cmd] then
+      pl_app.quit("No such command for "..cmd_name..": "..sub_cmd)
+    else
+      args.command = sub_cmd
+    end
+  end
 
   xpcall(function() cmd_exec(args) end, function(err)
     if not args.trace then

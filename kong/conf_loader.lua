@@ -36,6 +36,7 @@ local CONF_SCHEMA = {
 }
 
 local kong_default_conf = require "kong.templates.kong_defaults"
+local constants = require "kong.constants"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
 local pl_config = require "pl.config"
@@ -182,6 +183,16 @@ local function load(path, custom_conf)
   if not ok then return nil, err end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
+
+  -- Merge plugins
+  local custom_plugins = {}
+  for i = 1, #conf.custom_plugins do
+    local plugin_name = conf.custom_plugins[i]
+    custom_plugins[plugin_name] = true
+  end
+  conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
+  conf.custom_plugins = nil
+
   return setmetatable(conf, nil) -- remove Map mt
 end
 
