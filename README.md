@@ -115,26 +115,26 @@ Podcasts:
 
 Tools:
 
-- [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
-- [Kongfig](https://github.com/mybuilder/kongfig)
-- [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
-- [Konga CLI tool](https://github.com/Floby/konga-cli)
-- [Kong on Tutum](https://github.com/Sillelien/docker-kong)
-- [Jungle](https://github.com/rsdevigo/jungle): Kong Admin UI in JS
-- [Django](https://github.com/vikingco/django-kong-admin): Kong Admin UI in Py
-- [Kong UI](https://github.com/msaraf/kong-ui): Kong Admin UI in JS
-- [Chef cookbook for Kong](https://github.com/zuazo/kong-cookbook)
-- [Puppet recipe for Kong](https://github.com/scottefein/puppet-nyt-kong)
 - [Ansible role for Kong on Ubuntu](https://github.com/Getsidecar/ansible-role-kong)
-- [Python client for Kong](https://pypi.python.org/pypi/python-kong/)
-- [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
-- [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
+- [Biplane CLI tool](https://github.com/articulate/biplane)
 - [Bonobo: Kong key management (with Mashery migration scripts)](https://github.com/guardian/bonobo)
-- [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
-- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
+- [Chef cookbook for Kong](https://github.com/zuazo/kong-cookbook)
+- [Django](https://github.com/vikingco/django-kong-admin): Kong Admin UI in Py
 - [Extended file-logging plugin](https://github.com/nazarhussain/kong-file-log-extended)
 - [Extended log-serializer plugin](https://github.com/nazarhussain/kong-log-serializers-extended)
-- [Biplane CLI tool](https://github.com/articulate/biplane)
+- [Jungle](https://github.com/rsdevigo/jungle): Kong Admin UI in JS
+- [Kong Dashboard](https://github.com/PGBI/kong-dashboard)
+- [Kong for CanopyCloud](https://github.com/CanopyCloud/cip-kong)
+- [Kong image waiting for Cassandra](https://github.com/articulate/docker-kong-wait)
+- [Kong on Tutum](https://github.com/Sillelien/docker-kong)
+- [Kong UI](https://github.com/msaraf/kong-ui): Kong Admin UI in JS
+- [Kong with Instaclustr](https://www.instaclustr.com/products/kong/)
+- [Konga CLI tool](https://github.com/Floby/konga-cli)
+- [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
+- [Kongfig](https://github.com/mybuilder/kongfig)
+- [Puppet recipe for Kong](https://github.com/scottefein/puppet-nyt-kong)
+- [Python client for Kong](https://pypi.python.org/pypi/python-kong/)
+- [.NET Client for Kong](https://www.nuget.org/packages/Kong/0.0.4)
 
 ## Roadmap
 
