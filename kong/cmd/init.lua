@@ -1,22 +1,28 @@
 local pl_app = require "pl.lapp"
+local log = require "kong.cmd.utils.log"
+
+local options = [[
+ --trace (optional boolean) with traceback
+ --v     (optional boolean) verbose
+ --vv    (optional boolean) debug
+]]
+
 local help = [[
 Usage: kong COMMAND [OPTIONS]
 
 The available commands are:
  start
  stop
- migrate
+ migrations
 
 Options:
- --trace (optional boolean) with traceback
-]]
+]]..options
 
 local cmds = {
   start = "start",
   stop = "stop",
   --reload = "reload",
-  migrate = "migrate",
-  --reset = "reset"
+  migrations = "migrations"
 }
 
 return function(args)
@@ -33,7 +39,7 @@ return function(args)
   local cmd_lapp = cmd.lapp
   local cmd_exec = cmd.execute
 
-  cmd_lapp = cmd_lapp.." --trace (optional boolean) with traceback\n"
+  cmd_lapp = cmd_lapp..options -- append universal options
   args = pl_app(cmd_lapp)
 
   -- check sub-commands
@@ -46,6 +52,13 @@ return function(args)
     else
       args.command = sub_cmd
     end
+  end
+
+  -- verbose mode
+  if args.verbose then
+    log.set_lvl(log.levels.verbose)
+  elseif args.vv then
+    log.set_lvl(log.levels.debug)
   end
 
   xpcall(function() cmd_exec(args) end, function(err)

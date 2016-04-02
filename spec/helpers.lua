@@ -11,7 +11,7 @@ local pl_dir = require "pl.dir"
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
-local dao = DAOFactory(conf)
+local dao = DAOFactory(conf, conf.plugins)
 
 -- make sure migrations are up-to-date
 assert(dao:run_migrations())

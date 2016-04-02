@@ -69,7 +69,7 @@ local function execute(args)
 end
 
 local lapp = [[
-Usage: kong migrate COMMAND [OPTIONS]
+Usage: kong migrations COMMAND [OPTIONS]
 
 The available commands are:
  list
