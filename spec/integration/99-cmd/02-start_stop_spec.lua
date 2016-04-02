@@ -27,7 +27,9 @@ describe("Start/Stop", function()
     assert.is_string(stderr)
     assert.not_equal("", stderr)
   end)
-  it("start/stop default conf/prefix", function()
+  pending("start/stop default conf/prefix", function()
+    -- don't want to force migrations to be run on default
+    -- keyspace/database
     local ok, _, stdout, stderr = exec "start"
     assert.not_equal("", stdout)
     assert.equal("", stderr)
@@ -48,6 +50,31 @@ describe("Start/Stop", function()
     assert.True(ok)
     assert.not_equal("", stdout)
     assert.equal("", stderr)
+  end)
+
+  describe("verbose args", function()
+    it("accepts verbose", function()
+      local ok, _, stdout, stderr = exec("start --v --conf "..helpers.test_conf_path)
+      assert.True(ok)
+      assert.matches("[verbose] prefix in use: ", stdout, nil, true)
+      assert.equal("", stderr)
+
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
+      end)
+    end)
+    it("accepts debug", function()
+      local ok, _, stdout, stderr = exec("start --vv --conf "..helpers.test_conf_path)
+      assert.True(ok)
+      assert.matches("[verbose] prefix in use: ", stdout, nil, true)
+      assert.matches("[debug] prefix = ", stdout, nil, true)
+      assert.matches("[debug] database = ", stdout, nil, true)
+      assert.equal("", stderr)
+
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
+      end)
+    end)
   end)
 
   describe("Serf", function()
@@ -107,7 +134,24 @@ describe("Start/Stop", function()
       assert.matches("Error: could not get Nginx pid", stderr, nil, true)
 
       finally(function()
-        helpers.execute "pkill nginx"
+        helpers.execute "pkill nginx; pkill serf"
+        helpers.dir.rmtree(helpers.test_conf.prefix)
+      end)
+    end)
+    it("notifies when Nginx is already running", function()
+      assert(helpers.dir.makepath(helpers.test_conf.prefix))
+
+      local ok, _, stdout, stderr = exec("start --prefix "..helpers.test_conf.prefix)
+      assert.True(ok)
+      assert.not_equal("", stdout)
+      assert.equal("", stderr)
+
+      local ok, _, stdout, stderr = exec("start --prefix "..helpers.test_conf.prefix)
+      assert.False(ok)
+      assert.equal("", stdout)
+      assert.matches("Nginx is already running in", stderr)
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
         helpers.dir.rmtree(helpers.test_conf.prefix)
       end)
     end)

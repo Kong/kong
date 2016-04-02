@@ -43,6 +43,7 @@ local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
+local log = require "kong.cmd.utils.log"
 
 local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
   local value -- definitive value for this property
@@ -66,6 +67,8 @@ local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
   if arg_conf[k] ~= nil then
     value = arg_conf[k]
   end
+
+  log.debug("%s = %s", k, value)
 
   -- transform {boolean} values ("on"/"off" aliasing to true/false)
   -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
@@ -159,6 +162,7 @@ local function load(path, custom_conf)
         path = default_path
         break
       end
+      log.verbose("no config file found at %s", default_path)
     end
   end
 
@@ -166,6 +170,7 @@ local function load(path, custom_conf)
     local f, err = pl_file.read(path)
     if not f then return nil, err end
 
+    log.verbose("reading config file at "..path)
     local s = pl_stringio.open(f)
     from_file_conf, err = pl_config.read(s)
     s:close()
@@ -177,7 +182,9 @@ local function load(path, custom_conf)
   ----------------
 
   -- merge default conf with file conf, ENV variables and arg conf (with precedence)
-  local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf or {}, CONF_SCHEMA)
+  local conf = tablex.pairmap(overrides, defaults,
+                              from_file_conf, custom_conf or {},
+                              CONF_SCHEMA)
 
   local ok, err = validate(conf, CONF_SCHEMA)
   if not ok then return nil, err end
@@ -192,6 +199,8 @@ local function load(path, custom_conf)
   end
   conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
   conf.custom_plugins = nil
+
+  log.verbose("prefix in use: "..conf.prefix)
 
   return setmetatable(conf, nil) -- remove Map mt
 end
