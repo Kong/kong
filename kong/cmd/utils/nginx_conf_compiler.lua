@@ -1,7 +1,28 @@
+local NGINX_VARS = {
+  plugins = true,
+  cluster_listen = true,
+  database = true,
+  pg_host = true,
+  pg_port = true,
+  pg_user = true,
+  pg_password = true,
+  pg_database = true,
+  cassandra_contact_points = true,
+  cassandra_keyspace = true,
+  cassandra_timeout = true,
+  cassandra_consistency = true,
+  cassandra_ssl = true,
+  cassandra_ssl_verify = true,
+  cassandra_username = true,
+  cassandra_password = true,
+  anonymous_reports = true
+}
+
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local nginx_template = require "kong.templates.nginx"
 local pl_template = require "pl.template"
 local pl_stringx = require "pl.stringx"
+local pl_pretty = require "pl.pretty"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
@@ -20,7 +41,25 @@ end
 
 local function compile_conf(kong_config, conf_template)
   -- computed config properties for templating
-  local compile_env = {}
+  local compile_env = {
+    _escape = ">",
+    pairs = pairs,
+    tostring = tostring,
+    nginx_vars = {}
+  }
+
+  -- variables needed in Nginx
+  for k in pairs(NGINX_VARS) do
+    local v = kong_config[k]
+    local typ = type(v)
+    if typ == "table" then
+      v = pl_pretty.write(v, string.rep(" ", 6), true)
+    elseif typ == "string" then
+      v = string.format("%q", v)
+    end
+
+    compile_env.nginx_vars[k] = v
+  end
 
   if kong_config.cassandra_ssl and kong_config.cassandra_ssl_trusted_cert then
     compile_env["lua_ssl_trusted_certificate"] = kong_config.cassandra_ssl_trusted_cert
@@ -76,7 +115,6 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local ok, _, _, stderr = touch(acc_logs_path)
   if not ok then return nil, stderr end
 
-  local kong_conf_path = pl_path.join(nginx_prefix, "kong.conf")
   local nginx_config_path = pl_path.join(nginx_prefix, "nginx.conf")
   local kong_nginx_conf_path = pl_path.join(nginx_prefix, "nginx-kong.conf")
 
@@ -88,23 +126,11 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local kong_nginx_conf = compile_kong_conf(kong_config)
   pl_file.write(kong_nginx_conf_path, kong_nginx_conf)
 
-  -- write kong.conf for NGINX workers to retrieve it
-  local buf = {}
-  for k, v in pairs(kong_config) do
-    if type(v) == "table" then
-      v = table.concat(v, ",")
-    end
-    if v ~= "" then
-      buf[#buf+1] = k.." = "..tostring(v)
-    end
-  end
-  pl_file.write(kong_conf_path, table.concat(buf, "\n"))
-
   return true
 end
 
 return {
-  compile_kong_conf = compile_kong_conf,
   compile_nginx_conf = compile_nginx_conf,
+  compile_kong_conf = compile_kong_conf,
   prepare_prefix = prepare_prefix
 }
