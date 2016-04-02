@@ -14,6 +14,7 @@ The available commands are:
  start
  stop
  migrations
+ compile
 
 Options:
 ]]..options
@@ -21,12 +22,13 @@ Options:
 local cmds = {
   start = "start",
   stop = "stop",
+  compile = "compile",
   --reload = "reload",
   migrations = "migrations"
 }
 
 return function(args)
-  local cmd_name = args[1]
+  local cmd_name = table.remove(args, 1)
   if not cmd_name then
     pl_app(help)
     pl_app.quit()
@@ -55,7 +57,7 @@ return function(args)
   end
 
   -- verbose mode
-  if args.verbose then
+  if args.v then
     log.set_lvl(log.levels.verbose)
   elseif args.vv then
     log.set_lvl(log.levels.debug)

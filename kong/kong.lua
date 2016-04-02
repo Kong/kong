@@ -37,7 +37,6 @@ local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
-local conf_loader = require "kong.conf_loader"
 local plugins_iterator = require "kong.core.plugins_iterator"
 
 local ipairs = ipairs
@@ -119,13 +118,7 @@ end
 
 local Kong = {}
 
-function Kong.init()
-  local pl_path = require "pl.path"
-
-  -- retrieve kong_config
-  local conf_path = pl_path.join(ngx.config.prefix(), "kong.conf")
-  local config = assert(conf_loader(conf_path))
-
+function Kong.init(config)
   -- retrieve node plugins
   local events = Events()
   local sorted_plugins = assert(load_plugins(config, events))

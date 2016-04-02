@@ -45,37 +45,23 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local log = require "kong.cmd.utils.log"
 
-local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
-  local value -- definitive value for this property
+local typ_checks = {
+  array = function(v) return type(v) == "table" end,
+  string = function(v) return type(v) == "string" end,
+  number = function(v) return type(v) == "number" end,
+  boolean = function(v) return type(v) == "boolean" end,
+  ngx_boolean = function(v) return v == "on" or v == "off" end,
+}
 
-  -- default values have lowest priority
-  if file_conf[k] == nil then
-    -- PL will ignore empty strings, so we need a placeholer (NONE)
-    value = default_v == "NONE" and "" or default_v
-  else
-    -- given conf values have middle priority
-    value = file_conf[k]
-  end
+local function check_and_infer(conf)
+  for k, value in pairs(conf) do
+    local v_schema = CONF_SCHEMA[k] or {}
+    local typ = v_schema.typ
 
-  -- environment variables have higher priority
-  local env = os.getenv("KONG_"..string.upper(k))
-  if env ~= nil then
-    value = env
-  end
-
-  -- arg_conf have highest priority
-  if arg_conf[k] ~= nil then
-    value = arg_conf[k]
-  end
-
-  log.debug("%s = %s", k, value)
-
-  -- transform {boolean} values ("on"/"off" aliasing to true/false)
-  -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
-  -- transform {explicit string} values (number values converted to strings)
-  -- transform {array} values (comma-separated strings)
-  if conf_schema[k] ~= nil then
-    local typ = conf_schema[k].typ
+    -- transform {boolean} values ("on"/"off" aliasing to true/false)
+    -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
+    -- transform {explicit string} values (number values converted to strings)
+    -- transform {array} values (comma-separated strings)
     if typ == "boolean" then
       value = value == true or value == "on" or value == "true"
     elseif typ == "ngx_boolean" then
@@ -90,36 +76,21 @@ local function overrides(k, default_v, file_conf, arg_conf, conf_schema)
       -- only one element)
       value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
     end
-  elseif type(value) == "string" then
-    -- default type is string, and an empty if unset
-    value = value ~= "" and tostring(value) or nil
-  end
 
-  return value, k
-end
-
-local typ_checks = {
-  array = function(v) return type(v) == "table" end,
-  string = function(v) return type(v) == "string" end,
-  number = function(v) return type(v) == "number" end,
-  boolean = function(v) return type(v) == "boolean" end,
-  ngx_boolean = function(v) return v == "on" or v == "off" end,
-}
-
-local function validate(conf, conf_schema)
-  for k, v in pairs(conf) do
-    -- type check
-    local v_schema = conf_schema[k] or {}
-    local typ = v_schema.typ or "string"
-    if not typ_checks[typ](v) then
-      return nil, k.." is not a "..typ..": '"..tostring(v).."'"
+    if type(value) == "string" then
+      -- default type is string, and an empty if unset
+      value = value ~= "" and tostring(value) or nil
     end
 
-    -- enum check
-    if v_schema.enum and not tablex.find(v_schema.enum, v) then
-      return nil, k.." has an invalid value: '"..tostring(v)
+    typ = typ or "string"
+    if value and not typ_checks[typ](value) then
+      return nil, k.." is not a "..typ..": '"..tostring(value).."'"
+    elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
+      return nil, k.." has an invalid value: '"..tostring(value)
                   .."' ("..table.concat(v_schema.enum, ", ")..")"
     end
+
+    conf[k] = value
   end
 
   -- custom validation
@@ -132,6 +103,34 @@ local function validate(conf, conf_schema)
   end
 
   return true
+end
+
+local function overrides(k, default_v, file_conf, arg_conf)
+  local value -- definitive value for this property
+
+  -- default values have lowest priority
+  if file_conf and file_conf[k] == nil then
+    -- PL will ignore empty strings, so we need a placeholer (NONE)
+    value = default_v == "NONE" and "" or default_v
+  else
+    -- given conf values have middle priority
+    value = file_conf[k]
+  end
+
+  -- environment variables have higher priority
+  local env = os.getenv("KONG_"..string.upper(k))
+  if env ~= nil then
+    value = env
+  end
+
+  -- arg_conf have highest priority
+  if arg_conf and arg_conf[k] ~= nil then
+    value = arg_conf[k]
+  end
+
+  log.debug("%s = %s", k, value)
+
+  return value, k
 end
 
 -- @param[type=string] path A path to a conf file
@@ -177,28 +176,29 @@ local function load(path, custom_conf)
     if not from_file_conf then return nil, err end
   end
 
-  ----------------
-  -- Merging logic
-  ----------------
+  -----------------------
+  -- Merging & validation
+  -----------------------
 
   -- merge default conf with file conf, ENV variables and arg conf (with precedence)
-  local conf = tablex.pairmap(overrides, defaults,
-                              from_file_conf, custom_conf or {},
-                              CONF_SCHEMA)
+  local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf)
 
-  local ok, err = validate(conf, CONF_SCHEMA)
+  -- validation
+  local ok, err = check_and_infer(conf)
   if not ok then return nil, err end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
-  -- Merge plugins
-  local custom_plugins = {}
-  for i = 1, #conf.custom_plugins do
-    local plugin_name = conf.custom_plugins[i]
-    custom_plugins[plugin_name] = true
+  do
+    -- merge plugins
+    local custom_plugins = {}
+    for i = 1, #conf.custom_plugins do
+      local plugin_name = conf.custom_plugins[i]
+      custom_plugins[plugin_name] = true
+    end
+    conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
+    conf.custom_plugins = nil
   end
-  conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
-  conf.custom_plugins = nil
 
   log.verbose("prefix in use: "..conf.prefix)
 

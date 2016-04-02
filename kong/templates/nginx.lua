@@ -5,10 +5,10 @@ daemon ${{NGINX_DAEMON}};
 error_log logs/error.log debug;
 
 events {
-# if nginx_optimizations then
+> if nginx_optimizations then
     worker_connections ${{ULIMIT}};
     multi_accept on;
-# end
+> end
 }
 
 http {
