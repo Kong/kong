@@ -28,6 +28,7 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
+local log = require "kong.cmd.utils.log"
 
 local function gather_system_infos(compile_env)
   local infos = {}
@@ -95,6 +96,8 @@ local function touch(file_path)
 end
 
 local function prepare_prefix(kong_config, nginx_prefix)
+  log.verbose("preparing nginx prefix directory at %s", nginx_prefix)
+
   if not pl_path.exists(nginx_prefix) then
     return nil, nginx_prefix.." does not exist"
   elseif not pl_path.isdir(nginx_prefix) then

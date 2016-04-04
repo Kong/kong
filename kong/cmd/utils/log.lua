@@ -32,8 +32,8 @@ local function log(lvl, ...)
     end
 
     local msg = string.format(format, unpack(args))
-    if lvl ~= _LEVELS.info then
-      msg = string.format("%s [%s] %s", os.date("%H:%M:%S"), r_levels[lvl], msg)
+    if log_lvl < _LEVELS.info then
+      msg = string.format("%s [%s] %s", os.date("%Y/%m/%d %H:%M:%S"), r_levels[lvl], msg)
     end
 
     print(msg)
