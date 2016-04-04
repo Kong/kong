@@ -2,7 +2,7 @@ return [[
 resolver ${{DNS_RESOLVER}} ipv6=off;
 charset UTF-8;
 
-error_log logs/error.log debug;
+error_log logs/error.log notice;
 access_log logs/access.log;
 
 > if nginx_optimizations then

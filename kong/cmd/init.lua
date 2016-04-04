@@ -46,7 +46,7 @@ return function(args)
 
   -- check sub-commands
   if cmd.sub_commands then
-    local sub_cmd = table.remove(args, 2)
+    local sub_cmd = table.remove(args, 1)
     if not sub_cmd then
       pl_app.quit()
     elseif not cmd.sub_commands[sub_cmd] then
