@@ -5,7 +5,7 @@ local function exec(args)
   return helpers.execute(helpers.bin_path.." "..args)
 end
 
-describe("Start/Stop", function()
+describe("kong start/stop", function()
   setup(function()
     helpers.execute "pkill nginx; pkill serf"
     helpers.prepare_prefix()

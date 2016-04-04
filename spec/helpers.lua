@@ -2,19 +2,20 @@ local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
 
 local conf_loader = require "kong.conf_loader"
-local DAOFactory = require "kong.dao.factory"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 
 ---------------
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
-local dao = DAOFactory(conf, conf.plugins)
 
+--local DAOFactory = require "kong.dao.factory"
+--local dao = DAOFactory(conf, conf.plugins)
 -- make sure migrations are up-to-date
-assert(dao:run_migrations())
+--assert(dao:run_migrations())
 
 --------------------
 -- Custom assertions
@@ -75,6 +76,7 @@ return {
   -- Penlight
   dir = pl_dir,
   path = pl_path,
+  file = pl_file,
   execute = pl_utils.executeex,
 
   -- Kong testing properties

@@ -22,8 +22,8 @@ Options:
 local cmds = {
   start = "start",
   stop = "stop",
+  reload = "reload",
   compile = "compile",
-  --reload = "reload",
   migrations = "migrations"
 }
 
@@ -61,6 +61,7 @@ return function(args)
     log.set_lvl(log.levels.verbose)
   elseif args.vv then
     log.set_lvl(log.levels.debug)
+    args.trace = true
   end
 
   xpcall(function() cmd_exec(args) end, function(err)
