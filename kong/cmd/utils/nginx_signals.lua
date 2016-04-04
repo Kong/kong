@@ -33,6 +33,8 @@ local function send_signal(nginx_prefix, signal)
     return nil, "could not get Nginx pid (is Nginx running in this prefix?)"
   end
 
+  log.verbose("sending %s signal to nginx running at %s", signal, pid_path)
+
   local code = kill(pid_path, "-s "..signal)
   if code ~= 0 then return nil, "could not send signal" end
 
@@ -58,6 +60,8 @@ function _M.find_bin()
     return nil, "could not find OpenResty 'nginx' executable"
   end
 
+  log.verbose("found OpenResty 'nginx' executable at %s", found)
+
   return found
 end
 
@@ -74,6 +78,8 @@ function _M.start(nginx_prefix)
   end
 
   local cmd = fmt("%s -p %s -c %s", nginx_bin, nginx_prefix, "nginx.conf")
+
+  log.debug("starting nginx: %s", cmd)
 
   local ok, _, _, stderr = pl_utils.executeex(cmd)
   if not ok then return nil, stderr end

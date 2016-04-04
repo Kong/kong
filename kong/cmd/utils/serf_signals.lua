@@ -9,6 +9,7 @@ local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local kill = require "kong.cmd.utils.kill"
+local log = require "kong.cmd.utils.log"
 local fmt = string.format
 
 local serf_bin_name = "serf"
@@ -45,6 +46,7 @@ exit 0
 ]]
 
 local function prepare_prefix(kong_config, nginx_prefix, script_path)
+  log.verbose("dumping Serf shell script handler in %s", script_path)
   local script = fmt(script_template, kong_config.admin_listen)
 
   pl_file.write(script_path, script)
@@ -66,8 +68,10 @@ function _M.start(kong_config, nginx_prefix, dao)
   -- is Serf already running in this prefix?
   local pid_path = pl_path.join(nginx_prefix, serf_pid_name)
   if is_running(pid_path) then
+    log.verbose("Serf agent already running at %s", pid_path)
     return true
   else
+    log.verbose("Serf agent not running, deleting %s", pid_path)
     pl_file.delete(pid_path)
   end
 
@@ -102,6 +106,8 @@ function _M.start(kong_config, nginx_prefix, dao)
                   serf_bin_name, tostring(args),
                   log_path, pid_path)
 
+  log.debug("starting Serf agent: %s", cmd)
+
   -- start Serf agent
   local ok = pl_utils.execute(cmd)
   if not ok then return nil end
@@ -111,6 +117,7 @@ function _M.start(kong_config, nginx_prefix, dao)
   local texp, started = tstart + start_timeout
 
   repeat
+    log.debug("waiting for Serf agent to be running...")
     ngx.sleep "0.2"
     started = is_running(pid_path)
   until started or ngx.time() >= texp
@@ -124,9 +131,11 @@ function _M.start(kong_config, nginx_prefix, dao)
     return nil, "could not start Serf:\n  "..err
   end
 
+  log.verbose("auto-joining Serf cluster...")
   local ok, err = serf:autojoin()
   if not ok then return nil, err end
 
+  log.verbose("adding node to Serf cluster (in datastore)...")
   local ok, err = serf:add_node()
   if not ok then return nil, err end
 
@@ -135,6 +144,7 @@ end
 
 function _M.stop(nginx_prefix)
   local pid_path = pl_path.join(nginx_prefix, serf_pid_name)
+  log.verbose("stopping Serf agent at %s", pid_path)
   return kill(pid_path, "-9")
 end
 
