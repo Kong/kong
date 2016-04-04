@@ -358,7 +358,7 @@ function PostgresDB:count(table_name, tbl, schema)
   end
 end
 
-function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full, options)
+function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full, _, options)
   local args = {}
   local values, err = self:serialize_timestamps(values, schema)
   if err then

@@ -40,7 +40,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(row)
       end)
 
-      it("on update", function()
+      it("on update - increase ttl", function()
         local api, err = factory.apis:insert({
           name = "mockbin", request_host = "mockbin.com",
           upstream_url = "http://mockbin.com"
@@ -57,7 +57,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         -- Updating the TTL to a higher value
         factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 10})
 
-        os.execute("sleep 5")
+        os.execute("sleep 9")
 
         row, err = factory.apis:find {
           id = api.id
@@ -65,12 +65,41 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.truthy(row)
 
-        os.execute("sleep 5")
+        os.execute("sleep 2")
+
+        -- It has now finally expired
+        row, err = factory.apis:find {
+          id = api.id
+        }
+        assert.falsy(err)
+        assert.falsy(row)
+      end)
+
+      it("on update - decrease ttl", function()
+        local api, err = factory.apis:insert({
+          name = "mockbin", request_host = "mockbin.com",
+          upstream_url = "http://mockbin.com"
+        }, {ttl = 10})
+        assert.falsy(err)
+
+        os.execute("sleep 3")
+
+        -- Retrieval
+        local row, err = factory.apis:find {
+          id = api.id
+        }
+        assert.falsy(err)
+        assert.truthy(row)
+
+        -- Updating the TTL to a lower value
+        local _, err = factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 3})
+        assert.falsy(err)
+
+        os.execute("sleep 4")
 
         row, err = factory.apis:find {
           id = api.id
         }
-
         assert.falsy(err)
         assert.falsy(row)
       end)
