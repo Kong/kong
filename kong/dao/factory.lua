@@ -182,7 +182,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     end
   end
 
-  if #to_run > 0 and on_migrate ~= nil then
+  if #to_run > 0 and on_migrate then
     -- we have some migrations to run
     on_migrate(identifier, _db:infos())
   end
@@ -206,33 +206,52 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
       return false, string.format("Error recording migration %s: %s", migration.name, err)
     end
 
-    if on_success ~= nil then
+    if on_success then
       on_success(identifier, migration.name, _db:infos())
     end
   end
 
-  return true
+  return true, nil, #to_run
+end
+
+local function default_on_migrate(identifier, db_infos)
+  local log = require "kong.cmd.utils.log"
+  log("Migrating %s for %s %s",
+      identifier, db_infos.desc, db_infos.name)
+end
+
+local function default_on_success(identifier, migration_name, db_infos)
+  local log = require "kong.cmd.utils.log"
+  log("%s migrated up to: %s",
+      identifier, migration_name)
 end
 
 function Factory:run_migrations(on_migrate, on_success)
+  on_migrate = on_migrate or default_on_migrate
+  on_success = on_success or default_on_success
+
+  local log = require "kong.cmd.utils.log"
+
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then
-    return false, err
-  end
+  if err then return nil, err end
 
   local ok, err = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then
-    return false, err
-  end
+  if not ok then return nil, err end
 
+  local migrations_ran = 0
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
-      ok, err = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then
-        return false, err
+      local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
+      if not ok then return nil, err
+      else
+        migrations_ran = math.max(migrations_ran, n_ran)
       end
     end
+  end
+
+  if migrations_ran > 0 then
+    log("Migrations up to date")
   end
 
   return true

@@ -47,9 +47,7 @@ local function attach_hooks(events, hooks)
   end
 end
 
-local function load_plugins(kong_conf, events)
-  -- short-lived DAO just to retrieve plugins
-  local dao = DAOFactory(kong_conf)
+local function load_plugins(kong_conf, dao, events)
   local in_db_plugins, sorted_plugins = {}, {}
 
   ngx.log(ngx.DEBUG, "Discovering used plugins")
@@ -121,13 +119,13 @@ local Kong = {}
 function Kong.init(config)
   -- retrieve node plugins
   local events = Events()
-  local sorted_plugins = assert(load_plugins(config, events))
 
   -- instanciate long-lived DAO
   local dao = DAOFactory(config, config.plugins, events)
+  assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
-  singletons.loaded_plugins = sorted_plugins
+  singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)
   singletons.dao = dao
   singletons.events = events
