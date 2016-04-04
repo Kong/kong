@@ -5,7 +5,7 @@ local function exec(args)
   return helpers.execute(helpers.bin_path.." "..args)
 end
 
-describe("Compile", function()
+describe("kong compile", function()
   it("compiles a Kong NGINX config", function()
     local ok, _, stdout, stderr = exec "compile"
     assert.True(ok)
