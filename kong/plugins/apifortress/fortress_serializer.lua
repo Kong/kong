@@ -78,10 +78,7 @@ function _M.serialize(ngx)
   local dummy_cookies = {}
   table_insert(dummy_cookies, { name = "apif", value = "1"})
 
-  local failed = false
-  if status > 340 or status < 200 then
-    failed = true
-  end
+  local failed = status > 340 or status < 200
 
   local metrics = { times = { overall = ngx_var.request_time * 1000 } }
 
