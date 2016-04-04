@@ -16,7 +16,7 @@ return {
   fields = {
     apikey = { required = true, type = "string", func = validateKeys },
     secret = { required = true, type = "string", func = validateKeys },
-    endpoint = {required = true, type = "string", func = validateKeys },
+    endpoint = {required = true, type = "string", func = validateKeys, default = "https://mastiff.apifortress.com/app/api/rest/v2/test/runAutomatch" },
     projectId = {required = true , type = "number", func = validateProjectId },
     threshold = {required = true, type = "number", func = validateThreshold }
   }
