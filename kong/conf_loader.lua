@@ -54,6 +54,8 @@ local typ_checks = {
 }
 
 local function check_and_infer(conf)
+  local errors = {}
+
   for k, value in pairs(conf) do
     local v_schema = CONF_SCHEMA[k] or {}
     local typ = v_schema.typ
@@ -84,10 +86,10 @@ local function check_and_infer(conf)
 
     typ = typ or "string"
     if value and not typ_checks[typ](value) then
-      return nil, k.." is not a "..typ..": '"..tostring(value).."'"
+      errors[#errors+1] = k.." is not a "..typ..": '"..tostring(value).."'"
     elseif v_schema.enum and not tablex.find(v_schema.enum, value) then
-      return nil, k.." has an invalid value: '"..tostring(value)
-                  .."' ("..table.concat(v_schema.enum, ", ")..")"
+      errors[#errors+1] = k.." has an invalid value: '"..tostring(value)
+                          .."' ("..table.concat(v_schema.enum, ", ")..")"
     end
 
     conf[k] = value
@@ -96,13 +98,13 @@ local function check_and_infer(conf)
   -- custom validation
   if conf.ssl then
     if not conf.ssl_cert then
-      return nil, "ssl_cert required if SSL enabled"
+      errors[#errors+1] = "ssl_cert required if SSL enabled"
     elseif not conf.ssl_cert_key then
-      return nil, "ssl_cert_key required if SSL enabled"
+      errors[#errors+1] = "ssl_cert_key required if SSL enabled"
     end
   end
 
-  return true
+  return #errors == 0, errors[1], errors
 end
 
 local function overrides(k, default_v, file_conf, arg_conf)
@@ -118,8 +120,10 @@ local function overrides(k, default_v, file_conf, arg_conf)
   end
 
   -- environment variables have higher priority
-  local env = os.getenv("KONG_"..string.upper(k))
+  local env_name = "KONG_"..string.upper(k)
+  local env = os.getenv(env_name)
   if env ~= nil then
+    log.debug("%s ENV found with %s", env_name, env)
     value = env
   end
 
@@ -184,8 +188,8 @@ local function load(path, custom_conf)
   local conf = tablex.pairmap(overrides, defaults, from_file_conf, custom_conf)
 
   -- validation
-  local ok, err = check_and_infer(conf)
-  if not ok then return nil, err end
+  local ok, err, errors = check_and_infer(conf)
+  if not ok then return nil, err, errors end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 

@@ -139,7 +139,7 @@ describe("Configuration loader", function()
   end)
 
   describe("errors", function()
-    it("throws inexistent file", function()
+    it("returns inexistent file", function()
       local conf, err = conf_loader "inexistent"
       assert.equal("no file at: inexistent", err)
       assert.is_nil(conf)
@@ -157,6 +157,16 @@ describe("Configuration loader", function()
       })
       assert.equal("ssl_cert_key required if SSL enabled", err)
       assert.is_nil(conf)
+    end)
+    it("returns all errors in ret value #3", function()
+      local conf, _, errors = conf_loader(nil, {
+        ssl = true,
+        cassandra_repl_strategy = "foo"
+      })
+      assert.equal(2, #errors)
+      assert.is_nil(conf)
+      assert.matches("cassandra_repl_strategy has", errors[1], nil, true)
+      assert.matches("ssl_cert required", errors[2], nil, true)
     end)
   end)
 end)

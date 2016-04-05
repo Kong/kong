@@ -2,9 +2,9 @@ local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 
 local options = [[
- --trace (optional boolean) with traceback
- --v     (optional boolean) verbose
- --vv    (optional boolean) debug
+ --trace     with traceback
+ --v         verbose
+ --vv        debug
 ]]
 
 local help = [[
@@ -14,6 +14,7 @@ The available commands are:
  start
  stop
  reload
+ check
  migrations
  compile
  version
@@ -25,6 +26,7 @@ local cmds = {
   start = "start",
   stop = "stop",
   reload = "reload",
+  check = "check",
   compile = "compile",
   migrations = "migrations",
   version = "version",
