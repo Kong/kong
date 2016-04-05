@@ -44,7 +44,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         local api, err = factory.apis:insert({
           name = "mockbin", request_host = "mockbin.com",
           upstream_url = "http://mockbin.com"
-        }, {ttl = 5})
+        }, {ttl = 3})
         assert.falsy(err)
 
         -- Retrieval
@@ -54,10 +54,12 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
         assert.falsy(err)
         assert.truthy(row)
 
-        -- Updating the TTL to a higher value
-        factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 10})
+        os.execute("sleep 2")
 
-        os.execute("sleep 9")
+        -- Updating the TTL to a higher value
+        factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 3})
+
+        os.execute("sleep 2")
 
         row, err = factory.apis:find {
           id = api.id

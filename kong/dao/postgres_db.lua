@@ -222,12 +222,22 @@ function PostgresDB:serialize_timestamps(tbl, schema)
 end
 
 function PostgresDB:ttl(tbl, table_name, schema, ttl)
-  if not schema.primary_key or #schema.primary_key > 1 then
+  if not schema.primary_key or #schema.primary_key ~= 1 then
     return false, "Cannot set a TTL if the entity has no primary key, or has more than one primary key"
   end
 
   local primary_key_type = self:retrieve_primary_key_type(schema, table_name)
-  local expire_at = tbl.created_at + (ttl * 1000)
+
+  -- Get current server time
+  local query = "SELECT extract(epoch from now() at time zone 'utc')::bigint*1000 as timestamp;"
+  local res, err = self:query(query)
+  if err then
+    return false, err
+  end
+
+  -- The expiration is always based on the current time
+  local expire_at = res[1].timestamp + (ttl * 1000)
+
   local query = string.format("SELECT upsert_ttl('%s', %s, '%s', '%s', to_timestamp(%d/1000) at time zone 'UTC')",
                               tbl[schema.primary_key[1]], primary_key_type == "uuid" and "'"..tbl[schema.primary_key[1]].."'" or "NULL", 
                               schema.primary_key[1], table_name, expire_at)
