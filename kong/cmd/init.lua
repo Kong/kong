@@ -13,8 +13,10 @@ Usage: kong COMMAND [OPTIONS]
 The available commands are:
  start
  stop
+ reload
  migrations
  compile
+ version
 
 Options:
 ]]..options
@@ -24,7 +26,9 @@ local cmds = {
   stop = "stop",
   reload = "reload",
   compile = "compile",
-  migrations = "migrations"
+  migrations = "migrations",
+  version = "version",
+  roar = "roar"
 }
 
 return function(args)
@@ -41,8 +45,10 @@ return function(args)
   local cmd_lapp = cmd.lapp
   local cmd_exec = cmd.execute
 
-  cmd_lapp = cmd_lapp..options -- append universal options
-  args = pl_app(cmd_lapp)
+  if cmd_lapp then
+    cmd_lapp = cmd_lapp..options -- append universal options
+    args = pl_app(cmd_lapp)
+  end
 
   -- check sub-commands
   if cmd.sub_commands then
