@@ -87,6 +87,12 @@
   ## Key for encrypting network traffic within Kong. Must be a base64-encoded 16-byte key.
   # encrypt: "foo"
 
+  ######
+  ## The TTL (time to live), in seconds, of a node in the cluster when it stops sending healthcheck pings, maybe 
+  ## because of a failure. If the node is not able to send a new healthcheck before the expiration, then new nodes 
+  ## in the cluster will stop attempting to connect to it on startup.
+  # ttl_on_failure: 3600
+
 ######
 ## Specify which database to use. Only "cassandra" is currently available.
 # database: cassandra

@@ -265,7 +265,7 @@ function DAO:update(tbl, filter_keys, options)
     fix(old, values, self.schema)
   end
 
-  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full_update, options)
+  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full_update, model, options)
   if err then
     return nil, err
   elseif res then
