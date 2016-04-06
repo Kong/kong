@@ -73,11 +73,11 @@ local function load_daos(self, schemas, constraints, events_handler)
   end
 end
 
-function Factory:new(kong_config, plugins, events_handler)
+function Factory:new(kong_config, events_handler)
   self.db_type = kong_config.database
   self.daos = {}
   self.kong_config = kong_config
-  self.plugin_names = plugins or {}
+  self.plugin_names = kong_config.plugins or {}
 
   local schemas = {}
   local DB = require("kong.dao."..self.db_type.."_db")

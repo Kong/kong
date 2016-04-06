@@ -1,6 +1,7 @@
 local NGINX_VARS = {
   plugins = true,
   cluster_listen = true,
+  cluster_listen_rpc = true,
   database = true,
   pg_host = true,
   pg_port = true,

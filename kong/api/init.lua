@@ -18,6 +18,8 @@ local function parse_params(fn)
         return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
       end
     end
+    local inspect = require "inspect"
+    print(inspect(self.params))
     self.params = api_helpers.normalize_nested_params(self.params)
     return fn(self, ...)
   end)

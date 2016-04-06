@@ -17,7 +17,7 @@ local function execute(args)
     prefix = args.prefix
   }))
 
-  local dao = DAOFactory(conf, conf.plugins)
+  local dao = DAOFactory(conf)
   assert(dao:run_migrations())
   assert(nginx_conf_compiler.prepare_prefix(conf, conf.prefix))
   assert(serf_signals.start(conf, conf.prefix, dao))

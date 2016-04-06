@@ -1,28 +1,28 @@
-local json = require "cjson"
-local stringy = require "stringy"
-local http_client = require "kong.tools.http_client"
-local spec_helper = require "spec.spec_helpers"
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 local function it_content_types(title, fn)
-  local test_form_encoded = fn("application/www-url-formencoded")
+  local test_form_encoded = fn("application/x-www-form-urlencoded")
   local test_json = fn("application/json")
   it(title.." with application/www-form-urlencoded", test_form_encoded)
   it(title.." with application/json", test_json)
 end
 
 describe("Admin API", function()
-  local api
-  local dao_factory = spec_helper.get_env().dao_factory
-
+  local client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.start_kong()
-  end)
+    helpers.execute "pkill nginx; pkill serf"
+    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
 
+    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+  end)
   teardown(function()
-    spec_helper.stop_kong()
+    client:close()
+    helpers.stop_kong()
+    --helpers.clean_prefix()
   end)
-
+  --[[
   before_each(function()
     local fixtures = spec_helper.insert_fixtures {
       api = {
@@ -31,50 +31,104 @@ describe("Admin API", function()
     }
     api = fixtures.api[1]
   end)
-
+  ]]
   after_each(function()
-    spec_helper.drop_db()
+    helpers.dao:truncate_tables()
   end)
 
-  describe("/apis/", function()
-    local BASE_URL = spec_helper.API_URL.."/apis/"
-
+  describe("/apis", function()
     describe("POST", function()
-      it_content_types("should create an API", function(content_type)
+      it_content_types("#o creates an API", function(content_type)
         return function()
-          local _, status = http_client.post(BASE_URL, {
-            name = "new-api",
-            request_host = "new-api.com",
-            upstream_url = "http://mockbin.com"
-          }, {["content-type"] = content_type})
-          assert.equal(201, status)
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis",
+            body = {
+              name = "my-api",
+              request_host = "my.api.com",
+              upstream_url = "http://api.com"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("my-api", json.name)
+          assert.equal("my.api.com", json.request_host)
+          assert.equal("http://api.com", json.upstream_url)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.is_nil(json.request_path)
+          assert.False(json.preserve_host)
+          assert.False(json.strip_request_path)
         end
       end)
       describe("errors", function()
-        it("should notify of malformed JSON body", function()
-          local response, status = http_client.post(BASE_URL, '{"hello":"world"', {["content-type"] = "application/json"})
-          assert.equal(400, status)
-          assert.equal('{"message":"Cannot parse JSON body"}\n', response)
+        it("#o handles malformed JSON body", function()
+          local res = assert(client:request {
+            method = "POST",
+            path = "/apis",
+            body = '{"hello": "world"',
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.res_status(400, res)
+          assert.equal('{"message":"Cannot parse JSON body"}', body)
         end)
-        it_content_types("return proper validation errors", function(content_type)
+        it_content_types("#o handles invalid input", function(content_type)
           return function()
-            local response, status = http_client.post(BASE_URL, {}, {["content-type"] = content_type})
-            assert.equal(400, status)
-            assert.equal([[{"upstream_url":"upstream_url is required","request_path":"At least a 'request_host' or a 'request_path' must be specified","request_host":"At least a 'request_host' or a 'request_path' must be specified"}]], stringy.strip(response))
+            -- Missing parameter
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            assert.equal([[{"upstream_url":"upstream_url is required",]]
+                         ..[["request_path":"At least a 'request_host' or a]]
+                         ..[[ 'request_path' must be specified","request_host":]]
+                         ..[["At least a 'request_host' or a 'request_path']]
+                         ..[[ must be specified"}]], body)
 
-            response, status = http_client.post(BASE_URL, {request_host = "/httpbin", upstream_url = "http://mockbin.com"}, {["content-type"] = content_type})
-            assert.equal(400, status)
-            assert.equal([[{"request_host":"Invalid value: \/httpbin"}]], stringy.strip(response))
+            -- Invalid parameter
+            res = assert(client:send {
+              method = "POST",
+              path = "/apis",
+              body = {
+                request_host = "my-api",
+                upstream_url = "http://my-api.con"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            assert.equal([[{"request_host":"Invalid value: my-api"}]], body)
           end
         end)
-        it_content_types("should return HTTP 409 if already exists", function(content_type)
+        it_content_types("#o should return HTTP 409 if already exists", function(content_type)
           return function()
-            local response, status = http_client.post(BASE_URL, {
-              request_host = "api-test.com",
-              upstream_url = "http://mockbin.com"
-            }, {["content-type"] = content_type})
-            assert.equal(409, status)
-            assert.equal([[{"request_host":"already exists with value 'api-test.com'"}]], stringy.strip(response))
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis",
+              body = {
+                name = "my-api",
+                request_host = "my-api.com",
+                upstream_url = "http://my-api.com"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.res_status(201, res)
+
+            res = assert(client:send {
+              method = "POST",
+              path = "/apis",
+              body = {
+                name = "my-api",
+                request_host = "my-api2.com",
+                upstream_url = "http://my-api2.com"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(409, res)
+            assert.equal([[{"name":"already exists with value 'my-api'"}]], body)
           end
         end)
       end)
