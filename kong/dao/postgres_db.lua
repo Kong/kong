@@ -1,6 +1,7 @@
 local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local uuid = require "lua_uuid"
+local utils = require "kong.tools.utils"
 
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
 
@@ -120,16 +121,21 @@ end
 
 -- Querying
 
-function PostgresDB:query(...)
-  PostgresDB.super.query(self, ...)
+function PostgresDB:query(query, no_database)
+  PostgresDB.super.query(self, query)
 
-  local pg = pgmoon.new(self:_get_conn_options())
+  local conn_opts = self:_get_conn_options()
+  if no_database then
+    conn_opts.database = "postgres"
+    conn_opts.user = "postgres"
+  end
+  local pg = pgmoon.new(conn_opts)
   local ok, err = pg:connect()
   if not ok then
     return nil, Errors.db(err)
   end
 
-  local res, err = pg:query(...)
+  local res, err = pg:query(query)
   if ngx and ngx.get_phase() ~= "init" then
     pg:keepalive()
   else
@@ -416,8 +422,13 @@ end
 
 -- Migrations
 
-function PostgresDB:queries(queries)
-  return select(2, self:query(queries))
+function PostgresDB:queries(queries, no_database)
+  if utils.strip(queries) ~= "" then
+    local err = select(2, self:query(queries, no_database))
+    if err then
+      return err
+    end
+  end
 end
 
 function PostgresDB:drop_table(table_name)
@@ -429,6 +440,16 @@ function PostgresDB:truncate_table(table_name)
 end
 
 function PostgresDB:current_migrations()
+  -- Check if database exists
+  local rows, err = self:query(string.format([[
+    SELECT 1 FROM pg_database WHERE datname = '%s'
+  ]], self.options.database), true)
+  if err then
+    return nil, err
+  elseif #rows == 0 then
+    return {}
+  end
+
   -- Check if schema_migrations table exists
   local rows, err = self:query "SELECT to_regclass('public.schema_migrations')"
   if err then
