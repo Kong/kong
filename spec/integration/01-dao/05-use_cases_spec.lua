@@ -1,11 +1,11 @@
-local helpers = require "spec.spec_helpers"
+local helpers = require "spec.integration.01-dao.helpers"
 local Factory = require "kong.dao.factory"
 
-helpers.for_each_dao(function(db_type, default_options, TYPES)
-  describe("Real use-cases with DB: #"..db_type, function()
+helpers.for_each_dao(function(kong_config)
+  describe("Real use-cases with DB: #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = Factory(db_type, default_options)
+      factory = Factory(kong_config)
       assert(factory:run_migrations())
 
       factory:truncate_tables()

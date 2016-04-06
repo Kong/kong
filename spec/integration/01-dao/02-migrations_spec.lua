@@ -1,17 +1,17 @@
+local helpers = require "spec.integration.01-dao.helpers"
 local utils = require "kong.tools.utils"
-local helpers = require "spec.spec_helpers"
 
 local Factory = require "kong.dao.factory"
 
-helpers.for_each_dao(function(db_type, default_opts, TYPES)
-  describe("Model migrations with DB: #"..db_type, function()
+helpers.for_each_dao(function(kong_config)
+  describe("Model migrations with DB: #"..kong_config.database, function()
     local factory
     setup(function()
-      local f = Factory(db_type, default_opts)
+      local f = Factory(kong_config)
       f:drop_schema()
     end)
     before_each(function()
-      factory = Factory(db_type, default_opts)
+      factory = Factory(kong_config)
     end)
 
     describe("current_migrations()", function()
@@ -20,20 +20,20 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
         assert.falsy(err)
         assert.same({}, cur_migrations)
       end)
-      it("should return errors", function()
-        local invalid_opts = utils.shallow_copy(default_opts)
-        if db_type == TYPES.CASSANDRA then
-          invalid_opts.keyspace = "_inexistent_"
-        elseif db_type == TYPES.POSTGRES then
-          invalid_opts.database = "_inexistent_"
+      pending("should return errors", function()
+        local invalid_conf = utils.shallow_copy(kong_config)
+        if invalid_conf.database == "cassandra" then
+          invalid_conf.cassandra_keyspace = "_inexistent_"
+        elseif invalid_conf.database == "postgres" then
+          invalid_conf.pg_database = "_inexistent_"
         end
 
-        local xfactory = Factory(db_type, invalid_opts)
+        local xfactory = Factory(invalid_conf)
 
         local cur_migrations, err = xfactory:current_migrations()
-        if db_type == TYPES.CASSANDRA then
+        if kong_config.database == "cassandra" then
           assert.same({}, cur_migrations)
-        elseif db_type == TYPES.POSTGRES then
+        elseif kong_config.database == "postgres" then
           assert.truthy(err)
           assert.falsy(cur_migrations)
           assert.True(err.db)
@@ -66,12 +66,17 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
     -- Integration behavior.
     -- Must run in order.
     describe("[INTEGRATION]", function()
+      local n_ids = 0
       local flatten_migrations = {}
       setup(function()
         factory:drop_schema()
         for identifier, migs in pairs(factory:migrations_modules()) do
+          n_ids = n_ids + 1
           for _, mig in ipairs(migs) do
-            flatten_migrations[#flatten_migrations + 1] = {identifier = identifier, name = mig.name}
+            flatten_migrations[#flatten_migrations + 1] = {
+              identifier = identifier,
+              name = mig.name
+            }
           end
         end
       end)
@@ -86,12 +91,12 @@ helpers.for_each_dao(function(db_type, default_opts, TYPES)
         assert.falsy(err)
         assert.True(ok)
 
-        assert.spy(on_migration).was_called(1)
+        assert.spy(on_migration).was_called(n_ids)
         assert.spy(on_success).was_called(#flatten_migrations)
 
         for _, mig in ipairs(flatten_migrations) do
-          assert.spy(on_migration).was_called_with(mig.identifier)
-          assert.spy(on_success).was_called_with(mig.identifier, mig.name)
+          assert.spy(on_migration).was_called_with(mig.identifier, factory:infos())
+          assert.spy(on_success).was_called_with(mig.identifier, mig.name, factory:infos())
         end
       end)
       it("should return the migrations recorded as executed", function()

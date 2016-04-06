@@ -2,20 +2,76 @@ local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
 
 local conf_loader = require "kong.conf_loader"
+local DAOFactory = require "kong.dao.factory"
+local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local http = require "resty.http"
+local log = require "kong.cmd.utils.log"
+
+log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
 ---------------
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
-
---local DAOFactory = require "kong.dao.factory"
---local dao = DAOFactory(conf, conf.plugins)
+local dao = DAOFactory(conf)
 -- make sure migrations are up-to-date
 --assert(dao:run_migrations())
+
+--------------------
+-- Custom properties
+--------------------
+local admin_port = string.match(conf.admin_listen, ":([%d]+)$")
+local proxy_port = string.match(conf.proxy_listen, ":([%d]+)$")
+
+-----------------
+-- Custom helpers
+-----------------
+local resty_http_proxy_mt = {}
+
+function resty_http_proxy_mt:send(opts)
+  local cjson = require "cjson"
+  local utils = require "kong.tools.utils"
+
+  opts = opts or {}
+  local body
+  local headers = opts.headers or {}
+  local content_type = headers["Content-Type"]
+  local t_body_table = type(opts.body) == "table"
+  if string.find(content_type, "application/json") and t_body_table then
+    body = cjson.encode(opts.body)
+  elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
+    body = utils.encode_args(opts.body, true) -- true: not % encoded
+  end
+
+  if body then
+    opts.body = body
+  end
+
+  return self:request(opts)
+end
+
+function resty_http_proxy_mt:__index(k)
+  local f = rawget(resty_http_proxy_mt, k)
+  if f then
+    return f
+  end
+
+  return self.client[k]
+end
+
+local function http_client(host, port, timeout)
+  timeout = timeout or 500
+  local client = assert(http.new())
+  assert(client:connect(host, port))
+  client:set_timeout(timeout)
+  return setmetatable({
+    client = client
+  }, resty_http_proxy_mt)
+end
 
 --------------------
 -- Custom assertions
@@ -40,7 +96,8 @@ local function res_status(state, args)
     table.insert(args, 1, expected)
     return false
   end
-  return true, {res:read_body()}
+  local body = pl_stringx.strip(res:read_body())
+  return true, {body}
 end
 say:set("assertion.res_status.negative", [[
 Invalid response status code.
@@ -80,16 +137,20 @@ return {
   execute = pl_utils.executeex,
 
   -- Kong testing properties
+  dao = dao,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
+  proxy_port = proxy_port,
+  admin_port = admin_port,
 
   -- Kong testing helpers
   kong_exec = kong_exec,
+  http_client = http_client,
   prepare_prefix = function(prefix)
     prefix = prefix or conf.prefix
-    pl_dir.makepath(prefix)
-    kong_exec("stop", prefix)
+    return pl_dir.makepath(prefix)
+    --kong_exec("stop", prefix)
   end,
   clean_prefix = function(prefix)
     prefix = prefix or conf.prefix

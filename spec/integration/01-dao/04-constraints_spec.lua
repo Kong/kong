@@ -1,6 +1,6 @@
-local utils = require "kong.tools.utils"
-local helpers = require "spec.spec_helpers"
+local helpers = require "spec.integration.01-dao.helpers"
 local Factory = require "kong.dao.factory"
+local utils = require "kong.tools.utils"
 
 local api_tbl = {
   name = "mockbin",
@@ -14,12 +14,12 @@ local plugin_tbl = {
   name = "key-auth"
 }
 
-helpers.for_each_dao(function(db_type, default_options, TYPES)
-  describe("Model (Constraints) with DB: #"..db_type, function()
+helpers.for_each_dao(function(kong_config)
+  describe("Model (Constraints) with DB: #"..kong_config.database, function()
     local plugin_fixture, api_fixture
     local factory, apis, plugins
     setup(function()
-      factory = Factory(db_type, default_options)
+      factory = Factory(kong_config)
       apis = factory.apis
       plugins = factory.plugins
       assert(factory:run_migrations())

@@ -1,28 +1,10 @@
-local helpers = require "spec.spec_helpers"
+local helpers = require "spec.integration.01-dao.helpers"
 local Factory = require "kong.dao.factory"
 
-helpers.for_each_dao(function(db_type, default_options, TYPES)
-
-
--- local function on_migrate(identifier)
---   print(string.format(
---     "Migrating %s (%s)",
---     identifier,
---     db_type
---   ))
--- end
-
--- local function on_success(identifier, migration_name)
---   print(string.format(
---     "%s migrated up to: %s",
---     identifier,
---     migration_name
---   ))
--- end
-
-  describe("Plugins DAOs with DB: #"..db_type, function()
+helpers.for_each_dao(function(kong_config)
+  describe("Plugins DAOs with DB: #"..kong_config.database, function()
     it("load plugins DAOs", function()
-      local factory = Factory(db_type, default_options, {"key-auth", "basic-auth", "acl", "hmac-auth", "jwt", "oauth2"})
+      local factory = Factory(kong_config)
       assert.truthy(factory.keyauth_credentials)
       assert.truthy(factory.basicauth_credentials)
       assert.truthy(factory.acls)
@@ -36,7 +18,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
     describe("plugins migrations", function()
       local factory
       setup(function()
-        factory = Factory(db_type, default_options, {"key-auth", "basic-auth", "acl", "hmac-auth", "jwt", "oauth2", "rate-limiting", "response-ratelimiting"})
+        factory = Factory(kong_config)
         factory:drop_schema()
       end)
       teardown(function()
@@ -61,7 +43,7 @@ helpers.for_each_dao(function(db_type, default_options, TYPES)
 
     describe("custom DBs", function()
       it("loads rate-limiting custom DB", function()
-        local factory = Factory(db_type, default_options, {"rate-limiting"})
+        local factory = Factory(kong_config)
         assert.truthy(factory.ratelimiting_metrics)
       end)
     end)

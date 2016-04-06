@@ -3,7 +3,8 @@ local _LEVELS = {
   verbose = 2,
   info = 3,
   warn = 4,
-  error = 5
+  error = 5,
+  quiet = 6
 }
 
 local r_levels = {}
