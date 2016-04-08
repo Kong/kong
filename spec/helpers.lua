@@ -37,18 +37,22 @@ function resty_http_proxy_mt:send(opts)
   local utils = require "kong.tools.utils"
 
   opts = opts or {}
-  local body
+
+  -- build body
   local headers = opts.headers or {}
-  local content_type = headers["Content-Type"]
+  local content_type = headers["Content-Type"] or ""
   local t_body_table = type(opts.body) == "table"
   if string.find(content_type, "application/json") and t_body_table then
-    body = cjson.encode(opts.body)
+    opts.body = cjson.encode(opts.body)
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
-    body = utils.encode_args(opts.body, true) -- true: not % encoded
+    opts.body = utils.encode_args(opts.body, true) -- true: not % encoded
   end
 
-  if body then
-    opts.body = body
+  -- build querystring (assumes none is currently in 'opts.path')
+  if type(opts.query) == "table" then
+    local qs = utils.encode_args(opts.query)
+    opts.path = opts.path.."?"..qs
+    opts.query = nil
   end
 
   return self:request(opts)
@@ -64,7 +68,7 @@ function resty_http_proxy_mt:__index(k)
 end
 
 local function http_client(host, port, timeout)
-  timeout = timeout or 500
+  timeout = timeout or 5000
   local client = assert(http.new())
   assert(client:connect(host, port))
   client:set_timeout(timeout)
@@ -90,7 +94,12 @@ luassert:register("assertion", "fail", fail,
 
 local function res_status(state, args)
   local expected, res = unpack(args)
-  if expected ~= res.status then
+  if not res then
+    table.insert(args, 1, "")
+    table.insert(args, 1, "no response")
+    table.insert(args, 1, expected)
+    return false
+  elseif expected ~= res.status then
     table.insert(args, 1, res:read_body())
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)

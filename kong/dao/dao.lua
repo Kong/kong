@@ -321,4 +321,8 @@ function DAO:delete(tbl)
   return row, err
 end
 
+function DAO:truncate()
+  return self.db:truncate_table(self.table)
+end
+
 return DAO

@@ -1,16 +1,16 @@
 return {
   {
     name = "2015-01-12-175310_skeleton",
-    up = function(db, properties)
-      local keyspace_name = properties.keyspace
-      local strategy, strategy_properties = properties.replication_strategy, ""
+    up = function(db, kong_config)
+      local keyspace_name = kong_config.keyspace
+      local strategy, strategy_properties = kong_config.cassandra_repl_strategy, ""
 
       -- Format strategy options
       if strategy == "SimpleStrategy" then
-        strategy_properties = string.format(", 'replication_factor': %s", properties.replication_factor)
+        strategy_properties = string.format(", 'replication_factor': %s", kong_config.cassandra_repl_factor)
       elseif strategy == "NetworkTopologyStrategy" then
         local dcs = {}
-        for dc_name, dc_repl in pairs(properties.data_centers) do
+        for dc_name, dc_repl in pairs(kong_config.cassandra_data_centers) do
           table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
         end
         if #dcs > 0 then

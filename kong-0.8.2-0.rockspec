@@ -69,7 +69,7 @@ build = {
     ["kong.cli.services.serf"] = "kong/cli/services/serf.lua",
     ["kong.cli.services.nginx"] = "kong/cli/services/nginx.lua",
 
-    ["kong.api.app"] = "kong/api/app.lua",
+    ["kong.api.init"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
