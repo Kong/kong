@@ -121,14 +121,10 @@ end
 
 -- Querying
 
-function PostgresDB:query(query, no_database)
+function PostgresDB:query(query)
   PostgresDB.super.query(self, query)
 
   local conn_opts = self:_get_conn_options()
-  if no_database then
-    conn_opts.database = "postgres"
-    conn_opts.user = "postgres"
-  end
   local pg = pgmoon.new(conn_opts)
   local ok, err = pg:connect()
   if not ok then
@@ -432,9 +428,9 @@ end
 
 -- Migrations
 
-function PostgresDB:queries(queries, no_database)
+function PostgresDB:queries(queries)
   if utils.strip(queries) ~= "" then
-    local err = select(2, self:query(queries, no_database))
+    local err = select(2, self:query(queries))
     if err then
       return err
     end
@@ -450,16 +446,6 @@ function PostgresDB:truncate_table(table_name)
 end
 
 function PostgresDB:current_migrations()
-  -- Check if database exists
-  local rows, err = self:query(string.format([[
-    SELECT 1 FROM pg_database WHERE datname = '%s'
-  ]], self.options.database), true)
-  if err then
-    return nil, err
-  elseif #rows == 0 then
-    return {}
-  end
-
   -- Check if schema_migrations table exists
   local rows, err = self:query "SELECT to_regclass('public.schema_migrations')"
   if err then

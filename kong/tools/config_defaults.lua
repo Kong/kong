@@ -42,7 +42,7 @@ return {
       ["port"] = {type = "number", default = 5432},
       ["user"] = {type = "string", default = "kong"},
       ["database"] = {type = "string", default = "kong"},
-      ["password"] = {type = "string", default = "kong"}
+      ["password"] = {type = "string", nullable = true}
     }
   },
   ["cassandra"] = {

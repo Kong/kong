@@ -1,6 +1,7 @@
 local syslog = require "kong.tools.syslog"
 local cache = require "kong.tools.database_cache"
 local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 local unique_str = utils.random_string()
 local enabled = false
 
@@ -29,7 +30,7 @@ local function send_ping(premature)
   if elapsed and elapsed == 0 then
     local reqs = cache.get(cache.requests_key())
     if not reqs then reqs = 0 end
-    syslog.log({signal = "ping", requests = reqs, unique_id = unique_str})
+    syslog.log({signal = "ping", requests = reqs, unique_id = unique_str, database = singletons.configuration.database})
     cache.incr(cache.requests_key(), -reqs) -- Reset counter
   end
   create_timer(INTERVAL, send_ping)
