@@ -2,24 +2,6 @@ return {
   {
     name = "2015-01-12-175310_skeleton",
     up = function(db, properties)
-      local database_name = properties.database
-      local user = properties.user
-
-      -- Format final database creation query
-      local database_str = string.format([[
-        DO $$
-        BEGIN
-          CREATE EXTENSION IF NOT EXISTS dblink;
-          IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '%s') THEN
-             PERFORM dblink_exec('dbname=' || current_database(), 'CREATE DATABASE %s%s');
-          END IF;
-        END$$;
-      ]], database_name, database_name, user and " OWNER "..user or "")
-      local err = db:queries(database_str, true)
-      if err then
-        return err
-      end
-
       return db:queries [[
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
