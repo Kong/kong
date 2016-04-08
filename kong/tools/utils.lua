@@ -7,6 +7,7 @@
 
 local url = require "socket.url"
 local uuid = require "lua_uuid"
+local stringy = require "stringy"
 
 local type = type
 local pairs = pairs
@@ -37,6 +38,9 @@ end
 function _M.random_string()
   return uuid():gsub("-", "")
 end
+
+_M.split = stringy.split
+_M.strip = stringy.strip
 
 --- URL escape and format key and value
 -- An obligatory url.unescape pass must be done to prevent double-encoding
@@ -170,7 +174,31 @@ function _M.deep_copy(orig)
   return copy
 end
 
+function _M.shallow_copy(orig)
+  local orig_type = type(orig)
+  local copy
+  if orig_type == "table" then
+    copy = {}
+    for orig_key, orig_value in pairs(orig) do
+      copy[orig_key] = orig_value
+    end
+  else -- number, string, boolean, etc
+    copy = orig
+  end
+  return copy
+end
+
 local err_list_mt = {}
+
+--- Concatenates lists into a new table.
+function _M.concat(...)
+  local result = {}
+  local insert = table.insert
+  for _, t in ipairs({...}) do
+    for _, v in ipairs(t) do insert(result, v) end
+  end
+  return result
+end
 
 --- Add an error message to a key/value table.
 -- If the key already exists, a sub table is created with the original and the new value.

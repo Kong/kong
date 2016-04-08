@@ -74,7 +74,7 @@ describe("Admin API", function()
               upstream_url = "http://mockbin.com"
             }, {["content-type"] = content_type})
             assert.equal(409, status)
-            assert.equal([[{"request_host":"request_host already exists with value 'api-test.com'"}]], stringy.strip(response))
+            assert.equal([[{"request_host":"already exists with value 'api-test.com'"}]], stringy.strip(response))
           end
         end)
       end)
@@ -120,7 +120,7 @@ describe("Admin API", function()
               upstream_url = "http://mockbin.com"
             }, {["content-type"] = content_type})
             assert.equal(409, status)
-            assert.equal([[{"request_host":"request_host already exists with value 'api-test.com'"}]], stringy.strip(response))
+            assert.equal([[{"request_host":"already exists with value 'api-test.com'"}]], stringy.strip(response))
           end
         end)
       end)
@@ -157,14 +157,28 @@ describe("Admin API", function()
         assert.not_same(body_page_1, body_page_2)
         assert.equal(10, body_page_2.total)
 
-        response, status = http_client.get(BASE_URL, {size = 4, offset = body_page_2.next})
+        response, status = http_client.get(BASE_URL, {size = 3, offset = body_page_2.next})
         assert.equal(200, status)
         local body_page_3 = json.decode(response)
         assert.truthy(body_page_3.data)
-        assert.equal(4, #body_page_3.data)
+        assert.equal(3, #body_page_3.data)
+        assert.equal(10, body_page_3.total)
+        assert.truthy(body_page_3.next)
+        assert.not_same(body_page_2, body_page_3)
+
+        response, status = http_client.get(BASE_URL, {size = 3, offset = body_page_3.next})
+        assert.equal(200, status)
+        local body_page_3 = json.decode(response)
+        assert.truthy(body_page_3.data)
+        assert.equal(1, #body_page_3.data)
         assert.equal(10, body_page_3.total)
         assert.falsy(body_page_3.next)
         assert.not_same(body_page_2, body_page_3)
+      end)
+      it("should refuse invalid filters", function()
+        local response, status = http_client.get(BASE_URL, {foo = "bar"})
+        assert.equal(400, status)
+        assert.equal([[{"foo":"unknown field"}]], stringy.strip(response))
       end)
     end)
 
@@ -198,10 +212,8 @@ describe("Admin API", function()
             local body = json.decode(response)
             assert.equal("patch-updated", body.name)
 
-            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            local api, err = dao_factory.apis:find {id = api.id}
             assert.falsy(err)
-            assert.equal(1, #rows)
-            local api = rows[1]
             assert.equal("patch-updated", api.name)
           end
         end)
@@ -214,10 +226,8 @@ describe("Admin API", function()
             local body = json.decode(response)
             assert.equal("patch-updated", body.name)
 
-            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            local api, err = dao_factory.apis:find {id = api.id}
             assert.falsy(err)
-            assert.equal(1, #rows)
-            local api = rows[1]
             assert.equal("patch-updated", api.name)
           end
         end)
@@ -230,10 +240,8 @@ describe("Admin API", function()
             local body = json.decode(response)
             assert.equal("/httpbin-updated", body.request_path)
 
-            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            local api, err = dao_factory.apis:find {id = api.id}
             assert.falsy(err)
-            assert.equal(1, #rows)
-            local api = rows[1]
             assert.equal("/httpbin-updated", api.request_path)
           end
         end)
@@ -246,10 +254,8 @@ describe("Admin API", function()
             local body = json.decode(response)
             assert.True(body.strip_request_path)
 
-            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            local api, err = dao_factory.apis:find {id = api.id}
             assert.falsy(err)
-            assert.equal(1, #rows)
-            local api = rows[1]
             assert.True(api.strip_request_path)
           end
         end)
@@ -264,10 +270,8 @@ describe("Admin API", function()
             assert.equal("/httpbin-updated-path", body.request_path)
             assert.equal("httpbin-updated.org", body.request_host)
 
-            local rows, err = dao_factory.apis:find_by_keys {id = api.id}
+            local api, err = dao_factory.apis:find {id = api.id}
             assert.falsy(err)
-            assert.equal(1, #rows)
-            local api = rows[1]
             assert.equal("/httpbin-updated-path", api.request_path)
             assert.equal("httpbin-updated.org", api.request_host)
           end
@@ -436,9 +440,11 @@ describe("Admin API", function()
               assert.truthy(body.config)
               assert.False(body.config.hide_credentials)
 
-              local rows, err = dao_factory.plugins:find_by_keys {id = plugin.id}
+              local plugin, err = dao_factory.plugins:find {
+                id = plugin.id,
+                name = plugin.name
+              }
               assert.falsy(err)
-              plugin = rows[1]
               assert.truthy(plugin.config)
               assert.False(plugin.config.hide_credentials)
               assert.same({"apikey"}, plugin.config.key_names)
@@ -466,9 +472,11 @@ describe("Admin API", function()
               assert.falsy(body.config.hour)
               assert.equal(3, body.config.minute)
 
-              local rows, err = dao_factory.plugins:find_by_keys {id = plugin.id}
+              local plugin, err = dao_factory.plugins:find {
+                id = plugin.id,
+                name = plugin.name
+              }
               assert.falsy(err)
-              plugin = rows[1]
               assert.truthy(plugin.config)
               assert.falsy(plugin.config.hour)
               assert.equal(3, plugin.config.minute)
@@ -549,6 +557,27 @@ describe("Admin API", function()
               local body = json.decode(response)
               assert.same(plugin, body)
             end)
+            it("[SUCCESS] should not retrieve a plugin that is not associated to the right API", function()
+              local response, status = http_client.get(BASE_URL)
+              assert.equal(200, status)
+              local body = json.decode(response)
+              assert.equal(2, body.total)
+
+              local api_id_1 = body.data[1].id
+              local api_id_2 = body.data[2].id
+
+              local response, status = http_client.get(spec_helper.API_URL.."/plugins")
+              assert.equal(200, status)
+              local body = json.decode(response)
+              local plugin_id = body.data[1].id
+
+              local _, status = http_client.get(spec_helper.API_URL.."/apis/"..(body.data[1].api_id == api_id_1 and api_id_1 or api_id_2).."/plugins/"..plugin_id)
+              assert.equal(200, status)
+
+              -- Let's try to request it with the other API
+              local _, status = http_client.get(spec_helper.API_URL.."/apis/"..(body.data[1].api_id == api_id_1 and api_id_2 or api_id_1).."/plugins/"..plugin_id)
+              assert.equal(404, status)
+            end)
           end)
 
           describe("PATCH", function()
@@ -584,22 +613,24 @@ describe("Admin API", function()
                 }, {["content-type"] = content_type})
                 assert.equal(200, status)
 
-                local rows, err = dao_factory.plugins:find_by_keys {
-                  id = plugin.id
+                local plugin, err = dao_factory.plugins:find {
+                  id = plugin.id,
+                  name = plugin.name
                 }
                 assert.falsy(err)
-                assert.False(rows[1].enabled)
+                assert.False(plugin.enabled)
 
                 _, status = http_client.patch(API_PLUGIN_BASE_URL..plugin.id, {
                   enabled = true
                 }, {["content-type"] = content_type})
                 assert.equal(200, status)
 
-                rows, err = dao_factory.plugins:find_by_keys {
-                  id = plugin.id
+                plugin, err = dao_factory.plugins:find {
+                  id = plugin.id,
+                  name = plugin.name
                 }
                 assert.falsy(err)
-                assert.True(rows[1].enabled)
+                assert.True(plugin.enabled)
               end
             end)
             describe("errors", function()

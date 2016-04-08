@@ -10,6 +10,11 @@ describe("Rate Limiting Metrics", function()
   local api_id = uuid()
   local identifier = uuid()
 
+  setup(function()
+    dao_factory:drop_schema()
+    spec_helper.prepare_db()
+  end)
+
   after_each(function()
     spec_helper.drop_db()
   end)
@@ -19,7 +24,7 @@ describe("Rate Limiting Metrics", function()
     local periods = timestamp.get_timestamps(current_timestamp)
     -- Very first select should return nil
     for period, period_date in pairs(periods) do
-      local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
+      local metric, err = response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
       assert.are.same(nil, metric)
     end
@@ -35,7 +40,7 @@ describe("Rate Limiting Metrics", function()
 
     -- First select
     for period, period_date in pairs(periods) do
-      local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
+      local metric, err = response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
       assert.same({
         api_id = api_id,
@@ -52,7 +57,7 @@ describe("Rate Limiting Metrics", function()
 
     -- Second select
     for period, period_date in pairs(periods) do
-      local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
+      local metric, err = response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
       assert.same({
         api_id = api_id,
@@ -80,7 +85,7 @@ describe("Rate Limiting Metrics", function()
         expected_value = 1
       end
 
-      local metric, err = response_ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, period, "video")
+      local metric, err = response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, "video")
       assert.falsy(err)
       assert.same({
         api_id = api_id,
@@ -91,13 +96,4 @@ describe("Rate Limiting Metrics", function()
       }, metric)
     end
   end)
-
-  it("should throw errors for non supported methods of the base_dao", function()
-    assert.has_error(response_ratelimiting_metrics.find, "ratelimiting_metrics:find() not supported")
-    assert.has_error(response_ratelimiting_metrics.insert, "ratelimiting_metrics:insert() not supported")
-    assert.has_error(response_ratelimiting_metrics.update, "ratelimiting_metrics:update() not supported")
-    assert.has_error(response_ratelimiting_metrics.delete, "ratelimiting_metrics:delete() not yet implemented")
-    assert.has_error(response_ratelimiting_metrics.find_by_keys, "ratelimiting_metrics:find_by_keys() not supported")
-  end)
-
-end) -- describe rate limiting metrics
+end)

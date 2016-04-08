@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
@@ -21,19 +22,23 @@ local function invalidate(message_t)
 end
 
 local function get_cluster_members()
-  local members, err = serf:_members()
+  local members, err = singletons.serf:_members()
   if err then
-    ngx.log(ngx.ERR, err)
+    return nil, err
   else
     return members
   end
 end
 
 local function retrieve_member_address(name)
-  local members = get_cluster_members()
-  for _, member in ipairs(members) do
-    if member.name == name then
-      return member.addr
+  local members, err = get_cluster_members()
+  if err then
+    return nil, err
+  else
+    for _, member in ipairs(members) do
+      if member.name == name then
+        return member.addr
+      end
     end
   end
 end
@@ -46,7 +51,11 @@ local function parse_member(member_str)
       if index == 1 then
         result.name = v
       elseif index == 2 then
-        result.cluster_listening_address = retrieve_member_address(result.name)
+        local addr, err = retrieve_member_address(result.name)
+        if err then
+          return nil, err
+        end
+        result.cluster_listening_address = addr
       end
       index = index + 1
     end
@@ -55,9 +64,13 @@ local function parse_member(member_str)
 end
 
 local function member_leave(message_t)
-  local member = parse_member(message_t.entity)
+  local member, err = parse_member(message_t.entity)
+  if err then
+    ngx.log(ngx.ERR, err)
+    return
+  end
 
-  local _, err = dao.nodes:delete({
+  local _, err = singletons.dao.nodes:delete({
     name = member.name
   })
   if err then
@@ -66,38 +79,46 @@ local function member_leave(message_t)
 end
 
 local function member_update(message_t, is_reap)
-  local member = parse_member(message_t.entity)
+  local member, err = parse_member(message_t.entity)
+  if err then
+    ngx.log(ngx.ERR, err)
+    return
+  end
 
-  local nodes, err = dao.nodes:find_by_keys({
+  local nodes, err = singletons.dao.nodes:find_all {
     name = member.name
-  })
+  }
   if err then
     ngx.log(ngx.ERR, tostring(err))
     return
   end
 
   if #nodes == 1 then
-    local node = table.remove(nodes, 1)
+    local node = nodes[1]
     node.cluster_listening_address = member.cluster_listening_address
-    local _, err = dao.nodes:update(node)
+    local _, err = singletons.dao.nodes:update(node, node)
     if err then
       ngx.log(ngx.ERR, tostring(err))
       return
     end
   end
 
-  if is_reap and dao.nodes:count_by_keys({}) > 1 then
-    -- Purge the cache when a failed node re-appears 
+  if is_reap and singletons.dao.nodes:count() > 1 then
+    -- Purge the cache when a failed node re-appears
     cache.delete_all()
   end
 end
 
 local function member_join(message_t)
-  local member = parse_member(message_t.entity)
+  local member, err = parse_member(message_t.entity)
+  if err then
+    ngx.log(ngx.ERR, err)
+    return
+  end
 
-  local nodes, err = dao.nodes:find_by_keys({
+  local nodes, err = singletons.dao.nodes:find_all {
     name = member.name
-  })
+  }
   if err then
     ngx.log(ngx.ERR, tostring(err))
     return
@@ -110,7 +131,10 @@ local function member_join(message_t)
   end
 
   -- Purge the cache when a new node joins
-  if #get_cluster_members() > 1 then -- If it's only one node, no need to delete the cache
+  local members, err = get_cluster_members()
+  if err then
+    ngx.log(ngx.ERR, err)
+  elseif #members > 1 then -- If it's only one node, no need to delete the cache
     cache.delete_all()
   end
 end
@@ -126,7 +150,7 @@ return {
     invalidate(message_t)
   end,
   [events.TYPES.CLUSTER_PROPAGATE] = function(message_t)
-    serf:event(message_t)
+    singletons.serf:event(message_t)
   end,
   [events.TYPES["MEMBER-JOIN"]] = function(message_t)
     member_join(message_t)

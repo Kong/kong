@@ -36,6 +36,7 @@ describe("Resolver", function()
         {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
         {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
         {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true},
+        {name = "tests-preserve-host-3", strip_request_path = true, preserve_host = true, request_path = "/hello", upstream_url = "http://httpbin.org"},
         {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"},
         {name = "tests-trailing-slash-path", request_path = "/test-trailing-slash", strip_request_path = true, upstream_url = "http://www.mockbin.org/request"},
         {name = "tests-trailing-slash-path2", request_path = "/test-trailing-slash2", strip_request_path = false, upstream_url = "http://www.mockbin.org/request"},
@@ -202,6 +203,13 @@ describe("Resolver", function()
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal("httpbin-preserve.com", parsed_response.headers["Host"])
+    end)
+
+    it("should preserve the host with a request path", function()
+      local response, status = http_client.get(PROXY_URL.."/hello/get")
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("localhost", parsed_response.headers["Host"])
     end)
   end)
 

@@ -22,6 +22,46 @@ $ kong reload [-c configuration_file]
 
 **Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly starts new workers taking over the old ones until they all have been terminated. This will guarantee you no drop in your current incoming traffic.
 
+## Upgrade to `0.8.x`
+
+No important breaking changes for this release, just be careful to not use the long deprecated routes `/consumers/:consumer/keyauth/` and `/consumers/:consumer/basicauth/` as instructed in the Changelog. As always, also make sure to check the configuration file for new properties (this release allows you to configure the read/write consistency of Cassandra).
+
+Let's talk about **PostgreSQL**. To use it instead of Cassandra, follow those steps:
+
+* Get your hands on a 9.4+ server (being compatible with Postgres 9.4 allows you to use [Amazon RDS](https://aws.amazon.com/rds/))
+* Create a database, (maybe a user too?), let's say `kong`
+* Update your Kong configuration:
+
+```yaml
+# as always, be careful about your YAML formatting
+database: postgres
+postgres:
+  host: "127.0.0.1"
+  port: 5432
+  user: kong
+  password: kong
+  database: kong
+```
+
+As usual, migrations should run from kong start, but as a reminder and just in case, here are some tips:
+
+Reset the database with (careful, you'll lose all data):
+```
+$ kong migrations reset --config kong.yml
+```
+
+Run the migrations manually with:
+```
+$ kong migrations up --config kong.yml
+```
+
+If needed, list your migrations for debug purposes with:
+```
+$ kong migrations list --config kong.yml
+```
+
+**Note**: This release does not provide a mean to migrate from Cassandra to PostgreSQL. Additionally, we recommend that you **do not** use `kong reload` if you switch your cluster from Cassandra to PostgreSQL. Instead, we recommend that you migrate by spawning a new cluster and gradually redirect your traffic before decomissioning your old nodes.
+
 ## Upgrade to `0.7.x`
 
 If you are running a source installation, you will need to upgrade OpenResty to its `1.9.7.*` version. The good news is that this family of releases does not need to patch the NGINX core anymore to enable SSL support. If you install Kong from one of the distribution packages, they already include the appropriate OpenResty, simply download and install the appropriate package for your platform.

@@ -1,5 +1,33 @@
 ## [Unreleased][unreleased]
 
+This release includes support for PostgreSQL as Kong's primary datastore!
+
+### Breaking changes
+
+- Remove support for the long deprecated `/consumers/:consumer/keyauth/` and `/consumers/:consumer/basicauth/` routes (deprecated in `0.5.0`). The new routes (available since `0.5.0` too) use the real name of the plugin: `/consumers/:consumer/key-auth` and `/consumers/:consumer/basic-auth`.
+
+### Added
+
+- Support for PostgreSQL 9.4+ as Kong's primary datastore. [#331](https://github.com/Mashape/kong/issues/331) [#1054](https://github.com/Mashape/kong/issues/1054)
+- Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Mashape/kong/pull/1026)
+- Admin API: including pending and running timers count in the response to `/`. [#992](https://github.com/Mashape/kong/pull/992)
+- Plugins
+  - JWT: add support for RS256 signed tokens thanks to [@kdstew](https://github.com/kdstew)! [#1053](https://github.com/Mashape/kong/pull/1053)
+  - Galileo (mashape-analytics): increase batch sending timeout to 30s. [#1091](https://github.com/Mashape/kong/pull/1091)
+- Added `ttl_on_failure` option in the cluster configuration, to configure the TTL of failed nodes. [#1125](https://github.com/Mashape/kong/pull/1125)
+
+### Fixed
+
+- Plugins
+  - Request/Response Transformer: add missing migrations for upgrades from ` <= 0.5.x`. [#1064](https://github.com/Mashape/kong/issues/1064)
+  - OAuth2
+    - Error responses comply to RFC 6749. [#1017](https://github.com/Mashape/kong/issues/1017)
+    - Handle multipart requests. [#1067](https://github.com/Mashape/kong/issues/1067)
+    - Make access_tokens correctly expire. [#1089](https://github.com/Mashape/kong/issues/1089)
+
+> **internal**
+> - replace globals with singleton pattern thanks to [@mars](https://github.com/mars).
+
 ## [0.7.0] - 2016/02/24
 
 ### Breaking changes

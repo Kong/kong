@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local lapis = require "lapis"
 local utils = require "kong.tools.utils"
 local stringy = require "stringy"
@@ -58,19 +59,17 @@ local function normalize_nested_params(obj)
   return new_obj
 end
 
-local function default_on_error(self)
+local function on_error(self)
   local err = self.errors[1]
   if type(err) == "table" then
-    if err.database then
+    if err.db then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err.message)
     elseif err.unique then
-      return responses.send_HTTP_CONFLICT(err.message)
+      return responses.send_HTTP_CONFLICT(err.tbl)
     elseif err.foreign then
-      return responses.send_HTTP_NOT_FOUND(err.message)
-    elseif err.invalid_type and err.message.id then
-      return responses.send_HTTP_BAD_REQUEST(err.message)
+      return responses.send_HTTP_NOT_FOUND(err.tbl)
     else
-      return responses.send_HTTP_BAD_REQUEST(err.message)
+      return responses.send_HTTP_BAD_REQUEST(err.tbl or err.message)
     end
   end
 end
@@ -117,6 +116,16 @@ app.handle_error = function(self, err, trace)
   return responses.send_HTTP_INTERNAL_SERVER_ERROR()
 end
 
+app:before_filter(function(self)
+  local method = ngx.req.get_method()
+  if method ~= "GET" and method ~= "DELETE" then
+    local content_type = self.req.headers["content-type"]
+    if not content_type or stringy.strip(content_type) == "" then
+      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
+    end
+  end
+end)
+
 local handler_helpers = {
   responses = responses,
   yield_error = app_helpers.yield_error
@@ -125,12 +134,12 @@ local handler_helpers = {
 local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
     if not methods.on_error then
-      methods.on_error = default_on_error
+      methods.on_error = on_error
     end
 
     for k, v in pairs(methods) do
       local method = function(self)
-        return v(self, dao, handler_helpers)
+        return v(self, singletons.dao, handler_helpers)
       end
       methods[k] = parse_params(method)
     end
@@ -146,8 +155,8 @@ for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster" }
 end
 
 -- Loading plugins routes
-if configuration and configuration.plugins then
-  for _, v in ipairs(configuration.plugins) do
+if singletons.configuration and singletons.configuration.plugins then
+  for _, v in ipairs(singletons.configuration.plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)

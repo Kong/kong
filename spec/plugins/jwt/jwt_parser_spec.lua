@@ -1,16 +1,25 @@
 require "kong.tools.ngx_stub"
 
 local jwt_parser = require "kong.plugins.jwt.jwt_parser"
+local fixtures = require "spec.plugins.jwt.fixtures"
 
 describe("JWT parser", function()
   describe("Encoding", function()
-    it("should properly encode", function()
+    it("should properly encode using HS256", function()
       local token = jwt_parser.encode({
         sub = "1234567890",
         name = "John Doe",
         admin = true
       }, "secret")
       assert.equal("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.eNK_fimsCW3Q-meOXyc_dnZHubl2D4eZkIcn6llniCk", token)
+    end)
+    it("should properly encode using RS256", function()
+      local token = jwt_parser.encode({
+        sub = "1234567890",
+        name = "John Doe",
+        admin = true
+      }, fixtures.rs256_private_key, 'RS256')
+      assert.equal("eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwic3ViIjoiMTIzNDU2Nzg5MCJ9.EiOLxyMimY8vbLR8EcGOlXAiEe-eEVn7Aewgu0gYIBPyiEhVTq0CzB_XtHoQ_0y4gBBBZVRnz1pgruOtNmOzcaoXnyplFm1IbrCCBKYQeA4lanmu_-Wzk6Dw4p-TimRHpf8EEHBUJSEbVEyet3cpozUo2Ep0dEfA_Nf3T-g8RjfOYXkFTr3M6FuIDq95cFZloH-DRGodUVQX508wgggtcFKN-Pi7_rWzBtQwP2u4CrFD4ZJbn2sxobzSlFb9fn4nRh_-rPPjDSeHVKwrpsYpFSLBJxwX-KhbeGUfalg2eu9tHLDPHC4gTCpoQKxxRIwfMjW5zlHOZhohKZV2ZtpcgA", token)
     end)
   end)
   describe("Decoding", function()
@@ -31,12 +40,19 @@ describe("JWT parser", function()
     end)
   end)
   describe("Verify signature", function()
-    it("should verify a signature", function()
+    it("should verify a signature using HS256", function()
       local token = jwt_parser.encode({sub = "foo"}, "secret")
       local jwt, err = jwt_parser:new(token)
       assert.falsy(err)
       assert.True(jwt:verify_signature("secret"))
       assert.False(jwt:verify_signature("invalid"))
+    end)
+    it("should verify a signature using RS256", function()
+      local token = jwt_parser.encode({sub = "foo"}, fixtures.rs256_private_key, 'RS256')
+      local jwt, err = jwt_parser:new(token)
+      assert.falsy(err)
+      assert.True(jwt:verify_signature(fixtures.rs256_public_key))
+      assert.False(jwt:verify_signature(fixtures.rs256_public_key:gsub('QAB', 'zzz')))
     end)
   end)
   describe("Verify registered claims", function()

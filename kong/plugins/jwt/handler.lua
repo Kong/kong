@@ -1,10 +1,10 @@
+local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local jwt_decoder = require "kong.plugins.jwt.jwt_parser"
 local string_format = string.format
-local dao = dao
 local ngx_re_gmatch = ngx.re.gmatch
 
 
@@ -75,7 +75,7 @@ function JwtHandler:access(conf)
 
   -- Retrieve the secret
   local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), function()
-    local rows, err = dao.jwt_secrets:find_by_keys {key = jwt_secret_key}
+    local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     elseif #rows > 0 then
@@ -87,7 +87,12 @@ function JwtHandler:access(conf)
     return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.key_claim_name.."'")
   end
 
-  local jwt_secret_value = jwt_secret.secret
+  -- Verify "alg"
+  if jwt.header.alg ~= jwt_secret.algorithm then
+    return responses.send_HTTP_FORBIDDEN("Invalid algorithm")
+  end
+
+  local jwt_secret_value = jwt_secret.algorithm == "HS256" and jwt_secret.secret or jwt_secret.rsa_public_key
   if conf.secret_is_base64 then
     jwt_secret_value = jwt:b64_decode(jwt_secret_value)
   end
@@ -105,7 +110,7 @@ function JwtHandler:access(conf)
 
   -- Retrieve the consumer
   local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), function()
-    local consumer, err = dao.consumers:find_by_primary_key {id = jwt_secret.consumer_id}
+    local consumer, err = singletons.dao.consumers:find {id = jwt_secret.consumer_id}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

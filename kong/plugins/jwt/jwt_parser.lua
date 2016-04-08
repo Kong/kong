@@ -18,19 +18,21 @@ local string_rep = string.rep
 local setmetatable = setmetatable
 
 --- Supported algorithms for signing tokens.
--- Only support HS256 for our use case.
 local alg_sign = {
-  ["HS256"] = function(data, key) return crypto.hmac.digest("sha256", data, key, true) end
+  ["HS256"] = function(data, key) return crypto.hmac.digest("sha256", data, key, true) end,
   --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
   --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
+  ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end
 }
 
 --- Supported algorithms for verifying tokens.
--- Only support HS256 for our use case.
 local alg_verify = {
-  ["HS256"] = function(data, signature, key) return signature == alg_sign["HS256"](data, key) end
+  ["HS256"] = function(data, signature, key) return signature == alg_sign["HS256"](data, key) end,
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
   --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
+  ["RS256"] = function(data, signature, key)
+    return crypto.verify('sha256', data, signature, crypto.pkey.from_pem(key))
+  end
 }
 
 --- base 64 encoding

@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local url = require "socket.url"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
@@ -63,7 +64,7 @@ end
 -- Load all APIs in memory.
 -- Sort the data for faster lookup: dictionary per request_host and an array of wildcard request_host.
 function _M.load_apis_in_memory()
-  local apis, err = dao.apis:find_all()
+  local apis, err = singletons.dao.apis:find_all()
   if err then
     return nil, err
   end
@@ -238,7 +239,7 @@ function _M.execute(request_uri, request_headers)
   upstream_url = upstream_url..uri
 
   if api.preserve_host then
-    upstream_host = matched_host
+    upstream_host = matched_host or ngx.req.get_headers()["host"]
   end
 
   if upstream_host == nil then

@@ -1,5 +1,6 @@
 -- Copyright (C) Mashape, Inc.
 
+local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
@@ -24,7 +25,7 @@ end
 
 local function increment(api_id, identifier, current_timestamp, value)
   -- Increment metrics for all periods if the request goes through
-  local _, stmt_err = dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
+  local _, stmt_err = singletons.dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
   if stmt_err then
     return false, stmt_err
   end
@@ -33,8 +34,7 @@ end
 
 local function increment_async(premature, api_id, identifier, current_timestamp, value)
   if premature then return end
-  
-  local _, stmt_err = dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
+  local _, stmt_err = singletons.dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
   if stmt_err then
     ngx.log(ngx.ERR, "failed to increment: ", tostring(stmt_err))
   end
@@ -45,7 +45,7 @@ local function get_usage(api_id, identifier, current_timestamp, limits)
   local stop
 
   for name, limit in pairs(limits) do
-    local current_metric, err = dao.ratelimiting_metrics:find_one(api_id, identifier, current_timestamp, name)
+    local current_metric, err = singletons.dao.ratelimiting_metrics:find(api_id, identifier, current_timestamp, name)
     if err then
       return nil, nil, err
     end
@@ -106,7 +106,7 @@ function RateLimitingHandler:access(conf)
       return responses.send(429, "API rate limit exceeded")
     end
   end
-  
+
   -- Increment metrics for all periods if the request goes through
   if is_async then
     local ok, err = ngx.timer.at(0, increment_async, api_id, identifier, current_timestamp, 1)
