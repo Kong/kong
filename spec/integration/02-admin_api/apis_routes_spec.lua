@@ -11,6 +11,7 @@ end
 describe("Admin API", function()
   local client
   setup(function()
+    helpers.dao:truncate_tables()
     helpers.execute "pkill nginx; pkill serf"
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
@@ -22,23 +23,13 @@ describe("Admin API", function()
     helpers.stop_kong()
     --helpers.clean_prefix()
   end)
-  --[[
-  before_each(function()
-    local fixtures = spec_helper.insert_fixtures {
-      api = {
-        {name = "api-test", request_host = "api-test.com", upstream_url = "http://mockbin.com"}
-      }
-    }
-    api = fixtures.api[1]
-  end)
-  ]]
-  after_each(function()
-    helpers.dao:truncate_tables()
-  end)
 
   describe("/apis", function()
     describe("POST", function()
-      it_content_types("#o creates an API", function(content_type)
+      before_each(function()
+        helpers.dao:truncate_tables()
+      end)
+      it_content_types("creates an API", function(content_type)
         return function()
           local res = assert(client:send {
             method = "POST",
@@ -63,7 +54,7 @@ describe("Admin API", function()
         end
       end)
       describe("errors", function()
-        it("#o handles malformed JSON body", function()
+        it("handles malformed JSON body", function()
           local res = assert(client:request {
             method = "POST",
             path = "/apis",
@@ -73,7 +64,7 @@ describe("Admin API", function()
           local body = assert.res_status(400, res)
           assert.equal('{"message":"Cannot parse JSON body"}', body)
         end)
-        it_content_types("#o handles invalid input", function(content_type)
+        it_content_types("handles invalid input", function(content_type)
           return function()
             -- Missing parameter
             local res = assert(client:send {
@@ -103,7 +94,7 @@ describe("Admin API", function()
             assert.equal([[{"request_host":"Invalid value: my-api"}]], body)
           end
         end)
-        it_content_types("#o should return HTTP 409 if already exists", function(content_type)
+        it_content_types("returns 409 on conflict", function(content_type)
           return function()
             local res = assert(client:send {
               method = "POST",
@@ -135,610 +126,800 @@ describe("Admin API", function()
     end)
 
     describe("PUT", function()
-      it_content_types("should create if not exists", function(content_type)
+      before_each(function()
+        helpers.dao:truncate_tables()
+      end)
+
+      it_content_types("creates if not exists", function(content_type)
         return function()
-          local _, status = http_client.put(BASE_URL, {
-            name = "new-api",
-            request_host = "new-api.com",
-            upstream_url = "http://mockbin.com"
-          }, {["content-type"] = content_type})
-          assert.equal(201, status)
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis",
+            body = {
+              name = "my-api",
+              request_host = "my.api.com",
+              upstream_url = "http://my-api.com",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("my-api", json.name)
+          assert.equal("my.api.com", json.request_host)
+          assert.equal("http://my-api.com", json.upstream_url)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.is_nil(json.request_path)
+          assert.False(json.preserve_host)
+          assert.False(json.strip_request_path)
         end
       end)
-      it_content_types("#only should not update if some required fields are missing", function(content_type)
+      it_content_types("replaces if exists", function(content_type)
         return function()
-          local response, status = http_client.put(BASE_URL, {
-            id = api.id,
-            name = "api-PUT-tests-updated",
-            request_host = "updated-api.mockbin.com",
-            upstream_url = "http://mockbin.com"
-          }, {["content-type"] = content_type})
-          assert.equal(400, status)
-          local body = json.decode(response)
-          assert.equal("created_at is required", body.created_at)
-        end
-      end)
-      it_content_types("#only should update if exists", function(content_type)
-        return function()
-          local response, status = http_client.put(BASE_URL, {
-            id = api.id,
-            name = "api-PUT-tests-updated",
-            request_host = "updated-api.mockbin.com",
-            upstream_url = "http://mockbin.com",
-            created_at = 1461276890000
-          }, {["content-type"] = content_type})
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.equal("api-PUT-tests-updated", body.name)
-          assert.truthy(body.created_at)
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis",
+            body = {
+              name = "my-api",
+              request_host = "my.api.com",
+              upstream_url = "http://my-api.com"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          res = assert(client:send {
+            method = "PUT",
+            path = "/apis",
+            body = {
+              id = json.id,
+              name = "my-new-api",
+              request_host = "my-new-api.com",
+              upstream_url = "http://my-api.com",
+              created_at = json.created_at
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          body = assert.res_status(200, res)
+          local updated_json = cjson.decode(body)
+          assert.equal("my-new-api", updated_json.name)
+          assert.equal("my-new-api.com", updated_json.request_host)
+          assert.equal(json.upstream_url, updated_json.upstream_url)
+          assert.equal(json.id, updated_json.id)
+          assert.equal(json.created_at, updated_json.created_at)
         end
       end)
       describe("errors", function()
-        it_content_types("should return proper validation errors", function(content_type)
+        it_content_types("handles invalid input", function(content_type)
           return function()
-            local response, status = http_client.put(BASE_URL, {}, {["content-type"] = content_type})
-            assert.equal(400, status)
-            assert.equal([[{"upstream_url":"upstream_url is required","request_path":"At least a 'request_host' or a 'request_path' must be specified","request_host":"At least a 'request_host' or a 'request_path' must be specified"}]], stringy.strip(response))
+            -- Missing parameter
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/apis",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            assert.equal([[{"upstream_url":"upstream_url is required",]]
+                         ..[["request_path":"At least a 'request_host' or a]]
+                         ..[[ 'request_path' must be specified","request_host":]]
+                         ..[["At least a 'request_host' or a 'request_path']]
+                         ..[[ must be specified"}]], body)
+
+            -- Invalid parameter
+            res = assert(client:send {
+              method = "PUT",
+              path = "/apis",
+              body = {
+                request_host = "my-api",
+                upstream_url = "http://my-api.com",
+                created_at = 1461276890000
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            assert.equal([[{"request_host":"Invalid value: my-api"}]], body)
           end
         end)
-        it_content_types("should return HTTP 409 if already exists", function(content_type)
-          -- @TODO this test actually defeats the purpose of PUT. It should probably replace the entity
+        it_content_types("returns 409 on conflict", function(content_type)
           return function()
-            local response, status = http_client.put(BASE_URL, {
-              request_host = "api-test.com",
-              upstream_url = "http://mockbin.com"
-            }, {["content-type"] = content_type})
-            assert.equal(409, status)
-            assert.equal([[{"request_host":"already exists with value 'api-test.com'"}]], stringy.strip(response))
-          end
+            -- @TODO this test actually defeats the purpose of PUT.
+            -- It should probably replace the entity
+            local res = assert(client:send {
+                method = "PUT",
+                path = "/apis",
+                body = {
+                  name = "my-api",
+                  request_host = "my-api.com",
+                  upstream_url = "http://my-api.com",
+                  created_at = 1461276890000
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              local body = assert.res_status(201, res)
+              local json = cjson.decode(body)
+
+              res = assert(client:send {
+                method = "PUT",
+                path = "/apis",
+                body = {
+                  name = "my-api",
+                  request_host = "my-api2.com",
+                  upstream_url = "http://my-api2.com",
+                  created_at = json.created_at
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              body = assert.res_status(409, res)
+              assert.equal([[{"name":"already exists with value 'my-api'"}]], body)
+            end
         end)
       end)
     end)
 
     describe("GET", function()
-      before_each(function()
-        spec_helper.drop_db()
-        spec_helper.seed_db(10)
-      end)
-      it("should retrieve the first page", function()
-        local response, status = http_client.get(BASE_URL)
-        assert.equal(200, status)
-        local body = json.decode(response)
-        assert.truthy(body.data)
-        assert.equal(10, table.getn(body.data))
-        assert.equal(10, body.total)
-      end)
-      it("should retrieve a paginated set", function()
-        local response, status = http_client.get(BASE_URL, {size = 3})
-        assert.equal(200, status)
-        local body_page_1 = json.decode(response)
-        assert.truthy(body_page_1.data)
-        assert.equal(3, #body_page_1.data)
-        assert.truthy(body_page_1.next)
-        assert.equal(10, body_page_1.total)
+      setup(function()
+        helpers.dao:truncate_tables()
 
-        response, status = http_client.get(BASE_URL, {size = 3, offset = body_page_1.next})
-        assert.equal(200, status)
-        local body_page_2 = json.decode(response)
-        assert.truthy(body_page_2.data)
-        assert.equal(3, #body_page_2.data)
-        assert.truthy(body_page_2.next)
-        assert.not_same(body_page_1, body_page_2)
-        assert.equal(10, body_page_2.total)
-
-        response, status = http_client.get(BASE_URL, {size = 3, offset = body_page_2.next})
-        assert.equal(200, status)
-        local body_page_3 = json.decode(response)
-        assert.truthy(body_page_3.data)
-        assert.equal(3, #body_page_3.data)
-        assert.equal(10, body_page_3.total)
-        assert.truthy(body_page_3.next)
-        assert.not_same(body_page_2, body_page_3)
-
-        response, status = http_client.get(BASE_URL, {size = 3, offset = body_page_3.next})
-        assert.equal(200, status)
-        local body_page_3 = json.decode(response)
-        assert.truthy(body_page_3.data)
-        assert.equal(1, #body_page_3.data)
-        assert.equal(10, body_page_3.total)
-        assert.falsy(body_page_3.next)
-        assert.not_same(body_page_2, body_page_3)
+        for i = 1, 10 do
+          assert(helpers.dao.apis:insert {
+            name = "api-"..i,
+            request_path = "/api-"..i,
+            upstream_url = "http://my-api.com"
+          })
+        end
       end)
-      it("should refuse invalid filters", function()
-        local response, status = http_client.get(BASE_URL, {foo = "bar"})
-        assert.equal(400, status)
-        assert.equal([[{"foo":"unknown field"}]], stringy.strip(response))
+      teardown(function()
+        helpers.dao:truncate_tables()
+      end)
+
+      it("retrieves the first page", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/apis"
+        })
+        local res = assert.res_status(200, res)
+        local json = cjson.decode(res)
+        assert.equal(10, #json.data)
+        assert.equal(10, json.total)
+      end)
+      it("paginates a set", function()
+        local pages = {}
+        local offset
+
+        for i = 1, 4 do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis",
+            query = {size = 3, offset = offset}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(10, json.total)
+
+          if i < 4 then
+            assert.equal(3, #json.data)
+          else
+            assert.equal(1, #json.data)
+          end
+
+          if i > 1 then
+            -- check all pages are different
+            assert.not_same(pages[i-1], json)
+          end
+
+          offset = json.offset
+          pages[i] = json
+        end
+      end)
+      it("handles invalid filters", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis",
+            query = {foo = "bar"}
+          })
+          local body = assert.res_status(400, res)
+          assert.equal([[{"foo":"unknown field"}]], body)
       end)
     end)
 
-    describe("/apis/:api", function()
+    describe("/apis/{api}", function()
+      local api
+      setup(function()
+        helpers.dao:truncate_tables()
+      end)
+      before_each(function()
+        api = assert(helpers.dao.apis:insert {
+          name = "my-api",
+          request_path = "/my-api",
+          upstream_url = "http://my-api.com"
+        })
+      end)
+      after_each(function()
+        helpers.dao:truncate_tables()
+      end)
+
       describe("GET", function()
-        it("should retrieve by id", function()
-          local response, status = http_client.get(BASE_URL..api.id)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.same(api, body)
+        it("#o retrieves by id", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..api.id
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(api, json)
         end)
-        it("should retrieve by name", function()
-          local response, status = http_client.get(BASE_URL..api.name)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.same(api, body)
+        it("retrieves by name", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..api.name
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(api, json)
         end)
-        it("should reply with HTTP 404 if not found", function()
-          local _, status = http_client.get(BASE_URL.."none")
-          assert.equal(404, status)
+        it("returns 404 if not found", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/_inexistent_"
+          })
+          assert.res_status(404, res)
         end)
       end)
 
       describe("PATCH", function()
-        it_content_types("should update name if found", function(content_type)
+        it_content_types("updates if found", function(content_type)
           return function()
-            local response, status = http_client.patch(BASE_URL..api.id, {
-              name = "patch-updated"
-            }, {["content-type"] = content_type})
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.equal("patch-updated", body.name)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id,
+              body = {
+                name = "my-updated-api"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("my-updated-api", json.name)
+            assert.equal(api.id, json.id)
 
-            local api, err = dao_factory.apis:find {id = api.id}
-            assert.falsy(err)
-            assert.equal("patch-updated", api.name)
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
+            assert.same(json, in_db)
           end
         end)
-        it_content_types("should update name by its old name", function(content_type)
+        it_content_types("updates a name from a name in path", function(content_type)
           return function()
-            local response, status = http_client.patch(BASE_URL..api.name, {
-              name = "patch-updated"
-            }, {["content-type"] = content_type})
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.equal("patch-updated", body.name)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.name,
+              body = {
+                name = "my-updated-api"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("my-updated-api", json.name)
+            assert.equal(api.id, json.id)
 
-            local api, err = dao_factory.apis:find {id = api.id}
-            assert.falsy(err)
-            assert.equal("patch-updated", api.name)
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
+            assert.same(json, in_db)
           end
         end)
-        it_content_types("should update request_path", function(content_type)
+        it_content_types("updates request_path", function(content_type)
           return function()
-            local response, status = http_client.patch(BASE_URL..api.id, {
-              request_path = "/httpbin-updated"
-            }, {["content-type"] = content_type})
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.equal("/httpbin-updated", body.request_path)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id,
+              body = {
+                request_path = "/my-updated-api"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("/my-updated-api", json.request_path)
+            assert.equal(api.id, json.id)
 
-            local api, err = dao_factory.apis:find {id = api.id}
-            assert.falsy(err)
-            assert.equal("/httpbin-updated", api.request_path)
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
+            assert.same(json, in_db)
           end
         end)
-        it_content_types("should update strip_request_path if it was not previously set", function(content_type)
+        it_content_types("updates strip_request_path if not previously set", function(content_type)
           return function()
-            local response, status = http_client.patch(BASE_URL..api.id, {
-              strip_request_path = true
-            }, {["content-type"] = content_type})
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.True(body.strip_request_path)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id,
+              body = {
+                strip_request_path = true
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.True(json.strip_request_path)
+            assert.equal(api.id, json.id)
 
-            local api, err = dao_factory.apis:find {id = api.id}
-            assert.falsy(err)
-            assert.True(api.strip_request_path)
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
+            assert.same(json, in_db)
           end
         end)
-        it_content_types("should update request_host and request_path at once", function(content_type)
+        it_content_types("updates multiple fields at once", function(content_type)
           return function()
-            local response, status = http_client.patch(BASE_URL..api.id, {
-              request_path = "/httpbin-updated-path",
-              request_host = "httpbin-updated.org"
-            }, {["content-type"] = content_type})
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.equal("/httpbin-updated-path", body.request_path)
-            assert.equal("httpbin-updated.org", body.request_host)
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id,
+              body = {
+               request_path = "/my-updated-path",
+               request_host = "my-updated.tld"
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal("/my-updated-path", json.request_path)
+            assert.equal("my-updated.tld", json.request_host)
+            assert.equal(api.id, json.id)
 
-            local api, err = dao_factory.apis:find {id = api.id}
-            assert.falsy(err)
-            assert.equal("/httpbin-updated-path", api.request_path)
-            assert.equal("httpbin-updated.org", api.request_host)
+            local in_db = assert(helpers.dao.apis:find {id = api.id})
+            assert.same(json, in_db)
           end
         end)
         describe("errors", function()
-          it_content_types("should return 404 if not found", function(content_type)
+          it_content_types("returns 404 if not found", function(content_type)
             return function()
-              local _, status = http_client.patch(BASE_URL.."hello", {
-                name = "patch-updated"
-              }, {["content-type"] = content_type})
-              assert.equal(404, status)
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/apis/_inexistent_",
+                body = {
+                 request_path = "/my-updated-path"
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.res_status(404, res)
             end
           end)
-          it_content_types("should return proper validation errors", function(content_type)
+          it_content_types("handles invalid input", function(content_type)
             return function()
-              local response, status = http_client.patch(BASE_URL..api.id, {
-                name = "api",
-                request_host = " "
-              }, {["content-type"] = content_type})
-              assert.equal(400, status)
-              assert.equal([[{"request_host":"At least a 'request_host' or a 'request_path' must be specified"}]], stringy.strip(response))
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/apis/"..api.id,
+                body = {
+                 upstream_url = "api.com"
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              local body = assert.res_status(400, res)
+              assert.equal([[{"upstream_url":"upstream_url is not a url"}]], body)
             end
           end)
         end)
       end)
 
       describe("DELETE", function()
-        before_each(function()
-          local _, err = dao_factory.apis:insert {
-            name = "to-delete",
-            request_host = "to-delete.com",
-            upstream_url = "http://mockbin.com"
-          }
-          assert.falsy(err)
+        it("deletes an API by id", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/apis/"..api.id
+          })
+          local body = assert.res_status(204, res)
+          assert.equal("", body)
         end)
-        it("delete an API by id", function()
-          local response, status = http_client.delete(BASE_URL..api.id)
-          assert.equal(204, status)
-          assert.falsy(response)
-        end)
-        it("delete an API by name", function()
-          local response, status = http_client.delete(BASE_URL.."to-delete")
-          assert.equal(204, status)
-          assert.falsy(response)
+        it("deletes an API by name", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/apis/"..api.name
+          })
+          local body = assert.res_status(204, res)
+          assert.equal("", body)
         end)
         describe("error", function()
-          it("should return HTTP 404 if not found", function()
-            local _, status = http_client.delete(BASE_URL.."hello")
-            assert.equal(404, status)
+          it("returns 404 if not found", function()
+            local res = assert(client:send {
+              method = "DELETE",
+              path = "/apis/_inexistent_"
+            })
+            assert.res_status(404, res)
+          end)
+        end)
+      end)
+    end)
+  end)
+
+  describe("/apis/{api}/plugins", function()
+    local api
+    setup(function()
+      helpers.dao:truncate_tables()
+
+      api = assert(helpers.dao.apis:insert {
+        name = "my-api",
+        request_path = "/my-api",
+        upstream_url = "http://my-api.com"
+      })
+    end)
+    before_each(function()
+      helpers.dao.plugins:truncate()
+    end)
+
+    describe("POST", function()
+      it_content_types("creates a plugin config", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              name = "key-auth",
+              ["config.key_names"] = "apikey,key"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("key-auth", json.name)
+          assert.same({"apikey", "key"}, json.config.key_names)
+        end
+      end)
+      it_content_types("references API by name too", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis/"..api.name.."/plugins",
+            body = {
+              name = "key-auth",
+              ["config.key_names"] = "apikey,key"
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("key-auth", json.name)
+          assert.same({"apikey", "key"}, json.config.key_names)
+        end
+      end)
+      describe("errors", function()
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis/"..api.id.."/plugins",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            assert.equal([[{"name":"name is required"}]], body)
+          end
+        end)
+      end)
+    end)
+
+    describe("PUT", function()
+      it_content_types("creates if not exists", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              name = "key-auth",
+              ["config.key_names"] = "apikey,key",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("key-auth", json.name)
+          assert.same({"apikey", "key"}, json.config.key_names)
+        end
+      end)
+      it_content_types("replaces if exists", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              name = "key-auth",
+              ["config.key_names"] = "apikey,key",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+
+          res = assert(client:send {
+            method = "PUT",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              id = json.id,
+              name = "key-auth",
+              ["config.key_names"] = "key",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          body = assert.res_status(200, res)
+          json = cjson.decode(body)
+          assert.equal("key-auth", json.name)
+          assert.same({"key"}, json.config.key_names)
+        end
+      end)
+      it_content_types("perfers default values when replacing", function(content_type)
+        return function()
+          local plugin = assert(helpers.dao.plugins:insert {
+            name = "key-auth",
+            api_id = api.id,
+            config = {hide_credentials = true}
+          })
+          assert.True(plugin.config.hide_credentials)
+          assert.same({"apikey"}, plugin.config.key_names)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              id = plugin.id,
+              name = "key-auth",
+              ["config.key_names"] = "apikey,key",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.config.hide_credentials) -- not true anymore
+
+          plugin = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.False(plugin.config.hide_credentials)
+          assert.same({"apikey", "key"}, plugin.config.key_names)
+        end
+      end)
+      it_content_types("overrides a plugin previous config if partial", function(content_type)
+        return function()
+          local plugin = assert(helpers.dao.plugins:insert {
+            name = "key-auth",
+            api_id = api.id
+          })
+          assert.same({"apikey"}, plugin.config.key_names)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              id = plugin.id,
+              name = "key-auth",
+              ["config.key_names"] = "apikey,key",
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same({"apikey", "key"}, json.config.key_names)
+        end
+      end)
+      it_content_types("updates the enabled property", function(content_type)
+        return function()
+          local plugin = assert(helpers.dao.plugins:insert {
+            name = "key-auth",
+            api_id = api.id
+          })
+          assert.True(plugin.enabled)
+
+          local res = assert(client:send {
+            method = "PUT",
+            path = "/apis/"..api.id.."/plugins",
+            body = {
+              id = plugin.id,
+              name = "key-auth",
+              enabled = false,
+              created_at = 1461276890000
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.enabled)
+
+          plugin = assert(helpers.dao.plugins:find {
+            id = plugin.id,
+            name = plugin.name
+          })
+          assert.False(plugin.enabled)
+        end
+      end)
+      describe("errors", function()
+        it_content_types("handles invalid input", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PUT",
+              path = "/apis/"..api.id.."/plugins",
+              body = {},
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(400, res)
+            assert.equal([[{"name":"name is required"}]], body)
+          end
+        end)
+      end)
+    end)
+
+    describe("GET", function()
+      it("retrieves the first page", function()
+        assert(helpers.dao.plugins:insert {
+          name = "key-auth",
+          api_id = api.id
+        })
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/apis/"..api.id.."/plugins"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(1, #json.data)
+      end)
+    end)
+
+    describe("/apis/{api}/plugins/{plugin}", function()
+      local plugin
+      before_each(function()
+        plugin = assert(helpers.dao.plugins:insert {
+          name = "key-auth",
+          api_id = api.id
+        })
+      end)
+
+      describe("GET", function()
+        it("retrieves by id", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..api.id.."/plugins/"..plugin.id
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(plugin, json)
+        end)
+        it("only retrieves if associated to the correct API", function()
+          -- Create an API and try to query our plugin through it
+          local w_api = assert(helpers.dao.apis:insert {
+            name = "wrong-api",
+            request_path = "/wrong-api",
+            upstream_url = "http://wrong-api.com"
+          })
+
+          -- Try to request the plugin through it (belongs to the fixture API instead)
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..w_api.id.."/plugins/"..plugin.id
+          })
+          assert.res_status(404, res)
+        end)
+      end)
+
+      describe("PATCH", function()
+        it_content_types("updates if found", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id.."/plugins/"..plugin.id,
+              body = {
+                ["config.key_names"] = {"key-updated"}
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.same({"key-updated"}, json.config.key_names)
+            assert.equal(plugin.id, json.id)
+
+            local in_db = assert(helpers.dao.plugins:find {
+              id = plugin.id,
+              name = plugin.name
+            })
+            assert.same(json, in_db)
+          end
+        end)
+        it_content_types("doesn't override a plugin config if partial", function(content_type)
+          -- This is delicate since a plugin config is a text field in a DB like Cassandra
+          return function()
+            plugin = assert(helpers.dao.plugins:update({
+              config = {hide_credentials = true}
+            }, {id = plugin.id, name = plugin.name}))
+            assert.True(plugin.config.hide_credentials)
+            assert.same({"apikey"}, plugin.config.key_names)
+
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id.."/plugins/"..plugin.id,
+              body = {
+                ["config.key_names"] = {"my-new-key"}
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.True(json.config.hide_credentials) -- still true
+            assert.same({"my-new-key"}, json.config.key_names)
+
+            plugin = assert(helpers.dao.plugins:find {
+              id = plugin.id,
+              name = plugin.name
+            })
+            assert.True(plugin.config.hide_credentials) -- still true
+            assert.same({"my-new-key"}, plugin.config.key_names)
+          end
+        end)
+        it_content_types("updates the enabled property", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/apis/"..api.id.."/plugins/"..plugin.id,
+              body = {
+                name = "key-auth",
+                enabled = false
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.False(json.enabled)
+
+            plugin = assert(helpers.dao.plugins:find {
+              id = plugin.id,
+              name = plugin.name
+            })
+            assert.False(plugin.enabled)
+          end
+        end)
+        describe("errors", function()
+          it_content_types("returns 404 if not found", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/apis/"..api.id.."/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51",
+                body = {},
+                headers = {["Content-Type"] = content_type}
+              })
+              assert.res_status(404, res)
+            end
+          end)
+          it_content_types("handles invalid input", function(content_type)
+            return function()
+              local res = assert(client:send {
+                method = "PATCH",
+                path = "/apis/"..api.id.."/plugins/"..plugin.id,
+                body = {
+                  name = "foo"
+                },
+                headers = {["Content-Type"] = content_type}
+              })
+              local body = assert.res_status(400, res)
+              assert.equal([[{"config":"Plugin \"foo\" not found"}]], body)
+            end
           end)
         end)
       end)
 
-      describe("/apis/:api/plugins/", function()
-        local PLUGIN_BASE_URL
-        local api_with_plugin
-        local plugin
-
-        before_each(function()
-          PLUGIN_BASE_URL = BASE_URL..api.id.."/plugins/"
-          local fixtures = spec_helper.insert_fixtures {
-            api = {
-              {name = "plugin-put-tests", request_host = "plugin-put-tests.com", upstream_url = "http://mockbin.com"}
-            },
-            plugin = {
-              {name = "key-auth", config = {hide_credentials = true}, __api = 1}
-            }
-          }
-          api_with_plugin = fixtures.api[1]
-          plugin = fixtures.plugin[1]
+      describe("DELETE", function()
+        it("deletes a plugin configuration", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/apis/"..api.id.."/plugins/"..plugin.id
+          })
+          assert.res_status(204, res)
         end)
-
-        describe("POST", function()
-          it_content_types("should create a plugin configuration", function(content_type)
-            return function()
-              local response, status = http_client.post(PLUGIN_BASE_URL, {
-                name = "key-auth",
-                ["config.key_names"] = "apikey,key"
-              }, {["content-type"] = content_type})
-              assert.equal(201, status)
-              local body = json.decode(response)
-              assert.equal("key-auth", body.name)
-              assert.truthy(body.config)
-              assert.same({"apikey", "key"}, body.config.key_names)
-            end
-          end)
-          it_content_types("should create with default value", function(content_type)
-            return function()
-              local response, status = http_client.post(PLUGIN_BASE_URL, {
-                name = "key-auth"
-              }, {["content-type"] = content_type})
-              assert.equal(201, status)
-              local body = json.decode(response)
-              assert.equal("key-auth", body.name)
-              assert.truthy(body.config)
-              assert.same({"apikey"}, body.config.key_names)
-            end
-          end)
-          describe("errors", function()
-            it_content_types("should return proper validation errors", function(content_type)
-              return function()
-                local response, status = http_client.post(PLUGIN_BASE_URL, {}, {["content-type"] = content_type})
-                assert.equal(400, status)
-                assert.equal([[{"name":"name is required"}]], stringy.strip(response))
-              end
-            end)
-          end)
-        end)
-
-        describe("PUT", function()
-          it_content_types("should create if not exists", function(content_type)
-            return function()
-              local response, status = http_client.put(PLUGIN_BASE_URL, {
-                name = "key-auth",
-                ["config.key_names"] = "apikey,key"
-              }, {["content-type"] = content_type})
-              assert.equal(201, status)
-              local body = json.decode(response)
-              assert.equal("key-auth", body.name)
-              assert.truthy(body.config)
-              assert.same({"apikey", "key"}, body.config.key_names)
-            end
-          end)
-          it_content_types("should create with default value", function(content_type)
-            return function()
-              local response, status = http_client.put(PLUGIN_BASE_URL, {
-                name = "key-auth"
-              }, {["content-type"] = content_type})
-              assert.equal(201, status)
-              local body = json.decode(response)
-              assert.equal("key-auth", body.name)
-              assert.truthy(body.config)
-              assert.same({"apikey"}, body.config.key_names)
-            end
-          end)
-          it_content_types("should update if exists", function(content_type)
-            return function()
-              local response, status = http_client.put(PLUGIN_BASE_URL, {
-                id = plugin.id,
-                name = "key-auth",
-                ["config.key_names"] = "updated_apikey",
-                created_at = 1461276890000
-              }, {["content-type"] = content_type})
-              assert.equal(200, status)
-              local body = json.decode(response)
-              assert.truthy(body.config)
-              assert.equal("updated_apikey", body.config.key_names[1])
-            end
-          end)
-          it_content_types("should update with default values", function(content_type)
-            return function()
-              local plugin, err = dao_factory.plugins:insert {
-                name = "key-auth",
-                api_id = api.id,
-                config = {hide_credentials = true}
-              }
-              assert.falsy(err)
-              assert.True(plugin.config.hide_credentials)
-              assert.same({"apikey"}, plugin.config.key_names)
-
-              local response, status = http_client.put(PLUGIN_BASE_URL, {
-                id = plugin.id,
-                name = "key-auth",
-                created_at = 1461276890000
-              }, {["content-type"] = content_type})
-              assert.equal(200, status)
-              local body = json.decode(response)
-              assert.truthy(body.config)
-              assert.False(body.config.hide_credentials)
-
-              local plugin, err = dao_factory.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              }
-              assert.falsy(err)
-              assert.truthy(plugin.config)
-              assert.False(plugin.config.hide_credentials)
-              assert.same({"apikey"}, plugin.config.key_names)
-            end
-          end)
-          it_content_types("should update with default values bis", function(content_type)
-            return function()
-              local plugin, err = dao_factory.plugins:insert {
-                name = "rate-limiting",
-                api_id = api.id,
-                config = {hour = 2}
-              }
-              assert.falsy(err)
-              assert.equal(2, plugin.config.hour)
-
-              local response, status = http_client.put(PLUGIN_BASE_URL, {
-                id = plugin.id,
-                api_id = api.id,
-                name = "rate-limiting",
-                ["config.minute"] = 3,
-                created_at = 1461276890000
-              }, {["content-type"] = content_type})
-              assert.equal(200, status)
-              local body = json.decode(response)
-              assert.truthy(body.config)
-              assert.falsy(body.config.hour)
-              assert.equal(3, body.config.minute)
-
-              local plugin, err = dao_factory.plugins:find {
-                id = plugin.id,
-                name = plugin.name
-              }
-              assert.falsy(err)
-              assert.truthy(plugin.config)
-              assert.falsy(plugin.config.hour)
-              assert.equal(3, plugin.config.minute)
-            end
-          end)
-          it_content_types("should override a plugin's `config` if partial", function(content_type)
-            return function()
-              local response, status = http_client.put(PLUGIN_BASE_URL, {
-                id = plugin.id,
-                name = "key-auth",
-                ["config.key_names"] = "api_key_updated",
-                created_at = 1461276890000
-              }, {["content-type"] = content_type})
-              assert.equal(200, status)
-              local body = json.decode(response)
-              assert.same({"api_key_updated"}, body.config.key_names)
-              assert.falsy(body.hide_credentials)
-            end
-          end)
-          it_content_types("should be possible to disable and re-enable it", function(content_type)
-            return function()
-              local _, status = http_client.put(PLUGIN_BASE_URL, {
-                id = plugin.id,
-                name = "key-auth",
-                enabled = false,
-                ["config.key_names"] = "apikey,key",
-                created_at = 1461276890000
-              }, {["content-type"] = content_type})
-              assert.equal(200, status)
-
-              local response = http_client.get(PLUGIN_BASE_URL..plugin.id)
-              local body = json.decode(response)
-              assert.False(body.enabled)
-
-              _, status = http_client.put(PLUGIN_BASE_URL, {
-                id = plugin.id,
-                name = "key-auth",
-                enabled = true,
-                ["config.key_names"] = "apikey,key",
-                created_at = 1461276890000
-              }, {["content-type"] = content_type})
-              assert.equal(200, status)
-
-              response = http_client.get(PLUGIN_BASE_URL..plugin.id)
-              body = json.decode(response)
-              assert.True(body.enabled)
-            end
-          end)
-          describe("errors", function()
-            it_content_types("should return proper validation errors", function(content_type)
-              return function()
-                local response, status = http_client.put(PLUGIN_BASE_URL, {}, {["content-type"] = content_type})
-                assert.equal(400, status)
-                assert.equal([[{"name":"name is required"}]], stringy.strip(response))
-              end
-            end)
-          end)
-        end)
-
-        describe("GET", function()
-          it("should retrieve the first page", function()
-            local response, status = http_client.get(BASE_URL..api_with_plugin.id.."/plugins/")
-            assert.equal(200, status)
-            local body = json.decode(response)
-            assert.truthy(body.data)
-            assert.equal(1, #body.data)
-          end)
-        end)
-
-        describe("/apis/:api/plugins/:plugin", function()
-          local API_PLUGIN_BASE_URL
-
-          before_each(function()
-            API_PLUGIN_BASE_URL = BASE_URL..api_with_plugin.id.."/plugins/"
-          end)
-
-          describe("GET", function()
-            it("should retrieve by id", function()
-              local response, status = http_client.get(API_PLUGIN_BASE_URL..plugin.id)
-              assert.equal(200, status)
-              local body = json.decode(response)
-              assert.same(plugin, body)
-            end)
-            it("[SUCCESS] should not retrieve a plugin that is not associated to the right API", function()
-              local response, status = http_client.get(BASE_URL)
-              assert.equal(200, status)
-              local body = json.decode(response)
-              assert.equal(2, body.total)
-
-              local api_id_1 = body.data[1].id
-              local api_id_2 = body.data[2].id
-
-              local response, status = http_client.get(spec_helper.API_URL.."/plugins")
-              assert.equal(200, status)
-              local body = json.decode(response)
-              local plugin_id = body.data[1].id
-
-              local _, status = http_client.get(spec_helper.API_URL.."/apis/"..(body.data[1].api_id == api_id_1 and api_id_1 or api_id_2).."/plugins/"..plugin_id)
-              assert.equal(200, status)
-
-              -- Let's try to request it with the other API
-              local _, status = http_client.get(spec_helper.API_URL.."/apis/"..(body.data[1].api_id == api_id_1 and api_id_2 or api_id_1).."/plugins/"..plugin_id)
-              assert.equal(404, status)
-            end)
-          end)
-
-          describe("PATCH", function()
-            it_content_types("should update if exists", function(content_type)
-              return function()
-                local response, status = http_client.patch(API_PLUGIN_BASE_URL..plugin.id, {
-                  ["config.key_names"] = {"key_updated"}
-                }, {["content-type"] = content_type})
-                assert.equal(200, status)
-                local body = json.decode(response)
-                assert.same("key_updated", body.config.key_names[1])
-              end
-            end)
-            it_content_types("should not override a plugin's `config` if partial", function(content_type)
-              -- This is delicate since a plugin's `config` is a text field in a DB like Cassandra
-              return function()
-                assert.truthy(plugin.config)
-                assert.True(plugin.config.hide_credentials)
-
-                local response, status = http_client.patch(API_PLUGIN_BASE_URL..plugin.id, {
-                  ["config.key_names"] = {"key_set_null_test_updated"}
-                }, {["content-type"] = content_type})
-                assert.equal(200, status)
-                local body = json.decode(response)
-                assert.same({"key_set_null_test_updated"}, body.config.key_names)
-                assert.True(body.config.hide_credentials)
-              end
-            end)
-            it_content_types("should be possible to disable and re-enable it", function(content_type)
-              return function()
-                local _, status = http_client.patch(API_PLUGIN_BASE_URL..plugin.id, {
-                  enabled = false
-                }, {["content-type"] = content_type})
-                assert.equal(200, status)
-
-                local plugin, err = dao_factory.plugins:find {
-                  id = plugin.id,
-                  name = plugin.name
-                }
-                assert.falsy(err)
-                assert.False(plugin.enabled)
-
-                _, status = http_client.patch(API_PLUGIN_BASE_URL..plugin.id, {
-                  enabled = true
-                }, {["content-type"] = content_type})
-                assert.equal(200, status)
-
-                plugin, err = dao_factory.plugins:find {
-                  id = plugin.id,
-                  name = plugin.name
-                }
-                assert.falsy(err)
-                assert.True(plugin.enabled)
-              end
-            end)
-            describe("errors", function()
-              it_content_types("should return HTTP 404 if not found", function(content_type)
-                return function()
-                  local _, status = http_client.patch(API_PLUGIN_BASE_URL.."b6cca0aa-4537-11e5-af97-23a06d98af51", {}, {["content-type"] = content_type})
-                  assert.equal(404, status)
-                end
-              end)
-              it_content_types("should return proper validation errors", function(content_type)
-                return function()
-                  local response, status = http_client.patch(API_PLUGIN_BASE_URL..plugin.id, {
-                    name = "foo"
-                  }, {["content-type"] = content_type})
-                  assert.equal(400, status)
-                  assert.equal([[{"config":"Plugin \"foo\" not found"}]], stringy.strip(response))
-                end
-              end)
-            end)
-          end)
-
-          describe("DELETE", function()
-            it("should delete a plugin configuration", function()
-              local response, status = http_client.delete(API_PLUGIN_BASE_URL..plugin.id)
-              assert.equal(204, status)
-              assert.falsy(response)
-            end)
-            describe("errors", function()
-              it("should return HTTP 404 if not found", function()
-                local _, status = http_client.delete(API_PLUGIN_BASE_URL.."b6cca0aa-4537-11e5-af97-23a06d98af51")
-                assert.equal(404, status)
-              end)
-            end)
+        describe("errors", function()
+          it("returns 404 if not found", function()
+            local res = assert(client:send {
+              method = "DELETE",
+              path = "/apis/"..api.id.."/plugins/b6cca0aa-4537-11e5-af97-23a06d98af51"
+            })
+            assert.res_status(404, res)
           end)
         end)
       end)
