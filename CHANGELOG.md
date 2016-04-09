@@ -12,6 +12,8 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 - Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Mashape/kong/pull/1026)
 - Admin API: including pending and running timers count in the response to `/`. [#992](https://github.com/Mashape/kong/pull/992)
 - Plugins
+  - LDAP: add support for LDAP authentication. [#1133](https://github.com/Mashape/kong/pull/1133)
+  - StatsD: add support for StatsD logging. [#1142](https://github.com/Mashape/kong/pull/1142)
   - JWT: add support for RS256 signed tokens thanks to [@kdstew](https://github.com/kdstew)! [#1053](https://github.com/Mashape/kong/pull/1053)
   - Galileo (mashape-analytics): increase batch sending timeout to 30s. [#1091](https://github.com/Mashape/kong/pull/1091)
 - Added `ttl_on_failure` option in the cluster configuration, to configure the TTL of failed nodes. [#1125](https://github.com/Mashape/kong/pull/1125)
