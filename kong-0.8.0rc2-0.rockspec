@@ -263,7 +263,11 @@ build = {
 
     ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
-    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua"
+    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
+    
+    ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
+    ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
+    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
 
   },
   install = {
