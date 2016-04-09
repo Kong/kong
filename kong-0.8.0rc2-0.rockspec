@@ -13,6 +13,7 @@ description = {
 dependencies = {
   "luasec ~> 0.5-2",
 
+  "penlight ~> 1.3.2",
   "lua_uuid ~> 0.2.0-2",
   "lua_system_constants ~> 0.1.1-0",
   "luatz ~> 0.3-1",
@@ -33,7 +34,8 @@ dependencies = {
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1",
-  "luasyslog >= 1.0.0-2"
+  "luasyslog >= 1.0.0-2",
+  "lua_pack ~> 1.0.4-0"
 }
 build = {
   type = "builtin",
@@ -246,6 +248,12 @@ build = {
     ["kong.plugins.hmac-auth.hooks"] = "kong/plugins/hmac-auth/hooks.lua",
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
     ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
+
+    ["kong.plugins.ldap-auth.handler"] = "kong/plugins/ldap-auth/handler.lua",
+    ["kong.plugins.ldap-auth.access"] = "kong/plugins/ldap-auth/access.lua",
+    ["kong.plugins.ldap-auth.schema"] = "kong/plugins/ldap-auth/schema.lua",
+    ["kong.plugins.ldap-auth.ldap"] = "kong/plugins/ldap-auth/ldap.lua",
+    ["kong.plugins.ldap-auth.asn1"] = "kong/plugins/ldap-auth/asn1.lua",
 
     ["kong.plugins.syslog.handler"] = "kong/plugins/syslog/handler.lua",
     ["kong.plugins.syslog.schema"] = "kong/plugins/syslog/schema.lua",
