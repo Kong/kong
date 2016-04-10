@@ -52,18 +52,15 @@ local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_con
   end
 
   local i = 0
-  local function get_next_plugin()
-    i = i + 1
-    return loaded_plugins[i]
-  end
 
   local function get_next()
-    local plugin = get_next_plugin()
+    i = i + 1
+    local plugin = loaded_plugins[i]
     if plugin and ngx.ctx.api then
       if is_access_or_certificate_context then
         ngx.ctx.plugins_for_request[plugin.name] = load_plugin_configuration(ngx.ctx.api.id, nil, plugin.name)
 
-        local consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id or nil
+        local consumer_id = ngx.ctx.authenticated_credential
         if consumer_id and not plugin.schema.no_consumer then
           local consumer_plugin_configuration = load_plugin_configuration(ngx.ctx.api.id, consumer_id, plugin.name)
           if consumer_plugin_configuration then
@@ -81,9 +78,7 @@ local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_con
     end
   end
 
-  return function()
-    return get_next()
-  end
+  return get_next
 end
 
 return iter_plugins_for_req
