@@ -6,6 +6,7 @@ local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 
 local table_insert = table.insert
+local table_sort = table.sort
 local string_match = string.match
 local string_find = string.find
 local string_format = string.format
@@ -92,6 +93,11 @@ function _M.load_apis_in_memory()
       })
     end
   end
+
+  -- Sort request_path_arr by descending specificity.
+  table_sort(request_path_arr, function (first, second)
+    return first.request_path > second.request_path
+  end)
 
   return {
     by_dns = dns_dic,
