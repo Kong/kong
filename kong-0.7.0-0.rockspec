@@ -221,6 +221,9 @@ build = {
     ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
 
+    ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
+    ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",
+
     ["kong.plugins.jwt.migrations.cassandra"] = "kong/plugins/jwt/migrations/cassandra.lua",
     ["kong.plugins.jwt.migrations.postgres"] = "kong/plugins/jwt/migrations/postgres.lua",
     ["kong.plugins.jwt.handler"] = "kong/plugins/jwt/handler.lua",
