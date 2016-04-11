@@ -10,6 +10,7 @@
 - Configurable Cassandra reading/writing consistency. [#1026](https://github.com/Mashape/kong/pull/1026)
 - Admin API: oncluding pending and running timers count in the response to `/`. [#992](https://github.com/Mashape/kong/pull/992)
 - Plugins
+  - **New correlation-id plugin**: assign unique identifiers to the requests processed by Kong. Courtesy of [@opyate](https://github.com/opyate). [#1094](https://github.com/Mashape/kong/pull/1094)
   - JWT
     - Add support for RS256 signed tokens thanks to [@kdstew](https://github.com/kdstew)! [#1053](https://github.com/Mashape/kong/pull/1053)
 
