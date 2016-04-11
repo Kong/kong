@@ -26,6 +26,9 @@ function CassandraDB:new(options)
     prepared_shm = "cassandra_prepared",
     contact_points = options.contact_points,
     keyspace = options.keyspace,
+    protocol_options = {
+      default_port = options.port
+    },
     query_options = {
       prepare = true
     },

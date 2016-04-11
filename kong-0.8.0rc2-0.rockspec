@@ -20,7 +20,7 @@ dependencies = {
   "yaml ~> 1.1.2-1",
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
-  "lua-cassandra ~> 0.5.0",
+  "lua-cassandra ~> 0.5.1",
   "pgmoon ~> 1.4.0",
   "multipart ~> 0.3-2",
   "lua-path ~> 0.2.3-1",
@@ -264,7 +264,7 @@ build = {
     ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
     ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
-    
+
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"

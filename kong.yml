@@ -88,8 +88,8 @@
   # encrypt: "foo"
 
   ######
-  ## The TTL (time to live), in seconds, of a node in the cluster when it stops sending healthcheck pings, maybe 
-  ## because of a failure. If the node is not able to send a new healthcheck before the expiration, then new nodes 
+  ## The TTL (time to live), in seconds, of a node in the cluster when it stops sending healthcheck pings, maybe
+  ## because of a failure. If the node is not able to send a new healthcheck before the expiration, then new nodes
   ## in the cluster will stop attempting to connect to it on startup.
   # ttl_on_failure: 3600
 
@@ -119,6 +119,10 @@
   ## Contact points to your Cassandra cluster.
   # contact_points:
   #   - "127.0.0.1:9042"
+
+  ## Port on which your cluster's peers (other than your contact_points)
+  ## are listening on.
+  # port: 9042
 
   ######
   ## Name of the keyspace used by Kong. Will be created if it does not exist.
