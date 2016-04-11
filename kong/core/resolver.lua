@@ -6,7 +6,6 @@ local responses = require "kong.tools.responses"
 
 local table_insert = table.insert
 local ipairs = ipairs
-local unpack = unpack
 local type = type
 
 local _M = {}
