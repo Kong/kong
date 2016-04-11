@@ -86,7 +86,7 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
       end
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
-        host = host:match("([^:]+)")  -- grab everything before ":"
+        host = host:match("^([^:]+)")  -- grab everything before ":"
         table_insert(hosts_list, host)
         if apis_dics.by_dns[host] then
           return apis_dics.by_dns[host], host
@@ -121,7 +121,7 @@ end
 -- @param  `uri` The URI for this request.
 -- @param  `request_path_arr`    An array of all APIs that have a request_path property.
 function _M.find_api_by_request_path(uri, request_path_arr)
-  if not uri:sub(-1) == "/" then
+  if uri:sub(-1) ~= "/" then
     uri = uri.."/"
   end
 
@@ -144,7 +144,7 @@ function _M.strip_request_path(uri, strip_request_path_pattern, upstream_url_has
   -- We don't want to add a trailing slash in one specific scenario, when the upstream_url already has
   -- a path (so it's not root, like http://hello.com/, but http://hello.com/path) in order to avoid
   -- having an unnecessary trailing slash not wanted by the user. Hence the "upstream_url_has_path" check.
-  if (not upstream_url_has_path) and (uri:sub(1) ~= "/") then
+  if (not upstream_url_has_path) and (uri:sub(1,1) ~= "/") then
     return "/"..uri
   end
   return uri
@@ -192,7 +192,7 @@ local function url_has_path(url)
 end
 
 function _M.execute(request_uri, request_headers)
-  local uri = request_uri:match("([^%?]+)") -- grab everything before "?"
+  local uri = request_uri:match("^([^%?]+)") -- grab everything before "?"
   local err, api, matched_host, hosts_list, strip_request_path_pattern = find_api(uri, request_headers)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
