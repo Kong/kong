@@ -7,6 +7,7 @@
 -- response.statusText
 -- response.headersSize
 
+local cjson = require "cjson.safe"
 local resp_get_headers = ngx.resp.get_headers
 local req_start_time = ngx.req.start_time
 local req_get_method = ngx.req.get_method
@@ -35,7 +36,7 @@ local _mt = {
 function _M.new(service_token, environment, log_bodies)
   if type(service_token) ~= "string" then
     return nil, "arg #1 (service_token) must be a string"
-  elseif type(environment) ~= "string" then
+  elseif environment ~= nil and type(environment) ~= "string" then
     return nil, "arg #2 (environment) must be a string"
   end
 
@@ -179,4 +180,32 @@ function _M:add_entry(_ngx, body_str, resp_body_str)
   return self.entries[idx]
 end
 
+local buf = {
+   version = _M._ALF_VERSION,
+   serviceToken = nil,
+   environment = nil,
+   har = {
+     log = {
+       creator = {
+         name = _M._ALF_CREATOR,
+         version = _M._VERSION
+       },
+       entries = nil
+     }
+   }
+ }
+
+function _M:serialize()
+  if not self.entries then
+    return nil, "no entries table"
+  end
+
+  buf.serviceToken = self.service_token
+  buf.environment = self.environment
+  buf.har.log.entries = self.entries
+
+  return cjson.encode(buf)
+end
+
 return _M
+
