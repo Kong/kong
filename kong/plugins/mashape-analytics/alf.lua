@@ -1,11 +1,21 @@
--- Inconsistencies with ALF 1.1.
--- ============================
+-- Incompatibilities with ALF 1.1 and important notes
+-- ==================================================
+-- * The following fields cannot be retrieved as of ngx_lua 0.10.2:
+--     * response.httpVersion
+--     * response.statusText
+--     * response.headersSize
 --
--- The following fields cannot be retrieved as of ngx_lua 0.10.2:
+-- * Kong can modify the request/response due to its nature, hence,
+--   we distinguish the original req/res from the current req/res
+--     * request.headersSize will be the size of the _original_ headers
+--       received by Kong
+--     * request.headers will contain the _current_ headers
+--     * response.headers will contain the _current_ headers
 --
--- response.httpVersion
--- response.statusText
--- response.headersSize
+-- * bodies are always base64 encoded
+-- * bodyCaptured properties are determined using HTTP headers
+-- * timings.blocked is ignored
+-- * timings.connect is ignored
 
 local cjson = require "cjson.safe"
 local resp_get_headers = ngx.resp.get_headers
