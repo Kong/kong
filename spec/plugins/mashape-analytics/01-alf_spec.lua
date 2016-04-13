@@ -1,47 +1,4 @@
--- test fixtures. we have to load them before requiring the
--- ALF serializer, since it caches those functions at the
--- module chunk level.
-_G.ngx = {
-  encode_base64 = function(str)
-    return string.format("base64_%s", str)
-  end,
-  req = {
-    start_time = function() return 1432844571.623 end,
-    get_method = function() return "GET" end,
-    http_version = function() return 1.1 end,
-    raw_header = function ()
-      return [[
-GET /request/path HTTP/1.1\r
-Host: mockbin.com\r
-Accept: application/json\r
-\r\n\r\n]]
-    end,
-    get_headers = function()
-      return {
-        accept = {"application/json", "application/x-www-form-urlencoded"},
-        host = "mockbin.com"
-      }
-    end,
-    get_uri_args = function()
-      return {
-        hello = "world",
-        foobar = "baz"
-      }
-    end,
-  },
-  resp = {
-    get_headers = function()
-      return {
-        connection = "close",
-        ["content-type"] = {"application/json", "application/x-www-form-urlencoded"},
-        ["content-length"] = "934"
-      }
-    end
-  },
-  var = {
-    server_addr = "10.10.10.10"
-  }
-}
+_G.ngx = require "spec.plugins.mashape-analytics.ngx"
 
 -- asserts if an array contains a given table
 local function contains(state, args)
@@ -87,7 +44,8 @@ describe("ALF serializer", function()
         host = "mockbin.com",
         request_uri = "/request/path",
         request_length = 32,
-        remote_addr = "127.0.0.1"
+        remote_addr = "127.0.0.1",
+        server_addr = "10.10.10.10"
       },
       ctx = {
         KONG_PROXY_LATENCY = 3,
@@ -97,29 +55,17 @@ describe("ALF serializer", function()
     }
   end)
   it("sanity", function()
-    local alf = alf_serializer.new("abcd", "test")
-    assert.equal("abcd", alf.service_token)
-    assert.equal("test", alf.environment)
-  end)
-  it("returns an error on invalid token", function()
-    local alf, err = alf_serializer.new()
-    assert.equal("arg #1 (service_token) must be a string", err)
-    assert.is_nil(alf)
-  end)
-  it("environment is optional", function()
-    local alf = assert(alf_serializer.new("abcd"))
-    assert.truthy(alf)
-    assert.is_nil(alf.environment)
-  end)
-  it("returns an error on invalid environment", function()
-    local alf, err = alf_serializer.new("abcd", false)
-    assert.equal("arg #2 (environment) must be a string", err)
-    assert.is_nil(alf)
+    local alf = alf_serializer.new()
+    assert.is_nil(alf.log_bodies)
+    assert.equal(0, #alf.entries)
+
+    alf = alf_serializer.new(true)
+    assert.True(alf.log_bodies)
   end)
 
   describe("add_entry()", function()
     it("adds an entry", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       local entry = assert(alf:add_entry(_ngx))
       assert.matches("%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%dZ", entry.startedDateTime)
       assert.equal("10.10.10.10", entry.serverIPAddress)
@@ -130,16 +76,24 @@ describe("ALF serializer", function()
       assert.is_number(entry.time)
     end)
     it("appends the entry to the 'entries' table", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       for i = 1, 10 do
         assert(alf:add_entry(_ngx))
+        assert.equal(i, #alf.entries)
       end
-      assert.equal(10, #alf.entries)
+    end)
+    it("returns the number of entries", function()
+      local alf = alf_serializer.new()
+      for i = 1, 10 do
+        local entry, n = assert(alf:add_entry(_ngx))
+        assert.equal(i, n)
+        assert.truthy(entry)
+      end
     end)
 
     describe("request", function()
       it("captures info", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.equal("HTTP/1.1", entry.request.httpVersion)
         assert.equal("GET", entry.request.method)
@@ -152,20 +106,20 @@ describe("ALF serializer", function()
         assert.is_number(entry.request.bodySize)
       end)
       it("captures querystring info", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.contains({name = "hello", value = "world"}, entry.request.queryString)
         assert.contains({name = "foobar", value = "baz"}, entry.request.queryString)
       end)
       it("captures headers info", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.contains({name = "accept", value = "application/json"}, entry.request.headers)
         assert.contains({name = "host", value = "mockbin.com"}, entry.request.headers)
         assert.equal(84, entry.request.headersSize)
       end)
       it("handles headers with multiple values", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.contains({
           name = "accept",
@@ -184,7 +138,7 @@ describe("ALF serializer", function()
 
     describe("response", function()
       it("captures info", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.equal(200, entry.response.status)
         assert.is_string(entry.response.statusText) -- can't get
@@ -196,7 +150,7 @@ describe("ALF serializer", function()
         assert.is_number(entry.response.bodySize)
       end)
       it("captures headers info", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.contains({
           name = "connection",
@@ -213,7 +167,7 @@ describe("ALF serializer", function()
         assert.equal(0, entry.response.headersSize) -- can't get
       end)
       it("handles headers with multiple values", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.contains({
           name = "content-type",
@@ -242,8 +196,8 @@ describe("ALF serializer", function()
         end
         reload_alf_serializer()
 
-        local alf_with_body = alf_serializer.new("abcd", "test", true)
-        local alf_without_body = alf_serializer.new("abcd", "test", false) -- no bodies
+        local alf_with_body = alf_serializer.new(true)
+        local alf_without_body = alf_serializer.new(false) -- no bodies
 
         local entry1 = assert(alf_with_body:add_entry(_ngx, body_str))
         assert.is_table(entry1.request.postData)
@@ -259,7 +213,7 @@ describe("ALF serializer", function()
         assert.equal(0, entry2.request.bodySize)
       end)
       it("ignores nil body string (no postData)", function()
-        local alf = alf_serializer.new("abcd", "test", true)
+        local alf = alf_serializer.new(true)
         local entry = assert(alf:add_entry(_ngx, nil))
         assert.is_nil(entry.request.postData)
       end)
@@ -270,7 +224,7 @@ describe("ALF serializer", function()
           return {["content-type"] = "application/json"}
         end
         reload_alf_serializer()
-        local alf = alf_serializer.new("abcd", "test", true)
+        local alf = alf_serializer.new(true)
         local entry = assert(alf:add_entry(_ngx, body_str))
         assert.equal("application/json", entry.request.postData.mimeType)
       end)
@@ -279,7 +233,7 @@ describe("ALF serializer", function()
         -- determining if the request has a body from its headers,
         -- instead of having to read it, which would defeat the purpose
         -- of the 'log_bodies' option flag.
-        local alf = alf_serializer.new("abcd", "test", true) -- log_bodies enabled
+        local alf = alf_serializer.new(true) -- log_bodies enabled
         local entry = assert(alf:add_entry(_ngx)) -- no body str
         assert.False(entry.request.bodyCaptured)
 
@@ -287,7 +241,7 @@ describe("ALF serializer", function()
           return {["content-length"] = "38"}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test") -- log_bodies disabled
+        alf = alf_serializer.new() -- log_bodies disabled
         entry = assert(alf:add_entry(_ngx)) -- no body str
         assert.True(entry.request.bodyCaptured)
 
@@ -295,7 +249,7 @@ describe("ALF serializer", function()
           return {["transfer-encoding"] = "chunked"}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test", true)
+        alf = alf_serializer.new(true)
         entry = assert(alf:add_entry(_ngx))
         assert.True(entry.request.bodyCaptured)
 
@@ -303,7 +257,7 @@ describe("ALF serializer", function()
           return {["content-type"] = "multipart/byteranges"}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test", false)
+        alf = alf_serializer.new(false)
         entry = assert(alf:add_entry(_ngx))
         assert.True(entry.request.bodyCaptured)
 
@@ -311,7 +265,7 @@ describe("ALF serializer", function()
           return {["content-length"] = 0}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test", false)
+        alf = alf_serializer.new(false)
         entry = assert(alf:add_entry(_ngx))
         assert.False(entry.request.bodyCaptured)
       end)
@@ -321,7 +275,7 @@ describe("ALF serializer", function()
           return {["content-length"] = {"0", "38"}}
         end
         reload_alf_serializer()
-        local alf = alf_serializer.new("abcd", "test", true)
+        local alf = alf_serializer.new(true)
         local entry = assert(alf:add_entry(_ngx))
         assert.True(entry.request.bodyCaptured)
       end)
@@ -343,8 +297,8 @@ describe("ALF serializer", function()
         end
         reload_alf_serializer()
 
-        local alf_with_body = alf_serializer.new("abcd", "test", true)
-        local alf_without_body = alf_serializer.new("abcd", "test", false) -- no bodies
+        local alf_with_body = alf_serializer.new(true)
+        local alf_without_body = alf_serializer.new(false) -- no bodies
 
         local entry1 = assert(alf_with_body:add_entry(_ngx, nil, body_str))
         assert.is_table(entry1.response.content)
@@ -360,7 +314,7 @@ describe("ALF serializer", function()
         assert.equal(0, entry2.response.bodySize)
       end)
       it("ignores nil body string (no response.content)", function()
-        local alf = alf_serializer.new("abcd", "test", true)
+        local alf = alf_serializer.new(true)
         local entry = assert(alf:add_entry(_ngx, nil, nil))
         assert.is_nil(entry.response.content)
       end)
@@ -371,7 +325,7 @@ describe("ALF serializer", function()
           return {["content-type"] = "application/json"}
         end
         reload_alf_serializer()
-        local alf = alf_serializer.new("abcd", "test", true)
+        local alf = alf_serializer.new(true)
         local entry = assert(alf:add_entry(_ngx, nil, body_str))
         assert.equal("application/json", entry.response.content.mimeType)
       end)
@@ -380,7 +334,7 @@ describe("ALF serializer", function()
         -- determining if the request has a body from its headers,
         -- instead of having to read it, which would defeat the purpose
         -- of the 'log_bodies' option flag.
-        local alf = alf_serializer.new("abcd", "test", true) -- log_bodies enabled
+        local alf = alf_serializer.new(true) -- log_bodies enabled
         local entry = assert(alf:add_entry(_ngx)) -- no body str
         assert.False(entry.request.bodyCaptured)
 
@@ -396,7 +350,7 @@ describe("ALF serializer", function()
           return {["transfer-encoding"] = "chunked"}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test", true)
+        alf = alf_serializer.new(true)
         entry = assert(alf:add_entry(_ngx))
         assert.True(entry.response.bodyCaptured)
 
@@ -404,7 +358,7 @@ describe("ALF serializer", function()
           return {["content-type"] = "multipart/byteranges"}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test", false)
+        alf = alf_serializer.new(false)
         entry = assert(alf:add_entry(_ngx))
         assert.True(entry.response.bodyCaptured)
 
@@ -412,7 +366,7 @@ describe("ALF serializer", function()
           return {["content-length"] = "0"}
         end
         reload_alf_serializer()
-        alf = alf_serializer.new("abcd", "test", false)
+        alf = alf_serializer.new(false)
         entry = assert(alf:add_entry(_ngx))
         assert.False(entry.response.bodyCaptured)
       end)
@@ -422,7 +376,7 @@ describe("ALF serializer", function()
           return {["content-length"] = {"0", "38"}}
         end
         reload_alf_serializer()
-        local alf = alf_serializer.new("abcd", "test", true)
+        local alf = alf_serializer.new(true)
         local entry = assert(alf:add_entry(_ngx))
         assert.True(entry.response.bodyCaptured)
       end)
@@ -430,7 +384,7 @@ describe("ALF serializer", function()
 
     describe("timings", function()
       it("computes timings", function()
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.equal(43, entry.time)
         assert.equal(3, entry.timings.send)
@@ -439,7 +393,7 @@ describe("ALF serializer", function()
       end)
       it("handles missing timer", function()
         _ngx.ctx.KONG_WAITING_TIME = nil
-        local alf = alf_serializer.new("abcd", "test")
+        local alf = alf_serializer.new()
         local entry = assert(alf:add_entry(_ngx))
         assert.equal(28, entry.time)
         assert.equal(3, entry.timings.send)
@@ -454,25 +408,25 @@ describe("ALF serializer", function()
       assert.is_nil(entry)
     end)
     it("missing captured _ngx", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       local entry, err = alf_serializer.add_entry(alf)
       assert.equal("arg #1 (_ngx) must be given", err)
       assert.is_nil(entry)
     end)
     it("invalid body string", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       local entry, err = alf:add_entry(_ngx, false)
-      assert.equal("arg #2 (body_str) must be a string", err)
+      assert.equal("arg #2 (req_body_str) must be a string", err)
       assert.is_nil(entry)
     end)
     it("invalid response body string", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       local entry, err = alf:add_entry(_ngx, nil, false)
       assert.equal("arg #3 (resp_body_str) must be a string", err)
       assert.is_nil(entry)
     end)
     it("assert incompatibilities with ALF 1.1.0", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       local entry = assert(alf:add_entry(_ngx))
       assert.equal("", entry.response.statusText) -- can't get
       assert.equal("", entry.response.httpVersion) -- can't get
@@ -483,12 +437,12 @@ describe("ALF serializer", function()
   describe("serialize()", function()
     local cjson = require "cjson.safe"
     it("returns a JSON encoded ALF object", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       assert(alf:add_entry(_ngx))
       assert(alf:add_entry(_ngx))
       assert(alf:add_entry(_ngx))
 
-      local json_encoded_alf = assert(alf:serialize())
+      local json_encoded_alf = assert(alf:serialize("abcd", "test"))
       assert.is_string(json_encoded_alf)
       local alf_o = assert(cjson.decode(json_encoded_alf))
       assert.is_string(alf_o.version)
@@ -507,13 +461,63 @@ describe("ALF serializer", function()
       assert.is_table(alf_o.har.log.entries)
       assert.equal(3, #alf_o.har.log.entries)
     end)
+    it("gives empty arrays and not empty objects", function()
+      _G.ngx.resp.get_headers = function()
+        return {}
+      end
+      reload_alf_serializer()
+      local alf = alf_serializer.new()
+      assert(alf:add_entry(_ngx))
+      local json_encoded_alf = assert(alf:serialize("abcd"))
+      assert.matches('"headers":[]', json_encoded_alf, nil, true)
+    end)
+    -- @TODO: get rid of once lua-cjson gets a release including
+    -- granular 'empty table as arrays'
+    it("limits ALF sizes to 20MB", function()
+      local alf = alf_serializer.new(true)
+      local body_12mb = string.rep(".", 21 * 2^20)
+      assert(alf:add_entry(_ngx, body_12mb))
+      local json_encoded_alf, err = alf:serialize("abcd")
+      assert.equal("ALF too large (> 20MB)", err)
+      assert.is_nil(json_encoded_alf)
+    end)
+    it("handles nil environment", function()
+      local alf = alf_serializer.new()
+      local json_encoded_alf = assert(alf:serialize("abcd"))
+      assert.is_string(json_encoded_alf)
+      local alf_o = assert(cjson.decode(json_encoded_alf))
+      assert.is_nil(alf_o.environment)
+    end)
+    it("returns an error on invalid token", function()
+      local alf = alf_serializer.new()
+      local alf_str, err = alf:serialize()
+      assert.equal("arg #1 (service_token) must be a string", err)
+      assert.is_nil(alf_str)
+    end)
+    it("returns an error on invalid environment", function()
+      local alf = alf_serializer.new()
+      local alf_str, err = alf:serialize("abcd", false)
+      assert.equal("arg #2 (environment) must be a string", err)
+      assert.is_nil(alf_str)
+    end)
     it("bad self", function()
-      local alf = alf_serializer.new("abcd", "test")
+      local alf = alf_serializer.new()
       assert(alf:add_entry(_ngx))
 
       local res, err = alf.serialize({})
       assert.equal("no entries table", err)
       assert.is_nil(res)
+    end)
+  end)
+
+  describe("reset()", function()
+    it("empties an ALF", function()
+      local alf = alf_serializer.new()
+      assert(alf:add_entry(_ngx))
+      assert(alf:add_entry(_ngx))
+      assert.equal(2, #alf.entries)
+      alf:reset()
+      assert.equal(0, #alf.entries)
     end)
   end)
 end)

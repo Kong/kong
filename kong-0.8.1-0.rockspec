@@ -14,6 +14,7 @@ dependencies = {
   "luasec ~> 0.5-2",
 
   "penlight ~> 1.3.2",
+  "lua-resty-http ~> 0.07-0",
   "lua_uuid ~> 0.2.0-2",
   "lua_system_constants ~> 0.1.1-0",
   "luatz ~> 0.3-1",
@@ -44,7 +45,6 @@ build = {
 
     ["classic"] = "kong/vendor/classic.lua",
     ["lapp"] = "kong/vendor/lapp.lua",
-    ["resty_http"] = "kong/vendor/resty_http.lua",
 
     ["kong.meta"] = "kong/meta.lua",
     ["kong.constants"] = "kong/constants.lua",
@@ -149,7 +149,6 @@ build = {
     ["kong.plugins.oauth2.api"] = "kong/plugins/oauth2/api.lua",
 
     ["kong.plugins.log-serializers.basic"] = "kong/plugins/log-serializers/basic.lua",
-    ["kong.plugins.log-serializers.alf"] = "kong/plugins/log-serializers/alf.lua",
     ["kong.plugins.log-serializers.runscope"] = "kong/plugins/log-serializers/runscope.lua",
 
     ["kong.plugins.tcp-log.handler"] = "kong/plugins/tcp-log/handler.lua",
@@ -172,6 +171,7 @@ build = {
     ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
     ["kong.plugins.mashape-analytics.schema"] = "kong/plugins/mashape-analytics/schema.lua",
     ["kong.plugins.mashape-analytics.buffer"] = "kong/plugins/mashape-analytics/buffer.lua",
+    ["kong.plugins.mashape-analytics.alf"] = "kong/plugins/mashape-analytics/alf.lua",
 
     ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",

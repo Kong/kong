@@ -1,3 +1,9 @@
+-- ALF implementation for ngx_lua/Kong
+-- ALF version: 1.1.0
+-- @version 2.0.0
+-- @see https://github.com/Mashape/galileo-agent-spec
+--
+--
 -- Incompatibilities with ALF 1.1 and important notes
 -- ==================================================
 -- * The following fields cannot be retrieved as of ngx_lua 0.10.2:
@@ -16,6 +22,12 @@
 -- * bodyCaptured properties are determined using HTTP headers
 -- * timings.blocked is ignored
 -- * timings.connect is ignored
+--
+-- * we are waiting for lua-cjson support of granular 'empty table
+--   as JSON arrays' to be released in OpenResty. Until then, we
+--   have to use a workaround involving string substituion, which
+--   is slower and limits the maximum size of ALFs we can deal with.
+--   ALFs are thus limited to 20MB
 
 local cjson = require "cjson.safe"
 local resp_get_headers = ngx.resp.get_headers
@@ -31,8 +43,6 @@ local os_date = os.date
 local type = type
 local pairs = pairs
 
-local server_ip_addr = ngx.var.server_addr
-
 local _M = {
   _VERSION = "2.0.0",
   _ALF_VERSION = "1.1.0",
@@ -43,16 +53,8 @@ local _mt = {
   __index = _M
 }
 
-function _M.new(service_token, environment, log_bodies)
-  if type(service_token) ~= "string" then
-    return nil, "arg #1 (service_token) must be a string"
-  elseif environment ~= nil and type(environment) ~= "string" then
-    return nil, "arg #2 (environment) must be a string"
-  end
-
+function _M.new(log_bodies)
   local alf = {
-    service_token = service_token,
-    environment = environment,
     log_bodies = log_bodies,
     entries = {}
   }
@@ -60,6 +62,16 @@ function _M.new(service_token, environment, log_bodies)
   return setmetatable(alf, _mt)
 end
 
+local _empty_arr_placeholder = "__empty_array_placeholder__"
+local _empty_arr_t = {_empty_arr_placeholder}
+
+-- Convert a table such as returned by ngx.*.get_headers()
+-- to integer-indexed arrays.
+-- @warn Encoding of empty arrays workaround forces us
+-- to replace empty arrays with a placeholder to be substituted
+-- at serialization time.
+-- waiting on the releast of:
+-- https://github.com/openresty/lua-cjson/pull/6
 local function hash_to_array(t)
   local arr = {}
   for k, v in pairs(t) do
@@ -71,7 +83,12 @@ local function hash_to_array(t)
       arr[#arr+1] = {name = k, value = v}
     end
   end
-  return arr
+
+  if #arr == 0 then
+    return _empty_arr_t
+  else
+    return arr
+  end
 end
 
 local function get_header(t, name, default)
@@ -84,13 +101,19 @@ local function get_header(t, name, default)
   return v
 end
 
-function _M:add_entry(_ngx, body_str, resp_body_str)
+--- Add an entry to the ALF's `entries`
+-- @param[type=table] _ngx The ngx table, containing .var and .ctx
+-- @param[type=string] req_body_str The request body
+-- @param[type=string] res_body_str The response body
+-- @treturn table The entry created
+-- @treturn number The new size of the `entries` array
+function _M:add_entry(_ngx, req_body_str, resp_body_str)
   if not self.entries then
     return nil, "no entries table"
   elseif not _ngx then
     return nil, "arg #1 (_ngx) must be given"
-  elseif body_str ~= nil and type(body_str) ~= "string" then
-    return nil, "arg #2 (body_str) must be a string"
+  elseif req_body_str ~= nil and type(req_body_str) ~= "string" then
+    return nil, "arg #2 (req_body_str) must be a string"
   elseif resp_body_str ~= nil and type(resp_body_str) ~= "string" then
     return nil, "arg #3 (resp_body_str) must be a string"
   end
@@ -128,10 +151,10 @@ function _M:add_entry(_ngx, body_str, resp_body_str)
   local req_body_size, resp_body_size = 0, 0
 
   if self.log_bodies then
-    if body_str then
-      req_body_size = #body_str
+    if req_body_str then
+      req_body_size = #req_body_str
       post_data = {
-        text = encode_base64(body_str),
+        text = encode_base64(req_body_str),
         encoding = "base64",
         mimeType = request_content_type
       }
@@ -157,7 +180,7 @@ function _M:add_entry(_ngx, body_str, resp_body_str)
   self.entries[idx] = {
     time = send_t + wait_t + receive_t,
     startedDateTime = os_date("!%Y-%m-%dT%TZ", req_start_time()),
-    serverIPAddress = server_ip_addr,
+    serverIPAddress = var.server_addr,
     clientIPAddress = var.remote_addr,
     request = {
       httpVersion = var.server_protocol,
@@ -187,7 +210,7 @@ function _M:add_entry(_ngx, body_str, resp_body_str)
     }
   }
 
-  return self.entries[idx]
+  return self.entries[idx], idx
 end
 
 local buf = {
@@ -205,16 +228,45 @@ local buf = {
    }
  }
 
-function _M:serialize()
+local gsub = string.gsub
+local pat = '"'.._empty_arr_placeholder..'"'
+local _alf_max_size = 20 * 2^20
+
+--- Encode the current ALF to JSON
+-- @param[type=string] service_token The ALF `serviceToken`
+-- @param[type=string] environment (optional) The ALF `environment`
+-- @treturn string The ALF, JSON encoded
+function _M:serialize(service_token, environment)
   if not self.entries then
     return nil, "no entries table"
+  elseif type(service_token) ~= "string" then
+    return nil, "arg #1 (service_token) must be a string"
+  elseif environment ~= nil and type(environment) ~= "string" then
+    return nil, "arg #2 (environment) must be a string"
   end
 
-  buf.serviceToken = self.service_token
-  buf.environment = self.environment
+  buf.serviceToken = service_token
+  buf.environment = environment
   buf.har.log.entries = self.entries
 
-  return cjson.encode(buf)
+  -- tmp workaround empty arrays
+  -- this prevents us from dealing with ALFs
+  -- larger than a few MBs at once
+  local encoded =  cjson.encode(buf)
+
+  if #encoded > _alf_max_size then
+    return nil, "ALF too large (> 20MB)"
+  end
+
+  encoded = gsub(encoded, pat, "")
+  return gsub(encoded, "\\/", "/")
+
+  --return cjson.encode(buf)
+end
+
+--- Empty the ALF
+function _M:reset()
+  self.entries = {}
 end
 
 return _M

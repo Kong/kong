@@ -14,16 +14,13 @@
 -- @see alf_serializer.lua
 -- @see buffer.lua
 
-local ALFBuffer = require "kong.plugins.mashape-analytics.buffer"
 local BasePlugin = require "kong.plugins.base_plugin"
-local ALFSerializer = require "kong.plugins.log-serializers.alf"
+local Buffer = require "kong.plugins.mashape-analytics.buffer"
 
-local ngx_log = ngx.log
-local ngx_log_ERR = ngx.ERR
-local string_find = string.find
-local pcall = pcall
+local read_body = ngx.req.read_body
+local get_body_data = ngx.req.get_body_data
 
-local ALF_BUFFERS = {} -- buffers per-api
+local _alf_buffers = {} -- buffers per-api
 
 local AnalyticsHandler = BasePlugin:extend()
 
@@ -34,68 +31,43 @@ end
 function AnalyticsHandler:access(conf)
   AnalyticsHandler.super.access(self)
 
-  local req_body = ""
-  local res_body = ""
-  local req_post_args = {}
-
-  if conf.log_body then
-    ngx.req.read_body()
-    req_body = ngx.req.get_body_data()
-
-    local headers = ngx.req.get_headers()
-    local content_type = headers["content-type"]
-    if content_type and string_find(content_type:lower(), "application/x-www-form-urlencoded", nil, true) then
-      local status, res = pcall(ngx.req.get_post_args)
-      if not status then
-        if res == "requesty body in temp file not supported" then
-          ngx_log(ngx_log_ERR, "[mashape-analytics] cannot read request body from temporary file. Try increasing the client_body_buffer_size directive.")
-        else
-          ngx_log(ngx_log_ERR, res)
-        end
-      else
-        req_post_args = res
-      end
-    end
+  if conf.log_bodies then
+    read_body()
+    ngx.ctx.galileo = {req_body = get_body_data()}
   end
-
-  -- keep in memory the bodies for this request
-  ngx.ctx.analytics = {
-    req_body = req_body,
-    res_body = res_body,
-    req_post_args = req_post_args
-  }
 end
 
 function AnalyticsHandler:body_filter(conf)
   AnalyticsHandler.super.body_filter(self)
 
-  -- concatenate response chunks for ALF's `response.content.text`
-  if conf.log_body then
+  if conf.log_bodies then
     local chunk = ngx.arg[1]
-    local analytics_data = ngx.ctx.analytics or {res_body = ""} -- minimize the number of calls to ngx.ctx while fallbacking on default value
-    analytics_data.res_body = analytics_data.res_body..chunk
-    ngx.ctx.analytics = analytics_data
+    local ctx = ngx.ctx
+    local res_body = ctx.galileo and ctx.galileo.res_body or ""
+    res_body = res_body .. (chunk or "")
+    ctx.galileo.res_body = res_body
   end
 end
 
 function AnalyticsHandler:log(conf)
   AnalyticsHandler.super.log(self)
 
-  local api_id = ngx.ctx.api.id
+  local ctx = ngx.ctx
+  local api_id = ctx.api.id
 
-  -- Create the ALF buffer if not existing for this API
-  if not ALF_BUFFERS[api_id] then
-    ALF_BUFFERS[api_id] = ALFBuffer.new(conf)
+  local buf = _alf_buffers[api_id]
+  if not buf then
+    buf = Buffer.new(conf)
+    _alf_buffers[api_id] = buf
   end
 
-  local buffer = ALF_BUFFERS[api_id]
-
-  -- Creating the ALF
-  local alf = ALFSerializer.new_alf(ngx, conf.service_token, conf.environment)
-  if alf then
-    -- Simply adding the ALF to the buffer, it will decide if it is necessary to flush itself
-    buffer:add_alf(alf)
+  local req_body, res_body
+  if ctx.galileo then
+    req_body = ctx.galileo.req_body
+    res_body = ctx.galileo.res_body
   end
+
+  buf:add_entry(ngx, req_body, res_body)
 end
 
 return AnalyticsHandler

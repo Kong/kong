@@ -1,13 +1,13 @@
 return {
   fields = {
-    service_token = {type = "string", required = true},
     environment = {type = "string"},
-    batch_size = {type = "number", default = 100},
-    log_body = {type = "boolean", default = false},
-    delay = {type = "number", default = 2},
-    max_sending_queue_size = {type = "number", default = 10}, -- in mb
+    retry_count = {type = "number", default = 0},
+    queue_size = {type = "number", default = 1000},
+    flush_timeout = {type = "number", default = 2},
+    log_bodies = {type = "boolean", default = false},
+    service_token = {type = "string", required = true},
+    connection_timeout = {type = "number", default = 30},
     host = {required = true, type = "string", default = "socket.analytics.mashape.com"},
     port = {required = true, type = "number", default = 80},
-    path = {required = true, type = "string", default = "/1.0.0/batch"}
   }
 }
