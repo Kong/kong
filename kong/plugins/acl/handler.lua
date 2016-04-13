@@ -3,6 +3,11 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
+
+local table_insert = table.insert
+local table_concat = table.concat
+local ipairs = ipairs
 
 local ACLHandler = BasePlugin:extend()
 
@@ -62,6 +67,13 @@ function ACLHandler:access(conf)
   if block then
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
+
+  -- Prepare header
+  local str_acls = {}
+  for _, v in ipairs(acls) do
+    table_insert(str_acls, v.group)
+  end
+  ngx.req.set_header(constants.HEADERS.CONSUMER_GROUPS, table_concat(str_acls, ", "))
 end
 
 return ACLHandler
