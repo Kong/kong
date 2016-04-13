@@ -79,8 +79,10 @@ describe("ACL Plugin", function()
     end)
 
     it("should work when in whitelist", function()
-      local _, status = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "acl2.com"})
+      local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "acl2.com"})
       assert.equal(200, status)
+      local body = cjson.decode(response)
+      assert.equal("admin", body.headers["x-consumer-groups"])
     end)
 
     it("should work when not in blacklist", function()
@@ -98,8 +100,10 @@ describe("ACL Plugin", function()
 
   describe("Multi lists", function()
     it("should work when in whitelist", function()
-      local _, status = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "acl4.com"})
+      local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "acl4.com"})
       assert.equal(200, status)
+      local body = cjson.decode(response)
+      assert.truthy(body.headers["x-consumer-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
     end)
 
     it("should fail when not in whitelist", function()
