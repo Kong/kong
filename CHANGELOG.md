@@ -1,5 +1,7 @@
 ## [Unreleased][unreleased]
 
+## [0.8.0] - 2016/04/13
+
 This release includes support for PostgreSQL as Kong's primary datastore!
 
 ### Breaking changes
@@ -540,7 +542,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.7.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.8.0...next
+[0.8.0]: https://github.com/mashape/kong/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/mashape/kong/compare/0.6.1...0.7.0
 [0.6.1]: https://github.com/mashape/kong/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/mashape/kong/compare/0.5.4...0.6.0
