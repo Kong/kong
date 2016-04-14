@@ -63,7 +63,7 @@ describe("HMAC Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/consumer1/hmac-auth/")
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
       
       -- Delete Hmac Auth credential (which triggers invalidation)
@@ -103,7 +103,7 @@ describe("HMAC Authentication Hooks", function()
       -- Retrieve credential ID
       local response, status = http_client.get(API_URL.."/consumers/consumer1/hmac-auth/")
       assert.equals(200, status)
-      local credential_id = table.remove(json.decode(response).data, 1).id
+      local credential_id = json.decode(response).data[1].id
       assert.truthy(credential_id)
       
       -- Delete Hmac Auth credential (which triggers invalidation)

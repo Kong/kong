@@ -1,4 +1,4 @@
-local VERSION = "0.7.0"
+local VERSION = "0.8.0"
 
 return {
   NAME = "kong",
@@ -13,27 +13,12 @@ return {
     GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
     NGINX_CONFIG = "nginx.conf"
   },
-  DATABASE_NULL_ID = "00000000-0000-0000-0000-000000000000",
-  DATABASE_ERROR_TYPES = setmetatable ({
-    SCHEMA = "schema",
-    INVALID_TYPE = "invalid_type",
-    DATABASE = "database",
-    UNIQUE = "unique",
-    FOREIGN = "foreign"
-  }, { __index = function(t, key)
-                    local val = rawget(t, key)
-                    if not val then
-                       error("'"..tostring(key).."' is not a valid errortype", 2)
-                    end
-                    return val
-                 end
-              }),
   PLUGINS_AVAILABLE = {
     "ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
     "mashape-analytics", "request-transformer", "response-transformer",
     "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
-    "loggly", "datadog", "runscope"
+    "loggly", "datadog", "runscope", "ldap-auth", "statsd"
   },
   -- Non standard headers, specific to Kong
   HEADERS = {
@@ -45,7 +30,8 @@ return {
     CONSUMER_USERNAME = "X-Consumer-Username",
     CREDENTIAL_USERNAME = "X-Credential-Username",
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
-    RATELIMIT_REMAINING = "X-RateLimit-Remaining"
+    RATELIMIT_REMAINING = "X-RateLimit-Remaining",
+    CONSUMER_GROUPS = "X-Consumer-Groups"
   },
   AUTHENTICATION = {
     QUERY = "query",

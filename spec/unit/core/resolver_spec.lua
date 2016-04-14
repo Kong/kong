@@ -1,6 +1,7 @@
 -- Stubs
 require "kong.tools.ngx_stub"
 
+local singletons = require "kong.singletons"
 local resolver = require "kong.core.resolver"
 
 local APIS_FIXTURES = {
@@ -12,6 +13,7 @@ local APIS_FIXTURES = {
   -- request_path
   {name = "mockbin", request_path = "/mockbin", upstream_url = "http://mockbin.com"},
   {name = "mockbin", request_path = "/mockbin-with-dashes", upstream_url = "http://mockbin.com/some/path"},
+  {name = "mockbin", request_path = "/some/deep", upstream_url = "http://mockbin.com"},
   {name = "mockbin", request_path = "/some/deep/url", upstream_url = "http://mockbin.com"},
   --
   {name = "mockbin", request_path = "/strip", upstream_url = "http://mockbin.com/some/path/", strip_request_path = true},
@@ -19,7 +21,7 @@ local APIS_FIXTURES = {
   {name = "preserve-host", request_path = "/preserve-host", request_host = "preserve-host.com", upstream_url = "http://mockbin.com", preserve_host = true}
 }
 
-_G.dao = {
+singletons.dao = {
   apis = {
     find_all = function()
       return APIS_FIXTURES
@@ -44,14 +46,14 @@ describe("Resolver", function()
     end)
     it("should return an array of APIs by request_path", function()
       assert.equal("table", type(apis_dics.request_path_arr))
-      assert.equal(6, #apis_dics.request_path_arr)
+      assert.equal(7, #apis_dics.request_path_arr)
       for _, item in ipairs(apis_dics.request_path_arr) do
         assert.truthy(item.strip_request_path_pattern)
         assert.truthy(item.request_path)
         assert.truthy(item.api)
       end
-      assert.equal("/mockbin", apis_dics.request_path_arr[1].strip_request_path_pattern)
-      assert.equal("/mockbin%-with%-dashes", apis_dics.request_path_arr[2].strip_request_path_pattern)
+      assert.equal("/strip%-me", apis_dics.request_path_arr[1].strip_request_path_pattern)
+      assert.equal("/strip", apis_dics.request_path_arr[2].strip_request_path_pattern)
     end)
     it("should return an array of APIs with wildcard request_host", function()
       assert.equal("table", type(apis_dics.wildcard_dns_arr))
@@ -66,13 +68,13 @@ describe("Resolver", function()
   end)
   describe("strip_request_path()", function()
     it("should strip the api's request_path from the requested URI", function()
-      assert.equal("/status/200", resolver.strip_request_path("/mockbin/status/200", apis_dics.request_path_arr[1].strip_request_path_pattern))
-      assert.equal("/status/200", resolver.strip_request_path("/mockbin-with-dashes/status/200", apis_dics.request_path_arr[2].strip_request_path_pattern))
-      assert.equal("/", resolver.strip_request_path("/mockbin", apis_dics.request_path_arr[1].strip_request_path_pattern))
-      assert.equal("/", resolver.strip_request_path("/mockbin/", apis_dics.request_path_arr[1].strip_request_path_pattern))
+      assert.equal("/status/200", resolver.strip_request_path("/mockbin/status/200", apis_dics.request_path_arr[7].strip_request_path_pattern))
+      assert.equal("/status/200", resolver.strip_request_path("/mockbin-with-dashes/status/200", apis_dics.request_path_arr[6].strip_request_path_pattern))
+      assert.equal("/", resolver.strip_request_path("/mockbin", apis_dics.request_path_arr[7].strip_request_path_pattern))
+      assert.equal("/", resolver.strip_request_path("/mockbin/", apis_dics.request_path_arr[7].strip_request_path_pattern))
     end)
     it("should only strip the first pattern", function()
-      assert.equal("/mockbin/status/200/mockbin", resolver.strip_request_path("/mockbin/mockbin/status/200/mockbin", apis_dics.request_path_arr[1].strip_request_path_pattern))
+      assert.equal("/mockbin/status/200/mockbin", resolver.strip_request_path("/mockbin/mockbin/status/200/mockbin", apis_dics.request_path_arr[7].strip_request_path_pattern))
     end)
     it("should not add final slash", function()
       assert.equal("hello", resolver.strip_request_path("hello", apis_dics.request_path_arr[3].strip_request_path_pattern, true))
@@ -122,7 +124,7 @@ describe("Resolver", function()
       assert.same(APIS_FIXTURES[6], api)
 
       api = resolver.execute("/some/deep/url", {})
-      assert.same(APIS_FIXTURES[7], api)
+      assert.same(APIS_FIXTURES[8], api)
 
       api = resolver.execute("/mockbin-with-dashes/and/some/uri", {})
       assert.same(APIS_FIXTURES[6], api)
@@ -195,22 +197,22 @@ describe("Resolver", function()
     end)
     it("should strip_request_path", function()
       local api = resolver.execute("/strip", {})
-      assert.same(APIS_FIXTURES[8], api)
+      assert.same(APIS_FIXTURES[9], api)
 
       -- strip when contains pattern characters
       local api, upstream_url, upstream_host = resolver.execute("/strip-me/hello/world", {})
-      assert.same(APIS_FIXTURES[9], api)
+      assert.same(APIS_FIXTURES[10], api)
       assert.equal("http://mockbin.com/hello/world", upstream_url)
       assert.equal("mockbin.com", upstream_host)
 
       -- only strip first match of request_uri
       api, upstream_url = resolver.execute("/strip-me/strip-me/hello/world", {})
-      assert.same(APIS_FIXTURES[9], api)
+      assert.same(APIS_FIXTURES[10], api)
       assert.equal("http://mockbin.com/strip-me/hello/world", upstream_url)
     end)
     it("should preserve_host", function()
       local api, upstream_url, upstream_host = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "preserve-host.com"})
-      assert.same(APIS_FIXTURES[10], api)
+      assert.same(APIS_FIXTURES[11], api)
       assert.equal("http://mockbin.com/", upstream_url)
       assert.equal("preserve-host.com", upstream_host)
 
@@ -218,13 +220,13 @@ describe("Resolver", function()
         ["Host"] = {"inexistant.com", "preserve-host.com"},
         ["X-Host-Override"] = "hello.com"
       })
-      assert.same(APIS_FIXTURES[10], api)
+      assert.same(APIS_FIXTURES[11], api)
       assert.equal("http://mockbin.com/", upstream_url)
       assert.equal("preserve-host.com", upstream_host)
 
       -- No host given to this request, we extract if from the configured upstream_url
       api, upstream_url, upstream_host = resolver.execute("/preserve-host", {})
-      assert.same(APIS_FIXTURES[10], api)
+      assert.same(APIS_FIXTURES[11], api)
       assert.equal("http://mockbin.com/preserve-host", upstream_url)
       assert.equal("mockbin.com", upstream_host)
     end)
@@ -235,7 +237,7 @@ describe("Resolver", function()
       assert.equal("http://mockbin.com/mockbin/path%2Fwith%2Fencoded/values", upstream_url)
 
       api, upstream_url = resolver.execute("/strip-me/path%2Fwith%2Fencoded/values", {})
-      assert.same(APIS_FIXTURES[9], api)
+      assert.same(APIS_FIXTURES[10], api)
       assert.equal("http://mockbin.com/path%2Fwith%2Fencoded/values", upstream_url)
     end)
     it("should not recognized request_path if percent-encoded", function()
@@ -253,11 +255,11 @@ describe("Resolver", function()
     end)
     it("should have or not have a trailing slash depending on the request URI", function()
       local api, upstream_url = resolver.execute("/strip/", {})
-      assert.same(APIS_FIXTURES[8], api)
+      assert.same(APIS_FIXTURES[9], api)
       assert.equal("http://mockbin.com/some/path/", upstream_url)
 
       api, upstream_url = resolver.execute("/strip", {})
-      assert.same(APIS_FIXTURES[8], api)
+      assert.same(APIS_FIXTURES[9], api)
       assert.equal("http://mockbin.com/some/path", upstream_url)
 
       api, upstream_url = resolver.execute("/mockbin-with-dashes", {})

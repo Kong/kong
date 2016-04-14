@@ -141,6 +141,16 @@ function _M.validate(config)
   return true
 end
 
+local DEFAULT_CONFIG = {}
+
+function _M.default_config()
+  if next(DEFAULT_CONFIG) == nil then
+    _M.validate(DEFAULT_CONFIG)
+  end
+
+  return DEFAULT_CONFIG
+end
+
 function _M.load(config_path)
   local config_contents = IO.read_file(config_path)
   if not config_contents then
@@ -148,7 +158,11 @@ function _M.load(config_path)
     os.exit(1)
   end
 
-  local config = yaml.load(config_contents)
+  local status,config = pcall(yaml.load,config_contents)
+  if not status then
+    logger:error("Could not parse configuration at: "..config_path)
+    os.exit(1)
+  end
 
   local ok, errors = _M.validate(config)
   if not ok then
@@ -182,7 +196,7 @@ function _M.load(config_path)
     config.nginx_working_dir = fs.current_dir().."/"..config.nginx_working_dir
   end
 
-  config.plugins = utils.table_merge(constants.PLUGINS_AVAILABLE, config.custom_plugins)
+  config.plugins = utils.concat(constants.PLUGINS_AVAILABLE, config.custom_plugins)
 
   return config, config_path
 end

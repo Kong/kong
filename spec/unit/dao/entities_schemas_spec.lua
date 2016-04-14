@@ -12,14 +12,9 @@ describe("Entities Schemas", function()
                           consumer = consumer_schema,
                           plugins = plugins_schema}) do
     it(k.." schema should have some required properties", function()
-      assert.truthy(schema.name)
-      assert.equal("string", type(schema.name))
-
-      assert.truthy(schema.primary_key)
-      assert.equal("table", type(schema.primary_key))
-
-      assert.truthy(schema.fields)
-      assert.equal("table", type(schema.fields))
+      assert.is_table(schema.primary_key)
+      assert.is_table(schema.fields)
+      assert.is_string(schema.table)
     end)
   end
 
@@ -307,11 +302,9 @@ describe("Entities Schemas", function()
   describe("Plugins Configurations", function()
 
     local dao_stub = {
-      plugins = {
-        find_by_keys = function()
-          return nil
-        end
-      }
+      find_all = function()
+        return {}
+      end
     }
 
     it("should not validate if the plugin doesn't exist (not installed)", function()

@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local responses = require "kong.tools.responses"
@@ -85,15 +86,15 @@ local function is_digest_equal(digest_1, digest_2)
   if #digest_1 ~= #digest_1 then
     return false
   end
-      
+
   local result = true
   for i=1, #digest_1 do
     if digest_1:sub(i, i) ~= digest_2:sub(i, i) then
       result = false
-    end  
-  end    
+    end
+  end
   return result
-end    
+end
 
 local function validate_signature(request, hmac_params, headers)
   local digest = create_hash(request, hmac_params, headers)
@@ -106,7 +107,7 @@ local function load_credential(username)
   local credential
   if username then
       credential = cache.get_or_set(cache.hmacauth_credential_key(username), function()
-      local keys, err = dao.hmacauth_credentials:find_by_keys { username = username }
+      local keys, err = singletons.dao.hmacauth_credentials:find_all { username = username }
       local result
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -171,7 +172,7 @@ function _M.execute(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = dao.consumers:find_by_primary_key({ id = credential.consumer_id })
+    local result, err = singletons.dao.consumers:find {id = credential.consumer_id}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end

@@ -23,7 +23,7 @@ end
 local mock_bin_http = create_mock_bin()
 local mock_bin_https = create_mock_bin()
 
-describe("Logging Plugins #ci", function()
+describe("Logging Plugins", function()
 
   setup(function()
     spec_helper.prepare_db()

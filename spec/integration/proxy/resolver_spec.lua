@@ -36,11 +36,14 @@ describe("Resolver", function()
         {name = "tests-wildcard-subdomain-2", upstream_url = "http://mockbin.com/status/201", request_host = "wildcard.*"},
         {name = "tests-preserve-host", request_host = "httpbin-nopreserve.com", upstream_url = "http://httpbin.org"},
         {name = "tests-preserve-host-2", request_host = "httpbin-preserve.com", upstream_url = "http://httpbin.org", preserve_host = true},
+        {name = "tests-preserve-host-3", strip_request_path = true, preserve_host = true, request_path = "/hello", upstream_url = "http://httpbin.org"},
         {name = "tests-uri", request_host = "mockbin-uri.com", upstream_url = "http://mockbin.org"},
         {name = "tests-trailing-slash-path", request_path = "/test-trailing-slash", strip_request_path = true, upstream_url = "http://www.mockbin.org/request"},
         {name = "tests-trailing-slash-path2", request_path = "/test-trailing-slash2", strip_request_path = false, upstream_url = "http://www.mockbin.org/request"},
         {name = "tests-trailing-slash-path3", request_path = "/test-trailing-slash3", strip_request_path = true, upstream_url = "http://www.mockbin.org"},
-        {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"}
+        {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"},
+        {name = "tests-deep-path", request_path = "/hello/world", strip_request_path = true, upstream_url = "http://mockbin.com"},
+        {name = "tests-deep-path-two", request_path = "/hello/world/wot", strip_request_path = true, upstream_url = "http://httpbin.org"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -167,6 +170,21 @@ describe("Resolver", function()
         assert.equal(200, status)
         assert.equal("http://www.mockbin.org/request/test-trailing-slash2?hello=world", cjson.decode(response).url)
       end)
+      it("should properly handle deep paths", function()
+        -- Should be httpbin
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/hello/world/wot/get")
+        assert.equal(200, status)
+        local body = cjson.decode(response)
+        assert.truthy(body.args)
+        assert.truthy(body.headers)
+        
+        -- Should be Mockbin
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/hello/world/request")
+        assert.equal(200, status)
+        local body = cjson.decode(response)
+        assert.truthy(body.postData)
+        assert.truthy(body.headers)
+      end)
     end)
 
     it("should return the correct Server and Via headers when the request was proxied", function()
@@ -202,6 +220,13 @@ describe("Resolver", function()
       assert.equal(200, status)
       local parsed_response = cjson.decode(response)
       assert.equal("httpbin-preserve.com", parsed_response.headers["Host"])
+    end)
+
+    it("should preserve the host with a request path", function()
+      local response, status = http_client.get(PROXY_URL.."/hello/get")
+      assert.equal(200, status)
+      local parsed_response = cjson.decode(response)
+      assert.equal("localhost", parsed_response.headers["Host"])
     end)
   end)
 

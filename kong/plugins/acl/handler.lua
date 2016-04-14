@@ -1,7 +1,13 @@
+local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
+local constants = require "kong.constants"
+
+local table_insert = table.insert
+local table_concat = table.concat
+local ipairs = ipairs
 
 local ACLHandler = BasePlugin:extend()
 
@@ -13,7 +19,7 @@ end
 
 function ACLHandler:access(conf)
   ACLHandler.super.access(self)
-  
+
   local consumer_id
   if ngx.ctx.authenticated_credential then
     consumer_id = ngx.ctx.authenticated_credential.consumer_id
@@ -23,7 +29,7 @@ function ACLHandler:access(conf)
 
   -- Retrieve ACL
   local acls = cache.get_or_set(cache.acls_key(consumer_id), function()
-    local results, err = dao.acls:find_by_keys({consumer_id = consumer_id})
+    local results, err = singletons.dao.acls:find_all {consumer_id = consumer_id}
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
@@ -61,6 +67,13 @@ function ACLHandler:access(conf)
   if block then
     return responses.send_HTTP_FORBIDDEN("You cannot consume this service")
   end
+
+  -- Prepare header
+  local str_acls = {}
+  for _, v in ipairs(acls) do
+    table_insert(str_acls, v.group)
+  end
+  ngx.req.set_header(constants.HEADERS.CONSUMER_GROUPS, table_concat(str_acls, ", "))
 end
 
 return ACLHandler

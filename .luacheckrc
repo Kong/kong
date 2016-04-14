@@ -1,6 +1,6 @@
 redefined = false
 unused_args = false
-globals = {"ngx", "dao", "app", "configuration", "events", "serf"}
+globals = {"ngx", "app"}
 
 files["kong/"] = {
   std = "luajit"

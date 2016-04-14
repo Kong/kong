@@ -11,17 +11,13 @@ local API_URL = spec_helper.API_URL
 describe("Core Hooks", function()
 
   setup(function()
+    pcall(spec_helper.stop_kong)
     spec_helper.prepare_db()
   end)
 
-  teardown(function()
-    spec_helper.stop_kong()
-  end)
-
   before_each(function()
-    spec_helper.restart_kong()
-
     spec_helper.drop_db()
+    spec_helper.start_kong()
     spec_helper.insert_fixtures {
       api = {
         {request_host = "hooks1.com", upstream_url = "http://mockbin.com"},
@@ -43,8 +39,11 @@ describe("Core Hooks", function()
     }
   end)
 
-  describe("Plugin entity invalidation", function()
+  after_each(function()
+    pcall(spec_helper.stop_kong())
+  end)
 
+  describe("Plugin entity invalidation", function()
     it("should invalidate a plugin when deleting", function()
       -- Making a request to populate the cache
       local _, status = http_client.get(STUB_GET_URL, {}, {host = "hooks-consumer.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
@@ -53,7 +52,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local response, status = http_client.get(API_URL.."/apis", {request_host="hooks-consumer.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local _, status = http_client.get(API_URL.."/cache/"..cache.plugin_key("basic-auth", api_id, nil))
@@ -62,7 +61,7 @@ describe("Core Hooks", function()
       -- Delete plugin
       local response, status = http_client.get(API_URL.."/apis/"..api_id.."/plugins/", {name="basic-auth"})
       assert.equals(200, status)
-      local plugin_id = table.remove(json.decode(response).data, 1).id
+      local plugin_id = json.decode(response).data[1].id
       assert.truthy(plugin_id)
 
       local _, status = http_client.delete(API_URL.."/apis/"..api_id.."/plugins/"..plugin_id)
@@ -81,6 +80,7 @@ describe("Core Hooks", function()
       local _, status = http_client.get(STUB_GET_URL, {}, {host = "hooks-consumer.com"})
       assert.equals(200, status)
     end)
+
     it("should invalidate a consumer-specific plugin when deleting", function()
       -- Making a request to populate the cache
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "hooks-plugins.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
@@ -90,7 +90,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local response, status = http_client.get(API_URL.."/apis", {request_host="hooks-plugins.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local response, status = http_client.get(API_URL.."/consumers/consumer1")
@@ -104,7 +104,7 @@ describe("Core Hooks", function()
       -- Delete plugin
       local response, status = http_client.get(API_URL.."/apis/"..api_id.."/plugins/", {name="rate-limiting", consumer_id=consumer_id})
       assert.equals(200, status)
-      local plugin_id = table.remove(json.decode(response).data, 1).id
+      local plugin_id = json.decode(response).data[1].id
       assert.truthy(plugin_id)
 
       local _, status = http_client.delete(API_URL.."/apis/"..api_id.."/plugins/"..plugin_id)
@@ -134,7 +134,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local response, status = http_client.get(API_URL.."/apis", {request_host="hooks-plugins.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local response, status = http_client.get(API_URL.."/consumers/consumer1")
@@ -148,7 +148,7 @@ describe("Core Hooks", function()
       -- Update plugin
       local response, status = http_client.get(API_URL.."/apis/"..api_id.."/plugins/", {name="rate-limiting", consumer_id=consumer_id})
       assert.equals(200, status)
-      local plugin_id = table.remove(json.decode(response).data, 1).id
+      local plugin_id = json.decode(response).data[1].id
       assert.truthy(plugin_id)
 
       local _, status = http_client.patch(API_URL.."/apis/"..api_id.."/plugins/"..plugin_id, {enabled=false})
@@ -162,7 +162,7 @@ describe("Core Hooks", function()
           exists = false
         end
       end
-  
+
       -- Consuming the API again
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "hooks-plugins.com", authorization = "Basic dXNlcjEyMzpwYXNzMTIz"})
       assert.equals(200, status)
@@ -177,7 +177,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local response, status = http_client.get(API_URL.."/apis", {request_host="hooks-consumer.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local _, status = http_client.get(API_URL.."/cache/"..cache.plugin_key("basic-auth", api_id, nil))
@@ -186,7 +186,7 @@ describe("Core Hooks", function()
       -- Delete plugin
       local response, status = http_client.get(API_URL.."/apis/"..api_id.."/plugins/", {name="basic-auth"})
       assert.equals(200, status)
-      local plugin_id = table.remove(json.decode(response).data, 1).id
+      local plugin_id = json.decode(response).data[1].id
       assert.truthy(plugin_id)
 
       local _, status = http_client.patch(API_URL.."/apis/"..api_id.."/plugins/"..plugin_id, {enabled=false})
@@ -205,9 +205,8 @@ describe("Core Hooks", function()
       local _, status = http_client.get(STUB_GET_URL, {}, {host = "hooks-consumer.com"})
       assert.equals(200, status)
     end)
-
   end)
-  
+
   describe("Consumer entity invalidation", function()
     it("should invalidate a consumer when deleting", function()
       -- Making a request to populate the cache
@@ -223,15 +222,24 @@ describe("Core Hooks", function()
       local response, status = http_client.get(API_URL.."/cache/"..cache.consumer_key(consumer_id))
       assert.equals(200, status)
       assert.equals("consumer1", json.decode(response).username)
-      
+
       -- Delete consumer
       local _, status = http_client.delete(API_URL.."/consumers/consumer1")
       assert.equals(204, status)
 
-      -- Wait for cache to be invalidated
+      -- Wait for consumer be invalidated
       local exists = true
       while(exists) do
         local _, status = http_client.get(API_URL.."/cache/"..cache.consumer_key(consumer_id))
+        if status ~= 200 then
+          exists = false
+        end
+      end
+
+      -- Wait for Basic Auth credential to be invalidated
+      local exists = true
+      while(exists) do
+        local _, status = http_client.get(API_URL.."/cache/"..cache.basicauth_credential_key("user123"))
         if status ~= 200 then
           exists = false
         end
@@ -256,7 +264,7 @@ describe("Core Hooks", function()
       local response, status = http_client.get(API_URL.."/cache/"..cache.consumer_key(consumer_id))
       assert.equals(200, status)
       assert.equals("consumer1", json.decode(response).username)
-      
+
       -- Update consumer
       local _, status = http_client.patch(API_URL.."/consumers/consumer1", {username="updated_consumer1"})
       assert.equals(200, status)
@@ -280,7 +288,7 @@ describe("Core Hooks", function()
       assert.equals("updated_consumer1", json.decode(response).username)
     end)
   end)
-  
+
   describe("API entity invalidation", function()
     it("should invalidate ALL_APIS_BY_DICT when adding a new API", function()
       -- Making a request to populate ALL_APIS_BY_DICT
@@ -331,7 +339,7 @@ describe("Core Hooks", function()
       -- Updating API
       local response, status = http_client.get(API_URL.."/apis", {request_host="hooks1.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local _, status = http_client.patch(API_URL.."/apis/"..api_id, {upstream_url="http://mockbin.org"})
@@ -371,7 +379,7 @@ describe("Core Hooks", function()
       -- Deleting API
       local response, status = http_client.get(API_URL.."/apis", {request_host="hooks1.com"})
       assert.equals(200, status)
-      local api_id = table.remove(json.decode(response).data).id
+      local api_id = json.decode(response).data[1].id
       assert.truthy(api_id)
 
       local _, status = http_client.delete(API_URL.."/apis/"..api_id)
@@ -449,7 +457,7 @@ describe("Core Hooks", function()
         end
       end
       assert.True(found)
-    
+
       -- Killing serf
       stop_serf()
 
@@ -480,5 +488,4 @@ describe("Core Hooks", function()
       assert.True(found)
     end)
   end)
-  
 end)

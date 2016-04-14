@@ -16,7 +16,8 @@ local CACHE_KEYS = {
   REQUESTS = "requests",
   AUTOJOIN_RETRIES = "autojoin_retries",
   TIMERS = "timers",
-  ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC"
+  ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
+  LDAP_CREDENTIAL = "ldap_credentials"
 }
 
 local _M = {}
@@ -55,6 +56,7 @@ end
 
 function _M.delete_all()
   cache:flush_all() -- This does not free up the memory, only marks the items as expired
+  cache:flush_expired() -- This does actually remove the elements from the memory
 end
 
 function _M.requests_key()
@@ -99,6 +101,10 @@ end
 
 function _M.jwtauth_credential_key(secret)
   return CACHE_KEYS.JWTAUTH_CREDENTIAL..":"..secret
+end
+
+function _M.ldap_credential_key(username)
+  return CACHE_KEYS.LDAP_CREDENTIAL.."/"..username
 end
 
 function _M.acls_key(consumer_id)

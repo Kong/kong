@@ -79,8 +79,10 @@ describe("ACL Plugin", function()
     end)
 
     it("should work when in whitelist", function()
-      local _, status = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "acl2.com"})
+      local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "acl2.com"})
       assert.equal(200, status)
+      local body = cjson.decode(response)
+      assert.equal("admin", body.headers["x-consumer-groups"])
     end)
 
     it("should work when not in blacklist", function()
@@ -98,8 +100,10 @@ describe("ACL Plugin", function()
 
   describe("Multi lists", function()
     it("should work when in whitelist", function()
-      local _, status = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "acl4.com"})
+      local response, status = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "acl4.com"})
       assert.equal(200, status)
+      local body = cjson.decode(response)
+      assert.truthy(body.headers["x-consumer-groups"] == "pro, hello" or body.headers["x-consumer-groups"] == "hello, pro")
     end)
 
     it("should fail when not in whitelist", function()
@@ -142,7 +146,7 @@ describe("ACL Plugin", function()
   end)
 
   describe("Real-world usage", function()
-    it("should not fail", function()
+    it("#ci should not fail", function()
       -- Create consumer
       local response, status = http_client.post(API_URL.."/consumers/", {username="acl_consumer"})
       assert.equals(201, status)
@@ -170,10 +174,14 @@ describe("ACL Plugin", function()
         local _, status = http_client.post(API_URL.."/consumers/acl_consumer/acls/", {group="admin"..i})
         assert.equals(201, status)
 
-        -- Wait for cache to be invalidate
-        repeat
+        -- Wait for cache to be invalidated
+        local exists = true
+        while(exists) do
           local _, status = http_client.get(API_URL.."/cache/"..cache.acls_key(consumer_id))
-        until(status ~= 200)
+          if status ~= 200 then
+            exists = false
+          end
+        end
 
         -- Make the request, and it should work
         local _, status = http_client.get(STUB_GET_URL, {apikey = "secret123"}, {host = "acl_test"..i..".com"})

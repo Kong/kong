@@ -30,8 +30,8 @@ describe("Basic Auth Credentials API", function()
       teardown(function()
         if credential == nil then return end -- teardown gets executed even if the tag was excluded
         local dao = spec_helper.get_env().dao_factory
-        local ok, err = dao.basicauth_credentials:delete(credential)
-        assert.True(ok)
+        local res, err = dao.basicauth_credentials:delete(credential)
+        assert.is_table(res)
         assert.falsy(err)
       end)
 
@@ -96,14 +96,18 @@ describe("Basic Auth Credentials API", function()
   describe("/consumers/:consumer/basic-auth/:id", function()
 
     describe("GET", function()
-
       it("should retrieve by id", function()
         local response, status = http_client.get(BASE_URL..credential.id)
         assert.equal(200, status)
         local body = json.decode(response)
         assert.equals(credential.id, body.id)
       end)
-
+      it("should retrieve by id and match the consumer id", function()
+        local _, status = http_client.get(spec_helper.API_URL.."/consumers/bob/basic-auth/"..credential.id)
+        assert.equal(200, status)
+        local _, status = http_client.get(spec_helper.API_URL.."/consumers/alice/basic-auth/"..credential.id)
+        assert.equal(404, status)
+      end)
     end)
 
     describe("PATCH", function()

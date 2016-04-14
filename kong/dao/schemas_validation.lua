@@ -2,19 +2,15 @@ local utils = require "kong.tools.utils"
 local stringy = require "stringy"
 
 local POSSIBLE_TYPES = {
-  id = true,
   table = true,
   array = true,
   string = true,
   number = true,
   boolean = true,
-  url = true,
-  timestamp = true
+  url = true
 }
 
 local custom_types_validation = {
-  ["id"] = function(v) return type(v) == "string" end,
-  ["timestamp"] = function(v) return type(v) == "number" end,
   ["url"] = function(v)
     if v and type(v) == "string" then
       local parsed_url = require("socket.url").parse(v)
@@ -57,7 +53,6 @@ function _M.validate_entity(tbl, schema, options)
 
   local errors
   local partial_update = options.update and not options.full_update
-  --local full_update = options.update and options.full_update
 
   local key_values = {[""] = tbl} -- By default is only one element
 
@@ -89,30 +84,18 @@ function _M.validate_entity(tbl, schema, options)
               t[column] = utils.deep_copy(v.default)
             end
           end
-          -- [INSERT_VALUE]
-          if v.dao_insert_value and type(options.dao_insert) == "function" then
-            t[column] = options.dao_insert(v)
-          end
         end
       end
 
       -- Check the given table against a given schema
       for column, v in pairs(schema.fields) do
-        -- [IMMUTABLE] check immutability of a field if updating
-        if v.immutable and options.update and (t[column] ~= nil and options.old_t[column] ~= nil and t[column] ~= options.old_t[column]) and not v.required then
-          errors = utils.add_error(errors, error_prefix..column, column.." cannot be updated")
-        end
-
         -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
         if t[column] ~= nil and v.type ~= nil then
           local is_valid_type
           -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
           if type(t[column]) == "string" then
             t[column] = stringy.strip(t[column])
-            if v.type == "number" or v .type == "timestamp" then
-              t[column] = tonumber(t[column])
-              is_valid_type = t[column] ~= nil
-            elseif v.type == "boolean" then
+            if v.type == "boolean" then
               local bool = t[column]:lower()
               is_valid_type = bool == "true" or bool == "false"
               t[column] = bool == "true"
@@ -121,6 +104,9 @@ function _M.validate_entity(tbl, schema, options)
               for arr_k, arr_v in ipairs(t[column]) do
                 t[column][arr_k] = stringy.strip(arr_v)
               end
+              is_valid_type = validate_type(v.type, t[column])
+            elseif v.type == "number" or v.type == "timestamp" then
+              t[column] = tonumber(t[column])
               is_valid_type = validate_type(v.type, t[column])
             else -- if string
               is_valid_type = validate_type(v.type, t[column])
@@ -132,6 +118,11 @@ function _M.validate_entity(tbl, schema, options)
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
             errors = utils.add_error(errors, error_prefix..column, column.." is not a "..v.type)
           end
+        end
+
+        -- [IMMUTABLE] check immutability of a field if updating
+        if v.immutable and options.update and (t[column] ~= nil and options.old_t[column] ~= nil and t[column] ~= options.old_t[column]) and not v.required then
+          errors = utils.add_error(errors, error_prefix..column, column.." cannot be updated")
         end
 
         -- [ENUM] Check if the value is allowed in the enum.
@@ -253,6 +244,22 @@ local digit = "[0-9a-f]"
 local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
 function _M.is_valid_uuid(uuid)
   return uuid and uuid:match(uuid_pattern) ~= nil
+end
+
+function _M.is_schema_subset(tbl, schema)
+  local errors
+
+  for k, v in pairs(tbl) do
+    if schema.fields[k] == nil then
+      errors = utils.add_error(errors, k, "unknown field")
+    elseif schema.fields[k].type == "id" and v ~= nil then
+      if not _M.is_valid_uuid(v) then
+        errors = utils.add_error(errors, k, v.."is not a valid uuid")
+      end
+    end
+  end
+
+  return errors == nil, errors
 end
 
 return _M

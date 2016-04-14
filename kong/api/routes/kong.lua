@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 local route_helpers = require "kong.api.route_helpers"
 local utils = require "kong.tools.utils"
@@ -5,21 +6,35 @@ local utils = require "kong.tools.utils"
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local db_plugins, err = dao.plugins:find_distinct()
+      local rows, err = dao.plugins:find_all()
       if err then
         return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      local m = {}
+      for _, row in ipairs(rows) do
+        m[row.name] = true
+      end
+
+      local distinct_plugins = {}
+      for plugin_name in pairs(m) do
+        distinct_plugins[#distinct_plugins + 1] = plugin_name
       end
 
       return helpers.responses.send_HTTP_OK({
         tagline = "Welcome to Kong",
         version = constants.VERSION,
         hostname = utils.get_hostname(),
+        timers = {
+          running = ngx.timer.running_count(),
+          pending = ngx.timer.pending_count()
+        },
         plugins = {
-          available_on_server = configuration.plugins,
-          enabled_in_cluster = db_plugins
+          available_on_server = singletons.configuration.plugins,
+          enabled_in_cluster = distinct_plugins
         },
         lua_version = jit and jit.version or _VERSION,
-        configuration = configuration
+        configuration = singletons.configuration
       })
     end
   },
@@ -34,7 +49,7 @@ return {
         }
 
         for k, v in pairs(dao.daos) do
-          local count, err = v:count_by_keys()
+          local count, err = v:count()
           if err then
             return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
           end
