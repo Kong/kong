@@ -1,12 +1,14 @@
 return {
   {
     name = "2015-01-12-175310_skeleton",
-    up = [[
-      CREATE TABLE IF NOT EXISTS schema_migrations(
-        id text PRIMARY KEY,
-        migrations varchar(100)[]
-      );
-    ]],
+    up = function(db, properties)
+      return db:queries [[
+        CREATE TABLE IF NOT EXISTS schema_migrations(
+          id text PRIMARY KEY,
+          migrations varchar(100)[]
+        );
+      ]]
+    end,
     down = [[
       DROP TABLE schema_migrations;
     ]]

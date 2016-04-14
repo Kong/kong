@@ -26,6 +26,9 @@ function CassandraDB:new(options)
     prepared_shm = "cassandra_prepared",
     contact_points = options.contact_points,
     keyspace = options.keyspace,
+    protocol_options = {
+      default_port = options.port
+    },
     query_options = {
       prepare = true
     },
@@ -298,7 +301,7 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full, options)
+function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full, model, options)
   -- must check unique constaints manually too
   local err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if err then
@@ -307,6 +310,30 @@ function CassandraDB:update(table_name, schema, constraints, filter_keys, values
   err = check_foreign_constaints(self, values, constraints)
   if err then
     return nil, err
+  end
+
+  -- Cassandra TTL on update is per-column and not per-row, and TTLs cannot be updated on primary keys.
+  -- Not only that, but TTL on other rows can only be incremented, and not decremented. Because of all
+  -- of these limitations, the only way to make this happen is to do an upsert operation.
+  -- This implementation can be changed once Cassandra closes this issue: https://issues.apache.org/jira/browse/CASSANDRA-9312
+  if options and options.ttl then
+    if schema.primary_key and #schema.primary_key == 1 and filter_keys[schema.primary_key[1]] then
+      local row, err = self:find(table_name, schema, filter_keys)
+      if err then
+        return nil, err
+      elseif row then
+        for k, v in pairs(row) do
+          if not values[k] then
+            model[k] = v -- Populate the model to be used later for the insert
+          end
+        end
+
+        -- Insert without any contraint check, since the check has already been executed
+        return self:insert(table_name, schema, model, {unique={}, foreign={}}, options)
+      end
+    else
+      return nil, "Cannot update TTL on entities that have more than one primary_key"
+    end
   end
 
   local sets, args, where = {}, {}

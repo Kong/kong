@@ -1,6 +1,6 @@
 local version = setmetatable({
   major = 0,
-  minor = 7,
+  minor = 8,
   patch = 0,
   --pre_release = "alpha"
 }, {

@@ -42,7 +42,9 @@ describe("Resolver", function()
         {name = "tests-trailing-slash-path", request_path = "/test-trailing-slash", strip_request_path = true, upstream_url = "http://www.mockbin.org/request"},
         {name = "tests-trailing-slash-path2", request_path = "/test-trailing-slash2", strip_request_path = false, upstream_url = "http://www.mockbin.org/request"},
         {name = "tests-trailing-slash-path3", request_path = "/test-trailing-slash3", strip_request_path = true, upstream_url = "http://www.mockbin.org"},
-        {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"}
+        {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"},
+        {name = "tests-deep-path", request_path = "/hello/world", strip_request_path = true, upstream_url = "http://mockbin.com"},
+        {name = "tests-deep-path-two", request_path = "/hello/world/wot", strip_request_path = true, upstream_url = "http://httpbin.org"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -168,6 +170,21 @@ describe("Resolver", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/test-trailing-slash2", {hello = "world"})
         assert.equal(200, status)
         assert.equal("http://www.mockbin.org/request/test-trailing-slash2?hello=world", cjson.decode(response).url)
+      end)
+      it("should properly handle deep paths", function()
+        -- Should be httpbin
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/hello/world/wot/get")
+        assert.equal(200, status)
+        local body = cjson.decode(response)
+        assert.truthy(body.args)
+        assert.truthy(body.headers)
+        
+        -- Should be Mockbin
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/hello/world/request")
+        assert.equal(200, status)
+        local body = cjson.decode(response)
+        assert.truthy(body.postData)
+        assert.truthy(body.headers)
       end)
     end)
 

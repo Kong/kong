@@ -13,7 +13,7 @@ return {
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
     "mashape-analytics", "request-transformer", "response-transformer",
     "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
-    "loggly", "datadog", "runscope"
+    "loggly", "datadog", "runscope", "ldap-auth", "statsd"
   },
   -- Non standard headers, specific to Kong
   HEADERS = {
@@ -23,7 +23,10 @@ return {
     CONSUMER_ID = "X-Consumer-ID",
     CONSUMER_CUSTOM_ID = "X-Consumer-Custom-ID",
     CONSUMER_USERNAME = "X-Consumer-Username",
-    CREDENTIAL_USERNAME = "X-Credential-Username"
+    CREDENTIAL_USERNAME = "X-Credential-Username",
+    RATELIMIT_LIMIT = "X-RateLimit-Limit",
+    RATELIMIT_REMAINING = "X-RateLimit-Remaining",
+    CONSUMER_GROUPS = "X-Consumer-Groups"
   },
   RATELIMIT = {
     PERIODS = {

@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.7.0-0"
+version = "0.8.0-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.7.0"
+  tag = "0.8.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -20,7 +20,7 @@ dependencies = {
   "yaml ~> 1.1.2-1",
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
-  "lua-cassandra ~> 0.5.0",
+  "lua-cassandra ~> 0.5.1",
   "pgmoon ~> 1.4.0",
   "multipart ~> 0.3-2",
   "lua-path ~> 0.2.3-1",
@@ -34,7 +34,8 @@ dependencies = {
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1",
-  "luasyslog >= 1.0.0-2"
+  "luasyslog >= 1.0.0-2",
+  "lua_pack ~> 1.0.4-0"
 }
 build = {
   type = "builtin",
@@ -242,6 +243,12 @@ build = {
     ["kong.plugins.hmac-auth.api"] = "kong/plugins/hmac-auth/api.lua",
     ["kong.plugins.hmac-auth.daos"] = "kong/plugins/hmac-auth/daos.lua",
 
+    ["kong.plugins.ldap-auth.handler"] = "kong/plugins/ldap-auth/handler.lua",
+    ["kong.plugins.ldap-auth.access"] = "kong/plugins/ldap-auth/access.lua",
+    ["kong.plugins.ldap-auth.schema"] = "kong/plugins/ldap-auth/schema.lua",
+    ["kong.plugins.ldap-auth.ldap"] = "kong/plugins/ldap-auth/ldap.lua",
+    ["kong.plugins.ldap-auth.asn1"] = "kong/plugins/ldap-auth/asn1.lua",
+
     ["kong.plugins.syslog.handler"] = "kong/plugins/syslog/handler.lua",
     ["kong.plugins.syslog.schema"] = "kong/plugins/syslog/schema.lua",
 
@@ -250,7 +257,11 @@ build = {
 
     ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
-    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua"
+    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
+
+    ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
+    ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
+    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
   },
   install = {
     conf = { "kong.yml" },

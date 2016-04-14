@@ -87,6 +87,12 @@
   ## Key for encrypting network traffic within Kong. Must be a base64-encoded 16-byte key.
   # encrypt: "foo"
 
+  ######
+  ## The TTL (time to live), in seconds, of a node in the cluster when it stops sending healthcheck pings, maybe
+  ## because of a failure. If the node is not able to send a new healthcheck before the expiration, then new nodes
+  ## in the cluster will stop attempting to connect to it on startup.
+  # ttl_on_failure: 3600
+
 ######
 ## Specify which database to use. Only "cassandra" is currently available.
 # database: cassandra
@@ -94,10 +100,17 @@
 ######
 ## PostgreSQL configuration
 # postgres:
-#    host: "127.0.0.1"
-#    port: 5432
-#    user: kong
-#    database: kong
+  # host: "127.0.0.1"
+  # port: 5432
+
+  ######
+  ## Name of the database used by Kong. Will be created if it does not exist.
+  # database: kong
+
+  #####
+  ## User authentication settings
+  # user: ""
+  # password: ""
 
 ######
 ## Cassandra configuration (keyspace, authentication, client-to-node encryption)
@@ -106,6 +119,10 @@
   ## Contact points to your Cassandra cluster.
   # contact_points:
   #   - "127.0.0.1:9042"
+
+  ## Port on which your cluster's peers (other than your contact_points)
+  ## are listening on.
+  # port: 9042
 
   ######
   ## Name of the keyspace used by Kong. Will be created if it does not exist.

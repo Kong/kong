@@ -30,7 +30,8 @@ return {
       ["auto-join"] = {type = "boolean", default = true},
       ["advertise"] = {type = "string", nullable = true},
       ["encrypt"] = {type = "string", nullable = true},
-      ["profile"] = {type = "string", default = "wan", enum = {"wan", "lan", "local"}}
+      ["profile"] = {type = "string", default = "wan", enum = {"wan", "lan", "local"}},
+      ["ttl_on_failure"] = {type = "number", default = 3600}
     }
   },
   ["database"] = {type = "string", default = "cassandra", enum = {"cassandra", "postgres"}},
@@ -41,13 +42,14 @@ return {
       ["port"] = {type = "number", default = 5432},
       ["user"] = {type = "string", default = "kong"},
       ["database"] = {type = "string", default = "kong"},
-      ["password"] = {type = "string", default = "kong"}
+      ["password"] = {type = "string", nullable = true}
     }
   },
   ["cassandra"] = {
     type = "table",
     content = {
       ["contact_points"] = {type = "array", default = {"127.0.0.1:9042"}},
+      ["port"] = {type = "number", default = 9042},
       ["keyspace"] = {type = "string", default = "kong"},
       ["timeout"] = {type = "number", default = 5000},
       ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
@@ -55,7 +57,7 @@ return {
       ["data_centers"] = {type = "table", default = {}},
       ["username"] = {type = "string", nullable = true},
       ["password"] = {type = "string", nullable = true},
-      ["consistency"] = {type = "string", default = "ONE", enum = {"ANY", "ONE", "TWO", "THREE", "QUORUM", "ALL", "LOCAL_QUORUM", 
+      ["consistency"] = {type = "string", default = "ONE", enum = {"ANY", "ONE", "TWO", "THREE", "QUORUM", "ALL", "LOCAL_QUORUM",
                                                                    "EACH_QUORUM", "SERIAL", "LOCAL_SERIAL", "LOCAL_ONE"}},
       ["ssl"] = {
         type = "table",
