@@ -73,15 +73,7 @@ local function deserialize_rows(rows, schema)
   for i, row in ipairs(rows) do
     for col, value in pairs(row) do
       if schema.fields[col].type == "table" or schema.fields[col].type == "array" then
-        local success, result = pcall(json.decode, value);
-        if success then
-          rows[i][col] = result
-        else
-          -- this record is supposed to be a json serialised object, but is not.
-          -- can be the case for an attribute that used to be a "string" and became an "array" after a kong upgrade.
-          rows[i][col] = {}
-          rows[i][col][1] = value
-        end
+        rows[i][col] = json.decode(value)
       end
     end
   end

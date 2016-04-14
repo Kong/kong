@@ -96,7 +96,6 @@ end
 
 local function retrieve_parameters()
   ngx.req.read_body()
-
   -- OAuth2 parameters could be in both the querystring or body
   local body_parameters
   local content_type = req_get_headers()[CONTENT_TYPE]
