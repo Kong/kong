@@ -49,6 +49,7 @@ return {
     type = "table",
     content = {
       ["contact_points"] = {type = "array", default = {"127.0.0.1:9042"}},
+      ["port"] = {type = "number", default = 9042},
       ["keyspace"] = {type = "string", default = "kong"},
       ["timeout"] = {type = "number", default = 5000},
       ["replication_strategy"] = {type = "string", default = "SimpleStrategy", enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
@@ -56,7 +57,7 @@ return {
       ["data_centers"] = {type = "table", default = {}},
       ["username"] = {type = "string", nullable = true},
       ["password"] = {type = "string", nullable = true},
-      ["consistency"] = {type = "string", default = "ONE", enum = {"ANY", "ONE", "TWO", "THREE", "QUORUM", "ALL", "LOCAL_QUORUM", 
+      ["consistency"] = {type = "string", default = "ONE", enum = {"ANY", "ONE", "TWO", "THREE", "QUORUM", "ALL", "LOCAL_QUORUM",
                                                                    "EACH_QUORUM", "SERIAL", "LOCAL_SERIAL", "LOCAL_ONE"}},
       ["ssl"] = {
         type = "table",

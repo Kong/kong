@@ -20,6 +20,7 @@ This release includes support for PostgreSQL as Kong's primary datastore!
 
 ### Fixed
 
+- Introduce a new `port` option when connecting to your Cassandra cluster instead of using the CQL default (9042). [#1139](https://github.com/Mashape/kong/issues/1139)
 - Plugins
   - Request/Response Transformer: add missing migrations for upgrades from ` <= 0.5.x`. [#1064](https://github.com/Mashape/kong/issues/1064)
   - OAuth2
