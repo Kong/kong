@@ -38,9 +38,6 @@ Accept: application/json\r
       }
     end
   },
-  var = {
-    server_addr = "10.10.10.10"
-  },
 
   -- ALF buffer stubs
   -- TODO: to be removed once we use resty-cli to run our tests.

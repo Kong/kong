@@ -44,8 +44,7 @@ describe("ALF serializer", function()
         host = "mockbin.com",
         request_uri = "/request/path",
         request_length = 32,
-        remote_addr = "127.0.0.1",
-        server_addr = "10.10.10.10"
+        remote_addr = "127.0.0.1"
       },
       ctx = {
         KONG_PROXY_LATENCY = 3,
@@ -65,7 +64,7 @@ describe("ALF serializer", function()
 
   describe("add_entry()", function()
     it("adds an entry", function()
-      local alf = alf_serializer.new()
+      local alf = alf_serializer.new(nil, "10.10.10.10")
       local entry = assert(alf:add_entry(_ngx))
       assert.matches("%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%dZ", entry.startedDateTime)
       assert.equal("10.10.10.10", entry.serverIPAddress)
@@ -429,7 +428,6 @@ describe("ALF serializer", function()
       local alf = alf_serializer.new()
       local entry = assert(alf:add_entry(_ngx))
       assert.equal("", entry.response.statusText) -- can't get
-      assert.equal("", entry.response.httpVersion) -- can't get
       assert.equal(0, entry.response.headersSize) -- can't get
     end)
   end) -- add_entry()

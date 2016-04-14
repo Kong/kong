@@ -1,18 +1,8 @@
--- Analytics plugin handler.
+-- Galileo plugin handler.
+-- Buffers request/response bodies if asked so in the plugin's config.
+-- Caches the server's address to avoid further syscalls.
 --
--- How it works:
--- Keep track of calls made to configured APIs on a per-worker basis, using the ALF format
--- (alf_serializer.lua) and per-API buffers. `:access()` and `:body_filter()` are implemented to record some properties
--- required for the ALF entry.
---
--- When an API buffer is full (it reaches the `batch_size` configuration value or the maximum payload size), send the batch to the server.
---
--- In order to keep Analytics as real-time as possible, we also start a 'delayed timer' running in background.
--- If no requests are made during a certain period of time (the `delay` configuration value), the
--- delayed timer will fire and send the batch + flush the data, not waiting for the buffer to be full.
---
--- @see alf_serializer.lua
--- @see buffer.lua
+-- Maintains one ALF Buffer per galileo plugin per worker.
 
 local BasePlugin = require "kong.plugins.base_plugin"
 local Buffer = require "kong.plugins.mashape-analytics.buffer"
@@ -21,6 +11,7 @@ local read_body = ngx.req.read_body
 local get_body_data = ngx.req.get_body_data
 
 local _alf_buffers = {} -- buffers per-api
+local _server_addr
 
 local AnalyticsHandler = BasePlugin:extend()
 
@@ -30,6 +21,10 @@ end
 
 function AnalyticsHandler:access(conf)
   AnalyticsHandler.super.access(self)
+
+  if not _server_addr then
+    _server_addr = ngx.var.server_addr
+  end
 
   if conf.log_bodies then
     read_body()
@@ -57,7 +52,13 @@ function AnalyticsHandler:log(conf)
 
   local buf = _alf_buffers[api_id]
   if not buf then
-    buf = Buffer.new(conf)
+    local err
+    conf.server_addr = _server_addr
+    buf, err = Buffer.new(conf)
+    if not buf then
+      ngx.log(ngx.ERR, "could not create ALF buffer: ", err)
+      return
+    end
     _alf_buffers[api_id] = buf
   end
 

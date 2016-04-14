@@ -1,3 +1,24 @@
+-- ALF Buffer.
+-- Keeps an ALF serializer in memory. When that serializer is full, flushes
+-- its serialized (JSON encoded) ALF into a sending queue (FILO). The
+-- sending_queue cannot exceed a given size, to avoid side effects on the
+-- LuaJIT VM. If the sending_queue is full, the data is discarded.
+-- If no entries have been added to the ALF serializer in the last 'N'
+-- seconds (configurable), the ALF is flushed regardless if full or not,
+-- and also queued for sending.
+--
+-- Once the sending_queue has elements, it tries to send the oldest one to
+-- the Galileo collector in a timer (to be called from log_by_lua). That
+-- timer will keep calling itself as long as the sending_queue isn't empty.
+--
+-- If an ALF could not be sent, it can be tried again later (depending on the
+-- error). If so, it is added back at the end of the sending queue. An ALF
+-- can only be tried 'N' times, afterwards it is discarded.
+--
+-- Each nginx worker gets its own retry delays, stored at the chunk level of
+-- this module. When the collector cannot be reached, the retry delay is
+-- increased by n_try^2, up to 60s.
+
 local alf_serializer = require "kong.plugins.mashape-analytics.alf"
 local http = require "resty.http"
 
@@ -5,16 +26,24 @@ local setmetatable = setmetatable
 local timer_at = ngx.timer.at
 local ngx_log = ngx.log
 local remove = table.remove
-local DEBUG = ngx.DEBUG
-local WARN = ngx.WARN
 local type = type
 local huge = math.huge
 local fmt = string.format
-local ERR = ngx.ERR
+local min = math.min
+local pow = math.pow
 local now = ngx.now
+local ERR = ngx.ERR
+local DEBUG = ngx.INFO
+local WARN = ngx.WARN
 
 local _buffer_max_mb = 200
 local _buffer_max_size = _buffer_max_mb * 2^20
+
+-- per-worker retry policy
+-- simply increment the delay by n_try^2
+-- max delay of 60s
+local retry_delay_idx = 1
+local _retry_max_delay = 60
 
 local _M = {}
 
@@ -22,8 +51,12 @@ local _mt = {
   __index = _M
 }
 
+local function get_now()
+  return now()*1000
+end
+
 local function log(lvl, ...)
-  ngx_log(lvl, fmt("[mashape-analytics] %s", fmt(...)))
+  ngx_log(lvl, "[mashape-analytics] ", ...)
 end
 
 local _delayed_flush, _send
@@ -31,18 +64,20 @@ local _delayed_flush, _send
 local function _create_delayed_timer(self)
    local ok, err = timer_at(self.flush_timeout/1000, _delayed_flush, self)
    if not ok then
-     log(ERR, "failed to create delayed flush timer: ", err)
+      log(ERR, "failed to create delayed flush timer: ", err)
    else
-     self.timer_flush_pending = true
+      --log(DEBUG, "delayed timer created")
+      self.timer_flush_pending = true
    end
 end
 
-local function _create_send_timer(self, to_send)
-   local ok, err = timer_at(0, _send, self, to_send)
+local function _create_send_timer(self, to_send, delay)
+   delay = delay or 1
+   local ok, err = timer_at(delay, _send, self, to_send)
    if not ok then
-     log(ERR, "failed to create send timer: ", err)
+      log(ERR, "failed to create send timer: ", err)
    else
-     self.timer_send_pending = true
+      self.timer_send_pending = true
    end
 end
 
@@ -51,23 +86,27 @@ end
 -----------------
 
 _delayed_flush = function(premature, self)
-  if premature then return end
-
-  if now() - self.last_t >= self.flush_timeout then
-    _create_delayed_timer(self) -- flushing reported: we had activity
-    return
+  if premature then return
+  elseif get_now() - self.last_t < self.flush_timeout then
+    -- flushing reported: we had activity
+    log(DEBUG, "[delayed flushing handler] buffer had activity, "
+             .."delaying flush")
+    _create_delayed_timer(self)
+  else
+    -- no activity and timeout reached
+    log(DEBUG, "[delayed flushing handler] buffer had no activity, flushing "
+             .."triggered by flush_timeout")
+    self:flush()
+    self.timer_flush_pending = false
   end
-
-  -- no activity and timeout reached
-  self:flush()
-  self.timer_flush_pending = false
 end
 
 _send = function(premature, self, to_send)
   if premature then return end
 
-  local retry -- retry this ALF if we encounter a failure here
-              -- such as collector unresponsive
+  -- retry trigger, in case the collector
+  -- is unresponseive
+  local retry
 
   local client = http.new()
   client:set_timeout(self.connection_timeout)
@@ -77,6 +116,14 @@ _send = function(premature, self, to_send)
     retry = true
     log(ERR, "could not connect to Galileo collector: ", err)
   else
+    if self.https then
+      local ok, err = client:ssl_handshake(false, self.host, true)
+      if not ok then
+        log(ERR, "could not perform SSL handshake with Galileo collector: ", err)
+        return
+      end
+    end
+
     local res, err = client:request {
       method = "POST",
       path = "/1.1.0/single",
@@ -87,41 +134,57 @@ _send = function(premature, self, to_send)
     }
     if not res then
       retry = true
-      log(ERR, "could not send batch to Galileo collector: ", err)
-    elseif res.status == 200 then
-      log(DEBUG, "Galileo collector saved the ALF")
-    elseif res.status == 207 then
-      log(DEBUG, "Galileo collector saved parts the ALF")
-    elseif res.status >= 400 and res.status < 500 then
-      log(ERR, "Galileo collector refused this ALF")
-    elseif res.status >= 500 then
-      retry = true
-      log(ERR, "Galileo collector error")
+      log(ERR, "could not send ALF to Galileo collector: ", err)
+    else
+      local body = res:read_body()
+      -- logging and error reports
+      if res.status == 200 then
+        log(DEBUG, "Galileo collector saved the ALF (200 OK): ", body)
+      elseif res.status == 207 then
+        log(DEBUG, "Galileo collector partially saved the ALF "
+                 .."(207 Multi-Status): ", body)
+      elseif res.status >= 400 and res.status < 500 then
+        log(WARN, "Galileo collector refused this ALF (4xx): ", body)
+      elseif res.status >= 500 then
+        retry = true
+        log(ERR, "Galileo collector HTTP error ("..res.status.."): ", body)
+      end
     end
 
-    if not res or res.headers["connection"] == "close" then
-      client:close()
-    else
-      client:set_keepalive()
+    local ok, err = client:set_keepalive()
+    if ok ~= 1 then
+      log(ERR, "could not keepalive Galileo collector connection: ", err)
     end
   end
 
+  local next_retry_delay = 1
+
   if retry then
+    -- collector could not be reached, must retry
+    retry_delay_idx = retry_delay_idx + 1
+    next_retry_delay = min(_retry_max_delay, pow(retry_delay_idx, 2))
+
+    log(WARN, "could not reach Galileo collector, retrying in: ", next_retry_delay)
+
     to_send.retries = to_send.retries + 1
     if to_send.retries < self.retry_count then
       -- add our ALF back to the sending queue, but at the
       -- end of it.
       self.sending_queue[#self.sending_queue+1] = to_send
     else
-      log(WARN, "ALF was already tried %d times, dropping it", to_send.retries-1)
+      log(WARN, fmt("ALF was already tried %d times, dropping it", to_send.retries))
     end
-  else -- ALF was sent or discarded
+  else
+    -- Success!
+    -- ALF was sent or discarded
+    retry_delay_idx = 1 -- reset our retry policy
     self.sending_queue_size = self.sending_queue_size - #to_send.payload
   end
 
   if #self.sending_queue > 0 then -- more to send?
     -- pop the oldest from the sending_queue
-    _create_send_timer(self, remove(self.sending_queue, 1))
+    log(DEBUG, fmt("sending oldest ALF, %d still queued", #self.sending_queue-1))
+    _create_send_timer(self, remove(self.sending_queue, 1), next_retry_delay)
   else
     -- we finished flushing the sending_queue, allow the creation
     -- of a future timer once the current ALF reached its limit
@@ -137,6 +200,8 @@ end
 function _M.new(conf)
   if type(conf) ~= "table" then
     return nil, "arg #1 (conf) must be a table"
+  elseif type(conf.server_addr) ~= "string" then
+    return nil, "server_addr must be a string"
   elseif type(conf.service_token) ~= "string" then
     return nil, "service_token must be a string"
   elseif conf.environment ~= nil and type(conf.environment) ~= "string" then
@@ -162,12 +227,13 @@ function _M.new(conf)
     environment         = conf.environment,
     host                = conf.host,
     port                = conf.port,
+    https               = conf.https,
     log_bodies          = conf.log_bodies or false,
     retry_count         = conf.retry_count or 0,
     connection_timeout  = conf.connection_timeout and conf.connection_timeout * 1000 or 30000, -- ms
     flush_timeout       = conf.flush_timeout and conf.flush_timeout * 1000 or 2000,      -- ms
     queue_size          = conf.queue_size or 1000,
-    cur_alf             = alf_serializer.new(conf.log_bodies),
+    cur_alf             = alf_serializer.new(conf.log_bodies, conf.server_addr),
     sending_queue       = {},                             -- FILO queue
     sending_queue_size  = 0,
     last_t              = huge,
@@ -185,19 +251,14 @@ function _M:add_entry(...)
     return ok, err
   end
 
-  local t = now()
-
-  if t - self.last_t >= self.flush_timeout
-     or err >= self.queue_size then -- err is the queue size in this case
-
+  if err >= self.queue_size then -- err is the queue size in this case
      ok, err = self:flush()
      if not ok then return nil, err end -- for our tests only
-
    elseif not self.timer_flush_pending then -- start delayed timer if none
      _create_delayed_timer(self)
    end
 
-  self.last_t = t
+  self.last_t = get_now()
 
   return true
 end
@@ -214,6 +275,8 @@ function _M:flush()
     log(WARN, "buffer is full, discarding this ALF")
     return nil, "buffer full"
   end
+
+  log(DEBUG, "flushing ALF for sending (", err, " entries)")
 
   self.sending_queue_size = self.sending_queue_size + #alf_json
   self.sending_queue[#self.sending_queue+1] = {
@@ -239,6 +302,7 @@ function _M:send()
   -- to send.
   if not self.timer_send_pending then
     -- pop the oldest ALF from the queue
+    log(DEBUG, fmt("sending oldest ALF, %d still queued", #self.sending_queue-1))
     _create_send_timer(self, remove(self.sending_queue, 1))
   end
 end

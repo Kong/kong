@@ -14,6 +14,7 @@ describe("ALF Buffer", function()
     reload_buffer()
 
     conf = {
+      server_addr = "10.10.10.10",
       service_token = "abcd",
       environment = "test",
       log_bodies = false,
@@ -28,12 +29,12 @@ describe("ALF Buffer", function()
     _ngx = {
       status = 200,
       var = {
-        server_protocol = "HTTP/1.1",
         scheme = "https",
         host = "mockbin.com",
         request_uri = "/request/path",
         request_length = 32,
-        remote_addr = "127.0.0.1"
+        remote_addr = "127.0.0.1",
+        server_addr = "10.10.10.10"
       },
       ctx = {
         KONG_PROXY_LATENCY = 3,
@@ -53,6 +54,7 @@ describe("ALF Buffer", function()
   it("sane defaults", function()
     local buf = assert(Buffer.new {
       service_token = "abcd",
+      server_addr = "",
       host = "",
       port = 80
     })
@@ -67,10 +69,14 @@ describe("ALF Buffer", function()
     assert.equal("arg #1 (conf) must be a table", err)
     assert.is_nil(buf)
     buf, err = Buffer.new {}
+    assert.equal("server_addr must be a string", err)
+    assert.is_nil(buf)
+    buf, err = Buffer.new {server_addr = "10.10.10.10"}
     assert.equal("service_token must be a string", err)
     assert.is_nil(buf)
     buf, err = Buffer.new {
       service_token = "abcd",
+      server_addr = "10.10.10.10",
       environment = false
     }
     assert.equal("environment must be a string", err)
@@ -105,16 +111,6 @@ describe("ALF Buffer", function()
       assert(buf:add_entry(_ngx, nil, nil))
       assert.is_number(buf.last_t)
       assert.not_equal(last_t, buf.last_t)
-    end)
-    it("calls flush() if now - last_t >= 'flush_timeout'", function()
-      conf.flush_timeout = 1
-      local buf = assert(Buffer.new(conf))
-      local s_flush = spy.on(buf, "flush")
-
-      assert(buf:add_entry(_ngx, nil, nil))
-      _G.ngx.sleep(1000)
-      assert(buf:add_entry(_ngx, nil, nil))
-      assert.spy(s_flush).was_called(1)
     end)
   end)
 

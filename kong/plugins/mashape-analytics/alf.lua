@@ -3,11 +3,9 @@
 -- @version 2.0.0
 -- @see https://github.com/Mashape/galileo-agent-spec
 --
---
 -- Incompatibilities with ALF 1.1 and important notes
 -- ==================================================
 -- * The following fields cannot be retrieved as of ngx_lua 0.10.2:
---     * response.httpVersion
 --     * response.statusText
 --     * response.headersSize
 --
@@ -18,7 +16,6 @@
 --     * request.headers will contain the _current_ headers
 --     * response.headers will contain the _current_ headers
 --
--- * bodies are always base64 encoded
 -- * bodyCaptured properties are determined using HTTP headers
 -- * timings.blocked is ignored
 -- * timings.connect is ignored
@@ -37,6 +34,7 @@ local req_get_headers = ngx.req.get_headers
 local req_get_uri_args = ngx.req.get_uri_args
 local req_raw_header = ngx.req.raw_header
 local encode_base64 = ngx.encode_base64
+local http_version = ngx.req.http_version
 local setmetatable = setmetatable
 local tonumber = tonumber
 local os_date = os.date
@@ -53,8 +51,9 @@ local _mt = {
   __index = _M
 }
 
-function _M.new(log_bodies)
+function _M.new(log_bodies, server_addr)
   local alf = {
+    server_addr = server_addr,
     log_bodies = log_bodies,
     entries = {}
   }
@@ -121,6 +120,7 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
   -- retrieval
   local var = _ngx.var
   local ctx = _ngx.ctx
+  local http_version = "HTTP/"..http_version()
   local request_headers = req_get_headers()
   local request_content_len = get_header(request_headers, "content-length", 0)
   local request_transfer_encoding = get_header(request_headers, "transfer-encoding")
@@ -180,10 +180,10 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
   self.entries[idx] = {
     time = send_t + wait_t + receive_t,
     startedDateTime = os_date("!%Y-%m-%dT%TZ", req_start_time()),
-    serverIPAddress = var.server_addr,
+    serverIPAddress = self.server_addr,
     clientIPAddress = var.remote_addr,
     request = {
-      httpVersion = var.server_protocol,
+      httpVersion = http_version,
       method = req_get_method(),
       url = var.scheme .. "://" .. var.host .. var.request_uri,
       queryString = hash_to_array(req_get_uri_args()),
@@ -196,7 +196,7 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
     response = {
       status = _ngx.status,
       statusText = "",
-      httpVersion = "",
+      httpVersion = http_version,
       headers = hash_to_array(resp_headers),
       content = response_content,
       headersSize = 0,
@@ -249,7 +249,7 @@ function _M:serialize(service_token, environment)
   buf.environment = environment
   buf.har.log.entries = self.entries
 
-  -- tmp workaround empty arrays
+  -- tmp workaround for empty arrays
   -- this prevents us from dealing with ALFs
   -- larger than a few MBs at once
   local encoded =  cjson.encode(buf)
@@ -259,7 +259,7 @@ function _M:serialize(service_token, environment)
   end
 
   encoded = gsub(encoded, pat, "")
-  return gsub(encoded, "\\/", "/")
+  return gsub(encoded, "\\/", "/"), #self.entries
 
   --return cjson.encode(buf)
 end
