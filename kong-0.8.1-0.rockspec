@@ -167,11 +167,11 @@ build = {
     ["kong.plugins.runscope.schema"] = "kong/plugins/runscope/schema.lua",
     ["kong.plugins.runscope.log"] = "kong/plugins/runscope/log.lua",
 
-    ["kong.plugins.mashape-analytics.migrations.cassandra"] = "kong/plugins/mashape-analytics/migrations/cassandra.lua",
-    ["kong.plugins.mashape-analytics.handler"] = "kong/plugins/mashape-analytics/handler.lua",
-    ["kong.plugins.mashape-analytics.schema"] = "kong/plugins/mashape-analytics/schema.lua",
-    ["kong.plugins.mashape-analytics.buffer"] = "kong/plugins/mashape-analytics/buffer.lua",
-    ["kong.plugins.mashape-analytics.alf"] = "kong/plugins/mashape-analytics/alf.lua",
+    ["kong.plugins.galileo.migrations.cassandra"] = "kong/plugins/galileo/migrations/cassandra.lua",
+    ["kong.plugins.galileo.handler"] = "kong/plugins/galileo/handler.lua",
+    ["kong.plugins.galileo.schema"] = "kong/plugins/galileo/schema.lua",
+    ["kong.plugins.galileo.buffer"] = "kong/plugins/galileo/buffer.lua",
+    ["kong.plugins.galileo.alf"] = "kong/plugins/galileo/alf.lua",
 
     ["kong.plugins.rate-limiting.migrations.cassandra"] = "kong/plugins/rate-limiting/migrations/cassandra.lua",
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",

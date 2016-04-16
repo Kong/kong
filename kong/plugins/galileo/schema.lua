@@ -1,8 +1,8 @@
 return {
   fields = {
     environment = {type = "string"},
-    retry_count = {type = "number", default = 0},
-    queue_size = {type = "number", default = 500},
+    retry_count = {type = "number", default = 10},
+    queue_size = {type = "number", default = 1000},
     flush_timeout = {type = "number", default = 2},
     log_bodies = {type = "boolean", default = false},
     service_token = {type = "string", required = true},
