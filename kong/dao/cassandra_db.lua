@@ -32,14 +32,16 @@ function CassandraDB:new(options)
     query_options = {
       prepare = true
     },
-    username = options.username,
-    password = options.password,
     ssl_options = {
       enabled = options.ssl.enabled,
       verify = options.ssl.verify,
       ca = options.ssl.certificate_authority
     }
   }
+
+  if options.username and options.password then
+    conn_opts.auth = cassandra.auth.PlainTextProvider(options.username, options.password)
+  end
 
   CassandraDB.super.new(self, "cassandra", conn_opts)
 end
