@@ -19,9 +19,11 @@ describe("Admin API", function()
     client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
   end)
   teardown(function()
-    client:close()
+    if client then
+      client:close()
+    end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   describe("/apis", function()
@@ -225,7 +227,7 @@ describe("Admin API", function()
         end)
         it_content_types("returns 409 on conflict", function(content_type)
           return function()
-            -- @TODO this test actually defeats the purpose of PUT.
+            -- @TODO this particular test actually defeats the purpose of PUT.
             -- It should probably replace the entity
             local res = assert(client:send {
                 method = "PUT",
