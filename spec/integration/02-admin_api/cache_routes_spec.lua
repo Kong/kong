@@ -1,90 +1,125 @@
-local json = require "cjson"
-local http_client = require "kong.tools.http_client"
-local spec_helper = require "spec.spec_helpers"
+local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
-
-local GET_URL = spec_helper.STUB_GET_URL
+local cjson = require "cjson"
 
 describe("Admin API", function()
-
+  local client, proxy_client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.insert_fixtures {
-      api = {
-        {name = "api-cache", request_host = "cache.com", upstream_url = "http://mockbin.org/"},
-      }
-    }
+    helpers.dao:truncate_tables()
+    helpers.execute "pkill nginx; pkill serf"
+    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
 
-    spec_helper.start_kong()
+    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port, 2000))
   end)
-
   teardown(function()
-    spec_helper.stop_kong()
+    if client then
+      client:close()
+      proxy_client:close()
+    end
+    helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
-  describe("/cache/", function()
-    local BASE_URL = spec_helper.API_URL.."/cache/"
+  describe("/cache/{key}", function()
+    setup(function()
+      assert(helpers.dao.apis:insert {
+        name = "api-cache",
+        request_host = "cache.com",
+        upstream_url = "http://mockbin.com"
+      })
+    end)
 
     describe("GET", function()
-
-      it("[FAILURE] should return an error when the key is invalid", function()
-        local _, status = http_client.get(BASE_URL.."hello")
-        assert.equal(404, status)
+      it("returns 404 if not found", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cache/_inexistent_"
+        })
+        assert.res_status(404, res)
       end)
+      it("retrieves a cached entity", function()
+        -- populate cache
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {host = "cache.com"}
+        })
+        assert.res_status(200, res)
 
-      it("[SUCCESS] should get the value of a cache item", function()
-        -- Populating cache
-        local _, status = http_client.get(GET_URL, {}, {host = "cache.com"})
-        assert.equal(200, status)
-
-        -- Retrieving cache
-        local response, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
-        assert.equal(200, status)
-        assert.truthy(json.decode(response).by_dns)
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/"..cache.all_apis_by_dict_key()
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.by_dns)
       end)
-
     end)
 
     describe("DELETE", function()
+      it("purges cached entity", function()
+        -- populate cache
+        local res = assert(proxy_client:send {
+          method = "GET",
+          path = "/",
+          headers = {host = "cache.com"}
+        })
+        assert.res_status(200, res)
 
-      it("[SUCCESS] should invalidate an entity", function()
-        -- Populating cache
-        local _, status = http_client.get(GET_URL, {}, {host = "cache.com"})
-        assert.equal(200, status)
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/"..cache.all_apis_by_dict_key()
+        })
+        assert.res_status(200, res)
 
-        -- Retrieving cache
-        local response, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
-        assert.equal(200, status)
-        assert.truthy(json.decode(response).by_dns)
+        -- delete cache
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/cache/"..cache.all_apis_by_dict_key()
+        })
+        assert.res_status(204, res)
 
-        -- Delete
-        local _, status = http_client.delete(BASE_URL..cache.all_apis_by_dict_key())
-        assert.equal(204, status)
-
-        -- Make sure it doesn't exist
-        local _, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
-        assert.equal(404, status)
-      end)
-
-      it("[SUCCESS] should invalidate all entities", function()
-        -- Populating cache
-        local _, status = http_client.get(GET_URL, {}, {host = "cache.com"})
-        assert.equal(200, status)
-
-        -- Retrieving cache
-        local response, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
-        assert.equal(200, status)
-        assert.truthy(json.decode(response).by_dns)
-
-        -- Delete
-        local _, status = http_client.delete(BASE_URL)
-        assert.equal(204, status)
-
-        -- Make sure it doesn't exist
-        local _, status = http_client.get(BASE_URL..cache.all_apis_by_dict_key())
-        assert.equal(404, status)
+        res = assert(client:send {
+          method = "GET",
+          path = "/cache/"..cache.all_apis_by_dict_key()
+        })
+        assert.res_status(404, res)
       end)
     end)
 
+    describe("/cache/", function()
+      describe("DELETE", function()
+        it("purges all entities", function()
+           -- populate cache
+          local res = assert(proxy_client:send {
+            method = "GET",
+            path = "/",
+            headers = {host = "cache.com"}
+          })
+          assert.res_status(200, res)
+
+          res = assert(client:send {
+            method = "GET",
+            path = "/cache/"..cache.all_apis_by_dict_key()
+          })
+          assert.res_status(200, res)
+
+           -- delete cache
+          res = assert(client:send {
+            method = "DELETE",
+            path = "/cache"
+          })
+          assert.res_status(204, res)
+
+          res = assert(client:send {
+            method = "GET",
+            path = "/cache/"..cache.all_apis_by_dict_key()
+          })
+          assert.res_status(404, res)
+        end)
+      end)
+    end)
   end)
 end)

@@ -1,140 +1,171 @@
-local json = require "cjson"
-local http_client = require "kong.tools.http_client"
-local spec_helper = require "spec.spec_helpers"
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 describe("Admin API", function()
+  local client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.start_kong()
-  end)
+    helpers.dao:truncate_tables()
+    helpers.execute "pkill nginx; pkill serf"
+    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
 
+    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+  end)
   teardown(function()
-    spec_helper.stop_kong()
+    if client then
+      client:close()
+    end
+    helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("/plugins/enabled", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins/enabled"
-
-    it("should return a list of enabled plugins on this node", function()
-      local response, status = http_client.get(BASE_URL)
-      assert.equal(200, status)
-      local body = json.decode(response)
-      assert.is_table(body.enabled_plugins)
+    it("returns a list of enabled plugins on this node", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/plugins/enabled",
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.is_table(json.enabled_plugins)
     end)
   end)
 
   describe("/plugins", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins/"
-    local fixtures
-
+    local plugins = {}
     setup(function()
-      fixtures = spec_helper.insert_fixtures {
-        api = {
-          {request_host = "test-get.com", upstream_url = "http://mockbin.com"},
-          {request_host = "test-patch.com", upstream_url = "http://mockbin.com"},
-          {request_host = "test-delete.com", upstream_url = "http://mockbin.com"}
-        },
-        plugin = {
-          {name = "key-auth", __api = 1},
-          {name = "key-auth", __api = 2},
-          {name = "key-auth", __api = 3}
-        }
-      }
+      for i = 1, 3 do
+        local api = assert(helpers.dao.apis:insert {
+          name = "api-"..i,
+          request_host = i.."-api.com",
+          upstream_url = "http://mockbin.com"
+        })
+
+        plugins[i] = assert(helpers.dao.plugins:insert {
+          name = "key-auth",
+          api_id = api.id
+        })
+      end
     end)
 
     describe("GET", function()
-      it("[SUCCESS] should retrieve all the plugins", function()
-        local response, status = http_client.get(BASE_URL)
-        assert.equal(200, status)
-        local body = json.decode(response)
-        assert.equal(3, body.total)
+      it("retrieves all plugins configured", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/plugins"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(3, json.total)
+        assert.equal(3, #json.data)
       end)
     end)
 
-    describe("/plugins/:id", function()
+    describe("/plugins/{plugin}", function()
       describe("GET", function()
-        it("[SUCCESS] should GET a plugin", function()
-          local response, status = http_client.get(BASE_URL..fixtures.plugin[1].id)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.equal("key-auth", body.name)
-          assert.equal(fixtures.api[1].id, body.api_id)
+        it("retrieves a plugin by id", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/plugins/"..plugins[1].id
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(plugins[1], json)
         end)
-        it("[FAILURE] should return 404 if not found", function()
-          local _, status = http_client.get(BASE_URL.."2f49143e-caba-11e5-9d08-03a86066f7a4")
-          assert.equal(404, status)
+        it("returns 404 if not found", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
+          })
+          assert.res_status(404, res)
         end)
       end)
 
+
       describe("PATCH", function()
-        it("[SUCCESS] should PATCH a plugin", function()
-          local response, status = http_client.patch(BASE_URL..fixtures.plugin[2].id, {enabled = false})
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.False(body.enabled)
+        it("updates a plugin", function()
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/plugins/"..plugins[1].id,
+            body = {enabled = false},
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.False(json.enabled)
 
-          -- Make sure it really updated it
-          local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.False(body.enabled)
+          local in_db = assert(helpers.dao.plugins:find(plugins[1]))
+          assert.same(json, in_db)
         end)
-        it("[FAILURE] should return 404 if not found", function()
-          local _, status = http_client.patch(BASE_URL.."2f49143e-caba-11e5-9d08-03a86066f7a4")
-          assert.equal(404, status)
+        it("updates a plugin bis", function()
+          local plugin = assert(helpers.dao.plugins:find(plugins[2]))
+
+          plugin.enabled = not plugin.enabled
+          plugin.created_at = nil
+
+          local res = assert(client:send {
+            method = "PATCH",
+            path = "/plugins/"..plugin.id,
+            body = plugin,
+            headers = {["Content-Type"] = "application/json"}
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(plugin.enabled, json.enabled)
         end)
-        it("[SUCCESS] should update when an immutable field does not change", function()
-          -- Retrieve plugin
-          local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.False(body.enabled)
-
-          -- Update one field
-          body.enabled = true
-          body.created_at = nil
-
-          -- Do Update
-          local response, status = http_client.patch(BASE_URL..fixtures.plugin[2].id, body)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.True(body.enabled)
-
-          -- Make sure it really updated it
-          local response, status = http_client.get(BASE_URL..fixtures.plugin[2].id)
-          assert.equal(200, status)
-          local body = json.decode(response)
-          assert.True(body.enabled)
+        describe("errors", function()
+          it("returns 404 if not found", function()
+            local res = assert(client:send {
+              method = "PATCH",
+              path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c",
+              body = {enabled = false},
+              headers = {["Content-Type"] = "application/json"}
+            })
+            assert.res_status(404, res)
+          end)
         end)
       end)
 
       describe("DELETE", function()
-        it("[SUCCESS] should DELETE a plugin", function()
-          local _, status = http_client.delete(BASE_URL..fixtures.plugin[3].id)
-          assert.equal(204, status)
+        it("deletes by id", function()
+          local res = assert(client:send {
+            method = "DELETE",
+            path = "/plugins/"..plugins[3].id
+          })
+          assert.res_status(204, res)
         end)
-        it("[FAILURE] should return 404 if not found", function()
-          local _, status = http_client.delete(BASE_URL.."2f49143e-caba-11e5-9d08-03a86066f7a4")
-          assert.equal(404, status)
+        describe("errors", function()
+          it("returns 404 if not found", function()
+            local res = assert(client:send {
+              method = "DELETE",
+              path = "/plugins/f4aecadc-05c7-11e6-8d41-1f3b3d5fa15c"
+            })
+            assert.res_status(404, res)
+          end)
         end)
       end)
     end)
   end)
 
-  describe("/plugins/schema/:name", function()
-    local BASE_URL = spec_helper.API_URL.."/plugins/schema/key-auth"
-
-    it("[SUCCESS] should return the schema of a plugin", function()
-      local response, status = http_client.get(BASE_URL)
-      assert.equal(200, status)
-      local body = json.decode(response)
-      assert.is_table(body.fields)
-    end)
-    it("[FAILURE] should return a descriptive error if schema is not found", function()
-      local response, status = http_client.get(spec_helper.API_URL.."/plugins/schema/foo")
-      assert.equal(404, status)
-      local body = json.decode(response)
-      assert.equal("No plugin named 'foo'", body.message)
+  describe("/plugins/schema/{plugin}", function()
+    describe("GET", function()
+      it("returns the schema of a plugin config", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/plugins/schema/key-auth",
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.fields)
+      end)
+      it("returns 404 on invalid plugin", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/plugins/schema/foobar",
+        })
+        local body = assert.res_status(404, res)
+        assert.equal([[{"message":"No plugin named 'foobar'"}]], body)
+      end)
     end)
   end)
 end)

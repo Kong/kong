@@ -44,6 +44,8 @@ describe("Configuration validation", function()
     local config = config.load(TEST_CONF_PATH)
     assert.truthy(config)
     assert.equal(0, #config.custom_plugins)
+    local inspect = require "inspect"
+    print(inspect(config))
     assert.truthy(#config.plugins > 0)
   end)
   it("should validate various types", function()

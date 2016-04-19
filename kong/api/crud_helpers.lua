@@ -119,6 +119,9 @@ end
 --- Partial update of an entity.
 -- Filter keys must be given to get the row to update.
 function _M.patch(params, dao_collection, filter_keys)
+  if not next(params) then
+    return responses.send_HTTP_BAD_REQUEST("empty body")
+  end
   local updated_entity, err = dao_collection:update(params, filter_keys)
   if err then
     return app_helpers.yield_error(err)

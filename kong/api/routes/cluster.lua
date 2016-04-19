@@ -8,7 +8,7 @@ local string_upper = string.upper
 return {
   ["/cluster/"] = {
     GET = function(self, dao_factory, helpers)
-      local members, err = singletons.serf:_members()
+      local members, err = singletons.serf:members()
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
@@ -33,7 +33,10 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"name\"")
       end
 
-      local _, err = singletons.serf:invoke_signal("force-leave", {self.params.name})
+      local inspect = require "inspect"
+      print(inspect(self.params.name))
+
+      local _, err = singletons.serf:invoke_signal("force-leave", self.params.name)
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
       end
@@ -46,7 +49,7 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"address\"")
       end
 
-      local _, err = singletons.serf:invoke_signal("join", {self.params.address})
+      local _, err = singletons.serf:invoke_signal("join", self.params.address)
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
       end

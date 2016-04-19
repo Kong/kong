@@ -37,10 +37,11 @@ end
 -- implementation that needs to be upgraded.
 function Serf:invoke_signal(signal, args, no_rpc)
   args = args or {}
-  setmetatable(args, Serf.args_mt)
+  if type(args) == "table" then
+    setmetatable(args, Serf.args_mt)
+  end
   local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
   local cmd = fmt("serf %s %s %s", signal, rpc, tostring(args))
-
   local ok, code, stdout = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then return nil, stdout end
 

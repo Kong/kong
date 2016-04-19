@@ -35,6 +35,7 @@ dependencies = {
   "lrexlib-pcre ~> 2.7.2-1",
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1",
+  "luacrypto >= 0.3.2-1",
   "luasyslog >= 1.0.0-2",
   "lua_pack ~> 1.0.4-0"
 }
@@ -50,6 +51,28 @@ build = {
     ["kong.meta"] = "kong/meta.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
+
+    ["kong.serf"] = "kong/serf.lua",
+    ["kong.conf_loader"] = "kong/conf_loader.lua",
+
+    ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
+    ["kong.templates.nginx"] = "kong/templates/nginx.lua",
+    ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
+
+    ["kong.cmd.check"] = "kong/cmd/check.lua",
+    ["kong.cmd.compile"] = "kong/cmd/compile.lua",
+    ["kong.cmd.init"] = "kong/cmd/init.lua",
+    ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
+    ["kong.cmd.reload"] = "kong/cmd/reload.lua",
+    ["kong.cmd.roar"] = "kong/cmd/roar.lua",
+    ["kong.cmd.start"] = "kong/cmd/start.lua",
+    ["kong.cmd.stop"] = "kong/cmd/stop.lua",
+    ["kong.cmd.version"] = "kong/cmd/version.lua",
+    ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
+    ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
+    ["kong.cmd.utils.nginx_conf_compiler"] = "kong/cmd/utils/nginx_conf_compiler.lua",
+    ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
+    ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
 
     ["kong.cli.utils.logger"] = "kong/cli/utils/logger.lua",
     ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",

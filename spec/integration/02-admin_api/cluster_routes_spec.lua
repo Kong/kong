@@ -1,106 +1,132 @@
-local json = require "cjson"
-local http_client = require "kong.tools.http_client"
-local spec_helper = require "spec.spec_helpers"
-local utils = require "kong.tools.utils"
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 describe("Admin API", function()
-
+  local client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.start_kong()
-  end)
+    helpers.dao:truncate_tables()
+    helpers.execute "pkill nginx; pkill serf"
+    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
 
+    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+  end)
   teardown(function()
-    spec_helper.stop_kong()
+    if client then
+      client:close()
+    end
+    helpers.stop_kong()
+    --helpers.clean_prefix()
   end)
 
-  describe("/cluster/events/", function()
-    local BASE_URL = spec_helper.API_URL.."/cluster/events"
-
-    describe("POST", function()
-      it("[SUCCESS] should post a new event", function()
-        local _, status = http_client.post(BASE_URL, {}, {})
-        assert.equal(200, status)
-      end)
-    end)
-
-  end)
-
-  describe("/cluster/", function()
-
-    local BASE_URL = spec_helper.API_URL.."/cluster/"
-    
+  describe("/cluster", function()
     describe("GET", function()
-      it("[SUCCESS] should get the list of members", function()
-        os.execute("sleep 2") -- Let's wait for serf to register the node
+      it("retrieves the members list", function()
+        -- old test converted
+        --os.execute("sleep 2") -- Let's wait for serf to register the node
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cluster"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(1, #json.data)
+        assert.equal(1, json.total)
 
-        local response, status = http_client.get(BASE_URL, {}, {})
-        assert.equal(200, status)
-        local body = json.decode(response)
-        assert.truthy(body)
-        assert.equal(1, #body.data)
-        assert.equal(1, body.total)
-
-        local member = body.data[1]
-        assert.equal(3, utils.table_size(member))
-        assert.truthy(member.address)
-        assert.truthy(member.name)
-        assert.truthy(member.status)
-
+        local member = json.data[1]
+        assert.is_string(member.address)
+        assert.is_string(member.name)
         assert.equal("alive", member.status)
       end)
     end)
-    
+
     describe("DELETE", function()
+      -- old test converted
+      local function is_running(pid_path)
+        local kill = require "kong.cmd.utils.kill"
+        if not helpers.path.exists(pid_path) then return nil end
+        local code = kill(pid_path, "-0")
+        return code == 0
+      end
+
+      local log_path = helpers.path.join(helpers.test_conf.prefix, "serf_cluster_tests.log")
+      local pid_path = helpers.path.join(helpers.test_conf.prefix, "serf_cluster_tests.pid")
 
       setup(function()
-        os.execute([[nohup serf agent -rpc-addr=127.0.0.1:20000 -bind=127.0.0.1:20001 -node=helloworld > serf.log 2>&1 & echo $! > serf.pid]])
-        -- Wait for agent to start
-        while (os.execute("cat serf.log | grep running > /dev/null") / 256 == 1) do
-        -- Wait
-        end
+        local pl_utils = require "pl.utils"
+        local cmd = string.format("nohup serf agent -rpc-addr=127.0.0.1:20000 "
+                                .."-bind=127.0.0.1:20001 -node=newnode > "
+                                .."%s 2>&1 & echo $! > %s",
+                                log_path, pid_path)
+        assert(pl_utils.execute(cmd))
+
+        local tstart = ngx.time()
+        local texp, started = tstart + 2 -- 2s timeout
+        repeat
+          ngx.sleep "0.2"
+          started = is_running(pid_path)
+        until started or ngx.time() >= texp
+        assert(started, "Serf agent start: timeout")
       end)
 
       teardown(function()
-        os.execute("kill -9 $(cat serf.pid) && rm serf.pid && rm serf.log")
+        helpers.execute(string.format("kill $(cat %s)", pid_path))
+        helpers.file.delete(log_path)
+        helpers.file.delete(pid_path)
       end)
 
-      it("[SUCCESS] should force-leave a node", function()
-        -- Join node
-        os.execute("serf join -rpc-addr=127.0.0.1:9101 127.0.0.1:20001 > /dev/null")
+      it("force-leaves a node", function()
+        -- old test converted
+        local cmd = string.format("serf join -rpc-addr=%s 127.0.0.1:20001", helpers.test_conf.cluster_listen_rpc)
+        local ok, _, _, stderr = helpers.execute(cmd)
+        assert.equal("", stderr)
+        assert.True(ok)
 
-        os.execute("sleep 2") -- Let's wait for serf to register the node
+        local res = assert(client:send {
+          method = "GET",
+          path = "/cluster"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+        assert.equal("alive", json.data[1].status)
+        assert.equal("alive", json.data[2].status)
 
-        local response, status = http_client.get(BASE_URL, {}, {})
-        assert.equal(200, status)
-        local body = json.decode(response)
-        assert.truthy(body)
-        assert.equal(2, #body.data)
-        assert.equal(2, body.total)
-        for _, v in ipairs(body.data) do
-           assert.equal("alive", v.status)
-        end
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/cluster",
+          body = "name=newnode", -- why not in URI??
+          headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
+        })
+        assert.res_status(200, res) -- why not 204??
 
-        local _, status = http_client.delete(BASE_URL, {name="helloworld"}, {})
-        assert.equal(200, status)
-        os.execute("sleep 2") -- Let's wait for serf to propagate the event
-
-        response, status = http_client.get(BASE_URL, {}, {})
-        assert.equal(200, status)
-        local body = json.decode(response)
-        assert.truthy(body)
-        assert.equal(2, #body.data)
-        assert.equal(2, body.total)
-        local not_alive
-        for _, v in ipairs(body.data) do
-          if v.name == "helloworld" then
-            assert.equal("leaving", v.status)
-            not_alive = true
-          end
-        end
-        assert.truthy(not_alive)
+        res = assert(client:send {
+          method = "GET",
+          path = "/cluster"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+        assert.equal("alive", json.data[1].status)
+        assert.equal("leaving", json.data[2].status)
       end)
     end)
+  end)
 
+  describe("/cluster/events", function()
+    describe("POST", function()
+      it("posts a new event", function()
+        -- old test simply converted
+        local res = assert(client:send {
+          method = "POST",
+          path = "/cluster/events",
+          body = {},
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.res_status(200, res)
+      end)
+    end)
   end)
 end)

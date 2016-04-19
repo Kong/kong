@@ -124,8 +124,8 @@ luassert:register("assertion", "res_status", res_status,
 -- Shell helpers
 ----------------
 local function exec(...)
-  local ok, _, stdout, stderr = pl_utils.executeex(...)
-  return ok, stderr, stdout
+  local ok, _, _, stderr = pl_utils.executeex(...)
+  return ok, stderr
 end
 
 local function kong_exec(args, prefix)
