@@ -1,6 +1,6 @@
 ## [Unreleased][unreleased]
 
-## [0.8.0] - 2016/04/13
+## [0.8.0] - 2016/04/18
 
 This release includes support for PostgreSQL as Kong's primary datastore!
 
