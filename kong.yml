@@ -94,7 +94,7 @@
   # ttl_on_failure: 3600
 
 ######
-## Specify which database to use. Only "cassandra" is currently available.
+## Specify which database to use. Only "cassandra" and "postgres" are currently available.
 # database: cassandra
 
 ######
