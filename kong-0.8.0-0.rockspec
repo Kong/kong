@@ -46,11 +46,11 @@ build = {
     ["lapp"] = "kong/vendor/lapp.lua",
     ["resty_http"] = "kong/vendor/resty_http.lua",
 
+    ["kong.meta"] = "kong/meta.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
 
     ["kong.cli.utils.logger"] = "kong/cli/utils/logger.lua",
-    ["kong.cli.utils.luarocks"] = "kong/cli/utils/luarocks.lua",
     ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",
     ["kong.cli.utils.input"] = "kong/cli/utils/input.lua",
     ["kong.cli.utils.services"] = "kong/cli/utils/services.lua",
@@ -68,6 +68,16 @@ build = {
     ["kong.cli.services.dnsmasq"] = "kong/cli/services/dnsmasq.lua",
     ["kong.cli.services.serf"] = "kong/cli/services/serf.lua",
     ["kong.cli.services.nginx"] = "kong/cli/services/nginx.lua",
+
+    ["kong.api.app"] = "kong/api/app.lua",
+    ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
+    ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
+    ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
+    ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
+    ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
+    ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
+    ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
+    ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
 
     ["kong.tools.io"] = "kong/tools/io.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
@@ -108,15 +118,6 @@ build = {
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
     ["kong.dao.migrations.cassandra"] = "kong/dao/migrations/cassandra.lua",
     ["kong.dao.migrations.postgres"] = "kong/dao/migrations/postgres.lua",
-
-    ["kong.api.app"] = "kong/api/app.lua",
-    ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
-    ["kong.api.route_helpers"] = "kong/api/route_helpers.lua",
-    ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
-    ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
-    ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
-    ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
-    ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
 
     ["kong.plugins.base_plugin"] = "kong/plugins/base_plugin.lua",
 
@@ -221,15 +222,8 @@ build = {
     ["kong.plugins.acl.api"] = "kong/plugins/acl/api.lua",
     ["kong.plugins.acl.daos"] = "kong/plugins/acl/daos.lua",
 
-    ["kong.api.app"] = "kong/api/app.lua",
-    ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
-    ["kong.api.route_helpers"] = "kong/api/route_helpers.lua",
-    ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
-    ["kong.api.routes.apis"] = "kong/api/routes/apis.lua",
-    ["kong.api.routes.consumers"] = "kong/api/routes/consumers.lua",
-    ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
-    ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
-    ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
+    ["kong.plugins.correlation-id.handler"] = "kong/plugins/correlation-id/handler.lua",
+    ["kong.plugins.correlation-id.schema"] = "kong/plugins/correlation-id/schema.lua",
 
     ["kong.plugins.jwt.migrations.cassandra"] = "kong/plugins/jwt/migrations/cassandra.lua",
     ["kong.plugins.jwt.migrations.postgres"] = "kong/plugins/jwt/migrations/postgres.lua",
@@ -268,7 +262,6 @@ build = {
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
-
   },
   install = {
     conf = { "kong.yml" },

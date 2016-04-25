@@ -1,9 +1,4 @@
-local VERSION = "0.8.0"
-
 return {
-  NAME = "kong",
-  VERSION = VERSION,
-  ROCK_VERSION = VERSION.."-0",
   SYSLOG = {
     ADDRESS = "kong-hf.mashape.com",
     PORT = 61828,
@@ -14,7 +9,7 @@ return {
     NGINX_CONFIG = "nginx.conf"
   },
   PLUGINS_AVAILABLE = {
-    "ssl", "jwt", "acl", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
+    "ssl", "jwt", "acl", "correlation-id", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
     "mashape-analytics", "request-transformer", "response-transformer",
     "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
@@ -32,11 +27,6 @@ return {
     RATELIMIT_LIMIT = "X-RateLimit-Limit",
     RATELIMIT_REMAINING = "X-RateLimit-Remaining",
     CONSUMER_GROUPS = "X-Consumer-Groups"
-  },
-  AUTHENTICATION = {
-    QUERY = "query",
-    BASIC = "basic",
-    HEADER = "header"
   },
   RATELIMIT = {
     PERIODS = {

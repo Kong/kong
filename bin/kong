@@ -10,8 +10,7 @@
 -- This script is not parsed by lapp due to limitations of the said framework as it
 -- is currently implemented.
 
-local luarocks = require "kong.cli.utils.luarocks"
-local infos = luarocks.get_kong_infos()
+local meta = require "kong.meta"
 local commands = {
   db = "kong.cli.cmds.db",
   stop = "kong.cli.cmds.stop",
@@ -36,7 +35,7 @@ Usage: kong <command>
   kong --help            print this message
   kong <command> --help  print the help message of a command
 
-%s@%s]], infos.name, infos.version)
+%s@%s]], meta._NAME, meta._VERSION)
 
 -- Determine validity of the given command
 local cmd = arg[1]

@@ -1,10 +1,12 @@
 -- Copyright (C) Mashape, Inc.
 
-local singletons = require "kong.singletons"
-local BasePlugin = require "kong.plugins.base_plugin"
-local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
+local singletons = require "kong.singletons"
+local BasePlugin = require "kong.plugins.base_plugin"
+
+local RATELIMIT_LIMIT = "X-RateLimit-Limit"
+local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 local RateLimitingHandler = BasePlugin:extend()
 
@@ -97,8 +99,8 @@ function RateLimitingHandler:access(conf)
   if usage then
     -- Adding headers
     for k, v in pairs(usage) do
-      ngx.header[constants.HEADERS.RATELIMIT_LIMIT.."-"..k] = v.limit
-      ngx.header[constants.HEADERS.RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+      ngx.header[RATELIMIT_LIMIT.."-"..k] = v.limit
+      ngx.header[RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
     end
 
     -- If limit is exceeded, terminate the request

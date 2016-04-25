@@ -7,24 +7,15 @@
 --
 -- In the `access_by_lua` phase, it is responsible for retrieving the API being proxied by
 -- a Consumer. Then it is responsible for loading the plugins to execute on this request.
---
--- In other phases, we create different variables and timers.
--- Variables:
---   `plugins_to_execute`: an array of plugin to be executed for this request.
--- Timers:
---   `KONG_<CONTEXT_NAME>_STARTED_AT`: time at which a given context is started to be executed by all Kong plugins.
---   `KONG_<CONTEXT_NAME>_ENDED_AT`: time at which all plugins have been executed by Kong for this context.
---   `KONG_<CONTEXT_NAME>_TIME`: time taken by Kong to execute all the plugins for this context
---
--- @see https://github.com/openresty/lua-nginx-module#ngxctx
-local reports = require "kong.core.reports"
 local utils = require "kong.tools.utils"
+local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
 local resolver = require "kong.core.resolver"
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
 
 local ngx_now = ngx.now
+local server_header = _KONG._NAME.."/".._KONG._VERSION
 
 local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
@@ -81,9 +72,9 @@ return {
       if ngx.ctx.KONG_PROXIED then
         ngx.header[constants.HEADERS.UPSTREAM_LATENCY] = ngx.ctx.KONG_WAITING_TIME
         ngx.header[constants.HEADERS.PROXY_LATENCY] = ngx.ctx.KONG_PROXY_LATENCY
-        ngx.header["Via"] = constants.NAME.."/"..constants.VERSION
+        ngx.header["Via"] = server_header
       else
-        ngx.header["Server"] = constants.NAME.."/"..constants.VERSION
+        ngx.header["Server"] = server_header
       end
     end
   },

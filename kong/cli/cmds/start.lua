@@ -1,9 +1,10 @@
 #!/usr/bin/env luajit
 
-local constants = require "kong.constants"
-local config_loader = require "kong.tools.config_loader"
+local meta = require "kong.meta"
 local logger = require "kong.cli.utils.logger"
 local services = require "kong.cli.utils.services"
+local constants = require "kong.constants"
+local config_loader = require "kong.tools.config_loader"
 
 local args = require("lapp")(string.format([[
 Start Kong with given configuration. Kong will run in the configured 'nginx_working_dir' directory.
@@ -14,7 +15,7 @@ Options:
   -c,--config (default %s) path to configuration file
 ]], constants.CLI.GLOBAL_KONG_CONF))
 
-logger:info("Kong "..constants.VERSION)
+logger:info(meta._NAME.." "..meta._VERSION)
 
 local configuration, configuration_path = config_loader.load_default(args.config)
 
