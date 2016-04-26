@@ -120,7 +120,7 @@ return {
 
       for _, row in ipairs(rows) do
         row.consumer_id = nil
-        local _, err = dao.plugins:update(row, true)
+        local _, err = dao.plugins:update(row, row, {full = true})
         if err then
           return err
         end
