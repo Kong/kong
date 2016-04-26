@@ -89,7 +89,7 @@ function _M.validate_entity(tbl, schema, options)
 
       -- Check the given table against a given schema
       for column, v in pairs(schema.fields) do
-        -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
+        -- [TYPE] Check if type is valid. Booleans and Numbers as strings are accepted and converted
         if t[column] ~= nil and v.type ~= nil then
           local is_valid_type
           -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
@@ -171,7 +171,7 @@ function _M.validate_entity(tbl, schema, options)
               for sub_field_k, sub_field in pairs(sub_schema.fields) do
                 if sub_field.default ~= nil then -- Sub-value has a default, be polite and pre-assign the sub-value
                   t[column] = {}
-                elseif sub_field.required then -- Only check required if field doesn't have a default
+                elseif sub_field.required then -- Only check required if field doesn't have a default and dao_insert_value
                   errors = utils.add_error(errors, error_prefix..column, column.."."..sub_field_k.." is required")
                 end
               end
@@ -193,10 +193,15 @@ function _M.validate_entity(tbl, schema, options)
           end
         end
 
+        -- Check that full updates still meet the REQUIRED contraints
+        if options.full_update and v.required and (t[column] == nil or t[column] == "") then
+          errors = utils.add_error(errors, error_prefix..column, column.." is required")
+        end
+
         if not partial_update or t[column] ~= nil then
           -- [REQUIRED] Check that required fields are set.
           -- Now that default and most other checks have been run.
-          if v.required and (t[column] == nil or t[column] == "") then
+          if v.required and not v.dao_insert_value and (t[column] == nil or t[column] == "") then
             errors = utils.add_error(errors, error_prefix..column, column.." is required")
           end
 
