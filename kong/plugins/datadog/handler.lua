@@ -32,6 +32,18 @@ local gauges = {
   request_count = function (api_name, message, logger)
     local stat = api_name..".request.count"
     logger:counter(stat, 1, 1)
+  end,
+  unique_users = function (api_name, message, logger)
+    if message.authenticated_entity ~= nil and message.authenticated_entity.consumer_id ~= nil then
+      local stat = api_name..".user.uniques"
+      logger:set(stat, message.authenticated_entity.consumer_id)
+    end
+  end,
+  request_per_user = function (api_name, message, logger)
+    if message.authenticated_entity ~= nil and message.authenticated_entity.consumer_id ~= nil then
+      local stat = api_name.."."..string_gsub(message.authenticated_entity.consumer_id, "-", "_")..".request.count"
+      logger:counter(stat, 1, 1)    
+    end
   end
 }
 
