@@ -765,7 +765,7 @@ describe("Schemas", function()
         local valid, err = validate_entity(values, schema, {update = true, full_update = true})
         assert.False(valid)
         assert.truthy(err)
-        assert.equal("string is required", err.string)
+        assert.are.same({"string is required", "string is required"}, err.string)
       end)
       it("should complete default fields", function()
         local values = {string = "foo", date = 123456}

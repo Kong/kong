@@ -25,6 +25,8 @@ local function parse_header(header_value, limits)
 end
 
 function _M.execute(conf)
+  ngx.ctx.increments = {}
+  
   if utils.table_size(conf.limits) <= 0 then
     return
   end

@@ -151,8 +151,8 @@ return {
   table = "apis",
   primary_key = {"id"},
   fields = {
-    id = {type = "id", dao_insert_value = true},
-    created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
+    id = {type = "id", dao_insert_value = true, required = true},
+    created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},
     name = {type = "string", unique = true, default = default_name, func = check_name},
     request_host = {type = "string", unique = true, func = check_request_host},
     request_path = {type = "string", unique = true, func = check_request_path},

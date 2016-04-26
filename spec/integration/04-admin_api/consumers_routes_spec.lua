@@ -83,14 +83,16 @@ describe("Admin API", function()
           local response, status = http_client.put(BASE_URL, {
             id = consumer_id,
             username = "updated",
-            custom_id = "5678"
+            custom_id = "5678",
+            created_at = 1461276890000
           }, {["content-type"] = content_type})
           assert.equal(200, status)
           local body = json.decode(response)
           assert.same({
             id = consumer_id,
             username = "updated",
-            custom_id = "5678"
+            custom_id = "5678",
+            created_at = 1461276890000
           }, body)
         end
       end)
@@ -99,12 +101,14 @@ describe("Admin API", function()
           local response, status = http_client.put(BASE_URL, {
             id = consumer_id,
             username = "updated",
+            created_at = 1461276890000
           }, {["content-type"] = content_type})
           assert.equal(200, status)
           local body = json.decode(response)
           assert.same({
             id = consumer_id,
             username = "updated",
+            created_at = 1461276890000
           }, body)
         end
       end)
