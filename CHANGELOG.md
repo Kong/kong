@@ -18,7 +18,7 @@ This release includes some fixes and minor updates:
 - Properly enforcing required fields in PUT requests. [#1177](https://github.com/Mashape/kong/pull/1177)
 - Fixed a bug that prevented to retrieve the hostname of the local machine on certain systems. [#1178](https://github.com/Mashape/kong/pull/1178)
 
-## [0.8.0] - 2016/04/13
+## [0.8.0] - 2016/04/18
 
 This release includes support for PostgreSQL as Kong's primary datastore!
 
