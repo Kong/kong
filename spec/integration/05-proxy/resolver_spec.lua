@@ -44,7 +44,8 @@ describe("Resolver", function()
         {name = "tests-trailing-slash-path3", request_path = "/test-trailing-slash3", strip_request_path = true, upstream_url = "http://www.mockbin.org"},
         {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"},
         {name = "tests-deep-path", request_path = "/hello/world", strip_request_path = true, upstream_url = "http://mockbin.com"},
-        {name = "tests-deep-path-two", request_path = "/hello/world/wot", strip_request_path = true, upstream_url = "http://httpbin.org"}
+        {name = "tests-deep-path-two", request_path = "/hello/world/wot", strip_request_path = true, upstream_url = "http://httpbin.org"},
+        {name = "tests-request_path-resolver2", upstream_url = "http://mockbin.com", request_path = "/headers"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -63,8 +64,10 @@ describe("Resolver", function()
       local response, status, headers = http_client.get(spec_helper.STUB_GET_URL, nil, {host = "foo.com"})
       assert.equal(404, status)
       assert.equal('{"request_path":"\\/request","message":"API not found with these values","request_host":["foo.com"]}\n', response)
-      assert.falsy(headers[constants.HEADERS.PROXY_LATENCY])
-      assert.falsy(headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.falsy(headers[constants.HEADERS.PROXY_LATENCY:lower()])
+      assert.falsy(headers[constants.HEADERS.UPSTREAM_LATENCY:lower()])
+      assert.falsy(headers[constants.HEADERS.FORWARDED_HOST:lower()])
+      assert.falsy(headers[constants.HEADERS.FORWARDED_PREFIX:lower()])
     end)
   end)
 
@@ -114,8 +117,12 @@ describe("Resolver", function()
   describe("Existing API", function()
     describe("By Host", function()
       it("should proxy when the API is in Kong", function()
-        local _, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
+        local response, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com"})
         assert.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.equal("mockbin.com", body.headers[constants.HEADERS.FORWARDED_HOST:lower()])
+        assert.falsy(body.headers[constants.HEADERS.FORWARDED_PREFIX:lower()])
       end)
       it("should proxy when the Host header is not trimmed", function()
         local _, status = http_client.get(STUB_GET_URL, nil, {host = "   mockbin.com  "})
@@ -126,8 +133,12 @@ describe("Resolver", function()
         assert.equal(200, status)
       end)
       it("should proxy when the Host header contains a port", function()
-        local _, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com:80"})
+        local response, status = http_client.get(STUB_GET_URL, nil, {host = "mockbin.com:80"})
         assert.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.equal("mockbin.com", body.headers[constants.HEADERS.FORWARDED_HOST:lower()])
+        assert.falsy(body.headers[constants.HEADERS.FORWARDED_PREFIX:lower()])
       end)
       describe("with wildcard subdomain", function()
         it("should proxy when the request_host is a wildcard subdomain", function()
@@ -150,6 +161,25 @@ describe("Resolver", function()
 
         local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin")
         assert.equal(200, status)
+
+
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/mockbin/request")
+        assert.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.equal("/mockbin", body.headers[constants.HEADERS.FORWARDED_PREFIX:lower()])
+        assert.falsy(body.headers[constants.HEADERS.FORWARDED_HOST:lower()])
+
+        -- There should be no X-Forwarded-Prefix if no prefix is being stripped
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/headers")
+        assert.equal(200, status)
+        local body = cjson.decode(response)
+        assert.falsy(body.headers[constants.HEADERS.FORWARDED_HOST:lower()])
+        for _, v in ipairs(body.headers) do
+          if v.name == constants.HEADERS.FORWARDED_PREFIX:lower() then
+            error(constants.HEADERS.FORWARDED_PREFIX.." should not be set")
+          end
+        end        
       end)
       it("should not proxy when the request_path does not match the start of the request_uri", function()
         local response, status = http_client.get(spec_helper.PROXY_URL.."/somerequest_path/status/200")
@@ -161,6 +191,13 @@ describe("Resolver", function()
       it("should proxy when the request_path has a deep level", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/deep/request_path/status/200")
         assert.equal(200, status)
+
+        local response, status = http_client.get(spec_helper.PROXY_URL.."/deep/request_path/request")
+        assert.equal(200, status)
+
+        local body = cjson.decode(response)
+        assert.equal("/deep/request_path", body.headers[constants.HEADERS.FORWARDED_PREFIX:lower()])
+        assert.falsy(body.headers[constants.HEADERS.FORWARDED_HOST:lower()])
       end)
       it("should not care about querystring parameters", function()
         local _, status = http_client.get(spec_helper.PROXY_URL.."/mockbin?foo=bar")
@@ -277,27 +314,27 @@ describe("Resolver", function()
     it("should leave percent-encoded values in URI untouched", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL.."/hello%2Fworld", {}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
-      assert.equal("http://mockbin.org/request/hello%2fworld", cjson.decode(response).url)
+      assert.equal("http://mockbin-uri.com/request/hello%2fworld", cjson.decode(response).url)
     end)
     it("should leave untouched percent-encoded values in querystring", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, {foo = "abc%7Cdef%2c%20world"}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
-      assert.equal("http://mockbin.org/request?foo=abc%7cdef%2c%20world", cjson.decode(response).url)
+      assert.equal("http://mockbin-uri.com/request?foo=abc%7cdef%2c%20world", cjson.decode(response).url)
     end)
     it("should leave untouched percent-encoded keys in querystring", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, {["hello%20world"] = "foo"}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
-      assert.equal("http://mockbin.org/request?hello%20world=foo", cjson.decode(response).url)
+      assert.equal("http://mockbin-uri.com/request?hello%20world=foo", cjson.decode(response).url)
     end)
     it("should percent-encoded keys in querystring", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, {["hello world"] = "foo"}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
-      assert.equal("http://mockbin.org/request?hello%20world=foo", cjson.decode(response).url)
+      assert.equal("http://mockbin-uri.com/request?hello%20world=foo", cjson.decode(response).url)
     end)
     it("should percent-encoded keys in querystring", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, {foo = "abc|def, world"}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
-      assert.equal("http://mockbin.org/request?foo=abc%7cdef%2c%20world", cjson.decode(response).url)
+      assert.equal("http://mockbin-uri.com/request?foo=abc%7cdef%2c%20world", cjson.decode(response).url)
     end)
   end)
 end)

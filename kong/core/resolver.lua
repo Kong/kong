@@ -207,6 +207,7 @@ local function find_api(uri, headers)
   api, matched_host, hosts_list = _M.find_api_by_request_host(headers, apis_dics)
   -- If it was found by Host, return
   if api then
+    ngx.req.set_header(constants.HEADERS.FORWARDED_HOST, matched_host)
     return nil, api, matched_host, hosts_list
   end
 
@@ -240,6 +241,7 @@ function _M.execute(request_uri, request_headers)
   -- If API was retrieved by request_path and the request_path needs to be stripped
   if strip_request_path_pattern and api.strip_request_path then
     uri = _M.strip_request_path(uri, strip_request_path_pattern, url_has_path(upstream_url))
+    ngx.req.set_header(constants.HEADERS.FORWARDED_PREFIX, api.request_path)
   end
 
   upstream_url = upstream_url..uri
