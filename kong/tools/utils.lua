@@ -8,6 +8,7 @@
 local url = require "socket.url"
 local uuid = require "lua_uuid"
 local stringy = require "stringy"
+local ffi = require "ffi"
 
 local type = type
 local pairs = pairs
@@ -19,17 +20,33 @@ local table_insert = table.insert
 local string_find = string.find
 local string_format = string.format
 
-local _M = {}
+ffi.cdef[[
+int gethostname(char *name, size_t len);
+]]
 
+local _M = {}
 
 --- Retrieves the hostname of the local machine
 -- @return string  The hostname
 function _M.get_hostname()
-  local f = io.popen ("/bin/hostname")
-  local hostname = f:read("*a") or ""
-  f:close()
-  hostname = string.gsub(hostname, "\n$", "")
-  return hostname
+  local result
+  local C = ffi.C
+  local SIZE = 128
+
+  local buf = ffi.new("unsigned char[?]", SIZE)
+  local res = C.gethostname(buf, SIZE)
+
+  if res == 0 then
+    local hostname = ffi.string(buf, SIZE)
+    result = string.gsub(hostname, "%z+$", "")
+  else
+    local f = io.popen ("/bin/hostname")
+    local hostname = f:read("*a") or ""
+    f:close()
+    result = string.gsub(hostname, "\n$", "")
+  end
+
+  return result
 end
 
 

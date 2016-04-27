@@ -3,6 +3,8 @@ local ngx_log = ngx.log
 local table_concat = table.concat
 local setmetatable = setmetatable
 local NGX_ERR = ngx.ERR
+local NGX_DEBUG = ngx.DEBUG
+local tostring = tostring
 
 local statsd_mt = {}
 statsd_mt.__index = statsd_mt
@@ -51,6 +53,7 @@ end
 
 function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
   local udp_message = self:create_statsd_message(stat, delta, kind, sample_rate)
+  ngx_log(NGX_DEBUG, "Sending data to statsd server: "..udp_message)
   local ok, err = self.socket:send(udp_message)
   if not ok then
     ngx_log(NGX_ERR, "failed to send data to "..self.host..":"..tostring(self.port)..": ", err)

@@ -14,7 +14,7 @@ return {
         plugin.config.port = plugin.config.port or schema.fields.port.default
         plugin.config.path = plugin.config.path or schema.fields.path.default
         plugin.config.max_sending_queue_size = plugin.config.max_sending_queue_size or schema.fields.max_sending_queue_size.default
-        local _, err = factory.plugins:update(plugin, plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, {full = true})
         if err then
           return err
         end
@@ -31,7 +31,7 @@ return {
         plugin.config.port = nil
         plugin.config.path = nil
         plugin.config.max_sending_queue_size = nil
-        local _, err = factory.plugins:update(plugin, plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, {full = true})
         if err then
           return err
         end

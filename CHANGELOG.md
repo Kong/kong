@@ -1,5 +1,23 @@
 ## [Unreleased][unreleased]
 
+## [0.8.1] - 2016/04/27
+
+This release includes some fixes and minor updates:
+
+### Added
+
+- Adds `X-Forwarded-Host` and `X-Forwarded-Prefix` to the upstream request headers. [#1180](https://github.com/Mashape/kong/pull/1180)
+- Plugins:
+  - Datadog: Added two new metrics, `unique_users` and `request_per_user`, that log the consumer information. [#1179](https://github.com/Mashape/kong/pull/1179)
+
+### Fixed
+
+- Fixed a DAO bug that affected full entity updates. [#1163](https://github.com/Mashape/kong/pull/1163)
+- Fixed a bug when setting the authentication provider in Cassandra.
+- Updated the Cassandra driver to v0.5.2.
+- Properly enforcing required fields in PUT requests. [#1177](https://github.com/Mashape/kong/pull/1177)
+- Fixed a bug that prevented to retrieve the hostname of the local machine on certain systems. [#1178](https://github.com/Mashape/kong/pull/1178)
+
 ## [0.8.0] - 2016/04/18
 
 This release includes support for PostgreSQL as Kong's primary datastore!
@@ -543,7 +561,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.8.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.8.1...next
+[0.8.1]: https://github.com/mashape/kong/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/mashape/kong/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/mashape/kong/compare/0.6.1...0.7.0
 [0.6.1]: https://github.com/mashape/kong/compare/0.6.0...0.6.1
