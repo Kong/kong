@@ -13,7 +13,7 @@ return {
     "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
     "galileo", "request-transformer", "response-transformer",
     "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
-    "loggly", "datadog", "runscope", "ldap-auth", "statsd"
+    "loggly", "datadog", "runscope", "ldap-auth", "statsd", "aws-lambda"
   },
   -- Non standard headers, specific to Kong
   HEADERS = {

@@ -59,7 +59,7 @@ describe("Entities Schemas", function()
           upstream_url = "wot://mockbin.com/"
         }, api_schema)
         assert.False(valid)
-        assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
+        assert.equal("Supported protocols are HTTP, HTTPS, and AWS-LAMBDA", errors.upstream_url)
       end)
       it("should validate with upper case protocol", function()
         local valid, errors = validate_entity({
