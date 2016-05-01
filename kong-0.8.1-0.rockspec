@@ -261,7 +261,23 @@ build = {
 
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
-    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
+    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
+
+    ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
+    ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
+    ["kong.plugins.aws-lambda.resty.http"] = "kong/plugins/aws-lambda/resty/http.lua",
+    ["kong.plugins.aws-lambda.resty.http_headers"] = "kong/plugins/aws-lambda/resty/http_headers.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.AWSBasicCredentials"] = "kong/plugins/aws-lambda/api-gateway/aws/AWSBasicCredentials.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.AWSIAMCredentials"] = "kong/plugins/aws-lambda/api-gateway/aws/AWSIAMCredentials.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.AwsV4Signature"] = "kong/plugins/aws-lambda/api-gateway/aws/AwsV4Signature.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.AwsDateConverter"] = "kong/plugins/aws-lambda/api-gateway/aws/AwsDateConverter.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.AwsService"] = "kong/plugins/aws-lambda/api-gateway/aws/AwsService.lua",
+    ["kong.plugins.aws-lambda.api-gateway.cache.cache"] = "kong/plugins/aws-lambda/api-gateway/cache/cache.lua",
+    ["kong.plugins.aws-lambda.api-gateway.resty.hmac"] = "kong/plugins/aws-lambda/api-gateway/resty/hmac.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.lambda.LambdaService"] = "kong/plugins/aws-lambda/api-gateway/aws/lambda/LambdaService.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.httpclient.http"] = "kong/plugins/aws-lambda/api-gateway/aws/httpclient/http.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.httpclient.restyhttp"] = "kong/plugins/aws-lambda/api-gateway/aws/httpclient/restyhttp.lua",
+    ["kong.plugins.aws-lambda.api-gateway.aws.httpclient.url"] = "kong/plugins/aws-lambda/api-gateway/aws/httpclient/url.lua",
   },
   install = {
     conf = { "kong.yml" },
