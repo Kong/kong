@@ -9,8 +9,8 @@ local function validate_upstream_url_protocol(value)
   local parsed_url = url.parse(value)
   if parsed_url.scheme and parsed_url.host then
     parsed_url.scheme = parsed_url.scheme:lower()
-    if not (parsed_url.scheme == "http" or parsed_url.scheme == "https") then
-      return false, "Supported protocols are HTTP and HTTPS"
+    if not (parsed_url.scheme == "http" or parsed_url.scheme == "https" or parsed_url.scheme == "aws-lambda") then
+      return false, "Supported protocols are HTTP, HTTPS, and AWS-LAMBDA"
     end
   end
 
