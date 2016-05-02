@@ -222,29 +222,25 @@ end
 -- be updated. If asked, can perform a "full" update, replacing the entire entity (assuming it is valid)
 -- with the one specified in `tbl` at once.
 -- @param[type=table] tbl A table containing the new values for this row.
--- @param[type=table] filter_keys A table containing the values to select the row to be updated.
+-- @param[type=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
 -- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity).
 -- @treturn table res A table representing the updated entity.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:update(tbl, filter_keys, options)
   check_arg(tbl, 1, "table")
   check_not_empty(tbl, 1)
+  check_arg(filter_keys, 2, "table")
+  check_not_empty(filter_keys, 2)
+  options = options or {}
 
-  local full_update = false
-  if type(filter_keys) ~= "boolean" then
-    check_arg(filter_keys, 2, "table")
-    check_not_empty(filter_keys, 2)
-    for k, v in pairs(filter_keys) do
-      if tbl[k] == nil then
-        tbl[k] = v
-      end
+  for k, v in pairs(filter_keys) do
+    if tbl[k] == nil then
+      tbl[k] = v
     end
-  else
-    full_update = filter_keys
   end
 
   local model = self.model_mt(tbl)
-  local ok, err = model:validate {dao = self, update = true, full_update = full_update}
+  local ok, err = model:validate {dao = self, update = true, full_update = options.full}
   if not ok then
     return nil, err
   end
@@ -261,11 +257,11 @@ function DAO:update(tbl, filter_keys, options)
     return
   end
 
-  if not full_update then
+  if not options.full then
     fix(old, values, self.schema)
   end
 
-  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, full_update, model, options)
+  local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
     return nil, err
   elseif res then

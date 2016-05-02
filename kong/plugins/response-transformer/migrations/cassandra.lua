@@ -16,7 +16,7 @@ return {
             plugin.config[action][location] = plugin.config[action][location] or {}
           end
         end
-        local _, err = factory.plugins:update(plugin, plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, {full = true})
         if err then
           return err
         end
@@ -44,7 +44,7 @@ return {
           end
         end
 
-        local _, err = factory.plugins:update(plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, {full = true})
         if err then
           return err
         end

@@ -107,6 +107,9 @@ _G.ngx = {
   req = {
     get_headers = function()
       return {}
+    end,
+    set_header = function()
+      return {}
     end
   },
   ctx = {},

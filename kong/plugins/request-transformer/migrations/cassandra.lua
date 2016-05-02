@@ -21,7 +21,7 @@ return {
             plugin.config[action].form = nil
           end
         end
-        local _, err = factory.plugins:update(plugin, plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, {full = true})
         if err then
           return err
         end
@@ -54,7 +54,7 @@ return {
             plugin.config[action] = nil
           end
         end
-        local _, err = factory.plugins:update(plugin, plugin, true)
+        local _, err = factory.plugins:update(plugin, plugin, {full = true})
         if err then
           return err
         end

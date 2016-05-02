@@ -18,12 +18,14 @@ return {
   fields = {
     id = {
       type = "id",
-      dao_insert_value = true
+      dao_insert_value = true,
+      required = true
     },
     created_at = {
       type = "timestamp",
       immutable = true,
-      dao_insert_value = true
+      dao_insert_value = true,
+      required = true
     },
     api_id = {
       type = "id",

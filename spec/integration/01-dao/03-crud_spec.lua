@@ -525,7 +525,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           -- primary key is contained in entity body
           api_fixture.name = "updated-full"
 
-          local api, err = apis:update(api_fixture, true)
+          local api, err = apis:update(api_fixture, api_fixture, {full = true})
           assert.falsy(err)
           assert.truthy(api)
           assert.same(api_fixture, api)
@@ -538,7 +538,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
         it("unset nil fields", function()
           api_fixture.request_path = nil
 
-          local api, err = apis:update(api_fixture, true)
+          local api, err = apis:update(api_fixture, api_fixture, {full = true})
           assert.falsy(err)
           assert.truthy(api)
           assert.same(api_fixture, api)
@@ -552,7 +552,7 @@ utils.for_each_dao(function(db_type, default_options, TYPES)
           api_fixture.request_path = nil
           api_fixture.request_host = nil
 
-          local api, err = apis:update(api_fixture, true)
+          local api, err = apis:update(api_fixture, api_fixture, {full = true})
           assert.truthy(err)
           assert.falsy(api)
           assert.True(err.schema)

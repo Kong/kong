@@ -91,7 +91,7 @@ describe("Admin API", function()
           assert.equal(201, status)
         end
       end)
-      it_content_types("should update if exists", function(content_type)
+      it_content_types("#only should not update if some required fields are missing", function(content_type)
         return function()
           local response, status = http_client.put(BASE_URL, {
             id = api.id,
@@ -99,9 +99,24 @@ describe("Admin API", function()
             request_host = "updated-api.mockbin.com",
             upstream_url = "http://mockbin.com"
           }, {["content-type"] = content_type})
+          assert.equal(400, status)
+          local body = json.decode(response)
+          assert.equal("created_at is required", body.created_at)
+        end
+      end)
+      it_content_types("#only should update if exists", function(content_type)
+        return function()
+          local response, status = http_client.put(BASE_URL, {
+            id = api.id,
+            name = "api-PUT-tests-updated",
+            request_host = "updated-api.mockbin.com",
+            upstream_url = "http://mockbin.com",
+            created_at = 1461276890000
+          }, {["content-type"] = content_type})
           assert.equal(200, status)
           local body = json.decode(response)
           assert.equal("api-PUT-tests-updated", body.name)
+          assert.truthy(body.created_at)
         end
       end)
       describe("errors", function()
@@ -412,7 +427,8 @@ describe("Admin API", function()
               local response, status = http_client.put(PLUGIN_BASE_URL, {
                 id = plugin.id,
                 name = "key-auth",
-                ["config.key_names"] = "updated_apikey"
+                ["config.key_names"] = "updated_apikey",
+                created_at = 1461276890000
               }, {["content-type"] = content_type})
               assert.equal(200, status)
               local body = json.decode(response)
@@ -433,7 +449,8 @@ describe("Admin API", function()
 
               local response, status = http_client.put(PLUGIN_BASE_URL, {
                 id = plugin.id,
-                name = "key-auth"
+                name = "key-auth",
+                created_at = 1461276890000
               }, {["content-type"] = content_type})
               assert.equal(200, status)
               local body = json.decode(response)
@@ -464,7 +481,8 @@ describe("Admin API", function()
                 id = plugin.id,
                 api_id = api.id,
                 name = "rate-limiting",
-                ["config.minute"] = 3
+                ["config.minute"] = 3,
+                created_at = 1461276890000
               }, {["content-type"] = content_type})
               assert.equal(200, status)
               local body = json.decode(response)
@@ -487,7 +505,8 @@ describe("Admin API", function()
               local response, status = http_client.put(PLUGIN_BASE_URL, {
                 id = plugin.id,
                 name = "key-auth",
-                ["config.key_names"] = "api_key_updated"
+                ["config.key_names"] = "api_key_updated",
+                created_at = 1461276890000
               }, {["content-type"] = content_type})
               assert.equal(200, status)
               local body = json.decode(response)
@@ -501,7 +520,8 @@ describe("Admin API", function()
                 id = plugin.id,
                 name = "key-auth",
                 enabled = false,
-                ["config.key_names"] = "apikey,key"
+                ["config.key_names"] = "apikey,key",
+                created_at = 1461276890000
               }, {["content-type"] = content_type})
               assert.equal(200, status)
 
@@ -513,7 +533,8 @@ describe("Admin API", function()
                 id = plugin.id,
                 name = "key-auth",
                 enabled = true,
-                ["config.key_names"] = "apikey,key"
+                ["config.key_names"] = "apikey,key",
+                created_at = 1461276890000
               }, {["content-type"] = content_type})
               assert.equal(200, status)
 

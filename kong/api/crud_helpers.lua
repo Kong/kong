@@ -132,7 +132,7 @@ function _M.put(params, dao_collection)
     end
   else
     -- If entity body has primary key, deal with update
-    new_entity, err = dao_collection:update(params, true)
+    new_entity, err = dao_collection:update(params, params, {full = true})
     if not err then
       return responses.send_HTTP_OK(new_entity)
     end

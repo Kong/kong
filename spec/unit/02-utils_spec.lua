@@ -2,6 +2,10 @@ local utils = require "kong.tools.utils"
 
 describe("Utils", function()
 
+  it("should retrieve the hostname", function()
+    assert.truthy(utils.get_hostname())
+  end)
+
   describe("string", function()
     describe("random_string()", function()
       it("should return a random string", function()
