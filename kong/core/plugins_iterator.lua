@@ -2,6 +2,11 @@ local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 
+local empty = {}
+-- now as a defensive measure protect it against accidental modifications
+empty = setmetatable(empty, {__newindex = function() error("The 'empty' table should not be modified, check your code!", 2) end })
+
+
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's configuration if it exists.
 -- Results are cached in ngx.dict
@@ -52,7 +57,6 @@ local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_con
   end
 
   local i = 0
-  local empty = {}
 
   local function get_next()
     i = i + 1
