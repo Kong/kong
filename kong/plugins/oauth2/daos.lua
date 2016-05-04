@@ -10,7 +10,7 @@ local function generate_if_missing(v, t, column)
 end
 
 local function validate_uris(v, t, column)
-  if v and type(v) == "table" then
+  if v then
     for _, uri in ipairs(v) do
       local parsed_uri = url.parse(uri)
       if not (parsed_uri and parsed_uri.host and parsed_uri.scheme) then
