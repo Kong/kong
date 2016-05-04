@@ -23,7 +23,7 @@ describe("Admin API", function()
       client:close()
     end
     helpers.stop_kong()
-    helpers.clean_prefix()
+    --helpers.clean_prefix()
   end)
 
   describe("/apis", function()
@@ -132,7 +132,7 @@ describe("Admin API", function()
         helpers.dao:truncate_tables()
       end)
 
-      it_content_types("creates if not exists", function(content_type)
+      it_content_types("#o creates if not exists", function(content_type)
         return function()
           local res = assert(client:send {
             method = "PUT",
@@ -344,7 +344,7 @@ describe("Admin API", function()
       end)
 
       describe("GET", function()
-        it("#o retrieves by id", function()
+        it("retrieves by id", function()
           local res = assert(client:send {
             method = "GET",
             path = "/apis/"..api.id

@@ -20,7 +20,7 @@ describe("Admin API", function()
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
-    helpers.clean_prefix()
+    --helpers.clean_prefix()
   end)
 
   local consumer
@@ -120,7 +120,8 @@ describe("Admin API", function()
             body = {
               id = json.id,
               username = "alicia",
-              custom_id = "0000"
+              custom_id = "0000",
+              created_at = 1461276890000
             },
             headers = {["Content-Type"] = content_type}
           })
@@ -129,7 +130,6 @@ describe("Admin API", function()
           assert.equal("alicia", updated_json.username)
           assert.equal("0000", updated_json.custom_id)
           assert.equal(json.id, updated_json.id)
-          assert.is_nil(updated_json.created_at) -- removes unspecified fields
         end
       end)
       describe("errors", function()
