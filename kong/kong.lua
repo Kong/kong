@@ -39,6 +39,7 @@ local singletons = require "kong.singletons"
 local dao_loader = require "kong.tools.dao_loader"
 local config_loader = require "kong.tools.config_loader"
 local plugins_iterator = require "kong.core.plugins_iterator"
+local balancer = require "ngx.balancer"
 
 local ipairs = ipairs
 local table_insert = table.insert
@@ -178,6 +179,15 @@ function Kong.ssl_certificate()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
+  end
+end
+
+function Kong.balancer()
+  local balancer_address = ngx.ctx.balancer_address
+  local ok, err = balancer.set_current_peer(balancer_address.host, balancer_address.port)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
+    return ngx.exit(500)
   end
 end
 

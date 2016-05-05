@@ -93,6 +93,7 @@ build = {
     ["kong.tools.config_defaults"] = "kong/tools/config_defaults.lua",
     ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
     ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
+    ["kong.tools.dns_resolver"] = "kong/tools/dns_resolver.lua",
 
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",

@@ -17,21 +17,22 @@ local CACHE_KEYS = {
   AUTOJOIN_RETRIES = "autojoin_retries",
   TIMERS = "timers",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
-  LDAP_CREDENTIAL = "ldap_credentials"
+  LDAP_CREDENTIAL = "ldap_credentials",
+  DNS = "_dns"
 }
 
 local _M = {}
 
-function _M.rawset(key, value)
-  return cache:set(key, value)
+function _M.rawset(key, value, exptime)
+  return cache:set(key, value, exptime and exptime or 0)
 end
 
-function _M.set(key, value)
+function _M.set(key, value, exptime)
   if value then
     value = cjson.encode(value)
   end
 
-  return _M.rawset(key, value)
+  return _M.rawset(key, value, exptime)
 end
 
 function _M.rawget(key)
@@ -57,6 +58,10 @@ end
 function _M.delete_all()
   cache:flush_all() -- This does not free up the memory, only marks the items as expired
   cache:flush_expired() -- This does actually remove the elements from the memory
+end
+
+function _M.dns_key(address)
+  return CACHE_KEYS.DNS..":"..address
 end
 
 function _M.requests_key()
