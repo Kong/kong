@@ -132,7 +132,7 @@ describe("Admin API", function()
         helpers.dao:truncate_tables()
       end)
 
-      it_content_types("#o creates if not exists", function(content_type)
+      it_content_types("creates if not exists", function(content_type)
         return function()
           local res = assert(client:send {
             method = "PUT",

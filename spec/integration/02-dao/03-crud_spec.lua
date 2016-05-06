@@ -19,7 +19,7 @@ say:set("assertion.raw_table.positive", "Expected %s\nto be a raw table")
 say:set("assertion.raw_table.negative", "Expected %s\nto not be a raw_table")
 assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positive", "assertion.raw_table.negative")
 
-local helpers = require "spec.integration.01-dao.helpers"
+local helpers = require "spec.integration.02-dao.helpers"
 local Factory = require "kong.dao.factory"
 
 local api_tbl = {
