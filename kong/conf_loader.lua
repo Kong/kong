@@ -5,6 +5,9 @@ local DEFAULT_PATHS = {
 
 local CONF_SCHEMA = {
   -- kong
+  log_level = {enum = {"debug", "info", "notice", "warn",
+                       "error", "crit", "alert", "emerg"}},
+
   ssl = {typ = "boolean"},
 
   custom_plugins = {typ = "array"},
