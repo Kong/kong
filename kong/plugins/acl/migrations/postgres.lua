@@ -12,10 +12,10 @@ return {
 
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.acls_group')) IS NULL THEN
+        IF (SELECT to_regclass('acls_group')) IS NULL THEN
           CREATE INDEX acls_group ON acls("group");
         END IF;
-        IF (SELECT to_regclass('public.acls_consumer_id')) IS NULL THEN
+        IF (SELECT to_regclass('acls_consumer_id')) IS NULL THEN
           CREATE INDEX acls_consumer_id ON acls(consumer_id);
         END IF;
       END$$;
