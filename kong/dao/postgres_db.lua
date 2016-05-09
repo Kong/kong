@@ -447,7 +447,7 @@ end
 
 function PostgresDB:current_migrations()
   -- Check if schema_migrations table exists
-  local rows, err = self:query "SELECT to_regclass('public.schema_migrations')"
+  local rows, err = self:query "SELECT to_regclass('schema_migrations')"
   if err then
     return nil, err
   end

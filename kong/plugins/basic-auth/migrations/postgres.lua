@@ -13,10 +13,10 @@ return {
 
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.basicauth_username_idx')) IS NULL THEN
+        IF (SELECT to_regclass('basicauth_username_idx')) IS NULL THEN
           CREATE INDEX basicauth_username_idx ON basicauth_credentials(username);
         END IF;
-        IF (SELECT to_regclass('public.basicauth_consumer_id_idx')) IS NULL THEN
+        IF (SELECT to_regclass('basicauth_consumer_id_idx')) IS NULL THEN
           CREATE INDEX basicauth_consumer_id_idx ON basicauth_credentials(consumer_id);
         END IF;
       END$$;
