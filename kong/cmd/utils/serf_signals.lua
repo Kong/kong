@@ -40,7 +40,7 @@ if [ "$SERF_EVENT" != "user" ]; then
 fi
 echo $PAYLOAD > /tmp/payload
 
-resty -e "require('kong.tools.http_client').post('http://%s/cluster/events/', ${PAYLOAD}, {['content-type'] = 'application/json'})"
+resty -e "require('kong.tools.http_client').post('http://%s/cluster/events/', ]].."[=['${PAYLOAD}']=]"..[[, {['content-type'] = 'application/json'})"
 
 exit 0
 ]]
