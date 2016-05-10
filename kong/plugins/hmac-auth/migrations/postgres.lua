@@ -13,10 +13,10 @@ return {
 
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.hmacauth_credentials_username')) IS NULL THEN
+        IF (SELECT to_regclass('hmacauth_credentials_username')) IS NULL THEN
           CREATE INDEX hmacauth_credentials_username ON hmacauth_credentials(username);
         END IF;
-        IF (SELECT to_regclass('public.hmacauth_credentials_consumer_id')) IS NULL THEN
+        IF (SELECT to_regclass('hmacauth_credentials_consumer_id')) IS NULL THEN
           CREATE INDEX hmacauth_credentials_consumer_id ON hmacauth_credentials(consumer_id);
         END IF;
       END$$;
