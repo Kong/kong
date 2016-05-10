@@ -31,7 +31,7 @@ return {
       ["advertise"] = {type = "string", nullable = true},
       ["encrypt"] = {type = "string", nullable = true},
       ["profile"] = {type = "string", default = "wan", enum = {"wan", "lan", "local"}},
-      ["ttl_on_failure"] = {type = "number", default = 3600}
+      ["ttl_on_failure"] = {type = "number", default = 3600, min = 60}
     }
   },
   ["database"] = {type = "string", default = "cassandra", enum = {"cassandra", "postgres"}},
