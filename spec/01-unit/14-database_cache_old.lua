@@ -1,4 +1,4 @@
-require "kong.tools.ngx_stub"
+--require "kong.tools.ngx_stub"
 local cache = require "kong.tools.database_cache"
 
 describe("Database cache", function()

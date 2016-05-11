@@ -4,7 +4,7 @@ local plugins_schema = require "kong.dao.schemas.plugins"
 local validations = require "kong.dao.schemas_validation"
 local validate_entity = validations.validate_entity
 
-require "kong.tools.ngx_stub"
+--require "kong.tools.ngx_stub"
 
 describe("Entities Schemas", function()
 

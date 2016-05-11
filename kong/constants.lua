@@ -12,15 +12,6 @@ for i = 1, #plugins do
 end
 
 return {
-  SYSLOG = {
-    ADDRESS = "kong-hf.mashape.com",
-    PORT = 61828,
-    API = "api"
-  },
-  CLI = {
-    GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
-    NGINX_CONFIG = "nginx.conf"
-  },
   PLUGINS_AVAILABLE = plugin_map,
   -- Non standard headers, specific to Kong
   HEADERS = {

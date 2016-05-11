@@ -1,13 +1,9 @@
-local IO = require "kong.tools.io"
+local pl_utils = require "pl.utils"
 
 local function validate_file(value)
-  local exists = IO.file_exists(value)
-  if not os.execute("touch "..value) == 0 then
-    return false, "Cannot create a file in the path specified. Make sure the path is valid, and Kong has the right permissions"
-  end
-
-  if not exists then
-    os.remove(value) -- Remove the created file if it didn't exist before
+  local ok = pl_utils.executeex("touch "..value)
+  if not ok then
+    return false, "Cannot create file. Make sure the path is valid, and has the right permissions"
   end
 
   return true

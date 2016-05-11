@@ -1,4 +1,5 @@
 local pl_dir = require "pl.dir"
+local pl_path = require "pl.path"
 local meta = require "kong.meta"
 
 describe("rockspec", function()
@@ -28,7 +29,7 @@ describe("rockspec", function()
   end)
 
   describe("modules", function()
-    it("are all included", function()
+    it("are all included in rockspec", function()
       for _, src in ipairs(lua_srcs) do
         src = src:sub(3) -- strip './'
         local found
@@ -43,11 +44,15 @@ describe("rockspec", function()
     end)
     it("all modules named as their path", function()
       for mod_name, mod_path in pairs(rock.build.modules) do
-        if mod_name ~= "kong" and mod_name ~= "resty_http" and
-           mod_name ~= "classic" and mod_name ~= "lapp" then
-            mod_path = mod_path:gsub("%.lua", ""):gsub("/", '.')
-            assert(mod_name == mod_path, mod_path.." has different name ("..mod_name..")")
+        if mod_name ~= "kong" then
+          mod_path = mod_path:gsub("%.lua", ""):gsub("/", '.')
+          assert(mod_name == mod_path, mod_path.." has different name ("..mod_name..")")
         end
+      end
+    end)
+    it("all rockspec files do exist", function()
+      for mod_name, mod_path in pairs(rock.build.modules) do
+        assert(pl_path.exists(mod_path), mod_path.." does not exist ("..mod_name..")")
       end
     end)
   end)

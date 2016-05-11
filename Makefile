@@ -1,6 +1,4 @@
-TESTING_CONF = kong_TEST.yml
-DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
-DEV_ROCKS = busted luacov luacov-coveralls luacheck
+DEV_ROCKS = busted luacheck
 
 .PHONY: install dev clean doc lint test test-integration test-plugins test-all coverage
 
@@ -22,15 +20,10 @@ dev: install
       echo $$rock already installed, skipping ; \
     fi \
 	done;
-	bin/kong config -c kong.yml -e TEST -s TEST
-	bin/kong config -c kong.yml -e DEVELOPMENT -s DEVELOPMENT
-	bin/kong migrations -c $(DEVELOPMENT_CONF) up
 
 clean:
-	@bin/kong migrations -c $(DEVELOPMENT_CONF) reset
-	rm -f $(DEVELOPMENT_CONF) $(TESTING_CONF)
 	rm -f luacov.*
-	rm -rf nginx_tmp
+	rm -rf servroot
 
 doc:
 	@ldoc -c config.ld kong
@@ -46,19 +39,13 @@ lint:
 						--no-unused-args
 
 test:
-	@busted -v spec/unit
+	@bin/busted -v spec/01-unit
 
 test-integration:
-	@busted -v spec/integration
+	@bin/busted -v spec/02-integration
 
 test-plugins:
-	@busted -v spec/plugins
+	@bin/busted -v spec/03-plugins
 
 test-all:
-	@busted -v spec/
-
-coverage:
-	@rm -f luacov.*
-	@busted --coverage spec/
-	@luacov -c spec/.luacov
-	@tail -n 1 luacov.report.out | awk '{ print $$3 }'
+	@bin/busted -v spec/

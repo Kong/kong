@@ -1,7 +1,7 @@
 local schemas = require "kong.dao.schemas_validation"
 local validate_entity = schemas.validate_entity
 
-require "kong.tools.ngx_stub"
+--require "kong.tools.ngx_stub"
 
 describe("Schemas", function()
 
@@ -287,7 +287,7 @@ describe("Schemas", function()
 
     end)
 
-    describe("[regex]", function()
+    pending("[regex]", function()
       it("should validate a field against a regex", function()
         local values = {string = "mockbin entity", url = "mockbin_!"}
 
