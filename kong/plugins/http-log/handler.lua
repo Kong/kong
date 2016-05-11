@@ -7,6 +7,7 @@ local HttpLogHandler = BasePlugin:extend()
 
 HttpLogHandler.PRIORITY = 1
 
+local HTTP = "http"
 local HTTPS = "https"
 
 -- Generates http payload .
@@ -28,7 +29,7 @@ end
 local function parse_url(host_url)
   local parsed_url = url.parse(host_url)
   if not parsed_url.port then
-    if parsed_url.scheme == "http" then
+    if parsed_url.scheme == HTTP then
       parsed_url.port = 80
      elseif parsed_url.scheme == HTTPS then
       parsed_url.port = 443
