@@ -1,4 +1,4 @@
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local Mediator = require "mediator"
 
 local Events = Object:extend()

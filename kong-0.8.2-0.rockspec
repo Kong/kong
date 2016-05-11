@@ -43,20 +43,17 @@ build = {
   type = "builtin",
   modules = {
     ["kong"] = "kong/kong.lua",
-
-    ["classic"] = "kong/vendor/classic.lua",
-    ["lapp"] = "kong/vendor/lapp.lua",
-
     ["kong.meta"] = "kong/meta.lua",
+    ["kong.serf"] = "kong/serf.lua",
     ["kong.constants"] = "kong/constants.lua",
     ["kong.singletons"] = "kong/singletons.lua",
-
-    ["kong.serf"] = "kong/serf.lua",
     ["kong.conf_loader"] = "kong/conf_loader.lua",
 
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
+
+    ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
     ["kong.cmd.check"] = "kong/cmd/check.lua",
     ["kong.cmd.compile"] = "kong/cmd/compile.lua",
@@ -73,25 +70,6 @@ build = {
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
 
-    ["kong.cli.utils.logger"] = "kong/cli/utils/logger.lua",
-    ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",
-    ["kong.cli.utils.input"] = "kong/cli/utils/input.lua",
-    ["kong.cli.utils.services"] = "kong/cli/utils/services.lua",
-    ["kong.cli.cmds.config"] = "kong/cli/cmds/config.lua",
-    ["kong.cli.cmds.quit"] = "kong/cli/cmds/quit.lua",
-    ["kong.cli.cmds.stop"] = "kong/cli/cmds/stop.lua",
-    ["kong.cli.cmds.start"] = "kong/cli/cmds/start.lua",
-    ["kong.cli.cmds.reload"] = "kong/cli/cmds/reload.lua",
-    ["kong.cli.cmds.restart"] = "kong/cli/cmds/restart.lua",
-    ["kong.cli.cmds.version"] = "kong/cli/cmds/version.lua",
-    ["kong.cli.cmds.status"] = "kong/cli/cmds/status.lua",
-    ["kong.cli.cmds.migrations"] = "kong/cli/cmds/migrations.lua",
-    ["kong.cli.cmds.cluster"] = "kong/cli/cmds/cluster.lua",
-    ["kong.cli.services.base_service"] = "kong/cli/services/base_service.lua",
-    ["kong.cli.services.dnsmasq"] = "kong/cli/services/dnsmasq.lua",
-    ["kong.cli.services.serf"] = "kong/cli/services/serf.lua",
-    ["kong.cli.services.nginx"] = "kong/cli/services/nginx.lua",
-
     ["kong.api.init"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
@@ -102,20 +80,12 @@ build = {
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
 
-    ["kong.tools.io"] = "kong/tools/io.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
-    ["kong.tools.faker"] = "kong/tools/faker.lua",
-    ["kong.tools.syslog"] = "kong/tools/syslog.lua",
-    ["kong.tools.ngx_stub"] = "kong/tools/ngx_stub.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.cluster"] = "kong/tools/cluster.lua",
     ["kong.tools.responses"] = "kong/tools/responses.lua",
     ["kong.tools.timestamp"] = "kong/tools/timestamp.lua",
-    ["kong.tools.http_client"] = "kong/tools/http_client.lua",
     ["kong.tools.database_cache"] = "kong/tools/database_cache.lua",
-    ["kong.tools.config_defaults"] = "kong/tools/config_defaults.lua",
-    ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
-    ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
 
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
@@ -290,7 +260,6 @@ build = {
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
   },
   install = {
-    conf = { "kong.yml" },
     bin = { "bin/kong" }
   }
 }

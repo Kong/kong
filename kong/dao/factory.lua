@@ -1,6 +1,6 @@
 local DAO = require "kong.dao.dao"
 local utils = require "kong.tools.utils"
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local stringy = require "stringy"
 local ModelFactory = require "kong.dao.model_factory"
 
