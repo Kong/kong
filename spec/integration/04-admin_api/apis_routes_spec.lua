@@ -91,7 +91,7 @@ describe("Admin API", function()
           assert.equal(201, status)
         end
       end)
-      it_content_types("#only should not update if some required fields are missing", function(content_type)
+      it_content_types("should not update if some required fields are missing", function(content_type)
         return function()
           local response, status = http_client.put(BASE_URL, {
             id = api.id,
@@ -104,7 +104,7 @@ describe("Admin API", function()
           assert.equal("created_at is required", body.created_at)
         end
       end)
-      it_content_types("#only should update if exists", function(content_type)
+      it_content_types("should update if exists", function(content_type)
         return function()
           local response, status = http_client.put(BASE_URL, {
             id = api.id,

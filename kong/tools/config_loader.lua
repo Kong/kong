@@ -5,6 +5,7 @@ local logger = require "kong.cli.utils.logger"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local config_defaults = require "kong.tools.config_defaults"
+local dns_utils = require "kong.cli.utils.dns"
 
 local function get_type(value, val_type)
   if val_type == "array" and utils.is_array(value) then
@@ -178,14 +179,19 @@ function _M.load(config_path)
   -- Adding computed properties
   config.pid_file = IO.path:join(config.nginx_working_dir, constants.CLI.NGINX_PID)
   config.dao_config = config[config.database]
-  if config.dns_resolver == "dnsmasq" then
-    config.dns_resolver = {
-      address = "127.0.0.1:"..config.dns_resolvers_available.dnsmasq.port,
-      port = config.dns_resolvers_available.dnsmasq.port,
-      dnsmasq = true
-    }
+
+  -- DNS resolver
+  config.dns_etc_hosts = dns_utils.parse_etc_hosts()
+  if config.dns_resolver and config.dns_resolver.address then
+    config.dns_resolver = dns_utils.parse_dns_address(config.dns_resolver.address)
   else
-    config.dns_resolver = {address = config.dns_resolvers_available.server.address}
+    -- Find from resolv.conf
+    local resolv_nameserver = dns_utils.find_first_namespace()
+    if not resolv_nameserver then
+      logger:error("Can't parse the system DNS settings. Please manually specify a DNS resolver in the configuaration")
+      os.exit(1)
+    end
+    config.dns_resolver = resolv_nameserver
   end
 
   -- Load absolute path for the nginx working directory

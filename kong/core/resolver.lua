@@ -256,12 +256,21 @@ function _M.execute(request_uri, request_headers)
     upstream_host = parsed_url.host..":"..upstream_port
   end
 
-  -- Resolve the appropriate DNS
-  local dns = DnsResolver(singletons.configuration.dns_resolver.address)
-  local resolution, err = dns:resolve(parsed_url.host, parsed_url.port)
-  if err then
-    ngx.log(ngx.ERR, err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  -- Resolve the appropriate DNS address, first by checking /etc/hosts, then by invoking the DNS server
+  local resolution
+  local etc_host = singletons.configuration.dns_etc_hosts[parsed_url.host] -- Check /etc/hosts first
+  if etc_host then
+    resolution = {host = etc_host}
+  else
+    -- Resolve using the DNS server
+    local dns_config = singletons.configuration.dns_resolver
+    local dns = DnsResolver(dns_config.host, dns_config.port, dns_config.timeout, dns_config.attempts)
+    local err
+    resolution, err = dns:resolve(parsed_url.host, parsed_url.port, dns_config.srv)
+    if err then
+      ngx.log(ngx.ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err) --TODO: this throw an error even when the resolution fails, it should return 502 (?)
+    end
   end
 
   if not resolution.port then

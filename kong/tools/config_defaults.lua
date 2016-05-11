@@ -6,22 +6,11 @@ return {
   ["admin_api_listen"] = {type = "string", default = "0.0.0.0:8001"},
   ["cluster_listen"] = {type = "string", default = "0.0.0.0:7946"},
   ["cluster_listen_rpc"] = {type = "string", default = "127.0.0.1:7373"},
-  ["dns_resolver"] = {type = "string", default = "dnsmasq", enum = {"server", "dnsmasq"}},
-  ["dns_resolvers_available"] = {
+  ["dns_resolver"] = {
     type = "table",
     content = {
-      ["server"] = {
-        type = "table",
-        content = {
-          ["address"] = {type = "string", default = "8.8.8.8"}
-        }
-      },
-      ["dnsmasq"] = {
-        type = "table",
-        content = {
-          ["port"] = {type = "number", default = 8053}
-        }
-      }
+      ["address"] = {type = "string", nullable = false},
+      ["srv"] = {type = "boolean", default = true}
     }
   },
   ["cluster"] = {
