@@ -13,7 +13,7 @@ describe("Schemas", function()
         string = { type = "string", required = true, immutable = true},
         table = {type = "table"},
         number = {type = "number"},
-        url = {regex = "(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])"},
+        url = {regex = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"},
         date = {default = 123456, immutable = true},
         allowed = {enum = {"hello", "world"}},
         boolean_val = {type = "boolean"},
@@ -59,7 +59,7 @@ describe("Schemas", function()
     describe("[type]", function()
       --[]
       it("should validate the type of a property if it has a type field", function()
-       -- Failure
+      -- Failure
       local values = {string = "foo", table = "bar"}
 
       local valid, err = validate_entity(values, schema)
@@ -287,7 +287,7 @@ describe("Schemas", function()
 
     end)
 
-    pending("[regex]", function()
+    describe("[regex]", function()
       it("should validate a field against a regex", function()
         local values = {string = "mockbin entity", url = "mockbin_!"}
 

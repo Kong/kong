@@ -1,4 +1,5 @@
 local conf_loader = require "kong.conf_loader"
+local pl_config = require "pl.config"
 local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 
@@ -20,10 +21,9 @@ local function execute(args)
 end
 
 local lapp = [[
-Usage: kong check [OPTIONS]
+Usage: kong check <conf>
 
-Options:
- -c,--conf (string) configuration file
+<conf> (default /etc/kong.conf) configuration file
 ]]
 
 return {

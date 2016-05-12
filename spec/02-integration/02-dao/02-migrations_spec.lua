@@ -15,12 +15,12 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("current_migrations()", function()
-      it("should return an empty table if no migrations have run", function()
+      it("should return an empty table if no migrations have been run", function()
         local cur_migrations, err = factory:current_migrations()
         assert.falsy(err)
         assert.same({}, cur_migrations)
       end)
-      pending("should return errors", function()
+      it("should return empty migrations", function()
         local invalid_conf = utils.shallow_copy(kong_config)
         if invalid_conf.database == "cassandra" then
           invalid_conf.cassandra_keyspace = "_inexistent_"
@@ -29,16 +29,9 @@ helpers.for_each_dao(function(kong_config)
         end
 
         local xfactory = Factory(invalid_conf)
-
         local cur_migrations, err = xfactory:current_migrations()
-        if kong_config.database == "cassandra" then
-          assert.same({}, cur_migrations)
-        elseif kong_config.database == "postgres" then
-          assert.truthy(err)
-          assert.falsy(cur_migrations)
-          assert.True(err.db)
-          assert.equal('FATAL: database "_inexistent_" does not exist', tostring(err))
-        end
+        assert.is_nil(err)
+        assert.same({}, cur_migrations)
       end)
     end)
 
