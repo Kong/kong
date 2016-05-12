@@ -31,7 +31,7 @@ doc:
 lint:
 	@luacheck -q . \
 						--exclude-files 'kong/vendor/**/*.lua' \
-						--exclude-files 'spec/unit/fixtures/invalid-module.lua' \
+						--exclude-files 'spec/fixtures/invalid-module.lua' \
 						--std 'ngx_lua+busted' \
 						--globals '_KONG' \
 						--globals 'ngx' \
