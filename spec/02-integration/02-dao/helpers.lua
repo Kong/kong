@@ -6,9 +6,9 @@ local DATABASES = {"postgres", "cassandra"}
 local function for_each_dao(fn)
   for i = 1, #DATABASES do
     local database_name = DATABASES[i]
-    local conf = assert(conf_loader(spec_helpers.test_conf_path), {
+    local conf = assert(conf_loader(spec_helpers.test_conf_path, {
       database = database_name
-    })
+    }))
     fn(conf)
   end
 end

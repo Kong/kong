@@ -27,7 +27,7 @@ describe("kong start/stop", function()
     assert.is_string(stderr)
     assert.not_equal("", stderr)
   end)
-  pending("start/stop default conf/prefix", function()
+  it("start/stop default conf/prefix", function()
     -- don't want to force migrations to be run on default
     -- keyspace/database
     local ok, _, stdout, stderr = exec "start"
