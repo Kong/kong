@@ -1,5 +1,4 @@
 local conf_loader = require "kong.conf_loader"
-local pl_config = require "pl.config"
 local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 

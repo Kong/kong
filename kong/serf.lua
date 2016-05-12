@@ -4,15 +4,12 @@
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local cjson = require "cjson.safe"
+local log = require "kong.cmd.utils.log"
 local fmt = string.format
-local hostname
 
-do
-  local pl_utils = require "pl.utils"
-  local ok, _, stdout, stderr = pl_utils.executeex "/bin/hostname"
-  if not ok then error(stderr) end
-  hostname = pl_stringx.strip(stdout)
-end
+local ok, _, stdout, stderr = pl_utils.executeex "/bin/hostname"
+if not ok then error(stderr) end
+local hostname = pl_stringx.strip(stdout)
 
 local Serf = {}
 Serf.__index = Serf
@@ -71,7 +68,7 @@ function Serf:autojoin()
   local nodes, err = self.dao.nodes:find_all()
   if err then return nil, tostring(err)
   elseif #nodes == 0 then
-    --logger:warn("Cannot auto-join the cluster because no nodes were found")
+    log.warn("could not auto-join the cluster: no nodes found")
   else
     -- Sort by newest to oldest (although by TTL would be a better sort)
     table.sort(nodes, function(a, b) return a.created_at > b.created_at end)
@@ -79,15 +76,15 @@ function Serf:autojoin()
     local joined
     for _, v in ipairs(nodes) do
       if self:join_node(v.cluster_listening_address) then
-        --logger:info("Successfully auto-joined "..v.cluster_listening_address)
+        log("Successfully auto-joined %s", v.cluster_listening_address)
         joined = true
         break
       else
-        --logger:warn("Cannot join "..v.cluster_listening_address..". If the node does not exist anymore it will be automatically purged.")
+        log.warn("could not join %s, if the node does not exist anymore it will be automatically purged", v.cluster_listening_address)
       end
     end
     if not joined then
-      --logger:warn("Could not join the existing cluster")
+      log.warn("could not join the existing cluster")
     end
   end
 
