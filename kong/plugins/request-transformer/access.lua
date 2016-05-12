@@ -92,7 +92,7 @@ local function transform_headers(conf)
     if req_get_headers()[name] then
       req_set_header(name, value)
       if name:lower() == HOST then -- Host header has a special treatment
-        ngx.var.backend_host = value
+        ngx.var.upstream_host = value
       end
     end
   end
@@ -102,7 +102,7 @@ local function transform_headers(conf)
     if not req_get_headers()[name] then
       req_set_header(name, value)
       if name:lower() == HOST then -- Host header has a special treatment
-        ngx.var.backend_host = value
+        ngx.var.upstream_host = value
       end
     end
   end
@@ -111,7 +111,7 @@ local function transform_headers(conf)
   for _, name, value in iter(conf.append.headers) do
     req_set_header(name, append_value(req_get_headers()[name], value))
     if name:lower() == HOST then -- Host header has a special treatment
-      ngx.var.backend_host = value
+      ngx.var.upstream_host = value
     end
   end
 end
