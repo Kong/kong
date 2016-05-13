@@ -109,7 +109,7 @@ function _M.encode_args(args, raw)
       value = tostring(value)
       if value ~= "" then
         query[#query+1] = encode_args_value(key, value, raw)
-      elseif raw then
+      elseif raw or value == "" then
         query[#query+1] = key
       end
     end
