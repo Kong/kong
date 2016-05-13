@@ -2,7 +2,7 @@ return {
   {
     name = "2015-01-12-175310_skeleton",
     up = function(db, kong_config)
-      local keyspace_name = kong_config.keyspace
+      local keyspace_name = kong_config.cassandra_keyspace
       local strategy, strategy_properties = kong_config.cassandra_repl_strategy, ""
 
       -- Format strategy options
@@ -27,17 +27,20 @@ return {
           WITH REPLICATION = {'class': '%s'%s};
       ]], keyspace_name, strategy, strategy_properties)
 
-      local err = db:queries(keyspace_str, true)
-      if err then
+      local res, err = db:query(keyspace_str, nil, nil, nil, true)
+      if not res then
         return err
       end
 
-      return db:queries [[
+      local res, err = db:query [[
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
           migrations list<text>
         );
       ]]
+      if not res then
+        return err
+      end
     end,
     down = [[
       DROP TABLE schema_migrations;

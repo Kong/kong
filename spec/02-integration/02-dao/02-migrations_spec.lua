@@ -44,17 +44,6 @@ helpers.for_each_dao(function(kong_config)
       end)
     end)
 
-    describe("run_migrations()", function()
-      teardown(function()
-        factory:drop_schema()
-      end)
-      it("should run the migrations from an empty DB", function()
-        local ok, err = factory:run_migrations()
-        assert.falsy(err)
-        assert.True(ok)
-      end)
-    end)
-
     ---
     -- Integration behavior.
     -- Must run in order.
@@ -72,9 +61,6 @@ helpers.for_each_dao(function(kong_config)
             }
           end
         end
-      end)
-      teardown(function()
-        factory:drop_schema()
       end)
       it("should run the migrations with callbacks", function()
         local on_migration = spy.new(function() end)
