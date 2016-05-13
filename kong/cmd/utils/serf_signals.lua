@@ -118,7 +118,7 @@ function _M.start(kong_config, nginx_prefix, dao)
 
   repeat
     log.debug("waiting for Serf agent to be running...")
-    ngx.sleep "0.2"
+    ngx.sleep(0.2)
     started = is_running(pid_path)
   until started or ngx.time() >= texp
 

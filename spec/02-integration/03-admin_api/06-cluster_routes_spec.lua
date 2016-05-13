@@ -101,6 +101,8 @@ describe("Admin API", function()
         })
         assert.res_status(200, res) -- why not 204??
 
+        ngx.sleep(1)
+
         res = assert(client:send {
           method = "GET",
           path = "/cluster"

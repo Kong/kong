@@ -63,7 +63,7 @@ helpers.for_each_dao(function(kong_config)
 
     if kong_config.database == "postgres" then
       it("clears old entities", function()
-        local DB = require("kong.dao.postgres_db")
+        local DB = require "kong.dao.postgres_db"
         local _db = DB(kong_config)
 
         for i = 1, 4 do
