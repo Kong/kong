@@ -1,96 +1,109 @@
-local spec_helper = require "spec.spec_helpers"
-local http_client = require "kong.tools.http_client"
+local helpers = require "spec.helpers"
 
-local PROXY_URL = spec_helper.PROXY_URL
-
-describe("CORS Plugin", function()
-
+describe("plugin CORS", function()
+  local client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.insert_fixtures {
-      api = {
-        { name = "tests-cors-1", request_host = "cors1.com", upstream_url = "http://mockbin.com" },
-        { name = "tests-cors-2", request_host = "cors2.com", upstream_url = "http://mockbin.com" }
-      },
-      plugin = {
-        { name = "cors", config = {}, __api = 1 },
-        { name = "cors", config = { origin = "example.com",
-                                   methods = { "GET" },
-                                   headers = { "origin", "type", "accepts" },
-                                   exposed_headers = { "x-auth-token" },
-                                   max_age = 23,
-                                   credentials = true }, __api = 2 }
-      }
-    }
+    helpers.dao:truncate_tables()
+    assert(helpers.prepare_prefix())
 
-    spec_helper.start_kong()
+    local api1 = assert(helpers.dao.apis:insert {
+      request_host = "cors1.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local api2 = assert(helpers.dao.apis:insert {
+      request_host = "cors2.com",
+      upstream_url = "http://mockbin.com"
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api1.id
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api2.id,
+      config = {
+        origin = "example.com",
+        methods = {"GET"},
+        headers = {"origin", "type", "accepts"},
+        exposed_headers = {"x-auth-token"},
+        max_age = 23,
+        credentials = true
+      }
+    })
+
+    assert(helpers.start_kong())
+    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
   end)
 
   teardown(function()
-    spec_helper.stop_kong()
+    if client then client:close() end
+    helpers.stop_kong()
   end)
 
-  describe("OPTIONS", function()
-
-    it("should give appropriate defaults when no options are passed", function()
-      local _, status, headers = http_client.options(PROXY_URL.."/", {}, {host = "cors1.com"})
-
-      -- assertions
-      assert.are.equal(204, status)
-      assert.are.equal("*", headers["access-control-allow-origin"])
-      assert.are.equal("GET,HEAD,PUT,PATCH,POST,DELETE", headers["access-control-allow-methods"])
-      assert.are.equal(nil, headers["access-control-allow-headers"])
-      assert.are.equal(nil, headers["access-control-expose-headers"])
-      assert.are.equal(nil, headers["access-control-allow-credentials"])
-      assert.are.equal(nil, headers["access-control-max-age"])
+  describe("HTTP method: OPTIONS", function()
+    it("gives appropriate defaults", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        headers = {
+          ["Host"] = "cors1.com"
+        }
+      })
+      assert.res_status(204, res)
+      assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
-
-    it("should reflect what is specified in options", function()
-      -- make proxy request
-      local _, status, headers = http_client.options(PROXY_URL.."/", {}, {host = "cors2.com"})
-
-      -- assertions
-      assert.are.equal(204, status)
-      assert.are.equal("example.com", headers["access-control-allow-origin"])
-      assert.are.equal("origin,type,accepts", headers["access-control-allow-headers"])
-      assert.are.equal(nil, headers["access-control-expose-headers"])
-      assert.are.equal("GET", headers["access-control-allow-methods"])
-      assert.are.equal(tostring(23), headers["access-control-max-age"])
-      assert.are.equal(tostring(true), headers["access-control-allow-credentials"])
+    it("accepts config options", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        headers = {
+          ["Host"] = "cors2.com"
+        }
+      })
+      assert.res_status(204, res)
+      assert.equal("GET", res.headers["Access-Control-Allow-Methods"])
+      assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+      assert.equal("23", res.headers["Access-Control-Max-Age"])
+      assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+      assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
     end)
-
   end)
 
-  describe("GET,PUT,POST,ETC", function()
-
-    it("should give appropriate defaults when no options are passed", function()
-      -- make proxy request
-      local _, status, headers = http_client.get(PROXY_URL.."/", {}, {host = "cors1.com"})
-
-      -- assertions
-      assert.are.equal(200, status)
-      assert.are.equal("*", headers["access-control-allow-origin"])
-      assert.are.equal(nil, headers["access-control-allow-methods"])
-      assert.are.equal(nil, headers["access-control-allow-headers"])
-      assert.are.equal(nil, headers["access-control-expose-headers"])
-      assert.are.equal(nil, headers["access-control-allow-credentials"])
-      assert.are.equal(nil, headers["access-control-max-age"])
+  describe("HTTP method: others", function()
+    it("gives appropriate defaults", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors1.com"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
-
-    it("should reflect some of what is specified in options", function()
-      -- make proxy request
-      local _, status, headers = http_client.get(PROXY_URL.."/", {}, {host = "cors2.com"})
-
-      -- assertions
-      assert.are.equal(200, status)
-      assert.are.equal("example.com", headers["access-control-allow-origin"])
-      assert.are.equal("x-auth-token", headers["access-control-expose-headers"])
-      assert.are.equal(nil, headers["access-control-allow-headers"])
-      assert.are.equal(nil, headers["access-control-allow-methods"])
-      assert.are.equal(nil, headers["access-control-max-age"])
-      assert.are.equal(tostring(true), headers["access-control-allow-credentials"])
+    it("accepts config options", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors2.com"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equal("example.com", res.headers["Access-Control-Allow-Origin"])
+      assert.equal("x-auth-token", res.headers["Access-Control-Expose-Headers"])
+      assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
-
   end)
-
 end)
