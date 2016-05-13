@@ -1,14 +1,40 @@
 local BaseService = require "kong.cli.services.base_service"
 local logger = require "kong.cli.utils.logger"
 local IO = require "kong.tools.io"
+local version = require "version"
 
 local Dnsmasq = BaseService:extend()
 
 local SERVICE_NAME = "dnsmasq"
 
+-- compatible Dnsmasq version
+local version_command = " -v"                    -- commandline param to get version
+local version_pattern = "^Dnsmasq.-([%d%.]+)"    -- pattern to grab version from output
+local compatible = version.set("2.72", "2.75")   -- compatible from-to versions
+
+
 function Dnsmasq:new(configuration)
   self._configuration = configuration
   Dnsmasq.super.new(self, SERVICE_NAME, self._configuration.nginx_working_dir)
+end
+
+function Dnsmasq:_get_cmd()
+  local cmd, err = Dnsmasq.super._get_cmd(self, {}, function(path)
+    local res, code = IO.os_execute(path..version_command)
+    if code == 0 then
+      local version_match = res:match(version_pattern)
+      if (not version_match) or (not compatible:matches(version_match)) then
+        logger:error("Incompatible Dnsmasq version. Kong requires version "..tostring(compatible)..
+          (version_match and ", got "..tostring(version_match) or ""))
+        os.exit(1)
+      end
+      return version_match
+    end
+
+    return false
+  end)
+
+  return cmd, err
 end
 
 function Dnsmasq:prepare()
@@ -21,7 +47,7 @@ function Dnsmasq:start()
       return nil, SERVICE_NAME.." is already running"
     end
 
-    local cmd, err = Dnsmasq.super._get_cmd(self)
+    local cmd, err = self:_get_cmd()
     if err then
       return nil, err
     end
