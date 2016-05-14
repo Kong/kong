@@ -5,6 +5,7 @@ local ssl = require "kong.cli.utils.ssl"
 local constants = require "kong.constants"
 local syslog = require "kong.tools.syslog"
 local socket = require "socket"
+local version = require "version"
 
 local Nginx = BaseService:extend()
 
@@ -13,6 +14,11 @@ local START = "start"
 local RELOAD = "reload"
 local STOP = "stop"
 local QUIT = "quit"
+
+-- compatible Nginx/OpenResty version
+local version_command = " -v"                           -- commandline param to get version
+local version_pattern = "^nginx.-openresty.-([%d%.]+)"  -- pattern to grab version from output
+local compatible = version.set("1.9.3.2","1.9.7.4")     -- compatible from-to versions
 
 local function prepare_folders(configuration)
   -- Create nginx folder if needed
@@ -191,10 +197,15 @@ function Nginx:_get_cmd()
     "/usr/local/bin/",
     "/usr/sbin/"
   }, function(path)
-    local res, code = IO.os_execute(path.." -v")
+    local res, code = IO.os_execute(path..version_command)
     if code == 0 then
-      return res:match("^nginx version: ngx_openresty/") or
-             res:match("^nginx version: openresty/")
+      local version_match = res:match(version_pattern)
+      if (not version_match) or (not compatible:matches(version_match)) then
+        logger:error("Incompatible nginx found. Kong requires OpenResty, version "..tostring(compatible) ..
+          (version_match and ", got "..version_match or ""))
+        os.exit(1)
+      end
+      return version_match
     end
 
     return false

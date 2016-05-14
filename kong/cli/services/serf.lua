@@ -5,12 +5,18 @@ local stringy = require "stringy"
 local logger = require "kong.cli.utils.logger"
 local cjson = require "cjson"
 local IO = require "kong.tools.io"
+local version = require "version"
 
 local Serf = BaseService:extend()
 
 local SERVICE_NAME = "serf"
 local START_TIMEOUT = 10
 local EVENT_NAME = "kong"
+
+-- compatible Serf version
+local version_command = " version"                -- commandline param to get version
+local version_pattern = "^Serf v([%d%.]+)"        -- pattern to grab version from output
+local compatible = version.set("0.7.0", "0.7.0")  -- compatible from-to versions
 
 function Serf:new(configuration)
   local nginx_working_dir = configuration.nginx_working_dir
@@ -26,9 +32,15 @@ end
 
 function Serf:_get_cmd()
   local cmd, err = Serf.super._get_cmd(self, {}, function(path)
-    local res, code = IO.os_execute(path.." version")
+    local res, code = IO.os_execute(path..version_command)
     if code == 0 then
-      return res:match("^Serf v0.7.0")
+      local version_match = res:match(version_pattern)
+      if (not version_match) or (not compatible:matches(version_match)) then
+        logger:error("Incompatible Serf version. Kong requires version "..tostring(compatible)..
+          (version_match and ", got "..tostring(version_match) or ""))
+        os.exit(1)
+      end
+      return version_match
     end
 
     return false
