@@ -1,14 +1,6 @@
 local _M = {}
 
 function _M.serialize(ngx)
-  local authenticated_entity
-  if ngx.ctx.authenticated_credential ~= nil then
-    authenticated_entity = {
-      id = ngx.ctx.authenticated_credential.id,
-      consumer_id = ngx.ctx.authenticated_credential.consumer_id
-    }
-  end
-
   return {
     tag = {
       uri = ngx.var.request_uri,

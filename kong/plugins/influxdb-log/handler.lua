@@ -38,7 +38,7 @@ local function generate_influxdb_line(measurement, message)
         end
         table.sort(key_table)
         for _, k in ipairs(key_table) do
-            v = message.tag[k]
+            local v = message.tag[k]
             line = line..","
             if type(v) == "table" then
                 v = cjson.encode(v)
