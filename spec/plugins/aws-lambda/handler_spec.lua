@@ -1,4 +1,4 @@
-local spec_helper = require "spec.spec_helpers"
+local _ = require "spec.spec_helpers"
 local match = require("luassert.match")
 
 describe("AWS Lambda Plugin", function()

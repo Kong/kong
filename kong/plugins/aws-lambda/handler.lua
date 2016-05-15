@@ -21,7 +21,7 @@ function AwsLambdaHandler:access(conf)
 
 	local content = conf.body
 
-	local request, extra = prepare_request({
+	local request, _ = prepare_request({
 	    Region = conf.aws_region,
 	    Service = "lambda",
 	    method = 'POST',
@@ -37,9 +37,9 @@ function AwsLambdaHandler:access(conf)
 	})
 
 	local response = {}
-	local one, code, headers, status = https.request{
+	local _, _, _, _ = https.request{
 		url = request.url,
-		method = method,
+		method = 'POST',
 		headers = request.headers,
 		source = ltn12.source.string(request.body),
 		sink = ltn12.sink.table(response),

@@ -46,7 +46,7 @@ local function canonicalise_path(path)
 	local segments = {}
 	for segment in path:gmatch("/([^/]*)") do
 		if segment == "" or segment == "." then
-			-- nothing
+			segments = segments -- do nothing and avoid lint
 		elseif segment == ".." then
 			-- intentionally discards components at top level
 			segments[#segments] = nil
