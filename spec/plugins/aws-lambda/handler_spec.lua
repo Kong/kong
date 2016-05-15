@@ -1,59 +1,80 @@
-local LambdaService = require "kong.plugins.aws-lambda.api-gateway.aws.lambda.LambdaService"
 local spec_helper = require "spec.spec_helpers"
-local utils = require "kong.tools.utils"
-local http_client = require "kong.tools.http_client"
-local cjson = require "cjson"
-local rex = require "rex_pcre"
-
--- Load everything we need from the spec_helper
-local env = spec_helper.get_env() -- test environment
-local dao_factory = env.dao_factory
-
-local PROXY_SSL_URL = spec_helper.PROXY_SSL_URL
-local PROXY_URL = spec_helper.PROXY_URL
-local STUB_GET_URL = spec_helper.STUB_GET_URL
-local STUB_POST_URL = spec_helper.STUB_POST_URL
+local match = require("luassert.match")
 
 describe("AWS Lambda Plugin", function()
 
+  local config = {
+	  aws_region = "us-west-2",
+	  function_name = "function_name",
+	  body = "",
+	  access_key = "access key",
+	  secret_key = "secret key"
+  }
+
+  local mockAwsv4
+  local mockHttps
+
   setup(function()
-    print("config", cjson.encode(env.conf_file))
-    spec_helper.prepare_db()
-    spec_helper.insert_fixtures {
-      api = {
-        { name = "test-lamba-api", request_host = "aws-lambda-test.com", upstream_url = "aws-lambda://test-region/test-function" },
-      },
-      plugin = {
-        { name = "aws-lambda", config = { aws_region = "aws region", function_name = "function name", aws_access_key = "access key", aws_secret_key = "secret key" }, __api = 1 }
-      }
+    mockAwsv4 = {
+      prepare_request = spy.new(function() return { url = "the_url" }, nil end)
     }
-    spec_helper.start_kong()
+    mockHttps = {
+      request = spy.new(function() return { request = function() end } end)
+    }
+    package.loaded['kong.plugins.aws-lambda.aws.v4'] = nil
+    package.loaded['kong.plugins.aws-lambda.aws.v4'] = mockAwsv4
+    package.loaded['ssl.https'] = nil
+    package.loaded['ssl.https'] = mockHttps
+
+    local function satisfies(state, args)
+      local func = args[1]
+      return function (value)
+        return func(value)
+      end
+    end
+
+    assert:register("matcher", "satisfies", satisfies)      
   end)
 
   teardown(function()
-    spec_helper.stop_kong()
+    package.loaded['kong.plugins.aws-lambda.aws.v4'] = nil
   end)
 
   describe("AWS Lambda plugin", function()
 
-    it("should be added", function()
-      local realLambdaNew = LambdaService.new
-      print("---->", realLambdaNew)
-      local invokeSpy = spy.new(function () end)
-      local function newFake() return { invoke = invokeSpy } end
-      local newSpy = spy.on(newFake)
-      lambda.new = function() print("boo") end
-      --local response, status, headers = http_client.post(PROXY_SSL_URL.."/", { }, {host = "aws-lambda-test.com"})
-      --local body = cjson.decode(response)
-      
-      --assert.are.equal(200, status)
-      --assert.are.equal(2, utils.table_size(body))
-      --assert.are.equal("invalid_provision_key", body.error)
-      --assert.are.equal("Invalid Kong provision_key", body.error_description)
+    it("should call aws.v4.prepare_request with config values", function()
+      local handler = require "kong.plugins.aws-lambda.handler"()
 
-      ---- Checking headers
-      --assert.are.equal("no-store", headers["cache-control"])
-      --assert.are.equal("no-cache", headers["pragma"])
+      handler:access(config)
+      
+      assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
+        function(opts) return opts.Region == config.aws_region end
+      ))
+      assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
+        function(opts) return string.find(opts.path, config.function_name) ~= nil end
+      ))
+      assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
+        function(opts) return opts.headers['Content-Length'] == tostring(string.len(config.body)) end
+      ))
+      assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
+        function(opts) return opts.body == config.body end
+      ))
+      assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
+        function(opts) return opts.AccessKey == config.aws_access_key end
+      ))
+      assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
+        function(opts) return opts.SecretKey == config.aws_secret_key end
+      ))
+
+    end)
+
+    it("should call ssl.https.request", function()
+      local handler = require "kong.plugins.aws-lambda.handler"()
+
+      handler:access(config)
+      
+      assert.spy(mockHttps.request).was_called()
+
     end)
 
   end)

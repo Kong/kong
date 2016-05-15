@@ -1,11 +1,10 @@
 Working:
 - Add plugin to api
 - Specify aws credentials (IAM access_key and secret_key) in config
-- Specify region, function name, client context, body in config
+- Specify region, function name, body in config
 - Return response value
 
 ToDo:
-- Write specs
 - Error handling
 - Allow sepecifying region, function name, qualifier, invocation type, log type and client context declartively in aws-lambda schemed upstream_url of parent api
 - Allow passing body from client through to lambda (without specifying in config)
@@ -13,6 +12,7 @@ ToDo:
 - Allow merging of parameters from api and plugin config to lambda
 - Allow specifying IAM (and role?) credentials in Authentication header of api to lambda
 - Allow overriding config credentials via Authentication header of api
+- Add spport for IAM Instance Role authentication
 - Add support for other invocation types?
 - Add support for logging?
 - Add support for client context?
@@ -34,7 +34,6 @@ Plugin:
 - Should fail on add api with aws-lambda scheme upstream_url if aws-lambda plugin not present and enabled
 - Should force/default strip_request_path=true
 - Should force/default preserve_host=false
-- Should add ability to assume Instance IAM role (EC2 instance role)
 
 Notes:
 - The aws-lambda schemed upstream_url is not at all a necessity, but makes sense and is a really nice to have. It could even be replaced by the https://lambda.us-west-2.amazonaws.com/2015-03-31/functions/FunctionName/invocations?Qualifier=Qualifier invocation URL, but that seems too tightly bound to implementation details. Also, having a different scheme nicely reflects the, at least for now, shunting of the origin request off to resty rather than nginx's normal origin flow. I'm anxious for feedback on this one.
