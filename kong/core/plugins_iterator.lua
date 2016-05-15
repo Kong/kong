@@ -2,6 +2,11 @@ local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 
+local empty = {}
+-- now as a defensive measure protect it against accidental modifications
+empty = setmetatable(empty, {__newindex = function() error("The 'empty' table should not be modified, check your code!", 2) end })
+
+
 --- Load the configuration for a plugin entry in the DB.
 -- Given an API, a Consumer and a plugin name, retrieve the plugin's configuration if it exists.
 -- Results are cached in ngx.dict
@@ -52,18 +57,15 @@ local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_con
   end
 
   local i = 0
-  local function get_next_plugin()
-    i = i + 1
-    return loaded_plugins[i]
-  end
 
   local function get_next()
-    local plugin = get_next_plugin()
+    i = i + 1
+    local plugin = loaded_plugins[i]
     if plugin and ngx.ctx.api then
       if is_access_or_certificate_context then
         ngx.ctx.plugins_for_request[plugin.name] = load_plugin_configuration(ngx.ctx.api.id, nil, plugin.name)
 
-        local consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id or nil
+        local consumer_id = (ngx.ctx.authenticated_credential or empty).consumer_id
         if consumer_id and not plugin.schema.no_consumer then
           local consumer_plugin_configuration = load_plugin_configuration(ngx.ctx.api.id, consumer_id, plugin.name)
           if consumer_plugin_configuration then
@@ -81,9 +83,7 @@ local function iter_plugins_for_req(loaded_plugins, is_access_or_certificate_con
     end
   end
 
-  return function()
-    return get_next()
-  end
+  return get_next
 end
 
 return iter_plugins_for_req
