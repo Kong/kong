@@ -1,6 +1,7 @@
 TESTING_CONF = kong_TEST.yml
 DEVELOPMENT_CONF = kong_DEVELOPMENT.yml
-DEV_ROCKS = busted luacov luacov-coveralls luacheck
+DEV_ROCKS = busted luacov luacov-coveralls luacheck ansicolors stringy \
+			lua-path yaml lub luatz luaffi lrexlib-pcre lua-llthreads2
 
 .PHONY: install dev clean doc lint test test-integration test-plugins test-all coverage
 
