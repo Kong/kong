@@ -159,6 +159,24 @@ function _M.table_contains(arr, val)
   return false
 end
 
+--- Checks if a table is empty.
+-- @param t The table to check
+-- @return Returns `true` if the table is empty, `false` otherwise
+function _M.is_empty(t)
+    return next(t) == nil
+end
+
+--- Checks if a table is an map.
+-- @param t The table to check
+-- @return Returns `true` if the table is an map, `false` otherwise
+function _M.is_map(t)
+  if type(t) ~= "table" then return false end
+  for k, _ in pairs(t) do
+    if type(k) == "number" then return false end
+  end
+  return true
+end
+
 --- Checks if a table is an array and not an associative array.
 -- *** NOTE *** string-keys containing integers are considered valid array entries!
 -- @param t The table to check
