@@ -166,7 +166,7 @@ function _M.is_empty(t)
     return next(t) == nil
 end
 
---- Checks if a table is an map.
+--- Checks if a table is a map.
 -- @param t The table to check
 -- @return Returns `true` if the table is an map, `false` otherwise
 function _M.is_map(t)
