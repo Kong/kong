@@ -30,6 +30,7 @@ dependencies = {
   "lbase64 ~> 20120820-1",
   "lua-resty-iputils ~> 0.2.0-1",
   "mediator_lua ~> 1.1.2-0",
+  "version == 0.2",
 
   "luasocket ~> 2.0.2-6",
   "lrexlib-pcre ~> 2.7.2-1",
