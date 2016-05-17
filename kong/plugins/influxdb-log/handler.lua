@@ -1,4 +1,4 @@
-local influxdb_serializer = require "kong.plugins.log-serializers.influxdb"
+-- local influxdb_serializer = require "kong.plugins.log-serializers.influxdb"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cjson = require "cjson"
 local url = require "socket.url"
@@ -11,6 +11,32 @@ local HTTPS = "https"
 
 -- influxdb util function
 -- ref:https://docs.influxdata.com/influxdb/v0.13/write_protocols/write_syntax/
+local function influxdb_serializer(ngx)
+  return {
+    tag = {
+      uri = ngx.var.request_uri,
+      request_uri = ngx.var.scheme.."://"..ngx.var.host..":"..ngx.var.server_port..ngx.var.request_uri,
+      request_querystring = ngx.req.get_uri_args(), -- parameters, as a table
+      request_method = ngx.req.get_method(), -- http method
+      request_headers = ngx.req.get_headers(),
+      response_status = ngx.status,
+      response_headers = ngx.resp.get_headers(),
+      client_ip = ngx.var.remote_addr,
+      api = ngx.ctx.api,
+      authenticated_entity_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.id,
+      authenticated_entity_consumer_id = ngx.ctx.authenticated_credential and ngx.ctx.authenticated_credential.consumer_id
+    },
+    field = {
+      request_size = ngx.var.request_length,
+      response_size = ngx.var.bytes_sent,
+      latencies_kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
+               (ngx.ctx.KONG_RECEIVE_TIME or 0),
+      latencies_proxy = ngx.ctx.KONG_WAITING_TIME or -1,
+      latencies_request = ngx.var.request_time * 1000,
+      started_at = ngx.req.start_time() * 1000
+    }
+  }
+end
 
 local function influxdb_escape(str)
     if type(str) ~= "string" then
@@ -146,7 +172,7 @@ end
 -- @param `ngx` The context table for the request being logged
 -- @return html body as string
 function InfluxdbLogHandler:serialize(ngx)
-  return generate_influxdb_line("kong", influxdb_serializer.serialize(ngx))
+  return generate_influxdb_line("kong", influxdb_serializer(ngx))
 end
 
 function InfluxdbLogHandler:log(conf)
