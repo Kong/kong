@@ -38,11 +38,7 @@ influxdb-log send request and response logs to an influxdb server.
 | --------- |:--------:| -------:|:----:|------
 | http_endpoint | true | N/A | url | http://localhost:8086/write?db=kongdb
 | method | false | POST | enum
+| content_type | false | application/x-www-form-urlencoded | enum
 | timeout | false | 10000 | number
 | keepalive | false | 60000 | number
-
-## influxdb-log custom
-Simple: modify plugins/log-serializers/influxdb.lua, add or remove tag/filed  what you want.
-
-Complex: modify function(generate_influxdb_line) in plugins/influxdb-log handler.lua. The premise is that you need to be familiar with Infuxdb.
 

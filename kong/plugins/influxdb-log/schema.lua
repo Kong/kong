@@ -1,8 +1,4 @@
-return {
-  fields = {
-    http_endpoint = { required = true, type = "url" },
-    method = { default = "POST", enum = { "POST" } },
-    timeout = { default = 10000, type = "number" },
-    keepalive = { default = 60000, type = "number" },
-  }
-}
+local influxdb_log_schema = require "kong.plugins.http-log.schema"
+
+influxdb_log_schema.fields.content_type.default = "application/x-www-form-urlencoded"
+return influxdb_log_schema
