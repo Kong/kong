@@ -1,122 +1,115 @@
-local spec_helper = require "spec.spec_helpers"
-local http_client = require "kong.tools.http_client"
+local helpers = require "spec.helpers"
+local threads = require "llthreads2.ex"
 
-local STUB_GET_URL = spec_helper.STUB_GET_URL
-
-local UDP_PORT = spec_helper.find_port()
-
-describe("Datadog Plugin", function()
-
+describe("plugin: datadog", function()
+  local client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.insert_fixtures {
-      api = {
-        {request_host = "logging1.com", upstream_url = "http://mockbin.com"},
-        {request_host = "logging2.com", upstream_url = "http://mockbin.com"},
-        {request_host = "logging3.com", upstream_url = "http://mockbin.com"},
-        {request_host = "logging4.com", upstream_url = "http://mockbin.com"},
-        {request_host = "logging5.com", upstream_url = "http://mockbin.com"},
-        {request_host = "logging6.com", upstream_url = "http://mockbin.com"},
-      },
-      plugin = {
-        {name = "datadog", config = {host = "127.0.0.1", port = UDP_PORT, metrics = {"request_count"}}, __api = 1},
-        {name = "datadog", config = {host = "127.0.0.1", port = UDP_PORT, metrics = {"latency"}}, __api = 2},
-        {name = "datadog", config = {host = "127.0.0.1", port = UDP_PORT, metrics = {"status_count"}}, __api = 3},
-        {name = "datadog", config = {host = "127.0.0.1", port = UDP_PORT, metrics = {"request_size"}}, __api = 4},
-        {name = "datadog", config = {host = "127.0.0.1", port = UDP_PORT}, __api = 5},
-        {name = "datadog", config = {host = "127.0.0.1", port = UDP_PORT, metrics = {"response_size"}}, __api = 6},
+    helpers.dao:truncate_tables()
+    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
+    local api1 = assert(helpers.dao.apis:insert {
+      request_host = "datadog1.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local api2 = assert(helpers.dao.apis:insert {
+      request_host = "datadog2.com",
+      upstream_url = "http://mockbin.com"
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "datadog",
+      api_id = api1.id,
+      config = {
+        host = "127.0.0.1",
+        port = 9999
       }
-    }
-    spec_helper.start_kong()
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "datadog",
+      api_id = api2.id,
+      config = {
+        host = "127.0.0.1",
+        port = 9999,
+        metrics = "request_count,status_count"
+      }
+    })
+
+    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
   end)
 
   teardown(function()
-    spec_helper.stop_kong()
+    if client then client:close() end
+    helpers.stop_kong()
   end)
 
-  it("should log to UDP when metrics is request_count", function()
-    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
+  it("logs metrics over UDP", function()
+    local thread = threads.new({
+      function()
+        local socket = require "socket"
+        local server = assert(socket.udp())
+        server:settimeout(1)
+        server:setoption("reuseaddr", true)
+        server:setsockname("127.0.0.1", 9999)
+        local gauges = {}
+        for i = 1, 5 do
+          gauges[#gauges+1] = server:receive()
+        end
+        server:close()
+        return gauges
+      end
+    })
+    thread:start()
 
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "logging1.com"})
-    assert.equal(200, status)
+    local res = assert(client:send {
+      method = "GET",
+      path = "/status/200",
+      headers = {
+        ["Host"] = "datadog1.com"
+      }
+    })
+    assert.res_status(200, res)
 
-    local ok, res = thread:join()
+    local ok, gauges = thread:join()
     assert.True(ok)
-    assert.truthy(res)
-    assert.equal("kong.logging1_com.request.count:1|c", res)
+    assert.equal(5, #gauges)
+    assert.contains("kong.datadog1_com.request.count:1|c", gauges)
+    --assert.contains("kong.datadog1_com.latency:247|g", gauges) -- latency changes, we only check it exists with length 5
+    assert.contains("kong.datadog1_com.request.size:101|g", gauges)
+    assert.contains("kong.datadog1_com.request.status.200:1|c", gauges)
+    assert.contains("kong.datadog1_com.response.size:894|g", gauges)
   end)
 
-  it("should log to UDP when metrics is status_count", function()
-    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
+  it("logs only given metrics", function()
+    local thread = threads.new({
+      function()
+        local socket = require "socket"
+        local server = assert(socket.udp())
+        server:settimeout(1)
+        server:setoption("reuseaddr", true)
+        server:setsockname("127.0.0.1", 9999)
+        local gauges = {}
+        for i = 1, 2 do
+          gauges[#gauges+1] = server:receive()
+        end
+        server:close()
+        return gauges
+      end
+    })
+    thread:start()
 
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "logging3.com"})
-    assert.equal(200, status)
+    local res = assert(client:send {
+      method = "GET",
+      path = "/status/200",
+      headers = {
+        ["Host"] = "datadog2.com"
+      }
+    })
+    assert.res_status(200, res)
 
-    local ok, res = thread:join()
+    local ok, gauges = thread:join()
     assert.True(ok)
-    assert.truthy(res)
-    assert.equal("kong.logging3_com.request.status.200:1|c", res)
-  end)
-
-  it("should log to UDP when metrics is request_size", function()
-    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
-
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "logging4.com"})
-    assert.equal(200, status)
-
-    local ok, res = thread:join()
-    assert.True(ok)
-    assert.truthy(res)
-    local message = {}
-    for w in string.gmatch(res,"kong.logging4_com.request.size:%d*|g") do
-      table.insert(message, w)
-    end
-    assert.equal(1, #message)
-  end)
-
-  it("should log to UDP when metrics is latency", function()
-    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
-
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "logging2.com"})
-    assert.equal(200, status)
-
-    local ok, res = thread:join()
-    assert.True(ok)
-    assert.truthy(res)
-
-    local message = {}
-    for w in string.gmatch(res,"kong.logging2_com.latency:.*|g") do
-      table.insert(message, w)
-    end
-
-    assert.equal(1, #message)
-  end)
-
-  it("should log to UDP when metrics is request_count", function()
-    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
-
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "logging5.com"})
-    assert.equal(200, status)
-
-    local ok, res = thread:join()
-    assert.True(ok)
-    assert.truthy(res)
-    assert.equal("kong.logging5_com.request.count:1|c", res)
-  end)
-
-  it("should log to UDP when metrics is response_size", function()
-    local thread = spec_helper.start_udp_server(UDP_PORT) -- Starting the mock UDP server
-
-    local _, status = http_client.get(STUB_GET_URL, nil, {host = "logging6.com"})
-    assert.equal(200, status)
-
-    local ok, res = thread:join()
-    assert.True(ok)
-    assert.truthy(res)
-    local message = {}
-    for w in string.gmatch(res,"kong.logging6_com.response.size:%d*|g") do
-      table.insert(message, w)
-    end
-    assert.equal(1, #message)
+    assert.equal(2, #gauges)
+    assert.contains("kong.datadog2_com.request.count:1|c", gauges)
+    assert.contains("kong.datadog2_com.request.status.200:1|c", gauges)
   end)
 end)

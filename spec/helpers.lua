@@ -78,6 +78,25 @@ local function http_client(host, port, timeout)
   }, resty_http_proxy_mt)
 end
 
+local function udp_server(port)
+  local threads = require "llthreads2.ex"
+
+  local thread = threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.udp())
+      server:settimeout(3)
+      server:setoption("reuseaddr", true)
+      server:setsockname("*", port)
+      local data = server:receive()
+      server:close()
+      return data
+    end
+  }, port or 9999)
+
+  return thread:start()
+end
+
 --------------------
 -- Custom assertions
 --------------------
@@ -92,6 +111,31 @@ say:set("assertion.fail.negative", "%s")
 luassert:register("assertion", "fail", fail,
                   "assertion.fail.negative",
                   "assertion.fail.negative")
+
+local function contains(state, args)
+  local expected, arr = unpack(args)
+  local found
+  for i = 1, #arr do
+    if arr[i] == expected then
+      found = true
+      break
+    end
+  end
+  return found
+end
+say:set("assertion.contains.negative", [[
+Expected array to contain element.
+Expected to contain:
+%s
+]])
+say:set("assertion.contains.positive", [[
+Expected array to not contain element.
+Expected to not contain:
+%s
+]])
+luassert:register("assertion", "contains", contains,
+                  "assertion.contains.negative",
+                  "assertion.contains.positive")
 
 local function res_status(state, args)
   local expected, res = unpack(args)
@@ -158,6 +202,8 @@ return {
   -- Kong testing helpers
   kong_exec = kong_exec,
   http_client = http_client,
+  udp_server = udp_server,
+
   prepare_prefix = function(prefix)
     prefix = prefix or conf.prefix
     return pl_dir.makepath(prefix)
