@@ -81,9 +81,7 @@ local function check_request_path(request_path, api_t)
   end
 
   if request_path ~= nil and request_path ~= "" then
-    if request_path == "/" then
-      return false, "cannot be an empty path: '/'"
-    elseif sub(request_path, 1, 1) ~= "/" then
+    if sub(request_path, 1, 1) ~= "/" then
       return false, fmt("must be prefixed with slash: '%s'", request_path)
     elseif match(request_path, "//+") then
       -- Check for empty segments (/status//123)
@@ -95,7 +93,7 @@ local function check_request_path(request_path, api_t)
 
     -- From now on, the request_path is considered valid.
     -- Remove trailing slash
-    if sub(request_path, -1) == "/" then
+    if request_path ~= "/" and sub(request_path, -1) == "/" then
       api_t.request_path = sub(request_path, 1, -2)
     end
   end
