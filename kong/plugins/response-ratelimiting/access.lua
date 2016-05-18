@@ -3,7 +3,12 @@ local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
 local utils = require "kong.tools.utils"
 
+local pairs = pairs
+local tostring = tostring
+
 local _M = {}
+
+local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 
 local function get_identifier()
   local identifier
@@ -64,6 +69,23 @@ function _M.execute(conf)
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
   end
+
+  -- Append usage headers to the upstream request. Also checks "block_on_first_violation".
+  for k, v in pairs(conf.limits) do
+    local remaining
+    for lk, lv in pairs(usage[k]) do
+      if conf.block_on_first_violation and lv.remaining == 0 then
+        return responses.send(429, "API rate limit exceeded for '"..k.."'")
+      end
+
+      if not remaining or lv.remaining < remaining then
+        remaining = lv.remaining
+      end
+    end
+
+      ngx.req.set_header(RATELIMIT_REMAINING.."-"..k, remaining)
+  end
+
   ngx.ctx.usage = usage -- For later use
 end
 
