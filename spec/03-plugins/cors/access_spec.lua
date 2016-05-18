@@ -1,6 +1,6 @@
 local helpers = require "spec.helpers"
 
-describe("plugin CORS", function()
+describe("plugin: cors", function()
   local client
   setup(function()
     helpers.dao:truncate_tables()
