@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("plugin CORS", function()
+describe("plugin: cors", function()
   local client
   setup(function()
     helpers.dao:truncate_tables()

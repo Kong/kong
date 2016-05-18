@@ -1,36 +1,36 @@
-local cjson = require "cjson"
 local BasePlugin = require "kong.plugins.base_plugin"
-local basic_serializer = require "kong.plugins.log-serializers.basic"
+local serializer = require "kong.plugins.log-serializers.basic"
+local cjson = require "cjson"
+
+local timer_at = ngx.timer.at
+local udp = ngx.socket.udp
 
 local UdpLogHandler = BasePlugin:extend()
 
 UdpLogHandler.PRIORITY = 1
 
-local function log(premature, conf, message)
+local function log(premature, conf, str)
   if premature then return end
-  
-  local host = conf.host
-  local port = conf.port
-  local timeout = conf.timeout
 
-  local sock = ngx.socket.udp()
-  sock:settimeout(timeout)
+  local sock = udp()
+  sock:settimeout(conf.timeout)
 
-  local ok, err = sock:setpeername(host, port)
+  local ok, err = sock:setpeername(conf.host, conf.port)
   if not ok then
-    ngx.log(ngx.ERR, "failed to connect to "..host..":"..tostring(port)..": ", err)
+    ngx.log(ngx.ERR, "[udp-log] could not connect to ", conf.host, ":", conf.port, ": ", err)
     return
   end
 
-  ok, err = sock:send(cjson.encode(message))
+  ok, err = sock:send(str)
   if not ok then
-    ngx.log(ngx.ERR, "failed to send data to ".. host..":"..tostring(port)..": ", err)
+    ngx.log(ngx.ERR, " [udp-log] could not send data to ", conf.host, ":", conf.port, ": ", err)
+  else
+    ngx.log(ngx.DEBUG, "[udp-log] sent: ", str)
   end
 
   ok, err = sock:close()
   if not ok then
-    ngx.log(ngx.ERR, "failed to close connection from "..host..":"..tostring(port)..": ", err)
-    return
+    ngx.log(ngx.ERR, "[udp-log] could not close ", conf.host, ":", conf.port, ": ", err)
   end
 end
 
@@ -41,10 +41,9 @@ end
 function UdpLogHandler:log(conf)
   UdpLogHandler.super.log(self)
 
-  local message = basic_serializer.serialize(ngx)
-  local ok, err = ngx.timer.at(0, log, conf, message)
+  local ok, err = timer_at(0, log, conf, cjson.encode(serializer.serialize(ngx)))
   if not ok then
-    ngx.log(ngx.ERR, "failed to create timer: ", err)
+    ngx.log(ngx.ERR, "[udp-log] could not create timer: ", err)
   end
 end
 
