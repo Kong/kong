@@ -4,7 +4,6 @@ local table_concat = table.concat
 local setmetatable = setmetatable
 local NGX_ERR = ngx.ERR
 local NGX_DEBUG = ngx.DEBUG
-local tostring = tostring
 
 local statsd_mt = {}
 statsd_mt.__index = statsd_mt
@@ -12,25 +11,26 @@ statsd_mt.__index = statsd_mt
 function statsd_mt:new(conf)
   local sock = ngx_socket_udp()
   sock:settimeout(conf.timeout)
-  local _, err = sock:setpeername(conf.host, conf.port)
-  if err then
-    return nil, "failed to connect to "..conf.host..":"..tostring(conf.port)..": "..err
+  local ok, err = sock:setpeername(conf.host, conf.port)
+  if not ok then
+    return nil, "failed to connect to "..conf.host..":"..conf.port..": "..err
   end
-  
+
   local statsd = {
     host = conf.host,
     port = conf.port,
     socket = sock,
   }
+
   return setmetatable(statsd, statsd_mt)
 end
 
 function statsd_mt:create_statsd_message(stat, delta, kind, sample_rate)
   local rate = ""
-  if sample_rate and sample_rate ~= 1 then 
-    rate = "|@"..sample_rate 
+  if sample_rate and sample_rate ~= 1 then
+    rate = "|@"..sample_rate
   end
-  
+
   local message = {
     "kong.",
     stat,
@@ -46,17 +46,18 @@ end
 function statsd_mt:close_socket()
   local ok, err = self.socket:close()
   if not ok then
-    ngx_log(NGX_ERR, "failed to close connection from "..self.host..":"..tostring(self.port)..": ", err)
-    return
+    ngx_log(NGX_ERR, "[udp-log] failed to close connection from ", self.host, ":", self.port, ": ", err)
   end
 end
 
 function statsd_mt:send_statsd(stat, delta, kind, sample_rate)
   local udp_message = self:create_statsd_message(stat, delta, kind, sample_rate)
-  ngx_log(NGX_DEBUG, "Sending data to statsd server: "..udp_message)
+
+  ngx_log(NGX_DEBUG, "[udp-log] sending data to statsd server: ", udp_message)
+
   local ok, err = self.socket:send(udp_message)
   if not ok then
-    ngx_log(NGX_ERR, "failed to send data to "..self.host..":"..tostring(self.port)..": ", err)
+    ngx_log(NGX_ERR, "[udp-log] could not send data to ", self.host, ":", self.port, ": ", err)
   end
 end
 
