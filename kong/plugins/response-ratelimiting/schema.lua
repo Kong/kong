@@ -37,6 +37,7 @@ return {
   fields = {
     header_name = { type = "string", default = "x-kong-limit" },
     continue_on_error = { type = "boolean", default = false },
+    block_on_first_violation = { type = "boolean", default = false},
     limits = { type = "table",
       schema = {
         flexible = true,
