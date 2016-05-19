@@ -13,8 +13,8 @@ development, Kong is now used in production at hundreds of organizations from
 startups, to large enterprises and government departments.
 
 [Website][kong-url] |
-[Docs](https://getkong.org/docs) |
-[Installation](https://getkong.org/install) |
+[Docs](http://getkong.org/docs/) |
+[Installation](http://getkong.org/install/) |
 [Blog](http://blog.mashape.com/category/kong/) |
 [Mailing List][google-groups-url] |
 [Gitter Chat][gitter-url] |
@@ -105,7 +105,7 @@ code, other repos are also under active development:
   Kong in a 1-click deployment for AWS EC2
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
   the AWS Marketplace.
-- [Kong on Microsoft Azure](https://github.com/Mashape/kong-azure): Run Kong
+- [Kong on Microsoft Azure](https://github.com/Mashape/kong-dist-azure): Run Kong
   using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
@@ -119,14 +119,14 @@ code, other repos are also under active development:
 - [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to create your own Kong plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
-- [Instaclustr partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
+- [Instaclustr partners with Kong](https://www.instaclustr.com/blog/2015/09/16/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
 - [Kong intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [Kong tutorial in Japanese 1](http://dev.classmethod.jp/etc/kong-api-aggregator/)
 - [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
 - [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
 - [Learn Lua in 15 minutes](http://tylerneylon.com/a/learn-lua/)
-- [A Question about Microservices](http://www.marcotroisi.com/questions-about-microservices/)
+- [A Question about Microservices](http://marcotroisi.com/questions-about-microservices/)
 - [Kong Intro in Chinese](https://www.sdk.cn/news/1596)
 
 **Videos**:
@@ -137,7 +137,7 @@ code, other repos are also under active development:
 - [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
 **Podcasts**:
-- [Changelog #185](https://changelog.com/185)
+- [Changelog #185](https://changelog.com/185/)
 - [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
 
 Here is a list of third-party **tools** maintained by the community:
@@ -154,7 +154,7 @@ Here is a list of third-party **tools** maintained by the community:
 - [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
 - [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
 - [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
-- [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
+- [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
 - [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
 - [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admint client library for Python
 - [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
@@ -182,7 +182,7 @@ You can use a Vagrant box running Kong and Cassandra that you can find at
 
 First, you will need to already have Kong installed. Install Kong by following
 one of the methods described at
-[getkong.org/download](https://getkong.org/download). Then, make sure you have
+[getkong.org/download](http://getkong.org/download/). Then, make sure you have
 downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is
 running. These steps will override your Kong installation with the latest
 source code:
@@ -330,7 +330,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 
 ## Enterprise Support & Demo
 
-[Learn more](https://getkong.org/enterprise) about Kong Priority Support,
+[Learn more](http://getkong.org/enterprise/) about Kong Priority Support,
 Products, HA, Demo, Training, API Certifications and Professional Services.
 
 ## License
