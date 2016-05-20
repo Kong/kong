@@ -14,6 +14,13 @@ end
 function AwsLambdaHandler:access(conf)
 	AwsLambdaHandler.super.access(self)
 
+	local lambdaScheme = "aws-lambda"
+
+	if ngx.ctx.api.upstream_url:find("^"..lambdaScheme) == nil then
+		ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+		ngx.print("Invalid upstream_url - must be 'aws-lambda'.")
+	end
+
 	--conf.qualifier ???
 	--conf.client_context ???
 	--conf.invocation_type ???
@@ -46,7 +53,7 @@ function AwsLambdaHandler:access(conf)
 		protocol = 'tlsv1'
 	}
 
-	ngx.say(response)
+	ngx.print(response)
 	return ngx.exit(ngx.HTTP_OK)
 end
 

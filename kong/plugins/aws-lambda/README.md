@@ -6,7 +6,8 @@ Working:
 
 ToDo:
 - Error handling
-- Allow sepecifying region, function name, qualifier, invocation type, log type and client context declartively in aws-lambda schemed upstream_url of parent api
+- Return appropriate error response on request if api.upstream_url is *not* aws-lambda://
+- Allow sepecifying region, function name, qualifier, invocation type, log type and client context declaratively in aws-lambda schemed upstream_url of parent api
 - Allow passing body from client through to lambda (without specifying in config)
 - Allow merging of body/query parameters from api to lambda
 - Allow merging of parameters from api and plugin config to lambda
