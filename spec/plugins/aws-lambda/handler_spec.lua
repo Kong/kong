@@ -13,6 +13,13 @@ describe("AWS Lambda Plugin", function()
 
   local test_req = {}
 
+  local amzFunctionErrorHeader = "x-amz-function-error"
+  local amzFunctionErrorMessage = "TestError"
+  local lambdaResponse
+  local successLambdaResponse = {one = 1, code = 200, headers = {}, body = ""}
+  local errorLambdaResponse = {one = 1, code = 500, headers = {}, body = amzFunctionErrorMessage}
+  errorLambdaResponse.headers[amzFunctionErrorHeader] = amzFunctionErrorMessage
+
   local function setQueryParameter(key, value)
     test_req.query_parameters[key] = value
   end
@@ -31,6 +38,9 @@ describe("AWS Lambda Plugin", function()
   before_each(function()
     spyNgxPrint = spy.new(function() end)
     ngx.print = spyNgxPrint
+    ngx.HTTP_INTERNAL_SERVER_ERROR = 500
+
+    ngx.status = 0
     ngx.req = {
       get_uri_args = function() return test_req.query_parameters end
     }
@@ -52,8 +62,9 @@ describe("AWS Lambda Plugin", function()
     mockAwsv4 = {
       prepare_request = spy.new(function() return { url = "the_url" }, nil end)
     }
+    lambdaResponse = successLambdaResponse
     mockHttps = {
-      request = spy.new(function() return 1, 200, {}, "" end)
+      request = spy.new(function() local r = lambdaResponse;  return r.one, r.code, r.headers, r.body end)
     }
     package.loaded['kong.plugins.aws-lambda.aws.v4'] = nil
     package.loaded['kong.plugins.aws-lambda.aws.v4'] = mockAwsv4
@@ -110,6 +121,14 @@ describe("AWS Lambda Plugin", function()
         handler:access(config)
         
         assert.spy(mockHttps.request).was_called()
+      end)
+
+      it("should return any x-amz-function-error", function()
+        lambdaResponse = errorLambdaResponse
+
+        handler:access(config)
+        
+	assert.are.equal(500, ngx.status)
       end)
 
       it("should include api querystring parameter in body of lambda", function()

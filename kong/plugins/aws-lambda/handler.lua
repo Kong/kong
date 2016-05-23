@@ -62,12 +62,10 @@ function AwsLambdaHandler:access(conf)
         if errorType ~= nil and errorType ~= "" then
 		ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
 		ngx.print(response)
-		ngx.flush(true)
 		return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
 	end
 
 	ngx.print(response)
-	ngx.flush(true)
 	return ngx.exit(ngx.HTTP_OK)
 end
 
