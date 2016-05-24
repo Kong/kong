@@ -3,14 +3,13 @@
 
 Kong is a scalable, open source API Layer *(also known as an API Gateway, or
 API Middleware)*. Kong was originally built at [Mashape][mashape-url] to
-secure, manage and extend over [15,000 APIs &
-Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
+secure, manage and extend over [15,000 Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
 for its API Marketplace, which generates billions of requests per month.
 
 Backed by the battle-tested **NGINX** with a focus on high performance, Kong
 was made available as an open-source platform in 2015. Under active
 development, Kong is now used in production at hundreds of organizations from
-startups, to large enterprises and government departments including The New York Times, Expedia, Healthcare.gov, The Guardian, Condè Nast and The University of Auckland.
+startups, to large enterprises and government departments including: The New York Times, Expedia, Healthcare.gov, The Guardian, Condè Nast and The University of Auckland.
 
 [Website][kong-url] |
 [Docs](https://getkong.org/docs) |
