@@ -2,7 +2,6 @@ local iputils = require "resty.iputils"
 local Errors = require "kong.dao.errors"
 
 local function validate_ips(v, t, column)
-  local new_fields
   if v and type(v) == "table" then
     for _, ip in ipairs(v) do
       local _, err = iputils.parse_cidr(ip)
@@ -10,19 +9,14 @@ local function validate_ips(v, t, column)
         return false, "cannot parse '"..ip.."': "..err
       end
     end
-    new_fields = {["_"..column.."_cache"] = iputils.parse_cidrs(v)}
   end
-  return true, nil, new_fields
+  return true
 end
 
 return {
   fields = {
     whitelist = {type = "array", func = validate_ips},
-    blacklist = {type = "array", func = validate_ips},
-
-    -- Internal use
-    _whitelist_cache = {type = "array"},
-    _blacklist_cache = {type = "array"}
+    blacklist = {type = "array", func = validate_ips}
   },
   self_check = function(schema, plugin_t, dao, is_update)
     local wl = type(plugin_t.whitelist) == "table" and plugin_t.whitelist or {}
