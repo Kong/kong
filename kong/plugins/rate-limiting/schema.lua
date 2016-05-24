@@ -8,6 +8,7 @@ return {
     day = { type = "number" },
     month = { type = "number" },
     year = { type = "number" },
+    combined = { type = "boolean", default = false },
     async = { type = "boolean", default = false },
     continue_on_error = { type = "boolean", default = false }
   },
