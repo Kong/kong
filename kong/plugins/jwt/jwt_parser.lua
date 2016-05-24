@@ -99,7 +99,7 @@ local function decode_token(token)
     return nil, "Invalid JSON"
   end
 
-  if not header.typ or header.typ ~= "JWT" then
+  if header.typ and header.typ ~= "JWT" then
     return nil, "Invalid typ"
   end
 
