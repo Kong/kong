@@ -156,7 +156,7 @@ function _M.find_api_by_request_path(uri, request_path_arr)
   end
 
   for _, item in ipairs(request_path_arr) do
-    local m, err = ngx.re.match(uri, "^"..item.request_path.."/")
+    local m, err = ngx.re.match(uri, "^"..(item.request_path == "/" and "/" or item.request_path.."/"))
     if err then
       ngx.log(ngx.ERR, "[resolver] error matching requested request_path: "..err)
     elseif m then

@@ -45,7 +45,9 @@ describe("Resolver", function()
         {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"},
         {name = "tests-deep-path", request_path = "/hello/world", strip_request_path = true, upstream_url = "http://mockbin.com"},
         {name = "tests-deep-path-two", request_path = "/hello/world/wot", strip_request_path = true, upstream_url = "http://httpbin.org"},
-        {name = "tests-request_path-resolver2", upstream_url = "http://mockbin.com", request_path = "/headers"}
+        {name = "tests-request_path-resolver2", upstream_url = "http://mockbin.com", request_path = "/headers"},
+        {name = "tests-root-path", upstream_url = "http://httpbin.org", request_path = "/"},
+        {name = "tests-root-path2", upstream_url = "http://mockbin.com", request_path = "/noroot", strip_request_path = true},
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -335,6 +337,19 @@ describe("Resolver", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, {foo = "abc|def, world"}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
       assert.equal("http://mockbin-uri.com/request?foo=abc%7cdef%2c%20world", cjson.decode(response).url)
+    end)
+  end)
+
+  describe("Priority in request_path resolutions", function()
+    it("should work for root request_path", function()
+      local response, status = http_client.get(PROXY_URL.."/get", {})
+      assert.equal(200, status)
+      assert.equal("http://httpbin.org/get", cjson.decode(response).url)
+    end)
+    it("should work for non root request_path", function()
+      local response, status = http_client.get(PROXY_URL.."/noroot/request", {})
+      assert.equal(200, status)
+      assert.equal("http://mockbin.com/request", cjson.decode(response).url)
     end)
   end)
 end)
