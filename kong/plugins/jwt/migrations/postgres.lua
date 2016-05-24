@@ -13,13 +13,13 @@ return {
 
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.jwt_secrets_key')) IS NULL THEN
+        IF (SELECT to_regclass('jwt_secrets_key')) IS NULL THEN
           CREATE INDEX jwt_secrets_key ON jwt_secrets(key);
         END IF;
-        IF (SELECT to_regclass('public.jwt_secrets_secret')) IS NULL THEN
+        IF (SELECT to_regclass('jwt_secrets_secret')) IS NULL THEN
           CREATE INDEX jwt_secrets_secret ON jwt_secrets(secret);
         END IF;
-        IF (SELECT to_regclass('public.jwt_secrets_consumer_id')) IS NULL THEN
+        IF (SELECT to_regclass('jwt_secrets_consumer_id')) IS NULL THEN
           CREATE INDEX jwt_secrets_consumer_id ON jwt_secrets(consumer_id);
         END IF;
       END$$;
