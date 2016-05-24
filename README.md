@@ -155,7 +155,7 @@ Here is a list of third-party **tools** maintained by the community:
 - [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
 - [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
 - [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
-- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admint client library for Python
+- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
 - [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
 
 ## Roadmap
