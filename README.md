@@ -13,8 +13,8 @@ development, Kong is now used in production at hundreds of organizations from
 startups, to large enterprises and government departments.
 
 [Website][kong-url] |
-[Docs](http://getkong.org/docs/) |
-[Installation](http://getkong.org/install/) |
+[Docs](https://getkong.org/docs) |
+[Installation](https://getkong.org/install) |
 [Blog](http://blog.mashape.com/category/kong/) |
 [Mailing List][google-groups-url] |
 [Gitter Chat][gitter-url] |
@@ -137,7 +137,7 @@ code, other repos are also under active development:
 - [Kong with Docker](https://www.youtube.com/watch?v=ME7MI2SwJ-E)
 
 **Podcasts**:
-- [Changelog #185](https://changelog.com/185/)
+- [Changelog #185](https://changelog.com/185)
 - [Three Devs and a Maybe #83](http://threedevsandamaybe.com/kong-the-api-microservice-management-layer-with-ahmad-nassri/)
 
 Here is a list of third-party **tools** maintained by the community:
@@ -156,7 +156,7 @@ Here is a list of third-party **tools** maintained by the community:
 - [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
 - [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
 - [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
-- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admint client library for Python
+- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
 - [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
 
 ## Roadmap
@@ -182,7 +182,7 @@ You can use a Vagrant box running Kong and Cassandra that you can find at
 
 First, you will need to already have Kong installed. Install Kong by following
 one of the methods described at
-[getkong.org/download](http://getkong.org/download/). Then, make sure you have
+[getkong.org/download](https://getkong.org/download). Then, make sure you have
 downloaded [Cassandra](http://cassandra.apache.org/download/) and that it is
 running. These steps will override your Kong installation with the latest
 source code:
@@ -330,7 +330,7 @@ When developing, you can use the `Makefile` for doing the following operations:
 
 ## Enterprise Support & Demo
 
-[Learn more](http://getkong.org/enterprise/) about Kong Priority Support,
+[Learn more](https://getkong.org/enterprise) about Kong Priority Support,
 Products, HA, Demo, Training, API Certifications and Professional Services.
 
 ## License
