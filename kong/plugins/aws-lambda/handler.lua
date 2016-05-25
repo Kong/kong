@@ -18,6 +18,7 @@ function AwsLambdaHandler:access(conf)
 	if ngx.ctx.api.upstream_url:find("^aws%-lambda") == nil then
 		ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
 		ngx.print("Invalid upstream_url - must be 'aws-lambda'.")
+		return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
 	end
 
 	--conf.qualifier ???
@@ -26,6 +27,17 @@ function AwsLambdaHandler:access(conf)
 	--conf.log_type ???
 
         local body = cjson.decode(conf.body)
+	ngx.req.read_body()
+	local post
+	local contentType = ngx.req.get_headers()["content-type"]
+	if contentType ~= nil and contentType:find("application/json") ~= nil then
+		post = cjson.decode(ngx.req.get_body_data())
+	else
+		post = ngx.req.get_post_args()
+	end
+	for k, v in pairs(post) do
+		body[k] = v
+	end
         local args = ngx.req.get_uri_args()
         for k, v in pairs(args) do
           body[k] = v

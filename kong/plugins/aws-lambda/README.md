@@ -9,7 +9,6 @@ Working:
 
 ToDo:
 - Allow merging of body from api to lambda
-- Allow merging of parameters from api and plugin config to lambda
 - Allow passing body from client through to lambda (without specifying in config)
 - Allow specifying IAM (and role?) credentials in Authentication header of api to lambda
 - Allow overriding config credentials via Authentication header of api

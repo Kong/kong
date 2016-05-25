@@ -1,83 +1,33 @@
-local _ = require "spec.spec_helpers"
-local match = require("luassert.match")
+local spec_helper = require "spec.spec_helpers"
+local http_client = require "kong.tools.http_client"
 local cjson = require('cjson')
+
+local PROXY_URL = spec_helper.PROXY_URL
 
 describe("AWS Lambda Plugin", function()
 
-  local handler
-
-  local config
-  local mockAwsv4
-  local mockHttps
-  local spyNgxPrint
-
-  local test_req = {}
-
-  local amzFunctionErrorHeader = "x-amz-function-error"
-  local amzFunctionErrorMessage = "TestError"
-  local lambdaResponse
-  local successLambdaResponse = {one = 1, code = 200, headers = {}, body = ""}
-  local errorLambdaResponse = {one = 1, code = 500, headers = {}, body = amzFunctionErrorMessage}
-  errorLambdaResponse.headers[amzFunctionErrorHeader] = amzFunctionErrorMessage
-
-  local function setQueryParameter(key, value)
-    test_req.query_parameters[key] = value
-  end
-
   setup(function()
-    local function satisfies(state, args)
-      local func = args[1]
-      return function (value)
-        return func(value)
-      end
-    end
+    spec_helper.prepare_db()
+    spec_helper.insert_fixtures {
+      api = {
+        {name = "tests-aws-lambda", request_host = "aws-lambda.com", upstream_url = "http://mockbin.com"},
+        {name = "tests-aws-lambda-2", request_host = "aws-lambda-2.com", upstream_url = "aws-lambda://region/func"},
+        {name = "tests-aws-lambda-3", request_host = "aws-lambda-3.com", upstream_url = "aws-lambda://region/func"},
+        {name = "tests-aws-lambda-4", request_host = "aws-lambda-4.com", upstream_url = "aws-lambda://region/func"}
+      },
+      plugin = {
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 1},
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 2},
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 3},
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 4}
+      }
+    }
 
-    assert:register("matcher", "satisfies", satisfies)      
+    spec_helper.start_kong()
   end)
 
-  before_each(function()
-    spyNgxPrint = spy.new(function() end)
-    ngx.print = spyNgxPrint
-    ngx.HTTP_INTERNAL_SERVER_ERROR = 500
-
-    ngx.status = 0
-    ngx.req = {
-      get_uri_args = function() return test_req.query_parameters end
-    }
-    ngx.ctx.api = {
-      upstream_url = "aws-lambda://foo-region/bar-function"
-    }
-    test_req = {
-      query_parameters = {},
-      body = nil
-    }
-    config = {
-      aws_region = "us-west-2",
-      function_name = "function_name",
-      body = cjson.encode({foo=42}),
-      access_key = "access key",
-      secret_key = "secret key"
-    }
-
-    mockAwsv4 = {
-      prepare_request = spy.new(function() return { url = "the_url" }, nil end)
-    }
-    lambdaResponse = successLambdaResponse
-    mockHttps = {
-      request = spy.new(function() local r = lambdaResponse;  return r.one, r.code, r.headers, r.body end)
-    }
-    package.loaded['kong.plugins.aws-lambda.aws.v4'] = nil
-    package.loaded['kong.plugins.aws-lambda.aws.v4'] = mockAwsv4
-    package.loaded['ssl.https'] = nil
-    package.loaded['ssl.https'] = mockHttps
-
-    handler = require "kong.plugins.aws-lambda.handler"()
-  end)
-
-  after_each(function()
-    package.loaded['kong.plugins.aws-lambda.handler'] = nil
-    package.loaded['kong.plugins.aws-lambda.aws.v4'] = nil
-    package.loaded['ssl.https'] = nil
+  teardown(function()
+    spec_helper.stop_kong()
   end)
 
   describe("AWS Lambda plugin", function()
@@ -85,65 +35,39 @@ describe("AWS Lambda Plugin", function()
     describe("with all parameters defined in config", function ()
 
       it("should return informative 500 error when upstream_url is not aws-lambda scheme", function()
-        ngx.ctx.api.upstream_url = "http://foo.com"
+        local response, _, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda.com"})
   
-        handler:access(config)
-  
-        assert.spy(spyNgxPrint).was_called_with(match.satisfies(
-          function(val) return val == "Invalid upstream_url - must be 'aws-lambda'." end
-        ))
+        assert.equal("Invalid upstream_url - must be 'aws-lambda'.", response)
       end)
   
-      it("should call aws.v4.prepare_request with config values", function()
-        handler:access(config)
-        
-        assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
-          function(opts) return opts.Region == config.aws_region end
-        ))
-        assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
-          function(opts) return string.find(opts.path, config.function_name) ~= nil end
-        ))
-        assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
-          function(opts) return opts.headers['Content-Length'] == tostring(string.len(config.body)) end
-        ))
-        assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
-          function(opts) return opts.body == config.body end
-        ))
-        assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
-          function(opts) return opts.AccessKey == config.aws_access_key end
-        ))
-        assert.spy(mockAwsv4.prepare_request).was.called_with(match.satisfies(
-          function(opts) return opts.SecretKey == config.aws_secret_key end
-        ))
-      end)
-  
-      it("should call ssl.https.request", function()
-        handler:access(config)
-        
-        assert.spy(mockHttps.request).was_called()
-      end)
-
       it("should return any x-amz-function-error", function()
-        lambdaResponse = errorLambdaResponse
-
-        handler:access(config)
+        local response, status, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-3.com"})
         
-	assert.are.equal(500, ngx.status)
+	assert.equal(500, status)
+        assert.is_true(response:find("KeyError") ~= nil)
       end)
 
-      it("should include api querystring parameter in body of lambda", function()
-        local parm_name = "foo_parm"
-        local parm_value = "foo_value"
-        setQueryParameter(parm_name, parm_value)
+      it("should include api querystring parameter in payload of lambda", function()
+        local parm_value = "test-value"
 
-        handler:access(config)
+        local response, status, _ = http_client.get(PROXY_URL.."/", {key1=parm_value}, {host = "aws-lambda-3.com"})
 
-        assert.spy(mockAwsv4.prepare_request).was_called_with(match.satisfies(
-          function(opts)
-            local body = cjson.decode(opts.body)
-            return body[parm_name] == parm_value
-          end
-        ))
+	assert.equal(200, status)
+        assert.equal('"'..parm_value..'"', response)
+      end)
+
+      it("should include paramaters in body_data in payload of lambda", function()
+        local parm_name = "key1"
+        local parm_value = "foo"
+        local body = {}
+        body[parm_name] = parm_value
+
+	local reqHeaders = {}
+	reqHeaders["host"] = "aws-lambda-3.com"
+	reqHeaders["content-type"] = "application/json"
+        local response, _, _ = http_client.post(PROXY_URL.."/", body, reqHeaders)
+
+        assert.equal('"'..parm_value..'"', response)
       end)
 
     end)
