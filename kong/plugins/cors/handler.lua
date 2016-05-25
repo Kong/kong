@@ -5,6 +5,7 @@ local CorsHandler = BasePlugin:extend()
 
 CorsHandler.PRIORITY = 2000
 
+local OPTIONS = "OPTIONS"
 
 local function configure_origin(ngx, conf)
   if conf.origin == nil then
@@ -54,20 +55,30 @@ function CorsHandler:new()
 end
 
 function CorsHandler:access(conf)
-  CorsHandler.super.access(self)
-  configure_origin(ngx, conf)
-  configure_credentials(ngx, conf)
-
-  if ngx.req.get_method() == "OPTIONS" then -- Preflight request
-    configure_headers(ngx, conf, ngx.req.get_headers())
-    configure_methods(ngx, conf)
-    configure_max_age(ngx, conf)
-
-    if not conf.preflight_continue then -- Check if the preflight request should end here, or be proxied
+  CorsHandler.super.access(self) 
+  
+  if ngx.req.get_method() == OPTIONS then
+    if not conf.preflight_continue then
+      configure_origin(ngx, conf)
+      configure_credentials(ngx, conf)
+      configure_headers(ngx, conf, ngx.req.get_headers())
+      configure_methods(ngx, conf)
+      configure_max_age(ngx, conf)
+      ngx.ctx.skip_response_headers = true -- Don't add response headers because we already added them all
       return responses.send_HTTP_NO_CONTENT()
+    else
+      -- Don't add any response header because we are delegating the preflight to the upstream API (conf.preflight_continue=true)
+      ngx.ctx.skip_response_headers = true
     end
+  end
+end
 
-  else
+function CorsHandler:header_filter(conf)
+  CorsHandler.super.header_filter(self)
+  
+  if not ngx.ctx.skip_response_headers then
+    configure_origin(ngx, conf)
+    configure_credentials(ngx, conf)
     configure_exposed_headers(ngx, conf)
   end
 end
