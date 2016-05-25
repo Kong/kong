@@ -118,6 +118,35 @@ function _M.encode_args(args, raw)
   return table_concat(query, "&")
 end
 
+--- Checks whether a request is https or was originally https (but already terminated).
+-- It will check in the current request (global `ngx` table). If the header `X-Forwarded-Proto` exists 
+-- with value `https` then it will also be considered as an https connection. 
+-- @param allow_terminated if truthy, the `X-Forwarded-Proto` header will be checked as well. 
+-- @return boolean or nil+error in case the header exists multiple times
+_M.check_https = function(allow_terminated)
+  if ngx.var.scheme:lower() == "https" then
+    return true
+  end
+  
+  if not allow_terminated then
+    return false
+  end
+  
+  local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
+  if tostring(forwarded_proto_header):lower() == "https" then
+    return true
+  end
+  
+  if type(forwarded_proto_header) == "table" then
+    -- we could use the first entry (lower security), or check the contents of each of them (slow). So for now defensive, and error
+    -- out on multiple entries for the x-forwarded-proto header.
+    return nil, "Only one X-Forwarded-Proto header allowed"
+  end
+  
+  return false
+end
+
+
 --- Calculates a table size.
 -- All entries both in array and hash part.
 -- @param t The table to use
