@@ -201,7 +201,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     end
 
     -- record success
-    --err = _db:record_migration(identifier, migration.name)
+    err = _db:record_migration(identifier, migration.name)
     if err then
       return false, string.format("Error recording migration %s: %s", migration.name, err)
     end

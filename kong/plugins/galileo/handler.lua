@@ -5,7 +5,7 @@
 -- Maintains one ALF Buffer per galileo plugin per worker.
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local Buffer = require "kong.plugins.mashape-analytics.buffer"
+local Buffer = require "kong.plugins.galileo.buffer"
 
 local read_body = ngx.req.read_body
 local get_body_data = ngx.req.get_body_data
@@ -13,14 +13,14 @@ local get_body_data = ngx.req.get_body_data
 local _alf_buffers = {} -- buffers per-api
 local _server_addr
 
-local AnalyticsHandler = BasePlugin:extend()
+local GalileoHandler = BasePlugin:extend()
 
-function AnalyticsHandler:new()
-  AnalyticsHandler.super.new(self, "mashape-analytics")
+function GalileoHandler:new()
+  GalileoHandler.super.new(self, "galileo")
 end
 
-function AnalyticsHandler:access(conf)
-  AnalyticsHandler.super.access(self)
+function GalileoHandler:access(conf)
+  GalileoHandler.super.access(self)
 
   if not _server_addr then
     _server_addr = ngx.var.server_addr
@@ -32,8 +32,8 @@ function AnalyticsHandler:access(conf)
   end
 end
 
-function AnalyticsHandler:body_filter(conf)
-  AnalyticsHandler.super.body_filter(self)
+function GalileoHandler:body_filter(conf)
+  GalileoHandler.super.body_filter(self)
 
   if conf.log_bodies then
     local chunk = ngx.arg[1]
@@ -44,8 +44,8 @@ function AnalyticsHandler:body_filter(conf)
   end
 end
 
-function AnalyticsHandler:log(conf)
-  AnalyticsHandler.super.log(self)
+function GalileoHandler:log(conf)
+  GalileoHandler.super.log(self)
 
   local ctx = ngx.ctx
   local api_id = ctx.api.id
@@ -71,4 +71,4 @@ function AnalyticsHandler:log(conf)
   buf:add_entry(ngx, req_body, res_body)
 end
 
-return AnalyticsHandler
+return GalileoHandler

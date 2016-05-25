@@ -19,7 +19,7 @@
 -- this module. When the collector cannot be reached, the retry delay is
 -- increased by n_try^2, up to 60s.
 
-local alf_serializer = require "kong.plugins.mashape-analytics.alf"
+local alf_serializer = require "kong.plugins.galileo.alf"
 local http = require "resty.http"
 
 local setmetatable = setmetatable
@@ -56,7 +56,7 @@ local function get_now()
 end
 
 local function log(lvl, ...)
-  ngx_log(lvl, "[mashape-analytics] ", ...)
+  ngx_log(lvl, "[galileo] ", ...)
 end
 
 local _delayed_flush, _send
@@ -89,13 +89,13 @@ _delayed_flush = function(premature, self)
   if premature then return
   elseif get_now() - self.last_t < self.flush_timeout then
     -- flushing reported: we had activity
-    log(DEBUG, "[delayed flushing handler] buffer had activity, "
-             .."delaying flush")
+    log(DEBUG, "[delayed flushing handler] buffer had activity, ",
+               "delaying flush")
     _create_delayed_timer(self)
   else
     -- no activity and timeout reached
-    log(DEBUG, "[delayed flushing handler] buffer had no activity, flushing "
-             .."triggered by flush_timeout")
+    log(DEBUG, "[delayed flushing handler] buffer had no activity, flushing ",
+               "triggered by flush_timeout")
     self:flush()
     self.timer_flush_pending = false
   end
@@ -117,7 +117,7 @@ _send = function(premature, self, to_send)
     log(ERR, "could not connect to Galileo collector: ", err)
   else
     if self.https then
-      local ok, err = client:ssl_handshake(false, self.host, true)
+      local ok, err = client:ssl_handshake(false, self.host, self.https_verify)
       if not ok then
         log(ERR, "could not perform SSL handshake with Galileo collector: ", err)
         return
@@ -144,10 +144,10 @@ _send = function(premature, self, to_send)
         log(DEBUG, "Galileo collector partially saved the ALF "
                  .."(207 Multi-Status): ", body)
       elseif res.status >= 400 and res.status < 500 then
-        log(WARN, "Galileo collector refused this ALF (4xx): ", body)
+        log(WARN, "Galileo collector refused this ALF (", res.status, "): ", body)
       elseif res.status >= 500 then
         retry = true
-        log(ERR, "Galileo collector HTTP error ("..res.status.."): ", body)
+        log(ERR, "Galileo collector HTTP error (", res.status, "): ", body)
       end
     end
 
@@ -228,10 +228,11 @@ function _M.new(conf)
     host                = conf.host,
     port                = conf.port,
     https               = conf.https,
+    https_verify        = conf.https_verify,
     log_bodies          = conf.log_bodies or false,
     retry_count         = conf.retry_count or 0,
     connection_timeout  = conf.connection_timeout and conf.connection_timeout * 1000 or 30000, -- ms
-    flush_timeout       = conf.flush_timeout and conf.flush_timeout * 1000 or 2000,      -- ms
+    flush_timeout       = conf.flush_timeout and conf.flush_timeout * 1000 or 2000,            -- ms
     queue_size          = conf.queue_size or 1000,
     cur_alf             = alf_serializer.new(conf.log_bodies, conf.server_addr),
     sending_queue       = {},                             -- FILO queue

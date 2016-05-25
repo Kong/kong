@@ -7,6 +7,17 @@ return {
 
       for i = 1, #rows do
         local analytics = rows[i]
+
+        local host = analytics.config.host
+        local port = analytics.config.port
+        local https = false
+
+        if host == "socket.analytics.mashape.com" then
+          host = "collector.galileo.next.mashape.com"
+          port = 443
+          https = true
+        end
+
         local _, err = dao.plugins:insert {
           name = "galileo",
           api_id = analytics.api_id,
@@ -14,8 +25,10 @@ return {
           config = {
             service_token = analytics.config.service_token,
             environment = analytics.config.environment,
-            host = analytics.config.host,
-            port = analytics.config.port,
+            host = host,
+            port = port,
+            https = https,
+            https_verify = false,
             log_bodies = analytics.config.log_body,
             queue_size = analytics.config.batch_size,
             flush_timeout = analytics.config.delay
