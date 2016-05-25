@@ -54,6 +54,7 @@ build = {
     ["kong.cli.utils.ssl"] = "kong/cli/utils/ssl.lua",
     ["kong.cli.utils.input"] = "kong/cli/utils/input.lua",
     ["kong.cli.utils.services"] = "kong/cli/utils/services.lua",
+    ["kong.cli.utils.dns"] = "kong/cli/utils/dns.lua",
     ["kong.cli.cmds.config"] = "kong/cli/cmds/config.lua",
     ["kong.cli.cmds.quit"] = "kong/cli/cmds/quit.lua",
     ["kong.cli.cmds.stop"] = "kong/cli/cmds/stop.lua",
@@ -65,7 +66,6 @@ build = {
     ["kong.cli.cmds.migrations"] = "kong/cli/cmds/migrations.lua",
     ["kong.cli.cmds.cluster"] = "kong/cli/cmds/cluster.lua",
     ["kong.cli.services.base_service"] = "kong/cli/services/base_service.lua",
-    ["kong.cli.services.dnsmasq"] = "kong/cli/services/dnsmasq.lua",
     ["kong.cli.services.serf"] = "kong/cli/services/serf.lua",
     ["kong.cli.services.nginx"] = "kong/cli/services/nginx.lua",
 
@@ -93,6 +93,7 @@ build = {
     ["kong.tools.config_defaults"] = "kong/tools/config_defaults.lua",
     ["kong.tools.config_loader"] = "kong/tools/config_loader.lua",
     ["kong.tools.dao_loader"] = "kong/tools/dao_loader.lua",
+    ["kong.tools.dns_resolver"] = "kong/tools/dns_resolver.lua",
 
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",

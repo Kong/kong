@@ -72,6 +72,8 @@ local function prepare_nginx_configuration(configuration, ssl_config)
 
   local current_user = get_current_user()
 
+  logger:info("DNS resolver set to "..configuration.dns_resolver.address.." on port "..configuration.dns_resolver.port)
+
   -- Extract nginx config from kong config, replace any needed value
   local nginx_config = configuration.nginx
   local nginx_inject = {

@@ -29,6 +29,10 @@ singletons.dao = {
   }
 }
 
+singletons.configuration = {
+  dns_resolver = {address="8.8.8.8:53"}
+}
+
 local apis_dics
 
 describe("Resolver", function()

@@ -206,11 +206,6 @@ describe("Configuration validation", function()
       end
     end)
   end)
-  it("should validate the selected dns_resolver property", function()
-    local ok, errors = config.validate({dns_resolver = "foo"})
-    assert.False(ok)
-    assert.equal("must be one of: 'server, dnsmasq'", errors.dns_resolver)
-  end)
   it("should validate the host:port listen addresses", function()
     -- Missing port
     local ok, errors = config.validate({proxy_listen = "foo"})

@@ -4,6 +4,7 @@ local cache = require "kong.tools.database_cache"
 local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+local DnsResolver = require "kong.tools.dns_resolver"
 
 local table_insert = table.insert
 local table_sort = table.sort
@@ -49,17 +50,16 @@ local function get_upstream_url(api)
   return result
 end
 
-local function get_host_from_upstream_url(val)
-  local parsed_url = url.parse(val)
-
+local function get_port_from_upstream(parsed_url)
   local port
   if parsed_url.port then
     port = parsed_url.port
   elseif parsed_url.scheme == "https" then
     port = 443
+  else
+    port = 80
   end
-
-  return parsed_url.host..(port and ":"..port or "")
+  return port
 end
 
 -- Load all APIs in memory.
@@ -250,11 +250,34 @@ function _M.execute(request_uri, request_headers)
     upstream_host = matched_host or ngx.req.get_headers()["host"]
   end
 
+  local parsed_url = url.parse(upstream_url)
+  local upstream_port = get_port_from_upstream(parsed_url)
   if upstream_host == nil then
-    upstream_host = get_host_from_upstream_url(upstream_url)
+    upstream_host = parsed_url.host..":"..upstream_port
   end
 
-  return api, upstream_url, upstream_host
+  -- Resolve the appropriate DNS address, first by checking /etc/hosts, then by invoking the DNS server
+  local resolution
+  local etc_host = singletons.configuration.dns_etc_hosts[parsed_url.host] -- Check /etc/hosts first
+  if etc_host then
+    resolution = {host = etc_host}
+  else
+    -- Resolve using the DNS server
+    local dns_config = singletons.configuration.dns_resolver
+    local dns = DnsResolver(dns_config.host, dns_config.port, dns_config.timeout, dns_config.attempts)
+    local err
+    resolution, err = dns:resolve(parsed_url.host, parsed_url.port, dns_config.srv)
+    if err then
+      ngx.log(ngx.ERR, err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err) --TODO: this throw an error even when the resolution fails, it should return 502 (?)
+    end
+  end
+
+  if not resolution.port then
+    resolution.port = upstream_port
+  end
+
+  return api, parsed_url.scheme.."://kong_upstream"..parsed_url.path, upstream_host, resolution
 end
 
 return _M

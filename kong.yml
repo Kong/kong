@@ -52,20 +52,17 @@
 # ssl_key_path: /path/to/certificate.key
 
 ######
-## Specify how Kong performs DNS resolution (in the `dns_resolvers_available` property) you want to use.
-## Options are: "dnsmasq" (You will need dnsmasq to be installed) or "server".
-# dns_resolver: dnsmasq
+## By default Kong will resolve DNS addresses using the local system settings as configured in `/etc/resolv.conf` 
+## and `/etc/hosts`. You can customize the DNS resolution settings by changing the following properties.
+#dns_resolver:
 
-######
-## A dictionary of DNS resolvers Kong can use, and their respective properties.
-## Currently `dnsmasq` (default, http://www.thekelleys.org.uk/dnsmasq/doc.html) and `server` are supported.
-## By choosing `dnsmasq`, Kong will resolve hostnames using the local `/etc/hosts` file and `resolv.conf`
-## configuration. By choosing `server`, you can specify a custom DNS server.
-# dns_resolvers_available:
-  # server:
-    # address: "8.8.8.8:53"
-  # dnsmasq:
-    # port: 8053
+  ######
+  ## You can override the DNS server being used by specifying a custom DNS server.
+  # address: "8.8.8.8:53"
+
+  ###### 
+  ## SRV record resolutions are enabled by default. Disabling them will slightly improve the performance.
+  # srv: true
 
 ######
 ## Cluster settings between Kong nodes.
@@ -265,6 +262,16 @@ nginx: |
 
     init_worker_by_lua_block {
       kong.init_worker()
+    }
+
+    upstream kong_upstream {
+      server 0.0.0.1;
+
+      balancer_by_lua_block {
+        kong.balancer()
+      }
+
+      keepalive 60;
     }
 
     server {
