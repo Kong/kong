@@ -222,7 +222,7 @@ end
 -- be updated. If asked, can perform a "full" update, replacing the entire entity (assuming it is valid)
 -- with the one specified in `tbl` at once.
 -- @param[type=table] tbl A table containing the new values for this row.
--- @param[tye=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
+-- @param[type=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
 -- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity).
 -- @treturn table res A table representing the updated entity.
 -- @treturn table err If an error occured, a table describing the issue.

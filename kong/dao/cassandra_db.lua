@@ -62,7 +62,7 @@ local function serialize_arg(field, value)
     return cassandra.uuid(value)
   elseif field.type == "timestamp" then
     return cassandra.timestamp(value)
-  elseif field.type == "table" then
+  elseif field.type == "table" or field.type == "array" then
     local json = require "cjson"
     return json.encode(value)
   else
@@ -74,7 +74,7 @@ local function deserialize_rows(rows, schema)
   local json = require "cjson"
   for i, row in ipairs(rows) do
     for col, value in pairs(row) do
-      if schema.fields[col].type == "table" then
+      if schema.fields[col].type == "table" or schema.fields[col].type == "array" then
         rows[i][col] = json.decode(value)
       end
     end
