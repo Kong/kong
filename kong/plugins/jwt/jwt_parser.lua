@@ -107,6 +107,14 @@ local function decode_token(token)
     return nil, "Invalid alg"
   end
 
+  if not claims then
+    return nil, "Invalid claims"
+  end
+  
+  if not signature then
+    return nil, "Invalid signature"
+  end
+  
   return {
     token = token,
     header_64 = header_64,
@@ -158,7 +166,7 @@ _M.__index = _M
 -- @return JWT parser
 -- @return error if any
 function _M:new(token)
-  if type(token) ~= "string" then error("JWT must be a string", 2) end
+  if type(token) ~= "string" then error("Token must be a string, got "..tostring(token), 2) end
 
   local token, err = decode_token(token)
   if err then
