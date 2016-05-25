@@ -11,6 +11,7 @@ local http_client = require "kong.tools.http_client"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 local PROXY_URL = spec_helper.PROXY_URL
+local API_URL = spec_helper.API_URL
 
 -- Parses an SSL certificate returned by LuaSec
 local function parse_cert(cert)
@@ -45,9 +46,7 @@ describe("Resolver", function()
         {name = "tests-trailing-slash-path4", request_path = "/test-trailing-slash4", strip_request_path = true, upstream_url = "http://www.mockbin.org/"},
         {name = "tests-deep-path", request_path = "/hello/world", strip_request_path = true, upstream_url = "http://mockbin.com"},
         {name = "tests-deep-path-two", request_path = "/hello/world/wot", strip_request_path = true, upstream_url = "http://httpbin.org"},
-        {name = "tests-request_path-resolver2", upstream_url = "http://mockbin.com", request_path = "/headers"},
-        {name = "tests-root-path", upstream_url = "http://httpbin.org", request_path = "/"},
-        {name = "tests-root-path2", upstream_url = "http://mockbin.com", request_path = "/noroot", strip_request_path = true},
+        {name = "tests-request_path-resolver2", upstream_url = "http://mockbin.com", request_path = "/headers"}
       },
       plugin = {
         {name = "key-auth", config = {key_names = {"apikey"} }, __api = 2}
@@ -341,6 +340,24 @@ describe("Resolver", function()
   end)
 
   describe("Priority in request_path resolutions", function()
+    setup(function()
+      spec_helper.insert_fixtures {
+        api = {
+          {name = "tests-root-path", upstream_url = "http://httpbin.org", request_path = "/"},
+          {name = "tests-root-path2", upstream_url = "http://mockbin.com", request_path = "/noroot", strip_request_path = true}
+        }
+      }
+
+      spec_helper.restart_kong()
+    end)
+
+    teardown(function()
+      local _, status = http_client.delete(API_URL.."/apis/tests-root-path")
+      assert.equal(204, status)
+      local _, status = http_client.delete(API_URL.."/apis/tests-root-path2")
+      assert.equal(204, status)
+    end)
+
     it("should work for root request_path", function()
       local response, status = http_client.get(PROXY_URL.."/get", {})
       assert.equal(200, status)
