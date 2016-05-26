@@ -5,13 +5,11 @@ Working:
 - Return response value
 - Return appropriate error response on request if api.upstream_url is *not* aws-lambda://
 - Allow merging of query parameters from api to lambda payload
+- Allow merging of body from api to lambda
 - Error handling
 
 ToDo:
-- Allow merging of body from api to lambda
-- Allow passing body from client through to lambda (without specifying in config)
-- Allow specifying IAM (and role?) credentials in Authentication header of api to lambda
-- Allow overriding config credentials via Authentication header of api
+- Allow specifying IAM credentials in Authentication header of api to lambda
 - Allow sepecifying region, function name, qualifier, invocation type, log type and client context declaratively in aws-lambda schemed upstream_url of parent api
 - Add spport for IAM Instance Role authentication
 - Add support for other invocation types?
@@ -19,7 +17,6 @@ ToDo:
 - Add support for client context?
 - Add support for qualifier
 - Rewrite as "pure" nginx request to aws-lambda (i.e. without capturing and/or making origin request via resty) -- is this possible?
-- Rewrite without api-gateway dependencies (worthwhile?)
 
 Client Request:
 - Should be able to include Authentication: Basic base64(aws_access_key:aws_secret_key) [HTTPS-only]
