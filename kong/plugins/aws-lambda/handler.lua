@@ -1,5 +1,5 @@
 local cjson = require 'cjson'
-local https = require 'ssl.https'
+local http_client = require 'kong.tools.http_client'
 local ltn12 = require 'ltn12'
 
 local prepare_request = require "kong.plugins.aws-lambda.aws.v4".prepare_request
@@ -61,14 +61,11 @@ function AwsLambdaHandler:access(conf)
 
 	local response = {}
         -- one, code, headers, status = https.request
-	local _, _, headers, _ = https.request{
-		url = request.url,
-		method = 'POST',
-		headers = request.headers,
-		source = ltn12.source.string(request.body),
-		sink = ltn12.sink.table(response),
-		protocol = 'tlsv1'
-	}
+	local response, status, headers, _ = http_client.post(
+		request.url,
+		request.body,
+		request.headers
+	)
 
         local errorType = headers["x-amz-function-error"]
         if errorType ~= nil and errorType ~= "" then
