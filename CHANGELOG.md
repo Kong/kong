@@ -18,11 +18,11 @@ This release includes bugfixes and minor updates:
 - Kong now properly encodes an empty querystring parameter like `?param=` when proxying the request. [#1210](https://github.com/Mashape/kong/pull/1210)
 - The configuration now checks that `cluster.ttl_on_failure` is at least 60 seconds. [#1199](https://github.com/Mashape/kong/pull/1199)
 - Plugins:
+  - **Mashape Analytics: Name updated to "Galileo", and added support for Galileo v3. [#1159](https://github.com/Mashape/kong/pull/1159)**
   - Loggly: Fixed an issue that was triggering 400 and 500 errors. [#1184](https://github.com/Mashape/kong/pull/1184)
   - JWT: The `TYP` value in the header is not optional and case-insensitive. [#1192](https://github.com/Mashape/kong/pull/1192)
   - Request Transformer: Fixed a bug when transforming request headers. [#1202](https://github.com/Mashape/kong/pull/1202)
-
-
+  - OAuth 2.0: Multiple redirect URIs are now supported. [#1112](https://github.com/Mashape/kong/pull/1112)
 
 ## [0.8.1] - 2016/04/27
 
