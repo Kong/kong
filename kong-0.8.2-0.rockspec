@@ -168,6 +168,7 @@ build = {
     ["kong.plugins.runscope.log"] = "kong/plugins/runscope/log.lua",
 
     ["kong.plugins.galileo.migrations.cassandra"] = "kong/plugins/galileo/migrations/cassandra.lua",
+    ["kong.plugins.galileo.migrations.postgres"] = "kong/plugins/galileo/migrations/postgres.lua",
     ["kong.plugins.galileo.handler"] = "kong/plugins/galileo/handler.lua",
     ["kong.plugins.galileo.schema"] = "kong/plugins/galileo/schema.lua",
     ["kong.plugins.galileo.buffer"] = "kong/plugins/galileo/buffer.lua",

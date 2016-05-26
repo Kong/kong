@@ -1,4 +1,4 @@
-_G.ngx = require "spec.plugins.mashape-analytics.ngx"
+_G.ngx = require "spec.plugins.galileo.ngx"
 
 -- asserts if an array contains a given table
 local function contains(state, args)
@@ -19,14 +19,14 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.positive",
                   "assertion.contains.negative")
 
-local alf_serializer = require "kong.plugins.mashape-analytics.alf"
+local alf_serializer = require "kong.plugins.galileo.alf"
 
 -- since our module caches ngx's global functions, this is a
 -- hacky utility to reload it, allowing us to send different
 -- input sets to the serializer.
 local function reload_alf_serializer()
-  package.loaded["kong.plugins.mashape-analytics.alf"] = nil
-  alf_serializer = require "kong.plugins.mashape-analytics.alf"
+  package.loaded["kong.plugins.galileo.alf"] = nil
+  alf_serializer = require "kong.plugins.galileo.alf"
 end
 
 ---------------------------
