@@ -56,12 +56,13 @@ function _M.transform_json_body(conf, buffered_data)
     json_body[name] = nil
   end
   
-  -- replace  key:value to body
+  -- replace key:value to body
   for _, name, value in iter(conf.replace.json) do
     local v = cjson.encode(value)
     if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
       v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
     end
+    v = v:gsub("\\/", "/") -- To prevent having double encoded slashes
     if json_body[name] then
       json_body[name] = v
     end
@@ -73,6 +74,7 @@ function _M.transform_json_body(conf, buffered_data)
     if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
       v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
     end
+    v = v:gsub("\\/", "/") -- To prevent having double encoded slashes
     if not json_body[name] then
       json_body[name] = v
     end
@@ -84,6 +86,7 @@ function _M.transform_json_body(conf, buffered_data)
     if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
       v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
     end
+    v = v:gsub("\\/", "/") -- To prevent having double encoded slashes
     json_body[name] = append_value(json_body[name],v)
   end
   
