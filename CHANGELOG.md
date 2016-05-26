@@ -9,8 +9,11 @@ This release includes bugfixes and minor updates:
 - Support for a simple slash in `request_path`. [#1227](https://github.com/Mashape/kong/pull/1227)
 - Plugins:
   - Response Rate Limiting: it now appends usage headers to the upstream requests in the form of `X-Ratelimit-Remaining-{limit_name}` and introduces a new `config.block_on_first_violation` property. [#1235](https://github.com/Mashape/kong/pull/1235)
-  - IP Restriction: Fixed that prevented the plugin for working properly when added on an API. [#1245](https://github.com/Mashape/kong/pull/1245)
-  - CORS: Fixed an issue when `config.preflight_continue` was enabled. [#1240](https://github.com/Mashape/kong/pull/1240)
+
+#### Changed
+
+- Plugins:
+  - **Mashape Analytics: The plugin is now called "Galileo", and added support for Galileo v3. [#1159](https://github.com/Mashape/kong/pull/1159)**
 
 #### Fixed
 
@@ -18,11 +21,12 @@ This release includes bugfixes and minor updates:
 - Kong now properly encodes an empty querystring parameter like `?param=` when proxying the request. [#1210](https://github.com/Mashape/kong/pull/1210)
 - The configuration now checks that `cluster.ttl_on_failure` is at least 60 seconds. [#1199](https://github.com/Mashape/kong/pull/1199)
 - Plugins:
-  - **Mashape Analytics: Name updated to "Galileo", and added support for Galileo v3. [#1159](https://github.com/Mashape/kong/pull/1159)**
   - Loggly: Fixed an issue that was triggering 400 and 500 errors. [#1184](https://github.com/Mashape/kong/pull/1184)
   - JWT: The `TYP` value in the header is not optional and case-insensitive. [#1192](https://github.com/Mashape/kong/pull/1192)
   - Request Transformer: Fixed a bug when transforming request headers. [#1202](https://github.com/Mashape/kong/pull/1202)
   - OAuth 2.0: Multiple redirect URIs are now supported. [#1112](https://github.com/Mashape/kong/pull/1112)
+  - IP Restriction: Fixed that prevented the plugin for working properly when added on an API. [#1245](https://github.com/Mashape/kong/pull/1245)
+  - CORS: Fixed an issue when `config.preflight_continue` was enabled. [#1240](https://github.com/Mashape/kong/pull/1240)
 
 ## [0.8.1] - 2016/04/27
 
