@@ -21,14 +21,16 @@ end
 function ResponseTransformerHandler:body_filter(conf)
   ResponseTransformerHandler.super.body_filter(self)
   if body_filter.is_json_body(ngx.header["content-type"]) then
-    local chunk, eof = ngx.arg[1], ngx.arg[2]
-    if eof then
-      local body = body_filter.transform_json_body(conf, ngx.ctx.buffer)
-      ngx.arg[1] = body
-    else
-      ngx.ctx.buffer = ngx.ctx.buffer..chunk
-      ngx.arg[1] = nil
-    end  
+    if table.getn(conf.remove.json) > 0 or table.getn(conf.replace.json) > 0 or table.getn(conf.add.json) > 0 or table.getn(conf.append.json) > 0 then 
+      local chunk, eof = ngx.arg[1], ngx.arg[2]
+      if eof then
+        local body = body_filter.transform_json_body(conf, ngx.ctx.buffer)
+        ngx.arg[1] = body
+      else
+        ngx.ctx.buffer = ngx.ctx.buffer..chunk
+        ngx.arg[1] = nil
+      end  
+    end
   end  
 end
 
