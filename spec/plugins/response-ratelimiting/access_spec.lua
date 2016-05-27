@@ -202,7 +202,7 @@ describe("RateLimiting Plugin", function()
     os.execute("sleep "..SLEEP_VALUE) -- The increment happens in log_by_lua, give it some time
 
     local response, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=2"}, {host = "test7.com"})
-    assert.are.equal(429, status)      
+    assert.are.equal(429, status)
     assert.are.equal("API rate limit exceeded for 'image'", cjson.decode(response).message)
   end)
 
