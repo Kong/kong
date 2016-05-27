@@ -6,6 +6,8 @@ local pl_utils = require "pl.utils"
 local pl_stringx = require "pl.stringx"
 local resty_lock = require "resty.lock"
 local singletons = require "kong.singletons"
+local concat = table.concat
+local udp_sock = ngx.socket.udp
 
 local ping_handler, system_infos
 local enabled = false
@@ -46,10 +48,12 @@ system_infos = get_system_infos()
 -- UDP logger
 -------------
 
-local function send(t)
+local function send(t, host, port)
   if not enabled then return end
-
   t = t or {}
+  host = host or "kong-hf.mashape.com"
+  port = port or 61828
+
   local buf = {}
   for k, v in pairs(system_infos) do
     buf[#buf+1] = k.."="..v
@@ -66,10 +70,10 @@ local function send(t)
     end
   end
 
-  local msg = table.concat(buf, ";")
+  local msg = concat(buf, ";")
 
-  local sock = ngx.socket.udp()
-  local ok, err = sock:setpeername("kong-hf.mashape.com", 61828)
+  local sock = udp_sock()
+  local ok, err = sock:setpeername(host, port)
   if not ok then
     log_error("could not set peer name for UDP socket: ", err)
     return
@@ -138,8 +142,8 @@ return {
   -----------------
   -- custom methods
   -----------------
-  enable = function()
-    enabled = true
+  toggle = function(enable)
+    enabled = enable
   end,
   get_system_infos = get_system_infos,
   send = send,

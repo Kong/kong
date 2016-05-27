@@ -85,16 +85,20 @@ local function udp_server(port)
     function(port)
       local socket = require "socket"
       local server = assert(socket.udp())
-      server:settimeout(3)
+      server:settimeout(1)
       server:setoption("reuseaddr", true)
-      server:setsockname("*", port)
+      server:setsockname("127.0.0.1", port)
       local data = server:receive()
       server:close()
       return data
     end
   }, port or 9999)
 
-  return thread:start()
+  thread:start()
+
+  ngx.sleep(0.1)
+
+  return thread
 end
 
 --------------------

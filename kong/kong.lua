@@ -101,7 +101,7 @@ local function load_plugins(kong_conf, dao, events)
   -- add reports plugin if not disabled
   if kong_conf.anonymous_reports then
     local reports = require "kong.core.reports"
-    reports.enable()
+    reports.toggle(true)
     sorted_plugins[#sorted_plugins+1] = {
       name = "reports",
       handler = reports
