@@ -1,20 +1,11 @@
 local singletons = require "kong.singletons"
 local url = require "socket.url"
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 
 local table_insert = table.insert
-local table_sort = table.sort
-local string_match = string.match
-local string_find = string.find
-local string_format = string.format
-local string_sub = string.sub
-local string_gsub = string.gsub
-local string_len = string.len
 local ipairs = ipairs
-local unpack = unpack
 local type = type
 
 local _M = {}
@@ -22,44 +13,27 @@ local _M = {}
 -- Take a request_host and make it a pattern for wildcard matching.
 -- Only do so if the request_host actually has a wildcard.
 local function create_wildcard_pattern(request_host)
-  if string_find(request_host, "*", 1, true) then
-    local pattern = string_gsub(request_host, "%.", "%%.")
-    pattern = string_gsub(pattern, "*", ".+")
-    pattern = string_format("^%s$", pattern)
-    return pattern
+  if request_host:find("*", 1, true) then
+    return "^"..request_host:gsub("%.", "%%."):gsub("*", ".+").."$"
   end
 end
 
 -- Handles pattern-specific characters if any.
 local function create_strip_request_path_pattern(request_path)
-  return string_gsub(request_path, "[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%"..c end)
+  return request_path:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%"..c end)
 end
 
 local function get_upstream_url(api)
-  local result = api.upstream_url
-
-  -- Checking if the target url ends with a final slash
-  local len = string_len(result)
-  if string_sub(result, len, len) == "/" then
-    -- Remove one slash to avoid having a double slash
-    -- Because ngx.var.request_uri always starts with a slash
-    result = string_sub(result, 0, len - 1)
-  end
-
-  return result
+  -- Remove trailing slash because ngx.var.request_uri always starts with a slash
+  return api.upstream_url:match("^(.-)/?$")
 end
 
 local function get_host_from_upstream_url(val)
   local parsed_url = url.parse(val)
 
-  local port
-  if parsed_url.port then
-    port = parsed_url.port
-  elseif parsed_url.scheme == "https" then
-    port = 443
-  end
-
-  return parsed_url.host..(port and ":"..port or "")
+  if parsed_url.port              then return parsed_url.host..":"..parsed_url.port end
+  if parsed_url.scheme == "https" then return parsed_url.host..":443" end
+  return parsed_url.host
 end
 
 -- Load all APIs in memory.
@@ -94,11 +68,6 @@ function _M.load_apis_in_memory()
     end
   end
 
-  -- Sort request_path_arr by descending specificity.
-  table_sort(request_path_arr, function (first, second)
-    return first.request_path > second.request_path
-  end)
-
   return {
     by_dns = dns_dic,
     request_path_arr = request_path_arr, -- all APIs with a request_path
@@ -116,7 +85,7 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
       end
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
-        host = unpack(stringy.split(host, ":"))
+        host = host:match("^([^:]+)")  -- grab everything before ":"
         table_insert(hosts_list, host)
         if apis_dics.by_dns[host] then
           return apis_dics.by_dns[host], host
@@ -124,7 +93,7 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
           -- If the API was not found in the dictionary, maybe it is a wildcard request_host.
           -- In that case, we need to loop over all of them.
           for _, wildcard_dns in ipairs(apis_dics.wildcard_dns_arr) do
-            if string_match(host, wildcard_dns.pattern) then
+            if host:match(wildcard_dns.pattern) then
               return wildcard_dns.api
             end
           end
@@ -151,7 +120,7 @@ end
 -- @param  `uri` The URI for this request.
 -- @param  `request_path_arr`    An array of all APIs that have a request_path property.
 function _M.find_api_by_request_path(uri, request_path_arr)
-  if not stringy.endswith(uri, "/") then
+  if uri:sub(-1) ~= "/" then
     uri = uri.."/"
   end
 
@@ -168,14 +137,14 @@ end
 -- Replace `/request_path` with `request_path`, and then prefix with a `/`
 -- or replace `/request_path/foo` with `/foo`, and then do not prefix with `/`.
 function _M.strip_request_path(uri, strip_request_path_pattern, upstream_url_has_path)
-  local uri = string_gsub(uri, strip_request_path_pattern, "", 1)
+  uri = uri:gsub(strip_request_path_pattern, "", 1)
 
   -- Sometimes uri can be an empty string, and adding a slash "/"..uri will lead to a trailing slash
   -- We don't want to add a trailing slash in one specific scenario, when the upstream_url already has
   -- a path (so it's not root, like http://hello.com/, but http://hello.com/path) in order to avoid
   -- having an unnecessary trailing slash not wanted by the user. Hence the "upstream_url_has_path" check.
-  if string_sub(uri, 0, 1) ~= "/" and not upstream_url_has_path then
-    uri = "/"..uri
+  if (not upstream_url_has_path) and (uri:sub(1,1) ~= "/") then
+    return "/"..uri
   end
   return uri
 end
@@ -207,7 +176,6 @@ local function find_api(uri, headers)
   api, matched_host, hosts_list = _M.find_api_by_request_host(headers, apis_dics)
   -- If it was found by Host, return
   if api then
-    ngx.req.set_header(constants.HEADERS.FORWARDED_HOST, matched_host)
     return nil, api, matched_host, hosts_list
   end
 
@@ -218,12 +186,12 @@ local function find_api(uri, headers)
 end
 
 local function url_has_path(url)
-  local _, count_slashes = string_gsub(url, "/", "")
+  local _, count_slashes = url:gsub("/", "")
   return count_slashes > 2
 end
 
 function _M.execute(request_uri, request_headers)
-  local uri = unpack(stringy.split(request_uri, "?"))
+  local uri = request_uri:match("^([^%?]+)") -- grab everything before "?"
   local err, api, matched_host, hosts_list, strip_request_path_pattern = find_api(uri, request_headers)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -241,7 +209,6 @@ function _M.execute(request_uri, request_headers)
   -- If API was retrieved by request_path and the request_path needs to be stripped
   if strip_request_path_pattern and api.strip_request_path then
     uri = _M.strip_request_path(uri, strip_request_path_pattern, url_has_path(upstream_url))
-    ngx.req.set_header(constants.HEADERS.FORWARDED_PREFIX, api.request_path)
   end
 
   upstream_url = upstream_url..uri
