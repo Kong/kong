@@ -2,6 +2,7 @@ local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
+local version = require "version"
 local fmt = string.format
 
 local nginx_bin_name = "nginx"
@@ -9,15 +10,23 @@ local nginx_search_paths = {
   "/usr/local/openresty/nginx/sbin",
   ""
 }
+local nginx_version_command = "-v"                            -- commandline param to get version
+local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"  -- pattern to grab version from output
+local nginx_compatible = version.set("1.9.3.2","1.9.7.4")     -- compatible from-to versions
 
 local function is_openresty(bin_path)
-  local cmd = fmt("%s -v", bin_path)
-  local ok, _, _, v_str = pl_utils.executeex(cmd)
-  if ok and v_str then
-    log.debug("%s: '%s'", cmd, v_str:sub(1, -2))
-    return v_str:match "^nginx version: ngx_openresty/" or
-           v_str:match "^nginx version: openresty/"
+  local cmd = fmt("%s %s", bin_path, nginx_version_command)
+  local ok, _, _, stderr = pl_utils.executeex(cmd)
+  if ok and stderr then
+    log.debug("%s: '%s'", cmd, stderr:sub(1, -2))
+    local version_match = stderr:match(nginx_version_pattern)
+    if (not version_match) or (not nginx_compatible:matches(version_match)) then
+      return nil, "Incompatible nginx found. Kong requires OpenResty, version "..tostring(nginx_compatible) ..
+        (version_match and ", got "..version_match or "")
+    end
+    return true
   end
+  return nil, "Could not determine nginx version in use. Kong requires OpenResty version "..tostring(nginx_compatible)
 end
 
 local function get_pid_path(nginx_prefix)
