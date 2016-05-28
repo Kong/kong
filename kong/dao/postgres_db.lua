@@ -72,7 +72,7 @@ local function escape_literal(val, field)
     return "'"..tostring((val:gsub("'", "''"))).."'"
   elseif t_val == "boolean" then
     return val and "TRUE" or "FALSE"
-  elseif t_val == "table" and field and field.type == "table" then
+  elseif t_val == "table" and field and (field.type == "table" or field.type == "array") then
     local json = require "cjson"
     return escape_literal(json.encode(val))
   end
