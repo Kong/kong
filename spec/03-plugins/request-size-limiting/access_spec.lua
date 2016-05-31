@@ -1,68 +1,94 @@
-local spec_helper = require "spec.spec_helpers"
-local http_client = require "kong.tools.http_client"
+local helpers = require "spec.helpers"
 
-local STUB_POST_URL = spec_helper.STUB_POST_URL
-
-describe("RequestSizeLimiting Plugin", function()
-
+describe("Plugin: request-size-limiting", function()
+  local client
   setup(function()
-    spec_helper.prepare_db()
-    spec_helper.insert_fixtures {
-      api = {
-        { name = "tests-request-size-limiting", request_host = "test3.com", upstream_url = "http://mockbin.com/request" }
-      },
-      plugin = {
-        { name = "request-size-limiting", config = {allowed_payload_size = 10}, __api = 1 }
+    helpers.dao:truncate_tables()
+    assert(helpers.prepare_prefix())
+
+    local api = assert(helpers.dao.apis:insert {
+      request_host = "limit.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "request-size-limiting",
+      api_id = api.id,
+      config = {
+        allowed_payload_size = 10
       }
-    }
+    })
 
-    spec_helper.start_kong()
+    assert(helpers.start_kong())
+    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
   end)
-
   teardown(function()
-    spec_helper.stop_kong()
+    if client then client:close() end
+    helpers.stop_kong()
   end)
 
-  describe("With request size less than allowed limit", function()
-    it("should be allowed", function()
-      local _, status = http_client.post(STUB_POST_URL, {key = "This is a test string"}, { host = "test3.com", ['Content-Length'] = "24", Expect = "100-continue", ['Content-Type'] = "application/x-www-form-urlencoded" } )
-      assert.are.equal(200, status)
+  describe("with Content-Length set", function()
+    it("allows request of lower size", function()
+      local body = "foo=test&bar=foobar"
+
+      local res = assert(client:request {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          ["Content-Length"] = #body
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("blocks request exceeding size limit", function()
+      local body = string.rep("a", 11 * 2^20)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          ["Content-Length"] = #body
+        }
+      })
+      local response_body = assert.res_status(413, res)
+      assert.equal([[{"message":"Request size limit exceeded"}]], response_body)
     end)
   end)
 
-  describe("With request size greater than allowed limit", function()
-    it("should get blocked", function()
-      local _, status = http_client.post(STUB_POST_URL, {key = "This is a long test string"}, { host = "test3.com", ['Content-Length'] = "12000000", Expect = "100-continue", ['Content-Type'] = "application/x-www-form-urlencoded" } )
-      assert.are.equal(417, status)
+  describe("without Content-Length", function()
+    it("allows request of lower size", function()
+      local body = "foo=test&bar=foobar"
+
+      local res = assert(client:request {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("blocks request exceeding size limit", function()
+      local body = string.rep("a", 11 * 2^20)
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
+        }
+      })
+      local response_body = assert.res_status(413, res)
+      assert.equal([[{"message":"Request size limit exceeded"}]], response_body)
     end)
   end)
-
-  describe("With request size greater than allowed limit but no expect header", function()
-    it("should get blocked", function()
-      local _, status = http_client.post(STUB_POST_URL, {key = "This is a long test string"}, { host = "test3.com", ['Content-Length'] = "12000000", ['Content-Type'] = "application/x-www-form-urlencoded" } )
-      assert.are.equal(413, status)
-    end)
-  end)
-
-  describe("With request size less than allowed limit but no expect header", function()
-    it("should be allowed", function()
-      local _, status = http_client.post(STUB_POST_URL, {key = "This is a test string"}, { host = "test3.com", ['Content-Length'] = "24", ['Content-Type'] = "application/x-www-form-urlencoded" } )
-      assert.are.equal(200, status)
-    end)
-  end)
-
-  describe("With no content-length header post request", function()
-    it("should be allowed", function()
-      local _, status = http_client.post(STUB_POST_URL, {key = "This is a test string"}, { host = "test3.com", ['Content-Type'] = "application/x-www-form-urlencoded" } )
-      assert.are.equal(200, status)
-    end)
-  end)
-
-  describe("With no content-length header get request", function()
-    it("should be allowed", function()
-      local _, status = http_client.get(STUB_POST_URL, {}, { host = "test3.com" } )
-      assert.are.equal(200, status)
-    end)
-  end)
-
 end)

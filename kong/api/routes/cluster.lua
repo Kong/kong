@@ -33,9 +33,6 @@ return {
         return responses.send_HTTP_BAD_REQUEST("Missing node \"name\"")
       end
 
-      local inspect = require "inspect"
-      print(inspect(self.params.name))
-
       local _, err = singletons.serf:invoke_signal("force-leave", self.params.name)
       if err then
         return responses.send_HTTP_BAD_REQUEST(err)
