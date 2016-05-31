@@ -8,6 +8,7 @@ describe("Cache entities invalidations", function()
   local proxy_client, admin_client
   setup(function()
     helpers.dao:truncate_tables()
+    helpers.execute "pkill nginx; pkill serf"
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 

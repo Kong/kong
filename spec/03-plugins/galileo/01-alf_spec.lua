@@ -1,4 +1,4 @@
-_G.ngx = require "spec.plugins.galileo.ngx"
+_G.ngx = require "spec.03-plugins.galileo.ngx"
 
 -- asserts if an array contains a given table
 local function contains(state, args)

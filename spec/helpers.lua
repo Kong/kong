@@ -69,7 +69,7 @@ function resty_http_proxy_mt:__index(k)
 end
 
 local function http_client(host, port, timeout)
-  timeout = timeout or 5000
+  timeout = timeout or 10000
   local client = assert(http.new())
   assert(client:connect(host, port))
   client:set_timeout(timeout)
