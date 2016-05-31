@@ -369,4 +369,14 @@ describe("Resolver", function()
       assert.equal("http://mockbin.com/request", cjson.decode(response).url)
     end)
   end)
+
+  it("should return 414 when the URI is too long", function()
+    local querystring = {}
+    for i=1,5000 do 
+      querystring["param_"..i] = i
+    end
+
+    local _, status = http_client.get(spec_helper.STUB_GET_URL, querystring, {host = "mockbin.com"})
+    assert.equal(414, status)
+  end)
 end)
