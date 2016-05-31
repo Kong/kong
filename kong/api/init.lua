@@ -105,13 +105,13 @@ end
 
 -- Loading plugins routes
 if singletons.configuration and singletons.configuration.plugins then
-  for _, v in ipairs(singletons.configuration.plugins) do
-    local loaded, mod = utils.load_module_if_exists("kong.plugins."..v..".api")
+  for k in pairs(singletons.configuration.plugins) do
+    local loaded, mod = utils.load_module_if_exists("kong.plugins."..k..".api")
     if loaded then
-      ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..v)
+      ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..k)
       attach_routes(mod)
     else
-      ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: "..v)
+      ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: "..k)
     end
   end
 end
