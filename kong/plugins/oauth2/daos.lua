@@ -11,6 +11,9 @@ end
 
 local function validate_uris(v, t, column)
   if v then
+    if #v < 1 then
+      return false, "at least one URI is required"
+    end
     for _, uri in ipairs(v) do
       local parsed_uri = url.parse(uri)
       if not (parsed_uri and parsed_uri.host and parsed_uri.scheme) then
