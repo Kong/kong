@@ -264,7 +264,13 @@ build = {
 
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
-    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
+    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
+
+    ["kong.plugins.bot-detection.handler"] = "kong/plugins/bot-detection/handler.lua",
+    ["kong.plugins.bot-detection.schema"] = "kong/plugins/bot-detection/schema.lua",
+    ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
+    ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
+    ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua"
   },
   install = {
     conf = { "kong.yml" },
