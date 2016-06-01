@@ -1,5 +1,23 @@
 ## [Unreleased][unreleased]
 
+## [0.8.3] - 2016/06/01
+
+This release includes some bugfixes:
+
+### Changed
+
+- Switched the log level of the "No nodes found in cluster" warning to `INFO`, that was printed when starting up the first Kong node in a new cluster.
+- Kong now requires OpenResty `1.9.7.5`.
+
+### Fixed
+
+- New nodes are now properly registered into the `nodes` table when running on the same machine. [#1281](https://github.com/Mashape/kong/pull/1281)
+- Fixed a failed error parsing on Postgres. [#1269](https://github.com/Mashape/kong/pull/1269)
+- Plugins:
+  - Response Transformer: Slashes are now encoded properly, and fixed a bug that hang the execution of the plugin. [#1257](https://github.com/Mashape/kong/pull/1257) and [#1263](https://github.com/Mashape/kong/pull/1263)
+  - JWT: If a value for `algorithm` is missing, it's now `HS256` by default. This problem occured when migrating from older versions of Kong.
+  - OAuth 2.0: Fixed a Postgres problem that was preventing an application from being created, and fixed a check on the `redirect_uri` field. [#1264](https://github.com/Mashape/kong/pull/1264) and [#1267](https://github.com/Mashape/kong/issues/1267)
+
 ## [0.8.2] - 2016/05/25
 
 This release includes bugfixes and minor updates:
@@ -589,7 +607,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.8.2...next
+[unreleased]: https://github.com/mashape/kong/compare/0.8.3...next
+[0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
 [0.8.2]: https://github.com/mashape/kong/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/mashape/kong/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/mashape/kong/compare/0.7.0...0.8.0
