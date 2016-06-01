@@ -43,7 +43,7 @@ local function async_autojoin(premature)
         ngx.log(ngx.ERR, tostring(err))
       elseif #members < 2 then
         -- Trigger auto-join
-        local _, err = singletons.serf:_autojoin(cluster_utils.get_node_name(singletons.configuration))
+        local _, err = singletons.serf:_autojoin(cluster_utils.get_node_identifier(singletons.configuration))
         if err then
           ngx.log(ngx.ERR, tostring(err))
         end
@@ -73,7 +73,7 @@ local function send_keepalive(premature)
   local elapsed = lock:lock("keepalive")
   if elapsed and elapsed == 0 then
     -- Send keepalive
-    local node_name = cluster_utils.get_node_name(singletons.configuration)
+    local node_name = cluster_utils.get_node_identifier(singletons.configuration)
     local nodes, err = singletons.dao.nodes:find_all {name = node_name}
     if err then
       ngx.log(ngx.ERR, tostring(err))

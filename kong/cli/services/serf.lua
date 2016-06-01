@@ -75,6 +75,12 @@ echo $COMMAND | ]]..luajit_path..[[
     return false, res
   end
 
+  -- Create the unique identifier if it doesn't exist
+  local _, err = cluster_utils.create_node_identifier(self._configuration)
+  if err then
+    return false, err
+  end
+
   return true
 end
 
@@ -112,7 +118,7 @@ function Serf:_autojoin(current_node_name)
       return false, tostring(err)
     else
       if #nodes == 0 then
-        logger:warn("Cannot auto-join the cluster because no nodes were found")
+        logger:info("No other Kong nodes were found in the cluster")
       else
         -- Sort by newest to oldest (although by TTL would be a better sort)
         table.sort(nodes, function(a, b)
@@ -144,7 +150,7 @@ function Serf:_add_node()
     return false, err
   end
 
-  local name = cluster_utils.get_node_name(self._configuration)
+  local name = cluster_utils.get_node_identifier(self._configuration)
   local addr
   for _, member in ipairs(members) do
     if member.name == name then
@@ -178,7 +184,7 @@ function Serf:start()
     return nil, err
   end
 
-  local node_name = cluster_utils.get_node_name(self._configuration)
+  local node_name = cluster_utils.get_node_identifier(self._configuration)
 
   -- Prepare arguments
   local cmd_args = {
@@ -269,7 +275,7 @@ function Serf:stop()
     -- Remove the node from the datastore.
     -- This is useful when this is the only node running in the cluster.
     self._dao_factory.nodes:delete({
-      name = cluster_utils.get_node_name(self._configuration)
+      name = cluster_utils.get_node_identifier(self._configuration)
     })
 
     -- Finally stop Serf
