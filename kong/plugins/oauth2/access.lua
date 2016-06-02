@@ -9,6 +9,7 @@ local url = require "socket.url"
 local Multipart = require "multipart"
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
+local check_https = utils.check_https
 
 local _M = {}
 
@@ -83,17 +84,6 @@ local function get_redirect_uri(client_id)
   return client and client.redirect_uri or nil, client
 end
 
-local HTTPS = "https"
-
-local function is_https(conf)
-  local result = ngx.var.scheme:lower() == HTTPS
-  if not result and conf.accept_http_if_already_terminated then
-    local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
-    result = forwarded_proto_header and forwarded_proto_header:lower() == HTTPS
-  end
-  return result
-end
-
 local function retrieve_parameters()
   ngx.req.read_body()
   -- OAuth2 parameters could be in both the querystring or body
@@ -132,8 +122,9 @@ local function authorize(conf)
   local state = parameters[STATE]
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
 
-  if not is_https(conf) then
-    response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
+  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  if not is_https then
+    response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
       response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
@@ -252,8 +243,9 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  if not is_https(conf) then
-    response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
+  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  if not is_https then
+    response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     local grant_type = parameters[GRANT_TYPE]
     if not (grant_type == GRANT_AUTHORIZATION_CODE or

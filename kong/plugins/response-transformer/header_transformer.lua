@@ -40,6 +40,10 @@ local function is_body_transform_set(conf)
   return #conf.add.json > 0  or #conf.remove.json > 0 or #conf.replace.json > 0 or #conf.append.json > 0
 end
 
+-- export utility functions
+_M.is_json_body = is_json_body
+_M.is_body_transform_set = is_body_transform_set
+
 ---
 --   # Example:
 --   ngx.headers = header_filter.transform_headers(conf, ngx.headers)
