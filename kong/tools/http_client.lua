@@ -71,7 +71,7 @@ local function with_body(method)
 end
 
 local function without_body(method)
-  return function(url, querystring, headers, body)
+  return function(url, querystring, headers)
     if not headers then headers = {} end
 
     if querystring then
