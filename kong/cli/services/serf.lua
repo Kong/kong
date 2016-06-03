@@ -28,7 +28,12 @@ function Serf:_get_cmd()
   local cmd, err = Serf.super._get_cmd(self, {}, function(path)
     local res, code = IO.os_execute(path.." version")
     if code == 0 then
-      return res:match("^Serf v0.7.0")
+      local version_match = res:match("^Serf v0.7.0")
+      if not version_match then
+        logger:error("Incompatible Serf version. Kong requires v0.7.0.")
+        os.exit(1)
+      end
+      return version_match
     end
 
     return false
