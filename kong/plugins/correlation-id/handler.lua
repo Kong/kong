@@ -10,6 +10,9 @@ local CorrelationIdHandler = BasePlugin:extend()
 local worker_uuid
 local worker_counter
 
+local fmt = string.format
+local ngx = ngx
+
 local generators = setmetatable({
   ["uuid"] = function()
     return uuid()
@@ -19,10 +22,10 @@ local generators = setmetatable({
     return worker_uuid.."#"..worker_counter
   end,
   ["tracker"] = function()
-    return string.format("%s-%s-%s-%s-%s-%s",
+    return fmt("%s-%s-%s-%s-%s-%s",
       ngx.var.server_addr,
       ngx.var.server_port,
-      ngx.var.pid,
+      ngx.worker.pid(),
       ngx.var.connection, -- connection serial number
       ngx.var.connection_requests, -- current number of requests made through a connection
       ngx.now() -- the current time stamp from the nginx cached time.
