@@ -11,7 +11,6 @@ local worker_uuid
 local worker_counter
 
 local fmt = string.format
-local ngx = ngx
 
 local generators = setmetatable({
   ["uuid"] = function()
