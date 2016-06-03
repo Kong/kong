@@ -36,7 +36,7 @@ describe("response-transformer header_transformer", function()
           headers = {}
         },
         replace = {
-          headers = {"h1:v1", "h2:v2"}
+          headers = {"h1:v1", "h2:value:2"}  -- payload with colon to verify parsing
         },
         add = {
           json = {"p1:v1"},
@@ -49,12 +49,12 @@ describe("response-transformer header_transformer", function()
       it("should replace a header if the header only exists", function()
         local req_ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}}
         header_transformer.transform_headers(conf, req_ngx_headers)
-        assert.same({h1 = "v1", h2 = "v2"}, req_ngx_headers)
+        assert.same({h1 = "v1", h2 = "value:2"}, req_ngx_headers)
       end)
       it("should not add a new header if the header does not already exist", function()
         local req_ngx_headers = {h2 = {"value2a", "value2b"}}
         header_transformer.transform_headers(conf, req_ngx_headers)
-        assert.same({h2 = "v2"}, req_ngx_headers)
+        assert.same({h2 = "value:2"}, req_ngx_headers)
       end)
       it("should set content-length nil", function()
         local ngx_headers = {h1 = "value1", h2 = {"value2a", "value2b"}, [CONTENT_LENGTH] = "100", ["content-type"] = "application/json"}
