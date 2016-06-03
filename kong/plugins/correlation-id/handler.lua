@@ -11,13 +11,23 @@ local worker_uuid
 local worker_counter
 
 local generators = setmetatable({
-	["uuid"] = function()
+  ["uuid"] = function()
     return uuid()
-	end,
-	["uuid#counter"] = function()
+  end,
+  ["uuid#counter"] = function()
     worker_counter = worker_counter + 1
     return worker_uuid.."#"..worker_counter
-	end,
+  end,
+  ["tracker"] = function()
+    return string.format("%s-%s-%s-%s-%s-%s",
+      ngx.var.server_addr,
+      ngx.var.server_port,
+      ngx.var.pid,
+      ngx.var.connection, -- connection serial number
+      ngx.var.connection_requests, -- current number of requests made through a connection
+      ngx.now() -- the current time stamp from the nginx cached time.
+    )
+  end,
 }, { __index = function(self, generator)
     ngx.log(ngx.ERR, "Invalid generator: "..generator)
 end
