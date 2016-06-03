@@ -3,6 +3,7 @@ local cjson = require "cjson"
 
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN.."#%d"
+local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%d%d%d%.%d%d%d"
 
 describe("Plugin: correlation-id (access)", function()
   local client
@@ -17,6 +18,10 @@ describe("Plugin: correlation-id (access)", function()
     })
     local api3 = assert(helpers.dao.apis:insert {
       request_host = "correlation3.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local api4 = assert(helpers.dao.apis:insert {
+      request_host = "correlation-tracker.com",
       upstream_url = "http://mockbin.com"
     })
 
@@ -37,6 +42,13 @@ describe("Plugin: correlation-id (access)", function()
       config = {
         generator = "uuid",
         echo_downstream = true
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "correlation-id",
+      api_id = api4.id,
+      config = {
+        generator = "tracker"
       }
     })
 
@@ -113,6 +125,35 @@ describe("Plugin: correlation-id (access)", function()
       json = cjson.decode(body)
       local id2 = json.headers["kong-request-id"] -- header received by upstream (mockbin)
       assert.matches(UUID_PATTERN, id2)
+      assert.not_equal(id1, id2)
+    end)
+  end)
+
+  describe("tracker generator", function()
+    it("generates a unique tracker id for every request", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "correlation-tracker.com"
+        }
+      })
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      local id1 = json.headers["kong-request-id"]
+      assert.matches(TRACKER_PATTERN, id1)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "correlation-tracker.com"
+        }
+      })
+      body = assert.res_status(200, res)
+      json = cjson.decode(body)
+      local id2 = json.headers["kong-request-id"]
+      assert.matches(TRACKER_PATTERN, id2)
       assert.not_equal(id1, id2)
     end)
   end)
