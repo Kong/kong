@@ -57,9 +57,8 @@ describe("Authentication Plugin", function()
         { name = "oauth2", config = { scopes = { "email", "profile", "user.email" }, mandatory_scope = true, provision_key = "provision123", token_expiration = 5, enable_implicit_grant = true, accept_http_if_already_terminated = true }, __api = 6 },
       },
       oauth2_credential = {
-        { client_id = "clientid123", client_secret = "secret123", redirect_uri = "http://google.com/kong", name="testapp", __consumer = 1 },
-        { client_id = "clientid456", client_secret = "secret456", redirect_uri = "http://google.com/kong#withfragment", name="testapp2", __consumer = 1 },
-        { client_id = "clientid789", client_secret = "secret789", redirect_uri = "http://google.com/kong?foo=bar&code=123", name="testapp3", __consumer = 1 }
+        { client_id = "clientid123", client_secret = "secret123", redirect_uri = {"http://google.com/kong"}, name="testapp", __consumer = 1 },
+        { client_id = "clientid789", client_secret = "secret789", redirect_uri = {"http://google.com/kong?foo=bar&code=123"}, name="testapp3", __consumer = 1 }
       }
     }
     spec_helper.start_kong()
@@ -145,16 +144,7 @@ describe("Authentication Plugin", function()
         local body = cjson.decode(response)
         assert.are.equal(400, status)
         assert.are.equal(1, utils.table_size(body))
-        assert.are.equal("http://google.com/kong?error=invalid_request&error_description=Invalid%20redirect_uri%20that%20does%20not%20match%20with%20the%20one%20created%20with%20the%20application", body.redirect_uri)
-      end)
-
-      it("should return error when the redirect_uri contains a fragment", function()
-        local response, status = http_client.post(PROXY_SSL_URL.."/oauth2/authorize", { provision_key = "provision123", authenticated_userid = "id123", client_id = "clientid456", scope = "email", response_type = "code" }, {host = "oauth2.com"})
-        local body = cjson.decode(response)
-        assert.are.equal(400, status)
-        assert.are.equal(2, utils.table_size(body))
-        assert.are.equal("invalid_request", body.error)
-        assert.are.equal("Fragment not allowed in redirect_uri", body.error_description)
+        assert.are.equal("http://google.com/kong?error=invalid_request&error_description=Invalid%20redirect_uri%20that%20does%20not%20match%20with%20any%20redirect_uri%20created%20with%20the%20application", body.redirect_uri)
       end)
 
       it("should work even if redirect_uri contains a query string", function()

@@ -5,6 +5,9 @@ local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local BasePlugin = require "kong.plugins.base_plugin"
 
+local pairs = pairs
+local tostring = tostring
+
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
 

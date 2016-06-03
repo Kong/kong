@@ -12,10 +12,10 @@ return {
 
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.keyauth_key_idx')) IS NULL THEN
+        IF (SELECT to_regclass('keyauth_key_idx')) IS NULL THEN
           CREATE INDEX keyauth_key_idx ON keyauth_credentials(key);
         END IF;
-        IF (SELECT to_regclass('public.keyauth_consumer_idx')) IS NULL THEN
+        IF (SELECT to_regclass('keyauth_consumer_idx')) IS NULL THEN
           CREATE INDEX keyauth_consumer_idx ON keyauth_credentials(consumer_id);
         END IF;
       END$$;

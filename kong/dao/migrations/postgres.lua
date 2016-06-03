@@ -24,10 +24,10 @@ return {
       );
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.custom_id_idx')) IS NULL THEN
+        IF (SELECT to_regclass('custom_id_idx')) IS NULL THEN
           CREATE INDEX custom_id_idx ON consumers(custom_id);
         END IF;
-        IF (SELECT to_regclass('public.username_idx')) IS NULL THEN
+        IF (SELECT to_regclass('username_idx')) IS NULL THEN
           CREATE INDEX username_idx ON consumers((lower(username)));
         END IF;
       END$$;
@@ -46,13 +46,13 @@ return {
       );
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.apis_name_idx')) IS NULL THEN
+        IF (SELECT to_regclass('apis_name_idx')) IS NULL THEN
           CREATE INDEX apis_name_idx ON apis(name);
         END IF;
-        IF (SELECT to_regclass('public.apis_request_host_idx')) IS NULL THEN
+        IF (SELECT to_regclass('apis_request_host_idx')) IS NULL THEN
           CREATE INDEX apis_request_host_idx ON apis(request_host);
         END IF;
-        IF (SELECT to_regclass('public.apis_request_path_idx')) IS NULL THEN
+        IF (SELECT to_regclass('apis_request_path_idx')) IS NULL THEN
           CREATE INDEX apis_request_path_idx ON apis(request_path);
         END IF;
       END$$;
@@ -71,13 +71,13 @@ return {
       );
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.plugins_name_idx')) IS NULL THEN
+        IF (SELECT to_regclass('plugins_name_idx')) IS NULL THEN
           CREATE INDEX plugins_name_idx ON plugins(name);
         END IF;
-        IF (SELECT to_regclass('public.plugins_api_idx')) IS NULL THEN
+        IF (SELECT to_regclass('plugins_api_idx')) IS NULL THEN
           CREATE INDEX plugins_api_idx ON plugins(api_id);
         END IF;
-        IF (SELECT to_regclass('public.plugins_consumer_idx')) IS NULL THEN
+        IF (SELECT to_regclass('plugins_consumer_idx')) IS NULL THEN
           CREATE INDEX plugins_consumer_idx ON plugins(consumer_id);
         END IF;
       END$$;
@@ -99,7 +99,7 @@ return {
       );
       DO $$
       BEGIN
-        IF (SELECT to_regclass('public.nodes_cluster_listening_address_idx')) IS NULL THEN
+        IF (SELECT to_regclass('nodes_cluster_listening_address_idx')) IS NULL THEN
           CREATE INDEX nodes_cluster_listening_address_idx ON nodes(cluster_listening_address);
         END IF;
       END$$;

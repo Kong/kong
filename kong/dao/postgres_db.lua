@@ -72,7 +72,7 @@ local function escape_literal(val, field)
     return "'"..tostring((val:gsub("'", "''"))).."'"
   elseif t_val == "boolean" then
     return val and "TRUE" or "FALSE"
-  elseif t_val == "table" and field and field.type == "table" then
+  elseif t_val == "table" and field and (field.type == "table" or field.type == "array") then
     local json = require "cjson"
     return escape_literal(json.encode(val))
   end
@@ -95,15 +95,17 @@ local function parse_error(err_str)
   local err
   if string.find(err_str, "Key .* already exists") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
-    err = Errors.unique {[col] = value}
+    if col then
+      err = Errors.unique {[col] = value}
+    end
   elseif string.find(err_str, "violates foreign key constraint") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
-    err = Errors.foreign {[col] = value}
-  else
-    err = Errors.db(err_str)
+    if col then
+      err = Errors.foreign {[col] = value}
+    end
   end
-
-  return err
+  
+  return err or Errors.db(err_str)
 end
 
 local function get_select_fields(schema)
@@ -447,7 +449,7 @@ end
 
 function PostgresDB:current_migrations()
   -- Check if schema_migrations table exists
-  local rows, err = self:query "SELECT to_regclass('public.schema_migrations')"
+  local rows, err = self:query "SELECT to_regclass('schema_migrations')"
   if err then
     return nil, err
   end

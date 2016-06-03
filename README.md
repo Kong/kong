@@ -3,14 +3,13 @@
 
 Kong is a scalable, open source API Layer *(also known as an API Gateway, or
 API Middleware)*. Kong was originally built at [Mashape][mashape-url] to
-secure, manage and extend over [15,000 APIs &
-Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
+secure, manage and extend over [15,000 Microservices](http://stackshare.io/mashape/how-mashape-manages-over-15000-apis-and-microservices)
 for its API Marketplace, which generates billions of requests per month.
 
 Backed by the battle-tested **NGINX** with a focus on high performance, Kong
 was made available as an open-source platform in 2015. Under active
 development, Kong is now used in production at hundreds of organizations from
-startups, to large enterprises and government departments.
+startups, to large enterprises and government departments including: The New York Times, Expedia, Healthcare.gov, The Guardian, Condè Nast and The University of Auckland.
 
 [Website][kong-url] |
 [Docs](https://getkong.org/docs) |
@@ -105,7 +104,7 @@ code, other repos are also under active development:
   Kong in a 1-click deployment for AWS EC2
 - [Kong AWS AMI](https://aws.amazon.com/marketplace/pp/B014GHERVU): Kong AMI on
   the AWS Marketplace.
-- [Kong on Microsoft Azure](https://github.com/Mashape/kong-azure): Run Kong
+- [Kong on Microsoft Azure](https://github.com/Mashape/kong-dist-azure): Run Kong
   using Azure Resource Manager.
 - [Kong on Heroku](https://github.com/heroku/heroku-kong): Deploy Kong on
   Heroku in one click.
@@ -119,14 +118,14 @@ code, other repos are also under active development:
 - [Kong mentioned for the Empire PaaS](http://engineering.remind.com/introducing-empire/)
 - [Realtime API Management with Pushpin](http://blog.fanout.io/2015/07/14/realtime-api-management-pushpin-kong/)
 - [How to create your own Kong plugin](http://streamdata.io/blog/developing-an-helloworld-kong-plugin/)
-- [Instaclustr partners with Kong](https://www.instaclustr.com/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
+- [Instaclustr partners with Kong](https://www.instaclustr.com/blog/2015/09/16/instaclustr-partners-with-mashape-to-deliver-managed-cassandra-for-kong/)
 - [How to deploy Kong on Azure](https://jeremiedevillard.wordpress.com/2015/10/12/deploy-kong-api-management-using-azure-resource-manager/)
 - [Kong intro in Portuguese](https://www.youtube.com/watch?v=0OIWr1yLs_4)
 - [Kong tutorial in Japanese 1](http://dev.classmethod.jp/etc/kong-api-aggregator/)
 - [Kong tutorial in Japanese 2](http://www.ryuzee.com/contents/blog/7048)
 - [HAProxy + Kong](http://47ron.in/blog/2015/10/23/haproxy-in-the-era-of-microservices.html)
 - [Learn Lua in 15 minutes](http://tylerneylon.com/a/learn-lua/)
-- [A Question about Microservices](http://www.marcotroisi.com/questions-about-microservices/)
+- [A Question about Microservices](http://marcotroisi.com/questions-about-microservices/)
 - [Kong Intro in Chinese](https://www.sdk.cn/news/1596)
 
 **Videos**:
@@ -154,9 +153,9 @@ Here is a list of third-party **tools** maintained by the community:
 - [Kong-UI](https://github.com/msaraf/kong-ui): Admin UI in JavaScript
 - [Konga](https://github.com/Floby/konga-cli): CLI Admin tool in JavaScript
 - [Kongfig](https://github.com/mybuilder/kongfig): Declarative configuration in JavaScript
-- [Kongfig on Puppet Forge](https://forge.puppetlabs.com/mybuilder/kongfig)
+- [Kongfig on Puppet Forge](https://forge.puppet.com/mybuilder/kongfig)
 - [Puppet recipe](https://github.com/scottefein/puppet-nyt-kong)
-- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admint client library for Python
+- [Python-Kong](https://pypi.python.org/pypi/python-kong/): Admin client library for Python
 - [.NET-Kong](https://www.nuget.org/packages/Kong/0.0.4): Admin client library for .NET
 
 ## Roadmap

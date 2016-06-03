@@ -1,5 +1,51 @@
 ## [Unreleased][unreleased]
 
+## [0.8.3] - 2016/06/01
+
+This release includes some bugfixes:
+
+### Changed
+
+- Switched the log level of the "No nodes found in cluster" warning to `INFO`, that was printed when starting up the first Kong node in a new cluster.
+- Kong now requires OpenResty `1.9.7.5`.
+
+### Fixed
+
+- New nodes are now properly registered into the `nodes` table when running on the same machine. [#1281](https://github.com/Mashape/kong/pull/1281)
+- Fixed a failed error parsing on Postgres. [#1269](https://github.com/Mashape/kong/pull/1269)
+- Plugins:
+  - Response Transformer: Slashes are now encoded properly, and fixed a bug that hang the execution of the plugin. [#1257](https://github.com/Mashape/kong/pull/1257) and [#1263](https://github.com/Mashape/kong/pull/1263)
+  - JWT: If a value for `algorithm` is missing, it's now `HS256` by default. This problem occured when migrating from older versions of Kong.
+  - OAuth 2.0: Fixed a Postgres problem that was preventing an application from being created, and fixed a check on the `redirect_uri` field. [#1264](https://github.com/Mashape/kong/pull/1264) and [#1267](https://github.com/Mashape/kong/issues/1267)
+
+## [0.8.2] - 2016/05/25
+
+This release includes bugfixes and minor updates:
+
+### Added
+
+- Support for a simple slash in `request_path`. [#1227](https://github.com/Mashape/kong/pull/1227)
+- Plugins:
+  - Response Rate Limiting: it now appends usage headers to the upstream requests in the form of `X-Ratelimit-Remaining-{limit_name}` and introduces a new `config.block_on_first_violation` property. [#1235](https://github.com/Mashape/kong/pull/1235)
+
+#### Changed
+
+- Plugins:
+  - **Mashape Analytics: The plugin is now called "Galileo", and added support for Galileo v3. [#1159](https://github.com/Mashape/kong/pull/1159)**
+
+#### Fixed
+
+- Postgres now relies on the `search_path` configured on the database and its default value `$user, public`. [#1196](https://github.com/Mashape/kong/issues/1196)
+- Kong now properly encodes an empty querystring parameter like `?param=` when proxying the request. [#1210](https://github.com/Mashape/kong/pull/1210)
+- The configuration now checks that `cluster.ttl_on_failure` is at least 60 seconds. [#1199](https://github.com/Mashape/kong/pull/1199)
+- Plugins:
+  - Loggly: Fixed an issue that was triggering 400 and 500 errors. [#1184](https://github.com/Mashape/kong/pull/1184)
+  - JWT: The `TYP` value in the header is not optional and case-insensitive. [#1192](https://github.com/Mashape/kong/pull/1192)
+  - Request Transformer: Fixed a bug when transforming request headers. [#1202](https://github.com/Mashape/kong/pull/1202)
+  - OAuth 2.0: Multiple redirect URIs are now supported. [#1112](https://github.com/Mashape/kong/pull/1112)
+  - IP Restriction: Fixed that prevented the plugin for working properly when added on an API. [#1245](https://github.com/Mashape/kong/pull/1245)
+  - CORS: Fixed an issue when `config.preflight_continue` was enabled. [#1240](https://github.com/Mashape/kong/pull/1240)
+
 ## [0.8.1] - 2016/04/27
 
 This release includes some fixes and minor updates:
@@ -561,7 +607,9 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.8.1...next
+[unreleased]: https://github.com/mashape/kong/compare/0.8.3...next
+[0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
+[0.8.2]: https://github.com/mashape/kong/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/mashape/kong/compare/0.8.0...0.8.1
 [0.8.0]: https://github.com/mashape/kong/compare/0.7.0...0.8.0
 [0.7.0]: https://github.com/mashape/kong/compare/0.6.1...0.7.0

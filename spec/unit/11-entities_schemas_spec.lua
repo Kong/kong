@@ -179,14 +179,14 @@ describe("Entities Schemas", function()
           assert.equal("must be prefixed with slash: '"..v.."'", errors.request_path)
         end
       end)
-      it("should not accept root (no prefix slash)", function()
+      it("should accept root (prefix slash)", function()
         local valid, errors = validate_entity({
           name = "mockbin",
           request_path = "/",
           upstream_url = "http://mockbin.com"
         }, api_schema)
-        assert.False(valid)
-        assert.equal("cannot be an empty path: '/'", errors.request_path)
+        assert.falsy(errors)
+        assert.True(valid)
       end)
       it("should not accept invalid URI", function()
         local invalids = {"//status", "/status//123", "/status/123//"}

@@ -11,6 +11,7 @@ local http_client = require "kong.tools.http_client"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local STUB_GET_SSL_URL = spec_helper.STUB_GET_SSL_URL
 local PROXY_URL = spec_helper.PROXY_URL
+local API_URL = spec_helper.API_URL
 
 -- Parses an SSL certificate returned by LuaSec
 local function parse_cert(cert)
@@ -335,6 +336,37 @@ describe("Resolver", function()
       local response, status = http_client.get(spec_helper.STUB_GET_URL, {foo = "abc|def, world"}, {host = "mockbin-uri.com"})
       assert.equal(200, status)
       assert.equal("http://mockbin-uri.com/request?foo=abc%7cdef%2c%20world", cjson.decode(response).url)
+    end)
+  end)
+
+  describe("Priority in request_path resolutions", function()
+    setup(function()
+      spec_helper.insert_fixtures {
+        api = {
+          {name = "tests-root-path", upstream_url = "http://httpbin.org", request_path = "/"},
+          {name = "tests-root-path2", upstream_url = "http://mockbin.com", request_path = "/noroot", strip_request_path = true}
+        }
+      }
+
+      spec_helper.restart_kong()
+    end)
+
+    teardown(function()
+      local _, status = http_client.delete(API_URL.."/apis/tests-root-path")
+      assert.equal(204, status)
+      local _, status = http_client.delete(API_URL.."/apis/tests-root-path2")
+      assert.equal(204, status)
+    end)
+
+    it("should work for root request_path", function()
+      local response, status = http_client.get(PROXY_URL.."/get", {})
+      assert.equal(200, status)
+      assert.equal("http://httpbin.org/get", cjson.decode(response).url)
+    end)
+    it("should work for non root request_path", function()
+      local response, status = http_client.get(PROXY_URL.."/noroot/request", {})
+      assert.equal(200, status)
+      assert.equal("http://mockbin.com/request", cjson.decode(response).url)
     end)
   end)
 end)

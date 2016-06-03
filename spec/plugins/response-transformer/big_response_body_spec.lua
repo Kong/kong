@@ -29,7 +29,7 @@ describe("Response Transformer Plugin #proxy", function()
             }
           },
           __api = 1
-        }  
+        }
       }
     }
     spec_helper.start_kong()

@@ -2,11 +2,9 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local basic_serializer = require "kong.plugins.log-serializers.basic"
 local cjson = require "cjson"
 
-
 local LogglyLogHandler = BasePlugin:extend()
 
 LogglyLogHandler.PRIORITY = 1
-
 
 local os_date = os.date
 local tostring = tostring
@@ -94,9 +92,9 @@ local function log(premature, conf, message)
   if premature then return end
   
   if message.response.status >= 500 then
-    return decide_severity(conf.log_level, conf.server_errors_severity, message)
+    return decide_severity(conf, conf.server_errors_severity, message)
   elseif message.response.status >= 400 then
-    return decide_severity(conf.log_level, conf.client_errors_severity, message)
+    return decide_severity(conf, conf.client_errors_severity, message)
   else
     return decide_severity(conf, conf.successful_severity, message)
   end

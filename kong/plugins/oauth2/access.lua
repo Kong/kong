@@ -9,6 +9,7 @@ local url = require "socket.url"
 local Multipart = require "multipart"
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
+local check_https = utils.check_https
 
 local _M = {}
 
@@ -50,7 +51,7 @@ local function generate_token(conf, credential, authenticated_userid, scope, sta
     expires_in = token_expiration,
     refresh_token = refresh_token,
     scope = scope
-  }, {ttl = token_expiration > 0 and 1209600 or nil}) -- Access tokens (and their associated refresh token) are being 
+  }, {ttl = token_expiration > 0 and 1209600 or nil}) -- Access tokens (and their associated refresh token) are being
                                                       -- permanently deleted after 14 days (1209600 seconds)
 
   if err then
@@ -83,20 +84,8 @@ local function get_redirect_uri(client_id)
   return client and client.redirect_uri or nil, client
 end
 
-local HTTPS = "https"
-
-local function is_https(conf)
-  local result = ngx.var.scheme:lower() == HTTPS
-  if not result and conf.accept_http_if_already_terminated then
-    local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
-    result = forwarded_proto_header and forwarded_proto_header:lower() == HTTPS
-  end
-  return result
-end
-
 local function retrieve_parameters()
   ngx.req.read_body()
-  
   -- OAuth2 parameters could be in both the querystring or body
   local body_parameters
   local content_type = req_get_headers()[CONTENT_TYPE]
@@ -131,10 +120,11 @@ local function authorize(conf)
   local response_params = {}
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
-  local redirect_uri, client, parsed_redirect_uri
+  local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
 
-  if not is_https(conf) then
-    response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
+  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  if not is_https then
+    response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
       response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
@@ -154,19 +144,21 @@ local function authorize(conf)
       end
 
       -- Check client_id and redirect_uri
-      redirect_uri, client = get_redirect_uri(parameters[CLIENT_ID])
-      parsed_redirect_uri = url.parse(redirect_uri)
-      if not redirect_uri then
-        response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
-      elseif not parsed_redirect_uri then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI }
-        redirect_uri = nil
-      elseif parsed_redirect_uri.fragment ~= nil then
-        response_params = {[ERROR] = "invalid_request", error_description = "Fragment not allowed in "..REDIRECT_URI }
-        redirect_uri = nil
-      elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
-        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
+      allowed_redirect_uris, client = get_redirect_uri(parameters[CLIENT_ID])
+
+      if not allowed_redirect_uris then
+        response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication" }
+      else
+        redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
+
+        if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+          -- redirect_uri used in this case is the first one registered with the application
+          redirect_uri = allowed_redirect_uris[1]
+        end
       end
+
+      parsed_redirect_uri = url.parse(redirect_uri)
 
       -- If there are no errors, keep processing the request
       if not response_params[ERROR] then
@@ -251,8 +243,9 @@ local function issue_token(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
 
-  if not is_https(conf) then
-    response_params = {[ERROR] = "access_denied", error_description = "You must use HTTPS"}
+  local is_https, err = check_https(conf.accept_http_if_already_terminated)
+  if not is_https then
+    response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     local grant_type = parameters[GRANT_TYPE]
     if not (grant_type == GRANT_AUTHORIZATION_CODE or
@@ -336,7 +329,7 @@ local function issue_token(conf)
   response_params.state = state
 
   -- Sending response in JSON format
-  return responses.send(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400) 
+  return responses.send(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400)
                         or 200, response_params, false, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache",

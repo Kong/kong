@@ -29,7 +29,10 @@ describe("RateLimiting Plugin", function()
         { name = "tests-response-ratelimiting2", request_host = "test2.com", upstream_url = "http://httpbin.org/" },
         { name = "tests-response-ratelimiting3", request_host = "test3.com", upstream_url = "http://httpbin.org/" },
         { name = "tests-response-ratelimiting4", request_host = "test4.com", upstream_url = "http://httpbin.org/" },
-        { name = "tests-response-ratelimiting5", request_host = "test5.com", upstream_url = "http://httpbin.org/" }
+        { name = "tests-response-ratelimiting5", request_host = "test5.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests-response-ratelimiting6", request_host = "test6.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests-response-ratelimiting7", request_host = "test7.com", upstream_url = "http://httpbin.org/" },
+        { name = "tests-response-ratelimiting8", request_host = "test8.com", upstream_url = "http://httpbin.org/" }
       },
       consumer = {
         { custom_id = "consumer_123" },
@@ -43,7 +46,10 @@ describe("RateLimiting Plugin", function()
         { name = "response-ratelimiting", config = { limits = { video = { minute = 6 } } }, __api = 3 },
         { name = "response-ratelimiting", config = { limits = { video = { minute = 2 } } }, __api = 3, __consumer = 1 },
         { name = "response-ratelimiting", config = { continue_on_error = false, limits = { video = { minute = 6 } } }, __api = 4 },
-        { name = "response-ratelimiting", config = { continue_on_error = true, limits = { video = { minute = 6 } } }, __api = 5 }
+        { name = "response-ratelimiting", config = { continue_on_error = true, limits = { video = { minute = 6 } } }, __api = 5 },
+        { name = "response-ratelimiting", config = { continue_on_error = true, limits = { video = { minute = 2 } } }, __api = 6 },
+        { name = "response-ratelimiting", config = { continue_on_error = false, block_on_first_violation = true, limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 7 },
+        { name = "response-ratelimiting", config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }, __api = 8 }
       },
       keyauth_credential = {
         { key = "apikey123", __consumer = 1 },
@@ -80,7 +86,6 @@ describe("RateLimiting Plugin", function()
       -- Additonal request, while limit is 6/minute
       local _, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test1.com"})
       assert.are.equal(429, status)
-
     end)
 
     it("should handle multiple limits", function()
@@ -167,6 +172,40 @@ describe("RateLimiting Plugin", function()
     end)
   end)
 
+  describe("Upstream usage headers", function()
+    it("should append the headers with multiple limits", function()
+      local response, status = http_client.get(PROXY_URL.."/get", {}, {host = "test8.com"})
+      assert.are.equal(200, status)
+      local body = cjson.decode(response)
+      assert.are.equal("4", body.headers["X-Ratelimit-Remaining-Image"])
+      assert.are.equal("6", body.headers["X-Ratelimit-Remaining-Video"])
+
+      -- Actually consume the limits
+      local _, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=2, image=1"}, {host = "test8.com"})
+      assert.are.equal(200, status)
+
+      os.execute("sleep "..SLEEP_VALUE) -- The increment happens in log_by_lua, give it some time
+
+      local response, status = http_client.get(PROXY_URL.."/get", {}, {host = "test8.com"})
+      assert.are.equal(200, status)
+      local body = cjson.decode(response)
+
+      assert.are.equal("3", body.headers["X-Ratelimit-Remaining-Image"])
+      assert.are.equal("4", body.headers["X-Ratelimit-Remaining-Video"])
+    end)
+  end)
+
+  it("should block on first violation", function()
+    local _, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "image=4, video=2"}, {host = "test7.com"})
+    assert.are.equal(200, status)
+
+    os.execute("sleep "..SLEEP_VALUE) -- The increment happens in log_by_lua, give it some time
+
+    local response, status = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=2"}, {host = "test7.com"})
+    assert.are.equal(429, status)
+    assert.are.equal("API rate limit exceeded for 'image'", cjson.decode(response).message)
+  end)
+
   describe("Continue on error", function()
     after_each(function()
       dao_factory:drop_schema()
@@ -205,7 +244,6 @@ describe("RateLimiting Plugin", function()
       assert.falsy(headers["x-ratelimit-limit-video-minute"])
       assert.falsy(headers["x-ratelimit-remaining-video-minute"])
     end)
-
   end)
 
 end)
