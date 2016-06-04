@@ -12,7 +12,7 @@ local worker_counter
 
 local fmt = string.format
 local now = ngx.now
-local worker_pid = tostring(ngx.worker.pid())
+local worker_pid = ngx.worker.pid()
 
 local generators = setmetatable({
   ["uuid"] = function()
