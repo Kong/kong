@@ -13,13 +13,15 @@ describe("AWS Lambda Plugin", function()
         {name = "tests-aws-lambda", request_host = "aws-lambda.com", upstream_url = "http://mockbin.com"},
         {name = "tests-aws-lambda-2", request_host = "aws-lambda-2.com", upstream_url = "aws-lambda://region/func"},
         {name = "tests-aws-lambda-3", request_host = "aws-lambda-3.com", upstream_url = "aws-lambda://region/func"},
-        {name = "tests-aws-lambda-4", request_host = "aws-lambda-4.com", upstream_url = "aws-lambda://region/func"}
+        {name = "tests-aws-lambda-4", request_host = "aws-lambda-4.com", upstream_url = "aws-lambda://region/func"},
+        {name = "tests-aws-lambda-5", request_host = "aws-lambda-5.com", upstream_url = "aws-lambda://region/func"}
       },
       plugin = {
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 1},
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 2},
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 3},
-        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 4}
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 4},
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 5}
       }
     }
 
@@ -70,6 +72,23 @@ describe("AWS Lambda Plugin", function()
         assert.equal('"'..parm_value..'"', response)
       end)
 
+    end)
+
+    describe("with credentials undefined in config", function()
+      it("should accept key:secret in Authorization: basic header value", function()
+        local key = "AKIAIDPNYYGMJOXN26SQ"
+        local secret = "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"
+	local mime = require "mime"
+        local authHeader = "Basic "..mime.b64(key..":"..secret)
+
+	local reqHeaders = {
+		host = "aws-lambda-5.com",
+                Authorization = authHeader
+	}
+        local response, _, _ = http_client.get(PROXY_URL.."/", {}, reqHeaders)
+
+        assert.equal('"foo"', response)
+      end)
     end)
 
   end)

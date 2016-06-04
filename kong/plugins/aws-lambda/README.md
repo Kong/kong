@@ -7,9 +7,9 @@ Working:
 - Allow merging of query parameters from api to lambda payload
 - Allow merging of body from api to lambda
 - Error handling
+- Allow specifying IAM credentials in Authentication header of api to lambda
 
 ToDo:
-- Allow specifying IAM credentials in Authentication header of api to lambda
 - Allow sepecifying region, function name, qualifier, invocation type, log type and client context declaratively in aws-lambda schemed upstream_url of parent api
 - Add spport for IAM Instance Role authentication
 - Add support for other invocation types?

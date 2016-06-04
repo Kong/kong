@@ -46,17 +46,17 @@ return {
 			type = string,
 			required = false,
 			default = nil },
-		client_context = {
+		--client_context = {
+		--	type = string,
+		--	required = false,
+		--	default = nil },
+		aws_access_key = {
 			type = string,
 			required = false,
 			default = nil },
-		aws_access_key = {
-			type = string,
-			required = true,
-			default = nil },
 		aws_secret_key = {
 			type = string,
-			required = true,
+			required = false,
 			default = nil }
 	}
 }
