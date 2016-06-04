@@ -24,7 +24,7 @@ local generators = setmetatable({
   end,
   ["tracker"] = function()
     local var = ngx.var
-    return fmt("%s-%s-%d-%s-%s-%s",
+    return fmt("%s-%s-%d-%s-%s-%0.3f",
       var.server_addr,
       var.server_port,
       worker_pid,
