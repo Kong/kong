@@ -1,15 +1,17 @@
 -- Performs AWSv4 Signing
 -- http://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html
 
-local openssl_hmac_new = require "openssl.hmac".new
-local openssl_digest_new = require "openssl.digest".new
+local hmac = require "kong.plugins.aws-lambda.resty.hmac"
+local restySha256 = require "resty.sha256"
 
 local Algorithm = "AWS4-HMAC-SHA256"
 local function HMAC(key, msg)
-	return openssl_hmac_new(key, "sha256"):final(msg)
+	return hmac:new():digest("sha256", key, msg, true)
 end
 local function Hash(str)
-	return openssl_digest_new("sha256"):final(str)
+	local sha256 = restySha256:new()
+	sha256:update(str)
+	return sha256:final()
 end
 local HexEncode do -- From prosody's util.hex
 	local char_to_hex = {};

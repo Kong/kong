@@ -36,8 +36,7 @@ dependencies = {
   "lua-llthreads2 ~> 0.1.3-1",
   "luacrypto >= 0.3.2-1",
   "luasyslog >= 1.0.0-2",
-  "lua_pack ~> 1.0.4-0",
-  "luaossl ~> 20151221-0"
+  "lua_pack ~> 1.0.4-0"
 }
 build = {
   type = "builtin",
@@ -267,6 +266,7 @@ build = {
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
 
+    ["kong.plugins.aws-lambda.resty.hmac"] = "kong/plugins/aws-lambda/resty/hmac.lua",
     ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.aws.v4"] = "kong/plugins/aws-lambda/aws/v4.lua"
