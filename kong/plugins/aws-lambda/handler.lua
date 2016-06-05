@@ -1,6 +1,5 @@
 local cjson = require 'cjson'
 local http_client = require 'kong.tools.http_client'
-local ltn12 = require 'ltn12'
 
 local prepare_request = require "kong.plugins.aws-lambda.aws.v4".prepare_request
 
@@ -28,7 +27,7 @@ function AwsLambdaHandler:access(conf)
 	local reqHeaders = ngx.req.get_headers()
 	local auth = reqHeaders["Authorization"]
 	if auth ~= nil and auth ~= "" then
-		local parts = {} partsLen = 0
+		local parts = {} local partsLen = 0
 		for p in string.gmatch(auth, "%S+") do
 			table.insert(parts, p)
 			partsLen = partsLen + 1
@@ -86,9 +85,8 @@ function AwsLambdaHandler:access(conf)
 	    SecretKey = creds.secret_key
 	})
 
-	local response = {}
         -- one, code, headers, status = https.request
-	local response, status, headers, _ = http_client.post(
+	local response, _, headers, _ = http_client.post(
 		request.url,
 		request.body,
 		request.headers

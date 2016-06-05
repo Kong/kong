@@ -1,20 +1,20 @@
-local function check_invocation_type(given_value, given_config, col, tbl, schema, opts)
-	if given_value ~= "RequestResponse" then
-		return false, "not supported"
-	end
-end
-
-local function check_log_type(given_value, given_config)
-	if given_value ~= "None" then
-		return false, "not supported"
-	end
-end
-
-local function check_qualifier(given_value, given_config)
-	if given_value ~= nil then
-		return false, "not supported"
-	end
-end
+--local function check_invocation_type(given_value, given_config, col, tbl, schema, opts)
+--	if given_value ~= "RequestResponse" then
+--		return false, "not supported"
+--	end
+--end
+--
+--local function check_log_type(given_value, given_config)
+--	if given_value ~= "None" then
+--		return false, "not supported"
+--	end
+--end
+--
+--local function check_qualifier(given_value, given_config)
+--	if given_value ~= nil then
+--		return false, "not supported"
+--	end
+--end
 
 return {
 	no_consumer = true,
