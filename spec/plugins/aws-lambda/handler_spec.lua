@@ -75,6 +75,7 @@ describe("AWS Lambda Plugin", function()
     end)
 
     describe("with credentials undefined in config", function()
+
       it("should accept key:secret in Authorization: basic header value", function()
         local key = "AKIAIDPNYYGMJOXN26SQ"
         local secret = "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"
@@ -89,6 +90,7 @@ describe("AWS Lambda Plugin", function()
 
         assert.equal('"foo"', response)
       end)
+
     end)
 
   end)

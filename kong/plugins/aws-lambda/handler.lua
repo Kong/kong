@@ -11,20 +11,11 @@ function AwsLambdaHandler:new()
 	AwsLambdaHandler.super.new(self, "aws-lambda")
 end
 
-function AwsLambdaHandler:access(conf)
-	AwsLambdaHandler.super.access(self)
-
-	if ngx.ctx.api.upstream_url:find("^aws%-lambda") == nil then
-		ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-		ngx.print("Invalid upstream_url - must be 'aws-lambda'.")
-		return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
-	end
-
+local function getCreds(conf, reqHeaders)
 	local creds = {
 		access_key = conf.aws_access_key,
 		secret_key = conf.aws_secret_key
 	}
-	local reqHeaders = ngx.req.get_headers()
 	local auth = reqHeaders["Authorization"]
 	if auth ~= nil and auth ~= "" then
 		local parts = {} local partsLen = 0
@@ -46,12 +37,10 @@ function AwsLambdaHandler:access(conf)
 			end
 		end
 	end
+	return creds
+end
 
-	--conf.qualifier ???
-	--conf.client_context ???
-	--conf.invocation_type ???
-	--conf.log_type ???
-
+local function getBodyJson(conf, reqHeaders)
         local body = cjson.decode(conf.body)
 	ngx.req.read_body()
 	local post
@@ -68,7 +57,27 @@ function AwsLambdaHandler:access(conf)
         for k, v in pairs(args) do
           body[k] = v
         end
-        local bodyJson = cjson.encode(body)
+        return cjson.encode(body)
+end
+
+function AwsLambdaHandler:access(conf)
+	AwsLambdaHandler.super.access(self)
+
+	if ngx.ctx.api.upstream_url:find("^aws%-lambda") == nil then
+		ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+		ngx.print("Invalid upstream_url - must be 'aws-lambda'.")
+		return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+	end
+
+	local reqHeaders = ngx.req.get_headers()
+
+	local creds = getCreds(conf, reqHeaders)
+	local bodyJson = getBodyJson(conf, reqHeaders)
+
+	--conf.qualifier ???
+	--conf.client_context ???
+	--conf.invocation_type ???
+	--conf.log_type ???
 
 	local request, _ = prepare_request({
 	    Region = conf.aws_region,
