@@ -132,6 +132,10 @@ function Factory:drop_schema()
   _db:drop_table("schema_migrations")
 end
 
+function Factory:truncate_table(dao_name)
+  _db:truncate_table(self.daos[dao_name].table)
+end
+
 function Factory:truncate_tables()
   for _, dao in pairs(self.daos) do
     _db:truncate_table(dao.table)
