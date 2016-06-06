@@ -11,17 +11,25 @@ describe("AWS Lambda Plugin", function()
     spec_helper.insert_fixtures {
       api = {
         {name = "tests-aws-lambda", request_host = "aws-lambda.com", upstream_url = "http://mockbin.com"},
-        {name = "tests-aws-lambda-2", request_host = "aws-lambda-2.com", upstream_url = "aws-lambda://region/func"},
-        {name = "tests-aws-lambda-3", request_host = "aws-lambda-3.com", upstream_url = "aws-lambda://region/func"},
-        {name = "tests-aws-lambda-4", request_host = "aws-lambda-4.com", upstream_url = "aws-lambda://region/func"},
-        {name = "tests-aws-lambda-5", request_host = "aws-lambda-5.com", upstream_url = "aws-lambda://region/func"}
+        {name = "tests-aws-lambda-2", request_host = "aws-lambda-2.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
+        {name = "tests-aws-lambda-3", request_host = "aws-lambda-3.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
+        {name = "tests-aws-lambda-4", request_host = "aws-lambda-4.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
+        {name = "tests-aws-lambda-5", request_host = "aws-lambda-5.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
+        {name = "tests-aws-lambda-6", request_host = "aws-lambda-6.com", upstream_url = "aws-lambda://region/func"},
+        {name = "tests-aws-lambda-7", request_host = "aws-lambda-7.com", upstream_url = "aws-lambda://region/func"}
+
+
       },
       plugin = {
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 1},
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 2},
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 3},
         {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 4},
-        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 5}
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 5},
+        {name = "aws-lambda", config = {aws_region = "us-east-1", function_name = "func", body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 6},
+        {name = "aws-lambda", config = {aws_region = "region", function_name = "kongLambdaTest", body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 7}
+
+
       }
     }
 
@@ -37,8 +45,9 @@ describe("AWS Lambda Plugin", function()
     describe("with all parameters defined in config", function ()
 
       it("should return informative 500 error when upstream_url is not aws-lambda scheme", function()
-        local response, _, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda.com"})
+        local response, code, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda.com"})
   
+        assert.equal(500, code)
         assert.equal("Invalid upstream_url - must be 'aws-lambda'.", response)
       end)
   
@@ -89,6 +98,24 @@ describe("AWS Lambda Plugin", function()
         local response, _, _ = http_client.get(PROXY_URL.."/", {}, reqHeaders)
 
         assert.equal('"foo"', response)
+      end)
+
+    end)
+
+    describe("with upstream_url different from config aws_region and function_name", function()
+
+      it("should return 500 Internal Server Error with informative message about mismatched region", function()
+        local response, code, _ = http_client.get(PROXY_URL.."/", {}, { host = "aws-lambda-6.com" })
+
+        assert.equal(500, code)
+        assert.equal("aws-lambda plugin config aws_region (us-east-1) must match api upstream_url host (region)", response)
+      end)
+
+      it("should return 500 Internal Server Error with informative message about mismatched function", function()
+        local response, code, _ = http_client.get(PROXY_URL.."/", {}, { host = "aws-lambda-7.com" })
+
+        assert.equal(500, code)
+        assert.equal("aws-lambda plugin config function_name (kongLambdaTest) must match api upstream_url path (func)", response)
       end)
 
     end)

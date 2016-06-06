@@ -60,12 +60,49 @@ local function getBodyJson(conf, reqHeaders)
         return cjson.encode(body)
 end
 
+function getTarget(conf)
+	local target = {
+		region = nil,
+		function_name = nil,
+		is_valid = true,
+		error_message = nil
+	}
+
+	local upstream_url = ngx.ctx.api.upstream_url
+
+	if upstream_url:find("^aws%-lambda") == nil then
+		target.is_valid = false
+		target.error_message = "Invalid upstream_url - must be 'aws-lambda'."
+		return target
+	end
+
+	local url = require("socket.url").parse(upstream_url)
+	target.region = url.host
+	target.function_name = url.path:sub(2)
+	local err_config
+	local err_url
+	if target.region ~= conf.aws_region then
+		err_config = "aws_region ("..conf.aws_region..")"
+		err_url = "host ("..target.region..")"
+		target.is_valid = false
+	elseif target.function_name ~= conf.function_name then
+		err_config = "function_name ("..conf.function_name..")"
+		err_url = "path ("..target.function_name..")"
+		target.is_valid = false
+	end
+	if not target.is_valid then
+		target.error_message = string.format("aws-lambda plugin config %s must match api upstream_url %s", err_config, err_url)
+	end
+	return target
+end
+
 function AwsLambdaHandler:access(conf)
 	AwsLambdaHandler.super.access(self)
 
-	if ngx.ctx.api.upstream_url:find("^aws%-lambda") == nil then
+	local target = getTarget(conf)
+	if not target.is_valid then
 		ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
-		ngx.print("Invalid upstream_url - must be 'aws-lambda'.")
+		ngx.print(target.error_message)
 		return ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
 	end
 
@@ -80,7 +117,7 @@ function AwsLambdaHandler:access(conf)
 	--conf.log_type ???
 
 	local request, _ = prepare_request({
-	    Region = conf.aws_region,
+	    Region = target.region,
 	    Service = "lambda",
 	    method = 'POST',
 	    headers = {
@@ -89,13 +126,13 @@ function AwsLambdaHandler:access(conf)
 		["Content-Length"] = tostring(string.len(bodyJson))
 	    },
 	    body = bodyJson,
-	    path = '/2015-03-31/functions/'..conf.function_name..'/invocations',
+	    path = '/2015-03-31/functions/'..target.function_name..'/invocations',
 	    AccessKey = creds.access_key,
 	    SecretKey = creds.secret_key
 	})
 
-        -- one, code, headers, status = https.request
-	local response, _, headers, _ = http_client.post(
+        -- response, code, headers = http_client.get
+	local response, _, headers = http_client.post(
 		request.url,
 		request.body,
 		request.headers
