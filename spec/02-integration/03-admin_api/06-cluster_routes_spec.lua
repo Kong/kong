@@ -9,7 +9,7 @@ describe("Admin API", function()
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
   teardown(function()
     if client then
@@ -63,7 +63,7 @@ describe("Admin API", function()
         local tstart = ngx.time()
         local texp, started = tstart + 2 -- 2s timeout
         repeat
-          ngx.sleep "0.2"
+          ngx.sleep(0.2)
           started = is_running(pid_path)
         until started or ngx.time() >= texp
         assert(started, "Serf agent start: timeout")

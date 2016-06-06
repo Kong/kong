@@ -10,8 +10,8 @@ describe("Admin API", function()
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port, 2000))
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port, 2000))
   end)
   teardown(function()
     if client then

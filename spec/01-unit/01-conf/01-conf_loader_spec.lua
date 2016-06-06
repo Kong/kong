@@ -62,6 +62,15 @@ describe("Configuration loader", function()
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["my-plugin"])
   end)
+  it("extracts ports and listen ips from proxy_listen/admin_listen", function()
+    local conf = assert(conf_loader())
+    assert.equal("0.0.0.0", conf.admin_ip)
+    assert.equal(8001, conf.admin_port)
+    assert.equal("0.0.0.0", conf.proxy_ip)
+    assert.equal(8000, conf.proxy_port)
+    assert.equal("0.0.0.0", conf.proxy_ssl_ip)
+    assert.equal(8443, conf.proxy_ssl_port)
+  end)
 
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
@@ -135,6 +144,25 @@ describe("Configuration loader", function()
                  .." (ALL, EACH_QUORUM, QUORUM, LOCAL_QUORUM, ONE, TWO,"
                  .." THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
+    end)
+    it("enforces listen addresses format", function()
+      local conf, err = conf_loader(nil, {
+        admin_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_listen must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_listen must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen_ssl = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_listen_ssl must be of form 'address:port'", err)
     end)
   end)
 

@@ -2,7 +2,7 @@ return [[
 admin_listen = 0.0.0.0:8001
 proxy_listen = 0.0.0.0:8000
 
-log_level = error
+log_level = notice
 
 ssl = off
 ssl_cert = NONE

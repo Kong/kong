@@ -176,7 +176,7 @@ local function load(path, custom_conf)
     local f, err = pl_file.read(path)
     if not f then return nil, err end
 
-    log.verbose("reading config file at "..path)
+    log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
     from_file_conf, err = pl_config.read(s)
     s:close()
@@ -207,7 +207,25 @@ local function load(path, custom_conf)
     conf.custom_plugins = nil
   end
 
-  log.verbose("prefix in use: "..conf.prefix)
+  do
+    -- extract ports/listen ips
+    local ip_port_pat = "(.+):([%d]+)$"
+    local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
+    local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
+    local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
+
+    if not admin_port then return nil, "admin_listen must be of form 'address:port'"
+    elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
+    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
+    conf.admin_ip = admin_ip
+    conf.proxy_ip = proxy_ip
+    conf.proxy_ssl_ip = proxy_ssl_ip
+    conf.admin_port = tonumber(admin_port)
+    conf.proxy_port = tonumber(proxy_port)
+    conf.proxy_ssl_port = tonumber(proxy_ssl_port)
+  end
+
+  log.verbose("prefix in use: %s", conf.prefix)
 
   return setmetatable(conf, nil) -- remove Map mt
 end
