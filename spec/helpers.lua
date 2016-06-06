@@ -21,13 +21,6 @@ local dao = DAOFactory(conf)
 -- make sure migrations are up-to-date
 --assert(dao:run_migrations())
 
---------------------
--- Custom properties
---------------------
-local admin_port = string.match(conf.admin_listen, ":([%d]+)$")
-local proxy_port = string.match(conf.proxy_listen, ":([%d]+)$")
-local ssl_proxy_port = string.match(conf.proxy_listen_ssl, ":([%d]+)$")
-
 -----------------
 -- Custom helpers
 -----------------
@@ -76,6 +69,25 @@ local function http_client(host, port, timeout)
   return setmetatable({
     client = client
   }, resty_http_proxy_mt)
+end
+
+local function wait_until(f, timeout)
+  if type(f) ~= "function" then
+    error("arg #1 must be a function", 2)
+  end
+
+  timeout = timeout or 2
+  local tstart = ngx.time()
+  local texp, ok = tstart + timeout
+
+  repeat
+    ngx.sleep(0.2)
+    ok = f()
+  until ok or ngx.time() >= texp
+
+  if not ok then
+    error("wait_until() timeout", 2)
+  end
 end
 
 local function udp_server(port)
@@ -199,13 +211,11 @@ return {
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
-  proxy_port = proxy_port,
-  ssl_proxy_port = ssl_proxy_port,
-  admin_port = admin_port,
 
   -- Kong testing helpers
   kong_exec = kong_exec,
   http_client = http_client,
+  wait_until = wait_until,
   udp_server = udp_server,
 
   prepare_prefix = function(prefix)
