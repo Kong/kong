@@ -21,10 +21,12 @@ return {
 	fields = {
 		aws_region = {
 			type = "string",
-			required = true },
+			required = false,
+			default = "" },
 		function_name = {
 			type = "string",
-			required = true },
+			required = false,
+			default = "" },
 		--qualifier = {
 		--	type = "string",
 		--	required = false,

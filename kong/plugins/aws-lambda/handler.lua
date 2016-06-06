@@ -81,11 +81,11 @@ function getTarget(conf)
 	target.function_name = url.path:sub(2)
 	local err_config
 	local err_url
-	if target.region ~= conf.aws_region then
+	if target.region ~= conf.aws_region and conf.aws_region ~= "" then
 		err_config = "aws_region ("..conf.aws_region..")"
 		err_url = "host ("..target.region..")"
 		target.is_valid = false
-	elseif target.function_name ~= conf.function_name then
+	elseif target.function_name ~= conf.function_name and conf.function_name ~= "" then
 		err_config = "function_name ("..conf.function_name..")"
 		err_url = "path ("..target.function_name..")"
 		target.is_valid = false
