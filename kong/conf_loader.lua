@@ -4,38 +4,62 @@ local DEFAULT_PATHS = {
 }
 
 local CONF_SCHEMA = {
-  -- kong
-  log_level = {enum = {"debug", "info", "notice", "warn",
-                       "error", "crit", "alert", "emerg"}},
+  prefix = {typ = "string"},
+  
+  -- Network
+  proxy_listen = {typ="ipv4_port"},
+  proxy_listen_ssl = {typ="ipv4_port"},
+  admin_listen = {typ="ipv4_port"},
+  cluster_listen = {typ="ipv4_port"},
+  cluster_listen_rpc = {typ="ipv4_port"},
 
-  ssl = {typ = "boolean"},
-
-  custom_plugins = {typ = "array"},
-
+  -- Database
   database = {enum = {"postgres", "cassandra"}},
+  pg_host = {typ = "string"},
   pg_port = {typ = "number"},
+  pg_database = {typ = "string"},
+  pg_user = {typ = "string"},
+  pg_password = {typ = "string"},
+
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
+  cassandra_keyspace = {typ = "string"},
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},
   cassandra_data_centers = {typ = "array"},
-  cassandra_timeout = {typ = "number"},
   cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
                                    "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
+  cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
+  cassandra_ssl_trusted_cert = {typ = "string"},
+  cassandra_username = {typ = "string"},
+  cassandra_password = {typ = "string"},
 
+  -- Cluster
+  cluster_advertise = {typ = "ipv4_port"},
+  cluster_encrypt = {typ = "string"},
+  cluster_ttl_on_failure = {typ = "number"},
+
+  -- DNS
   dnsmasq = {typ = "boolean"},
+  dnsmasq_port = {typ = "number"},
+  dns_resolver_address = {typ = "ipv4_port"},
 
+  -- General
+  log_level = {enum = {"debug", "info", "notice", "warn",
+                       "error", "crit", "alert", "emerg"}},
+  custom_plugins = {typ = "array"},
+  ssl_cert = {typ = "string"},
+  ssl_cert_key = {typ = "string"},
   anonymous_reports = {typ = "boolean"},
-
-  -- ngx_lua
-  lua_code_cache = {typ = "ngx_boolean"},
-
-  -- nginx
   nginx_daemon = {typ = "ngx_boolean"},
+  nginx_worker_processes = {typ = "string"},
   nginx_optimizations = {typ = "boolean"},
-  nginx_worker_processes = {typ = "string"} -- force string inference
+  mem_cache_size = {typ = "number"},
+
+  -- Lua
+  lua_code_cache = {typ = "ngx_boolean"}
 }
 
 local kong_default_conf = require "kong.templates.kong_defaults"
@@ -54,6 +78,9 @@ local typ_checks = {
   number = function(v) return type(v) == "number" end,
   boolean = function(v) return type(v) == "boolean" end,
   ngx_boolean = function(v) return v == "on" or v == "off" end,
+  ipv4_port = function(v)
+    return v:match("^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$") ~= nil
+  end
 }
 
 local function check_and_infer(conf)
@@ -71,7 +98,7 @@ local function check_and_infer(conf)
       value = value == true or value == "on" or value == "true"
     elseif typ == "ngx_boolean" then
       value = (value == "on" or value == true) and "on" or "off"
-    elseif typ == "string" then
+    elseif typ == "string" or typ == "ipv4_port" then
       value = tostring(value) -- forced string inference
     elseif typ == "number" then
       value = tonumber(value) -- catch ENV variables (strings) that should be numbers
@@ -99,12 +126,14 @@ local function check_and_infer(conf)
   end
 
   -- custom validation
-  if conf.ssl then
-    if not conf.ssl_cert then
-      errors[#errors+1] = "ssl_cert required if SSL enabled"
-    elseif not conf.ssl_cert_key then
-      errors[#errors+1] = "ssl_cert_key required if SSL enabled"
-    end
+  if conf.ssl_cert and not conf.ssl_cert_key then
+    errors[#errors+1] = "ssl_cert_key must be enabled"
+  elseif (conf.ssl_cert_key and not conf.ssl_cert) then
+    errors[#errors+1] = "ssl_cert must be enabled"
+  end
+  
+  if conf.dns_resolver_address and conf.dnsmasq then
+    errors[#errors+1] = "when specifying a custom dns_resolver_address you must turn off dnsmasq"
   end
 
   return #errors == 0, errors[1], errors

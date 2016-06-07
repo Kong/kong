@@ -136,6 +136,19 @@ describe("Configuration loader", function()
                  .." THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
+    it("enforces ipv4_port types", function()
+      local conf, err = conf_loader(nil, {
+        proxy_listen = 123
+      })
+      assert.equal("proxy_listen is not a ipv4_port: '123'", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen = "1.1.1.1"
+      })
+      assert.equal("proxy_listen is not a ipv4_port: '1.1.1.1'", err)
+      assert.is_nil(conf)
+    end)
   end)
 
   describe("errors", function()
@@ -144,29 +157,48 @@ describe("Configuration loader", function()
       assert.equal("no file at: inexistent", err)
       assert.is_nil(conf)
     end)
-    it("requires cert and key if SSL is enabled", function()
+    it("returns a DNS error when both a resolver and dnsmasq are enabled", function()
       local conf, err = conf_loader(nil, {
-        ssl = true
+        dnsmasq = true,
+        dns_resolver_address = "8.8.8.8:53"
       })
-      assert.equal("ssl_cert required if SSL enabled", err)
+      assert.equal("when specifying a custom dns_resolver_address you must turn off dnsmasq", err)
+      assert.is_nil(conf)
+      
+      conf, err = conf_loader(nil, {
+        dnsmasq = false,
+        dns_resolver_address = "8.8.8.8:53"
+      })
+      assert.is_nil(err)
+      assert.truthy(conf)
+    end)
+    it("requires both SSL cert and key", function()
+      local conf, err = conf_loader(nil, {
+        ssl_cert = "/path/cert.pem"
+      })
+      assert.equal("ssl_cert_key must be enabled", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        ssl = true,
-        ssl_cert = "/path/cert.pem"
+        ssl_cert_key = "/path/key.pem"
       })
-      assert.equal("ssl_cert_key required if SSL enabled", err)
+      assert.equal("ssl_cert must be enabled", err)
       assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        ssl_cert = "/path/cert.pem",
+        ssl_cert_key = "/path/key.pem"
+      })
+      assert.falsy(err)
+      assert.truthy(conf)
     end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
-        ssl = true,
         cassandra_repl_strategy = "foo"
       })
-      assert.equal(2, #errors)
+      assert.equal(1, #errors)
       assert.is_nil(conf)
       assert.matches("cassandra_repl_strategy has", errors[1], nil, true)
-      assert.matches("ssl_cert required", errors[2], nil, true)
     end)
   end)
 end)
