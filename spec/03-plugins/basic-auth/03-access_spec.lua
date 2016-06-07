@@ -2,7 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
 
-describe("Plugin: key-auth", function()
+describe("Plugin: basic-auth", function()
   local client
   setup(function()
     helpers.dao:truncate_tables()
@@ -10,32 +10,33 @@ describe("Plugin: key-auth", function()
     assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "key-auth1.com",
+      request_host = "basic-auth1.com",
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name = "basic-auth",
       api_id = api1.id
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "key-auth2.com",
+      request_host = "basic-auth2.com",
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
-      name = "key-auth",
+      name = "basic-auth",
       api_id = api2.id,
       config = {
         hide_credentials = true
       }
     })
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
+    local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
-    assert(helpers.dao.keyauth_credentials:insert {
-      key = "kong",
-      consumer_id = consumer1.id
+    assert(helpers.dao.basicauth_credentials:insert {
+      username = "bob",
+      password = "kong",
+      consumer_id = consumer.id
     })
 
     assert(helpers.start_kong())
@@ -55,72 +56,95 @@ describe("Plugin: key-auth", function()
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "key-auth1.com"
+          ["Host"] = "basic-auth1.com"
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"message":"No API Key found in headers, body or querystring"}]], body)
+      assert.equal([[{"message":"Unauthorized"}]], body)
     end)
     it("returns WWW-Authenticate header on missing credentials", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "key-auth1.com"
+          ["Host"] = "basic-auth1.com"
         }
       })
-      res:read_body()
-      assert.equal('Key realm="'..meta._NAME..'"', res.headers["WWW-Authenticate"])
+      assert.res_status(401, res)
+      assert.equal('Basic realm="'..meta._NAME..'"', res.headers["WWW-Authenticate"])
     end)
   end)
 
-  describe("key in querystring", function()
-    it("authenticates valid credentials", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/request?apikey=kong",
-        headers = {
-          ["Host"] = "key-auth1.com",
-        }
-      })
-      assert.res_status(200, res)
-    end)
-    it("returns 403 Forbidden on invalid key", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/status/200?apikey=123",
-        headers = {
-          ["Host"] = "key-auth1.com"
-        }
-      })
-      local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
-    end)
-  end)
-
-  describe("key in headers", function()
-    it("authenticates valid credentials", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          ["Host"] = "key-auth1.com",
-          ["apikey"] = "kong"
-        }
-      })
-      assert.res_status(200, res)
-    end)
-    it("returns 403 Forbidden on invalid key", function()
+  describe("Forbidden", function()
+    it("returns 403 Forbidden on invalid credentials in Authorization", function()
       local res = assert(client:send {
         method = "GET",
         path = "/status/200",
         headers = {
-          ["Host"] = "key-auth1.com",
-          ["apikey"] = "123"
+          ["Authorization"] = "foobar",
+          ["Host"] = "basic-auth1.com"
         }
       })
       local body = assert.res_status(403, res)
       assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+    end)
+    it("returns 403 Forbidden on invalid credentials in Proxy-Authorization", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Proxy-Authorization"] = "foobar",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      local body = assert.res_status(403, res)
+      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+    end)
+    it("returns 403 Forbidden on password only", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Authorization"] = "Basic a29uZw==",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      local body = assert.res_status(403, res)
+      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+    end)
+    it("returns 403 Forbidden on username only", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Authorization"] = "Basic Ym9i",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      local body = assert.res_status(403, res)
+      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+    end)
+    it("authenticates valid credentials in Authorization", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Authorization"] = "Basic Ym9iOmtvbmc=",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("authenticates valid credentials in Proxy-Authorization", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Proxy-Authorization"] = "Basic Ym9iOmtvbmc=",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      assert.res_status(200, res)
     end)
   end)
 
@@ -128,9 +152,10 @@ describe("Plugin: key-auth", function()
     it("sends Consumer headers to upstream", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/request?apikey=kong",
+        path = "/request",
         headers = {
-          ["Host"] = "key-auth1.com",
+          ["Authorization"] = "Basic Ym9iOmtvbmc=",
+          ["Host"] = "basic-auth1.com"
         }
       })
       local body = assert.res_status(200, res)
@@ -146,26 +171,26 @@ describe("Plugin: key-auth", function()
         method = "GET",
         path = "/request",
         headers = {
-          ["Host"] = "key-auth1.com",
-          ["apikey"] = "kong"
+          ["Authorization"] = "Basic Ym9iOmtvbmc=",
+          ["Host"] = "basic-auth1.com"
         }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.equal("kong", json.headers.apikey)
+      assert.equal("Basic Ym9iOmtvbmc=", json.headers.authorization)
     end)
     it("true doesn't send key to upstream", function()
       local res = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
-          ["Host"] = "key-auth2.com",
-          ["apikey"] = "kong"
+          ["Authorization"] = "Basic Ym9iOmtvbmc=",
+          ["Host"] = "basic-auth2.com"
         }
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert.is_nil(json.headers.apikey)
+      assert.is_nil(json.headers.authorization)
     end)
   end)
 end)
