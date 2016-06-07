@@ -230,8 +230,8 @@ describe("Configuration loader", function()
         ssl_cert = "/path/cert.pem",
         ssl_cert_key = "/path/key.pem"
       })
-      assert.falsy(err)
-      assert.truthy(conf)
+      assert.is_nil(err)
+      assert.is_table(conf)
     end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
