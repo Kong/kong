@@ -3,7 +3,7 @@ local DEFAULT_PATHS = {
   "/etc/kong/kong.conf"
 }
 
-local CONF_PARTIAL_SCHEMA = {
+local CONF_INFERENCES = {
 
   -- forced string inference
   proxy_listen = {typ = "string"},
@@ -66,7 +66,7 @@ local function check_and_infer(conf)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_PARTIAL_SCHEMA[k] or {}
+    local v_schema = CONF_INFERENCES[k] or {}
     local typ = v_schema.typ
 
     -- transform {boolean} values ("on"/"off" aliasing to true/false)
