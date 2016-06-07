@@ -60,7 +60,7 @@ local function getBodyJson(conf, reqHeaders)
         return cjson.encode(body)
 end
 
-function getTarget(conf)
+local function getTarget(conf)
 	local target = {
 		region = nil,
 		function_name = nil,
@@ -70,29 +70,15 @@ function getTarget(conf)
 
 	local upstream_url = ngx.ctx.api.upstream_url
 
-	if upstream_url:find("^aws%-lambda") == nil then
+	if upstream_url:find("^aws%-lambda://[^/]+/[^/]+") == nil then
 		target.is_valid = false
-		target.error_message = "Invalid upstream_url - must be 'aws-lambda'."
+		target.error_message = "Invalid upstream_url - must be 'aws-lambda://<aws_region>/<function_name>'."
 		return target
 	end
 
 	local url = require("socket.url").parse(upstream_url)
 	target.region = url.host
 	target.function_name = url.path:sub(2)
-	local err_config
-	local err_url
-	if target.region ~= conf.aws_region and conf.aws_region ~= "" then
-		err_config = "aws_region ("..conf.aws_region..")"
-		err_url = "host ("..target.region..")"
-		target.is_valid = false
-	elseif target.function_name ~= conf.function_name and conf.function_name ~= "" then
-		err_config = "function_name ("..conf.function_name..")"
-		err_url = "path ("..target.function_name..")"
-		target.is_valid = false
-	end
-	if not target.is_valid then
-		target.error_message = string.format("aws-lambda plugin config %s must match api upstream_url %s", err_config, err_url)
-	end
 	return target
 end
 
