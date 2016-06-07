@@ -235,11 +235,13 @@ describe("Configuration loader", function()
     end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
-        cassandra_repl_strategy = "foo"
+        cassandra_repl_strategy = "foo",
+        ssl_cert_key = "/hello"
       })
-      assert.equal(1, #errors)
+      assert.equal(2, #errors)
       assert.is_nil(conf)
       assert.matches("cassandra_repl_strategy has", errors[1], nil, true)
+      assert.matches("ssl_cert must be enabled", errors[2], nil, true)
     end)
   end)
 end)
