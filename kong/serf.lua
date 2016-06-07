@@ -46,7 +46,7 @@ function Serf:invoke_signal(signal, args, no_rpc)
 end
 
 function Serf:join_node(address)
-  return select(2, self:invoke_signal("join", {address})) == nil
+  return select(2, self:invoke_signal("join", address)) == nil
 end
 
 function Serf:members()
@@ -125,10 +125,7 @@ function Serf:event(t_payload)
     return nil, "Encoded payload is "..#payload.." and exceeds the limit of 512 bytes!"
   end
 
-  return self:invoke_signal("event -coalesce=false kong", {
-    "'"..payload.."'",
-    "&"
-  })
+  return self:invoke_signal("event -coalesce=false", " kong '"..payload.."'")
 end
 
 return Serf

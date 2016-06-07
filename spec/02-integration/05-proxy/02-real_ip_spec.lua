@@ -14,7 +14,7 @@ describe("Real IP proxying", function()
     })
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
 
   teardown(function()

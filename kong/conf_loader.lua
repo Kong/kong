@@ -3,27 +3,23 @@ local DEFAULT_PATHS = {
   "/etc/kong/kong.conf"
 }
 
-local CONF_SCHEMA = {
-  prefix = {typ = "string"},
-  
-  -- Network
-  proxy_listen = {typ="ipv4_port"},
-  proxy_listen_ssl = {typ="ipv4_port"},
-  admin_listen = {typ="ipv4_port"},
-  cluster_listen = {typ="ipv4_port"},
-  cluster_listen_rpc = {typ="ipv4_port"},
+local CONF_PARTIAL_SCHEMA = {
 
-  -- Database
+  -- forced string inference
+  proxy_listen = {typ = "string"},
+  proxy_listen_ssl = {typ = "string"},
+  admin_listen = {typ = "string"},
+  cluster_listen = {typ = "string"},
+  cluster_listen_rpc = {typ = "string"},
+  cluster_advertise = {typ = "string"},
+  nginx_worker_processes = {typ = "string"},
+
+  -- Other properties
   database = {enum = {"postgres", "cassandra"}},
-  pg_host = {typ = "string"},
   pg_port = {typ = "number"},
-  pg_database = {typ = "string"},
-  pg_user = {typ = "string"},
-  pg_password = {typ = "string"},
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
-  cassandra_keyspace = {typ = "string"},
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},
   cassandra_data_centers = {typ = "array"},
@@ -32,33 +28,19 @@ local CONF_SCHEMA = {
   cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
-  cassandra_ssl_trusted_cert = {typ = "string"},
-  cassandra_username = {typ = "string"},
-  cassandra_password = {typ = "string"},
 
-  -- Cluster
-  cluster_advertise = {typ = "ipv4_port"},
-  cluster_encrypt = {typ = "string"},
   cluster_ttl_on_failure = {typ = "number"},
 
-  -- DNS
   dnsmasq = {typ = "boolean"},
   dnsmasq_port = {typ = "number"},
-  dns_resolver_address = {typ = "ipv4_port"},
 
-  -- General
   log_level = {enum = {"debug", "info", "notice", "warn",
                        "error", "crit", "alert", "emerg"}},
   custom_plugins = {typ = "array"},
-  ssl_cert = {typ = "string"},
-  ssl_cert_key = {typ = "string"},
   anonymous_reports = {typ = "boolean"},
   nginx_daemon = {typ = "ngx_boolean"},
-  nginx_worker_processes = {typ = "string"},
   nginx_optimizations = {typ = "boolean"},
-  mem_cache_size = {typ = "number"},
 
-  -- Lua
   lua_code_cache = {typ = "ngx_boolean"}
 }
 
@@ -77,17 +59,14 @@ local typ_checks = {
   string = function(v) return type(v) == "string" end,
   number = function(v) return type(v) == "number" end,
   boolean = function(v) return type(v) == "boolean" end,
-  ngx_boolean = function(v) return v == "on" or v == "off" end,
-  ipv4_port = function(v)
-    return v:match("^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$") ~= nil
-  end
+  ngx_boolean = function(v) return v == "on" or v == "off" end
 }
 
 local function check_and_infer(conf)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_SCHEMA[k] or {}
+    local v_schema = CONF_PARTIAL_SCHEMA[k] or {}
     local typ = v_schema.typ
 
     -- transform {boolean} values ("on"/"off" aliasing to true/false)
@@ -98,7 +77,7 @@ local function check_and_infer(conf)
       value = value == true or value == "on" or value == "true"
     elseif typ == "ngx_boolean" then
       value = (value == "on" or value == true) and "on" or "off"
-    elseif typ == "string" or typ == "ipv4_port" then
+    elseif typ == "string" then
       value = tostring(value) -- forced string inference
     elseif typ == "number" then
       value = tonumber(value) -- catch ENV variables (strings) that should be numbers
@@ -134,6 +113,20 @@ local function check_and_infer(conf)
   
   if conf.dns_resolver_address and conf.dnsmasq then
     errors[#errors+1] = "when specifying a custom dns_resolver_address you must turn off dnsmasq"
+  end
+
+  local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
+  if not conf.cluster_listen:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
+  end
+  if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
+  end
+  if cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
+  end
+  if conf.cluster_ttl_on_failure < 60 then
+    errors[#errors+1] = "cluster_ttl_on_failure must be at least 60 seconds"
   end
 
   return #errors == 0, errors[1], errors
@@ -205,7 +198,7 @@ local function load(path, custom_conf)
     local f, err = pl_file.read(path)
     if not f then return nil, err end
 
-    log.verbose("reading config file at "..path)
+    log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
     from_file_conf, err = pl_config.read(s)
     s:close()
@@ -236,7 +229,26 @@ local function load(path, custom_conf)
     conf.custom_plugins = nil
   end
 
-  log.verbose("prefix in use: "..conf.prefix)
+  do
+    -- extract ports/listen ips
+    local ip_port_pat = "(.+):([%d]+)$"
+    local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
+    local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
+    local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
+
+    if not admin_port then return nil, "admin_listen must be of form 'address:port'"
+    elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
+    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'"
+    end
+    conf.admin_ip = admin_ip
+    conf.proxy_ip = proxy_ip
+    conf.proxy_ssl_ip = proxy_ssl_ip
+    conf.admin_port = tonumber(admin_port)
+    conf.proxy_port = tonumber(proxy_port)
+    conf.proxy_ssl_port = tonumber(proxy_ssl_port)
+  end
+
+  log.verbose("prefix in use: %s", conf.prefix)
 
   return setmetatable(conf, nil) -- remove Map mt
 end

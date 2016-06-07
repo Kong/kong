@@ -62,6 +62,15 @@ describe("Configuration loader", function()
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["my-plugin"])
   end)
+  it("extracts ports and listen ips from proxy_listen/admin_listen", function()
+    local conf = assert(conf_loader())
+    assert.equal("0.0.0.0", conf.admin_ip)
+    assert.equal(8001, conf.admin_port)
+    assert.equal("0.0.0.0", conf.proxy_ip)
+    assert.equal(8000, conf.proxy_port)
+    assert.equal("0.0.0.0", conf.proxy_ssl_ip)
+    assert.equal(8443, conf.proxy_ssl_port)
+  end)
 
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
@@ -136,18 +145,43 @@ describe("Configuration loader", function()
                  .." THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
-    it("enforces ipv4_port types", function()
+    it("enforces ipv4:port types", function()
       local conf, err = conf_loader(nil, {
-        proxy_listen = 123
+        cluster_listen = 123
       })
-      assert.equal("proxy_listen is not a ipv4_port: '123'", err)
+      assert.equal("cluster_listen must be in the form of IPv4:port", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        proxy_listen = "1.1.1.1"
+        cluster_listen = "1.1.1.1"
       })
-      assert.equal("proxy_listen is not a ipv4_port: '1.1.1.1'", err)
+      assert.equal("cluster_listen must be in the form of IPv4:port", err)
       assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        cluster_listen = "1.1.1.1:3333"
+      })
+      assert.is_nil(err)
+      assert.truthy(conf)
+    end)
+    it("enforces listen addresses format", function()
+      local conf, err = conf_loader(nil, {
+        admin_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("admin_listen must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_listen must be of form 'address:port'", err)
+
+      conf, err = conf_loader(nil, {
+        proxy_listen_ssl = "127.0.0.1"
+      })
+      assert.is_nil(conf)
+      assert.equal("proxy_listen_ssl must be of form 'address:port'", err)
     end)
   end)
 
@@ -171,6 +205,13 @@ describe("Configuration loader", function()
       })
       assert.is_nil(err)
       assert.truthy(conf)
+    end)
+    it("cluster_ttl_on_failure cannot be lower than 60 seconds", function()
+      local conf, err = conf_loader(nil, {
+        cluster_ttl_on_failure = 40
+      })
+      assert.equal("cluster_ttl_on_failure must be at least 60 seconds", err)
+      assert.is_nil(conf)
     end)
     it("requires both SSL cert and key", function()
       local conf, err = conf_loader(nil, {

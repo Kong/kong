@@ -46,7 +46,7 @@ dns_resolver_address = NONE
 
 ################################## GENERAL #####################################
 
-log_level = error
+log_level = notice
 custom_plugins = NONE
 ssl_cert = NONE
 ssl_cert_key = NONE

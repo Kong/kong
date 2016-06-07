@@ -38,16 +38,26 @@ PAYLOAD=`cat` # Read from stdin
 if [ "$SERF_EVENT" != "user" ]; then
   PAYLOAD="{\"type\":\"${SERF_EVENT}\",\"entity\": \"${PAYLOAD}\"}"
 fi
-echo $PAYLOAD > /tmp/payload
 
-resty -e "require('kong.tools.http_client').post('http://%s/cluster/events/', ]].."[=['${PAYLOAD}']=]"..[[, {['content-type'] = 'application/json'})"
+CMD="\
+local http = require 'resty.http' \
+local client = http.new() \
+client:connect('%s', %d) \
+client:request { \
+  method = 'POST', \
+  path = '/cluster/events/', \
+  body = [=[${PAYLOAD}]=], \
+  headers = { \
+    ['content-type'] = 'application/json' \
+  } \
+}"
 
-exit 0
+resty -e "$CMD"
 ]]
 
 local function prepare_prefix(kong_config, nginx_prefix, script_path)
   log.verbose("dumping Serf shell script handler in %s", script_path)
-  local script = fmt(script_template, kong_config.admin_listen)
+  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port)
 
   pl_file.write(script_path, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..script_path)

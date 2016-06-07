@@ -15,7 +15,7 @@ describe("Admin API", function()
     helpers.execute "pkill nginx; pkill serf"
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
   teardown(function()
     if client then client:close() end
