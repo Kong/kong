@@ -238,8 +238,7 @@ local function load(path, custom_conf)
 
     if not admin_port then return nil, "admin_listen must be of form 'address:port'"
     elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
-    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'"
-    end
+    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
     conf.admin_ip = admin_ip
     conf.proxy_ip = proxy_ip
     conf.proxy_ssl_ip = proxy_ssl_ip
