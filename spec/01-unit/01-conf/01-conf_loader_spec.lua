@@ -194,14 +194,14 @@ describe("Configuration loader", function()
     it("returns a DNS error when both a resolver and dnsmasq are enabled", function()
       local conf, err = conf_loader(nil, {
         dnsmasq = true,
-        dns_resolver_address = "8.8.8.8:53"
+        dns_resolver = "8.8.8.8:53"
       })
-      assert.equal("when specifying a custom dns_resolver_address you must turn off dnsmasq", err)
+      assert.equal("when specifying a custom DNS resolver you must turn off dnsmasq", err)
       assert.is_nil(conf)
       
       conf, err = conf_loader(nil, {
         dnsmasq = false,
-        dns_resolver_address = "8.8.8.8:53"
+        dns_resolver = "8.8.8.8:53"
       })
       assert.is_nil(err)
       assert.truthy(conf)

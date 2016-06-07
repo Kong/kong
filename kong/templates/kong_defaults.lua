@@ -42,7 +42,7 @@ cluster_ttl_on_failure = 3600
 
 dnsmasq = on
 dnsmasq_port = 8053
-dns_resolver_address = NONE
+dns_resolver = NONE
 
 ################################## GENERAL #####################################
 

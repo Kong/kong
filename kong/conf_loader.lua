@@ -111,8 +111,8 @@ local function check_and_infer(conf)
     errors[#errors+1] = "ssl_cert must be enabled"
   end
   
-  if conf.dns_resolver_address and conf.dnsmasq then
-    errors[#errors+1] = "when specifying a custom dns_resolver_address you must turn off dnsmasq"
+  if conf.dns_resolver and conf.dnsmasq then
+    errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
   end
 
   local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
