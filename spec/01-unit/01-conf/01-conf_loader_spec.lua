@@ -233,6 +233,14 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
+    it("does not check SSL cert and key if SSL is off", function()
+      local conf, err = conf_loader(nil, {
+        ssl = false,
+        ssl_cert = "/path/cert.pem"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
         cassandra_repl_strategy = "foo",

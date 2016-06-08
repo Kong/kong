@@ -107,10 +107,12 @@ local function check_and_infer(conf)
   end
 
   -- custom validation
-  if conf.ssl_cert and not conf.ssl_cert_key then
-    errors[#errors+1] = "ssl_cert_key must be enabled"
-  elseif (conf.ssl_cert_key and not conf.ssl_cert) then
-    errors[#errors+1] = "ssl_cert must be enabled"
+  if conf.ssl then
+    if conf.ssl_cert and not conf.ssl_cert_key then
+      errors[#errors+1] = "ssl_cert_key must be enabled"
+    elseif (conf.ssl_cert_key and not conf.ssl_cert) then
+      errors[#errors+1] = "ssl_cert must be enabled"
+    end
   end
   
   if conf.dns_resolver and conf.dnsmasq then
