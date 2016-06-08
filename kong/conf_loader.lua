@@ -34,6 +34,8 @@ local CONF_INFERENCES = {
   dnsmasq = {typ = "boolean"},
   dnsmasq_port = {typ = "number"},
 
+  ssl = {typ = "boolean"},
+
   log_level = {enum = {"debug", "info", "notice", "warn",
                        "error", "crit", "alert", "emerg"}},
   custom_plugins = {typ = "array"},

@@ -124,6 +124,16 @@
 # setting and have "dnsmasq = on".
 # dns_resolver = NONE
 
+#################################### SSL #######################################
+
+# By default Kong listens on both HTTP and HTTPs, as configured in the
+# proxy_listen and proxy_listen_ssl properties. You can optionally enable or
+# disable SSL support (note that this may break plugins that are leveraging it).
+
+ssl = on
+ssl_cert = NONE
+ssl_cert_key = NONE
+
 ################################## GENERAL #####################################
 
 # The log level for the events returned by Kong and its services.

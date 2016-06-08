@@ -44,12 +44,16 @@ dnsmasq = on
 dnsmasq_port = 8053
 dns_resolver = NONE
 
+#################################### SSL #######################################
+
+ssl = on
+ssl_cert = NONE
+ssl_cert_key = NONE
+
 ################################## GENERAL #####################################
 
 log_level = notice
 custom_plugins = NONE
-ssl_cert = NONE
-ssl_cert_key = NONE
 anonymous_reports = on
 nginx_daemon = on
 nginx_worker_processes = auto
