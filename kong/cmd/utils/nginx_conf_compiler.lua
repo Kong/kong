@@ -29,6 +29,7 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
+local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
 
 local function gather_system_infos(compile_env)
@@ -63,10 +64,20 @@ local function compile_conf(kong_config, conf_template)
     compile_env.nginx_vars[k] = v
   end
 
+  local ssl_data, err = ssl.get_ssl_cert_and_key(kong_config, kong_config.prefix)
+  if not ssl_data then return nil, err end
+
   if kong_config.cassandra_ssl and kong_config.cassandra_ssl_trusted_cert then
     compile_env["lua_ssl_trusted_certificate"] = kong_config.cassandra_ssl_trusted_cert
-    --compile_env["ssl_certificate"] =
-    --compile_env["ssl_certificate_key"] =
+  end
+
+  if kong_config.ssl then
+    compile_env["ssl_cert"] = ssl_data.ssl_cert
+    compile_env["ssl_cert_key"] = ssl_data.ssl_cert_key
+  end
+
+  if kong_config.dnsmasq then
+    compile_env["dns_resolver"] = "127.0.0.1:"..kong_config.dnsmasq_port
   end
 
   if kong_config.nginx_optimizations then
@@ -118,6 +129,10 @@ local function prepare_prefix(kong_config, nginx_prefix)
   if not ok then return nil, stderr end
   local ok, _, _, stderr = touch(acc_logs_path)
   if not ok then return nil, stderr end
+
+  -- auto-generate default SSL certificate
+  local ok, err = ssl.prepare_ssl_cert_and_key(nginx_prefix)
+  if not ok then return nil, err end
 
   local nginx_config_path = pl_path.join(nginx_prefix, "nginx.conf")
   local kong_nginx_conf_path = pl_path.join(nginx_prefix, "nginx-kong.conf")

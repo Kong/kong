@@ -117,6 +117,8 @@ local function check_and_infer(conf)
   
   if conf.dns_resolver and conf.dnsmasq then
     errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
+  elseif not conf.dns_resolver and not conf.dnsmasq then
+    errors[#errors+1] = "you must specify at least dnsmasq or a custom DNS resolver"
   end
 
   local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
@@ -126,7 +128,7 @@ local function check_and_infer(conf)
   if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  if cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+  if conf.cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then
