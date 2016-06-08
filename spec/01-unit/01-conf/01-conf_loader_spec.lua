@@ -162,7 +162,7 @@ describe("Configuration loader", function()
         cluster_listen = "1.1.1.1:3333"
       })
       assert.is_nil(err)
-      assert.truthy(conf)
+      assert.is_table(conf)
     end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
@@ -204,7 +204,7 @@ describe("Configuration loader", function()
         dns_resolver = "8.8.8.8:53"
       })
       assert.is_nil(err)
-      assert.truthy(conf)
+      assert.is_table(conf)
     end)
     it("cluster_ttl_on_failure cannot be lower than 60 seconds", function()
       local conf, err = conf_loader(nil, {
