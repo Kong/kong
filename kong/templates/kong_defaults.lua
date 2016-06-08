@@ -19,7 +19,7 @@ pg_user = kong
 pg_password = NONE
 
 cassandra_contact_points = 127.0.0.1
-cassandra_port=9042
+cassandra_port = 9042
 cassandra_keyspace = kong
 cassandra_repl_strategy = SimpleStrategy
 cassandra_repl_factor = 1
