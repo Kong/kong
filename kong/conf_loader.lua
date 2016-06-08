@@ -3,39 +3,47 @@ local DEFAULT_PATHS = {
   "/etc/kong/kong.conf"
 }
 
-local CONF_SCHEMA = {
-  -- kong
-  log_level = {enum = {"debug", "info", "notice", "warn",
-                       "error", "crit", "alert", "emerg"}},
+local CONF_INFERENCES = {
 
-  ssl = {typ = "boolean"},
+  -- forced string inference
+  proxy_listen = {typ = "string"},
+  proxy_listen_ssl = {typ = "string"},
+  admin_listen = {typ = "string"},
+  cluster_listen = {typ = "string"},
+  cluster_listen_rpc = {typ = "string"},
+  cluster_advertise = {typ = "string"},
+  nginx_worker_processes = {typ = "string"},
 
-  custom_plugins = {typ = "array"},
-
+  -- Other properties
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
+
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},
   cassandra_data_centers = {typ = "array"},
-  cassandra_timeout = {typ = "number"},
   cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
                                    "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
+  cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
 
+  cluster_ttl_on_failure = {typ = "number"},
+
   dnsmasq = {typ = "boolean"},
+  dnsmasq_port = {typ = "number"},
 
+  ssl = {typ = "boolean"},
+
+  log_level = {enum = {"debug", "info", "notice", "warn",
+                       "error", "crit", "alert", "emerg"}},
+  custom_plugins = {typ = "array"},
   anonymous_reports = {typ = "boolean"},
-
-  -- ngx_lua
-  lua_code_cache = {typ = "ngx_boolean"},
-
-  -- nginx
   nginx_daemon = {typ = "ngx_boolean"},
   nginx_optimizations = {typ = "boolean"},
-  nginx_worker_processes = {typ = "string"} -- force string inference
+
+  lua_code_cache = {typ = "ngx_boolean"}
 }
 
 local kong_default_conf = require "kong.templates.kong_defaults"
@@ -53,14 +61,14 @@ local typ_checks = {
   string = function(v) return type(v) == "string" end,
   number = function(v) return type(v) == "number" end,
   boolean = function(v) return type(v) == "boolean" end,
-  ngx_boolean = function(v) return v == "on" or v == "off" end,
+  ngx_boolean = function(v) return v == "on" or v == "off" end
 }
 
 local function check_and_infer(conf)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_SCHEMA[k] or {}
+    local v_schema = CONF_INFERENCES[k] or {}
     local typ = v_schema.typ
 
     -- transform {boolean} values ("on"/"off" aliasing to true/false)
@@ -100,11 +108,29 @@ local function check_and_infer(conf)
 
   -- custom validation
   if conf.ssl then
-    if not conf.ssl_cert then
-      errors[#errors+1] = "ssl_cert required if SSL enabled"
-    elseif not conf.ssl_cert_key then
-      errors[#errors+1] = "ssl_cert_key required if SSL enabled"
+    if conf.ssl_cert and not conf.ssl_cert_key then
+      errors[#errors+1] = "ssl_cert_key must be enabled"
+    elseif (conf.ssl_cert_key and not conf.ssl_cert) then
+      errors[#errors+1] = "ssl_cert must be enabled"
     end
+  end
+  
+  if conf.dns_resolver and conf.dnsmasq then
+    errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
+  end
+
+  local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
+  if not conf.cluster_listen:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
+  end
+  if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
+  end
+  if cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
+  end
+  if conf.cluster_ttl_on_failure < 60 then
+    errors[#errors+1] = "cluster_ttl_on_failure must be at least 60 seconds"
   end
 
   return #errors == 0, errors[1], errors

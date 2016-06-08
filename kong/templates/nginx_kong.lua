@@ -97,10 +97,6 @@ server {
         }
     }
 
-    location /robots.txt {
-        return 200 'User-agent: *\nDisallow: /';
-    }
-
     location = /50x {
         internal;
         content_by_lua_block {

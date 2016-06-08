@@ -145,6 +145,25 @@ describe("Configuration loader", function()
                  .." THREE, LOCAL_ONE)", err)
       assert.is_nil(conf)
     end)
+    it("enforces ipv4:port types", function()
+      local conf, err = conf_loader(nil, {
+        cluster_listen = 123
+      })
+      assert.equal("cluster_listen must be in the form of IPv4:port", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        cluster_listen = "1.1.1.1"
+      })
+      assert.equal("cluster_listen must be in the form of IPv4:port", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        cluster_listen = "1.1.1.1:3333"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
     it("enforces listen addresses format", function()
       local conf, err = conf_loader(nil, {
         admin_listen = "127.0.0.1"
@@ -172,29 +191,65 @@ describe("Configuration loader", function()
       assert.equal("no file at: inexistent", err)
       assert.is_nil(conf)
     end)
-    it("requires cert and key if SSL is enabled", function()
+    it("returns a DNS error when both a resolver and dnsmasq are enabled", function()
       local conf, err = conf_loader(nil, {
-        ssl = true
+        dnsmasq = true,
+        dns_resolver = "8.8.8.8:53"
       })
-      assert.equal("ssl_cert required if SSL enabled", err)
+      assert.equal("when specifying a custom DNS resolver you must turn off dnsmasq", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        ssl = true,
+        dnsmasq = false,
+        dns_resolver = "8.8.8.8:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
+    it("cluster_ttl_on_failure cannot be lower than 60 seconds", function()
+      local conf, err = conf_loader(nil, {
+        cluster_ttl_on_failure = 40
+      })
+      assert.equal("cluster_ttl_on_failure must be at least 60 seconds", err)
+      assert.is_nil(conf)
+    end)
+    it("requires both SSL cert and key", function()
+      local conf, err = conf_loader(nil, {
         ssl_cert = "/path/cert.pem"
       })
-      assert.equal("ssl_cert_key required if SSL enabled", err)
+      assert.equal("ssl_cert_key must be enabled", err)
       assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        ssl_cert_key = "/path/key.pem"
+      })
+      assert.equal("ssl_cert must be enabled", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        ssl_cert = "/path/cert.pem",
+        ssl_cert_key = "/path/key.pem"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
+    it("does not check SSL cert and key if SSL is off", function()
+      local conf, err = conf_loader(nil, {
+        ssl = false,
+        ssl_cert = "/path/cert.pem"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
     end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
-        ssl = true,
-        cassandra_repl_strategy = "foo"
+        cassandra_repl_strategy = "foo",
+        ssl_cert_key = "/hello"
       })
       assert.equal(2, #errors)
       assert.is_nil(conf)
       assert.matches("cassandra_repl_strategy has", errors[1], nil, true)
-      assert.matches("ssl_cert required", errors[2], nil, true)
+      assert.matches("ssl_cert must be enabled", errors[2], nil, true)
     end)
   end)
 end)
