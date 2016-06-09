@@ -11,8 +11,8 @@ local SLEEP_VALUE = "0.5"
 
 local function wait()
   -- If the minute elapses in the middle of the test, then the test will
-  -- fail. So we give it this test 30 seconds to execute, and if the second
-  -- of the current minute is > 30, then we wait till the new minute kicks in
+  -- fail. So we give it this test 20 seconds to execute, and if the second
+  -- of the current minute is > 20, then we wait till the new minute kicks in
   local current_second = timestamp.get_timetable().sec
   if current_second > 20 then
     os.execute("sleep "..tostring(60 - current_second))
@@ -210,6 +210,7 @@ describe("RateLimiting Plugin", function()
     after_each(function()
       dao_factory:drop_schema()
       prepare_db()
+      spec_helper.restart_kong()
     end)
 
     it("should not continue if an error occurs", function()
@@ -231,8 +232,8 @@ describe("RateLimiting Plugin", function()
     it("should continue if an error occurs", function()
       local _, status, headers = http_client.get(PROXY_URL.."/response-headers", {["x-kong-limit"] = "video=1"}, {host = "test5.com"})
       assert.are.equal(200, status)
-      assert.falsy(headers["x-ratelimit-limit-video-minute"])
-      assert.falsy(headers["x-ratelimit-remaining-video-minute"])
+      assert.are.same('6', headers["x-ratelimit-limit-video-minute"])
+      assert.are.same('5', headers["x-ratelimit-remaining-video-minute"])
 
       -- Simulate an error on the database
       local err = dao_factory.response_ratelimiting_metrics:drop_table(dao_factory.response_ratelimiting_metrics.table)
