@@ -1,5 +1,7 @@
 local helpers = require "spec.helpers"
 
+local KILL_ALL = "pkill nginx; pkill serf; pkill dnsmasq"
+
 local function exec(args)
   args = args or ""
   return helpers.execute(helpers.bin_path.." "..args)
@@ -7,11 +9,11 @@ end
 
 describe("kong start/stop", function()
   setup(function()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.execute(KILL_ALL)
     helpers.prepare_prefix()
   end)
   teardown(function()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.execute(KILL_ALL)
     helpers.clean_prefix()
   end)
 
@@ -60,7 +62,7 @@ describe("kong start/stop", function()
       assert.equal("", stderr)
 
       finally(function()
-        helpers.execute "pkill nginx; pkill serf"
+        helpers.execute(KILL_ALL)
       end)
     end)
     it("accepts debug", function()
@@ -72,7 +74,7 @@ describe("kong start/stop", function()
       assert.equal("", stderr)
 
       finally(function()
-        helpers.execute "pkill nginx; pkill serf"
+        helpers.execute(KILL_ALL)
       end)
     end)
   end)
@@ -98,6 +100,35 @@ describe("kong start/stop", function()
       assert.True(exec("start --conf "..helpers.test_conf_path))
 
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", serf_pid_path)
+      local ok, code = helpers.execute(cmd)
+      assert.True(ok)
+      assert.equal(0, code)
+
+      assert.True(exec("stop --prefix "..helpers.test_conf.prefix))
+    end)
+  end)
+
+  describe("#only dnsmasq", function()
+    it("starts dnsmasq daemon", function()
+      local ok = exec("start --conf "..helpers.test_conf_path)
+      assert.True(ok)
+
+      local dnsmasq_pid_path = helpers.path.join(helpers.test_conf.prefix, "dnsmasq.pid")
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", dnsmasq_pid_path)
+      local ok, code = helpers.execute(cmd)
+      assert.True(ok)
+      assert.equal(0, code)
+
+      assert.True(exec("stop --prefix "..helpers.test_conf.prefix))
+    end)
+    it("recovers from expired dnsmasq.pid file", function()
+      local dnsmasq_pid_path = helpers.path.join(helpers.test_conf.prefix, "dnsmasq.pid")
+      local ok = helpers.execute("touch "..dnsmasq_pid_path) -- dumb pid
+      assert.True(ok)
+
+      assert.True(exec("start --conf "..helpers.test_conf_path))
+
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", dnsmasq_pid_path)
       local ok, code = helpers.execute(cmd)
       assert.True(ok)
       assert.equal(0, code)
@@ -134,7 +165,7 @@ describe("kong start/stop", function()
       assert.matches("Error: could not get Nginx pid", stderr, nil, true)
 
       finally(function()
-        helpers.execute "pkill nginx; pkill serf"
+        helpers.execute(KILL_ALL)
         helpers.dir.rmtree(helpers.test_conf.prefix)
       end)
     end)
@@ -151,7 +182,7 @@ describe("kong start/stop", function()
       assert.equal("", stdout)
       assert.matches("Nginx is already running in", stderr)
       finally(function()
-        helpers.execute "pkill nginx; pkill serf"
+        helpers.execute(KILL_ALL)
         helpers.dir.rmtree(helpers.test_conf.prefix)
       end)
     end)
