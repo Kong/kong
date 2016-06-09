@@ -1,18 +1,20 @@
 local helpers = require "spec.helpers"
 
+local KILL_ALL = "pkill nginx; pkill serf; pkill dnsmasq"
+
 describe("kong reload", function()
   setup(function()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.execute(KILL_ALL)
     helpers.prepare_prefix()
   end)
   teardown(function()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.execute(KILL_ALL)
     helpers.clean_prefix()
   end)
 
   it("send a HUP signal to a running nginx master process", function()
     finally(function()
-      helpers.execute "pkill nginx; pkill serf"
+      helpers.execute(KILL_ALL)
     end)
 
     assert(helpers.start_kong())

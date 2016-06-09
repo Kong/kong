@@ -113,7 +113,7 @@ describe("NGINX conf compiler", function()
 
       it("compiles with dnsmasq", function()
         local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf_dnsmasq)
-        assert.matches("resolver 127.0.0.1:8053 ipv6=off;", kong_nginx_conf)
+        assert.matches("resolver 127.0.0.1:9053 ipv6=off;", kong_nginx_conf)
       end)
       it("compiles with dnsmasq and a custom port", function()
         local conf = pl_tablex.deepcopy(custom_conf_dnsmasq)

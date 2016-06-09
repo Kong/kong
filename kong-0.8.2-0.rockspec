@@ -68,6 +68,7 @@ build = {
     ["kong.cmd.utils.nginx_conf_compiler"] = "kong/cmd/utils/nginx_conf_compiler.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
+    ["kong.cmd.utils.dnsmasq_signals"] = "kong/cmd/utils/dnsmasq_signals.lua",
     ["kong.cmd.utils.ssl"] = "kong/cmd/utils/ssl.lua",
 
     ["kong.api.init"] = "kong/api/init.lua",
