@@ -1,5 +1,5 @@
 -- Enhanced implementation of previous "services.serf.lua" module,
--- no change in acutal logic, only decoupled from the events features
+-- no change in actual logic, only decoupled from the events features
 -- which now live in kong.serf
 
 local pl_stringx = require "pl.stringx"
@@ -9,17 +9,24 @@ local pl_file = require "pl.file"
 local Serf = require "kong.serf"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
+local version = require "version"
+local fmt = string.format
 
 local serf_bin_name = "serf"
 local serf_event_name = "kong"
+local serf_version_command = " version"                -- commandline param to get version
+local serf_version_pattern = "^Serf v([%d%.]+)"        -- pattern to grab version from output
+local serf_compatible = version.set("0.7.0", "0.7.0")  -- compatible from-to versions
 local start_timeout = 5
 
 local function check_serf_bin()
-  local cmd = string.format("%s -v", serf_bin_name)
+  local cmd = fmt("%s %s", serf_bin_name, serf_version_command)
   local ok, _, stdout = pl_utils.executeex(cmd)
   if ok and stdout then
-    if not stdout:match "^Serf v0%.7%.0" then
-      return nil, "wrong Serf version (need 0.7.0)"
+    local version_match = stdout:match(serf_version_pattern)
+    if (not version_match) or (not serf_compatible:matches(version_match)) then
+      return nil, "Incompatible Serf version. Kong requires version "..tostring(serf_compatible)..
+        (version_match and ", got "..tostring(version_match) or "")
     end
     return true
   end
