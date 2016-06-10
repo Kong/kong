@@ -10,6 +10,7 @@ local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
 local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
+local cjson = require "cjson.safe"
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -33,6 +34,35 @@ local ssl_proxy_port = string.match(conf.proxy_listen_ssl, ":([%d]+)$")
 -----------------
 local resty_http_proxy_mt = {}
 
+-- Case insensitive lookup function, returns the value and the original key. Or if not
+-- found nil and the search key
+-- @usage -- sample usage
+-- local test = { SoMeKeY = 10 }
+-- print(lookup(test, "somekey"))  --> 10, "SoMeKeY"
+-- print(lookup(test, "NotFound")) --> nil, "NotFound"
+local function lookup(t, k)
+  local ok = k
+  if type(k) ~= "string" then
+    return t[k], k
+  else
+    k = k:lower()
+  end
+  for key, value in pairs(t) do
+    if tostring(key):lower() == k then 
+      return value, key
+    end
+  end
+  return nil, ok
+end
+
+--- Send a http request. Based on https://github.com/pintsized/lua-resty-http.
+-- If `opts.body` is a table and "Content-Type" header contains `application/json`,
+-- `www-form-urlencoded`, or `multipart/form-data`, then it will automatically encode the body 
+-- according to the content type.
+-- If `opts.query` is a table, a query string will be constructed from it and appended
+-- to the request path (assuming none is already present).
+-- @name http_client:send
+-- @param opts table with options. See https://github.com/pintsized/lua-resty-http
 function resty_http_proxy_mt:send(opts)
   local cjson = require "cjson"
   local utils = require "kong.tools.utils"
@@ -41,12 +71,36 @@ function resty_http_proxy_mt:send(opts)
 
   -- build body
   local headers = opts.headers or {}
-  local content_type = headers["Content-Type"] or ""
+  local content_type, content_type_name = lookup(headers, "Content-Type")
+  content_type = content_type or ""
   local t_body_table = type(opts.body) == "table"
   if string.find(content_type, "application/json") and t_body_table then
     opts.body = cjson.encode(opts.body)
   elseif string.find(content_type, "www-form-urlencoded", nil, true) and t_body_table then
     opts.body = utils.encode_args(opts.body, true) -- true: not % encoded
+  elseif string.find(content_type, "multipart/form-data", nil, true) and t_body_table then
+    local form = opts.body
+    local boundary = "8fd84e9444e3946c"
+    local body = ""
+
+    for k, v in pairs(form) do
+      body = body.."--"..boundary.."\r\nContent-Disposition: form-data; name=\""..k.."\"\r\n\r\n"..tostring(v).."\r\n"
+    end
+
+    if body ~= "" then
+      body = body.."--"..boundary.."--\r\n"
+    end
+
+    local clength = lookup(headers, "content-length")
+    if not clength then
+      headers["content-length"] = #body
+    end
+    
+    if not content_type:find("boundary=") then
+      headers[content_type_name] = content_type.."; boundary="..boundary
+    end
+    
+    opts.body = body
   end
 
   -- build querystring (assumes none is currently in 'opts.path')
@@ -56,7 +110,19 @@ function resty_http_proxy_mt:send(opts)
     opts.query = nil
   end
 
-  return self:request(opts)
+  local res, err = self:request(opts)
+  if res then
+    -- wrap the read_body() so it caches the result and can be called multiple times
+    local reader = res.read_body
+    res.read_body = function(self)
+      if (not self._cached_body) and (not self._cached_error) then
+        self._cached_body, self._cached_error = reader(self)
+      end
+      return self._cached_body, self._cached_error
+    end
+  end
+  
+  return res, err
 end
 
 function resty_http_proxy_mt:__index(k)
@@ -149,7 +215,9 @@ local function res_status(state, args)
     table.insert(args, 1, expected)
     return false
   elseif expected ~= res.status then
-    table.insert(args, 1, res:read_body())
+    local body, err = res:read_body()
+    if not body then body = "Error reading body: "..tostring(err) end
+    table.insert(args, 1, body)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     return false
@@ -168,6 +236,69 @@ Body:
 ]])
 luassert:register("assertion", "res_status", res_status,
                   "assertion.res_status.negative")
+
+local function jsonbody(state, args)
+  local res = unpack(args)
+  if (type(res) ~= "table") or (type(res.read_body) ~= "function") then
+    table.insert(args, 1, "< input is not a valid response object >")
+    return false
+  end
+  local body = res:read_body()
+  local json, err = cjson.decode(body)
+  if not json then
+    table.insert(args, 1, "Error decoding: "..tostring(err).."\nBody:"..tostring(body))
+    return false
+  end
+  return true, {json}
+end
+say:set("assertion.jsonbody.negative", [[
+Expected response body to contain valid json. Got:
+%s
+]])
+say:set("assertion.jsonbody.positive", [[
+Expected response body to not contain valid json. Got:
+%s
+]])
+luassert:register("assertion", "jsonbody", jsonbody,
+                  "assertion.jsonbody.negative",
+                  "assertion.jsonbody.positive")
+
+---
+-- Adds an assertion to look for a named header in a `headers` subtable.
+-- Header name comparison is done case-insensitive.
+-- Input can be a response object from the client helper, or a parsed json
+-- object returned from mockbin.com.
+-- @return the value of the header
+local function res_header(state, args)
+  local header, res = unpack(args)
+  if (type(res) ~= "table") or (type(res.headers) ~= "table") then
+    table.insert(args, 1, "<< assertion input does not contain a 'headers' subtable >>")
+    table.insert(args, 1, header)
+    return false
+  end
+  local value = lookup(res.headers, header)
+  if not value then
+    table.insert(args, 1, res.headers)
+    table.insert(args, 1, header)
+    return false
+  end
+  return true, {value}
+end
+say:set("assertion.res_header.negative", [[
+Expected header: 
+%s
+But it was not found in: 
+%s
+]])
+say:set("assertion.res_header.positive", [[
+Did not expected header: 
+%s
+But it was found in: 
+%s
+]])
+luassert:register("assertion", "header", res_header,
+                  "assertion.res_header.negative",
+                  "assertion.res_header.positive")
 
 ----------------
 -- Shell helpers
