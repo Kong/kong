@@ -2,9 +2,15 @@ local helpers = require "spec.helpers"
 
 local KILL_ALL = "pkill nginx; pkill serf; pkill dnsmasq"
 
-local function exec(args)
+local function exec(args, env)
   args = args or ""
-  return helpers.execute(helpers.bin_path.." "..args)
+  env = env or {}
+
+  local env_vars = ""
+  for k, v in pairs(env) do
+    env_vars = string.format("%s KONG_%s=%s", env_vars, k:upper(), v)
+  end
+  return helpers.execute(env_vars.." "..helpers.bin_path.." "..args)
 end
 
 describe("kong start/stop", function()
@@ -110,7 +116,7 @@ describe("kong start/stop", function()
 
   describe("dnsmasq", function()
     it("starts dnsmasq daemon", function()
-      local ok = exec("start --conf "..helpers.test_conf_path)
+      local ok = exec("start --conf "..helpers.test_conf_path, {dnsmasq=true, dns_resolver = ""})
       assert.True(ok)
 
       local dnsmasq_pid_path = helpers.path.join(helpers.test_conf.prefix, "dnsmasq.pid")
@@ -126,7 +132,7 @@ describe("kong start/stop", function()
       local ok = helpers.execute("touch "..dnsmasq_pid_path) -- dumb pid
       assert.True(ok)
 
-      assert.True(exec("start --conf "..helpers.test_conf_path))
+      assert.True(exec("start --conf "..helpers.test_conf_path, {dnsmasq=true, dns_resolver = ""}))
 
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", dnsmasq_pid_path)
       local ok, code = helpers.execute(cmd)
