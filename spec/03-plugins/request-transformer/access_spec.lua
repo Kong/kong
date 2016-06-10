@@ -1,12 +1,9 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-local STUB_GET_URL = helpers.STUB_GET_URL
-local STUB_POST_URL = helpers.STUB_POST_URL
-
 describe("Request Transformer", function()
   local client
-  local api1, api2, api3, api4, api5, api6, pi1, pi2, pi3, pi4, pi5, pi6
+  local api1, api2, api3, api4, api5, api6
   
   setup(function()
     helpers.dao:truncate_tables()
@@ -20,7 +17,8 @@ describe("Request Transformer", function()
     api5 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-5", request_host = "test5.com", upstream_url = "http://mockbin.com"})
     api6 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-6", request_host = "test6.com", upstream_url = "http://mockbin.com"})
     
-    pi1 = assert(helpers.dao.plugins:insert {
+    -- plugin config 1
+    assert(helpers.dao.plugins:insert {
           api_id = api1.id, 
           name = "request-transformer",
           config = {
@@ -32,7 +30,8 @@ describe("Request Transformer", function()
           }
         })
         
-    pi2 = assert(helpers.dao.plugins:insert {
+    -- plugin config 2
+    assert(helpers.dao.plugins:insert {
           api_id = api2.id, 
           name = "request-transformer",
           config = {
@@ -42,7 +41,8 @@ describe("Request Transformer", function()
           }
         })
 
-    pi3 = assert(helpers.dao.plugins:insert {
+    -- plugin config 3
+    assert(helpers.dao.plugins:insert {
           api_id = api3.id, 
           name = "request-transformer",
           config = {
@@ -66,7 +66,8 @@ describe("Request Transformer", function()
           }
         })
 
-    pi4 = assert(helpers.dao.plugins:insert {
+    -- plugin config 4
+    assert(helpers.dao.plugins:insert {
           api_id = api4.id, 
           name = "request-transformer",
           config = {
@@ -78,7 +79,8 @@ describe("Request Transformer", function()
           }
         })
 
-    pi5 = assert(helpers.dao.plugins:insert {
+    -- plugin config 5
+    assert(helpers.dao.plugins:insert {
           api_id = api5.id, 
           name = "request-transformer",
           config = {
@@ -90,7 +92,8 @@ describe("Request Transformer", function()
           }
         })
 
-    pi6 = assert(helpers.dao.plugins:insert {
+    -- plugin config 6
+    assert(helpers.dao.plugins:insert {
           api_id = api6.id, 
           name = "request-transformer",
           config = {
@@ -136,7 +139,7 @@ describe("Request Transformer", function()
           ["x-another-header"] = "true"
         }
       })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.has.no.header("x-to-remove", json)
       assert.has.header("x-another-header", json)
@@ -155,7 +158,7 @@ describe("Request Transformer", function()
             host = "test4.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.postData.params["toremoveform"])
       assert.equal("yes", json.postData.params["nottoremove"])
@@ -174,7 +177,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local params = cjson.decode(json.postData.text)
       assert.is.Nil(params["toremoveform"])
@@ -191,7 +194,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.equal("malformed json body", json.postData.text)
     end)
@@ -206,7 +209,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.equal('{}', json.postData.text)
       assert.equal("2", json.headers["content-length"])
@@ -220,7 +223,7 @@ describe("Request Transformer", function()
             host = "test4.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.same({}, json.postData.params)
       assert.equal('', json.postData.text)
@@ -241,7 +244,7 @@ describe("Request Transformer", function()
             host = "test4.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.postData.params["toremoveform"])
       assert.are.equal("yes", json.postData.params["nottoremove"])
@@ -263,7 +266,7 @@ describe("Request Transformer", function()
             host = "test4.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.queryString["q1"])
       assert.are.equal("v2", json.queryString["q2"])
@@ -283,7 +286,7 @@ describe("Request Transformer", function()
             h2 = "v2",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local h_h1 = assert.has.header("h1", json)
       assert.are.equal("v1", h_h1)
@@ -301,9 +304,9 @@ describe("Request Transformer", function()
             h2 = "v2",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
-      local h_h1 = assert.has.no.header("h1", json)
+      assert.has.no.header("h1", json)
       local h_h2 = assert.has.header("h2", json)
       assert.are.equal("v2", h_h2)
     end)
@@ -321,7 +324,7 @@ describe("Request Transformer", function()
             host = "test5.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v1", json.postData.params.p1)
       assert.are.equal("v1", json.postData.params.p2)
@@ -339,7 +342,7 @@ describe("Request Transformer", function()
             host = "test5.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.postData.params.p1)
       assert.are.equal("v1", json.postData.params.p2)
@@ -358,7 +361,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local params = cjson.decode(json.postData.text)
       assert.are.equal("v1", params.p1)
@@ -375,7 +378,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.equal("malformed json body", json.postData.text)
     end)
@@ -392,7 +395,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local params = cjson.decode(json.postData.text)
       assert.is.Nil(params.p1)
@@ -412,7 +415,7 @@ describe("Request Transformer", function()
             host = "test5.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v1", json.postData.params.p1)
       assert.are.equal("v1", json.postData.params.p2)
@@ -430,7 +433,7 @@ describe("Request Transformer", function()
             host = "test5.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.postData.params.p1)
       assert.are.equal("v1", json.postData.params.p2)
@@ -452,7 +455,7 @@ describe("Request Transformer", function()
             host = "test5.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v1", json.queryString.q1)
       assert.are.equal("v2", json.queryString.q2)
@@ -473,7 +476,7 @@ describe("Request Transformer", function()
             host = "test5.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.queryString.q1)
       assert.are.equal("v2", json.queryString.q2)
@@ -491,7 +494,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local h_h1 = assert.has.header("h1", json)
       assert.are.equal("v1", h_h1)
@@ -508,7 +511,7 @@ describe("Request Transformer", function()
             host = "test1.com",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local h_h1 = assert.has.header("h1", json)
       assert.are.equal("v3", h_h1)
@@ -528,7 +531,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("world", json.postData.params.hello)
       assert.are.equal("v1", json.postData.params.p1)
@@ -547,7 +550,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("world", json.postData.params.hello)
       assert.are.equal("should not change", json.postData.params.p1)
@@ -565,7 +568,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local params = cjson.decode(json.postData.text)
       assert.are.equal("world", params.hello)
@@ -585,7 +588,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local params = cjson.decode(json.postData.text)
       assert.are.equal("world", params.hello)
@@ -602,7 +605,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.equal("malformed json body", json.postData.text)
     end)
@@ -617,7 +620,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v1", json.postData.params.p1)
     end)
@@ -635,7 +638,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           },
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("this should not change", json.postData.params.p1)
       assert.are.equal("world", json.postData.params.hello)
@@ -653,7 +656,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v2", json.queryString.q2)
       assert.are.equal("v1", json.queryString.q1)
@@ -671,7 +674,7 @@ describe("Request Transformer", function()
             host = "test1.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v2", json.queryString.q1)
     end)
@@ -685,7 +688,7 @@ describe("Request Transformer", function()
             host = "test2.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local host = assert.has.header("host", json)
       assert.are.equal("httpbin.org", host)
@@ -703,7 +706,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local h_h2 = assert.has.header("h2", json)
       assert.are.equal("v1", h_h2)
@@ -717,7 +720,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local h_h1 = assert.has.header("h1", json)
       assert.are.equal("v1, v2", h_h1)
@@ -735,7 +738,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("v1", json.queryString.q2)
     end)
@@ -749,7 +752,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.same({"v1", "v2"}, json.queryString.q1)
     end)
@@ -763,7 +766,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.same({"v1", "v2"}, json.postData.params.p1)
       assert.are.same("v1", json.postData.params.p2)
@@ -781,7 +784,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.same({"v0", "v1", "v2"}, json.postData.params.p1)
       assert.are.same("v1", json.postData.params.p2)
@@ -797,7 +800,7 @@ describe("Request Transformer", function()
             ["content-type"] = "application/json"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.equal("malformed json body", json.postData.text)
     end)
@@ -814,7 +817,7 @@ describe("Request Transformer", function()
             host = "test6.com"
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.same("This should not change", json.postData.params.p1)
     end)
@@ -832,7 +835,7 @@ describe("Request Transformer", function()
             ["x-to-remove"] = "true",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.has.no.header("x-to-remove", json)
     end)
@@ -846,7 +849,7 @@ describe("Request Transformer", function()
             ["x-to-replace"] = "true",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local hval = assert.has.header("x-to-replace", json)
       assert.are.equal("false", hval)
@@ -860,7 +863,7 @@ describe("Request Transformer", function()
             host = "test3.com",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.has.no.header("x-to-replace", json)
     end)
@@ -873,7 +876,7 @@ describe("Request Transformer", function()
             host = "test3.com",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local hval = assert.has.header("x-added2", json)
       assert.are.equal("b1", hval)
@@ -888,7 +891,7 @@ describe("Request Transformer", function()
             ["x-added3"] = "c1",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local hval = assert.has.header("x-added3", json)
       assert.are.equal("c1", hval)
@@ -902,7 +905,7 @@ describe("Request Transformer", function()
             host = "test3.com",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       local hval = assert.has.header("x-added", json)
       assert.are.equal("a1, a2, a3", hval)
@@ -920,7 +923,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("b1", json.queryString.p2)
     end)
@@ -941,7 +944,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.queryString.toremovequery)
       assert.are.equal("yes", json.queryString.nottoremove)
@@ -962,7 +965,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("no", json.queryString.toreplacequery)
     end)
@@ -976,7 +979,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.is.Nil(json.queryString.toreplacequery)
     end)
@@ -990,7 +993,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("newvalue", json.queryString["query-added"])
     end)
@@ -1007,7 +1010,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("oldvalue", json.queryString["query-added"])
     end)
@@ -1027,7 +1030,7 @@ describe("Request Transformer", function()
             ["Content-Type"] = "application/x-www-form-urlencoded",
           }
         })
-      local body = assert.res_status(200, response)
+      assert.res_status(200, response)
       local json = assert.has.jsonbody(response)
       assert.are.equal("a1", json.queryString.p1[1])
       assert.are.equal("a2", json.queryString.p1[2])
