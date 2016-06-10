@@ -68,7 +68,7 @@ function Serf:autojoin()
   local nodes, err = self.dao.nodes:find_all()
   if err then return nil, tostring(err)
   elseif #nodes == 0 then
-    log.warn("could not auto-join the cluster: no nodes found")
+    log.info("No other Kong nodes were found in the cluster")
   else
     -- Sort by newest to oldest (although by TTL would be a better sort)
     table.sort(nodes, function(a, b) return a.created_at > b.created_at end)

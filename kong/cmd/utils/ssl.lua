@@ -24,10 +24,10 @@ function _M.get_ssl_cert_and_key(kong_config, nginx_prefix)
 
   -- Check that the files exist
   if not pl_path.exists(ssl_cert) then
-    return false, "Can't find SSL certificate at: "..ssl_cert
+    return nil, "cannot find SSL certificate at: "..ssl_cert
   end
   if not pl_path.exists(ssl_cert_key) then
-    return false, "Can't find SSL key at: "..ssl_cert_key
+    return nil, "cannot find SSL key at: "..ssl_cert_key
   end
 
   return { ssl_cert = ssl_cert, ssl_cert_key = ssl_cert_key }
@@ -60,7 +60,7 @@ function _M.prepare_ssl_cert_and_key(prefix)
     for _, cmd in ipairs(commands) do
       local ok, _, _, stderr = pl_utils.executeex(cmd)
       if not ok then
-        return nil, "There was an error when auto-generating the default SSL certificate: "..stderr
+        return nil, "there was an error when auto-generating the default SSL certificate: "..stderr
       end
     end
   end
