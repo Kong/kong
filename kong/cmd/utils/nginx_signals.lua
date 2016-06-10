@@ -21,12 +21,12 @@ local function is_openresty(bin_path)
     log.debug("%s: '%s'", cmd, stderr:sub(1, -2))
     local version_match = stderr:match(nginx_version_pattern)
     if (not version_match) or (not nginx_compatible:matches(version_match)) then
-      return nil, "Incompatible nginx found. Kong requires OpenResty, version "..tostring(nginx_compatible) ..
+      return nil, "incompatible nginx found. Kong requires OpenResty, version "..tostring(nginx_compatible) ..
         (version_match and ", got "..version_match or "")
     end
     return true
   end
-  return nil, "Could not determine nginx version in use. Kong requires OpenResty version "..tostring(nginx_compatible)
+  return nil, "could not determine nginx version in use. Kong requires OpenResty version "..tostring(nginx_compatible)
 end
 
 local function send_signal(pid_path, signal)

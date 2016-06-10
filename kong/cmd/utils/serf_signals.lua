@@ -25,7 +25,7 @@ local function check_serf_bin()
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
     if (not version_match) or (not serf_compatible:matches(version_match)) then
-      return nil, "Incompatible Serf version. Kong requires version "..tostring(serf_compatible)..
+      return nil, "incompatible Serf version. Kong requires version "..tostring(serf_compatible)..
         (version_match and ", got "..tostring(version_match) or "")
     end
     return true
