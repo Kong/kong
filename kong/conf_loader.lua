@@ -126,7 +126,7 @@ local function check_and_infer(conf)
   if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  if cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+  if conf.cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then
