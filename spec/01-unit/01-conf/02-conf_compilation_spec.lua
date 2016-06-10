@@ -1,8 +1,6 @@
 local nginx_conf_compiler = require "kong.cmd.utils.nginx_conf_compiler"
 local conf_loader = require "kong.conf_loader"
 local helpers = require "spec.helpers"
-local pl_file = require "pl.file"
-local pl_tablex = require "pl.tablex"
 
 describe("NGINX conf compiler", function()
   local custom_conf
@@ -36,6 +34,14 @@ describe("NGINX conf compiler", function()
       assert.matches("listen 0.0.0.0:80;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8001;", kong_nginx_conf, nil, true)
     end)
+    it("disables SSL", function()
+      local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf)
+      assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
+      assert.not_matches("ssl_certificate", kong_nginx_conf)
+      assert.not_matches("ssl_certificate_key", kong_nginx_conf)
+      assert.not_matches("ssl_protocols", kong_nginx_conf)
+      assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
+    end)
     it("sets lua_ssl_trusted_certificate", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
         cassandra_ssl = true,
@@ -43,88 +49,6 @@ describe("NGINX conf compiler", function()
       }))
       local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(conf)
       assert.matches("lua_ssl_trusted_certificate '/path/to/ca.cert';", kong_nginx_conf, nil, true)
-    end)
-    
-    describe("SSL", function()
-      local custom_conf_default_ssl, custom_conf_other_ssl
-      setup(function()
-        custom_conf_default_ssl = assert(conf_loader(helpers.test_conf_path, {
-          ssl = true
-        }))
-
-        custom_conf_other_ssl = assert(conf_loader(helpers.test_conf_path, {
-          ssl = true,
-          ssl_cert = "/tmp/custom.crt",
-          ssl_cert_key = "/tmp/custom.key"
-        }))
-
-        assert(pl_file.write("/tmp/custom.crt", "CUSTOM"))
-        assert(pl_file.write("/tmp/custom.key", "CUSTOM"))
-      end)
-
-      teardown(function()
-        assert(pl_file.delete("/tmp/custom.crt"))
-        assert(pl_file.delete("/tmp/custom.key"))
-      end)
-
-      it("default SSL", function()
-        local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf_default_ssl)
-        assert.matches("ssl_certificate spec/fixtures/kong_spec.crt;", kong_nginx_conf)
-        assert.matches("ssl_certificate_key spec/fixtures/kong_spec.key;", kong_nginx_conf)
-      end)
-      it("custom SSL", function()
-        local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf_other_ssl)
-        assert.matches("ssl_certificate /tmp/custom.crt;", kong_nginx_conf)
-        assert.matches("ssl_certificate_key /tmp/custom.key;", kong_nginx_conf)
-      end)
-      it("disables SSL", function()
-        local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf)
-        assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
-        assert.not_matches("ssl_certificate", kong_nginx_conf)
-        assert.not_matches("ssl_certificate_key", kong_nginx_conf)
-        assert.not_matches("ssl_protocols", kong_nginx_conf)
-        assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
-      end)
-      it("should return an error if the files do not exist", function()
-        local conf = pl_tablex.deepcopy(custom_conf_other_ssl)
-        conf.ssl_cert = "/hello.crt"
-        local _, err = nginx_conf_compiler.compile_kong_conf(conf)
-        assert.equal("Can't find SSL certificate at: /hello.crt", err)
-
-        conf = pl_tablex.deepcopy(custom_conf_other_ssl)
-        conf.ssl_cert_key = "/hello.key"
-        local _, err = nginx_conf_compiler.compile_kong_conf(conf)
-        assert.equal("Can't find SSL key at: /hello.key", err)
-      end)
-    end)
-
-    describe("DNS", function()
-      local custom_conf_dnsmasq, custom_conf_resolver
-      setup(function()
-        custom_conf_dnsmasq = assert(conf_loader(helpers.test_conf_path, {
-          dnsmasq = true,
-          dns_resolver = ""
-        }))
-        custom_conf_resolver = assert(conf_loader(helpers.test_conf_path, {
-          dnsmasq = false,
-          dns_resolver = "8.8.8.8:43"
-        }))
-      end)
-
-      it("compiles with dnsmasq", function()
-        local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf_dnsmasq)
-        assert.matches("resolver 127.0.0.1:9053 ipv6=off;", kong_nginx_conf)
-      end)
-      it("compiles with dnsmasq and a custom port", function()
-        local conf = pl_tablex.deepcopy(custom_conf_dnsmasq)
-        conf.dnsmasq_port = 4000
-        local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(conf)
-        assert.matches("resolver 127.0.0.1:4000 ipv6=off;", kong_nginx_conf)
-      end)
-      it("compiles with custom resolver", function()
-        local kong_nginx_conf = nginx_conf_compiler.compile_kong_conf(custom_conf_resolver)
-        assert.matches("resolver 8.8.8.8:43 ipv6=off;", kong_nginx_conf)
-      end)
     end)
   end)
 
@@ -168,12 +92,15 @@ describe("NGINX conf compiler", function()
     after_each(function()
       pl_dir.rmtree(prefix)
     end)
-    it("checks nginx_prefix exists", function()
+    it("auto-creates inexisted prefix", function()
       local ok, err = nginx_conf_compiler.prepare_prefix(helpers.test_conf, "./inexistent")
-      assert.equal("./inexistent does not exist", err)
-      assert.is_nil(ok)
+      assert.True(ok)
+      assert.is_nil(err)
+      finally(function()
+        helpers.dir.rmtree("inexistent")
+      end)
     end)
-    it("checks nginx_prefix is a directory", function()
+    it("checks prefix is a directory", function()
       local tmp = os.tmpname()
       finally(function()
         assert(os.remove(tmp))
@@ -182,14 +109,12 @@ describe("NGINX conf compiler", function()
       assert.equal(tmp.." is not a directory", err)
       assert.is_nil(ok)
     end)
-    it("creates NGINX conf, log files and default SSL certs", function()
+    it("creates NGINX conf and log files", function()
       assert(nginx_conf_compiler.prepare_prefix(helpers.test_conf, prefix))
       assert.truthy(exists(join(prefix, "nginx.conf")))
       assert.truthy(exists(join(prefix, "nginx-kong.conf")))
       assert.truthy(exists(join(prefix, "logs", "error.log")))
       assert.truthy(exists(join(prefix, "logs", "access.log")))
-      assert.truthy(exists(join(prefix, "ssl", "kong-default.crt")))
-      assert.truthy(exists(join(prefix, "ssl", "kong-default.key")))
     end)
   end)
 end)

@@ -20,9 +20,9 @@ local function execute(args)
 
   local dao = DAOFactory(conf)
   assert(dao:run_migrations())
+  assert(nginx_conf_compiler.prepare_prefix(conf, conf.prefix))
   assert(dnsmasq_signals.start(conf, conf.prefix))
   assert(serf_signals.start(conf, conf.prefix, dao))
-  assert(nginx_conf_compiler.prepare_prefix(conf, conf.prefix))
   assert(nginx_signals.start(conf.prefix))
   log("Started")
 end

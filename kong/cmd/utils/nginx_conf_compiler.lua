@@ -31,6 +31,7 @@ local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
+local fmt = string.format
 
 local function gather_system_infos(compile_env)
   local infos = {}
@@ -111,7 +112,9 @@ local function prepare_prefix(kong_config, nginx_prefix)
   log.verbose("preparing nginx prefix directory at %s", nginx_prefix)
 
   if not pl_path.exists(nginx_prefix) then
-    return nil, nginx_prefix.." does not exist"
+    log.verbose(fmt("prefix directory %s not found, trying to create it", nginx_prefix))
+    local ok, err = pl_dir.makepath(nginx_prefix)
+    if not ok then return nil, err end
   elseif not pl_path.isdir(nginx_prefix) then
     return nil, nginx_prefix.." is not a directory"
   end
@@ -129,7 +132,7 @@ local function prepare_prefix(kong_config, nginx_prefix)
   if not ok then return nil, stderr end
   local ok, _, _, stderr = touch(acc_logs_path)
   if not ok then return nil, stderr end
-
+  
   -- auto-generate default SSL certificate
   local ok, err = ssl.prepare_ssl_cert_and_key(nginx_prefix)
   if not ok then return nil, err end
@@ -138,12 +141,16 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local kong_nginx_conf_path = pl_path.join(nginx_prefix, "nginx-kong.conf")
 
   -- write NGINX conf
-  local nginx_conf = compile_nginx_conf(kong_config)
-  pl_file.write(nginx_config_path, nginx_conf)
+  local nginx_conf, err = compile_nginx_conf(kong_config)
+  if not nginx_conf then return nil, err end
+  local ok, err = pl_file.write(nginx_config_path, nginx_conf)
+  if not ok then return nil, err end
 
   -- write Kong's NGINX conf
-  local kong_nginx_conf = compile_kong_conf(kong_config)
-  pl_file.write(kong_nginx_conf_path, kong_nginx_conf)
+  local kong_nginx_conf, err = compile_kong_conf(kong_config)
+  if not kong_nginx_conf then return nil, err end
+  local ok, err = pl_file.write(kong_nginx_conf_path, kong_nginx_conf)
+  if not ok then return nil, err end
 
   return true
 end

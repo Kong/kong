@@ -117,8 +117,6 @@ local function check_and_infer(conf)
   
   if conf.dns_resolver and conf.dnsmasq then
     errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
-  elseif not conf.dns_resolver and not conf.dnsmasq then
-    errors[#errors+1] = "you must specify at least dnsmasq or a custom DNS resolver"
   end
 
   local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
@@ -233,6 +231,17 @@ local function load(path, custom_conf)
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
     conf.custom_plugins = nil
+  end
+
+  -- Load absolute path
+  conf.prefix = pl_path.abspath(conf.prefix)
+
+  -- Handles relative paths for the ssl_cert and ssl_cert_key
+  if conf.ssl_cert and not pl_path.isabs(conf.ssl_cert) then
+    conf.ssl_cert = pl_path.abspath("")..conf.ssl_cert
+  end
+  if conf.ssl_cert_key and not pl_path.isabs(conf.ssl_cert_key) then
+    conf.ssl_cert_key = pl_path.abspath("")..conf.ssl_cert_key
   end
 
   do

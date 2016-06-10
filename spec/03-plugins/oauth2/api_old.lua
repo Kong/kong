@@ -167,7 +167,7 @@ describe("OAuth 2 Credentials API", function()
     end)
 
     describe("PUT", function()
-      it("#only [SUCCESS] should create a oauth2 token", function()
+      it("[SUCCESS] should create a oauth2 token", function()
         local response, status = http_client.put(BASE_URL, {credential_id = credential.id, expires_in = 10})
         assert.equal(201, status)
         token = json.decode(response)
