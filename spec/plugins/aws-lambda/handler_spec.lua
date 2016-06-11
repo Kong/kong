@@ -18,7 +18,7 @@ describe("AWS Lambda Plugin", function()
         {name = "tests-aws-lambda-6", request_host = "aws-lambda-6.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
         {name = "tests-aws-lambda-7", request_host = "aws-lambda-7.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
         {name = "tests-aws-lambda-8", request_host = "aws-lambda-8.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"}
-
+        --, {name = "tests-aws-lambda-9", request_host = "aws-lambda-9.com", upstream_url = "aws-lambda://us-east-1/kongLambdaIamRoleTest"}
       },
       plugin = {
         {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 1},
@@ -29,7 +29,7 @@ describe("AWS Lambda Plugin", function()
         {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 6},
         {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 7},
         {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 8}
-
+        --, {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 9}
       }
     }
 
@@ -83,24 +83,30 @@ describe("AWS Lambda Plugin", function()
 
     end)
 
-    describe("with credentials undefined in config", function()
+    --describe("with credentials undefined in config", function()
 
-      it("should accept key:secret in Authorization: basic header value", function()
-        local key = "AKIAIDPNYYGMJOXN26SQ"
-        local secret = "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"
-	local mime = require "mime"
-        local authHeader = "Basic "..mime.b64(key..":"..secret)
+    --  it("should accept key:secret in Authorization: basic header value", function()
+    --    local key = "AKIAIDPNYYGMJOXN26SQ"
+    --    local secret = "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"
+    --    local mime = require "mime"
+    --    local authHeader = "Basic "..mime.b64(key..":"..secret)
 
-	local reqHeaders = {
-		host = "aws-lambda-5.com",
-                Authorization = authHeader
-	}
-        local response, _, _ = http_client.get(PROXY_URL.."/", {}, reqHeaders)
+    --    local reqHeaders = {
+    --    	host = "aws-lambda-5.com",
+    --            Authorization = authHeader
+    --    }
+    --    local response, _, _ = http_client.get(PROXY_URL.."/", {}, reqHeaders)
 
-        assert.equal('"foo"', response)
-      end)
+    --    assert.equal('"foo"', response)
+    --  end)
 
-    end)
+    --  it("should find and use IAM Instance Role Credentials", function()
+    --    local response, _, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-9.com"})
+
+    --    assert.equal('"foo"', response)
+    --  end)
+
+    --end)
 
   end)
 

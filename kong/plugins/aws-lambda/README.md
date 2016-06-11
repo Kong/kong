@@ -9,13 +9,13 @@ Working:
 - Error handling
 - Allow specifying IAM credentials in Authentication header of api to lambda
 - Allow sepecifying region and function name declaratively in aws-lambda schemed upstream_url of parent api
+- Add support for IAM Instance Role authentication
 
 ToDo:
-- Add support for IAM Instance Role authentication
-- Add support for other invocation types?
-- Add support for logging?
 - Add support for client context?
+- Add support for logging?
 - Add support for qualifier
+- Add support for other invocation types?
 - Restrict Basic Authentication to HTTPS-only
 - Allow sepecifying qualifier, invocation type, log type and client context declaratively in aws-lambda schemed upstream_url of parent api
 - Rewrite as "pure" nginx request to aws-lambda (i.e. without capturing and/or making origin request via resty) -- is this possible?

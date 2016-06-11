@@ -12,12 +12,10 @@ function AwsLambdaHandler:new()
 end
 
 local function getCreds(conf, reqHeaders)
-	local creds = {
-		access_key = conf.aws_access_key,
-		secret_key = conf.aws_secret_key
-	}
+	local creds = {}
+
 	local auth = reqHeaders["Authorization"]
-	if auth ~= nil and auth ~= "" then
+	if string.len(auth or "") > 0 then
 		local parts = {} local partsLen = 0
 		for p in string.gmatch(auth, "%S+") do
 			table.insert(parts, p)
@@ -37,6 +35,25 @@ local function getCreds(conf, reqHeaders)
 			end
 		end
 	end
+	if string.len(creds.access_key or "") > 0 or string.len(creds.secret_key or "") > 0 then return creds end
+
+	creds.access_key = conf.aws_access_key
+	creds.secret_key = conf.aws_secret_key
+	if string.len(creds.access_key or "") > 0 or string.len(creds.secret_key or "") > 0 then return creds end
+
+	local security_credentials_url = 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
+	local response, code, _ = http_client.get(security_credentials_url, nil, {})
+	if code == 404 then return creds end
+
+	local role_name = response
+	response, code, _ = http_client.get(security_credentials_url..role_name, nil, {})
+	if code == 404 then return creds end
+
+	local security_credentials_json = response
+	local security_credentials = cjson.decode(security_credentials_json)
+	creds.access_key = security_credentials.AccessKeyId
+	creds.secret_key = security_credentials.SecretAccessKey
+	creds.security_token = security_credentials.Token
 	return creds
 end
 
@@ -102,7 +119,7 @@ function AwsLambdaHandler:access(conf)
 	--conf.invocation_type ???
 	--conf.log_type ???
 
-	local request, _ = prepare_request({
+	local opts = {
 	    Region = target.region,
 	    Service = "lambda",
 	    method = 'POST',
@@ -115,7 +132,11 @@ function AwsLambdaHandler:access(conf)
 	    path = '/2015-03-31/functions/'..target.function_name..'/invocations',
 	    AccessKey = creds.access_key,
 	    SecretKey = creds.secret_key
-	})
+	}
+	if string.len(creds.security_token or "") > 0 then
+		opts.headers["X-Amz-Security-Token"] = creds.security_token
+	end
+	local request, _ = prepare_request(opts)
 
         -- response, code, headers = http_client.get
 	local response, _, headers = http_client.post(
