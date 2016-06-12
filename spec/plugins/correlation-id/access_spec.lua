@@ -5,6 +5,7 @@ local cjson = require "cjson"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN.."#%d"
+local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+-%d+-%d+-%d+-%d+-%d+%.%d+"
 local DEFAULT_HEADER_NAME = "Kong-Request-ID"
 
 describe("Correlation ID Plugin", function()
@@ -16,13 +17,15 @@ describe("Correlation ID Plugin", function()
         {request_host = "correlation1.com", upstream_url = "http://mockbin.com"},
         {request_host = "correlation2.com", upstream_url = "http://mockbin.com"},
         {request_host = "correlation3.com", upstream_url = "http://mockbin.com"},
-        {request_host = "correlation4.com", upstream_url = "http://mockbin.com"}
+        {request_host = "correlation4.com", upstream_url = "http://mockbin.com"},
+        {request_host = "correlation5.com", upstream_url = "http://mockbin.com"}
       },
       plugin = {
         {name = "correlation-id", config = {echo_downstream = true}, __api = 1},
         {name = "correlation-id", config = {header_name = "Foo-Bar-Id", echo_downstream = true}, __api = 2},
         {name = "correlation-id", config = {generator = "uuid", echo_downstream = true}, __api = 3},
         {name = "correlation-id", config = {}, __api = 4},
+        {name = "correlation-id", config = {generator = "tracker", echo_downstream = true}, __api = 5},
       }
     }
     spec_helper.start_kong()
@@ -76,6 +79,12 @@ describe("Correlation ID Plugin", function()
   describe("uuid genetator", function()
     it("generates a unique UUID for every request using default header", function()
       test_with("correlation3.com", DEFAULT_HEADER_NAME, UUID_PATTERN)
+    end)
+  end)
+
+  describe("tracker genetator", function()
+    it("generates a unique tracker id for every request using default header", function()
+      test_with("correlation5.com", DEFAULT_HEADER_NAME, TRACKER_PATTERN)
     end)
   end)
 
