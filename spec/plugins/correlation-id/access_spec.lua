@@ -5,7 +5,7 @@ local cjson = require "cjson"
 local STUB_GET_URL = spec_helper.STUB_GET_URL
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN.."#%d"
-local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+-%d+-%d+-%d+-%d+-%d+%.%d+"
+local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d+%.%d+"
 local DEFAULT_HEADER_NAME = "Kong-Request-ID"
 
 describe("Correlation ID Plugin", function()
