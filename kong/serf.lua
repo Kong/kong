@@ -3,13 +3,13 @@
 
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
 local cjson = require "cjson.safe"
 local log = require "kong.cmd.utils.log"
 local fmt = string.format
 
-local ok, _, stdout, stderr = pl_utils.executeex "/bin/hostname"
-if not ok then error(stderr) end
-local hostname = pl_stringx.strip(stdout)
+local serf_node_id = "serf.id"
 
 local Serf = {}
 Serf.__index = Serf
@@ -22,9 +22,9 @@ Serf.args_mt = {
   end
 }
 
-function Serf.new(kong_config, dao)
+function Serf.new(kong_config, nginx_prefix, dao)
   return setmetatable({
-    node_name = hostname.."_"..kong_config.cluster_listen,
+    node_name = assert(pl_file.read(pl_path.join(nginx_prefix, serf_node_id))),
     config = kong_config,
     dao = dao
   }, Serf)
@@ -40,13 +40,30 @@ function Serf:invoke_signal(signal, args, no_rpc)
   local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
   local cmd = fmt("serf %s %s %s", signal, rpc, tostring(args))
   local ok, code, stdout = pl_utils.executeex(cmd)
-  if not ok or code ~= 0 then return nil, stdout end
+  if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 
   return stdout
 end
 
 function Serf:join_node(address)
   return select(2, self:invoke_signal("join", address)) == nil
+end
+
+function Serf:leave()
+  local res, err = self:invoke_signal("leave")
+  if not res then return nil, err end
+
+  local _, err = self.dao.nodes:delete {name = self.node_name}
+  if err then return nil, err end
+
+  return true
+end
+
+function Serf:force_leave(node_name)
+  local res, err = self:invoke_signal("force-leave", node_name)
+  if not res then return nil, err end
+
+  return true
 end
 
 function Serf:members()
@@ -57,6 +74,18 @@ function Serf:members()
   if not json then return nil, err end
 
   return json.members
+end
+
+function Serf:keygen()
+  local res, err = self:invoke_signal("keygen")
+  if not res then return nil, err end
+  return res
+end
+
+function Serf:reachability()
+  local res, err = self:invoke_signal("reachability")
+  if not res then return nil, err end
+  return res
 end
 
 function Serf:autojoin()
@@ -110,7 +139,7 @@ function Serf:add_node()
   local _, err = self.dao.nodes:insert({
     name = self.node_name,
     cluster_listening_address = pl_stringx.strip(addr)
-  }, {ttl = 3600})
+  }, {ttl = self.config.cluster_ttl_on_failure})
   if err then return nil, tostring(err) end
 
   return true

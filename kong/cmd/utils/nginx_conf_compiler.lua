@@ -1,4 +1,5 @@
 local NGINX_VARS = {
+  prefix = true,
   plugins = true,
   cluster_listen = true,
   cluster_listen_rpc = true,

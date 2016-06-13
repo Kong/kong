@@ -29,6 +29,7 @@ local cmds = {
   check = "check",
   compile = "compile",
   migrations = "migrations",
+  cluster = "cluster",
   version = "version",
   roar = "roar"
 }
