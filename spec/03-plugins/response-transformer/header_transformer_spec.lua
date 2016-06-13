@@ -126,7 +126,7 @@ describe("response-transformer header_transformer", function()
         assert.falsy(ngx_headers[CONTENT_LENGTH])
       end)
     end)
-    describe("performing remove, replace, add, append togeather", function()
+    describe("performing remove, replace, add, append together", function()
       local conf = {
         remove = {
           headers = {"h1:v1"}
