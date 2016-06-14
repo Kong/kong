@@ -6,9 +6,7 @@ local DAOFactory = require "kong.dao.factory"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
-  -- no conf file loaded, we just want the prefix,
-  -- potentially overriden by the argument
-  local conf = assert(conf_loader(nil, {
+  local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
 
@@ -24,6 +22,7 @@ local lapp = [[
 Usage: kong stop [OPTIONS]
 
 Options:
+ -c,--conf (optional string) configuration file
  --prefix (optional string) Nginx prefix path
 ]]
 

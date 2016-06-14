@@ -42,7 +42,7 @@ function Serf:invoke_signal(signal, args, no_rpc)
   local ok, code, stdout = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 
-  return stdout
+  return pl_stringx.strip(stdout) -- serf adds a new line on the result, so we strip it
 end
 
 function Serf:join_node(address)
@@ -77,15 +77,11 @@ function Serf:members()
 end
 
 function Serf:keygen()
-  local res, err = self:invoke_signal("keygen")
-  if not res then return nil, err end
-  return res
+  return self:invoke_signal("keygen")
 end
 
 function Serf:reachability()
-  local res, err = self:invoke_signal("reachability")
-  if not res then return nil, err end
-  return res
+  return self:invoke_signal("reachability")
 end
 
 function Serf:autojoin()
@@ -105,7 +101,19 @@ function Serf:autojoin()
     local joined
     for _, v in ipairs(nodes) do
       if self:join_node(v.cluster_listening_address) then
-        log("Successfully auto-joined %s", v.cluster_listening_address)
+        log("Successfully auto-joined cluster through %s", v.cluster_listening_address)
+        local members = assert(self:members())
+        local active, left, failed = 0, 0, 0
+        for _, v in ipairs(members) do
+          if v.status == "alive" then
+            active = active + 1
+          elseif v.status == "left" then
+            left = left + 1
+          elseif v.status == "failed" then
+            failed = failed + 1
+          end
+        end
+        log(fmt("The Kong cluster now has %d nodes (%d active, %d left, %d failed)", #members, active, left, failed))
         joined = true
         break
       else

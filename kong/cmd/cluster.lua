@@ -1,4 +1,3 @@
-local pl_app = require "pl.lapp"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local Serf = require "kong.serf"
@@ -26,7 +25,7 @@ local function execute(args)
   elseif args.command == "force-leave" then
     local node_name = args[1]
     if not node_name then
-      pl_app.quit("You need to specify the node name to leave")
+      error("you need to specify the node name to leave")
     end
     log(fmt("Force-leaving %s", node_name))
     assert(serf:force_leave(node_name))
@@ -45,6 +44,7 @@ The available commands are:
 
 Options:
  -c,--conf (optional string) configuration file
+ --prefix  (optional string) Nginx prefix path
 ]]
 
 return {

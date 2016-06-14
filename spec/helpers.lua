@@ -233,6 +233,6 @@ return {
     return kong_exec("start --conf "..TEST_CONF_PATH, prefix)
   end,
   stop_kong = function(prefix)
-    return kong_exec("stop ", prefix)
+    return kong_exec("stop --conf "..TEST_CONF_PATH, prefix)
   end
 }
