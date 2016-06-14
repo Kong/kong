@@ -1,23 +1,18 @@
 Working:
-- Add plugin to api
 - Specify aws credentials (IAM access_key and secret_key) in config
-- Specify region, function name, body in config
-- Return response value
 - Return appropriate error response on request if api.upstream_url is *not* aws-lambda://
 - Allow merging of query parameters from api to lambda payload
 - Allow merging of body from api to lambda
 - Error handling
-- Allow specifying IAM credentials in Authentication header of api to lambda
-- Allow sepecifying region and function name declaratively in aws-lambda schemed upstream_url of parent api
-- Add support for IAM Instance Role authentication
+- Specify IAM credentials in Authentication header of api to lambda
+- IAM Instance Role authentication
+- Specify region, function name, and qualifier declaratively in aws-lambda schemed upstream_url of parent api
 
 ToDo:
-- Add support for client context?
-- Add support for logging?
-- Add support for qualifier
-- Add support for other invocation types?
+- Add support for logging
+- Allow sepecifying invocation type, and log type declaratively in aws-lambda schemed upstream_url of parent api
 - Restrict Basic Authentication to HTTPS-only
-- Allow sepecifying qualifier, invocation type, log type and client context declaratively in aws-lambda schemed upstream_url of parent api
+- Add support for client context?
 - Rewrite as "pure" nginx request to aws-lambda (i.e. without capturing and/or making origin request via resty) -- is this possible?
 
 request_url:

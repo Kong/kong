@@ -1,17 +1,5 @@
---local function check_invocation_type(given_value, given_config, col, tbl, schema, opts)
---	if given_value ~= "RequestResponse" then
---		return false, "not supported"
---	end
---end
---
 --local function check_log_type(given_value, given_config)
 --	if given_value ~= "None" then
---		return false, "not supported"
---	end
---end
---
---local function check_qualifier(given_value, given_config)
---	if given_value ~= nil then
 --		return false, "not supported"
 --	end
 --end
@@ -31,26 +19,15 @@ return {
 			type = string,
 			required = false,
 			default = nil }
-		--qualifier = {
-		--	type = "string",
-		--	required = false,
-		--	default = "$LATEST",
-		--	func = check_qualifier },
-		--client_context = {
-		--	type = string,
-		--	required = false,
-		--	default = nil },
 		--log_type = {
 		--	type = string,
 		--	required = false,
 		--	default = "None",
 		--	enum = {"None", "Tail"},
 		--	func = check_log_type },
-		--invocation_type = {
-		--	type = "string",
+		--client_context = {
+		--	type = string,
 		--	required = false,
-		--	default = "RequestResponse",
-		--	enum = {"Event", "RequestResponse", "DryRun"},
-		--	func = check_invocation_type }
+		--	default = nil }
 	}
 }

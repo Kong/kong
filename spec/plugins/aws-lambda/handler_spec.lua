@@ -12,24 +12,16 @@ describe("AWS Lambda Plugin", function()
       api = {
         {name = "tests-aws-lambda", request_host = "aws-lambda.com", upstream_url = "http://mockbin.com"},
         {name = "tests-aws-lambda-2", request_host = "aws-lambda-2.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
-        {name = "tests-aws-lambda-3", request_host = "aws-lambda-3.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
+        --{name = "tests-aws-lambda-3", request_host = "aws-lambda-3.com", upstream_url = "aws-lambda://us-west-2/hello-world-py/?qualifier=3"},
         {name = "tests-aws-lambda-4", request_host = "aws-lambda-4.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
-        {name = "tests-aws-lambda-5", request_host = "aws-lambda-5.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
-        {name = "tests-aws-lambda-6", request_host = "aws-lambda-6.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
-        {name = "tests-aws-lambda-7", request_host = "aws-lambda-7.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"},
-        {name = "tests-aws-lambda-8", request_host = "aws-lambda-8.com", upstream_url = "aws-lambda://us-east-1/kongLambdaTest"}
-        --, {name = "tests-aws-lambda-9", request_host = "aws-lambda-9.com", upstream_url = "aws-lambda://us-east-1/kongLambdaIamRoleTest"}
+        --, {name = "tests-aws-lambda-5", request_host = "aws-lambda-5.com", upstream_url = "aws-lambda://us-east-1/kongLambdaIamRoleTest"}
       },
       plugin = {
         {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 1},
-        {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 2},
-        {name = "aws-lambda", config = {body = cjson.encode({key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 3},
-        {name = "aws-lambda", config = {body = cjson.encode({key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 4},
-        {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 5},
-        {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 6},
-        {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 7},
-        {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 8}
-        --, {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 9}
+        {name = "aws-lambda", config = {body = cjson.encode({key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 2},
+        --{name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"}), aws_access_key = "AKIAIDPNYYGMJOXN26SQ", aws_secret_key = "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"}, __api = 3},
+        {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 3},
+        --, {name = "aws-lambda", config = {body = cjson.encode({key1="foo",key2="bar",key3="baz"})}, __api = 5}
       }
     }
 
@@ -52,7 +44,7 @@ describe("AWS Lambda Plugin", function()
       end)
   
       it("should return any x-amz-function-error", function()
-        local response, status, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-3.com"})
+        local response, status, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-2.com"})
         
 	assert.equal(500, status)
         assert.is_true(response:find("KeyError") ~= nil)
@@ -61,7 +53,7 @@ describe("AWS Lambda Plugin", function()
       it("should include api querystring parameter in payload of lambda", function()
         local parm_value = "test-value"
 
-        local response, status, _ = http_client.get(PROXY_URL.."/", {key1=parm_value}, {host = "aws-lambda-3.com"})
+        local response, status, _ = http_client.get(PROXY_URL.."/", {key1=parm_value}, {host = "aws-lambda-2.com"})
 
 	assert.equal(200, status)
         assert.equal('"'..parm_value..'"', response)
@@ -74,39 +66,45 @@ describe("AWS Lambda Plugin", function()
         body[parm_name] = parm_value
 
 	local reqHeaders = {}
-	reqHeaders["host"] = "aws-lambda-3.com"
+	reqHeaders["host"] = "aws-lambda-2.com"
 	reqHeaders["content-type"] = "application/json"
         local response, _, _ = http_client.post(PROXY_URL.."/", body, reqHeaders)
 
         assert.equal('"'..parm_value..'"', response)
       end)
 
+      --it("should call the version indicated in the qualifier parameter", function()
+      --  local response, _, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-3.com"})
+
+      --  assert.equal('"bar"', response)
+      --end)
+
     end)
 
-    --describe("with credentials undefined in config", function()
+    describe("with credentials undefined in config", function()
 
-    --  it("should accept key:secret in Authorization: basic header value", function()
-    --    local key = "AKIAIDPNYYGMJOXN26SQ"
-    --    local secret = "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"
-    --    local mime = require "mime"
-    --    local authHeader = "Basic "..mime.b64(key..":"..secret)
+      it("should accept key:secret in Authorization: basic header value", function()
+        local key = "AKIAIDPNYYGMJOXN26SQ"
+        local secret = "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"
+        local mime = require "mime"
+        local authHeader = "Basic "..mime.b64(key..":"..secret)
 
-    --    local reqHeaders = {
-    --    	host = "aws-lambda-5.com",
-    --            Authorization = authHeader
-    --    }
-    --    local response, _, _ = http_client.get(PROXY_URL.."/", {}, reqHeaders)
+        local reqHeaders = {
+        	host = "aws-lambda-4.com",
+                Authorization = authHeader
+        }
+        local response, _, _ = http_client.get(PROXY_URL.."/", {}, reqHeaders)
 
-    --    assert.equal('"foo"', response)
-    --  end)
+        assert.equal('"foo"', response)
+      end)
 
-    --  it("should find and use IAM Instance Role Credentials", function()
-    --    local response, _, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-9.com"})
+      --it("should find and use IAM Instance Role Credentials", function()
+      --  local response, _, _ = http_client.get(PROXY_URL.."/", {}, {host = "aws-lambda-5.com"})
 
-    --    assert.equal('"foo"', response)
-    --  end)
+      --  assert.equal('"foo"', response)
+      --end)
 
-    --end)
+    end)
 
   end)
 

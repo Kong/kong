@@ -81,6 +81,7 @@ local function getTarget(conf)
 	local target = {
 		region = nil,
 		function_name = nil,
+		qualifier = nil,
 		is_valid = true,
 		error_message = nil
 	}
@@ -96,6 +97,20 @@ local function getTarget(conf)
 	local url = require("socket.url").parse(upstream_url)
 	target.region = url.host
 	target.function_name = url.path:sub(2)
+	local query = url.query
+	if string.len(query or "") > 0 then
+		local segments = query:gfind("([^&]+)")
+		for segment in segments do
+			local parts = segment:gfind("([^=]+)")
+			local arr = {}
+			for part in parts do
+				table.insert(arr, part)
+			end
+			if arr[1] == 'qualifier' and #arr > 1 then
+				target.qualifier = arr[2]
+			end
+		end
+	end
 	return target
 end
 
@@ -114,10 +129,9 @@ function AwsLambdaHandler:access(conf)
 	local creds = getCreds(conf, reqHeaders)
 	local bodyJson = getBodyJson(conf, reqHeaders)
 
-	--conf.qualifier ???
+	--conf.log_type ???
 	--conf.client_context ???
 	--conf.invocation_type ???
-	--conf.log_type ???
 
 	local opts = {
 	    Region = target.region,
@@ -133,6 +147,9 @@ function AwsLambdaHandler:access(conf)
 	    AccessKey = creds.access_key,
 	    SecretKey = creds.secret_key
 	}
+	if string.len(target.qualifier or "") > 0 then
+		opts.query = "Qualifier="..target.qualifier
+	end
 	if string.len(creds.security_token or "") > 0 then
 		opts.headers["X-Amz-Security-Token"] = creds.security_token
 	end
