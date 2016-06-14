@@ -128,11 +128,19 @@ luassert:register("assertion", "fail", fail,
                   "assertion.fail.negative",
                   "assertion.fail.negative")
 
+--- Asserts array contains given value.
+-- @param expected: value to search for
+-- @param[type=table] arr: array to look into
+-- @param[type=boolean] match: if `expected` is a string, will treat
+--                             it as a pattern and use `string.match`.
 local function contains(state, args)
-  local expected, arr = unpack(args)
+  local expected, arr, match = unpack(args)
   local found
   for i = 1, #arr do
-    if arr[i] == expected then
+    if match and string.match(arr[i], expected) then
+      found = true
+      break
+    elseif arr[i] == expected then
       found = true
       break
     end
