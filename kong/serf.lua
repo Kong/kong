@@ -113,7 +113,7 @@ function Serf:autojoin()
             failed = failed + 1
           end
         end
-        log(fmt("The Kong cluster now has %d nodes (%d active, %d left, %d failed)", #members, active, left, failed))
+        log("The Kong cluster now has %d nodes (%d active, %d left, %d failed)", #members, active, left, failed)
         joined = true
         break
       else
