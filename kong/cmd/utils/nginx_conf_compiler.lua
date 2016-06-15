@@ -134,6 +134,11 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local ok, _, _, stderr = touch(acc_logs_path)
   if not ok then return nil, stderr end
   
+  -- pids folder
+  local pids_path = pl_path.join(nginx_prefix, "pids")
+  local ok, err = pl_dir.makepath(pids_path)
+  if not ok then return nil, err end
+
   -- auto-generate default SSL certificate
   local ok, err = ssl.prepare_ssl_cert_and_key(nginx_prefix)
   if not ok then return nil, err end

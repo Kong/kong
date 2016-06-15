@@ -21,7 +21,7 @@ local function is_openresty(bin_path)
 end
 
 local function get_pid_path(nginx_prefix)
-  local pid_path = pl_path.join(nginx_prefix, "logs", "nginx.pid")
+  local pid_path = pl_path.join(nginx_prefix, "pids", "nginx.pid")
   if pl_path.exists(pid_path) then
     return pid_path
   end

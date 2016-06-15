@@ -24,7 +24,7 @@ Serf.args_mt = {
 
 function Serf.new(kong_config, nginx_prefix, dao)
   return setmetatable({
-    node_name = assert(pl_file.read(pl_path.join(nginx_prefix, serf_node_id))),
+    node_name = assert(pl_file.read(pl_path.join(nginx_prefix, "serf", serf_node_id))),
     config = kong_config,
     dao = dao
   }, Serf)

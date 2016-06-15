@@ -50,7 +50,7 @@ end
 function _M.start(kong_config, nginx_prefix)
   if kong_config.dnsmasq then
     -- is dnsmasq already running in this prefix?
-    local pid_path = pl_path.join(nginx_prefix, dnsmasq_pid_name)
+    local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
     if is_running(pid_path) then
       log.verbose("dnsmasq already running at %s", pid_path)
       return true
@@ -74,7 +74,7 @@ function _M.start(kong_config, nginx_prefix)
 end
 
 function _M.stop(nginx_prefix)
-  local pid_path = pl_path.join(nginx_prefix, dnsmasq_pid_name)
+  local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
   if pl_path.exists(pid_path) then
     log.verbose("stopping dnsmasq at %s", pid_path)
     return kill(pid_path, "-9")
