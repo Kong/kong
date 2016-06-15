@@ -1,166 +1,256 @@
-# Kong configuration file.
+# -----------------------
+# Kong configuration file
+# -----------------------
 #
-# All commented values are default values. Uncomment and update a property to 
-# configure it.
+# The commented-out settings shown in this file represent the default values.
+#
+# This file is read when `kong start` or `kong compile` are used. Kong
+# generates the Nginx configuration with the settings specified in this file.
+#
+# All environment variables prefixed with `KONG_` and capitalized will override
+# the settings specified in this file.
+# Example:
+#   `log_level` setting -> `KONG_LOG_LEVEL` env variable
+#
+# Boolean values can be specified as `on`/`off` or `true`/`false`.
+# Lists must be specified as comma-separated strings.
+#
+# All comments in this file can be removed safely, including the
+# commented-out properties.
+# You can verify the integrity of your settings with `kong check <conf>`.
 
-# The Kong working directory. The directory will contain Kong process files and
-# logs. Each Kong process on the machine must have a separate working directory.
-# prefix = /usr/local/kong/
+#------------------------------------------------------------------------------
+# GENERAL
+#------------------------------------------------------------------------------
 
-################################## NETWORK #####################################
+#prefix = /usr/local/kong/       # Working directory. Equivalent to Nginx's
+                                 # prefix path, containing temporary files
+                                 # and logs.
+                                 # Each Kong process must have a separate
+                                 # working directory.
 
-# This section determines the network settings for Kong. By default Kong listens
-# for connections from all the network interfaces available on the server.
+#log_level = notice              # Log level of the Nginx server. Logs are
+                                 # found at <prefix>/logs/error.log
+# Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
+# of accepted values.
 
-# Address and port on which the server will accept HTTP requests, consumers will 
-# make requests on this port.
-# proxy_listen = 0.0.0.0:8000
+#custom_plugins =                # Comma-separated list of additional plugins
+                                 # this node should load.
+                                 # Use this property to load custom plugins
+                                 # that are not bundled with Kong.
+                                 # Plugins will be loaded from the
+                                 # `kong.plugins.{name}.*` namespace.
 
-# Same as proxy_listen, but for HTTPS requests.
-# proxy_listen_ssl = 0.0.0.0:8443
+#anonymous_reports = on          # Send anonymous usage data such as error
+                                 # stack traces to help improve Kong.
 
-# Address and port on which the admin API will listen to. The admin API is a 
-# private API which lets you manage your Kong infrastructure. It needs to be 
-# secured appropriately.
-# admin_listen = 0.0.0.0:8001
+#------------------------------------------------------------------------------
+# NGINX
+#------------------------------------------------------------------------------
 
-# Address and port used by the node to communicate with other Kong nodes in the 
-# cluster with both UDP and TCP messages. All the nodes in the cluster must be 
-# able to communicate with this node on this address. Only IPv4 addresses are 
-# allowed (no hostnames).
-# cluster_listen = 0.0.0.0:7946
+#proxy_listen = 0.0.0.0:8000     # Address and port on which Kong will accept
+                                 # HTTP requests.
+                                 # This is the public-facing entrypoint of
+                                 # Kong, to which your consumers will make
+                                 # requests to.
+# Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
+# a description of the accepted formats for this and other *_listen values.
 
-# Address and port used by the node to communicate with the local clustering 
-# agent (TCP only, and local only). Used internally by this Kong node. Only 
-# IPv4 addresses are allowed (no hostnames).
-# cluster_listen_rpc = 127.0.0.1:7373
+#proxy_listen_ssl = 0.0.0.0:8443 # Address and port on which Kong will accept
+                                 # HTTPS requests if `ssl` is enabled.
 
-################################## DATABASE ####################################
+#admin_listen = 0.0.0.0:8001     # Address and port on which Kong will expose
+                                 # an entrypoint to the Admin API.
+                                 # This API lets you configure and manage Kong,
+                                 # and should be kept private and secured.
 
-# This section determines the database settings for Kong. Kong will store all of
-# its data in either Cassandra or PostgreSQL, and the database selected must be
-# reachable by every Kong node in the same cluster.
+#nginx_worker_processes = auto   # Determines the number of worker processes
+                                 # spawned by Nginx.
 
-# Only "cassandra" and "postgres" are currently supported.
-# database = postgres
+#nginx_daemon = on               # Determines wether Nginx will run as a daemon
+                                 # or as a foreground process. Mainly useful
+                                 # for development or when running Kong inside
+                                 # a Docker environment.
 
-# PostgreSQL connection and security settings.
-# pg_host = 127.0.0.1
-# pg_port = 5432
-# pg_database = kong
-# pg_user = kong
-# pg_password = kong
+#mem_cache_size = 128m           # Size of the in-memory cache for database
+                                 # entities. The accepted units are `k` and
+                                 # `m`, with a minimum recommended value of
+                                 # a few MBs.
 
-# Cassandra connection, replication and security settings.
+#ssl = on                        # Determines if Nginx should be listening for
+                                 # HTTPS traffic on the `proxy_listen_ssl`
+                                 # address. If disabled, Nginx will only bind
+                                 # itself on `proxy_listen`, and all SSL
+                                 # settings will be ignored.
 
-# Comma separated list of Cassandra hosts
-# cassandra_contact_points = 127.0.0.1
+#ssl_cert =                      # If `ssl` is enabled, the absolute path to
+                                 # the SSL certificate for the
+                                 # `proxy_listen_ssl` address.
 
-# cassandra_port = 9042
-# cassandra_keyspace = kong
-# cassandra_repl_strategy = SimpleStrategy
+#ssl_cert_key =                  # If `ssl` is enabled, the absolute path to
+                                 # the SSL key for the `proxy_listen_ssl`
+                                 # address.
 
-# The number of replicas, for "SimpleStrategy" only.
-# cassandra_repl_factor = 1
+#------------------------------------------------------------------------------
+# DATASTORE
+#------------------------------------------------------------------------------
 
-# The number of replicas in each datacenter. For "NetworkTopologyStrategy" only.
-# cassandra_data_centers = dc1:2,dc2:3
+# Kong will store all of its data (such as APIs, consumers and plugins) in
+# either Cassandra or PostgreSQL.
+#
+# All Kong nodes belonging to the same cluster must connect themselves to the
+# same database.
 
-# cassandra_consistency = ONE
+#database = postgres             # Determines which of PostgreSQL or Cassandra
+                                 # this node will use as its datastore.
+                                 # Accepted values are `postgres` and
+                                 # `cassandra`.
 
-# Connection and reading timeout in milliseconds.
-# cassandra_timeout = 5000
+#pg_host = 127.0.0.1             # The PostgreSQL host to connect to.
+#pg_port = 5432                  # The port to connect to.
+#pg_user = kong                  # The username to authenticate if required.
+#pg_password = kong              # The password to authenticate if required.
+#pg_database = kong              # The database name to connect to.
 
-# If true, will connect to your Cassandra instance using TLS.
-#cassandra_ssl = off
+#cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
+                                       # points to your cluster.
 
-# If true, will verify the server certificate using the given CA file.
-# cassandra_ssl_verify = off
-# cassandra_ssl_trusted_cert = NONE
+#cassandra_port = 9042           # The port on which your nodes are listening
+                                 # on. All your nodes and contact points must
+                                 # listen on the same port.
 
-# Cluster authentication options. Provide a user and a password here if your 
-# cluster uses the "PasswordAuthenticator" scheme.
-# cassandra_username = kong
-# cassandra_password = kong
+#cassandra_keyspace = kong       # The keyspace to use in your cluster.
 
-################################## CLUSTER #####################################
+#cassandra_consistency = ONE     # Consistency setting to use when reading/
+                                 # writing to the Cassandra cluster.
 
-# Cluster settings for Kong nodes. Every Kong node that points to the same 
-# database MUST join together to form a Kong Cluster, in both single or multi-DC
-# setups. Kong works on the IP layer (hostnames are not supported, only IPs are 
-# allowed) and it expects a flat network topology without any NAT between the 
-# datacenters. A common setup is having a VPN between the two datacenters such 
-# that the "flat" network assumption of Kong is not violated.
+#cassandra_timeout = 5000        # Defines the timeout (in ms), for reading
+                                 # and writing.
 
-# By default, the cluster_listen address is advertised. If the cluster_listen 
-# host is "0.0.0.0", then the first local, non-loopback, IPv4 address will be 
-# advertised to the other nodes. However, in some cases (specifically NAT 
-# traversal), there may be a routable address that cannot be bound to. This flag
-# enables gossiping a different address to support this.
-# cluster_advertise = NONE
+#cassandra_ssl = off             # Toggles client-to-node TLS connections
+                                 # between Kong and Cassandra.
 
-# Key for encrypting network traffic within Kong. Must be a base64-encoded 
-# 16-byte key.
-# cluster_encrypt = NONE
+#cassandra_ssl_verify = off      # Toggles server certificate verification if
+                                 # `cassandra_ssl` is enabled.
 
-# The TTL (time to live), in seconds, of a node in the cluster when it stops 
-# sending healthcheck pings, possibly caused by a node or network failure. If 
-# the node is not able to send a new healthcheck ping before the expiration, 
-# then new nodes in the cluster will stop attempting to connect to it on 
-# startup. Should be at least 60.
-# cluster_ttl_on_failure = 3600
+#cassandra_ssl_trusted_cert =    # Absolute path to the certificate
+                                 # authority file in PEM format. This setting
+                                 # will set the `lua_ssl_trusted_certificate`
+                                 # directive when Kong compiles the Nginx
+                                 # configuration file.
 
-#################################### DNS #######################################
+#cassandra_username = kong       # Username when using the
+                                 # `PasswordAuthenticator` scheme.
 
-# By default Kong leverages on dnsmasq to resolve DNS addresses to the upstream
-# services by using the system settings in /etc/hosts and /etc/resolv.conf.
-# dnsmasq = on
+#cassandra_password = kong       # Password when using the
+                                 # `PasswordAuthenticator` scheme.
 
-# The port used by dnsmasq, only used locally by Kong.
-# dnsmasq_port = 8053
+#cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
+                                           # Kong will use this setting to
+                                           # create your keyspace.
+                                           # Accepted values are
+                                           # `SimpleStrategy` and
+                                           # `NetworkTopologyStrategy`.
 
-# You can specify and alternate DNS server that Kong will use when proxying
-# requests to the final upstream services. You can't simultaneously specify this
-# setting and have "dnsmasq = on".
-# dns_resolver = NONE
+#cassandra_repl_factor = 1       # When migrating for the first time, Kong
+                                 # will create the keyspace with this
+                                 # replication factor when using the
+                                 # `SimpleStrategy`.
 
-#################################### SSL #######################################
+#cassandra_data_centers = dc1:2,dc2:3  # When migrating for the first time,
+                                       # will use this setting when using the
+                                       # `NetworkTopologyStrategy`.
+                                       # The format is a comma-separated list
+                                       # made of <dc_name>:<repl_factor>.
 
-# By default Kong listens on both HTTP and HTTPs, as configured in the
-# proxy_listen and proxy_listen_ssl properties. You can optionally enable or
-# disable SSL support (note that this may break plugins that are leveraging it).
+#------------------------------------------------------------------------------
+# CLUSTERING
+#------------------------------------------------------------------------------
 
-ssl = on
-ssl_cert = NONE
-ssl_cert_key = NONE
+# In addition to pointing to the same database, each Kong node must join the
+# same cluster.
+#
+# Kong's clustering works on the IP layer (hostnames are not supported, only
+# IPs) and expects a flat network topology without any NAT between the
+# datacenters.
+#
+# A common pattern is to create a VPN between the two datacenters such that
+# the flat network assumption is not violated.
+#
+# See the clustering reference for more informations:
+# https://getkong.org/docs/latest/clustering/
 
-################################## GENERAL #####################################
+#cluster_listen = 0.0.0.0:7946   # Address and port used to communicate with
+                                 # other nodes in the cluster.
+                                 # All other Kong nodes in the same cluster
+                                 # must be able to communicate over both
+                                 # TCP and UDP on this address.
+                                 # Only IPv4 addresses are supported.
 
-# The log level for the events returned by Kong and its services.
-# log_level = error
+#cluster_listen_rpc = 127.0.0.1:7373  # Address and port used by this node to
+                                      # communicate with the cluster.
+                                      # Only contains TCP traffic over the
+                                      # local network.
 
-# Comma separated list of additional plugins names to load on this node, used to 
-# load custom plugins that are not already bundled with Kong.
-# Plugins will be loaded from the kong.plugins.{name}.* namespace.
-# custom_plugins = NONE
+#cluster_advertise =             # By default, the `cluster_listen` address
+                                 # is advertised over the cluster.
+                                 # If the `cluster_listen` host is '0.0.0.0',
+                                 # then the first local, non-loopback IPv4
+                                 # address will be advertised to other nodes.
+                                 # However, in some cases (specifically NAT
+                                 # traversal), there may be a routable address
+                                 # that cannot be bound to. This flag enables
+                                 # gossiping a different address to support
+                                 # this.
 
-# The path to the SSL certificate and key that Kong will use when listening on 
-# the proxy_listen_ssl port.
-# ssl_cert = NONE
-# ssl_cert_key = NONE
+#cluster_encrypt_key =           # base64-encoded 16-bytes key to encrypt
+                                 # cluster traffic with.
 
-# Partecipate in the anonymous report program, which sends anonymous data like
-# error stack traces to Mashape, to help improving Kong.
-# anonymous_reports = on
+#cluster_ttl_on_failure = 3600   # Time to live (in seconds) of a node in the
+                                 # cluster when it stops sending healthcheck
+                                 # pings, possibly caused by a node or network
+                                 # failure.
+                                 # If a node is not able to send a new
+                                 # healthcheck ping before the expiration,
+                                 # other nodes in the cluster will stop
+                                 # attempting to connect to it.
+                                 # Recommended to be at least `60`.
 
-# Nginx configuration parameters that will be dynamically set by Kong.
-# nginx_daemon = on
-# nginx_worker_processes = auto
+#------------------------------------------------------------------------------
+# DNS RESOLVER
+#------------------------------------------------------------------------------
 
-# Allows Kong to set specific connection and proxying settings in Nginx.
-# nginx_optimizations = on
+#dnsmasq = on                    # Toggles if Kong should start/stop dnsmasq,
+                                 # which can be used as the Nginx DNS resolver.
+                                 # Using dnsmasq allows Nginx to resolve
+                                 # domains defined in /etc/hosts.
+                                 # dnsmasq must be installed and available in
+                                 # your $PATH.
 
-# The size in MB of the internal preallocated in-memory cache for database 
-# entities.  The default value is `128`, and the potential maximum value is the 
-# total size of the datastore.
-# mem_cache_size = 128m
+#dnsmasq_port = 8053             # The port on which dnsmasq should listen to
+                                 # for queries.
+
+#dns_resolver = 8.8.8.8          # Configure a name server to be used by Nginx.
+                                 # Only valid when `dnsmasq` is disabled.
+
+#------------------------------------------------------------------------------
+# DEVELOPMENT
+#------------------------------------------------------------------------------
+
+# Additional settings inherited from lua-nginx-module allowing for more
+# flexibility and advanced usage.
+#
+# See the lua-nginx-module documentation for more informations:
+# https://github.com/openresty/lua-nginx-module
+
+#lua_code_cache = on             # When disabled, every request will run in a
+                                 # separate Lua VM instance: all Lua modules
+                                 # will be loaded from scratch. Useful for
+                                 # adopting an edit-and-refresh approach while
+                                 # developing a plugin.
+
+#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
+                                 # Useful when developing or using custom
+                                 # plugins not stored in the default search
+                                 # path.
+

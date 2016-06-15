@@ -103,7 +103,7 @@ function _M.start(kong_config, nginx_prefix, dao)
     ["-bind"] = kong_config.cluster_listen,
     ["-rpc-addr"] = kong_config.cluster_listen_rpc,
     ["-advertise"] = kong_config.cluster_advertise,
-    ["-encrypt"] = kong_config.cluster_encrypt,
+    ["-encrypt"] = kong_config.cluster_encrypt_key,
     ["-log-level"] = "err",
     ["-profile"] = "wan",
     ["-node"] = node_name,
