@@ -110,7 +110,7 @@ local function touch(file_path)
 end
 
 local function prepare_prefix(kong_config, nginx_prefix)
-  log.verbose("preparing nginx prefix directory at %s", nginx_prefix)
+  log.verbose("preparing prefix directory at %s", nginx_prefix)
 
   if not pl_path.exists(nginx_prefix) then
     log.verbose(fmt("prefix directory %s not found, trying to create it", nginx_prefix))
