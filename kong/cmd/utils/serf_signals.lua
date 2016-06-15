@@ -18,7 +18,7 @@ local serf_bin_name = "serf"
 local serf_pid_name = "serf.pid"
 local serf_node_id = "serf.id"
 local serf_event_name = "kong"
-local start_timeout = 2
+local start_timeout = 5
 
 local function check_serf_bin()
   local cmd = fmt("%s -v", serf_bin_name)
