@@ -1,6 +1,5 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local meta = require "kong.meta"
 local cache = require "kong.tools.database_cache"
 
 describe("Plugin: ACL", function()
@@ -334,7 +333,7 @@ describe("Plugin: ACL", function()
   end)
 
   describe("Real-world usage", function()
-    it("#only should not fail when multiple rules are set fast", function()
+    it("should not fail when multiple rules are set fast", function()
       -- Create consumer
       local res = assert(api_client:send {
         method = "POST",

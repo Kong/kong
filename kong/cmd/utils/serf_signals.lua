@@ -17,7 +17,7 @@ local serf_bin_name = "serf"
 local serf_pid_name = "serf.pid"
 local serf_node_id = "serf.id"
 local serf_event_name = "kong"
-local start_timeout = 2
+local start_timeout = 5
 
 local function check_serf_bin()
   local cmd = fmt("%s -v", serf_bin_name)
@@ -58,7 +58,7 @@ resty -e "$CMD"
 ]]
 
 local function prepare_identifier(kong_config, nginx_prefix)
-  local id_path = pl_path.join(nginx_prefix, serf_node_id)
+  local id_path = pl_path.join(nginx_prefix, "serf", serf_node_id)
   if not pl_path.exists(id_path) then
     local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
 
