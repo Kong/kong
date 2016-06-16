@@ -1,0 +1,187 @@
+local helpers = require "spec.helpers"
+local cjson = require "cjson"
+
+local UDP_PORT = 20000
+
+describe("Plugin: loggly (log)", function()
+  local client
+  setup(function()
+    helpers.dao:truncate_tables()
+    assert(helpers.prepare_prefix())
+
+    local api1 = assert(helpers.dao.apis:insert {
+      request_host = "logging.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local api2 = assert(helpers.dao.apis:insert {
+      request_host = "logging1.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local api3 = assert(helpers.dao.apis:insert {
+      request_host = "logging2.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local api4 = assert(helpers.dao.apis:insert {
+      request_host = "logging3.com",
+      upstream_url = "http://mockbin.com"
+    })
+
+    -- plugin 1
+    assert(helpers.dao.plugins:insert {
+      api_id = api1.id,
+      name = "loggly",
+      config = {
+        host = "127.0.0.1",
+        port = UDP_PORT,
+        key = "123456789",
+        log_level = "info",
+        successful_severity = "warning"
+      }
+    })
+    -- plugin 2
+    assert(helpers.dao.plugins:insert {
+      api_id = api2.id,
+      name = "loggly",
+      config = {
+        host = "127.0.0.1",
+        port = UDP_PORT,
+        key = "123456789",
+        log_level = "debug",
+        timeout = 2000,
+        successful_severity = "info"
+      }
+    })
+    -- plugin 3
+    assert(helpers.dao.plugins:insert {
+      api_id = api3.id,
+      name = "loggly",
+      config = {
+        host = "127.0.0.1",
+        port = UDP_PORT,
+        key = "123456789",
+        log_level = "crit",
+        successful_severity = "crit",
+        client_errors_severity = "warning"
+      }
+    })
+    -- plugin 4
+    assert(helpers.dao.plugins:insert {
+      api_id = api4.id,
+      name = "loggly",
+      config = {
+        host = "127.0.0.1",
+        port = UDP_PORT,
+        key = "123456789"
+      }
+    })
+
+    assert(helpers.start_kong())
+  end)
+  teardown(function()
+    assert(helpers.stop_kong())
+  end)
+
+  before_each(function()
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+  end)
+  after_each(function()
+    if client then client:close() end
+  end)
+
+  -- Helper; performs a single http request and catches the udp log output.
+  -- @param message the message table for the http client
+  -- @param status expected status code from the request, defaults to 200 if omitted
+  -- @return 2 values; 'pri' field (string) and the decoded json content (table)
+  local function run(message, status)
+    local thread = assert(helpers.udp_server(UDP_PORT))
+    local response = assert(client:send(message))
+    assert.res_status(status or 200, response)
+
+    local ok, res = thread:join()
+    assert.truthy(ok)
+    assert.truthy(res)
+
+    local pri = assert(res:match("^<(%d-)>"))
+    local json = assert(res:match("{.*}"))
+
+    return pri, cjson.decode(json)
+  end
+
+  it("logs to UDP when severity is warning and log level info", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/request",
+      headers = {
+        host = "logging.com"
+      }
+    })
+    assert.equal("12", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+  it("logs to UDP when severity is info and log level debug", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/request",
+      headers = {
+        host = "logging1.com"
+      }
+    })
+    assert.equal("14", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+  it("logs to UDP when severity is critical and log level critical", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/request",
+      headers = {
+        host = "logging2.com"
+      }
+    })
+    assert.equal("10", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+  it("logs to UDP when severity and log level are default values", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/",
+      headers = {
+        host = "logging3.com"
+      }
+    })
+    assert.equal("14", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+  it("logs to UDP when severity and log level are default values and response status is 200", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/",
+      headers = {
+        host = "logging3.com"
+      }
+    })
+    assert.equal("14", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+  it("logs to UDP when severity and log level are default values and response status is 401", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/status/401/",
+      headers = {
+        host = "logging3.com"
+      }
+    }, 401)
+    assert.equal("14", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+  it("logs to UDP when severity and log level are default values and response status is 500", function()
+    local pri, message = run({
+      method = "GET",
+      path = "/status/500/",
+      headers = {
+        host = "logging3.com"
+      }
+    }, 500)
+    assert.equal("14", pri)
+    assert.equal("127.0.0.1", message.client_ip)
+  end)
+end)
