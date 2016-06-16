@@ -24,7 +24,7 @@ Serf.args_mt = {
 
 function Serf.new(kong_config, nginx_prefix, dao)
   return setmetatable({
-    node_name = assert(pl_file.read(pl_path.join(nginx_prefix, "serf", serf_node_id))),
+    node_name = assert(pl_file.read(pl_path.join(nginx_prefix, serf_node_id))),
     config = kong_config,
     dao = dao
   }, Serf)
@@ -42,7 +42,7 @@ function Serf:invoke_signal(signal, args, no_rpc)
   local ok, code, stdout = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 
-  return pl_stringx.strip(stdout) -- serf adds a new line on the result, so we strip it
+  return stdout
 end
 
 function Serf:join_node(address)
@@ -77,11 +77,15 @@ function Serf:members()
 end
 
 function Serf:keygen()
-  return self:invoke_signal("keygen")
+  local res, err = self:invoke_signal("keygen")
+  if not res then return nil, err end
+  return res
 end
 
 function Serf:reachability()
-  return self:invoke_signal("reachability")
+  local res, err = self:invoke_signal("reachability")
+  if not res then return nil, err end
+  return res
 end
 
 function Serf:autojoin()
@@ -101,19 +105,7 @@ function Serf:autojoin()
     local joined
     for _, v in ipairs(nodes) do
       if self:join_node(v.cluster_listening_address) then
-        log("Successfully auto-joined cluster through %s", v.cluster_listening_address)
-        local members = assert(self:members())
-        local active, left, failed = 0, 0, 0
-        for _, v in ipairs(members) do
-          if v.status == "alive" then
-            active = active + 1
-          elseif v.status == "left" then
-            left = left + 1
-          elseif v.status == "failed" then
-            failed = failed + 1
-          end
-        end
-        log("The Kong cluster now has %d nodes (%d active, %d left, %d failed)", #members, active, left, failed)
+        log("Successfully auto-joined %s", v.cluster_listening_address)
         joined = true
         break
       else

@@ -8,7 +8,6 @@ local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local pl_dir = require "pl.dir"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local utils = require "kong.tools.utils"
@@ -18,7 +17,7 @@ local serf_bin_name = "serf"
 local serf_pid_name = "serf.pid"
 local serf_node_id = "serf.id"
 local serf_event_name = "kong"
-local start_timeout = 5
+local start_timeout = 2
 
 local function check_serf_bin()
   local cmd = fmt("%s -v", serf_bin_name)
@@ -59,7 +58,7 @@ resty -e "$CMD"
 ]]
 
 local function prepare_identifier(kong_config, nginx_prefix)
-  local id_path = pl_path.join(nginx_prefix, "serf", serf_node_id)
+  local id_path = pl_path.join(nginx_prefix, serf_node_id)
   if not pl_path.exists(id_path) then
     local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
 
@@ -71,10 +70,6 @@ local function prepare_identifier(kong_config, nginx_prefix)
 end
 
 local function prepare_prefix(kong_config, nginx_prefix, script_path)
-  local serf_path = pl_path.join(nginx_prefix, "serf")
-  local ok, err = pl_dir.makepath(serf_path)
-  if not ok then return nil, err end
-
   local ok, err = prepare_identifier(kong_config, nginx_prefix)
   if not ok then return nil, err end
 
@@ -99,7 +94,7 @@ local _M = {}
 
 function _M.start(kong_config, nginx_prefix, dao)
   -- is Serf already running in this prefix?
-  local pid_path = pl_path.join(nginx_prefix, "pids", serf_pid_name)
+  local pid_path = pl_path.join(nginx_prefix, serf_pid_name)
   if is_running(pid_path) then
     log.verbose("Serf agent already running at %s", pid_path)
     return true
@@ -109,7 +104,7 @@ function _M.start(kong_config, nginx_prefix, dao)
   end
 
   -- prepare shell script
-  local script_path = pl_path.join(nginx_prefix, "serf", "serf_event.sh")
+  local script_path = pl_path.join(nginx_prefix, "serf_event.sh")
   local ok, err = prepare_prefix(kong_config, nginx_prefix, script_path)
   if not ok then return nil, err end
 
@@ -120,7 +115,7 @@ function _M.start(kong_config, nginx_prefix, dao)
   local serf = Serf.new(kong_config, nginx_prefix, dao)
 
   local node_name = serf.node_name
-  local log_path = pl_path.join(nginx_prefix, "logs", "serf.log")
+  local log_path = pl_path.join(nginx_prefix, "serf.log")
 
   local args = setmetatable({
     ["-bind"] = kong_config.cluster_listen,
@@ -183,7 +178,7 @@ function _M.stop(kong_config, nginx_prefix, dao)
   local ok, err = serf:leave()
   if not ok then return nil, err end
 
-  local pid_path = pl_path.join(nginx_prefix, "pids", serf_pid_name)
+  local pid_path = pl_path.join(nginx_prefix, serf_pid_name)
   log.verbose("stopping Serf agent at %s", pid_path)
   return kill(pid_path, "-9")
 end
