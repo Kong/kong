@@ -38,7 +38,7 @@ describe("kong cluster", function()
     assert.is_string(stdout)
     assert.True(string.len(stdout) > 10)
   end)
-  describe("#only force-leave", function()
+  describe("force-leave", function()
     it("should fail when no node is specified", function()
       local ok, _, stdout, stderr = exec "cluster force-leave"
       assert.False(ok)
