@@ -58,31 +58,19 @@ client:request { \
 resty -e "$CMD"
 ]]
 
-local function prepare_identifier(kong_config, nginx_prefix)
-  local serf_path = pl_path.join(nginx_prefix, "serf")
-  local ok, err = pl_dir.makepath(serf_path)
-  if not ok then return nil, err end
-
+local function prepare_prefix(kong_config, nginx_prefix, script_path)
+  log.verbose("saving Serf identifier in %s", id_path)
   local id_path = pl_path.join(nginx_prefix, "serf", serf_node_id)
   if not pl_path.exists(id_path) then
     local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
-
-    log.verbose("saving Serf identifier in %s", id_path)
-    local ok, err = pl_file.write(id_path, id)
-    if not ok then return nil, err end
+    pl_file.write(id_path, id)
   end
-  return true
-end
 
-local function prepare_prefix(kong_config, nginx_prefix, script_path)
-  local ok, err = prepare_identifier(kong_config, nginx_prefix)
-  if not ok then return nil, err end
-
-  log.verbose("dumping Serf shell script handler in %s", script_path)
+  log.verbose("saving Serf shell script handler in %s", script_path)
   local script = fmt(script_template, "127.0.0.1", kong_config.admin_port)
 
-  local ok, err = pl_file.write(script_path, script)
-  if not ok then return nil, err end
+  pl_file.write(script_path, script)
+
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..script_path)
   if not ok then return nil, stderr end
 

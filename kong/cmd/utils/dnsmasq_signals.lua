@@ -48,27 +48,26 @@ local function is_running(pid_path)
 end
 
 function _M.start(kong_config, nginx_prefix)
-  if kong_config.dnsmasq then
-    -- is dnsmasq already running in this prefix?
-    local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
-    if is_running(pid_path) then
-      log.verbose("dnsmasq already running at %s", pid_path)
-      return true
-    else
-      log.verbose("dnsmasq not running, deleting %s", pid_path)
-      pl_file.delete(pid_path)
-    end
-
-    local dnsmasq_bin, err = _M.find_bin()
-    if not dnsmasq_bin then return nil, err end
-
-    local cmd = fmt("%s -p %d --pid-file=%s -N -o --listen-address=127.0.0.1", dnsmasq_bin, kong_config.dnsmasq_port, pid_path)
-
-    log.debug("starting dnsmasq: %s", cmd)
-
-    local ok, _, _, stderr = pl_utils.executeex(cmd)
-    if not ok then return nil, stderr end
+  -- is dnsmasq already running in this prefix?
+  local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
+  if is_running(pid_path) then
+    log.verbose("dnsmasq already running at %s", pid_path)
+    return true
+  else
+    log.verbose("dnsmasq not running, deleting %s", pid_path)
+    pl_file.delete(pid_path)
   end
+
+  local dnsmasq_bin, err = _M.find_bin()
+  if not dnsmasq_bin then return nil, err end
+
+  local cmd = fmt("%s -p %d --pid-file=%s -N -o --listen-address=127.0.0.1",
+                  dnsmasq_bin, kong_config.dnsmasq_port, pid_path)
+
+  log.debug("starting dnsmasq: %s", cmd)
+
+  local ok, _, _, stderr = pl_utils.executeex(cmd)
+  if not ok then return nil, stderr end
 
   return true
 end

@@ -1,7 +1,7 @@
 local nginx_conf_compiler = require "kong.cmd.utils.nginx_conf_compiler"
+local dnsmasq_signals = require "kong.cmd.utils.dnsmasq_signals"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local serf_signals = require "kong.cmd.utils.serf_signals"
-local dnsmasq_signals = require "kong.cmd.utils.dnsmasq_signals"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local log = require "kong.cmd.utils.log"
@@ -21,7 +21,9 @@ local function execute(args)
   local dao = DAOFactory(conf)
   assert(dao:run_migrations())
   assert(nginx_conf_compiler.prepare_prefix(conf, conf.prefix))
-  assert(dnsmasq_signals.start(conf, conf.prefix))
+  if conf.dnsmasq then
+    assert(dnsmasq_signals.start(conf, conf.prefix))
+  end
   assert(serf_signals.start(conf, conf.prefix, dao))
   assert(nginx_signals.start(conf.prefix))
   log("Started")

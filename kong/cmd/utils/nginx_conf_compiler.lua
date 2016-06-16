@@ -1,30 +1,7 @@
-local NGINX_VARS = {
-  prefix = true,
-  plugins = true,
-  cluster_listen = true,
-  cluster_listen_rpc = true,
-  database = true,
-  pg_host = true,
-  pg_port = true,
-  pg_user = true,
-  pg_password = true,
-  pg_database = true,
-  cassandra_contact_points = true,
-  cassandra_keyspace = true,
-  cassandra_timeout = true,
-  cassandra_consistency = true,
-  cassandra_ssl = true,
-  cassandra_ssl_verify = true,
-  cassandra_username = true,
-  cassandra_password = true,
-  anonymous_reports = true
-}
-
 local kong_nginx_template = require "kong.templates.nginx_kong"
 local nginx_template = require "kong.templates.nginx"
 local pl_template = require "pl.template"
 local pl_stringx = require "pl.stringx"
-local pl_pretty = require "pl.pretty"
 local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
@@ -32,7 +9,6 @@ local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
-local fmt = string.format
 
 local function gather_system_infos(compile_env)
   local infos = {}
@@ -52,19 +28,6 @@ local function compile_conf(kong_config, conf_template)
     tostring = tostring,
     nginx_vars = {}
   }
-
-  -- variables needed in Nginx
-  for k in pairs(NGINX_VARS) do
-    local v = kong_config[k]
-    local typ = type(v)
-    if typ == "table" then
-      v = pl_pretty.write(v, string.rep(" ", 6), true)
-    elseif typ == "string" then
-      v = string.format("%q", v)
-    end
-
-    compile_env.nginx_vars[k] = v
-  end
 
   local ssl_data, err = ssl.get_ssl_cert_and_key(kong_config, kong_config.prefix)
   if not ssl_data then return nil, err end
@@ -110,10 +73,10 @@ local function touch(file_path)
 end
 
 local function prepare_prefix(kong_config, nginx_prefix)
-  log.verbose("preparing prefix directory at %s", nginx_prefix)
+  log.verbose("preparing nginx prefix directory at %s", nginx_prefix)
 
   if not pl_path.exists(nginx_prefix) then
-    log.verbose(fmt("prefix directory %s not found, trying to create it", nginx_prefix))
+    log("prefix directory %s not found, trying to create it", nginx_prefix)
     local ok, err = pl_dir.makepath(nginx_prefix)
     if not ok then return nil, err end
   elseif not pl_path.isdir(nginx_prefix) then
@@ -133,7 +96,7 @@ local function prepare_prefix(kong_config, nginx_prefix)
   if not ok then return nil, stderr end
   local ok, _, _, stderr = touch(acc_logs_path)
   if not ok then return nil, stderr end
-  
+
   -- pids folder
   local pids_path = pl_path.join(nginx_prefix, "pids")
   local ok, err = pl_dir.makepath(pids_path)
@@ -143,20 +106,32 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local ok, err = ssl.prepare_ssl_cert_and_key(nginx_prefix)
   if not ok then return nil, err end
 
-  local nginx_config_path = pl_path.join(nginx_prefix, "nginx.conf")
+  local kong_conf_path = pl_path.join(nginx_prefix, "kong.conf")
+  local nginx_conf_path = pl_path.join(nginx_prefix, "nginx.conf")
   local kong_nginx_conf_path = pl_path.join(nginx_prefix, "nginx-kong.conf")
 
   -- write NGINX conf
   local nginx_conf, err = compile_nginx_conf(kong_config)
   if not nginx_conf then return nil, err end
-  local ok, err = pl_file.write(nginx_config_path, nginx_conf)
-  if not ok then return nil, err end
+
+  pl_file.write(nginx_conf_path, nginx_conf)
 
   -- write Kong's NGINX conf
   local kong_nginx_conf, err = compile_kong_conf(kong_config)
   if not kong_nginx_conf then return nil, err end
-  local ok, err = pl_file.write(kong_nginx_conf_path, kong_nginx_conf)
-  if not ok then return nil, err end
+  pl_file.write(kong_nginx_conf_path, kong_nginx_conf)
+
+  -- write kong.conf in prefix (for workers and CLI)
+  local buf = {}
+  for k, v in pairs(kong_config) do
+    if type(v) == "table" then
+      v = table.concat(v, ",")
+    end
+    if v ~= "" then
+      buf[#buf+1] = k.." = "..tostring(v)
+    end
+  end
+  pl_file.write(kong_conf_path, table.concat(buf, "\n"))
 
   return true
 end

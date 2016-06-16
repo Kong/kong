@@ -183,15 +183,7 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("proxy_listen_ssl must be of form 'address:port'", err)
     end)
-  end)
-
-  describe("errors", function()
-    it("returns inexistent file", function()
-      local conf, err = conf_loader "inexistent"
-      assert.equal("no file at: inexistent", err)
-      assert.is_nil(conf)
-    end)
-    it("returns a DNS error when both a resolver and dnsmasq are enabled", function()
+    it("errors when both a resolver and dnsmasq are enabled", function()
       local conf, err = conf_loader(nil, {
         dnsmasq = true,
         dns_resolver = "8.8.8.8:53"
@@ -213,6 +205,14 @@ describe("Configuration loader", function()
       assert.equal("cluster_ttl_on_failure must be at least 60 seconds", err)
       assert.is_nil(conf)
     end)
+    it("does not check SSL cert and key if SSL is off", function()
+      local conf, err = conf_loader(nil, {
+        ssl = false,
+        ssl_cert = "/path/cert.pem"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
     it("requires both SSL cert and key", function()
       local conf, err = conf_loader(nil, {
         ssl_cert = "/path/cert.pem"
@@ -233,13 +233,13 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
-    it("does not check SSL cert and key if SSL is off", function()
-      local conf, err = conf_loader(nil, {
-        ssl = false,
-        ssl_cert = "/path/cert.pem"
-      })
-      assert.is_nil(err)
-      assert.is_table(conf)
+  end)
+
+  describe("errors", function()
+    it("returns inexistent file", function()
+      local conf, err = conf_loader "inexistent"
+      assert.equal("no file at: inexistent", err)
+      assert.is_nil(conf)
     end)
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {

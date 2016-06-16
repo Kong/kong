@@ -82,21 +82,17 @@ describe("NGINX conf compiler", function()
 
   describe("prepare_prefix()", function()
     local prefix = "servroot_tmp"
-    local pl_dir = require "pl.dir"
-    local pl_path = require "pl.path"
-    local exists, join = pl_path.exists, pl_path.join
+    local exists, join = helpers.path.exists, helpers.path.join
     before_each(function()
-      pcall(pl_dir.rmtree, prefix)
-      pl_dir.makepath(prefix)
+      pcall(helpers.dir.rmtree, prefix)
+      helpers.dir.makepath(prefix)
     end)
-    after_each(function()
-      pl_dir.rmtree(prefix)
-    end)
-    it("auto-creates inexistent prefix", function()
-      assert(nginx_conf_compiler.prepare_prefix(helpers.test_conf, "./inexistent"))
+    it("creates inexistent prefix", function()
       finally(function()
-        helpers.dir.rmtree("inexistent")
+        pcall(helpers.dir.rmtree, "inexistent")
       end)
+      assert(nginx_conf_compiler.prepare_prefix(helpers.test_conf, "./inexistent"))
+      assert.truthy(exists("inexistent"))
     end)
     it("checks prefix is a directory", function()
       local tmp = os.tmpname()
@@ -113,6 +109,24 @@ describe("NGINX conf compiler", function()
       assert.truthy(exists(join(prefix, "nginx-kong.conf")))
       assert.truthy(exists(join(prefix, "logs", "error.log")))
       assert.truthy(exists(join(prefix, "logs", "access.log")))
+    end)
+    it("dumps Kong conf", function()
+      assert(nginx_conf_compiler.prepare_prefix(helpers.test_conf, prefix))
+      local path = assert.truthy(exists(join(prefix, "kong.conf")))
+
+      local in_prefix_kong_conf = assert(conf_loader(path))
+      assert.same(helpers.test_conf, in_prefix_kong_conf)
+    end)
+    it("dump Kong conf (custom conf)", function()
+      local conf = assert(conf_loader(nil, {
+        pg_database = "foobar"
+      }))
+      assert.equal("foobar", conf.pg_database)
+      assert(nginx_conf_compiler.prepare_prefix(conf, prefix))
+      local path = assert.truthy(exists(join(prefix, "kong.conf")))
+
+      local in_prefix_kong_conf = assert(conf_loader(path))
+      assert.same(conf, in_prefix_kong_conf)
     end)
   end)
 end)
