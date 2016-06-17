@@ -214,9 +214,6 @@ function Serf:start()
 
       -- Auto-Join nodes
       local ok, err = self:_autojoin(node_name)
-      if not ok then
-        return nil, err
-      end
 
       -- Adding node to nodes table
       return self:_add_node()
