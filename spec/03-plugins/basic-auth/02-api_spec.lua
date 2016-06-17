@@ -27,7 +27,7 @@ describe("Basic Auth Credentials API", function()
       helpers.dao:truncate_table("basicauth_credentials")
     end)
 
-    describe("#o POST", function()
+    describe("POST", function()
       it("creates a basic-auth credential", function()
         local res = assert(admin_client:send {
           method = "POST",
@@ -85,7 +85,7 @@ describe("Basic Auth Credentials API", function()
       end)
     end)
 
-    describe("#o PUT", function()
+    describe("PUT", function()
       it("creates a basic-auth credential", function()
         local res = assert(admin_client:send {
           method = "PUT",
@@ -119,7 +119,7 @@ describe("Basic Auth Credentials API", function()
       end)
     end)
 
-    describe("#o GET", function()
+    describe("GET", function()
       setup(function()
         for i = 1, 3 do
           assert(helpers.dao.basicauth_credentials:insert {
@@ -156,7 +156,7 @@ describe("Basic Auth Credentials API", function()
         consumer_id = consumer.id
       })
     end)
-    describe("#o GET", function()
+    describe("GET", function()
       it("retrieves basic-auth credential by id", function()
         local res = assert(admin_client:send {
           method = "GET",
@@ -185,7 +185,7 @@ describe("Basic Auth Credentials API", function()
       end)
     end)
 
-    describe("#o PATCH", function()
+    describe("PATCH", function()
       it("updates a credential", function()
         local previous_hash = credential.password
 
