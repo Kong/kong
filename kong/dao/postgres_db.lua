@@ -451,7 +451,7 @@ function PostgresDB:queries(queries)
 end
 
 function PostgresDB:drop_table(table_name)
-  return select(2, self:query("DROP TABLE "..table_name))
+  return select(2, self:query("DROP TABLE "..table_name.." CASCADE"))
 end
 
 function PostgresDB:truncate_table(table_name)
