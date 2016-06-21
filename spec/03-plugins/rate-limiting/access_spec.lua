@@ -134,12 +134,12 @@ describe("Plugin: rate-limiting", function()
     })
 
     assert(helpers.start_kong())
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end
 
   setup(function()
     prepare()
     wait()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
   teardown(function()
     if client then
@@ -336,7 +336,7 @@ describe("Plugin: rate-limiting", function()
     end)
   end)
 
-  describe("Continue on error", function()
+  describe("#only Continue on error", function()
     after_each(function()
       prepare()
     end)
@@ -376,8 +376,8 @@ describe("Plugin: rate-limiting", function()
         }
       })
       assert.res_status(200, res)
-      assert.falsy(res.headers["x-ratelimit-limit-minute"])
-      assert.falsy(res.headers["x-ratelimit-remaining-minute"])
+      assert.are.same(tostring(6), res.headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), res.headers["x-ratelimit-remaining-minute"])
 
       -- Simulate an error on the database
       local err = helpers.dao.ratelimiting_metrics:drop_table(helpers.dao.ratelimiting_metrics.table)
