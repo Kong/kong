@@ -10,7 +10,6 @@ describe("kong cluster", function()
     local ok, _, stdout, stderr = exec "cluster keygen"
     assert.True(ok)
     assert.equal("", stderr)
-    print(stdout)
-    assert.matches("init_by_lua_block", stdout)
+    assert.equal(26, stdout:len()) -- 24 + \r\n
   end)
 end)
