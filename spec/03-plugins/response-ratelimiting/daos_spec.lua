@@ -1,22 +1,19 @@
-local spec_helper = require "spec.spec_helpers"
+local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 local uuid = require "lua_uuid"
 
-local env = spec_helper.get_env()
-local dao_factory = env.dao_factory
-local response_ratelimiting_metrics = dao_factory.response_ratelimiting_metrics
+local response_ratelimiting_metrics = helpers.dao.response_ratelimiting_metrics
 
 describe("Rate Limiting Metrics", function()
   local api_id = uuid()
   local identifier = uuid()
 
   setup(function()
-    dao_factory:drop_schema()
-    spec_helper.prepare_db()
+    helpers.dao:truncate_tables()
   end)
 
   after_each(function()
-    spec_helper.drop_db()
+    helpers.dao:truncate_tables()
   end)
 
   it("should return nil when ratelimiting metrics are not existing", function()

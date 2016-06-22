@@ -1,7 +1,5 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 local timestamp = require "kong.tools.timestamp"
-local meta = require "kong.meta"
 
 local function wait()
   -- If the minute elapses in the middle of the test, then the test will
@@ -336,7 +334,7 @@ describe("Plugin: rate-limiting", function()
     end)
   end)
 
-  describe("#only Continue on error", function()
+  describe("Continue on error", function()
     after_each(function()
       prepare()
     end)
