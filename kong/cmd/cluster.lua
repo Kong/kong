@@ -2,34 +2,29 @@ local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local Serf = require "kong.serf"
 local log = require "kong.cmd.utils.log"
-local fmt = string.format
 
 local function execute(args)
-  local conf = assert(conf_loader(args.conf, {
-    prefix = args.prefix
-  }))
-
+  local conf = assert(conf_loader(args.conf))
   local dao = DAOFactory(conf)
   local serf = Serf.new(conf, conf.prefix, dao)
 
   if args.command == "members" then
     local members = assert(serf:members(true))
     for _, v in ipairs(members) do
-      print(fmt("%s\t%s\t%s", v.name, v.addr, v.status))
+      print(string.format("%s\t%s\t%s", v.name, v.addr, v.status))
     end
   elseif args.command == "keygen" then
     print(assert(serf:keygen()))
   elseif args.command == "reachability" then
-    log("Please wait..")
     print(assert(serf:reachability()))
   elseif args.command == "force-leave" then
     local node_name = args[1]
     if not node_name then
       error("you need to specify the node name to leave")
     end
-    log(fmt("Force-leaving %s", node_name))
+    log("force-leaving %s", node_name)
     assert(serf:force_leave(node_name))
-    log("Done")
+    log("left node %s", node_name)
   end
 end
 
@@ -44,7 +39,6 @@ The available commands are:
 
 Options:
  -c,--conf (optional string) configuration file
- --prefix  (optional string) Nginx prefix path
 ]]
 
 return {

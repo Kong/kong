@@ -1,5 +1,5 @@
-local nginx_conf_compiler = require "kong.cmd.utils.nginx_conf_compiler"
 local dnsmasq_signals = require "kong.cmd.utils.dnsmasq_signals"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local serf_signals = require "kong.cmd.utils.serf_signals"
 local conf_loader = require "kong.conf_loader"
@@ -20,7 +20,7 @@ local function execute(args)
 
   local dao = DAOFactory(conf)
   assert(dao:run_migrations())
-  assert(nginx_conf_compiler.prepare_prefix(conf, conf.prefix))
+  assert(prefix_handler.prepare_prefix(conf, conf.prefix))
   if conf.dnsmasq then
     assert(dnsmasq_signals.start(conf, conf.prefix))
   end

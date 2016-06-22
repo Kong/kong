@@ -15,8 +15,9 @@ The available commands are:
  stop
  reload
  check
- migrations
  compile
+ migrations
+ cluster
  version
 
 Options:

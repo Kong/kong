@@ -3,6 +3,7 @@ local helpers = require "spec.helpers"
 describe("Plugins triggering", function()
   local client
   setup(function()
+    helpers.kill_all()
     helpers.dao:truncate_tables()
 
     local consumer = assert(helpers.dao.consumers:insert {

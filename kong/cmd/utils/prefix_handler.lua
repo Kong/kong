@@ -7,8 +7,36 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
+local utils = require "kong.tools.utils"
 local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
+
+local serf_node_id = "serf.id"
+
+-- script from old services.serf module
+local script_template = [[
+#!/bin/sh
+
+PAYLOAD=`cat` # Read from stdin
+if [ "$SERF_EVENT" != "user" ]; then
+  PAYLOAD="{\"type\":\"${SERF_EVENT}\",\"entity\": \"${PAYLOAD}\"}"
+fi
+
+CMD="\
+local http = require 'resty.http' \
+local client = http.new() \
+client:connect('%s', %d) \
+client:request { \
+  method = 'POST', \
+  path = '/cluster/events/', \
+  body = [=[${PAYLOAD}]=], \
+  headers = { \
+    ['content-type'] = 'application/json' \
+  } \
+}"
+
+resty -e "$CMD"
+]]
 
 local function gather_system_infos(compile_env)
   local infos = {}
@@ -101,6 +129,27 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local pids_path = pl_path.join(nginx_prefix, "pids")
   local ok, err = pl_dir.makepath(pids_path)
   if not ok then return nil, err end
+
+  -- serf folder (node identifier + shell script)
+  local serf_path = pl_path.join(nginx_prefix, "serf")
+  local ok, err = pl_dir.makepath(serf_path)
+  if not ok then return nil, err end
+
+  local id_path = pl_path.join(nginx_prefix, "serf", serf_node_id)
+  log.verbose("saving Serf identifier in %s", id_path)
+  if not pl_path.exists(id_path) then
+    local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
+    pl_file.write(id_path, id)
+  end
+
+  local script_path = pl_path.join(nginx_prefix, "serf", "serf_event.sh")
+  log.verbose("saving Serf shell script handler in %s", script_path)
+  local script = string.format(script_template, "127.0.0.1", kong_config.admin_port)
+
+  pl_file.write(script_path, script)
+
+  local ok, _, _, stderr = pl_utils.executeex("chmod +x "..script_path)
+  if not ok then return nil, stderr end
 
   -- auto-generate default SSL certificate
   local ok, err = ssl.prepare_ssl_cert_and_key(nginx_prefix)

@@ -3,7 +3,6 @@ local cache = require "kong.tools.database_cache"
 local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
 local cjson = require "cjson"
-local KILL_ALL = "pkill nginx; pkill serf; pkill dnsmasq"
 
 local function exec(args, env)
   args = args or ""
@@ -45,11 +44,11 @@ local NODES = {
 
 describe("Cluster", function()
   before_each(function()
+    helpers.kill_all()
     helpers.dao:truncate_tables()
-    helpers.execute(KILL_ALL)
   end)
   after_each(function()
-    helpers.execute(KILL_ALL)
+    helpers.kill_all()
     for k, v in pairs(NODES) do
       helpers.clean_prefix(k)
     end
@@ -344,26 +343,28 @@ describe("Cluster", function()
       end, 60)
 
       -- The member has now failed, let's bring him up again
-      os.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s -bind=%s -event-handler=member-join,member-leave,member-failed,member-update,member-reap,user:kong=%s/serf/serf_event.sh > /dev/null &",
-                              node_name, NODES.servroot2.cluster_listen_rpc, NODES.servroot2.cluster_listen, NODES.servroot2.prefix))
+      os.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
+                             .." -bind=%s event-handler=member-join,"
+                             .."member-leave,member-failed,member-update,"
+                             .."member-reap,user:kong=%s/serf/serf_event.sh > /dev/null &",
+                            node_name,
+                            NODES.servroot2.cluster_listen_rpc,
+                            NODES.servroot2.cluster_listen,
+                            NODES.servroot2.prefix))
 
       -- Now wait until the nodes becomes active again
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/",
-          headers = {}
+          path = "/cluster/"
         })
         local body = cjson.decode(assert.res_status(200, res))
-        local all_alive = true
         for _, v in ipairs(body.data) do
           if v.status == "failed" then
-            all_alive = false
+            return false
           end
         end
-        if not all_alive then ngx.sleep(1) end
-
-        return all_alive
+        return true
       end, 60)
 
       -- The cache should have been deleted on every node available

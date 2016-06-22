@@ -7,7 +7,6 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local cjson = require "cjson.safe"
 local log = require "kong.cmd.utils.log"
-local fmt = string.format
 
 local serf_node_id = "serf.id"
 
@@ -38,7 +37,7 @@ function Serf:invoke_signal(signal, args, no_rpc)
     setmetatable(args, Serf.args_mt)
   end
   local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
-  local cmd = fmt("serf %s %s %s", signal, rpc, tostring(args))
+  local cmd = string.format("serf %s %s %s", signal, rpc, tostring(args))
   local ok, code, stdout = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 
@@ -97,7 +96,7 @@ function Serf:autojoin()
   local nodes, err = self.dao.nodes:find_all()
   if err then return nil, tostring(err)
   elseif #nodes == 0 then
-    log.info("No other Kong nodes were found in the cluster")
+    log.info("no other Kong nodes were found in the cluster")
   else
     -- Sort by newest to oldest (although by TTL would be a better sort)
     table.sort(nodes, function(a, b) return a.created_at > b.created_at end)
@@ -105,7 +104,7 @@ function Serf:autojoin()
     local joined
     for _, v in ipairs(nodes) do
       if self:join_node(v.cluster_listening_address) then
-        log("Successfully auto-joined %s", v.cluster_listening_address)
+        log("successfully auto-joined %s", v.cluster_listening_address)
         joined = true
         break
       else
@@ -113,7 +112,7 @@ function Serf:autojoin()
       end
     end
     if not joined then
-      log.warn("could not join the existing cluster")
+      log.warn("could not join existing cluster")
     end
   end
 
@@ -151,7 +150,7 @@ function Serf:event(t_payload)
 
   if #payload > 512 then
     -- Serf can't send a payload greater than 512 bytes
-    return nil, "Encoded payload is "..#payload.." and exceeds the limit of 512 bytes!"
+    return nil, "encoded payload is "..#payload.." and exceeds the limit of 512 bytes!"
   end
 
   return self:invoke_signal("event -coalesce=false", " kong '"..payload.."'")

@@ -4,6 +4,7 @@ local cjson = require "cjson"
 describe("Real IP proxying", function()
   local client
   setup(function()
+    helpers.kill_all()
     helpers.dao:truncate_tables()
 
     assert(helpers.dao.apis:insert {
