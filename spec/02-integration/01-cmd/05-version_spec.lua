@@ -4,14 +4,12 @@ local meta = require "kong.meta"
 
 describe("kong version", function()
   it("outputs Kong version", function()
-    local ok, _, stdout, stderr = helpers.execute(helpers.bin_path.." version")
-    assert.True(ok)
+    local _, stderr, stdout = helpers.kong_exec("version")
     assert.equal("", stderr)
     assert.equal(meta._VERSION, pl_stringx.strip(stdout))
   end)
   it("--all outputs all deps versions", function()
-    local ok, _, stdout, stderr = helpers.execute(helpers.bin_path.." version -a")
-    assert.True(ok)
+    local _, stderr, stdout = helpers.kong_exec("version -a")
     assert.equal("", stderr)
     assert.matches([[
 Kong: %d+%.%d+%.%d+

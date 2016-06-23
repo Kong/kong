@@ -116,12 +116,16 @@ end
 
 local Kong = {}
 
-function Kong.init(config)
-  -- retrieve node plugins
-  local events = Events()
+function Kong.init()
+  local pl_path = require "pl.path"
+  local conf_loader = require "kong.conf_loader"
 
-  -- instanciate long-lived DAO
-  local dao = DAOFactory(config, events)
+  -- retrieve kong_config
+  local conf_path = pl_path.join(ngx.config.prefix(), "kong.conf")
+  local config = assert(conf_loader(conf_path))
+
+  local events = Events() -- retrieve node plugins
+  local dao = DAOFactory(config, events) -- instanciate long-lived DAO
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons

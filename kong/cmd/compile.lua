@@ -1,9 +1,9 @@
-local nginx_conf_compiler = require "kong.cmd.utils.nginx_conf_compiler"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local conf_loader = require "kong.conf_loader"
 
 local function execute(args)
   local conf = assert(conf_loader(args.conf))
-  local kong_nginx_conf = assert(nginx_conf_compiler.compile_kong_conf(conf))
+  local kong_nginx_conf = assert(prefix_handler.compile_kong_conf(conf))
   print(kong_nginx_conf)
 end
 

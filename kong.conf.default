@@ -1,6 +1,6 @@
 # Kong configuration file.
 #
-# All commented values are default values. Uncomment and update a property to 
+# All commented values are default values. Uncomment and update a property to
 # configure it.
 
 # The Kong working directory. The directory will contain Kong process files and
@@ -12,26 +12,26 @@
 # This section determines the network settings for Kong. By default Kong listens
 # for connections from all the network interfaces available on the server.
 
-# Address and port on which the server will accept HTTP requests, consumers will 
+# Address and port on which the server will accept HTTP requests, consumers will
 # make requests on this port.
 # proxy_listen = 0.0.0.0:8000
 
 # Same as proxy_listen, but for HTTPS requests.
 # proxy_listen_ssl = 0.0.0.0:8443
 
-# Address and port on which the admin API will listen to. The admin API is a 
-# private API which lets you manage your Kong infrastructure. It needs to be 
+# Address and port on which the admin API will listen to. The admin API is a
+# private API which lets you manage your Kong infrastructure. It needs to be
 # secured appropriately.
 # admin_listen = 0.0.0.0:8001
 
-# Address and port used by the node to communicate with other Kong nodes in the 
-# cluster with both UDP and TCP messages. All the nodes in the cluster must be 
-# able to communicate with this node on this address. Only IPv4 addresses are 
+# Address and port used by the node to communicate with other Kong nodes in the
+# cluster with both UDP and TCP messages. All the nodes in the cluster must be
+# able to communicate with this node on this address. Only IPv4 addresses are
 # allowed (no hostnames).
 # cluster_listen = 0.0.0.0:7946
 
-# Address and port used by the node to communicate with the local clustering 
-# agent (TCP only, and local only). Used internally by this Kong node. Only 
+# Address and port used by the node to communicate with the local clustering
+# agent (TCP only, and local only). Used internally by this Kong node. Only
 # IPv4 addresses are allowed (no hostnames).
 # cluster_listen_rpc = 127.0.0.1:7373
 
@@ -78,35 +78,35 @@
 # cassandra_ssl_verify = off
 # cassandra_ssl_trusted_cert = NONE
 
-# Cluster authentication options. Provide a user and a password here if your 
+# Cluster authentication options. Provide a user and a password here if your
 # cluster uses the "PasswordAuthenticator" scheme.
 # cassandra_username = kong
 # cassandra_password = kong
 
 ################################## CLUSTER #####################################
 
-# Cluster settings for Kong nodes. Every Kong node that points to the same 
+# Cluster settings for Kong nodes. Every Kong node that points to the same
 # database MUST join together to form a Kong Cluster, in both single or multi-DC
-# setups. Kong works on the IP layer (hostnames are not supported, only IPs are 
-# allowed) and it expects a flat network topology without any NAT between the 
-# datacenters. A common setup is having a VPN between the two datacenters such 
+# setups. Kong works on the IP layer (hostnames are not supported, only IPs are
+# allowed) and it expects a flat network topology without any NAT between the
+# datacenters. A common setup is having a VPN between the two datacenters such
 # that the "flat" network assumption of Kong is not violated.
 
-# By default, the cluster_listen address is advertised. If the cluster_listen 
-# host is "0.0.0.0", then the first local, non-loopback, IPv4 address will be 
-# advertised to the other nodes. However, in some cases (specifically NAT 
+# By default, the cluster_listen address is advertised. If the cluster_listen
+# host is "0.0.0.0", then the first local, non-loopback, IPv4 address will be
+# advertised to the other nodes. However, in some cases (specifically NAT
 # traversal), there may be a routable address that cannot be bound to. This flag
 # enables gossiping a different address to support this.
 # cluster_advertise = NONE
 
-# Key for encrypting network traffic within Kong. Must be a base64-encoded 
+# Key for encrypting network traffic within Kong. Must be a base64-encoded
 # 16-byte key.
 # cluster_encrypt = NONE
 
-# The TTL (time to live), in seconds, of a node in the cluster when it stops 
-# sending healthcheck pings, possibly caused by a node or network failure. If 
-# the node is not able to send a new healthcheck ping before the expiration, 
-# then new nodes in the cluster will stop attempting to connect to it on 
+# The TTL (time to live), in seconds, of a node in the cluster when it stops
+# sending healthcheck pings, possibly caused by a node or network failure. If
+# the node is not able to send a new healthcheck ping before the expiration,
+# then new nodes in the cluster will stop attempting to connect to it on
 # startup. Should be at least 60.
 # cluster_ttl_on_failure = 3600
 
@@ -114,7 +114,7 @@
 
 # By default Kong leverages on dnsmasq to resolve DNS addresses to the upstream
 # services by using the system settings in /etc/hosts and /etc/resolv.conf.
-# dnsmasq = on
+dnsmasq = off
 
 # The port used by dnsmasq, only used locally by Kong.
 # dnsmasq_port = 8053
@@ -130,21 +130,21 @@
 # proxy_listen and proxy_listen_ssl properties. You can optionally enable or
 # disable SSL support (note that this may break plugins that are leveraging it).
 
-ssl = on
-ssl_cert = NONE
-ssl_cert_key = NONE
+#ssl = on
+#ssl_cert = NONE
+#ssl_cert_key = NONE
 
 ################################## GENERAL #####################################
 
 # The log level for the events returned by Kong and its services.
 # log_level = error
 
-# Comma separated list of additional plugins names to load on this node, used to 
+# Comma separated list of additional plugins names to load on this node, used to
 # load custom plugins that are not already bundled with Kong.
 # Plugins will be loaded from the kong.plugins.{name}.* namespace.
 # custom_plugins = NONE
 
-# The path to the SSL certificate and key that Kong will use when listening on 
+# The path to the SSL certificate and key that Kong will use when listening on
 # the proxy_listen_ssl port.
 # ssl_cert = NONE
 # ssl_cert_key = NONE
@@ -160,7 +160,7 @@ ssl_cert_key = NONE
 # Allows Kong to set specific connection and proxying settings in Nginx.
 # nginx_optimizations = on
 
-# The size in MB of the internal preallocated in-memory cache for database 
-# entities.  The default value is `128`, and the potential maximum value is the 
+# The size in MB of the internal preallocated in-memory cache for database
+# entities.  The default value is `128`, and the potential maximum value is the
 # total size of the datastore.
 # mem_cache_size = 128m

@@ -49,8 +49,7 @@ function _M.find_bin()
   local found
   for _, path in ipairs(nginx_search_paths) do
     local path_to_check = pl_path.join(path, nginx_bin_name)
-    local ok = is_openresty(path_to_check)
-    if ok then
+    if is_openresty(path_to_check) then
       found = path_to_check
       break
     end

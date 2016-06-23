@@ -41,13 +41,8 @@ lua_ssl_trusted_certificate '${{lua_ssl_trusted_certificate}}';
 > end
 
 init_by_lua_block {
-    local config = {}
-> for k, v in pairs(nginx_vars) do
-    config["$(k)"] = $(tostring(v))
-> end
-
     kong = require 'kong'
-    kong.init(config)
+    kong.init()
 }
 
 init_worker_by_lua_block {
