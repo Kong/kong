@@ -1,8 +1,8 @@
+local log = require "kong.cmd.utils.log"
 local utils = require "kong.tools.utils"
+local pl_dir = require "pl.dir"
 local pl_path = require "pl.path"
 local pl_utils = require "pl.utils"
-local pl_dir = require "pl.dir"
-local log = require "kong.cmd.utils.log"
 local fmt = string.format
 
 local _M = {}
@@ -22,19 +22,18 @@ function _M.get_ssl_cert_and_key(kong_config, nginx_prefix)
     ssl_cert_key = pl_path.join(nginx_prefix, SSL_FOLDER, SSL_CERT_KEY)
   end
 
-  -- Check that the files exist
+  -- check that the files exist
   if not pl_path.exists(ssl_cert) then
     return nil, "cannot find SSL certificate at: "..ssl_cert
-  end
-  if not pl_path.exists(ssl_cert_key) then
+  elseif not pl_path.exists(ssl_cert_key) then
     return nil, "cannot find SSL key at: "..ssl_cert_key
   end
 
-  return { ssl_cert = ssl_cert, ssl_cert_key = ssl_cert_key }
+  return {ssl_cert = ssl_cert, ssl_cert_key = ssl_cert_key}
 end
 
 function _M.prepare_ssl_cert_and_key(prefix)
-  -- Create SSL directory
+  -- create SSL directory
   local ssl_path = pl_path.join(prefix, SSL_FOLDER)
   local ok, err = pl_dir.makepath(ssl_path)
   if not ok then return nil, err end
@@ -44,8 +43,8 @@ function _M.prepare_ssl_cert_and_key(prefix)
   local ssl_cert_csr = pl_path.join(prefix, SSL_FOLDER, SSL_CERT_CSR)
 
   if not (pl_path.exists(ssl_cert) and pl_path.exists(ssl_cert_key)) then
-    -- Autogenerating the certificates for the first time
-    log.verbose("Auto-generating the default SSL certificate and key..")
+    -- generating the certificates for the first time
+    log.verbose("auto-generating default SSL certificate and key...")
 
     local passphrase = utils.random_string()
     local commands = {
@@ -60,7 +59,7 @@ function _M.prepare_ssl_cert_and_key(prefix)
     for _, cmd in ipairs(commands) do
       local ok, _, _, stderr = pl_utils.executeex(cmd)
       if not ok then
-        return nil, "there was an error when auto-generating the default SSL certificate: "..stderr
+        return nil, "could not generate default SSL certificate: "..stderr
       end
     end
   end

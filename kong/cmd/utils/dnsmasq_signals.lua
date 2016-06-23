@@ -1,8 +1,8 @@
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
-local log = require "kong.cmd.utils.log"
 local kill = require "kong.cmd.utils.kill"
+local log = require "kong.cmd.utils.log"
 local fmt = string.format
 
 local _M = {}
@@ -25,8 +25,7 @@ function _M.find_bin()
   for _, path in ipairs(dnsmasq_search_paths) do
     local path_to_check = pl_path.join(path, dnsmasq_bin_name)
     local cmd = fmt("%s -v", path_to_check)
-    local ok = pl_utils.executeex(cmd)
-    if ok then
+    if pl_utils.executeex(cmd) then
       found = path_to_check
       break
     end

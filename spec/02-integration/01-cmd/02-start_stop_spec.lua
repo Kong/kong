@@ -13,55 +13,39 @@ describe("kong start/stop", function()
   end)
 
   it("start help", function()
-    local _, stderr, stdout = helpers.kong_exec "start --help"
-    assert.is_nil(stdout)
+    local _, stderr = helpers.kong_exec "start --help"
     assert.not_equal("", stderr)
   end)
   it("stop help", function()
-    local _, stderr, stdout = helpers.kong_exec "stop --help"
-    assert.is_nil(stdout)
+    local _, stderr = helpers.kong_exec "stop --help"
     assert.not_equal("", stderr)
   end)
   it("start/stop default conf/prefix", function()
     -- don't want to force migrations to be run on default
     -- keyspace/database
-    local _, stderr, stdout = helpers.kong_exec "start"
-    assert.equal("", stderr)
-    assert.not_equal("", stdout)
-
-    _, stderr, stdout = helpers.kong_exec "stop"
-    assert.not_equal("", stdout)
-    assert.equal("", stderr)
+    assert(helpers.kong_exec "start", {
+      database = helpers.test_conf.database,
+      pg_database = helpers.test_conf.pg_database,
+      cassandra_keyspace = helpers.test_conf.cassandra_keyspace
+    })
+    assert(helpers.kong_exec "stop")
   end)
   it("start/stop custom Kong conf/prefix", function()
-    local _, stderr, stdout  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
-    assert.equal("", stderr)
-    assert.not_equal("", stdout)
-
-    _, stderr, stdout = helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix)
-    assert.equal("", stderr)
-    assert.not_equal("", stdout)
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
   end)
   it("start with inexistent prefix", function()
     finally(function()
       pcall(helpers.dir.rmtree, "foobar")
     end)
 
-    local _, stderr, stdout = helpers.kong_exec "start --prefix foobar"
-    assert.equal("", stderr)
-    assert.not_equal("", stdout)
+    assert(helpers.kong_exec "start --prefix foobar")
   end)
   it("start dumps Kong config in prefix", function()
-    local _, stderr, stdout = helpers.kong_exec("start --conf "..helpers.test_conf_path)
-    assert.equal("", stderr)
-    assert.not_equal("", stdout)
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
 
     local conf_path = helpers.path.join(helpers.test_conf.prefix, "kong.conf")
     assert.truthy(helpers.path.exists(conf_path))
-
-    _, stderr, stdout = helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix)
-    assert.equal("", stderr)
-    assert.not_equal("", stdout)
   end)
 
   describe("verbose args", function()
@@ -83,9 +67,8 @@ describe("kong start/stop", function()
         pcall(helpers.dir.rmtree, "foobar")
       end)
 
-      local _, stderr, stdout = helpers.kong_exec "start --prefix foobar"
-      assert.not_equal("", stdout)
-      assert.equal("", stderr)
+      assert(helpers.kong_exec "start --prefix foobar")
+      assert.truthy(helpers.path.exists("foobar"))
     end)
   end)
 
@@ -136,8 +119,8 @@ describe("kong start/stop", function()
 
   describe("errors", function()
     it("start inexistent Kong conf file", function()
-      local _, stderr, stdout = helpers.kong_exec "start --conf foobar.conf"
-      assert.is_nil(stdout)
+      local ok, stderr = helpers.kong_exec "start --conf foobar.conf"
+      assert.False(ok)
       assert.is_string(stderr)
       assert.matches("Error: no file at: foobar.conf", stderr, nil, true)
     end)
@@ -146,12 +129,12 @@ describe("kong start/stop", function()
         pcall(helpers.dir.rmtree, helpers.test_conf.prefix)
       end)
 
-      local _, stderr, stdout = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
+      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
       assert.equal("", stderr)
-      assert.not_equal("", stdout)
+      assert.True(ok)
 
-      _, stderr, stdout = helpers.kong_exec("stop --prefix inexistent")
-      assert.is_nil(stdout)
+      ok, stderr, stdout = helpers.kong_exec("stop --prefix inexistent")
+      assert.False(ok)
       assert.matches("Error: no such prefix: inexistent", stderr, nil, true)
     end)
     it("notifies when Nginx is already running", function()
@@ -161,12 +144,12 @@ describe("kong start/stop", function()
 
       assert(helpers.dir.makepath(helpers.test_conf.prefix))
 
-      local _, stderr, stdout = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
+      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
       assert.equal("", stderr)
-      assert.not_equal("", stdout)
+      assert.True(ok)
 
-      _, stderr, stdout = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
-      assert.is_nil(stdout)
+      ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
+      assert.False(ok)
       assert.matches("Nginx is already running in", stderr)
     end)
   end)

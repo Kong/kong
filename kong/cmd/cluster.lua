@@ -19,7 +19,7 @@ local function execute(args)
     print(assert(serf:reachability()))
   elseif args.command == "force-leave" then
     local node_name = args[1]
-    assert(node_name ~= nil, "you need to specify the node name to leave")
+    assert(node_name ~= nil, "must specify the name of the node to leave")
     log("force-leaving %s", node_name)
     assert(serf:force_leave(node_name))
     log("left node %s", node_name)
@@ -43,8 +43,8 @@ return {
   lapp = lapp,
   execute = execute,
   sub_commands = {
-    members = true,
     keygen = true,
+    members = true,
     reachability = true,
     ["force-leave"] = true
   }

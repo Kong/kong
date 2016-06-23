@@ -76,15 +76,11 @@ function Serf:members()
 end
 
 function Serf:keygen()
-  local res, err = self:invoke_signal("keygen")
-  if not res then return nil, err end
-  return res
+  return self:invoke_signal("keygen")
 end
 
 function Serf:reachability()
-  local res, err = self:invoke_signal("reachability")
-  if not res then return nil, err end
-  return res
+  return self:invoke_signal("reachability")
 end
 
 function Serf:autojoin()
@@ -108,7 +104,8 @@ function Serf:autojoin()
         joined = true
         break
       else
-        log.warn("could not join %s, if the node does not exist anymore it will be automatically purged", v.cluster_listening_address)
+        log.warn("could not join %s (if the node does not exist anymore it will be automatically purged)",
+                 v.cluster_listening_address)
       end
     end
     if not joined then
