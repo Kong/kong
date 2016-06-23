@@ -3,6 +3,7 @@ local http_client = require "kong.tools.http_client"
 local spec_helper = require "spec.spec_helpers"
 
 local jwt_secrets = spec_helper.get_env().dao_factory.jwt_secrets
+local fixtures = require "spec.plugins.jwt.fixtures"
 
 describe("JWT API", function()
   local BASE_URL, consumer, jwt_secret
@@ -54,6 +55,40 @@ describe("JWT API", function()
         jwt2 = body
       end)
 
+      it("[SUCCESS] should accept a valid public key for RS256", function()
+        local rsa_public_key = fixtures.rs256_public_key
+
+        rsa_public_key = rsa_public_key:gsub("\n", "\r\n")
+        rsa_public_key = rsa_public_key:gsub("([^%w %-%_%.%~])",
+          function (c) return string.format ("%%%02X", string.byte(c)) end)
+        rsa_public_key = rsa_public_key:gsub(" ", "+")
+
+        local response, status = http_client.post(BASE_URL, {key = "bob3", algorithm = "RS256", rsa_public_key = rsa_public_key})
+        assert.equal(201, status)
+        local body = json.decode(response)
+        assert.equal("bob3", body.key)
+      end)
+
+      it("[SUCCESS] should make sure there's a `rsa_public_key` parameter for RS256 algorithms", function ()
+        local response, status = http_client.post(BASE_URL, {key = "bob4", algorithm = "RS256"})
+        assert.equal(400, status)
+        local body = json.decode(response)
+        assert.equal("No mandatory 'rsa_public_key'", body.message)
+      end)
+
+      it("[SUCCESS] should make sure that the rsa_public_key is a vliad key for RS256 algorithms", function ()
+        local response, status = http_client.post(BASE_URL, {key = "bob4", algorithm = "RS256", rsa_public_key = "test"})
+        assert.equal(400, status)
+        local body = json.decode(response)
+        assert.equal("'rsa_public_key' format is invalid", body.message)
+      end)
+
+      it("[SUCCESS] should make sure there's a `secret` parameter for HS256 algorithms", function ()
+        local response, status = http_client.post(BASE_URL, {key = "bob4", algorithm = "HS256"})
+        assert.equal(400, status)
+        local body = json.decode(response)
+        assert.equal("No mandatory 'secret'", body.message)
+      end)
     end)
 
     describe("PUT", function()
@@ -76,7 +111,7 @@ describe("JWT API", function()
         local response, status = http_client.get(BASE_URL)
         assert.equal(200, status)
         local body = json.decode(response)
-        assert.equal(1, #(body.data))
+        assert.equal(2, #(body.data))
       end)
 
     end)

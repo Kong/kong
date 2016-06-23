@@ -76,7 +76,7 @@ describe("JWT parser", function()
     it("should throw an error if RS256 Public Key is not Valid", function()
       assert.has_error(function()
         local token = jwt_parser.encode({sub = "foo"}, fixtures.rs256_private_key, 'RS256')
-        local jwt, err = jwt_parser:new(token)
+        local jwt = jwt_parser:new(token)
 
         jwt:verify_signature(fixtures.rs256_public_key:gsub("+", " "))
       end, "Consumer Public Key is Invalid")
