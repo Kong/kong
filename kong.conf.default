@@ -254,3 +254,5 @@
                                  # plugins not stored in the default search
                                  # path.
 
+#lua_package_cpath =             # Sets the Lua C module search path
+                                 # (LUA_CPATH).

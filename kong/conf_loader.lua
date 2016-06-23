@@ -13,6 +13,7 @@ local CONF_INFERENCES = {
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
+  lua_package_cpath = {typ = "string"},
 
   -- Other properties
   database = {enum = {"postgres", "cassandra"}},
@@ -114,7 +115,7 @@ local function check_and_infer(conf)
       errors[#errors+1] = "ssl_cert must be enabled"
     end
   end
-  
+
   if conf.dns_resolver and conf.dnsmasq then
     errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
   end
@@ -131,6 +132,9 @@ local function check_and_infer(conf)
   end
   if conf.cluster_ttl_on_failure < 60 then
     errors[#errors+1] = "cluster_ttl_on_failure must be at least 60 seconds"
+  end
+  if not conf.lua_package_cpath then
+    conf.lua_package_cpath = ""
   end
 
   return #errors == 0, errors[1], errors

@@ -47,4 +47,5 @@ dns_resolver = NONE
 
 lua_code_cache = on
 lua_package_path = ?/init.lua;./kong/?.lua
+lua_package_cpath = NONE
 ]]

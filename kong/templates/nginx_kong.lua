@@ -26,6 +26,7 @@ set_real_ip_from 0.0.0.0/0;
 real_ip_recursive on;
 
 lua_package_path '${{LUA_PACKAGE_PATH}};;';
+lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
