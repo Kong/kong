@@ -29,7 +29,7 @@ local lapp = [[
 Usage: kong stop [OPTIONS]
 
 Options:
- --prefix (optional string) Nginx prefix path
+ --prefix (optional string) prefix Kong is running at
 ]]
 
 return {

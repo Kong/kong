@@ -6,13 +6,6 @@ local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
 local log = require "kong.cmd.utils.log"
 
---[[
-Start Kong.
-
-Kong being a bundle of several applications and services, start acts
-as follows:
---]]
-
 local function execute(args)
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
@@ -34,7 +27,7 @@ Usage: kong start [OPTIONS]
 
 Options:
  -c,--conf (optional string) configuration file
- --prefix  (optional string) Nginx prefix path
+ --prefix  (optional string) override prefix directory
 ]]
 
 return {
