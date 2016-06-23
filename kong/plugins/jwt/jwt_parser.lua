@@ -31,7 +31,13 @@ local alg_verify = {
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
   --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
   ["RS256"] = function(data, signature, key)
-    return crypto.verify('sha256', data, signature, crypto.pkey.from_pem(key))
+    local pkey = crypto.pkey.from_pem(key)
+
+    if pkey == nil then
+      error("Consumer Public Key is Invalid")
+    end
+
+    return crypto.verify('sha256', data, signature, pkey)
   end
 }
 
