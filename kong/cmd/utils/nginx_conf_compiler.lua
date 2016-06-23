@@ -92,10 +92,6 @@ local function compile_nginx_conf(kong_config)
   return compile_conf(kong_config, nginx_template)
 end
 
-local function touch(file_path)
-  return pl_utils.executeex("touch "..file_path)
-end
-
 local function prepare_prefix(kong_config, nginx_prefix)
   log.verbose("preparing nginx prefix directory at %s", nginx_prefix)
 
@@ -114,9 +110,9 @@ local function prepare_prefix(kong_config, nginx_prefix)
   local err_logs_path = pl_path.join(logs_path, "error.log")
   local acc_logs_path = pl_path.join(logs_path, "access.log")
 
-  local ok, _, _, stderr = touch(err_logs_path)
+  local ok, _, _, stderr = pl_utils.executeex("touch "..err_logs_path)
   if not ok then return nil, stderr end
-  local ok, _, _, stderr = touch(acc_logs_path)
+  local ok, _, _, stderr = pl_utils.executeex("touch "..acc_logs_path)
   if not ok then return nil, stderr end
 
   local nginx_config_path = pl_path.join(nginx_prefix, "nginx.conf")

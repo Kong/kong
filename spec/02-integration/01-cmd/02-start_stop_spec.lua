@@ -75,6 +75,42 @@ describe("kong start/stop", function()
         helpers.execute "pkill nginx; pkill serf"
       end)
     end)
+    it("prints ENV variables when detected", function()
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
+      end)
+
+      local ENV = "KONG_DATABASE=postgres KONG_ADMIN_LISTEN=127.0.0.1:8001"
+      local _, _, stdout, stderr = helpers.execute(ENV.." bin/kong start --vv --conf "..helpers.test_conf_path)
+      assert.equal("", stderr)
+      assert.matches('KONG_DATABASE ENV found with "postgres"', stdout, nil, true)
+      assert.matches('KONG_ADMIN_LISTEN ENV found with "127.0.0.1:8001"', stdout, nil, true)
+    end)
+    it("prints config in alphabetical order", function()
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
+      end)
+
+      local _, _, stdout, stderr = exec("start --vv --conf "..helpers.test_conf_path)
+      assert.equal("", stderr)
+      assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
+    end)
+    it("does not print sensitive settings in config", function()
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
+      end)
+
+      local ENV = "KONG_PG_PASSWORD='do not print' KONG_CASSANDRA_PASSWORD='do not print'"
+                .." KONG_CLUSTER_ENCRYPT_KEY=fHGfspTRljmzLsYDVEK1Rw=="
+      local _, _, stdout, stderr = helpers.execute(ENV.." bin/kong start --vv --conf "..helpers.test_conf_path)
+      assert.equal("", stderr)
+      assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
+      assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
+      assert.matches('KONG_CLUSTER_ENCRYPT_KEY ENV found with "******"', stdout, nil, true)
+      assert.matches('pg_password = "******"', stdout, nil, true)
+      assert.matches('cassandra_password = "******"', stdout, nil, true)
+      assert.matches('cluster_encrypt_key = "******"', stdout, nil, true)
+    end)
   end)
 
   describe("Serf", function()
