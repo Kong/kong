@@ -1,3 +1,10 @@
+------------------------------------------------------------------
+-- Collection of utilities to help testing Kong features and plugins.
+-- 
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module spec.helpers
+
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
 
@@ -8,9 +15,9 @@ local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local cjson = require "cjson.safe"
 local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
-local cjson = require "cjson.safe"
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -182,7 +189,10 @@ assert = function(...)
 end
 
 --- Generic modifier "response".
--- will set a "kong_response" value in the assertion state
+-- Will set a "response" value in the assertion state, so following
+-- assertions will operate on the value set.
+-- @name response
+-- @param response results from `http_client:send` function.
 -- @usage
 -- local res = assert(client:send { ..your request parameters here ..})
 -- local length = assert.response(res).has.header("Content-Length")
@@ -194,8 +204,11 @@ end
 luassert:register("modifier", "response", modifier_response)
 
 --- Generic modifier "request".
--- will set a "kong_request" value in the assertion state.
+-- Will set a "request" value in the assertion state, so following
+-- assertions will operate on the value set. 
 -- The request must be inside a 'response' from mockbin.org or httpbin.org
+-- @name request
+-- @param response results from `http_client:send` function. The request will be extracted from the response.
 -- @usage
 -- local res = assert(client:send { ..your request parameters here ..})
 -- local length = assert.request(res).has.header("Content-Length")
@@ -229,21 +242,25 @@ luassert:register("assertion", "fail", fail,
                   "assertion.fail.negative")
 
 --- Assertion to check whether a value lives in an array.
+-- @param expected The value to search for
+-- @param array The array to search for the value
+-- @param pattern (optional) If thruthy, then `expected` is matched as a string pattern
 -- @returns the index at which the value was found
 -- @usage
 -- local arr = { "one", "three" }
--- local i = assert.contains("one", arr)  --> passes; i == 1
--- local i = assert.contains("two", arr)  --> fails
+-- local i = assert.contains("one", arr)        --> passes; i == 1
+-- local i = assert.contains("two", arr)        --> fails
+-- local i = assert.contains("ee$", arr, true)  --> passes; i == 2
 local function contains(state, args)
-  local expected, arr = unpack(args)
+  local expected, arr, pattern = unpack(args)
   local found
   for i = 1, #arr do
-    if arr[i] == expected then
+    if (pattern and string.match(arr[i], expected)) or (arr[i] == expected) then
       found = i
       break
     end
   end
-  return (found ~= nil), {found}
+  return found ~= nil, {found}
 end
 say:set("assertion.contains.negative", [[
 Expected array to contain element.
@@ -260,11 +277,14 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.positive")
 
 --- Assertion to check the statuscode of a http response.
--- @return the response body
+-- @name status
+-- @param expected the expected status code
+-- @param response (optional) results from `http_client:send` function, alternatively use `response`.
+-- @return the response body as a string
 -- @usage
 -- local res = assert(client:send { .. your request params here .. })
 -- local body = assert.has.status(200, res)             -- or alternativly
--- local body = assert.response(res).has.status(200)    --> does the same
+-- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
   local expected, res = unpack(args)
   if not res then res = kong_state.kong_response end
@@ -300,7 +320,13 @@ luassert:register("assertion", "status", res_status,
                   "assertion.res_status.negative")
 
 --- Checks and returns a json body of an http response/request.
--- @return the decoded json (table)
+-- @name jsonbody
+-- @param response (optional) results from `http_client:send` function. The request will be extracted from the response. Alternatively use `request` or `response`.
+-- @return the decoded json as a table
+-- @usage
+-- local res = assert(client:send { .. your request params here .. })
+-- local json = assert.has.jsonbody(res)                -- or alternativly
+-- local body = assert.response(res).has.jsonbody()     -- does the same
 local function jsonbody(state, args)
   local res = args[1] or kong_state.kong_request or kong_state.kong_response
   if (type(res) ~= "table") or (type(res.read_body) ~= "function") then
@@ -328,9 +354,12 @@ luassert:register("assertion", "jsonbody", jsonbody,
                   "assertion.jsonbody.negative",
                   "assertion.jsonbody.positive")
 
----
--- Adds an assertion to look for a named header in a `headers` subtable.
+--- Adds an assertion to look for a named header in a `headers` subtable.
 -- Header name comparison is done case-insensitive.
+-- @name header
+-- @param name header name to look for.
+-- @see response
+-- @see request
 -- @return value of the header
 local function res_header(state, args)
   local header = args[1]
