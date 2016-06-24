@@ -185,23 +185,15 @@ luassert:register("assertion", "res_status", res_status,
 -- Shell helpers
 ----------------
 local function exec(...)
-  local ok, _, stdout, stderr = pl_utils.executeex(...)
-  if not ok then
-    stdout = nil -- don't return 3rd value if fail because of busted's `assert`
-  end
-  return ok, stderr, stdout
+  local ok, _, _, stderr = pl_utils.executeex(...)
+  return ok, stderr
 end
 
-local function kong_exec(cmd, env)
-  cmd = cmd or ""
-  env = env or {}
+local function kong_exec(args, prefix)
+  args = args or ""
+  prefix = prefix or conf.prefix
 
-  local env_vars = ""
-  for k, v in pairs(env) do
-    env_vars = string.format("%s KONG_%s=%s", env_vars, k:upper(), v)
-  end
-
-  return exec(env_vars.." "..BIN_PATH.." "..cmd)
+  return exec(BIN_PATH.." "..args.." --prefix "..prefix)
 end
 
 ----------
@@ -212,7 +204,7 @@ return {
   dir = pl_dir,
   path = pl_path,
   file = pl_file,
-  utils = pl_utils,
+  execute = pl_utils.executeex,
 
   -- Kong testing properties
   dao = dao,
@@ -221,7 +213,6 @@ return {
   test_conf_path = TEST_CONF_PATH,
 
   -- Kong testing helpers
-  execute = exec,
   kong_exec = kong_exec,
   http_client = http_client,
   wait_until = wait_until,
@@ -230,6 +221,7 @@ return {
   prepare_prefix = function(prefix)
     prefix = prefix or conf.prefix
     return pl_dir.makepath(prefix)
+    --kong_exec("stop", prefix)
   end,
   clean_prefix = function(prefix)
     prefix = prefix or conf.prefix
@@ -237,14 +229,10 @@ return {
       pl_dir.rmtree(prefix)
     end
   end,
-  start_kong = function()
-    return kong_exec("start --conf "..TEST_CONF_PATH)
+  start_kong = function(prefix)
+    return kong_exec("start --conf "..TEST_CONF_PATH, prefix)
   end,
-  stop_kong = function()
-    return kong_exec("stop --conf "..TEST_CONF_PATH)
-  end,
-  kill_all = function()
-    dao:truncate_tables() -- truncate nodes table too
-    return exec "pkill nginx; pkill serf; pkill dnsmasq"
+  stop_kong = function(prefix)
+    return kong_exec("stop --conf "..TEST_CONF_PATH, prefix)
   end
 }

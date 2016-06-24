@@ -133,7 +133,7 @@ describe("kong start/stop", function()
       assert.equal("", stderr)
       assert.True(ok)
 
-      ok, stderr, stdout = helpers.kong_exec("stop --prefix inexistent")
+      ok, stderr = helpers.kong_exec("stop --prefix inexistent")
       assert.False(ok)
       assert.matches("Error: no such prefix: inexistent", stderr, nil, true)
     end)

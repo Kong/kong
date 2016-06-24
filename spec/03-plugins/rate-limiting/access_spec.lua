@@ -334,7 +334,7 @@ describe("Plugin: rate-limiting", function()
     end)
   end)
 
-  describe("Continue on error", function()
+  describe("#only Continue on error", function()
     after_each(function()
       prepare()
     end)
