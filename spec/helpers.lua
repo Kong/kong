@@ -241,15 +241,21 @@ local function modifier_request(state, arguments, level)
 end
 luassert:register("modifier", "request", modifier_request)
 
---- Generic fail assertion. Always fails.
+--- Generic fail assertion. A convenience function for debugging tests, always fails. It will output the 
+-- values it was called with as a table, with an `n` field to indicate the number of arguments received.
 -- @usage
--- assert.fail()
+-- assert.fail(some, value)
 local function fail(state, args)
-  args[1] = table.concat(args, " ")
+  local out = {}
+  for k,v in pairs(args) do out[k] = v end
+  args[1] = out
   args.n = 1
   return false
 end
-say:set("assertion.fail.negative", "%s")
+say:set("assertion.fail.negative", [[
+Fail assertion was called with the following parameters (formatted as a table);
+%s
+]])
 luassert:register("assertion", "fail", fail,
                   "assertion.fail.negative",
                   "assertion.fail.negative")
