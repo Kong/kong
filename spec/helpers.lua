@@ -29,13 +29,6 @@ local dao = DAOFactory(conf)
 -- make sure migrations are up-to-date
 --assert(dao:run_migrations())
 
---------------------
--- Custom properties
---------------------
-local admin_port = string.match(conf.admin_listen, ":([%d]+)$")
-local proxy_port = string.match(conf.proxy_listen, ":([%d]+)$")
-local ssl_proxy_port = string.match(conf.proxy_listen_ssl, ":([%d]+)$")
-
 -----------------
 -- Custom helpers
 -----------------
@@ -141,6 +134,14 @@ function resty_http_proxy_mt:__index(k)
   return self.client[k]
 end
 
+
+--- Creates a http client. Based on https://github.com/pintsized/lua-resty-http.
+-- @name http_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param timeout in seconds
+-- @return http client
+-- @see http_client:send
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
   local client = assert(http.new())
@@ -149,6 +150,18 @@ local function http_client(host, port, timeout)
   return setmetatable({
     client = client
   }, resty_http_proxy_mt)
+end
+
+--- returns a pre-configured `http_client` for the Kong proxy port.
+-- @name proxy_client
+local proxy_client = function()
+  return http_client(conf.proxy_ip, conf.proxy_port)
+end
+
+--- returns a pre-configured `http_client` for the Kong admin port.
+-- @name admin_client
+admin_client = function()
+  return http_client(conf.admin_ip, conf.admin_port)
 end
 
 local function udp_server(port)
@@ -504,6 +517,7 @@ end
 ----------
 -- Exposed
 ----------
+-- @export
 return {
   -- Penlight
   dir = pl_dir,
@@ -516,21 +530,13 @@ return {
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
-  proxy_port = proxy_port,
-  ssl_proxy_port = ssl_proxy_port,
-  admin_port = admin_port,
 
   -- Kong testing helpers
   kong_exec = kong_exec,
   http_client = http_client,
   udp_server = udp_server,
-  proxy_client = function()
-    return http_client("127.0.0.1", proxy_port)
-  end,
-  api_client = function()
-    return http_client("127.0.0.1", admin_port)
-  end,
-  
+  proxy_client = proxy_client,
+  admin_client = admin_client,
 
   prepare_prefix = function(prefix)
     prefix = prefix or conf.prefix
