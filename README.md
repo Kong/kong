@@ -40,7 +40,7 @@ freenode: [#kong](http://webchat.freenode.net/?channels=kong)
 - **Geo-Replicated**: Configs are always up-to-date across different regions.
 - **Failure Detection & Recovery**: Kong is unaffected if one of your Cassandra
   nodes goes down.
-- **Cluster Awarness**: All Kongs auto-join the cluster keeping config updated
+- **Cluster Awareness**: All Kongs auto-join the cluster keeping config updated
   across nodes.
 - **Scalability**: Distributed by nature, Kong scales horizontally simply by
   adding nodes.
