@@ -331,6 +331,8 @@ Body:
 ]])
 luassert:register("assertion", "status", res_status,
                   "assertion.res_status.negative")
+luassert:register("assertion", "res_status", res_status,     -- TODO: remove this, for now will break too many existing tests
+                  "assertion.res_status.negative")
 
 --- Checks and returns a json body of an http response/request.
 -- @name jsonbody
