@@ -179,7 +179,7 @@ end
 
 --- returns a pre-configured `http_client` for the Kong admin port.
 -- @name admin_client
-admin_client = function()
+local admin_client = function()
   return http_client(conf.admin_ip, conf.admin_port)
 end
 
@@ -251,8 +251,7 @@ local function modifier_request(state, arguments, level)
   local res = arguments[1]
   assert(type(res) == "table", "Expected a http response object, got '"..tostring(res).."'. "..generic)
   assert(type(res.read_body) == "function", "Expected a http response object with a 'read_body' function. "..generic)
-  local body, err = res:read_body()
-  body, err = cjson.decode(body)
+  local body, err = cjson.decode(assert(res:read_body()))
   assert(body, "Expected the http response object to have a json encoded body, but decoding gave error '"..tostring(err).."'. "..generic)
   kong_state.kong_request = body
   kong_state.kong_response = nil
