@@ -1,66 +1,94 @@
-local DEFAULT_PATHS = {
-  "/etc/kong.conf",
-  "/etc/kong/kong.conf"
-}
-
-local CONF_SCHEMA = {
-  -- kong
-  log_level = {enum = {"debug", "info", "notice", "warn",
-                       "error", "crit", "alert", "emerg"}},
-
-  ssl = {typ = "boolean"},
-
-  custom_plugins = {typ = "array"},
-
-  database = {enum = {"postgres", "cassandra"}},
-  pg_port = {typ = "number"},
-  cassandra_contact_points = {typ = "array"},
-  cassandra_port = {typ = "number"},
-  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
-  cassandra_repl_factor = {typ = "number"},
-  cassandra_data_centers = {typ = "array"},
-  cassandra_timeout = {typ = "number"},
-  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
-                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
-  cassandra_ssl = {typ = "boolean"},
-  cassandra_ssl_verify = {typ = "boolean"},
-
-  dnsmasq = {typ = "boolean"},
-
-  anonymous_reports = {typ = "boolean"},
-
-  -- ngx_lua
-  lua_code_cache = {typ = "ngx_boolean"},
-
-  -- nginx
-  nginx_daemon = {typ = "ngx_boolean"},
-  nginx_optimizations = {typ = "boolean"},
-  nginx_worker_processes = {typ = "string"} -- force string inference
-}
-
 local kong_default_conf = require "kong.templates.kong_defaults"
 local constants = require "kong.constants"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
+local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local log = require "kong.cmd.utils.log"
 
+local DEFAULT_PATHS = {
+  "/etc/kong.conf",
+  "/etc/kong/kong.conf"
+}
+
+-- By default, all properties in the configuration are considered to
+-- be strings/numbers, but if we want to forcefully infer their type, specify it
+-- in this table.
+-- Also holds "enums" which are lists of valid configuration values for some
+-- settings.
+-- See `typ_checks` for the validation function of each type.
+--
+-- Types:
+-- `boolean`: can be "on"/"off"/"true"/"false", will be inferred to a boolean
+-- `ngx_boolean`: can be "on"/"off", will be inferred to a string
+-- `array`: a comma-separated list
+local CONF_INFERENCES = {
+  -- forced string inferences (or else are retrieved as numbers)
+  proxy_listen = {typ = "string"},
+  proxy_listen_ssl = {typ = "string"},
+  admin_listen = {typ = "string"},
+  cluster_listen = {typ = "string"},
+  cluster_listen_rpc = {typ = "string"},
+  cluster_advertise = {typ = "string"},
+  nginx_worker_processes = {typ = "string"},
+
+  database = {enum = {"postgres", "cassandra"}},
+  pg_port = {typ = "number"},
+
+  cassandra_contact_points = {typ = "array"},
+  cassandra_port = {typ = "number"},
+  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
+  cassandra_repl_factor = {typ = "number"},
+  cassandra_data_centers = {typ = "array"},
+  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
+                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
+  cassandra_timeout = {typ = "number"},
+  cassandra_ssl = {typ = "boolean"},
+  cassandra_ssl_verify = {typ = "boolean"},
+
+  cluster_ttl_on_failure = {typ = "number"},
+
+  dnsmasq = {typ = "boolean"},
+  dnsmasq_port = {typ = "number"},
+
+  ssl = {typ = "boolean"},
+
+  log_level = {enum = {"debug", "info", "notice", "warn",
+                       "error", "crit", "alert", "emerg"}},
+  custom_plugins = {typ = "array"},
+  anonymous_reports = {typ = "boolean"},
+  nginx_daemon = {typ = "ngx_boolean"},
+  nginx_optimizations = {typ = "boolean"},
+
+  lua_code_cache = {typ = "ngx_boolean"}
+}
+
+-- List of settings whose values must not be printed when
+-- using the CLI in debug mode (which prints all settings).
+local CONF_SENSITIVE = {
+  pg_password = true,
+  cassandra_password = true,
+  cluster_encrypt_key = true
+}
+
 local typ_checks = {
   array = function(v) return type(v) == "table" end,
   string = function(v) return type(v) == "string" end,
   number = function(v) return type(v) == "number" end,
   boolean = function(v) return type(v) == "boolean" end,
-  ngx_boolean = function(v) return v == "on" or v == "off" end,
+  ngx_boolean = function(v) return v == "on" or v == "off" end
 }
 
+-- Validate properties (type/enum/custom) and infer their type.
+-- @param[type=table] conf The configuration table to treat.
 local function check_and_infer(conf)
   local errors = {}
 
   for k, value in pairs(conf) do
-    local v_schema = CONF_SCHEMA[k] or {}
+    local v_schema = CONF_INFERENCES[k] or {}
     local typ = v_schema.typ
 
     -- transform {boolean} values ("on"/"off" aliasing to true/false)
@@ -98,13 +126,36 @@ local function check_and_infer(conf)
     conf[k] = value
   end
 
-  -- custom validation
+  ---------------------
+  -- custom validations
+  ---------------------
+
   if conf.ssl then
-    if not conf.ssl_cert then
-      errors[#errors+1] = "ssl_cert required if SSL enabled"
-    elseif not conf.ssl_cert_key then
-      errors[#errors+1] = "ssl_cert_key required if SSL enabled"
+    if conf.ssl_cert and not conf.ssl_cert_key then
+      errors[#errors+1] = "ssl_cert_key must be enabled"
+    elseif (conf.ssl_cert_key and not conf.ssl_cert) then
+      errors[#errors+1] = "ssl_cert must be enabled"
     end
+  end
+
+  if conf.dns_resolver and conf.dnsmasq then
+    errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
+  end
+  local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
+  if not conf.cluster_listen:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
+  end
+  if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
+  end
+  if conf.cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+    errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
+  end
+  if conf.cluster_ttl_on_failure < 60 then
+    errors[#errors+1] = "cluster_ttl_on_failure must be at least 60 seconds"
+  end
+  if not conf.lua_package_cpath then
+    conf.lua_package_cpath = ""
   end
 
   return #errors == 0, errors[1], errors
@@ -126,7 +177,11 @@ local function overrides(k, default_v, file_conf, arg_conf)
   local env_name = "KONG_"..string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
-    log.debug("%s ENV found with %s", env_name, env)
+    local to_print = env
+    if CONF_SENSITIVE[k] then
+      to_print = "******"
+    end
+    log.debug('%s ENV found with "%s"', env_name, to_print)
     value = env
   end
 
@@ -135,13 +190,18 @@ local function overrides(k, default_v, file_conf, arg_conf)
     value = arg_conf[k]
   end
 
-  log.debug("%s = %s", k, value)
-
   return value, k
 end
 
--- @param[type=string] path A path to a conf file
--- @param[type=table] custom_conf A table taking precedence over all other sources.
+--- Load Kong configuration
+-- The loaded configuration will have all properties from the default config
+-- merged with the (optionally) specified config file, environment variables
+-- and values specified in the `custom_conf` argument.
+-- Values will then be validated and additional values (such as `proxy_port` or
+-- `plugins`) will be appended to the final configuration table.
+-- @param[type=string] path (optional) Path to a configuration file.
+-- @param[type=table] custom_conf A key/value table with the highest precedence.
+-- @treturn table A table holding a valid configuration.
 local function load(path, custom_conf)
   ------------------------
   -- Default configuration
@@ -176,7 +236,7 @@ local function load(path, custom_conf)
     local f, err = pl_file.read(path)
     if not f then return nil, err end
 
-    log.verbose("reading config file at "..path)
+    log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
     from_file_conf, err = pl_config.read(s)
     s:close()
@@ -197,6 +257,25 @@ local function load(path, custom_conf)
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
   do
+    -- print alphabetically-sorted values
+    local conf_arr = {}
+    for k, v in pairs(conf) do
+      local to_print = v
+      if CONF_SENSITIVE[k] then
+        to_print = "******"
+      end
+
+      conf_arr[#conf_arr+1] = k.." = "..pl_pretty.write(to_print, "")
+    end
+
+    table.sort(conf_arr)
+
+    for i = 1, #conf_arr do
+      log.debug(conf_arr[i])
+    end
+  end
+
+  do
     -- merge plugins
     local custom_plugins = {}
     for i = 1, #conf.custom_plugins do
@@ -207,7 +286,36 @@ local function load(path, custom_conf)
     conf.custom_plugins = nil
   end
 
-  log.verbose("prefix in use: "..conf.prefix)
+  -- Load absolute path
+  conf.prefix = pl_path.abspath(conf.prefix)
+
+  -- Handles relative paths for the ssl_cert and ssl_cert_key
+  if conf.ssl_cert and not pl_path.isabs(conf.ssl_cert) then
+    conf.ssl_cert = pl_path.abspath("")..conf.ssl_cert
+  end
+  if conf.ssl_cert_key and not pl_path.isabs(conf.ssl_cert_key) then
+    conf.ssl_cert_key = pl_path.abspath("")..conf.ssl_cert_key
+  end
+
+  do
+    -- extract ports/listen ips
+    local ip_port_pat = "(.+):([%d]+)$"
+    local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
+    local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
+    local proxy_ssl_ip, proxy_ssl_port = string.match(conf.proxy_listen_ssl, ip_port_pat)
+
+    if not admin_port then return nil, "admin_listen must be of form 'address:port'"
+    elseif not proxy_port then return nil, "proxy_listen must be of form 'address:port'"
+    elseif not proxy_ssl_port then return nil, "proxy_listen_ssl must be of form 'address:port'" end
+    conf.admin_ip = admin_ip
+    conf.proxy_ip = proxy_ip
+    conf.proxy_ssl_ip = proxy_ssl_ip
+    conf.admin_port = tonumber(admin_port)
+    conf.proxy_port = tonumber(proxy_port)
+    conf.proxy_ssl_port = tonumber(proxy_ssl_port)
+  end
+
+  log.verbose("prefix in use: %s", conf.prefix)
 
   return setmetatable(conf, nil) -- remove Map mt
 end

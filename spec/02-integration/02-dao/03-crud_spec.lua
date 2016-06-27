@@ -32,10 +32,15 @@ local api_tbl = {
 
 helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #"..kong_config.database, function()
-    local factory, apis
+    local factory, apis, oauth2_credentials
     setup(function()
       factory = Factory(kong_config)
       apis = factory.apis
+
+      -- DAO used for testing arrays
+      oauth2_credentials = factory.oauth2_credentials
+      oauth2_credentials.constraints.unique.client_id.schema.fields.consumer_id.required = false
+
       assert(factory:run_migrations())
     end)
     teardown(function()
@@ -66,6 +71,32 @@ helpers.for_each_dao(function(kong_config)
         assert.is_table(api)
         assert.equal("httpbin", api.name)
         assert.raw_table(api)
+      end)
+      it("insert a valid array field and return it properly", function()
+        local res, err = oauth2_credentials:insert {
+          name = "test_app",
+          redirect_uri = "https://mockbin.com"
+        }
+        assert.falsy(err)
+        assert.is_table(res)
+        assert.equal("test_app", res.name)
+        assert.is_table(res.redirect_uri)
+        assert.equal(1, #res.redirect_uri)
+        assert.same({"https://mockbin.com"}, res.redirect_uri)
+        assert.raw_table(res)
+      end)
+      it("insert a valid array field and return it properly bis", function()
+        local res, err = oauth2_credentials:insert {
+          name = "test_app",
+          redirect_uri = "https://mockbin.com, https://mockbin.org"
+        }
+        assert.falsy(err)
+        assert.is_table(res)
+        assert.equal("test_app", res.name)
+        assert.is_table(res.redirect_uri)
+        assert.equal(2, #res.redirect_uri)
+        assert.same({"https://mockbin.com", "https://mockbin.org"}, res.redirect_uri)
+        assert.raw_table(res)
       end)
       it("add DAO-inserted values", function()
         local api, err = apis:insert(api_tbl)
@@ -183,6 +214,13 @@ helpers.for_each_dao(function(kong_config)
           assert.falsy(err)
           assert.truthy(api)
         end
+
+        local res, err = oauth2_credentials:insert {
+          name = "test_app",
+          redirect_uri = "https://mockbin.com, https://mockbin.org"
+        }
+        assert.falsy(err)
+        assert.truthy(res)
       end)
       teardown(function()
         factory:truncate_tables()
@@ -214,6 +252,16 @@ helpers.for_each_dao(function(kong_config)
         assert.is_table(rows)
         assert.equal(1, #rows)
         assert.equal("fixture_100", rows[1].name)
+      end)
+      it("return rows with arrays", function()
+        local rows, err = oauth2_credentials:find_all()
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.equal(1, #rows)
+        assert.equal("test_app", rows[1].name)
+        assert.is_table(rows[1].redirect_uri)
+        assert.equal(2, #rows[1].redirect_uri)
+        assert.same({"https://mockbin.com", "https://mockbin.org"}, rows[1].redirect_uri)
       end)
       it("return empty table if no row match", function()
         local rows, err = apis:find_all {

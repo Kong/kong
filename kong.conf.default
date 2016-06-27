@@ -1,47 +1,258 @@
-#admin_listen = 0.0.0.0:8001
-#proxy_listen = 0.0.0.0:8000
+# -----------------------
+# Kong configuration file
+# -----------------------
+#
+# The commented-out settings shown in this file represent the default values.
+#
+# This file is read when `kong start` or `kong compile` are used. Kong
+# generates the Nginx configuration with the settings specified in this file.
+#
+# All environment variables prefixed with `KONG_` and capitalized will override
+# the settings specified in this file.
+# Example:
+#   `log_level` setting -> `KONG_LOG_LEVEL` env variable
+#
+# Boolean values can be specified as `on`/`off` or `true`/`false`.
+# Lists must be specified as comma-separated strings.
+#
+# All comments in this file can be removed safely, including the
+# commented-out properties.
+# You can verify the integrity of your settings with `kong check <conf>`.
 
-#log_level = error
+#------------------------------------------------------------------------------
+# GENERAL
+#------------------------------------------------------------------------------
 
-#ssl = off
-#ssl_cert =
-#ssl_cert_key =
-#proxy_listen_ssl = 0.0.0.0:8443
+#prefix = /usr/local/kong/       # Working directory. Equivalent to Nginx's
+                                 # prefix path, containing temporary files
+                                 # and logs.
+                                 # Each Kong process must have a separate
+                                 # working directory.
 
-#custom_plugins =
+#log_level = notice              # Log level of the Nginx server. Logs are
+                                 # found at <prefix>/logs/error.log
+# Note: See http://nginx.org/en/docs/ngx_core_module.html#error_log for a list
+# of accepted values.
 
-#cluster_listen = 0.0.0.0:7946
-#cluster_listen_rpc = 127.0.0.1:7373
-#cluster_advertise =
-#cluster_secret =
+#custom_plugins =                # Comma-separated list of additional plugins
+                                 # this node should load.
+                                 # Use this property to load custom plugins
+                                 # that are not bundled with Kong.
+                                 # Plugins will be loaded from the
+                                 # `kong.plugins.{name}.*` namespace.
 
-#database = postgres
+#anonymous_reports = on          # Send anonymous usage data such as error
+                                 # stack traces to help improve Kong.
 
-#pg_host = 127.0.0.1
-#pg_port = 5432
-#pg_user = kong
-#pg_password = kong
-#pg_database = kong
+#------------------------------------------------------------------------------
+# NGINX
+#------------------------------------------------------------------------------
 
-#cassandra_contact_points = 127.0.0.1:9042
-#cassandra_keyspace = kong
-#cassandra_repl_strategy = SimpleStrategy
-#cassandra_repl_factor = 1
-#cassandra_data_centers = dc1:2,dc2:3
-#cassandra_timeout = 5000
-#cassandra_consistency = ONE
-#cassandra_ssl = off
-#cassandra_ssl_verify = off
-#cassandra_ssl_trusted_cert =
-#cassandra_username = kong
-#cassandra_password = kong
+#proxy_listen = 0.0.0.0:8000     # Address and port on which Kong will accept
+                                 # HTTP requests.
+                                 # This is the public-facing entrypoint of
+                                 # Kong, to which your consumers will make
+                                 # requests to.
+# Note: See http://nginx.org/en/docs/http/ngx_http_core_module.html#listen for
+# a description of the accepted formats for this and other *_listen values.
 
-#dnsmasq = on
-#dns_resolver = 127.0.0.1:8053
+#proxy_listen_ssl = 0.0.0.0:8443 # Address and port on which Kong will accept
+                                 # HTTPS requests if `ssl` is enabled.
 
-#anonymous_reports = on
-#mem_cache_size = 128m
+#admin_listen = 0.0.0.0:8001     # Address and port on which Kong will expose
+                                 # an entrypoint to the Admin API.
+                                 # This API lets you configure and manage Kong,
+                                 # and should be kept private and secured.
 
-#nginx_daemon = on
-#nginx_optimizations = on
-#nginx_worker_processes = auto
+#nginx_worker_processes = auto   # Determines the number of worker processes
+                                 # spawned by Nginx.
+
+#nginx_daemon = on               # Determines wether Nginx will run as a daemon
+                                 # or as a foreground process. Mainly useful
+                                 # for development or when running Kong inside
+                                 # a Docker environment.
+
+#mem_cache_size = 128m           # Size of the in-memory cache for database
+                                 # entities. The accepted units are `k` and
+                                 # `m`, with a minimum recommended value of
+                                 # a few MBs.
+
+#ssl = on                        # Determines if Nginx should be listening for
+                                 # HTTPS traffic on the `proxy_listen_ssl`
+                                 # address. If disabled, Nginx will only bind
+                                 # itself on `proxy_listen`, and all SSL
+                                 # settings will be ignored.
+
+#ssl_cert =                      # If `ssl` is enabled, the absolute path to
+                                 # the SSL certificate for the
+                                 # `proxy_listen_ssl` address.
+
+#ssl_cert_key =                  # If `ssl` is enabled, the absolute path to
+                                 # the SSL key for the `proxy_listen_ssl`
+                                 # address.
+
+#------------------------------------------------------------------------------
+# DATASTORE
+#------------------------------------------------------------------------------
+
+# Kong will store all of its data (such as APIs, consumers and plugins) in
+# either Cassandra or PostgreSQL.
+#
+# All Kong nodes belonging to the same cluster must connect themselves to the
+# same database.
+
+#database = postgres             # Determines which of PostgreSQL or Cassandra
+                                 # this node will use as its datastore.
+                                 # Accepted values are `postgres` and
+                                 # `cassandra`.
+
+#pg_host = 127.0.0.1             # The PostgreSQL host to connect to.
+#pg_port = 5432                  # The port to connect to.
+#pg_user = kong                  # The username to authenticate if required.
+#pg_password = kong              # The password to authenticate if required.
+#pg_database = kong              # The database name to connect to.
+
+#cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
+                                       # points to your cluster.
+
+#cassandra_port = 9042           # The port on which your nodes are listening
+                                 # on. All your nodes and contact points must
+                                 # listen on the same port.
+
+#cassandra_keyspace = kong       # The keyspace to use in your cluster.
+
+#cassandra_consistency = ONE     # Consistency setting to use when reading/
+                                 # writing to the Cassandra cluster.
+
+#cassandra_timeout = 5000        # Defines the timeout (in ms), for reading
+                                 # and writing.
+
+#cassandra_ssl = off             # Toggles client-to-node TLS connections
+                                 # between Kong and Cassandra.
+
+#cassandra_ssl_verify = off      # Toggles server certificate verification if
+                                 # `cassandra_ssl` is enabled.
+
+#cassandra_ssl_trusted_cert =    # Absolute path to the certificate
+                                 # authority file in PEM format. This setting
+                                 # will set the `lua_ssl_trusted_certificate`
+                                 # directive when Kong compiles the Nginx
+                                 # configuration file.
+
+#cassandra_username = kong       # Username when using the
+                                 # `PasswordAuthenticator` scheme.
+
+#cassandra_password = kong       # Password when using the
+                                 # `PasswordAuthenticator` scheme.
+
+#cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
+                                           # Kong will use this setting to
+                                           # create your keyspace.
+                                           # Accepted values are
+                                           # `SimpleStrategy` and
+                                           # `NetworkTopologyStrategy`.
+
+#cassandra_repl_factor = 1       # When migrating for the first time, Kong
+                                 # will create the keyspace with this
+                                 # replication factor when using the
+                                 # `SimpleStrategy`.
+
+#cassandra_data_centers = dc1:2,dc2:3  # When migrating for the first time,
+                                       # will use this setting when using the
+                                       # `NetworkTopologyStrategy`.
+                                       # The format is a comma-separated list
+                                       # made of <dc_name>:<repl_factor>.
+
+#------------------------------------------------------------------------------
+# CLUSTERING
+#------------------------------------------------------------------------------
+
+# In addition to pointing to the same database, each Kong node must join the
+# same cluster.
+#
+# Kong's clustering works on the IP layer (hostnames are not supported, only
+# IPs) and expects a flat network topology without any NAT between the
+# datacenters.
+#
+# A common pattern is to create a VPN between the two datacenters such that
+# the flat network assumption is not violated.
+#
+# See the clustering reference for more informations:
+# https://getkong.org/docs/latest/clustering/
+
+#cluster_listen = 0.0.0.0:7946   # Address and port used to communicate with
+                                 # other nodes in the cluster.
+                                 # All other Kong nodes in the same cluster
+                                 # must be able to communicate over both
+                                 # TCP and UDP on this address.
+                                 # Only IPv4 addresses are supported.
+
+#cluster_listen_rpc = 127.0.0.1:7373  # Address and port used by this node to
+                                      # communicate with the cluster.
+                                      # Only contains TCP traffic over the
+                                      # local network.
+
+#cluster_advertise =             # By default, the `cluster_listen` address
+                                 # is advertised over the cluster.
+                                 # If the `cluster_listen` host is '0.0.0.0',
+                                 # then the first local, non-loopback IPv4
+                                 # address will be advertised to other nodes.
+                                 # However, in some cases (specifically NAT
+                                 # traversal), there may be a routable address
+                                 # that cannot be bound to. This flag enables
+                                 # gossiping a different address to support
+                                 # this.
+
+#cluster_encrypt_key =           # base64-encoded 16-bytes key to encrypt
+                                 # cluster traffic with.
+
+#cluster_ttl_on_failure = 3600   # Time to live (in seconds) of a node in the
+                                 # cluster when it stops sending healthcheck
+                                 # pings, possibly caused by a node or network
+                                 # failure.
+                                 # If a node is not able to send a new
+                                 # healthcheck ping before the expiration,
+                                 # other nodes in the cluster will stop
+                                 # attempting to connect to it.
+                                 # Recommended to be at least `60`.
+
+#------------------------------------------------------------------------------
+# DNS RESOLVER
+#------------------------------------------------------------------------------
+
+#dnsmasq = on                    # Toggles if Kong should start/stop dnsmasq,
+                                 # which can be used as the Nginx DNS resolver.
+                                 # Using dnsmasq allows Nginx to resolve
+                                 # domains defined in /etc/hosts.
+                                 # dnsmasq must be installed and available in
+                                 # your $PATH.
+
+#dnsmasq_port = 8053             # The port on which dnsmasq should listen to
+                                 # for queries.
+
+#dns_resolver = 8.8.8.8          # Configure a name server to be used by Nginx.
+                                 # Only valid when `dnsmasq` is disabled.
+
+#------------------------------------------------------------------------------
+# DEVELOPMENT
+#------------------------------------------------------------------------------
+
+# Additional settings inherited from lua-nginx-module allowing for more
+# flexibility and advanced usage.
+#
+# See the lua-nginx-module documentation for more informations:
+# https://github.com/openresty/lua-nginx-module
+
+#lua_code_cache = on             # When disabled, every request will run in a
+                                 # separate Lua VM instance: all Lua modules
+                                 # will be loaded from scratch. Useful for
+                                 # adopting an edit-and-refresh approach while
+                                 # developing a plugin.
+
+#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
+                                 # Useful when developing or using custom
+                                 # plugins not stored in the default search
+                                 # path.
+
+#lua_package_cpath =             # Sets the Lua C module search path
+                                 # (LUA_CPATH).

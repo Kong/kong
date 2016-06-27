@@ -22,7 +22,7 @@ local function invalidate(message_t)
 end
 
 local function get_cluster_members()
-  local members, err = singletons.serf:_members()
+  local members, err = singletons.serf:members()
   if err then
     return nil, err
   else

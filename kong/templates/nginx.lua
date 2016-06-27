@@ -2,6 +2,7 @@ return [[
 worker_processes ${{NGINX_WORKER_PROCESSES}};
 daemon ${{NGINX_DAEMON}};
 
+pid pids/nginx.pid;
 error_log logs/error.log ${{LOG_LEVEL}};
 
 events {

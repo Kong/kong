@@ -4,12 +4,11 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
   teardown(function()
     if client then
@@ -63,7 +62,7 @@ describe("Admin API", function()
         local tstart = ngx.time()
         local texp, started = tstart + 2 -- 2s timeout
         repeat
-          ngx.sleep "0.2"
+          ngx.sleep(0.2)
           started = is_running(pid_path)
         until started or ngx.time() >= texp
         assert(started, "Serf agent start: timeout")
@@ -78,9 +77,7 @@ describe("Admin API", function()
       it("force-leaves a node", function()
         -- old test converted
         local cmd = string.format("serf join -rpc-addr=%s 127.0.0.1:20001", helpers.test_conf.cluster_listen_rpc)
-        local ok, _, _, stderr = helpers.execute(cmd)
-        assert.equal("", stderr)
-        assert.True(ok)
+        assert(helpers.execute(cmd))
 
         local res = assert(client:send {
           method = "GET",

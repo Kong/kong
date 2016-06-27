@@ -15,8 +15,9 @@ The available commands are:
  stop
  reload
  check
- migrations
  compile
+ migrations
+ cluster
  version
 
 Options:
@@ -29,6 +30,7 @@ local cmds = {
   check = "check",
   compile = "compile",
   migrations = "migrations",
+  cluster = "cluster",
   version = "version",
   roar = "roar"
 }

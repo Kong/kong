@@ -21,7 +21,7 @@ local function is_openresty(bin_path)
 end
 
 local function get_pid_path(nginx_prefix)
-  local pid_path = pl_path.join(nginx_prefix, "logs", "nginx.pid")
+  local pid_path = pl_path.join(nginx_prefix, "pids", "nginx.pid")
   if pl_path.exists(pid_path) then
     return pid_path
   end
@@ -49,8 +49,7 @@ function _M.find_bin()
   local found
   for _, path in ipairs(nginx_search_paths) do
     local path_to_check = pl_path.join(path, nginx_bin_name)
-    local ok = is_openresty(path_to_check)
-    if ok then
+    if is_openresty(path_to_check) then
       found = path_to_check
       break
     end

@@ -26,6 +26,7 @@ set_real_ip_from 0.0.0.0/0;
 real_ip_recursive on;
 
 lua_package_path '${{LUA_PACKAGE_PATH}};;';
+lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
@@ -41,13 +42,8 @@ lua_ssl_trusted_certificate '${{lua_ssl_trusted_certificate}}';
 > end
 
 init_by_lua_block {
-    local config = {}
-> for k, v in pairs(nginx_vars) do
-    config["$(k)"] = $(tostring(v))
-> end
-
     kong = require 'kong'
-    kong.init(config)
+    kong.init()
 }
 
 init_worker_by_lua_block {
@@ -95,10 +91,6 @@ server {
         log_by_lua_block {
             kong.log()
         }
-    }
-
-    location /robots.txt {
-        return 200 'User-agent: *\nDisallow: /';
     }
 
     location = /50x {

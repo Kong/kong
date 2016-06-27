@@ -12,8 +12,8 @@ describe("Cache entities invalidations", function()
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.admin_port))
+    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
   teardown(function()
     if proxy_client and admin_client then
