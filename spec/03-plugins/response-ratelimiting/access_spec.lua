@@ -18,7 +18,7 @@ describe("Plugin: response-ratelimiting", function()
   local client
 
   local function prepare()
-    helpers.execute "pkill nginx; pkill serf; pkill dnsmasq"
+    helpers.kill_all()
 
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())

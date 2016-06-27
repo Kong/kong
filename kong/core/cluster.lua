@@ -36,12 +36,12 @@ local function async_autojoin(premature)
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif count > 1 then
-      local members, err = singletons.serf:_members()
+      local members, err = singletons.serf:members()
       if err then
         ngx.log(ngx.ERR, tostring(err))
       elseif #members < 2 then
         -- Trigger auto-join
-        local _, err = singletons.serf:_autojoin(cluster_utils.get_node_name(singletons.configuration))
+        local _, err = singletons.serf:autojoin(cluster_utils.get_node_name(singletons.configuration))
         if err then
           ngx.log(ngx.ERR, tostring(err))
         end

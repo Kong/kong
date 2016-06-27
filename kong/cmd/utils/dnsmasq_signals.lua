@@ -75,7 +75,9 @@ function _M.stop(nginx_prefix)
   local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
   if pl_path.exists(pid_path) then
     log.verbose("stopping dnsmasq at %s", pid_path)
-    return kill(pid_path, "-9")
+    local code = kill(pid_path, "-9")
+    pl_file.delete(pid_path)
+    return code
   end
   return true
 end

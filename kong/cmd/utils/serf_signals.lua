@@ -183,9 +183,11 @@ function _M.stop(kong_config, nginx_prefix, dao)
   local ok, err = serf:leave()
   if not ok then return nil, err end
 
-  local pid_path = pl_path.join(nginx_prefix, serf_pid_name)
+  local pid_path = pl_path.join(nginx_prefix, "pids", serf_pid_name)
   log.verbose("stopping Serf agent at %s", pid_path)
-  return kill(pid_path, "-9")
+  local code = kill(pid_path, "-9")
+  pl_file.delete(pid_path)
+  return code
 end
 
 return _M

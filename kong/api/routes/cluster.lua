@@ -58,7 +58,7 @@ return {
   ["/cluster/events/"] = {
     POST = function(self, dao_factory, helpers)
       local message_t = self.params
-
+      
       -- The type is always upper case
       if message_t.type then
         message_t.type = string_upper(message_t.type)

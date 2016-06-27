@@ -5,8 +5,7 @@ local meta = require "kong.meta"
 describe("Plugin: basic-auth", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {

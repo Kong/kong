@@ -4,8 +4,7 @@ local cjson = require "cjson"
 describe("Basic Auth Credentials API", function()
   local consumer, admin_client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))

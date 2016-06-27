@@ -15,7 +15,7 @@ describe("Plugin: rate-limiting", function()
   local client
 
   local function prepare()
-    helpers.execute "pkill nginx; pkill serf; pkill dnsmasq"
+    helpers.kill_all()
 
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())
@@ -334,7 +334,7 @@ describe("Plugin: rate-limiting", function()
     end)
   end)
 
-  describe("#only Continue on error", function()
+  describe("Continue on error", function()
     after_each(function()
       prepare()
     end)

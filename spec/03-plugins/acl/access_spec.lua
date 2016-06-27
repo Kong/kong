@@ -5,8 +5,7 @@ local cache = require "kong.tools.database_cache"
 describe("Plugin: ACL", function()
   local client, api_client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf; pkill dnsmasq"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
 
     local consumer1 = assert(helpers.dao.consumers:insert {
