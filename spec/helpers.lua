@@ -1,3 +1,10 @@
+------------------------------------------------------------------
+-- Collection of utilities to help testing Kong features and plugins.
+--
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module spec.helpers
+
 local BIN_PATH = "bin/kong"
 local TEST_CONF_PATH = "spec/kong_tests.conf"
 
@@ -8,9 +15,9 @@ local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_dir = require "pl.dir"
+local cjson = require "cjson.safe"
 local http = require "resty.http"
 local log = require "kong.cmd.utils.log"
-local cjson = require "cjson.safe"
 
 log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 
@@ -21,13 +28,6 @@ local conf = assert(conf_loader(TEST_CONF_PATH))
 local dao = DAOFactory(conf)
 -- make sure migrations are up-to-date
 --assert(dao:run_migrations())
-
---------------------
--- Custom properties
---------------------
-local admin_port = string.match(conf.admin_listen, ":([%d]+)$")
-local proxy_port = string.match(conf.proxy_listen, ":([%d]+)$")
-local ssl_proxy_port = string.match(conf.proxy_listen_ssl, ":([%d]+)$")
 
 -----------------
 -- Custom helpers
@@ -48,16 +48,35 @@ local function lookup(t, k)
     k = k:lower()
   end
   for key, value in pairs(t) do
-    if tostring(key):lower() == k then 
+    if tostring(key):lower() == k then
       return value, key
     end
   end
   return nil, ok
 end
 
+local function wait_until(f, timeout)
+  if type(f) ~= "function" then
+    error("arg #1 must be a function", 2)
+  end
+
+  timeout = timeout or 2
+  local tstart = ngx.time()
+  local texp, ok = tstart + timeout
+
+  repeat
+    ngx.sleep(0.2)
+    ok = f()
+  until ok or ngx.time() >= texp
+
+  if not ok then
+    error("wait_until() timeout", 2)
+  end
+end
+
 --- Send a http request. Based on https://github.com/pintsized/lua-resty-http.
 -- If `opts.body` is a table and "Content-Type" header contains `application/json`,
--- `www-form-urlencoded`, or `multipart/form-data`, then it will automatically encode the body 
+-- `www-form-urlencoded`, or `multipart/form-data`, then it will automatically encode the body
 -- according to the content type.
 -- If `opts.query` is a table, a query string will be constructed from it and appended
 -- to the request path (assuming none is already present).
@@ -95,11 +114,11 @@ function resty_http_proxy_mt:send(opts)
     if not clength then
       headers["content-length"] = #body
     end
-    
+
     if not content_type:find("boundary=") then
       headers[content_type_name] = content_type.."; boundary="..boundary
     end
-    
+
     opts.body = body
   end
 
@@ -121,7 +140,7 @@ function resty_http_proxy_mt:send(opts)
       return self._cached_body, self._cached_error
     end
   end
-  
+
   return res, err
 end
 
@@ -134,6 +153,14 @@ function resty_http_proxy_mt:__index(k)
   return self.client[k]
 end
 
+
+--- Creates a http client. Based on https://github.com/pintsized/lua-resty-http.
+-- @name http_client
+-- @param host hostname to connect to
+-- @param port port to connect to
+-- @param timeout in seconds
+-- @return http client
+-- @see http_client:send
 local function http_client(host, port, timeout)
   timeout = timeout or 10000
   local client = assert(http.new())
@@ -142,6 +169,18 @@ local function http_client(host, port, timeout)
   return setmetatable({
     client = client
   }, resty_http_proxy_mt)
+end
+
+--- returns a pre-configured `http_client` for the Kong proxy port.
+-- @name proxy_client
+local proxy_client = function()
+  return http_client(conf.proxy_ip, conf.proxy_port)
+end
+
+--- returns a pre-configured `http_client` for the Kong admin port.
+-- @name admin_client
+local admin_client = function()
+  return http_client(conf.admin_ip, conf.admin_port)
 end
 
 local function udp_server(port)
@@ -173,25 +212,92 @@ end
 local say = require "say"
 local luassert = require "luassert.assert"
 
+-- wrap assert and create a new kong-assert state table for each call
+local old_assert = assert
+local kong_state
+assert = function(...)
+  kong_state = {}
+  return old_assert(...)
+end
+
+--- Generic modifier "response".
+-- Will set a "response" value in the assertion state, so following
+-- assertions will operate on the value set.
+-- @name response
+-- @param response results from `http_client:send` function.
+-- @usage
+-- local res = assert(client:send { ..your request parameters here ..})
+-- local length = assert.response(res).has.header("Content-Length")
+local function modifier_response(state, arguments, level)
+  kong_state.kong_response = arguments[1]
+  kong_state.kong_request = nil
+  return state
+end
+luassert:register("modifier", "response", modifier_response)
+
+--- Generic modifier "request".
+-- Will set a "request" value in the assertion state, so following
+-- assertions will operate on the value set.
+-- The request must be inside a 'response' from mockbin.org or httpbin.org
+-- @name request
+-- @param response results from `http_client:send` function. The request will be extracted from the response.
+-- @usage
+-- local res = assert(client:send { ..your request parameters here ..})
+-- local length = assert.request(res).has.header("Content-Length")
+local function modifier_request(state, arguments, level)
+  local generic = "The assertion 'request' modifier takes a http response object as "..
+                  "input to decode the json-body returned by httpbin.org/mockbin.org, "..
+                  "to retrieve the proxied request."
+  local res = arguments[1]
+  assert(type(res) == "table", "Expected a http response object, got '"..tostring(res).."'. "..generic)
+  assert(type(res.read_body) == "function", "Expected a http response object with a 'read_body' function. "..generic)
+  local body, err = cjson.decode(assert(res:read_body()))
+  assert(body, "Expected the http response object to have a json encoded body, but decoding gave error '"..tostring(err).."'. "..generic)
+  kong_state.kong_request = body
+  kong_state.kong_response = nil
+  return state
+end
+luassert:register("modifier", "request", modifier_request)
+
+--- Generic fail assertion. A convenience function for debugging tests, always fails. It will output the
+-- values it was called with as a table, with an `n` field to indicate the number of arguments received.
+-- @usage
+-- assert.fail(some, value)
 local function fail(state, args)
-  args[1] = table.concat(args, " ")
+  local out = {}
+  for k,v in pairs(args) do out[k] = v end
+  args[1] = out
+  args.n = 1
   return false
 end
-say:set("assertion.fail.negative", "%s")
+say:set("assertion.fail.negative", [[
+Fail assertion was called with the following parameters (formatted as a table);
+%s
+]])
 luassert:register("assertion", "fail", fail,
                   "assertion.fail.negative",
                   "assertion.fail.negative")
 
+--- Assertion to check whether a value lives in an array.
+-- @param expected The value to search for
+-- @param array The array to search for the value
+-- @param pattern (optional) If thruthy, then `expected` is matched as a string pattern
+-- @returns the index at which the value was found
+-- @usage
+-- local arr = { "one", "three" }
+-- local i = assert.contains("one", arr)        --> passes; i == 1
+-- local i = assert.contains("two", arr)        --> fails
+-- local i = assert.contains("ee$", arr, true)  --> passes; i == 2
 local function contains(state, args)
-  local expected, arr = unpack(args)
+  local expected, arr, pattern = unpack(args)
   local found
   for i = 1, #arr do
-    if arr[i] == expected then
-      found = true
+    if (pattern and string.match(arr[i], expected)) or (arr[i] == expected) then
+      found = i
       break
     end
   end
-  return found
+  return found ~= nil, {found}
 end
 say:set("assertion.contains.negative", [[
 Expected array to contain element.
@@ -207,12 +313,24 @@ luassert:register("assertion", "contains", contains,
                   "assertion.contains.negative",
                   "assertion.contains.positive")
 
+--- Assertion to check the statuscode of a http response.
+-- @name status
+-- @param expected the expected status code
+-- @param response (optional) results from `http_client:send` function, alternatively use `response`.
+-- @return the response body as a string
+-- @usage
+-- local res = assert(client:send { .. your request params here .. })
+-- local body = assert.has.status(200, res)             -- or alternativly
+-- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
   local expected, res = unpack(args)
+  if not res then res = kong_state.kong_response end
   if not res then
+    assert(not kong_state.kong_request, "Cannot check statuscode against a request object, only against a response object")
     table.insert(args, 1, "")
     table.insert(args, 1, "no response")
     table.insert(args, 1, expected)
+    args.n = 3
     return false
   elseif expected ~= res.status then
     local body, err = res:read_body()
@@ -220,6 +338,7 @@ local function res_status(state, args)
     table.insert(args, 1, body)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
+    args.n = 3
     return false
   end
   local body = pl_stringx.strip(res:read_body())
@@ -234,11 +353,21 @@ Status received:
 Body:
 %s
 ]])
-luassert:register("assertion", "res_status", res_status,
+luassert:register("assertion", "status", res_status,
+                  "assertion.res_status.negative")
+luassert:register("assertion", "res_status", res_status,     -- TODO: remove this, for now will break too many existing tests
                   "assertion.res_status.negative")
 
+--- Checks and returns a json body of an http response/request.
+-- @name jsonbody
+-- @param response (optional) results from `http_client:send` function. The request will be extracted from the response. Alternatively use `request` or `response`.
+-- @return the decoded json as a table
+-- @usage
+-- local res = assert(client:send { .. your request params here .. })
+-- local json = assert.has.jsonbody(res)                -- or alternativly
+-- local body = assert.response(res).has.jsonbody()     -- does the same
 local function jsonbody(state, args)
-  local res = unpack(args)
+  local res = args[1] or kong_state.kong_request or kong_state.kong_response
   if (type(res) ~= "table") or (type(res.read_body) ~= "function") then
     table.insert(args, 1, "< input is not a valid response object >")
     return false
@@ -247,6 +376,7 @@ local function jsonbody(state, args)
   local json, err = cjson.decode(body)
   if not json then
     table.insert(args, 1, "Error decoding: "..tostring(err).."\nBody:"..tostring(body))
+    args.n = 1
     return false
   end
   return true, {json}
@@ -263,86 +393,190 @@ luassert:register("assertion", "jsonbody", jsonbody,
                   "assertion.jsonbody.negative",
                   "assertion.jsonbody.positive")
 
----
--- Adds an assertion to look for a named header in a `headers` subtable.
+--- Adds an assertion to look for a named header in a `headers` subtable.
 -- Header name comparison is done case-insensitive.
--- Input can be a response object from the client helper, or a parsed json
--- object returned from mockbin.com.
--- @return the value of the header
+-- @name header
+-- @param name header name to look for.
+-- @see response
+-- @see request
+-- @return value of the header
 local function res_header(state, args)
-  local header, res = unpack(args)
+  local header = args[1]
+  local res = args[2] or kong_state.kong_request or kong_state.kong_response
   if (type(res) ~= "table") or (type(res.headers) ~= "table") then
-    table.insert(args, 1, "<< assertion input does not contain a 'headers' subtable >>")
+    table.insert(args, 1, "<< 'header' assertion input does not contain a 'headers' subtable >>")
     table.insert(args, 1, header)
+    args.n = 2
     return false
   end
   local value = lookup(res.headers, header)
+  table.insert(args, 1, res.headers)
+  table.insert(args, 1, header)
+  args.n = 2
   if not value then
-    table.insert(args, 1, res.headers)
-    table.insert(args, 1, header)
     return false
   end
   return true, {value}
 end
 say:set("assertion.res_header.negative", [[
-Expected header: 
+Expected header:
 %s
-But it was not found in: 
+But it was not found in:
 %s
 ]])
 say:set("assertion.res_header.positive", [[
-Did not expected header: 
+Did not expected header:
 %s
-But it was found in: 
+But it was found in:
 %s
 ]])
 luassert:register("assertion", "header", res_header,
                   "assertion.res_header.negative",
                   "assertion.res_header.positive")
 
+---
+-- Adds an assertion to look for a query parameter in a `queryString` subtable.
+-- Parameter name comparison is done case-insensitive.
+-- @return value of the parameter
+local function req_query_param(state, args)
+  local param = args[1]
+  local req = args[2] or kong_state.kong_request
+  if (not req) and kong_state.kong_response then
+    table.insert(args, 1, "<< 'queryparam' assertion only works with a request object >>")
+    table.insert(args, 1, param)
+    args.n = 2
+    return false
+  end
+  if (type(req) ~= "table") or (type(req.queryString) ~= "table") then
+    table.insert(args, 1, "<< 'queryparam' assertion input does not contain a 'queryString' subtable >>")
+    table.insert(args, 1, param)
+    args.n = 2
+    return false
+  end
+  local value = lookup(req.queryString, param)
+  table.insert(args, 1, req.queryString)
+  table.insert(args, 1, param)
+  args.n = 2
+  if not value then
+    return false
+  end
+  return true, {value}
+end
+say:set("assertion.req_query_param.negative", [[
+Expected query parameter:
+%s
+But it was not found in:
+%s
+]])
+say:set("assertion.req_query_param.positive", [[
+Did not expected query parameter:
+%s
+But it was found in:
+%s
+]])
+luassert:register("assertion", "queryparam", req_query_param,
+                  "assertion.req_query_param.negative",
+                  "assertion.req_query_param.positive")
+
+---
+-- Adds an assertion to look for a urlencoded form parameter in a `postData.params` subtable.
+-- Parameter name comparison is done case-insensitive.
+-- @return value of the parameter
+local function req_form_param(state, args)
+  local param = args[1]
+  local req = args[2] or kong_state.kong_request
+  if (not req) and kong_state.kong_request then
+    table.insert(args, 1, "<< 'formparam' assertion only works with a request object >>")
+    table.insert(args, 1, param)
+    args.n = 2
+    return false
+  end
+  if (type(req) ~= "table") or (type(req.postData) ~= "table") or
+     (type(req.postData.params) ~= "table") then
+    table.insert(args, 1, "<< 'formparam' assertion input does not contain a 'postData.params' subtable >>")
+    table.insert(args, 1, param)
+    args.n = 2
+    return false
+  end
+  assert(req.postData.mimeType:lower():find("form-urlencoded",nil,true),
+    "'formparam' assertion didn't get urlencoded data but; "..tostring(req.postData.mimeType))
+  local value = lookup(req.postData.params, param)
+  table.insert(args, 1, req.postData)
+  table.insert(args, 1, param)
+  args.n = 2
+  if not value then
+    return false
+  end
+  return true, {value}
+end
+say:set("assertion.req_form_param.negative", [[
+Expected url encoded form parameter:
+%s
+But it was not found in:
+%s
+]])
+say:set("assertion.req_form_param.positive", [[
+Did not expected url encoded form parameter:
+%s
+But it was found in:
+%s
+]])
+luassert:register("assertion", "formparam", req_form_param,
+                  "assertion.req_form_param.negative",
+                  "assertion.req_form_param.positive")
+
 ----------------
 -- Shell helpers
 ----------------
 local function exec(...)
-  local ok, _, _, stderr = pl_utils.executeex(...)
-  return ok, stderr
+  local ok, _, stdout, stderr = pl_utils.executeex(...)
+  if not ok then
+    stdout = nil -- don't return 3rd value if fail because of busted's `assert`
+  end
+  return ok, stderr, stdout
 end
 
-local function kong_exec(args, prefix)
-  args = args or ""
-  prefix = prefix or conf.prefix
+local function kong_exec(cmd, env)
+  cmd = cmd or ""
+  env = env or {}
 
-  return exec(BIN_PATH.." "..args.." --prefix "..prefix)
+  local env_vars = ""
+  for k, v in pairs(env) do
+    env_vars = string.format("%s KONG_%s='%s'", env_vars, k:upper(), v)
+  end
+
+  return exec(env_vars.." "..BIN_PATH.." "..cmd)
 end
 
 ----------
 -- Exposed
 ----------
+-- @export
 return {
   -- Penlight
   dir = pl_dir,
   path = pl_path,
   file = pl_file,
-  execute = pl_utils.executeex,
+  utils = pl_utils,
 
   -- Kong testing properties
   dao = dao,
   bin_path = BIN_PATH,
   test_conf = conf,
   test_conf_path = TEST_CONF_PATH,
-  proxy_port = proxy_port,
-  ssl_proxy_port = ssl_proxy_port,
-  admin_port = admin_port,
 
   -- Kong testing helpers
+  execute = exec,
   kong_exec = kong_exec,
   http_client = http_client,
+  wait_until = wait_until,
   udp_server = udp_server,
+  proxy_client = proxy_client,
+  admin_client = admin_client,
 
   prepare_prefix = function(prefix)
     prefix = prefix or conf.prefix
     return pl_dir.makepath(prefix)
-    --kong_exec("stop", prefix)
   end,
   clean_prefix = function(prefix)
     prefix = prefix or conf.prefix
@@ -350,10 +584,14 @@ return {
       pl_dir.rmtree(prefix)
     end
   end,
-  start_kong = function(prefix)
-    return kong_exec("start --conf "..TEST_CONF_PATH, prefix)
+  start_kong = function()
+    return kong_exec("start --conf "..TEST_CONF_PATH)
   end,
-  stop_kong = function(prefix)
-    return kong_exec("stop ", prefix)
+  stop_kong = function()
+    return kong_exec("stop --conf "..TEST_CONF_PATH)
+  end,
+  kill_all = function()
+    dao:truncate_tables() -- truncate nodes table too
+    return exec "pkill nginx; pkill serf; pkill dnsmasq"
   end
 }
