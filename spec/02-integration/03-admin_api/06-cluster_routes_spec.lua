@@ -4,8 +4,7 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
@@ -78,9 +77,7 @@ describe("Admin API", function()
       it("force-leaves a node", function()
         -- old test converted
         local cmd = string.format("serf join -rpc-addr=%s 127.0.0.1:20001", helpers.test_conf.cluster_listen_rpc)
-        local ok, _, _, stderr = helpers.execute(cmd)
-        assert.equal("", stderr)
-        assert.True(ok)
+        assert(helpers.execute(cmd))
 
         local res = assert(client:send {
           method = "GET",

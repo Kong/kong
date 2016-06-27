@@ -9,6 +9,7 @@ local url = require "socket.url"
 local Multipart = require "multipart"
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
+local json = require "cjson"
 
 local _M = {}
 
@@ -101,6 +102,8 @@ local function retrieve_parameters()
   local content_type = req_get_headers()[CONTENT_TYPE]
   if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
+  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
+    body_parameters = json.decode(ngx.req.get_body_data())
   else
     body_parameters = ngx.req.get_post_args()
   end

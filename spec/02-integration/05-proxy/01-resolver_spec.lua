@@ -5,6 +5,7 @@ local meta = require "kong.meta"
 describe("Resolver", function()
   local client
   setup(function()
+    helpers.kill_all()
     helpers.dao:truncate_tables()
     assert(helpers.prepare_prefix())
 
@@ -288,7 +289,7 @@ describe("Resolver", function()
   describe("SSL", function()
     local ssl_client
     setup(function()
-      ssl_client = assert(helpers.http_client("127.0.0.1", helpers.ssl_proxy_port))
+      ssl_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_ssl_port))
       assert(ssl_client:ssl_handshake(false))
     end)
     teardown(function()

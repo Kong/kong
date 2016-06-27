@@ -286,6 +286,17 @@ local function load(path, custom_conf)
     conf.custom_plugins = nil
   end
 
+  -- Load absolute path
+  conf.prefix = pl_path.abspath(conf.prefix)
+
+  -- Handles relative paths for the ssl_cert and ssl_cert_key
+  if conf.ssl_cert and not pl_path.isabs(conf.ssl_cert) then
+    conf.ssl_cert = pl_path.abspath("")..conf.ssl_cert
+  end
+  if conf.ssl_cert_key and not pl_path.isabs(conf.ssl_cert_key) then
+    conf.ssl_cert_key = pl_path.abspath("")..conf.ssl_cert_key
+  end
+
   do
     -- extract ports/listen ips
     local ip_port_pat = "(.+):([%d]+)$"
