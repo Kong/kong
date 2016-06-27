@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("Basic Auth Credentials API", function()
+describe("Plugin: basic-auth (API)", function()
   local consumer, admin_client
   setup(function()
     helpers.kill_all()

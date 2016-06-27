@@ -1,11 +1,32 @@
+local kong_default_conf = require "kong.templates.kong_defaults"
+local constants = require "kong.constants"
+local pl_stringio = require "pl.stringio"
+local pl_stringx = require "pl.stringx"
+local pl_pretty = require "pl.pretty"
+local pl_config = require "pl.config"
+local pl_file = require "pl.file"
+local pl_path = require "pl.path"
+local tablex = require "pl.tablex"
+local log = require "kong.cmd.utils.log"
+
 local DEFAULT_PATHS = {
   "/etc/kong.conf",
   "/etc/kong/kong.conf"
 }
 
+-- By default, all properties in the configuration are considered to
+-- be strings/numbers, but if we want to forcefully infer their type, specify it
+-- in this table.
+-- Also holds "enums" which are lists of valid configuration values for some
+-- settings.
+-- See `typ_checks` for the validation function of each type.
+--
+-- Types:
+-- `boolean`: can be "on"/"off"/"true"/"false", will be inferred to a boolean
+-- `ngx_boolean`: can be "on"/"off", will be inferred to a string
+-- `array`: a comma-separated list
 local CONF_INFERENCES = {
-
-  -- forced string inference
+  -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = {typ = "string"},
   proxy_listen_ssl = {typ = "string"},
   admin_listen = {typ = "string"},
@@ -14,7 +35,6 @@ local CONF_INFERENCES = {
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
 
-  -- Other properties
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
 
@@ -46,15 +66,13 @@ local CONF_INFERENCES = {
   lua_code_cache = {typ = "ngx_boolean"}
 }
 
-local kong_default_conf = require "kong.templates.kong_defaults"
-local constants = require "kong.constants"
-local pl_stringio = require "pl.stringio"
-local pl_stringx = require "pl.stringx"
-local pl_config = require "pl.config"
-local pl_file = require "pl.file"
-local pl_path = require "pl.path"
-local tablex = require "pl.tablex"
-local log = require "kong.cmd.utils.log"
+-- List of settings whose values must not be printed when
+-- using the CLI in debug mode (which prints all settings).
+local CONF_SENSITIVE = {
+  pg_password = true,
+  cassandra_password = true,
+  cluster_encrypt_key = true
+}
 
 local typ_checks = {
   array = function(v) return type(v) == "table" end,
@@ -64,6 +82,8 @@ local typ_checks = {
   ngx_boolean = function(v) return v == "on" or v == "off" end
 }
 
+-- Validate properties (type/enum/custom) and infer their type.
+-- @param[type=table] conf The configuration table to treat.
 local function check_and_infer(conf)
   local errors = {}
 
@@ -106,7 +126,10 @@ local function check_and_infer(conf)
     conf[k] = value
   end
 
-  -- custom validation
+  ---------------------
+  -- custom validations
+  ---------------------
+
   if conf.ssl then
     if conf.ssl_cert and not conf.ssl_cert_key then
       errors[#errors+1] = "ssl_cert_key must be enabled"
@@ -114,11 +137,10 @@ local function check_and_infer(conf)
       errors[#errors+1] = "ssl_cert must be enabled"
     end
   end
-  
+
   if conf.dns_resolver and conf.dnsmasq then
     errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
   end
-
   local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
   if not conf.cluster_listen:match(ipv4_port_pattern) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
@@ -131,6 +153,9 @@ local function check_and_infer(conf)
   end
   if conf.cluster_ttl_on_failure < 60 then
     errors[#errors+1] = "cluster_ttl_on_failure must be at least 60 seconds"
+  end
+  if not conf.lua_package_cpath then
+    conf.lua_package_cpath = ""
   end
 
   return #errors == 0, errors[1], errors
@@ -152,7 +177,11 @@ local function overrides(k, default_v, file_conf, arg_conf)
   local env_name = "KONG_"..string.upper(k)
   local env = os.getenv(env_name)
   if env ~= nil then
-    log.debug("%s ENV found with %s", env_name, env)
+    local to_print = env
+    if CONF_SENSITIVE[k] then
+      to_print = "******"
+    end
+    log.debug('%s ENV found with "%s"', env_name, to_print)
     value = env
   end
 
@@ -161,13 +190,18 @@ local function overrides(k, default_v, file_conf, arg_conf)
     value = arg_conf[k]
   end
 
-  log.debug("%s = %s", k, value)
-
   return value, k
 end
 
--- @param[type=string] path A path to a conf file
--- @param[type=table] custom_conf A table taking precedence over all other sources.
+--- Load Kong configuration
+-- The loaded configuration will have all properties from the default config
+-- merged with the (optionally) specified config file, environment variables
+-- and values specified in the `custom_conf` argument.
+-- Values will then be validated and additional values (such as `proxy_port` or
+-- `plugins`) will be appended to the final configuration table.
+-- @param[type=string] path (optional) Path to a configuration file.
+-- @param[type=table] custom_conf A key/value table with the highest precedence.
+-- @treturn table A table holding a valid configuration.
 local function load(path, custom_conf)
   ------------------------
   -- Default configuration
@@ -221,6 +255,25 @@ local function load(path, custom_conf)
   if not ok then return nil, err, errors end
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
+
+  do
+    -- print alphabetically-sorted values
+    local conf_arr = {}
+    for k, v in pairs(conf) do
+      local to_print = v
+      if CONF_SENSITIVE[k] then
+        to_print = "******"
+      end
+
+      conf_arr[#conf_arr+1] = k.." = "..pl_pretty.write(to_print, "")
+    end
+
+    table.sort(conf_arr)
+
+    for i = 1, #conf_arr do
+      log.debug(conf_arr[i])
+    end
+  end
 
   do
     -- merge plugins

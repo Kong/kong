@@ -35,6 +35,7 @@ lint:
 						--std 'ngx_lua+busted' \
 						--globals '_KONG' \
 						--globals 'ngx' \
+						--globals 'assert' \
 						--no-redefined \
 						--no-unused-args
 

@@ -74,6 +74,46 @@ describe("kong start/stop", function()
       assert(helpers.kong_exec "start --prefix foobar")
       assert.truthy(helpers.path.exists("foobar"))
     end)
+    it("prints ENV variables when detected", function()
+      finally(function()
+        helpers.execute "pkill nginx; pkill serf"
+      end)
+
+      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+        database = "postgres",
+        admin_listen = "127.0.0.1:8001"
+      })
+      assert.equal("", stderr)
+      assert.matches('KONG_DATABASE ENV found with "postgres"', stdout, nil, true)
+      assert.matches('KONG_ADMIN_LISTEN ENV found with "127.0.0.1:8001"', stdout, nil, true)
+    end)
+    it("prints config in alphabetical order", function()
+      finally(function()
+        helpers.kill_all()
+      end)
+
+      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path)
+      assert.equal("", stderr)
+      assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
+    end)
+    it("does not print sensitive settings in config", function()
+      finally(function()
+        helpers.kill_all()
+      end)
+
+      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+        pg_password = "do not print",
+        cassandra_password = "do not print",
+        cluster_encrypt_key = "fHGfspTRljmzLsYDVEK1Rw=="
+      })
+      assert.equal("", stderr)
+      assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
+      assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
+      assert.matches('KONG_CLUSTER_ENCRYPT_KEY ENV found with "******"', stdout, nil, true)
+      assert.matches('pg_password = "******"', stdout, nil, true)
+      assert.matches('cassandra_password = "******"', stdout, nil, true)
+      assert.matches('cluster_encrypt_key = "******"', stdout, nil, true)
+    end)
   end)
 
   describe("Serf", function()
