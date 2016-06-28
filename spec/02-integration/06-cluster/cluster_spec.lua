@@ -340,7 +340,6 @@ describe("Cluster", function()
             assert.equal("alive", v.status)
           end
         end
-        ngx.sleep(1)
       end, 60)
 
       -- The member has now failed, let's bring him up again

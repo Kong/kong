@@ -7,20 +7,19 @@ local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
-  local default_conf = assert(conf_loader()) -- just retrieve default prefix
-  local prefix = args.prefix or default_conf.prefix
-  assert(pl_path.exists(prefix), "no such prefix: "..prefix)
-
-  local conf_path = pl_path.join(prefix, "kong.conf")
-  local conf = assert(conf_loader(conf_path, {
-    prefix = prefix
+  -- retrieve prefix or use given one
+  local default_conf = assert(conf_loader(nil, {
+    prefix = args.prefix
   }))
+  assert(pl_path.exists(default_conf.prefix),
+    "no such prefix: "..default_conf.prefix)
 
-  local dao = DAOFactory(conf)
-  assert(nginx_signals.stop(conf.prefix))
-  assert(serf_signals.stop(conf, conf.prefix, dao))
+  -- load <PREFIX>/kong.conf containing running node's config
+  local conf = assert(conf_loader(default_conf.kong_conf))
+  assert(nginx_signals.stop(conf))
+  assert(serf_signals.stop(conf, DAOFactory(conf)))
   if conf.dnsmasq then
-    assert(dnsmasq_signals.stop(conf.prefix))
+    assert(dnsmasq_signals.stop(conf))
   end
   log("Stopped")
 end

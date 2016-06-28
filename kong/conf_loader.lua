@@ -1,7 +1,7 @@
 local kong_default_conf = require "kong.templates.kong_defaults"
-local constants = require "kong.constants"
 local pl_stringio = require "pl.stringio"
 local pl_stringx = require "pl.stringx"
+local constants = require "kong.constants"
 local pl_pretty = require "pl.pretty"
 local pl_config = require "pl.config"
 local pl_file = require "pl.file"
@@ -12,6 +12,23 @@ local log = require "kong.cmd.utils.log"
 local DEFAULT_PATHS = {
   "/etc/kong.conf",
   "/etc/kong/kong.conf"
+}
+
+local PREFIX_PATHS = {
+  dnsmasq_pid = {"pids", "dnsmasq.pid"}
+  ;
+  serf_pid = {"pids", "serf.pid"},
+  serf_log = {"logs", "serf.log"},
+  serf_event = {"serf", "serf_event.sh"},
+  serf_node_id = {"serf", "serf.id"}
+  ;
+  nginx_pid = {"pids", "nginx.pid"},
+  nginx_err_logs = {"logs", "error.log"},
+  nginx_acc_logs = {"logs", "access.log"},
+  nginx_conf = {"nginx.conf"},
+  nginx_kong_conf = {"nginx-kong.conf"}
+  ;
+  kong_conf = {"kong.conf"}
 }
 
 -- By default, all properties in the configuration are considered to
@@ -316,6 +333,11 @@ local function load(path, custom_conf)
   end
 
   log.verbose("prefix in use: %s", conf.prefix)
+
+  -- attach prefix paths
+  for property, t_path in pairs(PREFIX_PATHS) do
+    conf[property] = pl_path.join(conf.prefix, unpack(t_path))
+  end
 
   return setmetatable(conf, nil) -- remove Map mt
 end

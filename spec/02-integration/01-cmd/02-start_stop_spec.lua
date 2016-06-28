@@ -47,9 +47,7 @@ describe("kong start/stop", function()
   end)
   it("start dumps Kong config in prefix", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
-
-    local conf_path = helpers.path.join(helpers.test_conf.prefix, "kong.conf")
-    assert.truthy(helpers.path.exists(conf_path))
+    assert.truthy(helpers.path.exists(helpers.test_conf.kong_conf))
   end)
 
   describe("verbose args", function()
@@ -120,16 +118,14 @@ describe("kong start/stop", function()
     it("starts Serf agent daemon", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
 
-      local serf_pid_path = helpers.path.join(helpers.test_conf.prefix, "pids", "serf.pid")
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", serf_pid_path)
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
       assert(helpers.execute(cmd))
     end)
     it("recovers from expired serf.pid file", function()
-      local serf_pid_path = helpers.path.join(helpers.test_conf.prefix, "pids", "serf.pid")
-      assert(helpers.execute("touch "..serf_pid_path)) -- dumb pid
+      assert(helpers.execute("touch "..helpers.test_conf.serf_pid)) -- dumb pid
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
 
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", serf_pid_path)
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
       assert(helpers.execute(cmd))
     end)
   end)
@@ -141,21 +137,20 @@ describe("kong start/stop", function()
         dns_resolver = ""
       }))
 
-      local dnsmasq_pid_path = helpers.path.join(helpers.test_conf.prefix, "pids", "dnsmasq.pid")
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", dnsmasq_pid_path)
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
+                                helpers.test_conf.dnsmasq_pid)
       local _, code = helpers.utils.executeex(cmd)
       assert.equal(0, code)
     end)
     it("recovers from expired dnsmasq.pid file", function()
-      local dnsmasq_pid_path = helpers.path.join(helpers.test_conf.prefix, "pids", "dnsmasq.pid")
-      assert(helpers.execute("touch "..dnsmasq_pid_path)) -- dumb pid
-
+      assert(helpers.execute("touch "..helpers.test_conf.serf_pid)) -- dumb pid
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
         dnsmasq = true,
         dns_resolver = ""
       }))
 
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", dnsmasq_pid_path)
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
+                                helpers.test_conf.serf_pid)
       local _, code = helpers.utils.executeex(cmd)
       assert.equal(0, code)
     end)
@@ -179,7 +174,7 @@ describe("kong start/stop", function()
 
       ok, stderr = helpers.kong_exec("stop --prefix inexistent")
       assert.False(ok)
-      assert.matches("Error: no such prefix: inexistent", stderr, nil, true)
+      assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
     it("notifies when Nginx is already running", function()
       finally(function()
