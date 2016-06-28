@@ -285,7 +285,7 @@ describe("Plugin hooks: oauth2", function()
     end)
   end)
 
-  describe("#only OAuth2 access token entity invalidation", function()
+  describe("OAuth2 access token entity invalidation", function()
     it("should invalidate when OAuth2 token entity is deleted", function()
       -- It should properly work
       local code = provision_code("clientid123")

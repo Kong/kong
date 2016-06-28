@@ -5,8 +5,7 @@ local pl_stringx = require "pl.stringx"
 describe("Plugin: oauth2", function()
   local proxy_ssl_client, proxy_client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf; pkill dnsmasq"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
 
     local consumer = assert(helpers.dao.consumers:insert {
@@ -1500,7 +1499,7 @@ describe("Plugin: oauth2", function()
     end)
   end)
 
-  describe("#only Hide Credentials", function()
+  describe("Hide Credentials", function()
     it("does not hide credentials in the body", function()
       local token = provision_token()
 

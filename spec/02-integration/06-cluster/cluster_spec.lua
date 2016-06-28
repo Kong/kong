@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
 local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
+local pl_path = require "pl.path"
 local cjson = require "cjson"
 
 local function exec(args, env)
@@ -249,8 +250,8 @@ describe("Cluster", function()
       assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
       assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
 
-      local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
       helpers.wait_until(function()
+        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/",
@@ -322,7 +323,7 @@ describe("Cluster", function()
       end
 
       -- Kill one Serf
-      os.execute(string.format("kill `cat %s` >/dev/null 2>&1", NODES.servroot2.prefix.."/pids/serf.pid"))
+      os.execute(string.format("kill `cat %s` >/dev/null 2>&1", pl_path.join(NODES.servroot2.prefix, "pids", "serf.pid")))
 
       -- Wait until the node becomes failed
       helpers.wait_until(function()
@@ -343,16 +344,18 @@ describe("Cluster", function()
 
       -- The member has now failed, let's bring him up again
       os.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
-                             .." -bind=%s event-handler=member-join,"
+                             .." -bind=%s -event-handler=member-join,"
                              .."member-leave,member-failed,member-update,"
                              .."member-reap,user:kong=%s/serf/serf_event.sh > /dev/null &",
                             node_name,
                             NODES.servroot2.cluster_listen_rpc,
                             NODES.servroot2.cluster_listen,
-                            NODES.servroot2.prefix))
+                            pl_path.abspath(NODES.servroot2.prefix)))
 
       -- Now wait until the nodes becomes active again
       helpers.wait_until(function()
+        ngx.sleep(1)
+        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/"
@@ -368,14 +371,13 @@ describe("Cluster", function()
 
       -- The cache should have been deleted on every node available
       for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.admin_listen, ":")[2]))
         helpers.wait_until(function()
+          local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
           local res = assert(api_client:send {
             method = "GET",
             path = "/cache/"..cache.all_apis_by_dict_key(),
             headers = {}
           })
-          res:read_body()
           return res.status == 404
         end, 5)
       end

@@ -11,8 +11,7 @@ describe("Core Hooks", function()
   local client, api_client
   local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
   before_each(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf; pkill dnsmasq"
+    helpers.kill_all()
     assert(helpers.prepare_prefix())
 
     consumer = assert(helpers.dao.consumers:insert {

@@ -5,13 +5,10 @@ describe("Plugin API: key-auth", function()
   local consumer
   local admin_client
   setup(function()
-    helpers.dao:truncate_tables()
-
+    helpers.kill_all()
     consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
-
-    helpers.execute "pkill nginx; pkill serf"
     assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
