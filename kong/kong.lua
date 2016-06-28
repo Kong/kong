@@ -130,7 +130,7 @@ function Kong.init()
 
   -- populate singletons
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
-  singletons.serf = Serf.new(config, config.prefix, dao)
+  singletons.serf = Serf.new(config, dao)
   singletons.dao = dao
   singletons.events = events
   singletons.configuration = config

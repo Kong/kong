@@ -3,13 +3,9 @@
 
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
-local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local cjson = require "cjson.safe"
 local log = require "kong.cmd.utils.log"
-local fmt = string.format
-
-local serf_node_id = "serf.id"
 
 local Serf = {}
 Serf.__index = Serf
@@ -22,9 +18,9 @@ Serf.args_mt = {
   end
 }
 
-function Serf.new(kong_config, nginx_prefix, dao)
+function Serf.new(kong_config, dao)
   return setmetatable({
-    node_name = assert(pl_file.read(pl_path.join(nginx_prefix, "serf", serf_node_id))),
+    node_name = pl_file.read(kong_config.serf_node_id),
     config = kong_config,
     dao = dao
   }, Serf)
@@ -38,7 +34,7 @@ function Serf:invoke_signal(signal, args, no_rpc)
     setmetatable(args, Serf.args_mt)
   end
   local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
-  local cmd = fmt("serf %s %s %s", signal, rpc, tostring(args))
+  local cmd = string.format("serf %s %s %s", signal, rpc, tostring(args))
   local ok, code, stdout = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 

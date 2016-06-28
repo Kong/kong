@@ -6,7 +6,7 @@ local log = require "kong.cmd.utils.log"
 local function execute(args)
   local conf = assert(conf_loader(args.conf))
   local dao = DAOFactory(conf)
-  local serf = Serf.new(conf, conf.prefix, dao)
+  local serf = Serf.new(conf, dao)
 
   if args.command == "members" then
     local members = assert(serf:members(true))

@@ -8,7 +8,6 @@ local fmt = string.format
 local _M = {}
 
 local dnsmasq_bin_name = "dnsmasq"
-local dnsmasq_pid_name = "dnsmasq.pid"
 local dnsmasq_search_paths = {
   "/usr/local/sbin",
   "/usr/local/bin",
@@ -46,22 +45,21 @@ local function is_running(pid_path)
   return code == 0
 end
 
-function _M.start(kong_config, nginx_prefix)
+function _M.start(kong_config)
   -- is dnsmasq already running in this prefix?
-  local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
-  if is_running(pid_path) then
-    log.verbose("dnsmasq already running at %s", pid_path)
+  if is_running(kong_config.dnsmasq_pid) then
+    log.verbose("dnsmasq already running at %s", kong_config.dnsmasq_pid)
     return true
   else
-    log.verbose("dnsmasq not running, deleting %s", pid_path)
-    pl_file.delete(pid_path)
+    log.verbose("dnsmasq not running, deleting %s", kong_config.dnsmasq_pid)
+    pl_file.delete(kong_config.dnsmasq_pid)
   end
 
   local dnsmasq_bin, err = _M.find_bin()
   if not dnsmasq_bin then return nil, err end
 
   local cmd = fmt("%s -p %d --pid-file=%s -N -o --listen-address=127.0.0.1",
-                  dnsmasq_bin, kong_config.dnsmasq_port, pid_path)
+                  dnsmasq_bin, kong_config.dnsmasq_port, kong_config.dnsmasq_pid)
 
   log.debug("starting dnsmasq: %s", cmd)
 
@@ -71,11 +69,10 @@ function _M.start(kong_config, nginx_prefix)
   return true
 end
 
-function _M.stop(nginx_prefix)
-  local pid_path = pl_path.join(nginx_prefix, "pids", dnsmasq_pid_name)
-  if pl_path.exists(pid_path) then
-    log.verbose("stopping dnsmasq at %s", pid_path)
-    return kill(pid_path, "-9")
+function _M.stop(kong_config)
+  if pl_path.exists(kong_config.dnsmasq_pid) then
+    log.verbose("stopping dnsmasq at %s", kong_config.dnsmasq_pid)
+    return kill(kong_config.dnsmasq_pid, "-9")
   end
   return true
 end

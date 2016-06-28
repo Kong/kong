@@ -20,20 +20,12 @@ local function is_openresty(bin_path)
   end
 end
 
-local function get_pid_path(nginx_prefix)
-  local pid_path = pl_path.join(nginx_prefix, "pids", "nginx.pid")
-  if pl_path.exists(pid_path) then
-    return pid_path
-  end
-end
-
-local function send_signal(nginx_prefix, signal)
-  local pid_path = get_pid_path(nginx_prefix)
-  if not pid_path then
+local function send_signal(pid_path, signal)
+  if not pl_path.exists(pid_path) then
     return nil, "could not get Nginx pid (is Nginx running in this prefix?)"
   end
 
-  log.verbose("sending %s signal to nginx running at %s", signal, pid_path)
+  log.verbose("sending %s signal to Nginx running at %s", signal, pid_path)
 
   local code = kill(pid_path, "-s "..signal)
   if code ~= 0 then return nil, "could not send signal" end
@@ -64,19 +56,18 @@ function _M.find_bin()
   return found
 end
 
-function _M.start(nginx_prefix)
+function _M.start(kong_conf)
   local nginx_bin, err = _M.find_bin()
   if not nginx_bin then return nil, err end
 
-  local pid_path = get_pid_path(nginx_prefix)
-  if pid_path then
-    local code = kill(pid_path, "-0")
+  if pl_path.exists(kong_conf.nginx_pid) then
+    local code = kill(kong_conf.nginx_pid, "-0")
     if code == 0 then
-      return nil, "Nginx is already running in "..nginx_prefix
+      return nil, "Nginx is already running in "..kong_conf.prefix
     end
   end
 
-  local cmd = fmt("%s -p %s -c %s", nginx_bin, nginx_prefix, "nginx.conf")
+  local cmd = fmt("%s -p %s -c %s", nginx_bin, kong_conf.prefix, "nginx.conf")
 
   log.debug("starting nginx: %s", cmd)
 
@@ -86,12 +77,12 @@ function _M.start(nginx_prefix)
   return true
 end
 
-function _M.stop(nginx_prefix)
-  return send_signal(nginx_prefix, "QUIT")
+function _M.stop(kong_conf)
+  return send_signal(kong_conf.nginx_pid, "QUIT")
 end
 
-function _M.reload(nginx_prefix)
-  return send_signal(nginx_prefix, "HUP")
+function _M.reload(kong_conf)
+  return send_signal(kong_conf.nginx_pid, "HUP")
 end
 
 return _M

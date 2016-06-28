@@ -11,8 +11,6 @@ local utils = require "kong.tools.utils"
 local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
 
-local serf_node_id = "serf.id"
-
 -- script from old services.serf module
 local script_template = [[
 #!/bin/sh
@@ -100,75 +98,54 @@ local function touch(file_path)
   return pl_utils.executeex("touch "..file_path)
 end
 
-local function prepare_prefix(kong_config, nginx_prefix)
-  log.verbose("preparing nginx prefix directory at %s", nginx_prefix)
+local function prepare_prefix(kong_config)
+  log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
-  if not pl_path.exists(nginx_prefix) then
-    log("prefix directory %s not found, trying to create it", nginx_prefix)
-    local ok, err = pl_dir.makepath(nginx_prefix)
+  if not pl_path.exists(kong_config.prefix) then
+    log("prefix directory %s not found, trying to create it", kong_config.prefix)
+    local ok, err = pl_dir.makepath(kong_config.prefix)
     if not ok then return nil, err end
-  elseif not pl_path.isdir(nginx_prefix) then
-    return nil, nginx_prefix.." is not a directory"
+  elseif not pl_path.isdir(kong_config.prefix) then
+    return nil, kong_config.prefix.." is not a directory"
   end
 
-  -- create log dir in case
-  local logs_path = pl_path.join(nginx_prefix, "logs")
-  local ok, err = pl_dir.makepath(logs_path)
-  if not ok then return nil, err end
+  -- create directories in prefix
+  for _, dir in ipairs {"logs", "serf", "pids"} do
+    local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, dir))
+    if not ok then return nil, err end
+  end
 
   -- create log files in case
-  local err_logs_path = pl_path.join(logs_path, "error.log")
-  local acc_logs_path = pl_path.join(logs_path, "access.log")
-
-  local ok, _, _, stderr = touch(err_logs_path)
+  local ok, _, _, stderr = touch(kong_config.nginx_err_logs)
   if not ok then return nil, stderr end
-  local ok, _, _, stderr = touch(acc_logs_path)
+  local ok, _, _, stderr = touch(kong_config.nginx_acc_logs)
   if not ok then return nil, stderr end
 
-  -- pids folder
-  local pids_path = pl_path.join(nginx_prefix, "pids")
-  local ok, err = pl_dir.makepath(pids_path)
-  if not ok then return nil, err end
-
-  -- serf folder (node identifier + shell script)
-  local serf_path = pl_path.join(nginx_prefix, "serf")
-  local ok, err = pl_dir.makepath(serf_path)
-  if not ok then return nil, err end
-
-  local id_path = pl_path.join(nginx_prefix, "serf", serf_node_id)
-  log.verbose("saving Serf identifier in %s", id_path)
-  if not pl_path.exists(id_path) then
+  log.verbose("saving Serf identifier in %s", kong_config.serf_node_id)
+  if not pl_path.exists(kong_config.serf_node_id) then
     local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
-    pl_file.write(id_path, id)
+    pl_file.write(kong_config.serf_node_id, id)
   end
 
-  local script_path = pl_path.join(nginx_prefix, "serf", "serf_event.sh")
-  log.verbose("saving Serf shell script handler in %s", script_path)
+  log.verbose("saving Serf shell script handler in %s", kong_config.serf_event)
   local script = string.format(script_template, "127.0.0.1", kong_config.admin_port)
-
-  pl_file.write(script_path, script)
-
-  local ok, _, _, stderr = pl_utils.executeex("chmod +x "..script_path)
+  pl_file.write(kong_config.serf_event, script)
+  local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end
 
   -- auto-generate default SSL certificate
-  local ok, err = ssl.prepare_ssl_cert_and_key(nginx_prefix)
+  local ok, err = ssl.prepare_ssl_cert_and_key(kong_config.prefix)
   if not ok then return nil, err end
-
-  local kong_conf_path = pl_path.join(nginx_prefix, "kong.conf")
-  local nginx_conf_path = pl_path.join(nginx_prefix, "nginx.conf")
-  local kong_nginx_conf_path = pl_path.join(nginx_prefix, "nginx-kong.conf")
 
   -- write NGINX conf
   local nginx_conf, err = compile_nginx_conf(kong_config)
   if not nginx_conf then return nil, err end
-
-  pl_file.write(nginx_conf_path, nginx_conf)
+  pl_file.write(kong_config.nginx_conf, nginx_conf)
 
   -- write Kong's NGINX conf
   local kong_nginx_conf, err = compile_kong_conf(kong_config)
   if not kong_nginx_conf then return nil, err end
-  pl_file.write(kong_nginx_conf_path, kong_nginx_conf)
+  pl_file.write(kong_config.nginx_kong_conf, kong_nginx_conf)
 
   -- write kong.conf in prefix (for workers and CLI)
   local buf = {}
@@ -180,7 +157,7 @@ local function prepare_prefix(kong_config, nginx_prefix)
       buf[#buf+1] = k.." = "..tostring(v)
     end
   end
-  pl_file.write(kong_conf_path, table.concat(buf, "\n"))
+  pl_file.write(kong_config.kong_conf, table.concat(buf, "\n"))
 
   return true
 end

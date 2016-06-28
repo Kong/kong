@@ -13,12 +13,12 @@ local function execute(args)
 
   local dao = DAOFactory(conf)
   assert(dao:run_migrations())
-  assert(prefix_handler.prepare_prefix(conf, conf.prefix))
+  assert(prefix_handler.prepare_prefix(conf))
   if conf.dnsmasq then
-    assert(dnsmasq_signals.start(conf, conf.prefix))
+    assert(dnsmasq_signals.start(conf))
   end
-  assert(serf_signals.start(conf, conf.prefix, dao))
-  assert(nginx_signals.start(conf.prefix))
+  assert(serf_signals.start(conf, dao))
+  assert(nginx_signals.start(conf))
   log("Started")
 end
 
