@@ -70,13 +70,8 @@ function _M.start(kong_config)
 end
 
 function _M.stop(kong_config)
-  if pl_path.exists(kong_config.dnsmasq_pid) then
-    log.verbose("stopping dnsmasq at %s", kong_config.dnsmasq_pid)
-    local code = kill(kong_config.dnsmasq_pid, "-9")
-    pl_file.delete(kong_config.dnsmasq_pid)
-    return code
-  end
-  return true
+  log.verbose("stopping dnsmasq at %s", kong_config.dnsmasq_pid)
+  return kill(kong_config.dnsmasq_pid, "-9")
 end
 
 return _M

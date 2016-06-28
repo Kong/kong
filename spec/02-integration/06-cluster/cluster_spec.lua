@@ -354,7 +354,6 @@ describe("Cluster", function()
 
       -- Now wait until the nodes becomes active again
       helpers.wait_until(function()
-        ngx.sleep(1)
         local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
         local res = assert(api_client:send {
           method = "GET",

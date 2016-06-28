@@ -111,13 +111,8 @@ function _M.stop(kong_config, dao)
   local ok, err = serf:leave()
   if not ok then return nil, err end
 
-  if pl_path.exists(kong_config.serf_pid) then
-    log.verbose("stopping Serf agent at %s", kong_config.serf_pid)
-    local code = kill(kong_config.serf_pid, "-9")
-    pl_file.delete(kong_config.serf_pid)
-    return code
-  end
-  return true
+  log.verbose("stopping Serf agent at %s", kong_config.serf_pid)
+  return kill(kong_config.serf_pid, "-9")
 end
 
 return _M
