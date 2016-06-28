@@ -107,7 +107,7 @@ function _M.stop(kong_config, dao)
   log.info("leaving cluster")
 
   local serf = Serf.new(kong_config, dao)
-  
+
   local ok, err = serf:leave()
   if not ok then return nil, err end
 
