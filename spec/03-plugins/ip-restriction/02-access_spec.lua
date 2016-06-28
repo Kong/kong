@@ -6,9 +6,8 @@ describe("Plugin: ip-restriction", function()
   local plugin_config
   local client, admin_client
   setup(function()
+    helpers.kill_all()
     helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
-    assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "ip-restriction1.com",

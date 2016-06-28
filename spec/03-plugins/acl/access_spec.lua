@@ -6,7 +6,6 @@ describe("Plugin: ACL", function()
   local client, api_client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"

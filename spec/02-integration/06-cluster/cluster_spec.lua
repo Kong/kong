@@ -327,6 +327,7 @@ describe("Cluster", function()
 
       -- Wait until the node becomes failed
       helpers.wait_until(function()
+        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/",
@@ -336,7 +337,7 @@ describe("Cluster", function()
         for _, v in ipairs(body.data) do
           if v.status == "failed" then
             return true
-          else -- No "left" nodes. It's either "alive" or "failed"
+          elseif v.status ~= "leaving" then -- No "left" nodes. It's either "alive" or "failed" or "leaving"
             assert.equal("alive", v.status)
           end
         end

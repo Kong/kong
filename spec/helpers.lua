@@ -574,10 +574,6 @@ return {
   proxy_client = proxy_client,
   admin_client = admin_client,
 
-  prepare_prefix = function(prefix)
-    prefix = prefix or conf.prefix
-    return pl_dir.makepath(prefix)
-  end,
   clean_prefix = function(prefix)
     prefix = prefix or conf.prefix
     if pl_path.exists(prefix) then

@@ -12,7 +12,6 @@ describe("Core Hooks", function()
   local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
   before_each(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
 
     consumer = assert(helpers.dao.consumers:insert {
       username = "consumer1"

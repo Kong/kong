@@ -6,7 +6,6 @@ local pl_stringx = require "pl.stringx"
 describe("Plugin hooks: oauth2", function()
   local admin_client, proxy_client
   setup(function()
-    assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
     proxy_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
     proxy_client:ssl_handshake()

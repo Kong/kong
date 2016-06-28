@@ -6,7 +6,6 @@ describe("Plugin: basic-auth", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "basic-auth1.com",

@@ -6,7 +6,6 @@ describe("Plugin: key-auth", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "key-auth1.com",

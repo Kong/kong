@@ -4,7 +4,6 @@ describe("Plugin: request-size-limiting", function()
   local client
   setup(function()
     helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
 
     local api = assert(helpers.dao.apis:insert {
       request_host = "limit.com",

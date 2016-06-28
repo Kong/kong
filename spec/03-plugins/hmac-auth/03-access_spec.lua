@@ -14,7 +14,6 @@ describe("Plugin: hmac-auth (access)", function()
   local client, consumer, credential
   setup(function()
     helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "hmacauth.com",

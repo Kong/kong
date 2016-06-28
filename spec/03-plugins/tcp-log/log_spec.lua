@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
 
-describe("Plugin: syslog", function()
+describe("Plugin: tcp-log", function()
   local client, platform
   setup(function()
     helpers.dao:truncate_tables()
@@ -54,10 +54,7 @@ describe("Plugin: syslog", function()
       }
     })
 
-    local ok, _, stdout = helpers.execute("uname")
-    assert(ok, "failed to retrieve platform name")
     assert(helpers.start_kong())
-    platform = pl_stringx.strip(stdout)
   end)
 
   teardown(function()

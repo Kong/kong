@@ -8,7 +8,6 @@ describe("JWT Authentication Hooks", function()
   
   setup(function()
     helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
     proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))

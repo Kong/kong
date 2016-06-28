@@ -17,7 +17,6 @@ describe("JWT access", function()
 
   setup(function()
     helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", request_host = "jwt.com", upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"})

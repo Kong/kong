@@ -7,7 +7,6 @@ describe("Plugin: loggly (log)", function()
   local client
   setup(function()
     helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
