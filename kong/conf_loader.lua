@@ -29,6 +29,10 @@ local PREFIX_PATHS = {
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
   kong_conf = {"kong.conf"}
+  ;
+  ssl_cert_default = {"ssl", "kong-default.crt"},
+  ssl_cert_key_default = {"ssl", "kong-default.key"},
+  ssl_cert_csr_default = {"ssl", "kong-default.csr"}
 }
 
 -- By default, all properties in the configuration are considered to
@@ -149,9 +153,16 @@ local function check_and_infer(conf)
 
   if conf.ssl then
     if conf.ssl_cert and not conf.ssl_cert_key then
-      errors[#errors+1] = "ssl_cert_key must be enabled"
-    elseif (conf.ssl_cert_key and not conf.ssl_cert) then
-      errors[#errors+1] = "ssl_cert must be enabled"
+      errors[#errors+1] = "ssl_cert_key must be specified"
+    elseif conf.ssl_cert_key and not conf.ssl_cert then
+      errors[#errors+1] = "ssl_cert must be specified"
+    end
+
+    if conf.ssl_cert and not pl_path.exists(conf.ssl_cert) then
+      errors[#errors+1] = "ssl_cert: no such file at "..conf.ssl_cert
+    end
+    if conf.ssl_cert_key and not pl_path.exists(conf.ssl_cert_key) then
+      errors[#errors+1] = "ssl_cert_key: no such file at "..conf.ssl_cert_key
     end
   end
 
@@ -273,8 +284,8 @@ local function load(path, custom_conf)
 
   conf = tablex.merge(conf, defaults) -- intersection (remove extraneous properties)
 
+  -- print alphabetically-sorted values
   do
-    -- print alphabetically-sorted values
     local conf_arr = {}
     for k, v in pairs(conf) do
       local to_print = v
@@ -292,8 +303,12 @@ local function load(path, custom_conf)
     end
   end
 
+  -----------------------------
+  -- Additional injected values
+  -----------------------------
+
+  -- merge plugins
   do
-    -- merge plugins
     local custom_plugins = {}
     for i = 1, #conf.custom_plugins do
       local plugin_name = conf.custom_plugins[i]
@@ -303,19 +318,8 @@ local function load(path, custom_conf)
     conf.custom_plugins = nil
   end
 
-  -- Load absolute path
-  conf.prefix = pl_path.abspath(conf.prefix)
-
-  -- Handles relative paths for the ssl_cert and ssl_cert_key
-  if conf.ssl_cert and not pl_path.isabs(conf.ssl_cert) then
-    conf.ssl_cert = pl_path.abspath("")..conf.ssl_cert
-  end
-  if conf.ssl_cert_key and not pl_path.isabs(conf.ssl_cert_key) then
-    conf.ssl_cert_key = pl_path.abspath("")..conf.ssl_cert_key
-  end
-
+  -- extract ports/listen ips
   do
-    -- extract ports/listen ips
     local ip_port_pat = "(.+):([%d]+)$"
     local admin_ip, admin_port = string.match(conf.admin_listen, ip_port_pat)
     local proxy_ip, proxy_port = string.match(conf.proxy_listen, ip_port_pat)
@@ -332,12 +336,20 @@ local function load(path, custom_conf)
     conf.proxy_ssl_port = tonumber(proxy_ssl_port)
   end
 
-  log.verbose("prefix in use: %s", conf.prefix)
+  -- load absolute paths
+  conf.prefix = pl_path.abspath(conf.prefix)
 
-  -- attach prefix paths
+  if conf.ssl_cert and conf.ssl_cert_key then
+    conf.ssl_cert = pl_path.abspath(conf.ssl_cert)
+    conf.ssl_cert_key = pl_path.abspath(conf.ssl_cert_key)
+  end
+
+  -- attach prefix files paths
   for property, t_path in pairs(PREFIX_PATHS) do
     conf[property] = pl_path.join(conf.prefix, unpack(t_path))
   end
+
+  log.verbose("prefix in use: %s", conf.prefix)
 
   return setmetatable(conf, nil) -- remove Map mt
 end

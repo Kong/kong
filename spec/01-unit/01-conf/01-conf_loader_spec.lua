@@ -84,6 +84,10 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/nginx.conf", conf.nginx_conf)
     assert.equal("/usr/local/kong/nginx-kong.conf", conf.nginx_kong_conf)
     assert.equal("/usr/local/kong/kong.conf", conf.kong_conf)
+    -- ssl default paths
+    assert.equal("/usr/local/kong/ssl/kong-default.crt", conf.ssl_cert_default)
+    assert.equal("/usr/local/kong/ssl/kong-default.key", conf.ssl_cert_key_default)
+    assert.equal("/usr/local/kong/ssl/kong-default.csr", conf.ssl_cert_csr_default)
   end)
 
   describe("inferences", function()
@@ -231,21 +235,49 @@ describe("Configuration loader", function()
       local conf, err = conf_loader(nil, {
         ssl_cert = "/path/cert.pem"
       })
-      assert.equal("ssl_cert_key must be enabled", err)
+      assert.equal("ssl_cert_key must be specified", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
         ssl_cert_key = "/path/key.pem"
       })
-      assert.equal("ssl_cert must be enabled", err)
+      assert.equal("ssl_cert must be specified", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        ssl_cert = "/path/cert.pem",
-        ssl_cert_key = "/path/key.pem"
+        ssl_cert = "spec/fixtures/kong_spec.crt",
+        ssl_cert_key = "spec/fixtures/kong_spec.key"
       })
       assert.is_nil(err)
       assert.is_table(conf)
+    end)
+    it("requires SSL cert and key to exist", function()
+      local conf, _, errors = conf_loader(nil, {
+        ssl_cert = "/path/cert.pem",
+        ssl_cert_key = "/path/cert_key.pem"
+      })
+      assert.equal(2, #errors)
+      assert.contains("ssl_cert: no such file at /path/cert.pem", errors)
+      assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+      assert.is_nil(conf)
+
+      conf, _, errors = conf_loader(nil, {
+        ssl_cert = "spec/fixtures/kong_spec.crt",
+        ssl_cert_key = "/path/cert_key.pem"
+      })
+      assert.equal(1, #errors)
+      assert.contains("ssl_cert_key: no such file at /path/cert_key.pem", errors)
+      assert.is_nil(conf)
+    end)
+    it("resolves SSL cert/key to absolute path", function()
+      local conf, err = conf_loader(nil, {
+        ssl_cert = "spec/fixtures/kong_spec.crt",
+        ssl_cert_key = "spec/fixtures/kong_spec.key"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+      assert.True(helpers.path.isabs(conf.ssl_cert))
+      assert.True(helpers.path.isabs(conf.ssl_cert_key))
     end)
   end)
 
@@ -258,12 +290,12 @@ describe("Configuration loader", function()
     it("returns all errors in ret value #3", function()
       local conf, _, errors = conf_loader(nil, {
         cassandra_repl_strategy = "foo",
-        ssl_cert_key = "/hello"
+        ssl_cert_key = "spec/fixtures/kong_spec.key"
       })
       assert.equal(2, #errors)
       assert.is_nil(conf)
-      assert.matches("cassandra_repl_strategy has", errors[1], nil, true)
-      assert.matches("ssl_cert must be enabled", errors[2], nil, true)
+      assert.contains("cassandra_repl_strategy has", errors, true)
+      assert.contains("ssl_cert must be specified", errors)
     end)
   end)
 end)

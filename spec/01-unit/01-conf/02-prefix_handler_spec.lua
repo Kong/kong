@@ -2,18 +2,36 @@ local helpers = require "spec.helpers"
 local conf_loader = require "kong.conf_loader"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 
+local exists = helpers.path.exists
+local join = helpers.path.join
+
 describe("NGINX conf compiler", function()
-  local custom_conf
-  setup(function()
-    custom_conf = assert(conf_loader(helpers.test_conf_path, {
-      ssl = false,
-      nginx_daemon = "off", -- false/off work
-      lua_code_cache = false,
-      mem_cache_size = "128k",
-      proxy_listen = "0.0.0.0:80",
-      admin_listen = "127.0.0.1:8001",
-      proxy_listen_ssl = "0.0.0.0:443"
+  describe("gen_default_ssl_cert()", function()
+    local conf = assert(conf_loader(helpers.test_conf_path, {
+      prefix = "ssl_tmp",
+      ssl = true,
+      ssl_cert = "spec/fixtures/kong_spec.crt",
+      ssl_cert_key = "spec/fixtures/kong_spec.key",
     }))
+    before_each(function()
+      helpers.dir.makepath("ssl_tmp")
+    end)
+    after_each(function()
+      pcall(helpers.dir.rmtree, "ssl_tmp")
+    end)
+    it("auto-generates SSL certificate and key", function()
+      assert(prefix_handler.gen_default_ssl_cert(conf))
+      assert(exists(conf.ssl_cert_default))
+      assert(exists(conf.ssl_cert_key_default))
+    end)
+    it("does not re-generate if they already exist", function()
+      assert(prefix_handler.gen_default_ssl_cert(conf))
+      local cer = helpers.file.read(conf.ssl_cert_default)
+      local key = helpers.file.read(conf.ssl_cert_key_default)
+      assert(prefix_handler.gen_default_ssl_cert(conf))
+      assert.equal(cer, helpers.file.read(conf.ssl_cert_default))
+      assert.equal(key, helpers.file.read(conf.ssl_cert_key_default))
+    end)
   end)
 
   describe("compile_kong_conf()", function()
@@ -28,14 +46,23 @@ describe("NGINX conf compiler", function()
       assert.not_matches("lua_ssl_trusted_certificate", kong_nginx_conf, nil, true)
     end)
     it("compiles with custom conf", function()
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(custom_conf)
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_code_cache = false,
+        mem_cache_size = "128k",
+        proxy_listen = "0.0.0.0:80",
+        admin_listen = "127.0.0.1:8001"
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_code_cache off;", kong_nginx_conf, nil, true)
       assert.matches("lua_shared_dict cache 128k;", kong_nginx_conf, nil, true)
       assert.matches("listen 0.0.0.0:80;", kong_nginx_conf, nil, true)
       assert.matches("listen 127.0.0.1:8001;", kong_nginx_conf, nil, true)
     end)
     it("disables SSL", function()
-      local kong_nginx_conf = prefix_handler.compile_kong_conf(custom_conf)
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        ssl = false
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
       assert.not_matches("ssl_certificate", kong_nginx_conf)
       assert.not_matches("ssl_certificate_key", kong_nginx_conf)
@@ -59,7 +86,10 @@ describe("NGINX conf compiler", function()
       assert.matches("daemon on;", nginx_conf, nil, true)
     end)
     it("compiles with custom conf", function()
-      local nginx_conf = prefix_handler.compile_nginx_conf(custom_conf)
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_daemon = "off"
+      }))
+      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
       assert.matches("daemon off;", nginx_conf, nil, true)
     end)
     it("compiles without opinionated nginx optimizations", function()
@@ -81,7 +111,6 @@ describe("NGINX conf compiler", function()
   end)
 
   describe("prepare_prefix()", function()
-    local exists, join = helpers.path.exists, helpers.path.join
     local tmp_config = conf_loader(helpers.test_conf_path, {
       prefix = "servroot_tmp"
     })
@@ -105,7 +134,7 @@ describe("NGINX conf compiler", function()
       assert(prefix_handler.prepare_prefix(config))
       assert.truthy(exists("inexistent"))
     end)
-    it("checks prefix is a directory", function()
+    it("ensures prefix is a directory", function()
       local tmp = os.tmpname()
       finally(function()
         os.remove(tmp)
@@ -169,6 +198,39 @@ describe("NGINX conf compiler", function()
       local identifier_2 = helpers.file.read(tmp_config.serf_node_id)
 
       assert.equal(identifier_1, identifier_2)
+    end)
+    describe("ssl", function()
+      it("does not create SSL dir if disabled", function()
+        local conf = conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          ssl = false
+        })
+
+        assert(prefix_handler.prepare_prefix(conf))
+        assert.falsy(exists(join(conf.prefix, "ssl")))
+      end)
+      it("does not create SSL dir if using custom cert", function()
+        local conf = conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          ssl = true,
+          ssl_cert = "spec/fixtures/kong_spec.crt",
+          ssl_cert_key = "spec/fixtures/kong_spec.key",
+        })
+
+        assert(prefix_handler.prepare_prefix(conf))
+        assert.falsy(exists(join(conf.prefix, "ssl")))
+      end)
+      it("generates default SSL cert", function()
+        local conf = conf_loader(nil, {
+          prefix = tmp_config.prefix,
+          ssl = true
+        })
+
+        assert(prefix_handler.prepare_prefix(conf))
+        assert.truthy(exists(join(conf.prefix, "ssl")))
+        assert.truthy(exists(conf.ssl_cert_default))
+        assert.truthy(exists(conf.ssl_cert_key_default))
+      end)
     end)
   end)
 end)
