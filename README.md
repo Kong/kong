@@ -1,4 +1,4 @@
-# Microservice & API Management Layer [![Build Status][badge-travis-image]][badge-travis-url]
+# API Gateway & Microservice Management [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
 Kong is a scalable, open source API Layer *(also known as an API Gateway, or
