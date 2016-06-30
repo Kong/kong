@@ -5,6 +5,8 @@ local prefix_handler = require "kong.cmd.utils.prefix_handler"
 describe("NGINX conf compiler", function()
   local custom_conf
   setup(function()
+    assert(prefix_handler.prepare_prefix(helpers.test_conf))
+
     custom_conf = assert(conf_loader(helpers.test_conf_path, {
       ssl = false,
       nginx_daemon = "off", -- false/off work
@@ -66,7 +68,9 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(nil, {
         nginx_optimizations = false,
       }))
+
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.not_matches("worker_rlimit_nofile %d+;", nginx_conf)
       assert.not_matches("worker_connections %d+;", nginx_conf)
       assert.not_matches("multi_accept on;", nginx_conf)
     end)
@@ -75,8 +79,23 @@ describe("NGINX conf compiler", function()
         nginx_optimizations = true,
       }))
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.matches("worker_rlimit_nofile %d+;", nginx_conf)
       assert.matches("worker_connections %d+;", nginx_conf)
       assert.matches("multi_accept on;", nginx_conf)
+    end)
+    it("compiles without anonymous reports", function()
+      local conf = assert(conf_loader(nil, {
+        anonymous_reports = false,
+      }))
+      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.not_matches("error_log syslog:server=.+ error;", nginx_conf)
+    end)
+    it("compiles with anonymous reports", function()
+      local conf = assert(conf_loader(nil, {
+        anonymous_reports = true,
+      }))
+      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
+      assert.matches("error_log syslog:server=.+:61828 error;", nginx_conf)
     end)
   end)
 

@@ -23,7 +23,8 @@ local NODES = {
     proxy_listen_ssl = "127.0.0.1:9443",
     admin_listen = "0.0.0.0:9001",
     cluster_listen = "0.0.0.0:9946",
-    cluster_listen_rpc = "0.0.0.0:9373"
+    cluster_listen_rpc = "0.0.0.0:9373",
+    nginx_optimizations = true
   },
   servroot2 = {
     prefix = "servroot2",
@@ -31,7 +32,8 @@ local NODES = {
     proxy_listen_ssl = "127.0.0.1:10443",
     admin_listen = "0.0.0.0:10001",
     cluster_listen = "0.0.0.0:10946",
-    cluster_listen_rpc = "0.0.0.0:10373"
+    cluster_listen_rpc = "0.0.0.0:10373",
+    nginx_optimizations = true
   },
   servroot3 = {
     prefix = "servroot3",
@@ -39,7 +41,8 @@ local NODES = {
     proxy_listen_ssl = "127.0.0.1:20443",
     admin_listen = "0.0.0.0:20001",
     cluster_listen = "0.0.0.0:20946",
-    cluster_listen_rpc = "0.0.0.0:20373"
+    cluster_listen_rpc = "0.0.0.0:20373",
+    nginx_optimizations = true
   }
 }
 
@@ -337,10 +340,11 @@ describe("Cluster", function()
         for _, v in ipairs(body.data) do
           if v.status == "failed" then
             return true
-          elseif v.status ~= "leaving" then -- No "left" nodes. It's either "alive" or "failed" or "leaving"
+          else -- No "left" nodes. It's either "alive" or "failed"
             assert.equal("alive", v.status)
           end
         end
+        api_client:close()
       end, 60)
 
       -- The member has now failed, let's bring him up again

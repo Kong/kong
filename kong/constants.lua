@@ -37,5 +37,9 @@ return {
       "month",
       "year"
     }
+  },
+  SYSLOG = {
+    ADDRESS = "kong-hf.mashape.com",
+    PORT = 61828
   }
 }

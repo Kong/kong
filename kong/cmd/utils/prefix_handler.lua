@@ -7,9 +7,11 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
+local socket = require "socket"
 local utils = require "kong.tools.utils"
 local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
+local constants = require "kong.constants"
 
 -- script from old services.serf module
 local script_template = [[
@@ -36,12 +38,17 @@ client:request { \
 resty -e "$CMD"
 ]]
 
-local function gather_system_infos(compile_env)
+local function gather_system_infos()
   local infos = {}
 
   local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
   if not ok then return nil, stderr end
-  infos.ulimit = pl_stringx.strip(stdout)
+  infos.worker_rlimit = tonumber(pl_stringx.strip(stdout))
+  infos.worker_connections = infos.worker_rlimit > 16384 and 16384 or infos.worker_rlimit
+
+  if infos.worker_rlimit < 4096 then
+    log.warn(string.format("ulimit is currently set to \"%d\". For better performance set it to at least \"4096\" using \"ulimit -n\"", infos.worker_rlimit))
+  end
 
   return infos
 end
@@ -71,10 +78,19 @@ local function compile_conf(kong_config, conf_template)
     compile_env["dns_resolver"] = "127.0.0.1:"..kong_config.dnsmasq_port
   end
 
+  local infos, err = gather_system_infos()
+  if not infos then return nil, err end
   if kong_config.nginx_optimizations then
-    local infos, err = gather_system_infos()
-    if not infos then return nil, err end
     compile_env = pl_tablex.merge(compile_env, infos,  true) -- union
+  end
+
+  if kong_config.anonymous_reports then
+    -- If there is no internet connection, disable this feature
+    if socket.dns.toip(constants.SYSLOG.ADDRESS) then 
+      compile_env["syslog_reports"] = string.format("error_log syslog:server=%s:%d error;", 
+                                                    constants.SYSLOG.ADDRESS, 
+                                                    constants.SYSLOG.PORT)
+    end
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
