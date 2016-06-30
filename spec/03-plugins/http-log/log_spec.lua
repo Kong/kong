@@ -67,7 +67,7 @@ describe("Plugin: http-log", function()
     if client then client:close() end
   end)
 
-  it("#only logs to HTTP", function()
+  it("logs to HTTP", function()
     local res = assert(client:send({
       method = "GET",
       path = "/status/200",
