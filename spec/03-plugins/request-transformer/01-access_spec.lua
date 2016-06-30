@@ -108,7 +108,7 @@ describe("plugin: request transformer", function()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
+    client = assert(helpers.proxy_client())
   end)
 
   after_each(function()
@@ -117,7 +117,7 @@ describe("plugin: request transformer", function()
 
   describe("remove", function()
     it("specified header", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -126,13 +126,13 @@ describe("plugin: request transformer", function()
           ["x-another-header"] = "true"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.has.no.header("x-to-remove", json)
-      assert.has.header("x-another-header", json)
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-remove")
+      assert.request(r).has.header("x-another-header")
     end)
     it("parameters on url encoded form POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -144,13 +144,14 @@ describe("plugin: request transformer", function()
           host = "test4.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.postData.params["toremoveform"])
-      assert.equal("yes", json.postData.params["nottoremove"])
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.formparam("toremoveform")
+      local value = assert.request(r).has.formparam("nottoremove")
+      assert.equals("yes", value)
     end)
     it("parameters from JSON body in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -162,14 +163,14 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local params = cjson.decode(json.postData.text)
-      assert.is.Nil(params["toremoveform"])
-      assert.are.equal("yes", params["nottoremove"])
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_nil(json["toremoveform"])
+      assert.equals("yes", json["nottoremove"])
     end)
     it("does not fail if JSON body is malformed in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = "malformed json body",
@@ -178,12 +179,12 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.equal("malformed json body", json.postData.text)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("malformed json body", json.postData.text)
     end)
     it("does not fail if body is empty and content type is application/json in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {},
@@ -192,28 +193,28 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.equal('{}', json.postData.text)
-      assert.equal("2", json.headers["content-length"])
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals('{}', json.postData.text)
+      assert.equals("2", json.headers["content-length"])
     end)
     it("does not fail if body is empty in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         headers = {
           host = "test4.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.same({}, json.postData.params)
       assert.equal('', json.postData.text)
-      local value = assert.has.header("content-length", json)
+      local value = assert.request(r).has.header("content-length")
       assert.equal("0", value)
     end)
     it("parameters on multipart POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -225,13 +226,13 @@ describe("plugin: request transformer", function()
           host = "test4.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.postData.params["toremoveform"])
-      assert.are.equal("yes", json.postData.params["nottoremove"])
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.postData.params["toremoveform"])
+      assert.equals("yes", json.postData.params["nottoremove"])
     end)
     it("queryString on GET if it exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -246,16 +247,17 @@ describe("plugin: request transformer", function()
           host = "test4.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.queryString["q1"])
-      assert.are.equal("v2", json.queryString["q2"])
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.queryparam("q1")
+      local value = assert.request(r).has.queryparam("q2")
+      assert.equals("v2", value)
     end)
   end)
 
   describe("replace", function()
     it("specified header if it exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         body = {},
@@ -265,15 +267,15 @@ describe("plugin: request transformer", function()
           h2 = "v2",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local h_h1 = assert.has.header("h1", json)
-      assert.are.equal("v1", h_h1)
-      local h_h2 = assert.has.header("h2", json)
-      assert.are.equal("v2", h_h2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("h1")
+      assert.equals("v1", h_h1)
+      local h_h2 = assert.request(r).has.header("h2")
+      assert.equals("v2", h_h2)
     end)
     it("does not add as new header if header does not exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         body = {},
@@ -282,14 +284,14 @@ describe("plugin: request transformer", function()
           h2 = "v2",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.has.no.header("h1", json)
-      local h_h2 = assert.has.header("h2", json)
-      assert.are.equal("v2", h_h2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("h1")
+      local h_h2 = assert.request(r).has.header("h2")
+      assert.equals("v2", h_h2)
     end)
     it("specified parameters in url encoded body on POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -301,13 +303,14 @@ describe("plugin: request transformer", function()
           host = "test5.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v1", json.postData.params.p1)
-      assert.are.equal("v1", json.postData.params.p2)
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.formparam("p1")
+      assert.equals("v1", value)
+      local value = assert.request(r).has.formparam("p2")
+      assert.equals("v1", value)
     end)
     it("does not add as new parameter in url encoded body if parameter does not exist on POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -318,13 +321,13 @@ describe("plugin: request transformer", function()
           host = "test5.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.postData.params.p1)
-      assert.are.equal("v1", json.postData.params.p2)
+      assert.response(r).has.status(200)
+      assert.request(r).has.no.formparam("p1")
+      local value = assert.request(r).has.formparam("p2")
+      assert.equals("v1", value)
     end)
     it("specified parameters in json body on POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -336,14 +339,13 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local params = cjson.decode(json.postData.text)
-      assert.are.equal("v1", params.p1)
-      assert.are.equal("v1", params.p2)
+      assert.response(r).has.status(200)
+      local json = assert.request(r).has.jsonbody()
+      assert.equals("v1", json.p1)
+      assert.equals("v1", json.p2)
     end)
     it("does not fail if JSON body is malformed in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = "malformed json body",
@@ -352,12 +354,12 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.equal("malformed json body", json.postData.text)
     end)
     it("does not add as new parameter in json if parameter does not exist on POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -368,14 +370,13 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local params = cjson.decode(json.postData.text)
-      assert.is.Nil(params.p1)
-      assert.are.equal("v1", params.p2)
+      assert.response(r).has.status(200)
+      local json = assert.request(r).has.jsonbody()
+      assert.is_nil(json.p1)
+      assert.equals("v1", json.p2)
     end)
     it("specified parameters on multipart POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -387,13 +388,13 @@ describe("plugin: request transformer", function()
           host = "test5.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v1", json.postData.params.p1)
-      assert.are.equal("v1", json.postData.params.p2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("v1", json.postData.params.p1)
+      assert.equals("v1", json.postData.params.p2)
     end)
     it("does not add as new parameter if parameter does not exist on multipart POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -404,13 +405,13 @@ describe("plugin: request transformer", function()
           host = "test5.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.postData.params.p1)
-      assert.are.equal("v1", json.postData.params.p2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.postData.params.p1)
+      assert.equals("v1", json.postData.params.p2)
     end)
-    it("queryString on POST if it exist", function()
-      local response = assert( client:send {
+    it("#only queryString on POST if it exist", function()
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         query = {
@@ -425,13 +426,14 @@ describe("plugin: request transformer", function()
           host = "test5.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v1", json.queryString.q1)
-      assert.are.equal("v2", json.queryString.q2)
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.queryparam("q1")
+      assert.equals("v1", value)
+      local value = assert.request(r).has.queryparam("q2")
+      assert.equals("v2", value)
     end)
     it("does not add new queryString on POST if it does not exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         query = {
@@ -445,31 +447,31 @@ describe("plugin: request transformer", function()
           host = "test5.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.queryString.q1)
-      assert.are.equal("v2", json.queryString.q2)
+      assert.response(r).has.status(200)
+      assert.request(r).has.no.queryparam("q1")
+      local value = assert.request(r).has.queryparam("q2")
+      assert.equals("v2", value)
     end)
   end)
 
   describe("add", function()
     it("new headers", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local h_h1 = assert.has.header("h1", json)
-      assert.are.equal("v1", h_h1)
-      local h_h2 = assert.has.header("h2", json)
-      assert.are.equal("v2", h_h2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("h1")
+      assert.equals("v1", h_h1)
+      local h_h2 = assert.request(r).has.header("h2")
+      assert.equals("v2", h_h2)
     end)
     it("does not change or append value if header already exists", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -477,15 +479,15 @@ describe("plugin: request transformer", function()
           host = "test1.com",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local h_h1 = assert.has.header("h1", json)
-      assert.are.equal("v3", h_h1)
-      local h_h2 = assert.has.header("h2", json)
-      assert.are.equal("v2", h_h2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("h1")
+      assert.equals("v3", h_h1)
+      local h_h2 = assert.request(r).has.header("h2")
+      assert.equals("v2", h_h2)
     end)
-    it("new parameter in url encoded body on POST", function()
-      local response = assert(client:send {
+  x  it("new parameter in url encoded body on POST", function()
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -496,13 +498,13 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("world", json.postData.params.hello)
-      assert.are.equal("v1", json.postData.params.p1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("world", json.postData.params.hello)
+      assert.equals("v1", json.postData.params.p1)
     end)
     it("does not change or append value to parameter in url encoded body on POST when parameter exists", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -514,13 +516,13 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("world", json.postData.params.hello)
-      assert.are.equal("should not change", json.postData.params.p1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("world", json.postData.params.hello)
+      assert.equals("should not change", json.postData.params.p1)
     end)
     it("new parameter in JSON body on POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -531,14 +533,14 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       local params = cjson.decode(json.postData.text)
-      assert.are.equal("world", params.hello)
-      assert.are.equal("v1", params.p1)
+      assert.equals("world", params.hello)
+      assert.equals("v1", params.p1)
     end)
     it("does not change or append value to parameter in JSON on POST when parameter exists", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -550,14 +552,14 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       local params = cjson.decode(json.postData.text)
-      assert.are.equal("world", params.hello)
-      assert.are.equal("this should not change", params.p1)
+      assert.equals("world", params.hello)
+      assert.equals("this should not change", params.p1)
     end)
     it("does not fail if JSON body is malformed in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = "malformed json body",
@@ -566,12 +568,12 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.equal("malformed json body", json.postData.text)
     end)
     it("new parameter on multipart POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {},
@@ -580,12 +582,12 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v1", json.postData.params.p1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("v1", json.postData.params.p1)
     end)
     it("does not change or append value to parameter on multipart POST when parameter exists", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -597,13 +599,13 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         },
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("this should not change", json.postData.params.p1)
-      assert.are.equal("world", json.postData.params.hello)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("this should not change", json.postData.params.p1)
+      assert.equals("world", json.postData.params.hello)
     end)
     it("new querystring on GET", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -614,13 +616,13 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v2", json.queryString.q2)
-      assert.are.equal("v1", json.queryString.q1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("v2", json.queryString.q2)
+      assert.equals("v1", json.queryString.q1)
     end)
     it("does not change or append value to querystring on GET if querystring exists", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -631,12 +633,12 @@ describe("plugin: request transformer", function()
           host = "test1.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v2", json.queryString.q1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("v2", json.queryString.q1)
     end)
     it("should not change the host header", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/get",
         headers = {
@@ -644,42 +646,42 @@ describe("plugin: request transformer", function()
           host = "test2.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local host = assert.has.header("host", json)
-      assert.are.equal("httpbin.org", host)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local host = assert.request(r).has.header("host")
+      assert.equals("httpbin.org", host)
     end)
   end)
 
   describe("append ", function()
     it("new header if header does not exists", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local h_h2 = assert.has.header("h2", json)
-      assert.are.equal("v1", h_h2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local h_h2 = assert.request(r).has.header("h2")
+      assert.equals("v1", h_h2)
     end)
     it("values to existing headers", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local h_h1 = assert.has.header("h1", json)
-      assert.are.equal("v1, v2", h_h1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local h_h1 = assert.request(r).has.header("h1")
+      assert.equals("v1, v2", h_h1)
     end)
     it("new querystring if querystring does not exists", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -690,12 +692,12 @@ describe("plugin: request transformer", function()
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("v1", json.queryString.q2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("v1", json.queryString.q2)
     end)
     it("values to existing querystring", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -703,12 +705,12 @@ describe("plugin: request transformer", function()
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.are.same({"v1", "v2"}, json.queryString.q1)
     end)
     it("new parameter in url encoded body on POST if it does not exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -716,13 +718,13 @@ describe("plugin: request transformer", function()
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.are.same({"v1", "v2"}, json.postData.params.p1)
       assert.are.same("v1", json.postData.params.p2)
     end)
     it("values to existing parameter in url encoded body if parameter already exist on POST", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -733,13 +735,13 @@ describe("plugin: request transformer", function()
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.are.same({"v0", "v1", "v2"}, json.postData.params.p1)
       assert.are.same("v1", json.postData.params.p2)
     end)
     it("does not fail if JSON body is malformed in POST", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = "malformed json body",
@@ -748,12 +750,12 @@ describe("plugin: request transformer", function()
           ["content-type"] = "application/json"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.equal("malformed json body", json.postData.text)
     end)
     it("does not change or append value to parameter on multipart POST", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -764,15 +766,15 @@ describe("plugin: request transformer", function()
           host = "test6.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.are.same("This should not change", json.postData.params.p1)
     end)
   end)
 
   describe("remove, replace, add and append ", function()
     it("removes a header", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -780,12 +782,12 @@ describe("plugin: request transformer", function()
           ["x-to-remove"] = "true",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.has.no.header("x-to-remove", json)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-remove")
     end)
     it("replaces value of header, if header exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -793,38 +795,38 @@ describe("plugin: request transformer", function()
           ["x-to-replace"] = "true",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local hval = assert.has.header("x-to-replace", json)
-      assert.are.equal("false", hval)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-to-replace")
+      assert.equals("false", hval)
     end)
     it("does not add new header if to be replaced header does not exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
           host = "test3.com",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.has.no.header("x-to-replace", json)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-replace")
     end)
     it("add new header if missing", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
           host = "test3.com",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local hval = assert.has.header("x-added2", json)
-      assert.are.equal("b1", hval)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-added2")
+      assert.equals("b1", hval)
     end)
     it("does not add new header if it already exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -832,26 +834,26 @@ describe("plugin: request transformer", function()
           ["x-added3"] = "c1",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local hval = assert.has.header("x-added3", json)
-      assert.are.equal("c1", hval)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-added3")
+      assert.equals("c1", hval)
     end)
     it("appends values to existing headers", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
           host = "test3.com",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      local hval = assert.has.header("x-added", json)
-      assert.are.equal("a1, a2, a3", hval)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      local hval = assert.request(r).has.header("x-added")
+      assert.equals("a1, a2, a3", hval)
     end)
     it("adds new parameters on POST when query string key missing", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -862,12 +864,12 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("b1", json.queryString.p2)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("b1", json.queryString.p2)
     end)
     it("removes parameters on GET", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -882,13 +884,13 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.queryString.toremovequery)
-      assert.are.equal("yes", json.queryString.nottoremove)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.queryString.toremovequery)
+      assert.equals("yes", json.queryString.nottoremove)
     end)
     it("replaces parameters on GET", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -902,12 +904,12 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("no", json.queryString.toreplacequery)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("no", json.queryString.toreplacequery)
     end)
     it("does not add new parameter if to be replaced parameters does not exist on GET", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -915,12 +917,12 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.queryString.toreplacequery)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.queryString.toreplacequery)
     end)
     it("adds parameters on GET if it does not exist", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -928,12 +930,12 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("newvalue", json.queryString["query-added"])
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("newvalue", json.queryString["query-added"])
     end)
     it("does not add new parameter if to be added parameters already exist on GET", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -944,12 +946,12 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("oldvalue", json.queryString["query-added"])
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("oldvalue", json.queryString["query-added"])
     end)
     it("appends parameters on GET", function()
-      local response = assert( client:send {
+      local r = assert( client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -963,11 +965,11 @@ describe("plugin: request transformer", function()
           ["Content-Type"] = "application/x-www-form-urlencoded",
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.are.equal("a1", json.queryString.p1[1])
-      assert.are.equal("a2", json.queryString.p1[2])
-      assert.are.equal("20", json.queryString.q1)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("a1", json.queryString.p1[1])
+      assert.equals("a2", json.queryString.p1[2])
+      assert.equals("20", json.queryString.q1)
     end)
   end)
 end)

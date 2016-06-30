@@ -50,7 +50,7 @@ describe("Plugin: response transformer", function()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
+    client = assert(helpers.proxy_client())
   end)
 
   after_each(function()
@@ -59,39 +59,39 @@ describe("Plugin: response transformer", function()
 
   describe("parameters", function()
     it("remove a parameter", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/get",
         headers = {
           host = "response.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
-      assert.is.Nil(json.url)
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.url)
     end)
     it("remove a header", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/response-headers",
         headers = {
           host = "response.com"
         }
       })
-      assert.res_status(200, response)
-      assert.has.jsonbody(response)
-      assert.has.no.header("acess-control-allow-origin", response)
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.response(r).has.no.header("acess-control-allow-origin")
     end)
     it("replace a body parameter on GET", function()
-      local response = assert(client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/get",
         headers = {
           host = "response2.com"
         }
       })
-      assert.res_status(200, response)
-      local json = assert.has.jsonbody(response)
+      assert.response(r).status(200)
+      local json = assert.response(r).has.jsonbody()
       assert.equals([[/hello/world]], json.headers)
       assert.equals([[this is a / test]], json.args)
       assert.equals([["wot"]], json.url)

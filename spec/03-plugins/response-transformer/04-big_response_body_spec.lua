@@ -43,7 +43,7 @@ describe("Plugin: response transformer", function()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.proxy_port))
+    client = assert(helpers.proxy_client())
   end)
 
   after_each(function()
@@ -51,7 +51,7 @@ describe("Plugin: response transformer", function()
   end)
 
   it("add new parameters on large POST", function()
-    local response = assert(client:send {
+    local r = assert(client:send {
       method = "POST",
       path = "/post",
       body = {create_big_data(1 * 1024 * 1024)},
@@ -60,12 +60,12 @@ describe("Plugin: response transformer", function()
         ["content-type"] = "application/json",
       }
     })
-    assert.res_status(200, response)
-    local json = assert.has.jsonbody(response)
-    assert.are.equal("v1", json.p1)
+    assert.response(r).has.status(200)
+    local json = assert.response(r).has.jsonbody()
+    assert.equals("v1", json.p1)
   end)
   it("remove parameters on large POST", function()
-    local response = assert(client:send {
+    local r = assert(client:send {
       method = "POST",
       path = "/post",
       body = {create_big_data(1 * 1024 * 1024)},
@@ -74,8 +74,8 @@ describe("Plugin: response transformer", function()
         ["content-type"] = "application/json",
       }
     })
-    assert.res_status(200, response)
-    local json = assert.has.jsonbody(response)
-    assert.is.Nil(json.json)
+    assert.response(r).has.status(200)
+    local json = assert.response(r).has.jsonbody()
+    assert.is_nil(json.json)
   end)
 end)
