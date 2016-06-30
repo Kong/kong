@@ -1,7 +1,5 @@
 local helpers = require "spec.helpers"
-local utils = require "kong.tools.utils"
 local cjson = require "cjson"
-local pl_stringx = require "pl.stringx"
 local socket = require "socket"
 
 local mockbin_ip = socket.dns.toip("mockbin.org")
