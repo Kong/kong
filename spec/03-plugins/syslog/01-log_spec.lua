@@ -6,8 +6,8 @@ local pl_stringx = require "pl.stringx"
 describe("Plugin: syslog", function()
   local client, platform
   setup(function()
-    helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
@@ -57,7 +57,6 @@ describe("Plugin: syslog", function()
 
     local ok, _, stdout = helpers.execute("uname")
     assert(ok, "failed to retrieve platform name")
-    assert(helpers.start_kong())
     platform = pl_stringx.strip(stdout)
   end)
 

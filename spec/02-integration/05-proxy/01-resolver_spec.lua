@@ -6,8 +6,6 @@ describe("Resolver", function()
   local client
   setup(function()
     helpers.kill_all()
-    helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
 
     -- request_host
     assert(helpers.dao.apis:insert {

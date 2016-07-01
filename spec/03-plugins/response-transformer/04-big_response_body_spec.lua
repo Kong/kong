@@ -11,9 +11,7 @@ describe("Plugin: response transformer", function()
   local client
 
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
 
     local api = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer",

@@ -4,9 +4,9 @@ local threads = require "llthreads2.ex"
 describe("plugin: datadog", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
     assert(helpers.start_kong())
+    
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "datadog1.com",
       upstream_url = "http://mockbin.com"

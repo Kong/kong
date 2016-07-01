@@ -5,7 +5,6 @@ describe("Response Rate Limiting API", function()
   local admin_client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)

@@ -5,9 +5,7 @@ describe("helpers: assertions and modifiers;", function()
   local client
 
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
 
     assert(helpers.dao.apis:insert {name = "test-1", request_host = "mockbin.com", upstream_url = "http://mockbin.com"})
     assert(helpers.dao.apis:insert {name = "test-2", request_host = "httpbin.org", upstream_url = "http://httpbin.org"})

@@ -4,10 +4,17 @@ daemon ${{NGINX_DAEMON}};
 
 pid pids/nginx.pid;
 error_log logs/error.log ${{LOG_LEVEL}};
+> if anonymous_reports then
+${{SYSLOG_REPORTS}}
+> end
+
+> if nginx_optimizations then
+worker_rlimit_nofile ${{WORKER_RLIMIT}};
+> end
 
 events {
 > if nginx_optimizations then
-    worker_connections ${{ULIMIT}};
+    worker_connections ${{WORKER_CONNECTIONS}};
     multi_accept on;
 > end
 }

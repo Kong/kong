@@ -6,9 +6,8 @@ describe("Plugin: ip-restriction", function()
   local plugin_config
   local client, admin_client
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "ip-restriction1.com",
@@ -68,7 +67,6 @@ describe("Plugin: ip-restriction", function()
       }
     })
 
-    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)

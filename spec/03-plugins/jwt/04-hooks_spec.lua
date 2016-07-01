@@ -7,9 +7,9 @@ describe("JWT Authentication Hooks", function()
   local admin_client, proxy_client, consumer1, api1
   
   setup(function()
-    helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
     assert(helpers.start_kong())
+    
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
     proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)

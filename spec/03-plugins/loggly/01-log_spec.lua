@@ -6,8 +6,8 @@ local UDP_PORT = 20000
 describe("Plugin: loggly (log)", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
@@ -74,8 +74,6 @@ describe("Plugin: loggly (log)", function()
         key = "123456789"
       }
     })
-
-    assert(helpers.start_kong())
   end)
   teardown(function()
     assert(helpers.stop_kong())

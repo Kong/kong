@@ -7,8 +7,10 @@ local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
+local socket = require "socket"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
+local constants = require "kong.constants"
 local fmt = string.format
 
 -- script from old services.serf module
@@ -71,12 +73,19 @@ local function gen_default_ssl_cert(kong_config)
   return true
 end
 
+local function get_ulimit()
+  local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
+  if not ok then return nil, stderr end
+  return tonumber(pl_stringx.strip(stdout))
+end
+
 local function gather_system_infos(compile_env)
   local infos = {}
 
-  local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
-  if not ok then return nil, stderr end
-  infos.ulimit = pl_stringx.strip(stdout)
+  local ulimit, err = get_ulimit()
+  if not ulimit then return nil, err end
+  infos.worker_rlimit = ulimit
+  infos.worker_connections = ulimit > 16384 and 16384 or ulimit
 
   return infos
 end
@@ -97,13 +106,22 @@ local function compile_conf(kong_config, conf_template, env_t)
   if kong_config.dnsmasq then
     compile_env["dns_resolver"] = "127.0.0.1:"..kong_config.dnsmasq_port
   end
+
+  local infos, err = gather_system_infos()
+  if not infos then return nil, err end
   if kong_config.nginx_optimizations then
-    local infos, err = gather_system_infos()
-    if not infos then return nil, err end
     compile_env = pl_tablex.merge(compile_env, infos,  true) -- union
   end
 
-  -- merge compile env with kong_config and additional env values
+  if kong_config.anonymous_reports then
+    -- If there is no internet connection, disable this feature
+    if socket.dns.toip(constants.SYSLOG.ADDRESS) then
+      compile_env["syslog_reports"] = string.format("error_log syslog:server=%s:%d error;", 
+                                                    constants.SYSLOG.ADDRESS, 
+                                                    constants.SYSLOG.PORT)
+    end
+  end
+
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
   compile_env = pl_tablex.merge(compile_env, env_t, true) -- union
 
@@ -169,6 +187,13 @@ local function prepare_prefix(kong_config)
       ssl_cert = kong_config.ssl_cert_default
       ssl_cert_key = kong_config.ssl_cert_key_default
     end
+  end
+
+  -- check ulimit
+  local ulimit, err = get_ulimit()
+  if not ulimit then return nil, err end
+  if ulimit < 4096 then
+    log.warn(string.format("ulimit is currently set to \"%d\". For better performance set it to at least \"4096\" using \"ulimit -n\"", ulimit))
   end
 
   -- write NGINX conf

@@ -23,7 +23,9 @@ local NODES = {
     proxy_listen_ssl = "127.0.0.1:9443",
     admin_listen = "0.0.0.0:9001",
     cluster_listen = "0.0.0.0:9946",
-    cluster_listen_rpc = "0.0.0.0:9373"
+    cluster_listen_rpc = "0.0.0.0:9373",
+    cluster_profile = "local",
+    nginx_optimizations = true
   },
   servroot2 = {
     prefix = "servroot2",
@@ -31,7 +33,9 @@ local NODES = {
     proxy_listen_ssl = "127.0.0.1:10443",
     admin_listen = "0.0.0.0:10001",
     cluster_listen = "0.0.0.0:10946",
-    cluster_listen_rpc = "0.0.0.0:10373"
+    cluster_listen_rpc = "0.0.0.0:10373",
+    cluster_profile = "local",
+    nginx_optimizations = true
   },
   servroot3 = {
     prefix = "servroot3",
@@ -39,7 +43,9 @@ local NODES = {
     proxy_listen_ssl = "127.0.0.1:20443",
     admin_listen = "0.0.0.0:20001",
     cluster_listen = "0.0.0.0:20946",
-    cluster_listen_rpc = "0.0.0.0:20373"
+    cluster_listen_rpc = "0.0.0.0:20373",
+    cluster_profile = "local",
+    nginx_optimizations = true
   }
 }
 
@@ -258,8 +264,9 @@ describe("Cluster", function()
           headers = {}
         })
         local body = cjson.decode(assert.res_status(200, res))
+        api_client:close()
         return body.total == 3
-      end, 5)
+      end, 10)
 
       -- Now we have three nodes connected to each other, let's create and consume an API
       -- Adding an API
@@ -276,13 +283,14 @@ describe("Cluster", function()
         }
       })
       assert.res_status(201, res)
+      api_client:close()
 
       ngx.sleep(5) -- Wait for invalidation of API creation to propagate
 
       -- Populate the cache on every node
       for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
-        local client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.proxy_listen, ":")[2]))
-        local res = assert(client:send {
+        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.proxy_listen, ":")[2]))
+        local res = assert(api_client:send {
           method = "GET",
           path = "/status/200",
           headers = {
@@ -290,6 +298,7 @@ describe("Cluster", function()
           }
         })
         assert.res_status(200, res)
+        api_client:close()
       end
 
       -- Check the cache on every node
@@ -301,6 +310,7 @@ describe("Cluster", function()
           headers = {}
         })
         local body = cjson.decode(assert.res_status(200, res))
+        api_client:close()
         assert.equal(1, pl_tablex.size(body.by_dns))
       end
 
@@ -314,6 +324,7 @@ describe("Cluster", function()
           headers = {}
         })
         local body = cjson.decode(assert.res_status(200, res))
+        api_client:close()
         for _, v in ipairs(body.data) do
           assert.equal("alive", v.status)
           if not node_name and pl_stringx.split(v.address, ":")[2] == pl_stringx.split(NODES.servroot2.cluster_listen, ":")[2] then
@@ -327,12 +338,14 @@ describe("Cluster", function()
 
       -- Wait until the node becomes failed
       helpers.wait_until(function()
+        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/",
           headers = {}
         })
         local body = cjson.decode(assert.res_status(200, res))
+        api_client:close()
         for _, v in ipairs(body.data) do
           if v.status == "failed" then
             return true
@@ -340,7 +353,7 @@ describe("Cluster", function()
             assert.equal("alive", v.status)
           end
         end
-      end, 60)
+      end, 70)
 
       -- The member has now failed, let's bring him up again
       os.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
@@ -360,13 +373,14 @@ describe("Cluster", function()
           path = "/cluster/"
         })
         local body = cjson.decode(assert.res_status(200, res))
+        api_client:close()
         for _, v in ipairs(body.data) do
           if v.status == "failed" then
             return false
           end
         end
         return true
-      end, 60)
+      end, 70)
 
       -- The cache should have been deleted on every node available
       for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
@@ -377,8 +391,9 @@ describe("Cluster", function()
             path = "/cache/"..cache.all_apis_by_dict_key(),
             headers = {}
           })
+          api_client:close()
           return res.status == 404
-        end, 5)
+        end, 70)
       end
     end)
   end)

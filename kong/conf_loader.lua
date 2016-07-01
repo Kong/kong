@@ -70,6 +70,7 @@ local CONF_INFERENCES = {
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
 
+  cluster_profile = {enum = {"local", "lan", "wan"}},
   cluster_ttl_on_failure = {typ = "number"},
 
   dnsmasq = {typ = "boolean"},

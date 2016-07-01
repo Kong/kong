@@ -5,7 +5,6 @@ describe("Admin API", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
     assert(helpers.start_kong())
 
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
@@ -15,7 +14,7 @@ describe("Admin API", function()
       client:close()
     end
     helpers.stop_kong()
-    helpers.clean_prefix()
+    --helpers.clean_prefix()
   end)
 
   describe("/plugins/enabled", function()
@@ -157,7 +156,7 @@ describe("Admin API", function()
         local json = cjson.decode(body)
         assert.is_table(json.fields)
       end)
-      it("returns 404 on invalid plugin", function()
+      it("#only returns 404 on invalid plugin", function()
         local res = assert(client:send {
           method = "GET",
           path = "/plugins/schema/foobar",

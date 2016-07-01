@@ -1,6 +1,10 @@
 local helpers = require "spec.helpers"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
 
 describe("kong compile", function()
+  setup(function()
+    assert(prefix_handler.prepare_prefix(helpers.test_conf))
+  end)
   it("compiles a Kong NGINX config", function()
     local _, stderr, stdout = helpers.kong_exec "compile"
     assert.equal("", stderr)

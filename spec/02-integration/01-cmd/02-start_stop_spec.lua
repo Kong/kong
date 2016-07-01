@@ -1,11 +1,6 @@
 local helpers = require "spec.helpers"
-local pl_dir = require "pl.dir"
-local pl_path = require "pl.path"
 
 describe("kong start/stop", function()
-  setup(function()
-    helpers.prepare_prefix()
-  end)
   teardown(function()
     helpers.kill_all()
     helpers.clean_prefix()

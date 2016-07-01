@@ -6,6 +6,7 @@ local pl_utils = require "pl.utils"
 local pl_stringx = require "pl.stringx"
 local resty_lock = require "resty.lock"
 local singletons = require "kong.singletons"
+local constants = require "kong.constants"
 local concat = table.concat
 local udp_sock = ngx.socket.udp
 
@@ -51,8 +52,8 @@ system_infos = get_system_infos()
 local function send(t, host, port)
   if not enabled then return end
   t = t or {}
-  host = host or "kong-hf.mashape.com"
-  port = port or 61828
+  host = host or constants.SYSLOG.ADDRESS
+  port = port or constants.SYSLOG.PORT
 
   local buf = {}
   for k, v in pairs(system_infos) do

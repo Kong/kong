@@ -360,7 +360,7 @@ local function res_status(state, args)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
-    return true, {body}
+    return true, {pl_stringx.strip(body)}
   end
 end
 say:set("assertion.res_status.negative", [[
@@ -602,10 +602,6 @@ return {
   proxy_client = proxy_client,
   admin_client = admin_client,
 
-  prepare_prefix = function(prefix)
-    prefix = prefix or conf.prefix
-    return pl_dir.makepath(prefix)
-  end,
   clean_prefix = function(prefix)
     prefix = prefix or conf.prefix
     if pl_path.exists(prefix) then

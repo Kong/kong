@@ -6,7 +6,7 @@ describe("Plugin: key-auth", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "key-auth1.com",
@@ -37,7 +37,6 @@ describe("Plugin: key-auth", function()
       consumer_id = consumer1.id
     })
 
-    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
   teardown(function()

@@ -6,7 +6,7 @@ describe("Plugin: oauth2", function()
   local proxy_ssl_client, proxy_client
   setup(function()
     helpers.kill_all()
-    assert(helpers.prepare_prefix())
+    assert(helpers.start_kong())
 
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
@@ -127,7 +127,6 @@ describe("Plugin: oauth2", function()
       }
     })
 
-    assert(helpers.start_kong())
     proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     proxy_ssl_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
     proxy_ssl_client:ssl_handshake()
@@ -160,7 +159,8 @@ describe("Plugin: oauth2", function()
         ["Content-Type"] = "application/json"
       }
     })
-    local body = cjson.decode(res:read_body())
+
+    local body = cjson.decode(assert.res_status(200, res))
     if body.redirect_uri then
       local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
       assert.is_nil(err)
@@ -907,14 +907,36 @@ describe("Plugin: oauth2", function()
         assert.are.equal("hello", body.headers["x-authenticated-userid"])
       end)
       it("works in a multipart request", function()
-        error("TODO")
-        --[[
-        local response, status = http_client.post_multipart(PROXY_SSL_URL.."/oauth2/token", { client_id = "clientid123", client_secret="secret123", scope = "email", grant_type = "client_credentials", authenticated_userid = "hello", provision_key = "provision123" }, {host = "oauth2_4.com"})
-        assert.are.equal(200, status)
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = { 
+            client_id = "clientid123", 
+            client_secret="secret123", 
+            scope = "email", 
+            grant_type = "client_credentials", 
+            authenticated_userid = "hello", 
+            provision_key = "provision123" 
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "multipart/form-data"
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
 
-        local _, status = http_client.post_multipart(PROXY_SSL_URL.."/request", { access_token = cjson.decode(response).access_token }, {host = "oauth2_4.com"})
-        assert.are.equal(200, status)
-        --]]
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          body = { 
+            access_token = body.access_token 
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "multipart/form-data"
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 

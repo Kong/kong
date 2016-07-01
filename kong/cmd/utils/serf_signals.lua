@@ -63,7 +63,7 @@ function _M.start(kong_config, dao)
     ["-advertise"] = kong_config.cluster_advertise,
     ["-encrypt"] = kong_config.cluster_encrypt_key,
     ["-log-level"] = "err",
-    ["-profile"] = "wan",
+    ["-profile"] = kong_config.cluster_profile,
     ["-node"] = serf.node_name,
     ["-event-handler"] = "member-join,member-leave,member-failed,"
                        .."member-update,member-reap,user:"

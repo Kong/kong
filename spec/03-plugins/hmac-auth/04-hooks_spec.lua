@@ -8,8 +8,8 @@ local crypto = require "crypto"
 describe("Plugin: hmac-auth (hooks)", function()
   local client_proxy, client_admin, consumer, credential
   setup(function()
-    helpers.dao:truncate_tables()
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "hmacauth.com",
@@ -35,8 +35,6 @@ describe("Plugin: hmac-auth (hooks)", function()
         consumer_id = consumer.id
     })
 
-    assert(helpers.prepare_prefix())
-    assert(helpers.start_kong())
     client_proxy = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     client_admin = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
