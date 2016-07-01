@@ -71,7 +71,7 @@ end
 
 function _M.stop(kong_config)
   log.verbose("stopping dnsmasq at %s", kong_config.dnsmasq_pid)
-  return kill(kong_config.dnsmasq_pid, "-9")
+  return kill(kong_config.dnsmasq_pid, "-15") -- SIGTERM
 end
 
 return _M
