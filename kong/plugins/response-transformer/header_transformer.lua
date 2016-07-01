@@ -1,9 +1,8 @@
-local stringy = require "stringy"
-
-local table_insert = table.insert
-local unpack = unpack
+local insert = table.insert
 local type = type
-local string_find = string.find
+local find = string.find
+local lower = string.lower
+local match = string.match
 
 local _M = {}
 
@@ -14,7 +13,10 @@ local function iter(config_array)
     if header_to_test == nil then -- n + 1
       return nil
     end
-    local header_to_test_name, header_to_test_value = unpack(stringy.split(header_to_test, ":"))
+
+    local header_to_test_name, header_to_test_value = match(header_to_test, "^([^:]+):*(.-)$")
+    if header_to_test_value == "" then header_to_test_value = nil end
+    
     return i, header_to_test_name, header_to_test_value  
   end, config_array, 0
 end
@@ -25,7 +27,7 @@ local function append_value(current_value, value)
   if current_value_type == "string" then
     return {current_value, value}
   elseif current_value_type == "table" then
-    table_insert(current_value, value)
+    insert(current_value, value)
     return current_value  
   else
     return {value} 
@@ -33,7 +35,7 @@ local function append_value(current_value, value)
 end
 
 local function is_json_body(content_type)
-  return content_type and string_find(content_type:lower(), "application/json", nil, true)
+  return content_type and find(lower(content_type), "application/json", nil, true)
 end
 
 local function is_body_transform_set(conf)

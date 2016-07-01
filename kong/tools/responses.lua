@@ -124,7 +124,7 @@ local function send_response(status_code)
     elseif content then
       ngx.say(cjson.encode({ message = content }))
     end
-
+    
     return ngx.exit(status_code)
   end
 end
