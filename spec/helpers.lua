@@ -360,7 +360,7 @@ local function res_status(state, args)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
-    return true, {body}
+    return true, {pl_stringx.strip(body)}
   end
 end
 say:set("assertion.res_status.negative", [[
