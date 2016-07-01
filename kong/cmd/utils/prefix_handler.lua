@@ -73,17 +73,19 @@ local function gen_default_ssl_cert(kong_config)
   return true
 end
 
+local function get_ulimit()
+  local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
+  if not ok then return nil, stderr end
+  return tonumber(pl_stringx.strip(stdout))
+end
+
 local function gather_system_infos(compile_env)
   local infos = {}
 
-  local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
-  if not ok then return nil, stderr end
-  infos.worker_rlimit = tonumber(pl_stringx.strip(stdout))
-  infos.worker_connections = infos.worker_rlimit > 16384 and 16384 or infos.worker_rlimit
-
-  if infos.worker_rlimit < 4096 then
-    log.warn(string.format("ulimit is currently set to \"%d\". For better performance set it to at least \"4096\" using \"ulimit -n\"", infos.worker_rlimit))
-  end
+  local ulimit, err = get_ulimit()
+  if not ulimit then return nil, err end
+  infos.worker_rlimit = ulimit
+  infos.worker_connections = ulimit > 16384 and 16384 or ulimit
 
   return infos
 end
@@ -113,7 +115,7 @@ local function compile_conf(kong_config, conf_template, env_t)
 
   if kong_config.anonymous_reports then
     -- If there is no internet connection, disable this feature
-    if socket.dns.toip(constants.SYSLOG.ADDRESS) then 
+    if socket.dns.toip(constants.SYSLOG.ADDRESS) then
       compile_env["syslog_reports"] = string.format("error_log syslog:server=%s:%d error;", 
                                                     constants.SYSLOG.ADDRESS, 
                                                     constants.SYSLOG.PORT)
@@ -185,6 +187,13 @@ local function prepare_prefix(kong_config)
       ssl_cert = kong_config.ssl_cert_default
       ssl_cert_key = kong_config.ssl_cert_key_default
     end
+  end
+
+  -- check ulimit
+  local ulimit, err = get_ulimit()
+  if not ulimit then return nil, err end
+  if ulimit < 4096 then
+    log.warn(string.format("ulimit is currently set to \"%d\". For better performance set it to at least \"4096\" using \"ulimit -n\"", ulimit))
   end
 
   -- write NGINX conf

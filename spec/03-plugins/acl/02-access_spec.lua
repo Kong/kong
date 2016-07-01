@@ -173,14 +173,16 @@ describe("Plugin: ACL", function()
       api_id = api7.id,
       config = {}
     })
-
+  end)
+  before_each(function()
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     api_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
+  after_each(function ()
+    client:close()
+    api_client:close()
+  end)
   teardown(function()
-    if client then
-      client:close()
-    end
     helpers.stop_kong()
     --helpers.clean_prefix()
   end)
