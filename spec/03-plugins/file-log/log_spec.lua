@@ -11,6 +11,7 @@ describe("Plugin: file-log", function()
   local client
   setup(function()
     helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "file_logging.com",
@@ -23,8 +24,6 @@ describe("Plugin: file-log", function()
         path = FILE_LOG_PATH
       }
     })
-
-    assert(helpers.start_kong())
   end)
 
   teardown(function()

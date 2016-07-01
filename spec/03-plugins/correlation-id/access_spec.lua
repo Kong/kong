@@ -7,7 +7,8 @@ local UUID_COUNTER_PATTERN = UUID_PATTERN.."#%d"
 describe("Correlation ID Plugin", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "correlation1.com",
@@ -42,7 +43,6 @@ describe("Correlation ID Plugin", function()
       }
     })
 
-    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
 

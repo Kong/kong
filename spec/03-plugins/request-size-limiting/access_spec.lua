@@ -3,7 +3,8 @@ local helpers = require "spec.helpers"
 describe("Plugin: request-size-limiting", function()
   local client
   setup(function()
-    helpers.dao:truncate_tables()
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api = assert(helpers.dao.apis:insert {
       request_host = "limit.com",
@@ -17,7 +18,6 @@ describe("Plugin: request-size-limiting", function()
       }
     })
 
-    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
   teardown(function()

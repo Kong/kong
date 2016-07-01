@@ -6,7 +6,9 @@ local pl_stringx = require "pl.stringx"
 describe("Plugin hooks: oauth2", function()
   local admin_client, proxy_client
   setup(function()
+    helpers.kill_all()
     assert(helpers.start_kong())
+
     proxy_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
     proxy_client:ssl_handshake()
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
@@ -74,7 +76,8 @@ describe("Plugin hooks: oauth2", function()
         ["Content-Type"] = "application/json"
       }
     })
-    local body = cjson.decode(res:read_body())
+    local raw_body = res:read_body()
+    local body = cjson.decode(raw_body)
     if body.redirect_uri then
       local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
       assert.is_nil(err)

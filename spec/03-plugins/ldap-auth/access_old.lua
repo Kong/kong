@@ -9,6 +9,9 @@ local API_URL = spec_helper.API_URL
 
 describe("LDAP-AUTH Plugin", function()
   setup(function()
+    helpers.kill_all()
+    assert(helpers.start_kong())
+
     spec_helper.prepare_db()
     spec_helper.insert_fixtures {
       api = {
@@ -20,8 +23,6 @@ describe("LDAP-AUTH Plugin", function()
         {name = "ldap-auth", config = {ldap_host = "ldap.forumsys.com", ldap_port = "389", start_tls = false, base_dn = "dc=example,dc=com", attribute = "uid", hide_credentials = true}, __api = 2},
       }
     }
-  
-    spec_helper.start_kong()
   end)
   
   teardown(function()

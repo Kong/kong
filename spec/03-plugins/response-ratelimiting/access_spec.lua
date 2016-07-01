@@ -19,6 +19,7 @@ describe("Plugin: response-ratelimiting", function()
 
   local function prepare()
     helpers.kill_all()
+    assert(helpers.start_kong())
 
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())
@@ -136,8 +137,6 @@ describe("Plugin: response-ratelimiting", function()
       api_id = api8.id,
       config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }
     })
-
-    assert(helpers.start_kong())
   end
 
   setup(function()

@@ -6,6 +6,7 @@ describe("Plugin: oauth2", function()
   local proxy_ssl_client, proxy_client
   setup(function()
     helpers.kill_all()
+    assert(helpers.start_kong())
 
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
@@ -126,7 +127,6 @@ describe("Plugin: oauth2", function()
       }
     })
 
-    assert(helpers.start_kong())
     proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     proxy_ssl_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
     proxy_ssl_client:ssl_handshake()

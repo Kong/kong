@@ -6,6 +6,7 @@ describe("Plugin: basic-auth", function()
   local client
   setup(function()
     helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "basic-auth1.com",
@@ -37,7 +38,6 @@ describe("Plugin: basic-auth", function()
       consumer_id = consumer.id
     })
 
-    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
   teardown(function()

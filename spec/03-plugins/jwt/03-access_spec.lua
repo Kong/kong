@@ -16,7 +16,8 @@ describe("JWT access", function()
   local proxy_client, admin_client
 
   setup(function()
-    helpers.dao:truncate_tables()
+    helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", request_host = "jwt.com", upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"})
@@ -48,7 +49,6 @@ describe("JWT access", function()
       rsa_public_key = fixtures.rs256_public_key
     })
 
-    assert(helpers.start_kong())
     proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)

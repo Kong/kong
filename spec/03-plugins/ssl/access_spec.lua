@@ -9,6 +9,7 @@ describe("Plugin: ssl", function()
   local client, client_ssl, api3
   setup(function()
     helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "ssl1.com",
@@ -56,8 +57,6 @@ describe("Plugin: ssl", function()
         accept_http_if_already_terminated = true
       }
     })
-
-    assert(helpers.start_kong())
 
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     client_ssl = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))

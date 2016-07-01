@@ -6,7 +6,8 @@ describe("Plugin: ACL", function()
   local client, api_client
   setup(function()
     helpers.kill_all()
-
+    assert(helpers.start_kong())
+    
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -173,7 +174,6 @@ describe("Plugin: ACL", function()
       config = {}
     })
 
-    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     api_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)

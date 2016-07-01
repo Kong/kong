@@ -27,6 +27,7 @@ describe("Plugin: http-log", function()
   local client
   setup(function()
     helpers.kill_all()
+    assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "http_logging.com",
@@ -51,8 +52,6 @@ describe("Plugin: http-log", function()
         http_endpoint = "https://mockbin.org/bin/"..mock_bin_https
       }
     })
-
-    assert(helpers.start_kong())
   end)
 
   teardown(function()

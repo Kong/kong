@@ -6,7 +6,7 @@ local jwt_secrets = helpers.dao.jwt_secrets
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
   setup(function()
-    helpers.dao:truncate_tables()
+    helpers.kill_all()
     assert(helpers.start_kong())
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)

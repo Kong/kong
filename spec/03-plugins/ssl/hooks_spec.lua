@@ -19,6 +19,8 @@ describe("Plugin hooks: ssl", function()
 
   before_each(function()
     helpers.kill_all()
+    assert(helpers.start_kong())
+
     api = assert(helpers.dao.apis:insert {
       request_host = "ssl1.com",
       upstream_url = "http://mockbin.com"
@@ -31,8 +33,7 @@ describe("Plugin hooks: ssl", function()
         key = ssl_fixtures.key
       }
     })
-    assert(helpers.start_kong())
-
+    
     proxy_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
     proxy_client:ssl_handshake()
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))

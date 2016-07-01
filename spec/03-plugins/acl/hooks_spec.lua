@@ -4,7 +4,9 @@ local cache = require "kong.tools.database_cache"
 describe("Plugin hooks: ACL", function()
   local admin_client, proxy_client
   setup(function()
+    helpers.kill_all()
     assert(helpers.start_kong())
+    
     proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)

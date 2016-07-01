@@ -6,7 +6,7 @@ local function wait()
   -- fail. So we give it this test 30 seconds to execute, and if the second
   -- of the current minute is > 30, then we wait till the new minute kicks in
   local current_second = timestamp.get_timetable().sec
-  if current_second > 20 then
+  if current_second > 1 then
     os.execute("sleep "..tostring(60 - current_second))
   end
 end
@@ -16,9 +16,10 @@ describe("Plugin: rate-limiting", function()
 
   local function prepare()
     helpers.kill_all()
-
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())
+
+    assert(helpers.start_kong())
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       custom_id = "provider_123"
@@ -130,10 +131,11 @@ describe("Plugin: rate-limiting", function()
       consumer_id = consumer1.id,
       config = { minute = 6, continue_on_error = true }
     })
-
-    assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end
+
+  before_each(function()
+    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+  end)
 
   setup(function()
     prepare()
@@ -153,6 +155,7 @@ describe("Plugin: rate-limiting", function()
       local limit = 6
 
       for i = 1, limit do
+        --client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
         local res = assert(client:send {
           method = "GET",
           path = "/status/200/",
