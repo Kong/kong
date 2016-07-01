@@ -9,9 +9,9 @@ local pl_path = require "pl.path"
 local pl_dir = require "pl.dir"
 local socket = require "socket"
 local utils = require "kong.tools.utils"
-local ssl = require "kong.cmd.utils.ssl"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
+local fmt = string.format
 
 -- script from old services.serf module
 local script_template = [[
@@ -38,7 +38,42 @@ client:request { \
 resty -e "$CMD"
 ]]
 
-local function gather_system_infos()
+local function gen_default_ssl_cert(kong_config)
+  -- create SSL folder
+  local ok, err = pl_dir.makepath(pl_path.join(kong_config.prefix, "ssl"))
+  if not ok then return nil, err end
+
+  local ssl_cert = kong_config.ssl_cert_default
+  local ssl_cert_key = kong_config.ssl_cert_key_default
+  local ssl_cert_csr = kong_config.ssl_cert_csr_default
+
+  if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
+    log.verbose("auto-generating default SSL certificate and key...")
+
+    local passphrase = utils.random_string()
+    local commands = {
+      fmt("openssl genrsa -des3 -out %s -passout pass:%s 1024", ssl_cert_key, passphrase),
+      fmt("openssl req -new -key %s -out %s -subj \"/C=US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost\" -passin pass:%s", ssl_cert_key, ssl_cert_csr, passphrase),
+      fmt("cp %s %s.org", ssl_cert_key, ssl_cert_key),
+      fmt("openssl rsa -in %s.org -out %s -passin pass:%s", ssl_cert_key, ssl_cert_key, passphrase),
+      fmt("openssl x509 -req -in %s -signkey %s -out %s", ssl_cert_csr, ssl_cert_key, ssl_cert),
+      fmt("rm %s", ssl_cert_csr),
+      fmt("rm %s.org", ssl_cert_key)
+    }
+    for i = 1, #commands do
+      local ok, _, _, stderr = pl_utils.executeex(commands[i])
+      if not ok then
+        return nil, "could not generate default SSL certificate: "..stderr
+      end
+    end
+  else
+    log.verbose("default SSL certificate found at %s", ssl_cert)
+  end
+
+  return true
+end
+
+local function gather_system_infos(compile_env)
   local infos = {}
 
   local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
@@ -53,27 +88,19 @@ local function gather_system_infos()
   return infos
 end
 
-local function compile_conf(kong_config, conf_template)
+local function compile_conf(kong_config, conf_template, env_t)
+  env_t = env_t or {}
+
   -- computed config properties for templating
   local compile_env = {
     _escape = ">",
     pairs = pairs,
-    tostring = tostring,
-    nginx_vars = {}
+    tostring = tostring
   }
-
-  local ssl_data, err = ssl.get_ssl_cert_and_key(kong_config, kong_config.prefix)
-  if not ssl_data then return nil, err end
 
   if kong_config.cassandra_ssl and kong_config.cassandra_ssl_trusted_cert then
     compile_env["lua_ssl_trusted_certificate"] = kong_config.cassandra_ssl_trusted_cert
   end
-
-  if kong_config.ssl then
-    compile_env["ssl_cert"] = ssl_data.ssl_cert
-    compile_env["ssl_cert_key"] = ssl_data.ssl_cert_key
-  end
-
   if kong_config.dnsmasq then
     compile_env["dns_resolver"] = "127.0.0.1:"..kong_config.dnsmasq_port
   end
@@ -94,6 +121,7 @@ local function compile_conf(kong_config, conf_template)
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
+  compile_env = pl_tablex.merge(compile_env, env_t, true) -- union
 
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)
@@ -102,16 +130,12 @@ local function compile_conf(kong_config, conf_template)
   end)
 end
 
-local function compile_kong_conf(kong_config)
-  return compile_conf(kong_config, kong_nginx_template)
+local function compile_kong_conf(kong_config, env_t)
+  return compile_conf(kong_config, kong_nginx_template, env_t)
 end
 
 local function compile_nginx_conf(kong_config)
   return compile_conf(kong_config, nginx_template)
-end
-
-local function touch(file_path)
-  return pl_utils.executeex("touch "..file_path)
 end
 
 local function prepare_prefix(kong_config)
@@ -132,9 +156,9 @@ local function prepare_prefix(kong_config)
   end
 
   -- create log files in case
-  local ok, _, _, stderr = touch(kong_config.nginx_err_logs)
+  local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_err_logs)
   if not ok then return nil, stderr end
-  local ok, _, _, stderr = touch(kong_config.nginx_acc_logs)
+  local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_acc_logs)
   if not ok then return nil, stderr end
 
   log.verbose("saving Serf identifier in %s", kong_config.serf_node_id)
@@ -149,9 +173,19 @@ local function prepare_prefix(kong_config)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end
 
-  -- auto-generate default SSL certificate
-  local ok, err = ssl.prepare_ssl_cert_and_key(kong_config.prefix)
-  if not ok then return nil, err end
+  local ssl_cert
+  local ssl_cert_key
+  if kong_config.ssl then
+    ssl_cert = kong_config.ssl_cert
+    ssl_cert_key = kong_config.ssl_cert_key
+    if not ssl_cert and not ssl_cert_key then
+      -- must generate default cert
+      local ok, err = gen_default_ssl_cert(kong_config)
+      if not ok then return nil, err end
+      ssl_cert = kong_config.ssl_cert_default
+      ssl_cert_key = kong_config.ssl_cert_key_default
+    end
+  end
 
   -- write NGINX conf
   local nginx_conf, err = compile_nginx_conf(kong_config)
@@ -159,7 +193,10 @@ local function prepare_prefix(kong_config)
   pl_file.write(kong_config.nginx_conf, nginx_conf)
 
   -- write Kong's NGINX conf
-  local kong_nginx_conf, err = compile_kong_conf(kong_config)
+  local kong_nginx_conf, err = compile_kong_conf(kong_config, {
+    ssl_cert = ssl_cert,
+    ssl_cert_key = ssl_cert_key
+  })
   if not kong_nginx_conf then return nil, err end
   pl_file.write(kong_config.nginx_kong_conf, kong_nginx_conf)
 
@@ -179,6 +216,7 @@ local function prepare_prefix(kong_config)
 end
 
 return {
+  gen_default_ssl_cert = gen_default_ssl_cert,
   compile_nginx_conf = compile_nginx_conf,
   compile_kong_conf = compile_kong_conf,
   prepare_prefix = prepare_prefix

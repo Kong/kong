@@ -65,7 +65,6 @@ build = {
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
-    ["kong.cmd.utils.ssl"] = "kong/cmd/utils/ssl.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",
     ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",

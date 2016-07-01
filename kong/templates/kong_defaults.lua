@@ -39,6 +39,7 @@ cluster_listen = 0.0.0.0:7946
 cluster_listen_rpc = 127.0.0.1:7373
 cluster_advertise = NONE
 cluster_encrypt_key = NONE
+cluster_profile = wan
 cluster_ttl_on_failure = 3600
 
 dnsmasq = on
