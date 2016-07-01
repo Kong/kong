@@ -3,15 +3,14 @@ local cjson = require "cjson"
 
 describe("helpers: assertions and modifiers;", function()
   local client
-  local api1, api2
 
   setup(function()
     helpers.dao:truncate_tables()
     helpers.execute "pkill nginx; pkill serf"
     assert(helpers.prepare_prefix())
 
-    api1 = assert(helpers.dao.apis:insert {name = "test-1", request_host = "mockbin.com", upstream_url = "http://mockbin.com"})
-    api2 = assert(helpers.dao.apis:insert {name = "test-2", request_host = "httpbin.org", upstream_url = "http://httpbin.org"})
+    assert(helpers.dao.apis:insert {name = "test-1", request_host = "mockbin.com", upstream_url = "http://mockbin.com"})
+    assert(helpers.dao.apis:insert {name = "test-2", request_host = "httpbin.org", upstream_url = "http://httpbin.org"})
 
     assert(helpers.start_kong())
   end)
@@ -84,7 +83,7 @@ describe("helpers: assertions and modifiers;", function()
       assert.request(r).True(true)
     
       -- POST request
-      local r, err = assert(client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/post",
         body = {
@@ -98,7 +97,7 @@ describe("helpers: assertions and modifiers;", function()
       assert.request(r).True(true)
     end)
     it("fails with a non httpbin/mockbin response", function()
-      local r, err = assert(client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/headers",   -- this path is not supported, but should yield valid json for the test
         headers = {
@@ -127,7 +126,7 @@ describe("helpers: assertions and modifiers;", function()
           host = "httpbin.org",
         }
       })
-      local body = assert.status(200, r)
+      assert.status(200, r)
       local body = assert.response(r).has.status(200)
       assert(cjson.decode(body))
       

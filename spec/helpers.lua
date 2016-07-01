@@ -258,7 +258,8 @@ local function modifier_request(state, arguments, level)
   local res = arguments[1]
   assert((type(res) == "table") and (type(res.read_body) == "function"),
     "Expected a http response object, got '"..tostring(res).."'. "..generic)
-  local body, err = assert(res:read_body())
+  local body, err
+  body = assert(res:read_body())
   body, err = cjson.decode(body)
   assert(body, "Expected the http response object to have a json encoded body, but decoding gave error '"..tostring(err).."'. "..generic)
   -- check if it is a mockbin request
