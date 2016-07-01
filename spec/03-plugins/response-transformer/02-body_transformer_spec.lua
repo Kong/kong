@@ -12,7 +12,7 @@ describe("Plugin: response transformer", function()
           json = {}
         },
         add = {
-          json = {"p1:v1", "p3:v3", "p4:\"v1\""}
+          json = {"p1:v1", "p3:value:3", "p4:\"v1\""}
         },
         append = {
           json = {}
@@ -22,13 +22,13 @@ describe("Plugin: response transformer", function()
         local json = [[{"p2":"v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({p1 = "v1", p2 = "v1", p3 = "v3", p4 = '"v1"'}, body_json)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"'}, body_json)
       end)
       it("add value in double quotes", function()
         local json = [[{"p2":"v1"}]]
         local body = body_transformer.transform_json_body(conf, json)
         local body_json = cjson.decode(body)
-        assert.same({p1 = "v1", p2 = "v1", p3 = "v3", p4 = '"v1"'}, body_json)
+        assert.same({p1 = "v1", p2 = "v1", p3 = "value:3", p4 = '"v1"'}, body_json)
       end)
     end)
 

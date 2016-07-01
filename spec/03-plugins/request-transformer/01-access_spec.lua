@@ -22,7 +22,7 @@ describe("plugin: request transformer", function()
       name = "request-transformer",
       config = {
         add = {
-          headers = {"h1:v1", "h2:v2"},
+          headers = {"h1:v1", "h2:value:2"}, -- payload containing a colon
           querystring = {"q1:v1"},
           body = {"p1:v1"}
         }
@@ -45,7 +45,7 @@ describe("plugin: request transformer", function()
       config = {
         add = {
           headers = {"x-added:a1", "x-added2:b1", "x-added3:c2"},
-          querystring = {"query-added:newvalue", "p1:a1"},
+          querystring = {"query-added:newvalue", "p1:anything:1"},   -- payload containing a colon
           body = {"newformparam:newvalue"}
         },
         remove = {
@@ -94,7 +94,7 @@ describe("plugin: request transformer", function()
         append = {
           headers = {"h1:v1", "h1:v2", "h2:v1",},
           querystring = {"q1:v1", "q1:v2", "q2:v1"},
-          body = {"p1:v1", "p1:v2", "p2:v1"}
+          body = {"p1:v1", "p1:v2", "p2:value:1"}     -- payload containing a colon
         }
       }
     })
@@ -467,7 +467,7 @@ describe("plugin: request transformer", function()
       local h_h1 = assert.request(r).has.header("h1")
       assert.equals("v1", h_h1)
       local h_h2 = assert.request(r).has.header("h2")
-      assert.equals("v2", h_h2)
+      assert.equals("value:2", h_h2)
     end)
     it("does not change or append value if header already exists", function()
       local r = assert( client:send {
@@ -483,7 +483,7 @@ describe("plugin: request transformer", function()
       local h_h1 = assert.request(r).has.header("h1")
       assert.equals("v3", h_h1)
       local h_h2 = assert.request(r).has.header("h2")
-      assert.equals("v2", h_h2)
+      assert.equals("value:2", h_h2)
     end)
     it("new parameter in url encoded body on POST", function()
       local r = assert(client:send {
@@ -721,7 +721,7 @@ describe("plugin: request transformer", function()
       assert.response(r).has.status(200)
       local json = assert.response(r).has.jsonbody()
       assert.are.same({"v1", "v2"}, json.postData.params.p1)
-      assert.are.same("v1", json.postData.params.p2)
+      assert.are.same("value:1", json.postData.params.p2)
     end)
     it("values to existing parameter in url encoded body if parameter already exist on POST", function()
       local r = assert( client:send {
@@ -738,7 +738,7 @@ describe("plugin: request transformer", function()
       assert.response(r).has.status(200)
       local json = assert.response(r).has.jsonbody()
       assert.are.same({"v0", "v1", "v2"}, json.postData.params.p1)
-      assert.are.same("v1", json.postData.params.p2)
+      assert.are.same("value:1", json.postData.params.p2)
     end)
     it("does not fail if JSON body is malformed in POST", function()
       local r = assert(client:send {
@@ -967,7 +967,7 @@ describe("plugin: request transformer", function()
       })
       assert.response(r).has.status(200)
       local value = assert.request(r).has.queryparam("p1")
-      assert.equals("a1", value[1])
+      assert.equals("anything:1", value[1])
       assert.equals("a2", value[2])
       local value = assert.request(r).has.queryparam("q1")
       assert.equals("20", value)

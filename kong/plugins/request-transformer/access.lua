@@ -1,4 +1,3 @@
-local stringy = require "stringy"
 local multipart = require "multipart"
 local cjson = require "cjson"
 
@@ -16,8 +15,6 @@ local ngx_decode_args = ngx.decode_args
 local type = type
 local string_find = string.find
 local pcall = pcall
-
-local unpack = unpack
 
 local _M = {}
 
@@ -62,7 +59,10 @@ local function iter(config_array)
     if current_pair == nil then -- n + 1
       return nil
     end
-    local current_name, current_value = unpack(stringy.split(current_pair, ":"))
+
+    local current_name, current_value = current_pair:match("^([^:]+):*(.-)$")
+    if current_value == "" then current_value = nil end
+
     return i, current_name, current_value
   end, config_array, 0
 end
