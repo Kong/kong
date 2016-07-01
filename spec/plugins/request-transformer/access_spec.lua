@@ -22,7 +22,7 @@ describe("Request Transformer", function()
           name = "request-transformer",
           config = {
             add = {
-              headers = {"h1:v1", "h2:v2"},
+              headers = {"h1:v1", "h2:value:2"}, -- payload containing a colon
               querystring = {"q1:v1"},
               body = {"p1:v1"}
             }
@@ -43,7 +43,7 @@ describe("Request Transformer", function()
           config = {
             add = {
               headers = {"x-added:a1", "x-added2:b1", "x-added3:c2"},
-              querystring = {"query-added:newvalue", "p1:a1"},
+              querystring = {"query-added:newvalue", "p1:anything:1"},   -- payload containing a colon
               body = {"newformparam:newvalue"}
             },
             remove = {
@@ -89,7 +89,7 @@ describe("Request Transformer", function()
             append = {
               headers = {"h1:v1", "h1:v2", "h2:v1",},
               querystring = {"q1:v1", "q1:v2", "q2:v1"},
-              body = {"p1:v1", "p1:v2", "p2:v1"}
+              body = {"p1:v1", "p1:v2", "p2:value:1"}     -- payload containing a colon
             }
           },
           __api = 6
@@ -247,14 +247,14 @@ describe("Request Transformer", function()
       local body = cjson.decode(response)
       assert.equal(200, status)
       assert.equal("v1", body.headers["h1"])
-      assert.equal("v2", body.headers["h2"])
+      assert.equal("value:2", body.headers["h2"])
     end)
     it("should not change or append value if header already exists", function()
       local response, status = http_client.get(STUB_GET_URL, {}, {host = "test1.com", h1 = "v3"})
       local body = cjson.decode(response)
       assert.equal(200, status)
       assert.equal("v3", body.headers["h1"])
-      assert.equal("v2", body.headers["h2"])
+      assert.equal("value:2", body.headers["h2"])
     end)
     it("should add new parameter in url encoded body on POST", function()
       local response, status = http_client.post(STUB_POST_URL, {hello = "world"}, {host = "test1.com"})
@@ -353,14 +353,14 @@ describe("Request Transformer", function()
       local body = cjson.decode(response)
       assert.equal(200, status)
       assert.same({"v1", "v2"}, body.postData.params["p1"])
-      assert.equal("v1", body.postData.params["p2"])
+      assert.equal("value:1", body.postData.params["p2"])
     end)
     it("should append values to existing parameter in url encoded body if parameter already exist on POST", function()
       local response, status = http_client.post(STUB_POST_URL, {p1 = "v0"}, {host = "test6.com"})
       local body = cjson.decode(response)
       assert.equal(200, status)
       assert.same({"v0", "v1", "v2"}, body.postData.params["p1"])
-      assert.equal("v1", body.postData.params["p2"])
+      assert.equal("value:1", body.postData.params["p2"])
     end)
     it("should not fail if JSON body is malformed in POST", function()
       local response, status = http_client.post(STUB_POST_URL, "malformed json body", {host = "test6.com", ["content-type"] = "application/json"})
@@ -454,7 +454,7 @@ describe("Request Transformer", function()
       local response, status = http_client.post(STUB_POST_URL.."/?q1=20", {hello = "world"}, {host = "test3.com"})
       local body = cjson.decode(response)
       assert.equal(200, status)
-      assert.equal("a1", body.queryString["p1"][1])
+      assert.equal("anything:1", body.queryString["p1"][1])
       assert.equal("a2", body.queryString["p1"][2])
       assert.equal("20", body.queryString["q1"])
     end)

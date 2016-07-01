@@ -14,7 +14,10 @@ local function iter(config_array)
     if header_to_test == nil then -- n + 1
       return nil
     end
-    local header_to_test_name, header_to_test_value = unpack(stringy.split(header_to_test, ":"))
+
+    local header_to_test_name, header_to_test_value = header_to_test:match("^([^:]+):*(.-)$")
+    if header_to_test_value == "" then header_to_test_value = nil end
+
     return i, header_to_test_name, header_to_test_value  
   end, config_array, 0
 end
