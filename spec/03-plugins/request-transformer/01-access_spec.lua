@@ -5,9 +5,7 @@ describe("plugin: request transformer", function()
   local api1, api2, api3, api4, api5, api6
 
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
 
     api1 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-1", request_host = "test1.com", upstream_url = "http://mockbin.com"})
     api2 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-2", request_host = "test2.com", upstream_url = "http://httpbin.org"})
