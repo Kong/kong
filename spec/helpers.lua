@@ -219,6 +219,9 @@ assert = function(...)
   kong_state = {}
   return old_assert(...)
 end
+-- tricky part: the assertions below, should not reset the `kong_state` inserted above. Hence
+-- we shadow the global assert (patched one) with a local assert (unpatched) to prevent this.
+local assert = old_assert
 
 --- Generic modifier "response".
 -- Will set a "response" value in the assertion state, so following
@@ -229,7 +232,11 @@ end
 -- local res = assert(client:send { ..your request parameters here ..})
 -- local length = assert.response(res).has.header("Content-Length")
 local function modifier_response(state, arguments, level)
-  kong_state.kong_response = arguments[1]
+  assert(arguments.n > 0, "response modifier requires a response object as argument")
+  local res = arguments[1]
+  assert((type(res) == "table") and (type(res.read_body) == "function"),
+    "response modifier requires a response object as argument, got; "..tostring(res))
+  kong_state.kong_response = res
   kong_state.kong_request = nil
   return state
 end
@@ -249,10 +256,18 @@ local function modifier_request(state, arguments, level)
                   "input to decode the json-body returned by httpbin.org/mockbin.org, "..
                   "to retrieve the proxied request."
   local res = arguments[1]
-  assert(type(res) == "table", "Expected a http response object, got '"..tostring(res).."'. "..generic)
-  assert(type(res.read_body) == "function", "Expected a http response object with a 'read_body' function. "..generic)
-  local body, err = cjson.decode(assert(res:read_body()))
+  assert((type(res) == "table") and (type(res.read_body) == "function"),
+    "Expected a http response object, got '"..tostring(res).."'. "..generic)
+  local body, err
+  body = assert(res:read_body())
+  body, err = cjson.decode(body)
   assert(body, "Expected the http response object to have a json encoded body, but decoding gave error '"..tostring(err).."'. "..generic)
+  -- check if it is a mockbin request
+  if lookup((res.headers or {}),"X-Powered-By") ~= "mockbin" then
+    -- not mockbin, so httpbin?
+    assert((type(body.url) == "string") and (body.url:find("//httpbin.org", 1, true)),
+      "Could not determine the response to be from either mockbin.com or httpbin.org")
+  end
   kong_state.kong_request = body
   kong_state.kong_response = nil
   return state
@@ -323,16 +338,12 @@ luassert:register("assertion", "contains", contains,
 -- local body = assert.has.status(200, res)             -- or alternativly
 -- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
-  local expected, res = unpack(args)
-  if not res then res = kong_state.kong_response end
-  if not res then
-    assert(not kong_state.kong_request, "Cannot check statuscode against a request object, only against a response object")
-    table.insert(args, 1, "")
-    table.insert(args, 1, "no response")
-    table.insert(args, 1, expected)
-    args.n = 3
-    return false
-  elseif expected ~= res.status then
+  assert(not kong_state.kong_request, "Cannot check statuscode against a request object, only against a response object")
+  local expected = args[1]
+  local res = args[2] or kong_state.kong_response
+  assert(type(expected) == "number", "Expected response code must be a number value. Got; "..tostring(expected))
+  assert((type(res) == "table") and (type(res.read_body) == "function"), "Expected a http_client response. Got; "..tostring(res))
+  if expected ~= res.status then
     local body, err = res:read_body()
     if not body then body = "Error reading body: "..tostring(err) end
     table.insert(args, 1, body)
@@ -340,9 +351,17 @@ local function res_status(state, args)
     table.insert(args, 1, expected)
     args.n = 3
     return false
+  else
+    local body, err = res:read_body()
+    local output = body
+    if not output then output = "Error reading body: "..tostring(err) end
+    output = pl_stringx.strip(output)
+    table.insert(args, 1, output)
+    table.insert(args, 1, res.status)
+    table.insert(args, 1, expected)
+    args.n = 3
+    return true, {body}
   end
-  local body = pl_stringx.strip(res:read_body())
-  return true, {body}
 end
 say:set("assertion.res_status.negative", [[
 Invalid response status code.
@@ -353,33 +372,50 @@ Status received:
 Body:
 %s
 ]])
+say:set("assertion.res_status.positive", [[
+Invalid response status code.
+Status not expected:
+%s
+Status received:
+%s
+Body:
+%s
+]])
 luassert:register("assertion", "status", res_status,
-                  "assertion.res_status.negative")
+                  "assertion.res_status.negative", "assertion.res_status.positive")
 luassert:register("assertion", "res_status", res_status,     -- TODO: remove this, for now will break too many existing tests
-                  "assertion.res_status.negative")
+                  "assertion.res_status.negative", "assertion.res_status.positive")
 
---- Checks and returns a json body of an http response/request.
+--- Checks and returns a json body of an http response/request. Only checks
+-- validity of the json, does not check appropriate headers. Setting the target to check 
+-- can be done through `request` or `response` (requests are only supported with mockbin.com).
 -- @name jsonbody
--- @param response (optional) results from `http_client:send` function. The request will be extracted from the response. Alternatively use `request` or `response`.
 -- @return the decoded json as a table
 -- @usage
 -- local res = assert(client:send { .. your request params here .. })
--- local json = assert.has.jsonbody(res)                -- or alternativly
--- local body = assert.response(res).has.jsonbody()     -- does the same
+-- local body = assert.response(res).has.jsonbody()
 local function jsonbody(state, args)
-  local res = args[1] or kong_state.kong_request or kong_state.kong_response
-  if (type(res) ~= "table") or (type(res.read_body) ~= "function") then
-    table.insert(args, 1, "< input is not a valid response object >")
-    return false
+  assert((args[1] == nil) and (kong_state.kong_request or kong_state.kong_response), 
+    "the `jsonbody` assertion does not take parameters. Use the `response`/`require` modifiers to set the target to operate on")
+  if kong_state.kong_response then
+    local body = kong_state.kong_response:read_body()
+    local json, err = cjson.decode(body)
+    if not json then
+      table.insert(args, 1, "Error decoding: "..tostring(err).."\nResponse body:"..tostring(body))
+      args.n = 1
+      return false
+    end
+    return true, {json}
+  else
+    assert(kong_state.kong_request.postData, "No post data found in the request. Only mockbin.com is supported!")
+    local json, err = cjson.decode(kong_state.kong_request.postData.text)
+    if not json then
+      table.insert(args, 1, "Error decoding: "..tostring(err).."\nRequest body:"..tostring(kong_state.kong_request.postData.text))
+      args.n = 1
+      return false
+    end
+    return true, {json}
   end
-  local body = res:read_body()
-  local json, err = cjson.decode(body)
-  if not json then
-    table.insert(args, 1, "Error decoding: "..tostring(err).."\nBody:"..tostring(body))
-    args.n = 1
-    return false
-  end
-  return true, {json}
 end
 say:set("assertion.jsonbody.negative", [[
 Expected response body to contain valid json. Got:
@@ -403,12 +439,8 @@ luassert:register("assertion", "jsonbody", jsonbody,
 local function res_header(state, args)
   local header = args[1]
   local res = args[2] or kong_state.kong_request or kong_state.kong_response
-  if (type(res) ~= "table") or (type(res.headers) ~= "table") then
-    table.insert(args, 1, "<< 'header' assertion input does not contain a 'headers' subtable >>")
-    table.insert(args, 1, header)
-    args.n = 2
-    return false
-  end
+  assert((type(res) == "table") and (type(res.headers) == "table"),
+    "'header' assertion input does not contain a 'headers' subtable")
   local value = lookup(res.headers, header)
   table.insert(args, 1, res.headers)
   table.insert(args, 1, header)
@@ -435,26 +467,25 @@ luassert:register("assertion", "header", res_header,
                   "assertion.res_header.positive")
 
 ---
--- Adds an assertion to look for a query parameter in a `queryString` subtable.
+-- An assertion to look for a query parameter in a `queryString` subtable.
 -- Parameter name comparison is done case-insensitive.
 -- @return value of the parameter
 local function req_query_param(state, args)
   local param = args[1]
-  local req = args[2] or kong_state.kong_request
-  if (not req) and kong_state.kong_response then
-    table.insert(args, 1, "<< 'queryparam' assertion only works with a request object >>")
-    table.insert(args, 1, param)
-    args.n = 2
-    return false
+  local req = kong_state.kong_request
+  assert(req, "'queryparam' assertion only works with a request object")
+  local params
+  if type(req.queryString) == "table" then
+    -- it's a mockbin one
+    params = req.queryString
+  elseif type(req.args) == "table" then
+    -- it's a httpbin one
+    params = req.args
+  else
+    error("No query parameters found in request object")
   end
-  if (type(req) ~= "table") or (type(req.queryString) ~= "table") then
-    table.insert(args, 1, "<< 'queryparam' assertion input does not contain a 'queryString' subtable >>")
-    table.insert(args, 1, param)
-    args.n = 2
-    return false
-  end
-  local value = lookup(req.queryString, param)
-  table.insert(args, 1, req.queryString)
+  local value = lookup(params, param)
+  table.insert(args, 1, params)
   table.insert(args, 1, param)
   args.n = 2
   if not value then
@@ -479,29 +510,26 @@ luassert:register("assertion", "queryparam", req_query_param,
                   "assertion.req_query_param.positive")
 
 ---
--- Adds an assertion to look for a urlencoded form parameter in a `postData.params` subtable.
--- Parameter name comparison is done case-insensitive.
+-- Adds an assertion to look for a urlencoded form parameter in a mockbin request.
+-- Parameter name comparison is done case-insensitive. Use the `request` modifier to set
+-- the request to operate on.
 -- @return value of the parameter
 local function req_form_param(state, args)
   local param = args[1]
-  local req = args[2] or kong_state.kong_request
-  if (not req) and kong_state.kong_request then
-    table.insert(args, 1, "<< 'formparam' assertion only works with a request object >>")
-    table.insert(args, 1, param)
-    args.n = 2
-    return false
+  local req = kong_state.kong_request
+  assert(req, "'formparam' assertion can only be used with a mockbin/httpbin request object")
+  
+  local value
+  if req.postData then
+    -- mockbin request
+    value = lookup((req.postData or {}).params, param)
+  elseif (type(req.url) == "string") and (req.url:find("//httpbin.org", 1, true)) then
+    -- hhtpbin request
+    value = lookup(req.form or {}, param)
+  else
+    error("Could not determine the request to be from either mockbin.com or httpbin.org")
   end
-  if (type(req) ~= "table") or (type(req.postData) ~= "table") or
-     (type(req.postData.params) ~= "table") then
-    table.insert(args, 1, "<< 'formparam' assertion input does not contain a 'postData.params' subtable >>")
-    table.insert(args, 1, param)
-    args.n = 2
-    return false
-  end
-  assert(req.postData.mimeType:lower():find("form-urlencoded",nil,true),
-    "'formparam' assertion didn't get urlencoded data but; "..tostring(req.postData.mimeType))
-  local value = lookup(req.postData.params, param)
-  table.insert(args, 1, req.postData)
+  table.insert(args, 1, req)
   table.insert(args, 1, param)
   args.n = 2
   if not value then
@@ -512,13 +540,13 @@ end
 say:set("assertion.req_form_param.negative", [[
 Expected url encoded form parameter:
 %s
-But it was not found in:
+But it was not found in request:
 %s
 ]])
 say:set("assertion.req_form_param.positive", [[
 Did not expected url encoded form parameter:
 %s
-But it was found in:
+But it was found in request:
 %s
 ]])
 luassert:register("assertion", "formparam", req_form_param,
