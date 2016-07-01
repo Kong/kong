@@ -86,12 +86,41 @@ local function without_body(method)
   end
 end
 
+--- Allows creation of non-compliant requests for testing bad requests.
+-- If the content-length header is not provided, but a body is, then the header 
+-- will be added based on the `body`. If a different length is needed, set it explicitly.
+-- @param method the http method to use
+-- @param url the url to use
+-- @param querystring (optional) will be encoded and appended to the url if given
+-- @param headers table with headers (optional)
+-- @param body string containing body (optional)
+local function raw(method, url, querystring, headers, body)
+  if not headers then headers = {} end
+
+  if querystring then
+    url = string.format("%s?%s", url, ngx.encode_args(querystring, true))
+  end
+  
+  if body and (not headers["content-length"]) then
+    headers["content-length"] = string.len(body)
+  end
+
+  return http_call {
+    method = method:upper(),
+    url = url,
+    headers = headers,
+    source = body and ltn12.source.string(body)
+  }
+end
+
+
 _M.put = with_body("PUT")
 _M.post = with_body("POST")
 _M.patch = with_body("PATCH")
 _M.get = without_body("GET")
 _M.delete = without_body("DELETE")
 _M.options = without_body("OPTIONS")
+_M.raw = raw
 
 function _M.post_multipart(url, form, headers)
   if not headers then headers = {} end

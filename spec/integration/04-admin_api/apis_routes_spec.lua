@@ -195,6 +195,16 @@ describe("Admin API", function()
         assert.equal(400, status)
         assert.equal([[{"foo":"unknown field"}]], stringy.strip(response))
       end)
+      it("should ignore the body", function()
+        local response, status = http_client.raw(
+              "get", 
+              BASE_URL, 
+              nil, 
+              {["content-type"] = "application/json"}, 
+              'this does not even look like json'
+            )
+        assert.equal(200, status)
+      end)
     end)
 
     describe("/apis/:api", function()
