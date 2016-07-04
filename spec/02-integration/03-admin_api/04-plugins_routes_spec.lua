@@ -58,6 +58,19 @@ describe("Admin API", function()
         assert.equal(3, #json.data)
       end)
     end)
+    it("returns 405 on invalid method", function()
+      local methods = {"DELETE", "PATCH"}
+      for i = 1, #methods do
+        local res = assert(client:send {
+          method = methods[i],
+          path = "/plugins",
+          body = {}, -- tmp: body to allow POST/PUT to work
+          headers = {["Content-Type"] = "application/json"}
+        })
+        local body = assert.response(res).has.status(405)
+        assert.equal([[{"message":"Method not allowed"}]], body)
+      end
+    end)
 
     describe("/plugins/{plugin}", function()
       describe("GET", function()
@@ -156,7 +169,7 @@ describe("Admin API", function()
         local json = cjson.decode(body)
         assert.is_table(json.fields)
       end)
-      it("#only returns 404 on invalid plugin", function()
+      it("returns 404 on invalid plugin", function()
         local res = assert(client:send {
           method = "GET",
           path = "/plugins/schema/foobar",
