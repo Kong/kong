@@ -1,4 +1,5 @@
 local crud = require "kong.api.crud_helpers"
+local crypto = require "crypto"
 
 return {
   ["/consumers/:username_or_id/jwt/"] = {
@@ -12,10 +13,34 @@ return {
     end,
 
     PUT = function(self, dao_factory)
+      if self.params.algorithm == "RS256" and self.params.rsa_public_key == nil then
+          return helpers.responses.send_HTTP_BAD_REQUEST("No mandatory 'rsa_public_key'")
+       end
+
+      if self.params.algorithm == "RS256" and crypto.pkey.from_pem(self.params.rsa_public_key) == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("'rsa_public_key' format is invalid")
+      end
+
+      if self.params.algorithm == "HS256" and self.params.secret == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("No mandatory 'secret'")
+      end
+
       crud.put(self.params, dao_factory.jwt_secrets)
     end,
 
-    POST = function(self, dao_factory)
+    POST = function(self, dao_factory, helpers)
+      if self.params.algorithm == "RS256" and self.params.rsa_public_key == nil then
+          return helpers.responses.send_HTTP_BAD_REQUEST("No mandatory 'rsa_public_key'")
+       end
+
+      if self.params.algorithm == "RS256" and crypto.pkey.from_pem(self.params.rsa_public_key) == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("'rsa_public_key' format is invalid")
+      end
+
+      if self.params.algorithm == "HS256" and self.params.secret == nil then
+        return helpers.responses.send_HTTP_BAD_REQUEST("No mandatory 'secret'")
+      end
+
       crud.post(self.params, dao_factory.jwt_secrets)
     end
   },

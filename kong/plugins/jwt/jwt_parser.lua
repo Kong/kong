@@ -31,7 +31,8 @@ local alg_verify = {
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
   --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
   ["RS256"] = function(data, signature, key)
-    return crypto.verify('sha256', data, signature, crypto.pkey.from_pem(key))
+    local pkey = assert(crypto.pkey.from_pem(key),"Consumer Public Key is Invalid")
+    return crypto.verify('sha256', data, signature, pkey)
   end
 }
 
@@ -107,6 +108,14 @@ local function decode_token(token)
     return nil, "Invalid alg"
   end
 
+  if not claims then
+    return nil, "Invalid claims"
+  end
+  
+  if not signature then
+    return nil, "Invalid signature"
+  end
+  
   return {
     token = token,
     header_64 = header_64,
@@ -158,7 +167,7 @@ _M.__index = _M
 -- @return JWT parser
 -- @return error if any
 function _M:new(token)
-  if type(token) ~= "string" then error("JWT must be a string", 2) end
+  if type(token) ~= "string" then error("Token must be a string, got "..tostring(token), 2) end
 
   local token, err = decode_token(token)
   if err then

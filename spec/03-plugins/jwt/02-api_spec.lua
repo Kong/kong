@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local jwt_secrets = helpers.dao.jwt_secrets
+local fixtures = require "spec.03-plugins.jwt.fixtures"
 
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
@@ -61,6 +62,78 @@ describe("Plugin: jwt (API)", function()
         assert.equal("bob2", body.key)
         assert.equal("tooshort", body.secret)
         jwt2 = body
+      end)
+      it("accepts a valid public key for RS256", function()
+        local rsa_public_key = fixtures.rs256_public_key
+        rsa_public_key = rsa_public_key:gsub("\n", "\r\n")
+        rsa_public_key = rsa_public_key:gsub("([^%w %-%_%.%~])",
+          function(c) return string.format ("%%%02X", string.byte(c)) end)
+        rsa_public_key = rsa_public_key:gsub(" ", "+")
+        
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob3", 
+            algorithm = "RS256", 
+            rsa_public_key = rsa_public_key
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(201)
+        local body = json.decode(response)
+        assert.equal("bob3", body.key)
+      end)
+      it("fails with missing `rsa_public_key` parameter for RS256 algorithms", function ()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob4", 
+            algorithm = "RS256"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("No mandatory 'rsa_public_key'", json.message)
+      end)
+      it("fails with an invalid rsa_public_key for RS256 algorithms", function ()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob4", 
+            algorithm = "RS256",
+            rsa_public_key = "test",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("'rsa_public_key' format is invalid", json.message)
+      end)
+      it("fails when `secret` parameter for HS256 algorithms is missing", function ()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob4", 
+            algorithm = "HS256",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("No mandatory 'secret'", json.message)
       end)
     end)
 
