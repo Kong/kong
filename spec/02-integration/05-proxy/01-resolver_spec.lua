@@ -214,7 +214,7 @@ describe("Resolver", function()
         method = "GET",
         path = "/request/urlenc/%20%20"
       })
-      local body = assert.response(res).has.status(200)
+      assert.response(res).has.status(200)
       local json = assert.response(res).has.jsonbody()
       assert.equals("http://mockbin.com/request/urlenc/%20%20", json.url)
     end)
