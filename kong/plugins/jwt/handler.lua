@@ -23,7 +23,7 @@ local function retrieve_token(request, conf)
 
   for _, v in ipairs(conf.uri_param_names) do
     if uri_parameters[v] then
-      return uri_parameters[v]  -- TODO: check multiple values, then this returns a table instead of a string
+      return uri_parameters[v]
     end
   end
 
@@ -56,13 +56,16 @@ function JwtHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  if not token then
-    return responses.send_HTTP_UNAUTHORIZED()
-  end
   if type(token) ~= "string" then
-    return responses.send_HTTP_UNAUTHORIZED("Unrecognizable token")
+    if type(token) == "nil" then
+      return responses.send_HTTP_UNAUTHORIZED()
+    elseif type(token) == "table" then
+      return responses.send_HTTP_UNAUTHORIZED("Multiple tokens provided")
+    else
+      return responses.send_HTTP_UNAUTHORIZED("Unrecognizable token")
+    end
   end
- 
+  
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then

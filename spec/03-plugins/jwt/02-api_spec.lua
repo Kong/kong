@@ -63,13 +63,13 @@ describe("Plugin: jwt (API)", function()
         assert.equal("tooshort", body.secret)
         jwt2 = body
       end)
-      it("accepts a valid public key for RS256", function()
+      it("accepts a valid public key for RS256 when posted urlencoded", function()
         local rsa_public_key = fixtures.rs256_public_key
         rsa_public_key = rsa_public_key:gsub("\n", "\r\n")
         rsa_public_key = rsa_public_key:gsub("([^%w %-%_%.%~])",
           function(c) return string.format ("%%%02X", string.byte(c)) end)
         rsa_public_key = rsa_public_key:gsub(" ", "+")
-        
+
         local res = assert(admin_client:send {
           method = "POST",
           path = "/consumers/bob/jwt/",
@@ -79,19 +79,38 @@ describe("Plugin: jwt (API)", function()
             rsa_public_key = rsa_public_key
           },
           headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded"
+          }
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("bob3", json.key)
+      end)
+      it("accepts a valid public key for RS256 when posted as json", function()
+        local rsa_public_key = fixtures.rs256_public_key
+
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob4", 
+            algorithm = "RS256", 
+            rsa_public_key = rsa_public_key
+          },
+          headers = {
             ["Content-Type"] = "application/json"
           }
         })
         assert.response(res).has.status(201)
-        local body = json.decode(response)
-        assert.equal("bob3", body.key)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("bob4", json.key)
       end)
       it("fails with missing `rsa_public_key` parameter for RS256 algorithms", function ()
         local res = assert(admin_client:send {
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob4", 
+            key = "bob5", 
             algorithm = "RS256"
           },
           headers = {
@@ -107,7 +126,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob4", 
+            key = "bob5", 
             algorithm = "RS256",
             rsa_public_key = "test",
           },
@@ -124,7 +143,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob4", 
+            key = "bob5", 
             algorithm = "HS256",
           },
           headers = {
@@ -162,7 +181,7 @@ describe("Plugin: jwt (API)", function()
           path = "/consumers/bob/jwt/",
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(1, #(body.data))
+        assert.equal(3, #(body.data))
       end)
     end)
   end)
