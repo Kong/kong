@@ -16,14 +16,14 @@ JwtHandler.PRIORITY = 1000
 -- Checks for the JWT in URI parameters, then in the `Authorization` header.
 -- @param request ngx request object
 -- @param conf Plugin configuration
--- @return token JWT token contained in request or nil
+-- @return token JWT token contained in request (can be a table) or nil
 -- @return err
 local function retrieve_token(request, conf)
   local uri_parameters = request.get_uri_args()
 
   for _, v in ipairs(conf.uri_param_names) do
     if uri_parameters[v] then
-      return uri_parameters[v]
+      return uri_parameters[v]  -- TODO: check multiple values, then this returns a table instead of a string
     end
   end
 
@@ -59,10 +59,15 @@ function JwtHandler:access(conf)
   if not token then
     return responses.send_HTTP_UNAUTHORIZED()
   end
+  if type(token) ~= "string" then
+    return responses.send_HTTP_UNAUTHORIZED("Unrecognizable token")
+  end
+  
 
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
+    -- TODO: is this an internal server error? the token is invalid/cannot be parsed so isn't this a user error to be reported?
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 
@@ -98,7 +103,12 @@ function JwtHandler:access(conf)
   if conf.secret_is_base64 then
     jwt_secret_value = jwt:b64_decode(jwt_secret_value)
   end
-
+  if not jwt_secret_value then
+    --TODO: shouldn't these values be checked when added? either secret or rsa_public_key is missing
+    -- or is not valid B64 encoded
+    return responses.send_HTTP_FORBIDDEN("Invalid key/secret")
+  end
+  
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
     return responses.send_HTTP_FORBIDDEN("Invalid signature")
