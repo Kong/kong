@@ -39,7 +39,7 @@ describe("Plugin: jwt (parser)", function()
     it("refuses invalid typ", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {typ = "foo"})
       local _, err = jwt_parser:new(token)
-      assert.equal("Invalid typ", err)
+      assert.equal("invalid typ", err)
     end)
     it("refuses invalid alg", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {
@@ -47,7 +47,7 @@ describe("Plugin: jwt (parser)", function()
         alg = "foo"
       })
       local _, err = jwt_parser:new(token)
-      assert.equal("Invalid alg", err)
+      assert.equal("invalid alg", err)
     end)
     it("accepts a valid encoding request", function()
       local token = jwt_parser.encode({sub = "1234"}, "secret", nil, {

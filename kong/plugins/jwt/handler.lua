@@ -56,10 +56,11 @@ function JwtHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  if type(token) ~= "string" then
-    if type(token) == "nil" then
+  local ttype = type(token)
+  if ttype ~= "string" then
+    if ttype == "nil" then
       return responses.send_HTTP_UNAUTHORIZED()
-    elseif type(token) == "table" then
+    elseif ttype == "table" then
       return responses.send_HTTP_UNAUTHORIZED("Multiple tokens provided")
     else
       return responses.send_HTTP_UNAUTHORIZED("Unrecognizable token")
@@ -69,8 +70,7 @@ function JwtHandler:access(conf)
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
-    -- TODO: is this an internal server error? the token is invalid/cannot be parsed so isn't this a user error to be reported?
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return responses.send_HTTP_UNAUTHORIZED("Bad token; "..tostring(err))
   end
 
   local claims = jwt.claims

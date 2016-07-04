@@ -97,23 +97,23 @@ local function decode_token(token)
            b64_decode(signature_64)
   end)
   if not ok then
-    return nil, "Invalid JSON"
+    return nil, "invalid JSON"
   end
 
   if header.typ and header.typ:upper() ~= "JWT" then
-    return nil, "Invalid typ"
+    return nil, "invalid typ"
   end
 
   if not header.alg or type(header.alg) ~= "string" or not alg_verify[header.alg] then
-    return nil, "Invalid alg"
+    return nil, "invalid alg"
   end
 
   if not claims then
-    return nil, "Invalid claims"
+    return nil, "invalid claims"
   end
   
   if not signature then
-    return nil, "Invalid signature"
+    return nil, "invalid signature"
   end
   
   return {
