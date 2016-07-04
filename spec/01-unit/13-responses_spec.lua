@@ -1,23 +1,29 @@
 local meta = require "kong.meta"
 local responses = require "kong.tools.responses"
 
-require "kong.tools.ngx_stub"
+describe("Response helpers", function()
 
-describe("Responses", function()
-
+  local _ngx = _G.ngx
   before_each(function()
-    mock(ngx, true) -- mock table with stubs.
+    snapshot = assert:snapshot()
+    local stub = {
+      header = {},
+      say = function(...) return _ngx.say(...) end,
+      exit = function(...) return _ngx.say(...) end,
+    }
+    _G.ngx = setmetatable({}, {
+      __index = function(self, key)
+        -- lookup a stub, if it fails, fallback to original ngx table
+        return stub[key] or _ngx[key]
+      end
+    })
+    assert.stub(stub, "say")
+    assert.stub(stub, "exit")
   end)
 
   after_each(function()
-    ngx.ctx = {}
-    ngx.header = {}
-    -- Revert mocked functions
-    for _, v in pairs(ngx) do
-      if type(v) == "table" and type(v.revert) == "function" then
-        v:revert()
-      end
-    end
+    snapshot:revert()
+    _G.ngx = _ngx
   end)
 
   it("should have a list of the main http status codes used in Kong", function()
