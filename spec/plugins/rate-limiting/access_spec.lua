@@ -10,8 +10,8 @@ local STUB_GET_URL = spec_helper.STUB_GET_URL
 
 local function wait()
   -- If the minute elapses in the middle of the test, then the test will
-  -- fail. So we give it this test 30 seconds to execute, and if the second
-  -- of the current minute is > 30, then we wait till the new minute kicks in
+  -- fail. So we give it this test 20 seconds to execute, and if the second
+  -- of the current minute is > 20, then we wait till the new minute kicks in
   local current_second = timestamp.get_timetable().sec
   if current_second > 20 then
     os.execute("sleep "..tostring(60 - current_second))
@@ -31,11 +31,15 @@ describe("RateLimiting Plugin", function()
         { request_host = "test7.com", upstream_url = "http://mockbin.com" },
         { request_host = "test8.com", upstream_url = "http://mockbin.com" },
         { request_host = "test9.com", upstream_url = "http://mockbin.com" },
-        { request_host = "test10.com", upstream_url = "http://mockbin.com" }
+        { request_host = "test10.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test11.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test12.com", upstream_url = "http://mockbin.com" },
+        { request_host = "test13.com", upstream_url = "http://mockbin.com" }
       },
       consumer = {
         { custom_id = "provider_123" },
-        { custom_id = "provider_124" }
+        { custom_id = "provider_124" },
+        { custom_id = "provider_125" }
       },
       plugin = {
         { name = "key-auth", config = {key_names = {"apikey"}, hide_credentials = true}, __api = 1 },
@@ -48,11 +52,19 @@ describe("RateLimiting Plugin", function()
         { name = "rate-limiting", config = { minute = 6, continue_on_error = false }, __api = 6 },
         { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 7 },
         { name = "key-auth", config = {}, __api = 8 },
-        { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 8, __consumer = 1 }
+        { name = "rate-limiting", config = { minute = 6, continue_on_error = true }, __api = 8, __consumer = 1 },
+        { name = "key-auth", config = {}, __api = 9 },
+        { name = "rate-limiting", config = { minute = 6 }, __api = 9, __consumer = 3 },
+        { name = "key-auth", config = {}, __api = 10 },
+        { name = "rate-limiting", config = { minute = 6, combined = false }, __api = 10, __consumer = 3 },
+        { name = "key-auth", config = {}, __api = 11 },
+        { name = "rate-limiting", config = { minute = 6, combined = true }, __api = 11, __consumer = 3 }
       },
       keyauth_credential = {
         { key = "apikey122", __consumer = 1 },
-        { key = "apikey123", __consumer = 2 }
+        { key = "apikey123", __consumer = 2 },
+        { key = "apikey124", __consumer = 3 },
+        { key = "apikey125", __consumer = 3 }
       }
     }
   end
@@ -195,6 +207,7 @@ describe("RateLimiting Plugin", function()
     after_each(function()
       dao_factory:drop_schema()
       prepare_db()
+      spec_helper.restart_kong()
     end)
 
     it("should not continue if an error occurs", function()
@@ -216,8 +229,8 @@ describe("RateLimiting Plugin", function()
     it("should continue if an error occurs", function()
       local _, status, headers = http_client.get(STUB_GET_URL, {}, {host = "test9.com"})
       assert.are.equal(200, status)
-      assert.falsy(headers["x-ratelimit-limit-minute"])
-      assert.falsy(headers["x-ratelimit-remaining-minute"])
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
 
       -- Simulate an error on the database
       local err = dao_factory.ratelimiting_metrics:drop_table(dao_factory.ratelimiting_metrics.table)
@@ -228,6 +241,45 @@ describe("RateLimiting Plugin", function()
       assert.are.equal(200, status)
       assert.falsy(headers["x-ratelimit-limit-minute"])
       assert.falsy(headers["x-ratelimit-remaining-minute"])
+    end)
+  end)
+
+  describe("Combined accounting", function()
+    it("should not combine usage counters if unspecified", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "test11.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
+
+      -- Make request as another user of the same consumer
+      local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "test11.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
+    end)
+    it("should not combine usage counters if disabled", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "test12.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
+
+      -- Make request as another user of the same consumer
+      local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "test12.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
+    end)
+    it("should combine usage counters if enabled", function()
+      local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey124"}, {host = "test13.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(5), headers["x-ratelimit-remaining-minute"])
+
+      -- Make request as another user of the same consumer
+      local _, status, headers = http_client.get(STUB_GET_URL, {apikey = "apikey125"}, {host = "test13.com"})
+      assert.are.equal(200, status)
+      assert.are.same(tostring(6), headers["x-ratelimit-limit-minute"])
+      assert.are.same(tostring(4), headers["x-ratelimit-remaining-minute"])
     end)
   end)
 

@@ -15,12 +15,16 @@ local RateLimitingHandler = BasePlugin:extend()
 
 RateLimitingHandler.PRIORITY = 900
 
-local function get_identifier()
+local function get_identifier(is_combined)
   local identifier
 
   -- Consumer is identified by ip address or authenticated_credential id
   if ngx.ctx.authenticated_credential then
-    identifier = ngx.ctx.authenticated_credential.id
+    if is_combined then
+      identifier = ngx.ctx.authenticated_credential.consumer_id
+    else
+      identifier = ngx.ctx.authenticated_credential.id
+    end
   else
     identifier = ngx.var.remote_addr
   end
@@ -82,7 +86,8 @@ function RateLimitingHandler:access(conf)
   local current_timestamp = timestamp.get_utc()
 
   -- Consumer is identified by ip address or authenticated_credential id
-  local identifier = get_identifier()
+  local is_combined = conf.combined
+  local identifier = get_identifier(is_combined)
   local api_id = ngx.ctx.api.id
   local is_async = conf.async
   local is_continue_on_error = conf.continue_on_error
@@ -90,6 +95,7 @@ function RateLimitingHandler:access(conf)
   -- Load current metric for configured period
   conf.async = nil
   conf.continue_on_error = nil
+  conf.combined = nil
   local usage, stop, err = get_usage(api_id, identifier, current_timestamp, conf)
   if err then
     if is_continue_on_error then
