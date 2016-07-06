@@ -156,7 +156,7 @@ describe("Admin API", function()
         local json = cjson.decode(body)
         assert.is_table(json.fields)
       end)
-      it("#only returns 404 on invalid plugin", function()
+      it("returns 404 on invalid plugin", function()
         local res = assert(client:send {
           method = "GET",
           path = "/plugins/schema/foobar",
