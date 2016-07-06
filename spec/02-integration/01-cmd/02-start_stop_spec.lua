@@ -1,3 +1,5 @@
+local pl_dir = require "pl.dir"
+local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
@@ -121,6 +123,12 @@ describe("kong start/stop", function()
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
       assert(helpers.execute(cmd))
     end)
+    it("dumps PID in prefix", function()
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+      assert.truthy(helpers.path.exists(helpers.test_conf.serf_pid))
+      assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+      assert.False(helpers.path.exists(helpers.test_conf.serf_pid))
+    end)
   end)
 
   describe("dnsmasq", function()
@@ -146,6 +154,12 @@ describe("kong start/stop", function()
                                 helpers.test_conf.serf_pid)
       local _, code = helpers.utils.executeex(cmd)
       assert.equal(0, code)
+    end)
+    it("dumps PID in prefix", function()
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {dnsmasq=true, dns_resolver=""}))
+      assert.truthy(helpers.path.exists(helpers.test_conf.dnsmasq_pid))
+      assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+      assert.False(helpers.path.exists(helpers.test_conf.dnsmasq_pid))
     end)
   end)
 
