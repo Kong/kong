@@ -193,7 +193,7 @@ local function prepare_prefix(kong_config)
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err end
   if ulimit < 4096 then
-    log.warn(fmt([[ulimit is currently set to "%d". For better performance set it to at least "4096" using "ulimit -n"]], ulimit))
+    log.warn([[ulimit is currently set to "%d". For better performance set it to at least "4096" using "ulimit -n"]], ulimit)
   end
 
   -- write NGINX conf
