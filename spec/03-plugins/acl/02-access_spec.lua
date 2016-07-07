@@ -2,12 +2,13 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
 
-describe("Plugin: ACL", function()
+describe("Plugin: ACL (access)", function()
   local client, api_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    
+
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -175,8 +176,8 @@ describe("Plugin: ACL", function()
     })
   end)
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    api_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    client = helpers.proxy_client()
+    api_client = helpers.admin_client()
   end)
   after_each(function ()
     client:close()
@@ -184,7 +185,7 @@ describe("Plugin: ACL", function()
   end)
   teardown(function()
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   describe("Simple lists", function()

@@ -4,10 +4,11 @@ local cjson = require "cjson"
 local UUID_PATTERN = "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x"
 local UUID_COUNTER_PATTERN = UUID_PATTERN.."#%d"
 
-describe("Correlation ID Plugin", function()
+describe("Plugin: correlation-id (access)", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -43,12 +44,13 @@ describe("Correlation ID Plugin", function()
       }
     })
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("uuid-worker generator", function()

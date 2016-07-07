@@ -2,11 +2,12 @@ local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
-describe("Plugin: ip-restriction", function()
+describe("Plugin: ip-restriction (access)", function()
   local plugin_config
   local client, admin_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -67,8 +68,8 @@ describe("Plugin: ip-restriction", function()
       }
     })
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
   teardown(function()
     if client and admin_client then
@@ -76,6 +77,7 @@ describe("Plugin: ip-restriction", function()
       admin_client:close()
     end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("blacklist", function()

@@ -1,6 +1,6 @@
+local uuid = require "lua_uuid"
 local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
-local uuid = require "lua_uuid"
 
 local response_ratelimiting_metrics = helpers.dao.response_ratelimiting_metrics
 

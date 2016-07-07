@@ -1,11 +1,11 @@
 local helpers = require "spec.helpers"
 local UDP_PORT = 20000
 
-describe("Plugin: statsd", function()
+describe("Plugin: statsd (log)", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.start_kong())
+    helpers.prepare_prefix()
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging1.com",
@@ -92,6 +92,7 @@ describe("Plugin: statsd", function()
       }
     })
 
+    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
 

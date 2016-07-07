@@ -1,8 +1,8 @@
-local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
-local fixtures = require "spec.03-plugins.jwt.fixtures"
 local base64 = require "base64"
+local helpers = require "spec.helpers"
+local fixtures = require "spec.03-plugins.jwt.fixtures"
+local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
 local PAYLOAD = {
   iss = nil,
@@ -11,12 +11,13 @@ local PAYLOAD = {
   exp = os.time() + 3600
 }
 
-describe("JWT access", function()
+describe("Plugin: jwt (access)", function()
   local jwt_secret, base64_jwt_secret, rsa_jwt_secret_1, rsa_jwt_secret_2
   local proxy_client, admin_client
 
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", request_host = "jwt.com", upstream_url = "http://mockbin.com"})
@@ -49,14 +50,15 @@ describe("JWT access", function()
       rsa_public_key = fixtures.rs256_public_key
     })
 
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
 
   teardown(function()
     if proxy_client then proxy_client:close() end
     if admin_client then admin_client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("refusals", function()

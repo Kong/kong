@@ -62,19 +62,18 @@ describe("Core Hooks", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    api_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    client = helpers.proxy_client()
+    api_client = helpers.admin_client()
   end)
   after_each(function()
-    if client then
+    if client and api_client then
       client:close()
-    end
-    if api_client then
       api_client:close()
     end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   describe("Plugin entity invalidation", function()
@@ -97,7 +96,7 @@ describe("Core Hooks", function()
         headers = {}
       })
       assert.res_status(200, res)
-      
+
       -- Delete plugin
       local res = assert(api_client:send {
         method = "DELETE",

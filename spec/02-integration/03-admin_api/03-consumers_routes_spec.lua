@@ -12,13 +12,14 @@ describe("Admin API", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    client = helpers.admin_client()
   end)
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   local consumer

@@ -15,14 +15,13 @@ describe("kong reload", function()
     end)
 
     assert(helpers.start_kong())
-    local pid_path = helpers.path.join(helpers.test_conf.prefix, "pids", "nginx.pid")
-    local nginx_pid = helpers.file.read(pid_path)
+    local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
 
-    local ok, err = helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix) -- kong_exec uses test conf too, so same prefix
-    assert(ok, err)
+    -- kong_exec uses test conf too, so same prefix
+    local ok, err = assert(helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix))
 
     -- same master PID
-    assert.equal(nginx_pid, helpers.file.read(pid_path))
+    assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
   end)
 
   describe("errors", function()

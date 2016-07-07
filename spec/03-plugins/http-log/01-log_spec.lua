@@ -23,10 +23,11 @@ end
 local mock_bin_http = create_mock_bin()
 local mock_bin_https = create_mock_bin()
 
-describe("Plugin: http-log", function()
+describe("Plugin: http-log (log)", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -53,15 +54,14 @@ describe("Plugin: http-log", function()
       }
     })
   end)
-
   teardown(function()
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
-
   after_each(function()
     if client then client:close() end
   end)
