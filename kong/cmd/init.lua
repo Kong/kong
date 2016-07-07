@@ -13,6 +13,7 @@ Usage: kong COMMAND [OPTIONS]
 The available commands are:
  start
  stop
+ restart
  reload
  check
  compile
@@ -26,12 +27,14 @@ Options:
 local cmds = {
   start = "start",
   stop = "stop",
+  restart = "restart",
   reload = "reload",
   check = "check",
   compile = "compile",
   migrations = "migrations",
   cluster = "cluster",
   version = "version",
+  health = "health",
   roar = "roar"
 }
 

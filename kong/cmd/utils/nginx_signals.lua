@@ -86,8 +86,8 @@ function _M.start(kong_conf)
   return true
 end
 
-function _M.stop(kong_conf)
-  return send_signal(kong_conf.nginx_pid, "QUIT")
+function _M.stop(kong_conf, graceful)
+  return send_signal(kong_conf.nginx_pid, graceful and "QUIT" or "TERM")
 end
 
 function _M.reload(kong_conf)

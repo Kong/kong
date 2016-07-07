@@ -1,5 +1,3 @@
-local pl_dir = require "pl.dir"
-local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
@@ -32,6 +30,10 @@ describe("kong start/stop", function()
   it("start/stop custom Kong conf/prefix", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+  end)
+  it("start/stop gracefully", function()
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    assert(helpers.kong_exec("stop --graceful --prefix "..helpers.test_conf.prefix))
   end)
   it("start with inexistent prefix", function()
     finally(function()
