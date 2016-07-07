@@ -1,0 +1,33 @@
+local helpers = require "spec.helpers"
+local prefix_handler = require "kong.cmd.utils.prefix_handler"
+
+describe("kong restart", function()
+  before_each(function()
+    helpers.kill_all()
+  end)
+  teardown(function()
+    helpers.kill_all()
+    helpers.clean_prefix()
+  end)
+
+  it("succeeds when Kong is running", function()
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {dnsmasq = true, dns_resolver = ""}))
+    assert(helpers.kong_exec("health --conf "..helpers.test_conf_path))
+  end)
+
+  describe("errors", function()
+    it("fails when Kong is not running", function()
+      assert(prefix_handler.prepare_prefix(helpers.test_conf))
+      local ok, stderr = helpers.kong_exec("health --conf "..helpers.test_conf_path)
+      assert.False(ok)
+      assert.matches("Kong is not running", stderr)
+    end)
+    it("fails when a service is not running", function()
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {dnsmasq = true, dns_resolver = ""}))
+      helpers.execute("pkill serf")
+      local ok, stderr = helpers.kong_exec("health --conf "..helpers.test_conf_path)
+      assert.False(ok)
+      assert.matches("Some services are not running", stderr)
+    end)
+  end)
+end)

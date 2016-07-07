@@ -65,6 +65,7 @@ build = {
     ["kong.cmd.cluster"] = "kong/cmd/cluster.lua",
     ["kong.cmd.compile"] = "kong/cmd/compile.lua",
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
+    ["kong.cmd.health"] = "kong/cmd/health.lua",
     ["kong.cmd.version"] = "kong/cmd/version.lua",
     ["kong.cmd.utils.log"] = "kong/cmd/utils/log.lua",
     ["kong.cmd.utils.kill"] = "kong/cmd/utils/kill.lua",

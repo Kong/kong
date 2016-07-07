@@ -34,6 +34,7 @@ local cmds = {
   migrations = "migrations",
   cluster = "cluster",
   version = "version",
+  health = "health",
   roar = "roar"
 }
 
