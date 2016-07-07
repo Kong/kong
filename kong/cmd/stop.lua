@@ -16,12 +16,12 @@ local function execute(args)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_conf))
-  assert(nginx_signals.stop(conf))
+  assert(nginx_signals.stop(conf, args.graceful))
   assert(serf_signals.stop(conf, DAOFactory(conf)))
   if conf.dnsmasq then
     assert(dnsmasq_signals.stop(conf))
   end
-  log("Stopped")
+  log("Stopped%s", args.graceful and " gracefully" or "")
 end
 
 local lapp = [[

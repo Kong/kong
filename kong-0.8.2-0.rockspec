@@ -61,6 +61,7 @@ build = {
     ["kong.cmd.start"] = "kong/cmd/start.lua",
     ["kong.cmd.check"] = "kong/cmd/check.lua",
     ["kong.cmd.reload"] = "kong/cmd/reload.lua",
+    ["kong.cmd.restart"] = "kong/cmd/restart.lua",
     ["kong.cmd.cluster"] = "kong/cmd/cluster.lua",
     ["kong.cmd.compile"] = "kong/cmd/compile.lua",
     ["kong.cmd.migrations"] = "kong/cmd/migrations.lua",
