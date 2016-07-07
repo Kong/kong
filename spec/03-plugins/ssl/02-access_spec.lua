@@ -2,7 +2,6 @@ local ssl_fixtures = require "spec.03-plugins.ssl.fixtures"
 local helpers = require "spec.helpers"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
-local pl_path = require "pl.path"
 local url = require "socket.url"
 
 describe("Plugin: ssl", function()
@@ -77,7 +76,7 @@ describe("Plugin: ssl", function()
     it("returns default CERTIFICATE when requesting other APIs", function()
       local parsed_url = url.parse("https://"..helpers.test_conf.proxy_listen_ssl)
       local _, _, stdout = pl_utils.executeex("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername test.com")
-      assert.is_string(stdout:match("US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost"))
+      assert.is_string(stdout:match("US/ST=California/L=San Francisco/O=Kong Spec/OU=IT Department/CN=localhost"))
     end)
     it("works when requesting a specific API", function()
       local parsed_url = url.parse("https://"..helpers.test_conf.proxy_listen_ssl)
@@ -146,10 +145,7 @@ describe("Plugin: ssl", function()
   end)
 
   it("works with curl", function()
-    local ssl_cert_path = pl_path.join(helpers.test_conf.prefix, "ssl", "kong-default.crt")
-    local ssl_key_path = pl_path.join(helpers.test_conf.prefix, "ssl", "kong-default.key")
-
-    local _, _, stdout = pl_utils.executeex("curl -s -o /dev/null -w \"%{http_code}\" http://"..helpers.test_conf.admin_listen.."/apis/"..api3.id.."/plugins/ --form \"name=ssl\" --form \"config.cert=@"..ssl_cert_path.."\" --form \"config.key=@"..ssl_key_path.."\"")
+    local _, _, stdout = pl_utils.executeex("curl -s -o /dev/null -w \"%{http_code}\" http://"..helpers.test_conf.admin_listen.."/apis/"..api3.id.."/plugins/ --form \"name=ssl\" --form \"config.cert=@"..helpers.test_conf.ssl_cert.."\" --form \"config.key=@"..helpers.test_conf.ssl_cert_key.."\"")
     assert.are.equal(201, tonumber(stdout))
   end)
 end)

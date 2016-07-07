@@ -4,7 +4,6 @@ local cache = require "kong.tools.database_cache"
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
-local pl_path = require "pl.path"
 local url = require "socket.url"
 
 describe("Plugin hooks: ssl", function()
@@ -97,8 +96,8 @@ describe("Plugin hooks: ssl", function()
         method = "PATCH",
         path = "/apis/ssl1.com/plugins/"..plugin.id,
         body = {
-          ["config.cert"] = assert(pl_file.read(pl_path.join(helpers.test_conf.prefix, "ssl", "kong-default.crt"))),
-          ["config.key"] = assert(pl_file.read(pl_path.join(helpers.test_conf.prefix, "ssl", "kong-default.key")))
+          ["config.cert"] = assert(pl_file.read(helpers.test_conf.ssl_cert)),
+          ["config.key"] = assert(pl_file.read(helpers.test_conf.ssl_cert_key))
         },
         headers = {
           ["Content-Type"] = "multipart/form-data"
@@ -119,7 +118,7 @@ describe("Plugin hooks: ssl", function()
       -- It should not work
       local _, _, stdout = pl_utils.executeex("(echo \"GET /\"; sleep 2) | openssl s_client -connect "..parsed_url.host..":"..tostring(parsed_url.port).." -servername ssl1.com")
       assert.is_nil(stdout:match("US/ST=California/L=San Francisco/O=Kong/OU=IT/CN=ssl1.com"))
-      assert.is_string(stdout:match("US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost"))
+      assert.is_string(stdout:match("US/ST=California/L=San Francisco/O=Kong Spec/OU=IT Department/CN=localhost"))
     end)
   end)
 
