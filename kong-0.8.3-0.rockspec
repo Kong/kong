@@ -264,7 +264,12 @@ build = {
 
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
-    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
+    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
+
+    ["kong.plugins.aws-lambda.resty.hmac"] = "kong/plugins/aws-lambda/resty/hmac.lua",
+    ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
+    ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
+    ["kong.plugins.aws-lambda.aws.v4"] = "kong/plugins/aws-lambda/aws/v4.lua"
   },
   install = {
     conf = { "kong.yml" },

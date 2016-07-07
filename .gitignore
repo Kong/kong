@@ -11,3 +11,5 @@ kong*.yml
 # luacov
 luacov.*
 /doc
+
+*.swp
