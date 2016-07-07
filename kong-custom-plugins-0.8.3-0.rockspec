@@ -1,4 +1,4 @@
-package = "kong-customer-plugins"
+package = "kong-custom-plugins"
 version = "0.8.3-0"
 supported_platforms = {"linux", "macosx"}
 source = {
