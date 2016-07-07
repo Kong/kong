@@ -12,7 +12,6 @@ describe("kong restart", function()
   it("restarts if not running", function()
     assert(helpers.kong_exec("restart --conf "..helpers.test_conf_path))
   end)
-
   it("restarts if already running", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {dnsmasq = true, dns_resolver = ""}))
 
@@ -26,5 +25,4 @@ describe("kong restart", function()
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.serf_pid)), serf_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.dnsmasq_pid)), dnsmasq_pid)
   end)
-
 end)
