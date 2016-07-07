@@ -5,7 +5,6 @@ local start = require "kong.cmd.start"
 local function execute(args)
   local conf = assert(conf_loader(args.conf))
   args.prefix = conf.prefix -- Required for stop
-  args.graceful = nil -- Restart is always not graceful (reload should be used instead)
 
   pcall(stop.execute, args)
   start.execute(args)

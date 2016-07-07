@@ -1,27 +1,26 @@
 local conf_loader = require "kong.conf_loader"
-local log = require "kong.cmd.utils.log"
-local kill = require "kong.cmd.utils.kill"
 local pl_stringx = require "pl.stringx"
-local pl_path = require "pl.path"
 local pl_tablex = require "pl.tablex"
+local pl_path = require "pl.path"
+local kill = require "kong.cmd.utils.kill"
+local log = require "kong.cmd.utils.log"
 
 local function is_running(pid_path)
   if not pl_path.exists(pid_path) then return nil end
-  local code = kill(pid_path, "-0")
-  return code == 0
+  return kill(pid_path, "-0") == 0
 end
 
 local function execute(args)
-  local default_conf = assert(conf_loader(args.conf, {
+  local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
-  assert(pl_path.exists(default_conf.prefix),
-    "no such prefix: "..default_conf.prefix)
+  assert(pl_path.exists(conf.prefix),
+    "no such prefix: "..conf.prefix)
 
   local pids = {
-    nginx = default_conf.nginx_pid,
-    serf = default_conf.serf_pid,
-    dnsmasq = default_conf.dnsmasq and default_conf.dnsmasq_pid or nil
+    nginx = conf.nginx_pid,
+    serf = conf.serf_pid,
+    dnsmasq = conf.dnsmasq and conf.dnsmasq_pid or nil
   }
 
   local count = 0
