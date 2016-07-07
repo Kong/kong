@@ -30,7 +30,12 @@ function CassandraDB:new(options)
       default_port = options.port
     },
     query_options = {
-      prepare = true
+      prepare = true,
+      consistency = cassandra.consistencies[options.consistency:lower()]
+    },
+    socket_options = {
+      connect_timeout = options.timeout,
+      read_timeout = options.timeout
     },
     ssl_options = {
       enabled = options.ssl.enabled,
