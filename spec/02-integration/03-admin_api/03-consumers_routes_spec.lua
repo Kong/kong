@@ -239,6 +239,19 @@ describe("Admin API", function()
         assert.equal([[{"foo":"unknown field"}]], body)
       end)
     end)
+    it("returns 405 on invalid method", function()
+      local methods = {"DELETE", "PATCH"}
+      for i = 1, #methods do
+        local res = assert(client:send {
+          method = methods[i],
+          path = "/consumers",
+          body = {}, -- tmp: body to allow POST/PUT to work
+          headers = {["Content-Type"] = "application/json"}
+        })
+        local body = assert.response(res).has.status(405)
+        assert.equal([[{"message":"Method not allowed"}]], body)
+      end
+    end)
 
     describe("/consumers/{consumer}", function()
       describe("GET", function()

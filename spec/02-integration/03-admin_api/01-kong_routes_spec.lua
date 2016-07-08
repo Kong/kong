@@ -48,7 +48,7 @@ describe("Admin API", function()
             body = {}, -- tmp: body to allow POST/PUT to work
             headers = {["Content-Type"] = "application/json"}
           })
-          local body = assert.res_status(405, res)
+          local body = assert.response(res).has.status(405)
           assert.equal([[{"message":"Method not allowed"}]], body)
         end
       end)
