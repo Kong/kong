@@ -7,10 +7,11 @@ local pl_stringx = require "pl.stringx"
 
 local FILE_LOG_PATH = os.tmpname()
 
-describe("Plugin: file-log", function()
+describe("Plugin: file-log (log)", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -25,15 +26,14 @@ describe("Plugin: file-log", function()
       }
     })
   end)
-
   teardown(function()
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
-
   after_each(function()
     if client then client:close() end
   end)

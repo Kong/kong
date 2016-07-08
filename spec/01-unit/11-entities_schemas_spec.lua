@@ -156,12 +156,38 @@ describe("Entities Schemas", function()
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.False(valid)
-          assert.equal("must only contain alphanumeric and '., -, _, ~, /' characters", errors.request_path)
+          assert.equal("must only contain alphanumeric and '., -, _, ~, /, %' characters", errors.request_path)
         end
       end)
       it("should accept unreserved characters from RFC 3986", function()
         local valids = {"/abcd~user-2"}
 
+        for _, v in ipairs(valids) do
+          local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
+          local valid, errors = validate_entity(t, api_schema)
+          assert.falsy(errors)
+          assert.True(valid)
+        end
+      end)
+      it("should not accept bad %-encoded characters", function()
+        local invalids = {
+          "/some%2words",
+          "/some%0Xwords",
+          "/some%2Gwords",
+          "/some%20words%",
+          "/some%20words%a",
+          "/some%20words%ax",
+        }
+        local errstr = { "%2w", "%0X", "%2G", "%", "%a", "%ax" }
+        for i, v in ipairs(invalids) do
+          local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
+          local valid, errors = validate_entity(t, api_schema)
+          assert.False(valid)
+          assert.equal("must use proper encoding; '"..errstr[i].."' is invalid", errors.request_path)
+        end
+      end)
+      it("should accept properly %-encoded characters", function()
+        local valids = {"/abcd%aa%10%ff%AA%FF"}
         for _, v in ipairs(valids) do
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)

@@ -6,6 +6,7 @@ describe("Plugin: basic-auth (API)", function()
   local admin_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
@@ -14,6 +15,7 @@ describe("Plugin: basic-auth (API)", function()
       admin_client:close()
     end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("/apis/:api/plugins/", function()
@@ -34,7 +36,7 @@ describe("Plugin: basic-auth (API)", function()
           path = "/apis/mockbin.com/plugins",
           body = {
             name = "ssl",
-            ["config.cert"] = ssl_fixtures.cert, 
+            ["config.cert"] = ssl_fixtures.cert,
             ["config.key"] = ssl_fixtures.key
           },
           headers = {
@@ -53,7 +55,7 @@ describe("Plugin: basic-auth (API)", function()
             path = "/apis/mockbin.com/plugins",
             body = {
               name = "ssl",
-              ["config.cert"] = "asd", 
+              ["config.cert"] = "asd",
               ["config.key"] = ssl_fixtures.key
             },
             headers = {
@@ -69,7 +71,7 @@ describe("Plugin: basic-auth (API)", function()
             path = "/apis/mockbin.com/plugins",
             body = {
               name = "ssl",
-              ["config.cert"] = ssl_fixtures.cert, 
+              ["config.cert"] = ssl_fixtures.cert,
               ["config.key"] = "hello"
             },
             headers = {
@@ -86,7 +88,7 @@ describe("Plugin: basic-auth (API)", function()
             body = {
               name = "ssl",
               consumer_id = "504b535e-dc1c-11e5-8554-b3852c1ec156",
-              ["config.cert"] = ssl_fixtures.cert, 
+              ["config.cert"] = ssl_fixtures.cert,
               ["config.key"] = ssl_fixtures.key
             },
             headers = {

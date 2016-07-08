@@ -3,11 +3,11 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
 
-describe("Plugin: syslog", function()
+describe("Plugin: syslog (log)", function()
   local client, platform
   setup(function()
     helpers.kill_all()
-    assert(helpers.start_kong())
+    helpers.prepare_prefix()
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
@@ -58,6 +58,8 @@ describe("Plugin: syslog", function()
     local ok, _, stdout = helpers.execute("uname")
     assert(ok, "failed to retrieve platform name")
     platform = pl_stringx.strip(stdout)
+
+    assert(helpers.start_kong())
   end)
 
   teardown(function()
@@ -86,9 +88,7 @@ describe("Plugin: syslog", function()
     assert.res_status(200, response)
 
     if platform == "Darwin" then
-      local _, code, stdout = helpers.execute("syslog -k Sender kong | tail -1")
-      assert.equal(0, code)
-
+      local _, _, stdout = assert(helpers.execute("syslog -k Sender kong | tail -1"))
       local msg = string.match(stdout, "{.*}")
       local json = cjson.decode(msg)
 
@@ -98,8 +98,7 @@ describe("Plugin: syslog", function()
         assert.not_equal(uuid, json.request.headers["sys-log-uuid"])
       end
     elseif expecting_same then
-      local _, code, stdout = helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l "..uuid)
-      assert.equal(0, code)
+      local _, _, stdout = assert(helpers.execute("find /var/log -type f -mmin -5 2>/dev/null | xargs grep -l "..uuid))
       assert.True(#stdout > 0)
     end
   end

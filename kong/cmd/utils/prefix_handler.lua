@@ -85,7 +85,7 @@ local function gather_system_infos(compile_env)
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err end
   infos.worker_rlimit = ulimit
-  infos.worker_connections = ulimit > 16384 and 16384 or ulimit
+  infos.worker_connections = math.min(16384, ulimit)
 
   return infos
 end
@@ -106,20 +106,14 @@ local function compile_conf(kong_config, conf_template, env_t)
   if kong_config.dnsmasq then
     compile_env["dns_resolver"] = "127.0.0.1:"..kong_config.dnsmasq_port
   end
-
-  local infos, err = gather_system_infos()
-  if not infos then return nil, err end
-  if kong_config.nginx_optimizations then
-    compile_env = pl_tablex.merge(compile_env, infos,  true) -- union
+  if kong_config.anonymous_reports and socket.dns.toip(constants.SYSLOG.ADDRESS) then
+    compile_env["syslog_reports"] = fmt("error_log syslog:server=%s:%d error;",
+                                        constants.SYSLOG.ADDRESS, constants.SYSLOG.PORT)
   end
-
-  if kong_config.anonymous_reports then
-    -- If there is no internet connection, disable this feature
-    if socket.dns.toip(constants.SYSLOG.ADDRESS) then
-      compile_env["syslog_reports"] = string.format("error_log syslog:server=%s:%d error;", 
-                                                    constants.SYSLOG.ADDRESS, 
-                                                    constants.SYSLOG.PORT)
-    end
+  if kong_config.nginx_optimizations then
+    local infos, err = gather_system_infos()
+    if not infos then return nil, err end
+    compile_env = pl_tablex.merge(compile_env, infos,  true) -- union
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
@@ -170,7 +164,7 @@ local function prepare_prefix(kong_config)
   end
 
   log.verbose("saving Serf shell script handler in %s", kong_config.serf_event)
-  local script = string.format(script_template, "127.0.0.1", kong_config.admin_port)
+  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port)
   pl_file.write(kong_config.serf_event, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end
@@ -193,7 +187,8 @@ local function prepare_prefix(kong_config)
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err end
   if ulimit < 4096 then
-    log.warn(string.format("ulimit is currently set to \"%d\". For better performance set it to at least \"4096\" using \"ulimit -n\"", ulimit))
+    log.warn([[ulimit is currently set to "%d". For better performance set it]]
+           ..[[ to at least "4096" using "ulimit -n"]], ulimit)
   end
 
   -- write NGINX conf

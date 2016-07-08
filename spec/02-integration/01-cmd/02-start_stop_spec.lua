@@ -1,3 +1,5 @@
+local pl_dir = require "pl.dir"
+local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
@@ -42,39 +44,37 @@ describe("kong start/stop", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
     assert.truthy(helpers.path.exists(helpers.test_conf.kong_conf))
   end)
+  it("creates prefix directory if it doesn't exist", function()
+    finally(function()
+      helpers.kill_all()
+      pcall(helpers.dir.rmtree, "foobar")
+    end)
+
+    assert.falsy(helpers.path.exists("foobar"))
+    assert(helpers.kong_exec "start --prefix foobar")
+    assert.truthy(helpers.path.exists("foobar"))
+  end)
 
   describe("verbose args", function()
     it("accepts verbose --v", function()
-      local _, stderr, stdout = helpers.kong_exec("start --v --conf "..helpers.test_conf_path)
-      assert.equal("", stderr)
+      local _, _, stdout = assert(helpers.kong_exec("start --v --conf "..helpers.test_conf_path))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
     end)
     it("accepts debug --vv", function()
-      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path)
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path))
       assert.matches("[verbose] prefix in use: ", stdout, nil, true)
       assert.matches("[debug] prefix = ", stdout, nil, true)
       assert.matches("[debug] database = ", stdout, nil, true)
-      assert.equal("", stderr)
-    end)
-    it("should start with an inexistent prefix", function()
-      finally(function()
-        helpers.kill_all()
-        pcall(helpers.dir.rmtree, "foobar")
-      end)
-
-      assert(helpers.kong_exec "start --prefix foobar")
-      assert.truthy(helpers.path.exists("foobar"))
     end)
     it("prints ENV variables when detected", function()
       finally(function()
         helpers.execute "pkill nginx; pkill serf"
       end)
 
-      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
         database = "postgres",
         admin_listen = "127.0.0.1:8001"
-      })
-      assert.equal("", stderr)
+      }))
       assert.matches('KONG_DATABASE ENV found with "postgres"', stdout, nil, true)
       assert.matches('KONG_ADMIN_LISTEN ENV found with "127.0.0.1:8001"', stdout, nil, true)
     end)
@@ -83,8 +83,7 @@ describe("kong start/stop", function()
         helpers.kill_all()
       end)
 
-      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path)
-      assert.equal("", stderr)
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path))
       assert.matches("admin_listen.*anonymous_reports.*cassandra_ssl.*prefix.*", stdout)
     end)
     it("does not print sensitive settings in config", function()
@@ -92,12 +91,11 @@ describe("kong start/stop", function()
         helpers.kill_all()
       end)
 
-      local _, stderr, stdout = helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+      local _, _, stdout = assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
         pg_password = "do not print",
         cassandra_password = "do not print",
         cluster_encrypt_key = "fHGfspTRljmzLsYDVEK1Rw=="
-      })
-      assert.equal("", stderr)
+      }))
       assert.matches('KONG_PG_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CASSANDRA_PASSWORD ENV found with "******"', stdout, nil, true)
       assert.matches('KONG_CLUSTER_ENCRYPT_KEY ENV found with "******"', stdout, nil, true)
@@ -120,6 +118,12 @@ describe("kong start/stop", function()
 
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
       assert(helpers.execute(cmd))
+    end)
+    it("dumps PID in prefix", function()
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+      assert.truthy(helpers.path.exists(helpers.test_conf.serf_pid))
+      assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+      assert.False(helpers.path.exists(helpers.test_conf.serf_pid))
     end)
   end)
 
@@ -147,6 +151,12 @@ describe("kong start/stop", function()
       local _, code = helpers.utils.executeex(cmd)
       assert.equal(0, code)
     end)
+    it("dumps PID in prefix", function()
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {dnsmasq=true, dns_resolver=""}))
+      assert.truthy(helpers.path.exists(helpers.test_conf.dnsmasq_pid))
+      assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+      assert.False(helpers.path.exists(helpers.test_conf.dnsmasq_pid))
+    end)
   end)
 
   describe("errors", function()
@@ -161,11 +171,9 @@ describe("kong start/stop", function()
         pcall(helpers.dir.rmtree, helpers.test_conf.prefix)
       end)
 
-      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
-      assert.equal("", stderr)
-      assert.True(ok)
+      assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix))
 
-      ok, stderr = helpers.kong_exec("stop --prefix inexistent")
+      local ok, stderr = helpers.kong_exec("stop --prefix inexistent")
       assert.False(ok)
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
@@ -175,12 +183,9 @@ describe("kong start/stop", function()
       end)
 
       assert(helpers.dir.makepath(helpers.test_conf.prefix))
+      assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix))
 
       local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
-      assert.equal("", stderr)
-      assert.True(ok)
-
-      ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
       assert.False(ok)
       assert.matches("Nginx is already running in", stderr)
     end)

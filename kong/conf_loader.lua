@@ -317,6 +317,7 @@ local function load(path, custom_conf)
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
     conf.custom_plugins = nil
+    setmetatable(conf.plugins, nil) -- remove Map mt
   end
 
   -- extract ports/listen ips

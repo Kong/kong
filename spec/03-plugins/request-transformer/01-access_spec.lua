@@ -1,18 +1,18 @@
 local helpers = require "spec.helpers"
 
-describe("plugin: request transformer", function()
+describe("Plugin: request-transformer (access)", function()
   local client
-  local api1, api2, api3, api4, api5, api6
 
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
 
-    api1 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-1", request_host = "test1.com", upstream_url = "http://mockbin.com"})
-    api2 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-2", request_host = "test2.com", upstream_url = "http://httpbin.org"})
-    api3 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-3", request_host = "test3.com", upstream_url = "http://mockbin.com"})
-    api4 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-4", request_host = "test4.com", upstream_url = "http://mockbin.com"})
-    api5 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-5", request_host = "test5.com", upstream_url = "http://mockbin.com"})
-    api6 = assert(helpers.dao.apis:insert {name = "tests-request-transformer-6", request_host = "test6.com", upstream_url = "http://mockbin.com"})
+    local api1 = assert(helpers.dao.apis:insert {request_host = "test1.com", upstream_url = "http://mockbin.com"})
+    local api2 = assert(helpers.dao.apis:insert {request_host = "test2.com", upstream_url = "http://httpbin.org"})
+    local api3 = assert(helpers.dao.apis:insert {request_host = "test3.com", upstream_url = "http://mockbin.com"})
+    local api4 = assert(helpers.dao.apis:insert {request_host = "test4.com", upstream_url = "http://mockbin.com"})
+    local api5 = assert(helpers.dao.apis:insert {request_host = "test5.com", upstream_url = "http://mockbin.com"})
+    local api6 = assert(helpers.dao.apis:insert {request_host = "test6.com", upstream_url = "http://mockbin.com"})
 
     -- plugin config 1
     assert(helpers.dao.plugins:insert {
@@ -99,15 +99,14 @@ describe("plugin: request transformer", function()
 
     assert(helpers.start_kong())
   end)
-
   teardown(function()
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
-    client = assert(helpers.proxy_client())
+    client = helpers.proxy_client()
   end)
-
   after_each(function()
     if client then client:close() end
   end)
@@ -408,7 +407,7 @@ describe("plugin: request transformer", function()
       assert.equals("v1", json.postData.params.p2)
     end)
     it("queryString on POST if it exist", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         query = {
@@ -430,7 +429,7 @@ describe("plugin: request transformer", function()
       assert.equals("v2", value)
     end)
     it("does not add new queryString on POST if it does not exist", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         query = {
@@ -453,7 +452,7 @@ describe("plugin: request transformer", function()
 
   describe("add", function()
     it("new headers", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -468,7 +467,7 @@ describe("plugin: request transformer", function()
       assert.equals("value:2", h_h2)
     end)
     it("does not change or append value if header already exists", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -620,7 +619,7 @@ describe("plugin: request transformer", function()
       assert.equals("v1", value)
     end)
     it("does not change or append value to querystring on GET if querystring exists", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -636,7 +635,7 @@ describe("plugin: request transformer", function()
       assert.equals("v2", value)
     end)
     it("should not change the host header", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/get",
         headers = {
@@ -653,7 +652,7 @@ describe("plugin: request transformer", function()
 
   describe("append ", function()
     it("new header if header does not exists", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -679,7 +678,7 @@ describe("plugin: request transformer", function()
       assert.equals("v1, v2", h_h1)
     end)
     it("new querystring if querystring does not exists", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -695,7 +694,7 @@ describe("plugin: request transformer", function()
       assert.equals("v1", value)
     end)
     it("values to existing querystring", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         headers = {
@@ -722,7 +721,7 @@ describe("plugin: request transformer", function()
       assert.are.same("value:1", json.postData.params.p2)
     end)
     it("values to existing parameter in url encoded body if parameter already exist on POST", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -753,7 +752,7 @@ describe("plugin: request transformer", function()
       assert.equal("malformed json body", json.postData.text)
     end)
     it("does not change or append value to parameter on multipart POST", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -772,7 +771,7 @@ describe("plugin: request transformer", function()
 
   describe("remove, replace, add and append ", function()
     it("removes a header", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -799,7 +798,7 @@ describe("plugin: request transformer", function()
       assert.equals("false", hval)
     end)
     it("does not add new header if to be replaced header does not exist", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -811,7 +810,7 @@ describe("plugin: request transformer", function()
       assert.request(r).has.no.header("x-to-replace")
     end)
     it("add new header if missing", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -824,7 +823,7 @@ describe("plugin: request transformer", function()
       assert.equals("b1", hval)
     end)
     it("does not add new header if it already exist", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -838,7 +837,7 @@ describe("plugin: request transformer", function()
       assert.equals("c1", hval)
     end)
     it("appends values to existing headers", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -851,7 +850,7 @@ describe("plugin: request transformer", function()
       assert.equals("a1, a2, a3", hval)
     end)
     it("adds new parameters on POST when query string key missing", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "POST",
         path = "/request",
         body = {
@@ -889,7 +888,7 @@ describe("plugin: request transformer", function()
       assert.equals("yes", value)
     end)
     it("replaces parameters on GET", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -920,7 +919,7 @@ describe("plugin: request transformer", function()
       assert.request(r).has.no.formparam("toreplacequery")
     end)
     it("adds parameters on GET if it does not exist", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         headers = {
@@ -933,7 +932,7 @@ describe("plugin: request transformer", function()
       assert.equals("newvalue", value)
     end)
     it("does not add new parameter if to be added parameters already exist on GET", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         query = {
@@ -949,7 +948,7 @@ describe("plugin: request transformer", function()
       assert.equals("oldvalue", value)
     end)
     it("appends parameters on GET", function()
-      local r = assert( client:send {
+      local r = assert(client:send {
         method = "GET",
         path = "/request",
         query = {

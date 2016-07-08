@@ -7,7 +7,7 @@ describe("Plugin: loggly (log)", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.start_kong())
+    helpers.prepare_prefix()
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
@@ -74,13 +74,15 @@ describe("Plugin: loggly (log)", function()
         key = "123456789"
       }
     })
+
+    assert(helpers.start_kong())
   end)
   teardown(function()
     assert(helpers.stop_kong())
   end)
 
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
   after_each(function()
     if client then client:close() end

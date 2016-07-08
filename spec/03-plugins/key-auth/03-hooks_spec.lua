@@ -2,14 +2,15 @@ local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
-describe("Plugin hooks: key-auth", function()
+describe("Plugin: key-auth (hooks)", function()
   local admin_client, proxy_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
   teardown(function()
     if admin_client and proxy_client then
@@ -17,6 +18,7 @@ describe("Plugin hooks: key-auth", function()
       proxy_client:close()
     end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()

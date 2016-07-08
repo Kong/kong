@@ -1,12 +1,14 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("Response Rate Limiting API", function()
+describe("Plugin: response-rate-limiting (API)", function()
   local admin_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
+
     assert(helpers.start_kong())
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    admin_client = helpers.admin_client()
   end)
   teardown(function()
     if admin_client then

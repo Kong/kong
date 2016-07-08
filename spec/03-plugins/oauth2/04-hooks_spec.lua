@@ -1,24 +1,24 @@
-local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
-local pl_stringx = require "pl.stringx"
+local cache = require "kong.tools.database_cache"
+local helpers = require "spec.helpers"
 
-describe("Plugin hooks: oauth2", function()
-  local admin_client, proxy_client
+describe("Plugin: oauth2 (hooks)", function()
+  local admin_client, proxy_ssl_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
-    proxy_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
-    proxy_client:ssl_handshake()
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    admin_client = helpers.admin_client()
+    proxy_ssl_client = helpers.proxy_ssl_client()
   end)
   teardown(function()
-    if admin_client and proxy_client then
+    if admin_client and proxy_ssl_client then
       admin_client:close()
-      proxy_client:close()
+      proxy_ssl_client:close()
     end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
@@ -60,15 +60,15 @@ describe("Plugin hooks: oauth2", function()
   end)
 
   local function provision_code(client_id)
-    local res = assert(proxy_client:send {
+    local res = assert(proxy_ssl_client:send {
       method = "POST",
       path = "/oauth2/authorize",
       body = {
         provision_key = "provision123",
-        client_id = client_id, 
-        scope = "email", 
-        response_type = "code", 
-        state = "hello", 
+        client_id = client_id,
+        scope = "email",
+        response_type = "code",
+        state = "hello",
         authenticated_userid = "userid123"
       },
       headers = {
@@ -91,7 +91,7 @@ describe("Plugin hooks: oauth2", function()
     it("should invalidate when OAuth2 Credential entity is deleted", function()
       -- It should properly work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -128,10 +128,10 @@ describe("Plugin hooks: oauth2", function()
         res:read_body()
         return res.status == 404
       end)
-      
+
       -- It should not work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -146,7 +146,7 @@ describe("Plugin hooks: oauth2", function()
     it("should invalidate when OAuth2 Credential entity is updated", function()
       -- It should properly work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -159,7 +159,7 @@ describe("Plugin hooks: oauth2", function()
 
       -- It should not work
       local code = provision_code("updated_clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -204,7 +204,7 @@ describe("Plugin hooks: oauth2", function()
 
       -- It should work
       local code = provision_code("updated_clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "updated_clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -217,7 +217,7 @@ describe("Plugin hooks: oauth2", function()
 
       -- It should not work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -234,7 +234,7 @@ describe("Plugin hooks: oauth2", function()
     it("should invalidate when Consumer entity is deleted", function()
       -- It should properly work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -274,7 +274,7 @@ describe("Plugin hooks: oauth2", function()
 
       -- It should not work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -291,7 +291,7 @@ describe("Plugin hooks: oauth2", function()
     it("should invalidate when OAuth2 token entity is deleted", function()
       -- It should properly work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -304,7 +304,7 @@ describe("Plugin hooks: oauth2", function()
       assert.is_table(token)
 
       -- The token should work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token="..token.access_token,
         headers = {
@@ -345,7 +345,7 @@ describe("Plugin hooks: oauth2", function()
       end)
 
       -- It should not work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token="..token.access_token,
         headers = {
@@ -358,7 +358,7 @@ describe("Plugin hooks: oauth2", function()
     it("should invalidate when Oauth2 token entity is updated", function()
       -- It should properly work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -371,7 +371,7 @@ describe("Plugin hooks: oauth2", function()
       assert.is_table(token)
 
       -- The token should work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token="..token.access_token,
         headers = {
@@ -417,7 +417,7 @@ describe("Plugin hooks: oauth2", function()
       end)
 
       -- It should work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token=updated_token",
         headers = {
@@ -427,7 +427,7 @@ describe("Plugin hooks: oauth2", function()
       assert.res_status(200, res)
 
       -- It should not work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token="..token.access_token,
         headers = {
@@ -442,7 +442,7 @@ describe("Plugin hooks: oauth2", function()
     it("should invalidate token when OAuth2 client entity is deleted", function()
       -- It should properly work
       local code = provision_code("clientid123")
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "POST",
         path = "/oauth2/token",
         body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -455,7 +455,7 @@ describe("Plugin hooks: oauth2", function()
       assert.is_table(token)
 
       -- The token should work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token="..token.access_token,
         headers = {
@@ -500,7 +500,7 @@ describe("Plugin hooks: oauth2", function()
       end)
 
       -- it should not work
-      local res = assert(proxy_client:send {
+      local res = assert(proxy_ssl_client:send {
         method = "GET",
         path = "/status/200?access_token="..token.access_token,
         headers = {
