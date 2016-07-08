@@ -10,6 +10,10 @@ describe("kong restart", function()
     helpers.clean_prefix()
   end)
 
+  it("health help", function()
+    local _, stderr = helpers.kong_exec "health --help"
+    assert.not_equal("", stderr)
+  end)
   it("succeeds when Kong is running", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {dnsmasq = true, dns_resolver = ""}))
     assert(helpers.kong_exec("health --conf "..helpers.test_conf_path))
