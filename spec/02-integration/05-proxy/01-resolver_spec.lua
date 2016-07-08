@@ -61,6 +61,10 @@ describe("Resolver", function()
       upstream_url = "http://mockbin.com/status/204",
       strip_request_path = true
     })
+    assert(helpers.dao.apis:insert {
+      request_path = "/request/urlenc/%20%20",
+      upstream_url = "http://mockbin.com/",
+    })
 
     assert(helpers.start_kong())
     client = helpers.proxy_client()
@@ -198,7 +202,7 @@ describe("Resolver", function()
       })
       assert.res_status(200, res)
     end)
-    it("doesn't append trailing shalsh when strip_request_path is false", function()
+    it("doesn't append trailing slash when strip_request_path is false", function()
       local res = assert(client:send {
         method = "GET",
         path = "/request"
@@ -206,6 +210,15 @@ describe("Resolver", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.equal("http://mockbin.com/request", json.url)
+    end)
+    it("proxies percent-encoded request_path", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request/urlenc/%20%20"
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.equals("http://mockbin.com/request/urlenc/%20%20", json.url)
     end)
 
     describe("strip_request_path", function()
