@@ -2,6 +2,7 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local jwt_secrets = helpers.dao.jwt_secrets
+local fixtures = require "spec.03-plugins.jwt.fixtures"
 
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
@@ -9,7 +10,7 @@ describe("Plugin: jwt (API)", function()
     helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
+    admin_client = assert(helpers.admin_client())
   end)
   teardown(function()
     if admin_client then admin_client:close() end
@@ -62,6 +63,99 @@ describe("Plugin: jwt (API)", function()
         assert.equal("tooshort", body.secret)
         jwt2 = body
       end)
+      it("accepts a valid public key for RS256 when posted urlencoded", function()
+        local rsa_public_key = fixtures.rs256_public_key
+        rsa_public_key = rsa_public_key:gsub("\n", "\r\n")
+        rsa_public_key = rsa_public_key:gsub("([^%w %-%_%.%~])",
+          function(c) return string.format ("%%%02X", string.byte(c)) end)
+        rsa_public_key = rsa_public_key:gsub(" ", "+")
+
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob3", 
+            algorithm = "RS256", 
+            rsa_public_key = rsa_public_key
+          },
+          headers = {
+            ["Content-Type"] = "application/x-www-form-urlencoded"
+          }
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("bob3", json.key)
+      end)
+      it("accepts a valid public key for RS256 when posted as json", function()
+        local rsa_public_key = fixtures.rs256_public_key
+
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob4", 
+            algorithm = "RS256", 
+            rsa_public_key = rsa_public_key
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("bob4", json.key)
+      end)
+      it("fails with missing `rsa_public_key` parameter for RS256 algorithms", function ()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob5", 
+            algorithm = "RS256"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("no mandatory 'rsa_public_key'", json.message)
+      end)
+      it("fails with an invalid rsa_public_key for RS256 algorithms", function ()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob5", 
+            algorithm = "RS256",
+            rsa_public_key = "test",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("'rsa_public_key' format is invalid", json.message)
+      end)
+      it("does not fail when `secret` parameter for HS256 algorithms is missing", function ()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/jwt/",
+          body = {
+            key = "bob5", 
+            algorithm = "HS256",
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.string(json.secret)
+        assert.equals(32, #json.secret)
+        assert.matches("^%x+$", json.secret)
+      end)
     end)
 
     describe("PUT", function()
@@ -89,7 +183,7 @@ describe("Plugin: jwt (API)", function()
           path = "/consumers/bob/jwt/",
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(1, #(body.data))
+        assert.equal(4, #(body.data))
       end)
     end)
   end)
