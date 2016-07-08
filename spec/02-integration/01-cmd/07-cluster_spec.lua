@@ -32,7 +32,7 @@ describe("kong cluster", function()
   it("force-leaves a node", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
     local _, _, stdout = assert(helpers.kong_exec("cluster force-leave 127.0.0.1 --conf "..helpers.test_conf_path))
-    assert.matches("left node 127.0.0.1", stdout)
+    assert.matches("left node 127.0.0.1", stdout, nil, true)
   end)
 
   describe("errors", function()
