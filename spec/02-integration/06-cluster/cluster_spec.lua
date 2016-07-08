@@ -1,6 +1,5 @@
 local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
-local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 local pl_tablex = require "pl.tablex"
 local pl_stringx = require "pl.stringx"

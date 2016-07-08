@@ -1,5 +1,3 @@
-local pl_dir = require "pl.dir"
-local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
