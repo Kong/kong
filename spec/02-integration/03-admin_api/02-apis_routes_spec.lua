@@ -15,7 +15,7 @@ describe("Admin API", function()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
-    client = helpers.admin_client()
+    client = assert(helpers.admin_client())
   end)
   teardown(function()
     if client then client:close() end
@@ -322,6 +322,17 @@ describe("Admin API", function()
           local body = assert.res_status(400, res)
           assert.equal([[{"foo":"unknown field"}]], body)
       end)
+      it("ignores an invalid body", function()
+        local res = assert(client:send {
+          methd = "GET",
+          path = "/apis",
+          body = "this fails if decoded as json",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
+      end)
     end)
     it("returns 405 on invalid method", function()
       local methods = {"DELETE"}
@@ -378,6 +389,17 @@ describe("Admin API", function()
             path = "/apis/_inexistent_"
           })
           assert.res_status(404, res)
+        end)
+        it("ignores an invalid body", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..api.id,
+            body = "this fails if decoded as json",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(200, res)
         end)
       end)
 
@@ -766,7 +788,6 @@ describe("Admin API", function()
           name = "key-auth",
           api_id = api.id
         })
-
         local res = assert(client:send {
           method = "GET",
           path = "/apis/"..api.id.."/plugins"
@@ -774,6 +795,17 @@ describe("Admin API", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal(1, #json.data)
+      end)
+      it("ignores an invalid body", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/apis/"..api.id.."/plugins",
+          body = "this fails if decoded as json",
+          headers = {
+            ["Content-Type"] = "application/json",
+          }
+        })
+        assert.res_status(200, res)
       end)
     end)
 
@@ -810,6 +842,17 @@ describe("Admin API", function()
             path = "/apis/"..w_api.id.."/plugins/"..plugin.id
           })
           assert.res_status(404, res)
+        end)
+        it("ignores an invalid body", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..api.id.."/plugins/"..plugin.id,
+            body = "this fails if decoded as json",
+            headers = {
+              ["Content-Type"] = "application/json",
+            }
+          })
+          assert.res_status(200, res)
         end)
       end)
 

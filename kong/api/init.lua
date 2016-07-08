@@ -5,17 +5,22 @@ local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
 local api_helpers = require "kong.api.api_helpers"
+local tablex = require "pl.tablex"
 
 local find = string.find
 
 local app = lapis.Application()
 
+local needs_body = tablex.readonly({ PUT = 1, POST = 2, PATCH = 3 })
+
 local function parse_params(fn)
   return app_helpers.json_params(function(self, ...)
-    local content_type = self.req.headers["content-type"]
-    if content_type and find(content_type:lower(), "application/json", nil, true) then
-      if not self.json then
-        return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
+    if needs_body[ngx.req.get_method()] then
+      local content_type = self.req.headers["content-type"]
+      if content_type and find(content_type:lower(), "application/json", nil, true) then
+        if not self.json then
+          return responses.send_HTTP_BAD_REQUEST("Cannot parse JSON body")
+        end
       end
     end
     self.params = api_helpers.normalize_nested_params(self.params)
@@ -61,8 +66,7 @@ app.handle_error = function(self, err, trace)
 end
 
 app:before_filter(function(self)
-  local method = ngx.req.get_method()
-  if method ~= "GET" and method ~= "DELETE" then
+  if needs_body[ngx.req.get_method()] then
     local content_type = self.req.headers["content-type"]
     if not content_type or stringy.strip(content_type) == "" then
       return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
