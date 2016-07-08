@@ -6,19 +6,18 @@ local function create_big_data(size)
   ]], string.rep("*", size))
 end
 
-describe("Plugin: response transformer", function()
-
+describe("Plugin: response-transformer", function()
   local client
 
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
 
     local api = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer",
       request_host = "response.com",
       upstream_url = "http://httpbin.org",
     })
-
     assert(helpers.dao.plugins:insert {
       api_id = api.id,
       name = "response-transformer",
@@ -34,15 +33,14 @@ describe("Plugin: response transformer", function()
 
     assert(helpers.start_kong())
   end)
-
   teardown(function()
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
     client = assert(helpers.proxy_client())
   end)
-
   after_each(function()
     if client then client:close() end
   end)
@@ -59,7 +57,7 @@ describe("Plugin: response transformer", function()
     })
     assert.response(r).has.status(200)
     local json = assert.response(r).has.jsonbody()
-    assert.equals("v1", json.p1)
+    assert.equal("v1", json.p1)
   end)
   it("remove parameters on large POST", function()
     local r = assert(client:send {

@@ -9,34 +9,33 @@ describe("Plugin: hmac-auth (hooks)", function()
   local client_proxy, client_admin, consumer, credential
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
-    local api1 = assert(helpers.dao.apis:insert {
+    local api = assert(helpers.dao.apis:insert {
       request_host = "hmacauth.com",
       upstream_url = "http://mockbin.com"
     })
-
     assert(helpers.dao.plugins:insert {
       name = "hmac-auth",
-      api_id = api1.id,
+      api_id = api.id,
       config = {
         clock_skew = 3000
       }
     })
 
     consumer = assert(helpers.dao.consumers:insert {
-        username = "consumer1",
-        custom_id = "1234"
+      username = "consumer1",
+      custom_id = "1234"
     })
-
     credential = assert(helpers.dao["hmacauth_credentials"]:insert {
-        username = "bob",
-        secret = "secret",
-        consumer_id = consumer.id
+      username = "bob",
+      secret = "secret",
+      consumer_id = consumer.id
     })
 
-    client_proxy = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    client_admin = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    client_proxy = helpers.proxy_client()
+    client_admin = helpers.admin_client()
   end)
 
    teardown(function()
@@ -45,6 +44,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       client_admin:close()
     end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   local function hmac_sha1_binary(secret, data)

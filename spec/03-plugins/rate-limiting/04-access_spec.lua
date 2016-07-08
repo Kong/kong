@@ -11,15 +11,13 @@ local function wait()
   end
 end
 
-describe("Plugin: rate-limiting", function()
+describe("Plugin: rate-limiting (access)", function()
   local client
 
   local function prepare()
     helpers.kill_all()
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())
-
-    assert(helpers.start_kong())
 
     local consumer1 = assert(helpers.dao.consumers:insert {
       custom_id = "provider_123"
@@ -131,22 +129,25 @@ describe("Plugin: rate-limiting", function()
       consumer_id = consumer1.id,
       config = { minute = 6, continue_on_error = true }
     })
-  end
 
-  before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-  end)
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
+  end
 
   setup(function()
     prepare()
     wait()
   end)
   teardown(function()
-    if client then
-      client:close()
-    end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
+  end)
+
+  before_each(function()
+    client = helpers.proxy_client()
+  end)
+  after_each(function()
+    if client then client:close() end
   end)
 
   describe("Without authentication (IP address)", function()

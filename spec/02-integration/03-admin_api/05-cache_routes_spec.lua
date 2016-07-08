@@ -6,10 +6,11 @@ describe("Admin API", function()
   local client, proxy_client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port, 2000))
+    client = helpers.admin_client()
+    proxy_client = helpers.proxy_client(2000)
   end)
   teardown(function()
     if client then

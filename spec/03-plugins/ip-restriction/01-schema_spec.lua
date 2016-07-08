@@ -3,7 +3,7 @@ local schema = require "kong.plugins.ip-restriction.schema"
 
 local v = schemas_validation.validate_entity
 
-describe("Plugin shema: ip-restriction", function()
+describe("Plugin: ip-restriction (schema)", function()
   it("should accept a valid whitelist", function()
     assert(v({whitelist = {"127.0.0.1", "127.0.0.2"}}, schema))
   end)

@@ -6,6 +6,7 @@ describe("Resolver", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
 
     -- request_host
     assert(helpers.dao.apis:insert {
@@ -60,14 +61,19 @@ describe("Resolver", function()
       upstream_url = "http://mockbin.com/status/204",
       strip_request_path = true
     })
+    assert(helpers.dao.apis:insert {
+      request_path = "/request/urlenc/%20%20",
+      upstream_url = "http://mockbin.com/",
+    })
 
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   it("404 if can't find API to proxy", function()
@@ -90,7 +96,7 @@ describe("Resolver", function()
     body = assert.res_status(404, res)
     assert.is_nil(res.headers.via)
     assert.equal([[{"request_path":"\/inexistent","message":"API not found with these values",]]
-               ..[["request_host":["127.0.0.1"]}]], body)
+               ..[["request_host":["0.0.0.0"]}]], body)
   end)
 
   describe("proxying by request_host", function()
@@ -187,7 +193,7 @@ describe("Resolver", function()
       })
       local body = assert.res_status(404, res)
       assert.equal([[{"request_path":"\/somerequest_path\/status\/200","message":"API not found]]
-                 ..[[ with these values","request_host":["127.0.0.1"]}]], body)
+                 ..[[ with these values","request_host":["0.0.0.0"]}]], body)
     end)
     it("disregards querystrings", function()
       local res = assert(client:send {
@@ -196,7 +202,7 @@ describe("Resolver", function()
       })
       assert.res_status(200, res)
     end)
-    it("doesn't append trailing shalsh when strip_request_path is false", function()
+    it("doesn't append trailing slash when strip_request_path is false", function()
       local res = assert(client:send {
         method = "GET",
         path = "/request"
@@ -204,6 +210,15 @@ describe("Resolver", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.equal("http://mockbin.com/request", json.url)
+    end)
+    it("proxies percent-encoded request_path", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request/urlenc/%20%20"
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.equals("http://mockbin.com/request/urlenc/%20%20", json.url)
     end)
 
     describe("strip_request_path", function()

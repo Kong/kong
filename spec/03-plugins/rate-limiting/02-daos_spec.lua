@@ -1,17 +1,16 @@
+local uuid = require "lua_uuid"
 local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
-local uuid = require "lua_uuid"
 
 local ratelimiting_metrics = helpers.dao.ratelimiting_metrics
 
-describe("Rate Limiting Metrics", function()
+describe("Plugin: rate-limiting (DAO)", function()
   local api_id = uuid()
   local identifier = uuid()
 
   setup(function()
     helpers.dao:truncate_tables()
   end)
-
   after_each(function()
     helpers.dao:truncate_tables()
   end)

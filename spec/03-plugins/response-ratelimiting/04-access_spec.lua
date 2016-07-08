@@ -1,5 +1,5 @@
-local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
 local SLEEP_VALUE = "0.5"
@@ -14,129 +14,144 @@ local function wait()
   end
 end
 
-describe("Plugin: response-ratelimiting", function()
+describe("Plugin: response-ratelimiting (access)", function()
   local client
 
   local function prepare()
     helpers.kill_all()
-    assert(helpers.start_kong())
-
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())
 
-    local consumer1 = assert(helpers.dao.consumers:insert {
-      custom_id = "provider_123"
-    })
+    local consumer = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
     assert(helpers.dao.keyauth_credentials:insert {
       key = "apikey123",
-      consumer_id = consumer1.id
+      consumer_id = consumer.id
     })
 
-    local consumer2 = assert(helpers.dao.consumers:insert {
-      custom_id = "provider_124"
-    })
+    local consumer2 = assert(helpers.dao.consumers:insert {custom_id = "provider_124"})
     assert(helpers.dao.keyauth_credentials:insert {
       key = "apikey124",
       consumer_id = consumer2.id
     })
 
-    local consumer3 = assert(helpers.dao.consumers:insert {
-      custom_id = "provider_125"
-    })
+    local consumer3 = assert(helpers.dao.consumers:insert {custom_id = "provider_125"})
     assert(helpers.dao.keyauth_credentials:insert {
       key = "apikey125",
       consumer_id = consumer3.id
     })
 
-    local api1 = assert(helpers.dao.apis:insert {
+    -- test1.com
+    local api = assert(helpers.dao.apis:insert {
       request_host = "test1.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api1.id,
-      config = { limits = { video = { minute = 6 } } }
+      api_id = api.id,
+      config = {limits = {video = {minute = 6}}}
     })
 
-    local api2 = assert(helpers.dao.apis:insert {
+    -- test2.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test2.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api2.id,
-      config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }
+      api_id = api.id,
+      config = {limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}}
     })
 
-    local api3 = assert(helpers.dao.apis:insert {
+    -- test3.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test3.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "key-auth",
-      api_id = api3.id
+      api_id = api.id
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api3.id,
-      config = { limits = { video = { minute = 6 } } }
+      api_id = api.id,
+      config = {limits = {video = {minute = 6}}}
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api3.id,
-      consumer_id = consumer1.id,
-      config = { limits = { video = { minute = 2 } } }
+      api_id = api.id,
+      consumer_id = consumer.id,
+      config = {limits = {video = {minute = 2}}}
     })
 
-    local api4 = assert(helpers.dao.apis:insert {
+    -- test4.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test4.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api4.id,
-      config = { continue_on_error = false, limits = { video = { minute = 6 } } }
+      api_id = api.id,
+      config = {continue_on_error = false, limits = {video = {minute = 6}}}
     })
 
-    local api5 = assert(helpers.dao.apis:insert {
+    -- test5.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test5.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api5.id,
-      config = { continue_on_error = true, limits = { video = { minute = 6 } } }
+      api_id = api.id,
+      config = {continue_on_error = true, limits = {video = {minute = 6}}}
     })
 
-    local api6 = assert(helpers.dao.apis:insert {
+    -- test6.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test6.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api6.id,
-      config = { continue_on_error = true, limits = { video = { minute = 2 } } }
+      api_id = api.id,
+      config = {continue_on_error = true, limits = {video = {minute = 2}}}
     })
 
-    local api7 = assert(helpers.dao.apis:insert {
+    -- test7.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test7.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api7.id,
-      config = { continue_on_error = false, block_on_first_violation = true, limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }
+      api_id = api.id,
+      config = {
+        continue_on_error = false,
+        block_on_first_violation = true,
+        limits = {
+          video = {
+            minute = 6,
+            hour = 10
+          },
+          image = {
+            minute = 4
+          }
+        }
+      }
     })
 
-    local api8 = assert(helpers.dao.apis:insert {
+    -- test8.com
+    api = assert(helpers.dao.apis:insert {
       request_host = "test8.com",
       upstream_url = "http://httpbin.org"
     })
     assert(helpers.dao.plugins:insert {
       name = "response-ratelimiting",
-      api_id = api8.id,
-      config = { limits = { video = { minute = 6, hour = 10 }, image = { minute = 4 } } }
+      api_id = api.id,
+      config = {limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}}
     })
+
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
   end
 
   setup(function()
@@ -144,14 +159,15 @@ describe("Plugin: response-ratelimiting", function()
     wait()
   end)
   teardown(function()
-    if client then
-      client:close()
-    end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
+
   before_each(function()
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
+  end)
+  after_each(function()
+    if client then client:close() end
   end)
 
   describe("Without authentication (IP address)", function()
@@ -439,5 +455,4 @@ describe("Plugin: response-ratelimiting", function()
       assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
     end)
   end)
-
 end)

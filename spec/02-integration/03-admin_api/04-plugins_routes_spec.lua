@@ -5,16 +5,15 @@ describe("Admin API", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    client = helpers.admin_client()
   end)
   teardown(function()
-    if client then
-      client:close()
-    end
+    if client then client:close() end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   describe("/plugins/enabled", function()
@@ -57,6 +56,19 @@ describe("Admin API", function()
         assert.equal(3, json.total)
         assert.equal(3, #json.data)
       end)
+    end)
+    it("returns 405 on invalid method", function()
+      local methods = {"DELETE", "PATCH"}
+      for i = 1, #methods do
+        local res = assert(client:send {
+          method = methods[i],
+          path = "/plugins",
+          body = {}, -- tmp: body to allow POST/PUT to work
+          headers = {["Content-Type"] = "application/json"}
+        })
+        local body = assert.response(res).has.status(405)
+        assert.equal([[{"message":"Method not allowed"}]], body)
+      end
     end)
 
     describe("/plugins/{plugin}", function()
@@ -156,7 +168,7 @@ describe("Admin API", function()
         local json = cjson.decode(body)
         assert.is_table(json.fields)
       end)
-      it("#only returns 404 on invalid plugin", function()
+      it("returns 404 on invalid plugin", function()
         local res = assert(client:send {
           method = "GET",
           path = "/plugins/schema/foobar",

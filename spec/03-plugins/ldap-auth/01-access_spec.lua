@@ -2,14 +2,11 @@ local helpers = require "spec.helpers"
 local base64 = require "base64"
 local cache = require "kong.tools.database_cache"
 
-describe("Plugin: ldap-auth", function()
-  
+describe("Plugin: ldap-auth (access)", function()
   local client
-  
   setup(function()
-    helpers.dao:truncate_tables()
-    helpers.execute "pkill nginx; pkill serf"
-    assert(helpers.prepare_prefix())
+    helpers.kill_all()
+    helpers.prepare_prefix()
 
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
@@ -22,51 +19,48 @@ describe("Plugin: ldap-auth", function()
       upstream_url = "http://mockbin.com"
     })
 
-    -- plugin 1
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
       name = "ldap-auth",
       config = {
-        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com", 
-        ldap_port = "389", 
-        start_tls = false, 
-        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", 
+        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid"
       }
     })
-    -- plugin 2
+
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
       name = "ldap-auth",
       config = {
-        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com", 
-        ldap_port = "389", 
-        start_tls = false, 
-        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com", 
-        attribute = "uid", 
+        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid",
         hide_credentials = true
       }
     })
-  
+
     assert(helpers.start_kong())
   end)
-  
   teardown(function()
     helpers.stop_kong()
   end)
 
   before_each(function()
-    client = assert(helpers.proxy_client())
+    client = helpers.proxy_client()
   end)
-
   after_each(function()
     if client then client:close() end
   end)
-  
+
   it("returns 'invalid credentials' and www-authenticate header when the credential is missing", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/get", 
+      path = "/get",
       headers = {
         host = "ldap.com"
       }
@@ -82,7 +76,7 @@ describe("Plugin: ldap-auth", function()
       method = "GET",
       path = "/get",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "abcd"
       }
     })
@@ -93,9 +87,9 @@ describe("Plugin: ldap-auth", function()
   it("returns 'invalid credentials' when credential value is in wrong format in proxy-authorization header", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/get", 
+      path = "/get",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         ["proxy-authorization"] = "abcd"
       }
     })
@@ -106,9 +100,9 @@ describe("Plugin: ldap-auth", function()
   it("returns 'invalid credentials' when credential value is missing in authorization header", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/get", 
+      path = "/get",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "
       }
     })
@@ -122,7 +116,7 @@ describe("Plugin: ldap-auth", function()
       path = "/request",
       body = {},
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:password"),
         ["content-type"] = "application/x-www-form-urlencoded",
       }
@@ -132,9 +126,9 @@ describe("Plugin: ldap-auth", function()
   it("passes if credential is valid and starts with space in post request", function()
     local r = assert(client:send {
       method = "POST",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = " ldap "..base64.encode("einstein:password")
       }
     })
@@ -143,9 +137,9 @@ describe("Plugin: ldap-auth", function()
   it("passes if signature type indicator is in caps and credential is valid in post request", function()
     local r = assert(client:send {
       method = "POST",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "LDAP "..base64.encode("einstein:password")
       }
     })
@@ -154,9 +148,9 @@ describe("Plugin: ldap-auth", function()
   it("passes if credential is valid in get request", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:password")
       }
     })
@@ -167,9 +161,9 @@ describe("Plugin: ldap-auth", function()
   it("authorization fails if credential does has no password encoded in get request", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:")
       }
     })
@@ -178,9 +172,9 @@ describe("Plugin: ldap-auth", function()
   it("authorization fails if credential has multiple encoded usernames or passwords separated by ':' in get request", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:password:another_password")
       }
     })
@@ -189,50 +183,50 @@ describe("Plugin: ldap-auth", function()
   it("does not pass if credential is invalid in get request", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:wrong_password")
       }
     })
     assert.response(r).has.status(403)
-  end)  
+  end)
   it("does not hide credential sent along with authorization header to upstream server", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:password")
       }
     })
     assert.response(r).has.status(200)
     local value = assert.request(r).has.header("authorization")
     assert.equal("ldap "..base64.encode("einstein:password"), value)
-  end)  
+  end)
   it("hides credential sent along with authorization header to upstream server", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap2.com", 
+        host = "ldap2.com",
         authorization = "ldap "..base64.encode("einstein:password")
       }
     })
     assert.response(r).has.status(200)
     assert.request(r).has.no.header("authorization")
-  end)  
+  end)
   it("caches LDAP Auth Credential", function()
     local r = assert(client:send {
       method = "GET",
-      path = "/request", 
+      path = "/request",
       headers = {
-        host = "ldap.com", 
+        host = "ldap.com",
         authorization = "ldap "..base64.encode("einstein:password")
       }
     })
     assert.response(r).has.status(200)
-          
+
     -- Check that cache is populated
     local cache_key = cache.ldap_credential_key("einstein")
     local exists = true

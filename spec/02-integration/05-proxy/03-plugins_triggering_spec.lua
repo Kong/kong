@@ -4,6 +4,7 @@ describe("Plugins triggering", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     helpers.dao:truncate_tables()
 
     local consumer = assert(helpers.dao.consumers:insert {
@@ -32,14 +33,13 @@ describe("Plugins triggering", function()
     })
 
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
-    if client then
-      client:close()
-    end
+    if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   -- here have 2 rows in our plugins table, one with a

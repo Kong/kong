@@ -1,12 +1,11 @@
-local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local pl_stringx = require "pl.stringx"
+local helpers = require "spec.helpers"
 
-describe("Plugin: oauth2", function()
+describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   setup(function()
     helpers.kill_all()
-    assert(helpers.start_kong())
+    helpers.prepare_prefix()
 
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
@@ -33,12 +32,12 @@ describe("Plugin: oauth2", function()
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api1.id,
-      config = { 
-        scopes = { "email", "profile", "user.email" }, 
-        mandatory_scope = true, 
-        provision_key = "provision123", 
-        token_expiration = 5, 
-        enable_implicit_grant = true 
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true
       }
     })
 
@@ -50,11 +49,11 @@ describe("Plugin: oauth2", function()
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api2.id,
-      config = { 
-        scopes = { "email", "profile" }, 
-        mandatory_scope = true, 
-        provision_key = "provision123", 
-        token_expiration = 5, 
+      config = {
+        scopes = { "email", "profile" },
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
         enable_implicit_grant = true
       }
     })
@@ -66,13 +65,13 @@ describe("Plugin: oauth2", function()
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api3.id,
-      config = { 
-        scopes = { "email", "profile" }, 
-        mandatory_scope = true, 
-        provision_key = "provision123", 
-        token_expiration = 5, 
-        enable_implicit_grant = true, 
-        hide_credentials = true 
+      config = {
+        scopes = { "email", "profile" },
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        hide_credentials = true
       }
     })
 
@@ -84,12 +83,12 @@ describe("Plugin: oauth2", function()
       name = "oauth2",
       api_id = api4.id,
       config = {
-        scopes = { "email", "profile" }, 
-        mandatory_scope = true, 
-        provision_key = "provision123", 
-        token_expiration = 5, 
-        enable_client_credentials = true, 
-        enable_authorization_code = false 
+        scopes = { "email", "profile" },
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_client_credentials = true,
+        enable_authorization_code = false
       }
     })
 
@@ -100,13 +99,13 @@ describe("Plugin: oauth2", function()
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api5.id,
-      config = { 
-        scopes = { "email", "profile" }, 
-        mandatory_scope = true, 
-        provision_key = "provision123", 
-        token_expiration = 5, 
-        enable_password_grant = true, 
-        enable_authorization_code = false 
+      config = {
+        scopes = { "email", "profile" },
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_password_grant = true,
+        enable_authorization_code = false
       }
     })
 
@@ -117,29 +116,29 @@ describe("Plugin: oauth2", function()
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api6.id,
-      config = { 
-        scopes = { "email", "profile", "user.email" }, 
-        mandatory_scope = true, 
-        provision_key = "provision123", 
-        token_expiration = 5, 
-        enable_implicit_grant = true, 
-        accept_http_if_already_terminated = true 
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        accept_http_if_already_terminated = true
       }
     })
 
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
-    proxy_ssl_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(helpers.test_conf.proxy_listen_ssl, ":")[2]))
-    proxy_ssl_client:ssl_handshake()
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
+
+    proxy_client = helpers.proxy_client()
+    proxy_ssl_client = helpers.proxy_ssl_client()
   end)
   teardown(function()
-    if proxy_client then
+    if proxy_client and proxy_ssl_client then
       proxy_client:close()
-    end
-    if proxy_ssl_client then
       proxy_ssl_client:close()
     end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   local function provision_code()
@@ -149,9 +148,9 @@ describe("Plugin: oauth2", function()
       body = {
         provision_key = "provision123",
         client_id = "clientid123",
-        scope = "email", 
-        response_type = "code", 
-        state = "hello", 
+        scope = "email",
+        response_type = "code",
+        state = "hello",
         authenticated_userid = "userid123"
       },
       headers = {
@@ -331,10 +330,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid789", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid789",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -351,10 +350,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -370,10 +369,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -390,10 +389,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -410,10 +409,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -429,10 +428,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123a", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123a",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -448,10 +447,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/somepath/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -467,10 +466,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize/",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code"
           },
           headers = {
@@ -486,10 +485,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "code",
             state = "hello"
           },
@@ -509,11 +508,11 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            client_id = "clientid123", 
-            scope = "email", 
-            response_type = "code", 
-            state = "hello", 
+            provision_key = "provision123",
+            client_id = "clientid123",
+            scope = "email",
+            response_type = "code",
+            state = "hello",
             authenticated_userid = "userid123"
           },
           headers = {
@@ -539,11 +538,11 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            client_id = "clientid123", 
-            scope = "user.email", 
-            response_type = "code", 
-            state = "hello", 
+            provision_key = "provision123",
+            client_id = "clientid123",
+            scope = "user.email",
+            response_type = "code",
+            state = "hello",
             authenticated_userid = "userid123"
           },
           headers = {
@@ -572,10 +571,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "token"
           },
           headers = {
@@ -593,11 +592,11 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
-            response_type = "token", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
+            response_type = "token",
             state = "wot"
           },
           headers = {
@@ -613,10 +612,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            scope = "email",
             response_type = "token"
           },
           headers = {
@@ -642,10 +641,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            client_id = "clientid123", 
-            scope = "email  profile", 
-            response_type = "token", 
+            provision_key = "provision123",
+            client_id = "clientid123",
+            scope = "email  profile",
+            response_type = "token",
             authenticated_userid = "userid123"
           },
           headers = {
@@ -675,10 +674,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/authorize",
           body = {
-            provision_key = "provision123", 
-            client_id = "clientid123", 
-            scope = "email  profile", 
-            response_type = "token", 
+            provision_key = "provision123",
+            client_id = "clientid123",
+            scope = "email  profile",
+            response_type = "token",
             authenticated_userid = "userid123"
           },
           headers = {
@@ -714,8 +713,8 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            scope = "email", 
+            client_id = "clientid123",
+            scope = "email",
             response_type = "token"
           },
           headers = {
@@ -731,9 +730,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             response_type = "token"
           },
           headers = {
@@ -749,9 +748,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             grant_type = "client_credentials"
           },
           headers = {
@@ -767,10 +766,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
-            grant_type = "client_credentials", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
+            grant_type = "client_credentials",
             authenticated_userid = "user123"
           },
           headers = {
@@ -786,10 +785,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
-            grant_type = "client_credentials", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
+            grant_type = "client_credentials",
             authenticated_userid = "user123",
             provision_key = "hello"
           },
@@ -806,9 +805,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             grant_type = "client_credentials"
           },
           headers = {
@@ -824,11 +823,11 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
-            grant_type = "client_credentials", 
-            authenticated_userid = "hello", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
+            grant_type = "client_credentials",
+            authenticated_userid = "hello",
             provision_key = "provision123"
           },
           headers = {
@@ -844,8 +843,8 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            scope = "email", 
-            grant_type = "client_credentials" 
+            scope = "email",
+            grant_type = "client_credentials"
           },
           headers = {
             ["Host"] = "oauth2_4.com",
@@ -861,8 +860,8 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            scope = "email", 
-            grant_type = "client_credentials" 
+            scope = "email",
+            grant_type = "client_credentials"
           },
           headers = {
             ["Host"] = "oauth2_4.com",
@@ -879,11 +878,11 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
-            grant_type = "client_credentials", 
-            authenticated_userid = "hello", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
+            grant_type = "client_credentials",
+            authenticated_userid = "hello",
             provision_key = "provision123"
           },
           headers = {
@@ -910,13 +909,13 @@ describe("Plugin: oauth2", function()
         local res = assert(proxy_ssl_client:send {
           method = "POST",
           path = "/oauth2/token",
-          body = { 
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
-            grant_type = "client_credentials", 
-            authenticated_userid = "hello", 
-            provision_key = "provision123" 
+          body = {
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
+            grant_type = "client_credentials",
+            authenticated_userid = "hello",
+            provision_key = "provision123"
           },
           headers = {
             ["Host"] = "oauth2_4.com",
@@ -928,8 +927,8 @@ describe("Plugin: oauth2", function()
         local res = assert(proxy_ssl_client:send {
           method = "POST",
           path = "/request",
-          body = { 
-            access_token = body.access_token 
+          body = {
+            access_token = body.access_token
           },
           headers = {
             ["Host"] = "oauth2_4.com",
@@ -957,8 +956,8 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            scope = "email", 
+            client_id = "clientid123",
+            scope = "email",
             response_type = "token"
           },
           headers = {
@@ -974,9 +973,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             response_type = "token"
           },
           headers = {
@@ -992,9 +991,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             response_type = "token",
             grant_type = "password"
           },
@@ -1011,9 +1010,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             grant_type = "password"
           },
           headers = {
@@ -1029,10 +1028,10 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            provision_key = "provision123", 
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            provision_key = "provision123",
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             grant_type = "password"
           },
           headers = {
@@ -1048,11 +1047,11 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            client_id = "clientid123", 
-            client_secret="secret123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid123",
+            client_secret="secret123",
+            scope = "email",
             grant_type = "password"
           },
           headers = {
@@ -1068,9 +1067,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            scope = "email",
             grant_type = "password"
           },
           headers = {
@@ -1087,9 +1086,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            scope = "email",
             grant_type = "password"
           },
           headers = {
@@ -1107,9 +1106,9 @@ describe("Plugin: oauth2", function()
           method = "POST",
           path = "/oauth2/token",
           body = {
-            provision_key = "provision123", 
-            authenticated_userid = "id123", 
-            scope = "email", 
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            scope = "email",
             grant_type = "password"
           },
           headers = {
@@ -1199,8 +1198,8 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          code = code, 
-          client_id = "clientid123", 
+          code = code,
+          client_id = "clientid123",
           client_secret = "secret123"
         },
         headers = {
@@ -1218,9 +1217,9 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          code = code.."hello", 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
+          code = code.."hello",
+          client_id = "clientid123",
+          client_secret = "secret123",
           grant_type = "authorization_code"
         },
         headers = {
@@ -1238,9 +1237,9 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          code = code, 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
+          code = code,
+          client_id = "clientid123",
+          client_secret = "secret123",
           grant_type = "authorization_code"
         },
         headers = {
@@ -1258,9 +1257,9 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          code = code, 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
+          code = code,
+          client_id = "clientid123",
+          client_secret = "secret123",
           grant_type = "authorization_code",
           state = "wot"
         },
@@ -1278,9 +1277,9 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          code = code, 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
+          code = code,
+          client_id = "clientid123",
+          client_secret = "secret123",
           grant_type = "authorization_code"
         },
         headers = {
@@ -1432,9 +1431,9 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          refresh_token = "hello", 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
+          refresh_token = "hello",
+          client_id = "clientid123",
+          client_secret = "secret123",
           grant_type = "refresh_token"
         },
         headers = {
@@ -1452,9 +1451,9 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          refresh_token = token.refresh_token, 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
+          refresh_token = token.refresh_token,
+          client_id = "clientid123",
+          client_secret = "secret123",
           grant_type = "refresh_token"
         },
         headers = {
@@ -1500,10 +1499,10 @@ describe("Plugin: oauth2", function()
         method = "POST",
         path = "/oauth2/token",
         body = {
-          refresh_token = token.refresh_token, 
-          client_id = "clientid123", 
-          client_secret = "secret123", 
-          grant_type = "refresh_token" 
+          refresh_token = token.refresh_token,
+          client_id = "clientid123",
+          client_secret = "secret123",
+          grant_type = "refresh_token"
         },
         headers = {
           ["Host"] = "oauth2.com",

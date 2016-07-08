@@ -1,7 +1,7 @@
 local body_transformer = require "kong.plugins.response-transformer.body_transformer"
 local cjson = require "cjson"
 
-describe("Plugin: response transformer", function()
+describe("Plugin: response-transformer", function()
   describe("transform_json_body()", function()
     describe("add", function()
       local conf = {

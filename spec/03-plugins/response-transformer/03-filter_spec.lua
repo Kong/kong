@@ -1,11 +1,11 @@
 local helpers = require "spec.helpers"
 
-describe("Plugin: response transformer", function()
-
+describe("Plugin: response-transformer (filter)", function()
   local client
 
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
 
     local api1 = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer",
@@ -18,7 +18,7 @@ describe("Plugin: response transformer", function()
       upstream_url = "http://httpbin.org"
     })
 
-     -- plugin config 1
+    -- plugin config 1
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
       name = "response-transformer",
@@ -29,6 +29,7 @@ describe("Plugin: response transformer", function()
         }
       }
     })
+
     -- plugin config 2
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
@@ -42,15 +43,14 @@ describe("Plugin: response transformer", function()
 
     assert(helpers.start_kong())
   end)
-
   teardown(function()
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
     client = assert(helpers.proxy_client())
   end)
-
   after_each(function()
     if client then client:close() end
   end)
