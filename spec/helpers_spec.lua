@@ -18,7 +18,6 @@ describe("helpers: assertions and modifiers;", function()
       upstream_url = "http://httpbin.org"
     })
 
-    helpers.create_prefix()
     assert(helpers.start_kong())
   end)
   teardown(function()
