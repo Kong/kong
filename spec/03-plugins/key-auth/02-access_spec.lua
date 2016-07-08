@@ -2,11 +2,11 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
 
-describe("Plugin: key-auth", function()
+describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
     helpers.kill_all()
-    assert(helpers.start_kong())
+    helpers.prepare_prefix()
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "key-auth1.com",
@@ -37,14 +37,13 @@ describe("Plugin: key-auth", function()
       consumer_id = consumer1.id
     })
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
   teardown(function()
-    if client then
-      client:close()
-    end
+    if client then client:close() end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   describe("Unauthorized", function()

@@ -218,10 +218,10 @@
 
 #cluster_profile = wan           # The timing profile for infracluster pings
                                  # and timeouts. If a `lan` or `local` profile
-                                 # is used over the Internet, a high rate of 
+                                 # is used over the Internet, a high rate of
                                  # failures is risked as the timing contraints
                                  # would be too tight.
-                                 # Accepted values are `local`, `lan` and `wan`.
+                                 # Accepted values are `local`, `lan`, `wan`.
 
 #------------------------------------------------------------------------------
 # DNS RESOLVER

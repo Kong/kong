@@ -3,45 +3,45 @@ local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 
-describe("JWT Authentication Hooks", function()
+describe("Plugin: jwt (hooks)", function()
   local admin_client, proxy_client, consumer1, api1
-  
+
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
-    proxy_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+
+    admin_client = helpers.admin_client()
+    proxy_client = helpers.proxy_client()
   end)
 
   teardown(function()
-    if admin_client then
+    if admin_client and proxy_client then
       admin_client:close()
-    end
-    if proxy_client then
       proxy_client:close()
     end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   before_each(function()
     helpers.dao:truncate_tables()
-    
+
     api1 = assert(helpers.dao.apis:insert {
-      request_host = "jwt.com", 
+      request_host = "jwt.com",
       upstream_url = "http://mockbin.com"
     })
 
     consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
-    
+
     assert(helpers.dao.plugins:insert {
-      name = "jwt", 
-      config = {}, 
+      name = "jwt",
+      config = {},
       api_id = api1.id
     })
-    
+
     assert(helpers.dao.jwt_secrets:insert {
       key = "key123",
       secret = "secret123",
@@ -74,7 +74,7 @@ describe("JWT Authentication Hooks", function()
         }
       })
       assert.res_status(200, res)
-    
+
       -- Check that cache is populated
       local cache_key = cache.jwtauth_credential_key("key123")
       res = assert(admin_client:send {
@@ -91,7 +91,7 @@ describe("JWT Authentication Hooks", function()
       local body = cjson.decode(assert.res_status(200, res))
       local credential_id = body.data[1].id
       assert.truthy(credential_id)
-      
+
       -- Delete JWT credential (which triggers invalidation)
       res = assert(admin_client:send {
         method = "DELETE",
@@ -159,7 +159,7 @@ describe("JWT Authentication Hooks", function()
       local body = cjson.decode(assert.res_status(200, res))
       local credential_id = body.data[1].id
       assert.truthy(credential_id)
-      
+
       -- Patch JWT credential (which triggers invalidation)
       res = assert(admin_client:send {
         method = "PATCH",
@@ -226,7 +226,7 @@ describe("JWT Authentication Hooks", function()
         path = "/cache/"..cache_key,
       })
       assert.res_status(200, res)
-      
+
       -- Delete Consumer (which triggers invalidation)
       res = assert(admin_client:send {
         method = "DELETE",

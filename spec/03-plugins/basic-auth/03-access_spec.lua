@@ -2,10 +2,11 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
 
-describe("Plugin: basic-auth", function()
+describe("Plugin: basic-auth (access)", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
@@ -38,14 +39,12 @@ describe("Plugin: basic-auth", function()
       consumer_id = consumer.id
     })
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
   teardown(function()
-    if client then
-      client:close()
-    end
+    if client then client:close() end
     helpers.stop_kong()
-    --helpers.clean_prefix()
+    helpers.clean_prefix()
   end)
 
   describe("Unauthorized", function()

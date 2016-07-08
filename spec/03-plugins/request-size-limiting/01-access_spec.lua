@@ -1,9 +1,10 @@
 local helpers = require "spec.helpers"
 
-describe("Plugin: request-size-limiting", function()
+describe("Plugin: request-size-limiting (access)", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
 
     local api = assert(helpers.dao.apis:insert {
@@ -18,11 +19,12 @@ describe("Plugin: request-size-limiting", function()
       }
     })
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("with Content-Length set", function()

@@ -6,6 +6,7 @@ describe("Resolver", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
 
     -- request_host
     assert(helpers.dao.apis:insert {
@@ -62,12 +63,13 @@ describe("Resolver", function()
     })
 
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   it("404 if can't find API to proxy", function()
@@ -90,7 +92,7 @@ describe("Resolver", function()
     body = assert.res_status(404, res)
     assert.is_nil(res.headers.via)
     assert.equal([[{"request_path":"\/inexistent","message":"API not found with these values",]]
-               ..[["request_host":["127.0.0.1"]}]], body)
+               ..[["request_host":["0.0.0.0"]}]], body)
   end)
 
   describe("proxying by request_host", function()
@@ -187,7 +189,7 @@ describe("Resolver", function()
       })
       local body = assert.res_status(404, res)
       assert.equal([[{"request_path":"\/somerequest_path\/status\/200","message":"API not found]]
-                 ..[[ with these values","request_host":["127.0.0.1"]}]], body)
+                 ..[[ with these values","request_host":["0.0.0.0"]}]], body)
     end)
     it("disregards querystrings", function()
       local res = assert(client:send {

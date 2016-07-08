@@ -1,21 +1,12 @@
-local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
-local pl_stringx = require "pl.stringx"
-local pl_tablex = require "pl.tablex"
-local pl_path = require "pl.path"
 local cjson = require "cjson"
+local cache = require "kong.tools.database_cache"
+local pl_path = require "pl.path"
+local helpers = require "spec.helpers"
+local pl_tablex = require "pl.tablex"
+local pl_stringx = require "pl.stringx"
+local conf_loader = require "kong.conf_loader"
 
-local function exec(args, env)
-  args = args or ""
-  env = env or {}
-
-  local env_vars = ""
-  for k, v in pairs(env) do
-    env_vars = string.format("%s KONG_%s=%s", env_vars, k:upper(), v)
-  end
-  return helpers.execute(env_vars.." "..helpers.bin_path.." "..args)
-end
-
+local NODES_CONF = {}
 local NODES = {
   servroot1 = {
     prefix = "servroot1",
@@ -24,8 +15,7 @@ local NODES = {
     admin_listen = "0.0.0.0:9001",
     cluster_listen = "0.0.0.0:9946",
     cluster_listen_rpc = "0.0.0.0:9373",
-    cluster_profile = "local",
-    nginx_optimizations = true
+    cluster_profile = "local"
   },
   servroot2 = {
     prefix = "servroot2",
@@ -34,8 +24,7 @@ local NODES = {
     admin_listen = "0.0.0.0:10001",
     cluster_listen = "0.0.0.0:10946",
     cluster_listen_rpc = "0.0.0.0:10373",
-    cluster_profile = "local",
-    nginx_optimizations = true
+    cluster_profile = "local"
   },
   servroot3 = {
     prefix = "servroot3",
@@ -44,26 +33,32 @@ local NODES = {
     admin_listen = "0.0.0.0:20001",
     cluster_listen = "0.0.0.0:20946",
     cluster_listen_rpc = "0.0.0.0:20373",
-    cluster_profile = "local",
-    nginx_optimizations = true
+    cluster_profile = "local"
   }
 }
+
+for k, v in pairs(NODES) do
+  NODES_CONF[k] = conf_loader(nil, v)
+end
 
 describe("Cluster", function()
   before_each(function()
     helpers.kill_all()
     helpers.dao:truncate_tables()
+    for _, v in pairs(NODES) do
+      helpers.prepare_prefix(v.prefix)
+    end
   end)
   after_each(function()
     helpers.kill_all()
-    for k, v in pairs(NODES) do
-      helpers.clean_prefix(k)
+    for _, v in pairs(NODES) do
+      helpers.clean_prefix(v.prefix)
     end
   end)
 
   describe("Nodes", function()
     it("should register the node on startup", function()
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
 
       -- Wait for node to be registered
       helpers.wait_until(function()
@@ -75,24 +70,24 @@ describe("Cluster", function()
       assert.is_string(node.name)
       assert.is_string(node.cluster_listening_address)
 
-      local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cluster/",
-        headers = {}
+        path = "/cluster/"
       })
-      local body = cjson.decode(assert.res_status(200, res))
-      assert.equal(1, body.total)
-      assert.equal(node.name, body.data[1].name)
-      assert.equal(node.cluster_listening_address, body.data[1].address)
-      assert.equal("alive", body.data[1].status)
+      local body = assert.res_status(200, res)
+      local json = cjson.decode(body)
+      assert.equal(1, json.total)
+      assert.equal(node.name, json.data[1].name)
+      assert.equal(node.cluster_listening_address, json.data[1].address)
+      assert.equal("alive", json.data[1].status)
     end)
 
     it("should register the node on startup with the advertised address", function()
       local conf = pl_tablex.deepcopy(NODES.servroot1)
       conf.cluster_advertise = "5.5.5.5:1234"
 
-      assert(exec("start --conf "..helpers.test_conf_path, conf))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, conf))
 
       -- Wait for node to be registered
       helpers.wait_until(function()
@@ -104,11 +99,10 @@ describe("Cluster", function()
       assert.is_string(node.name)
       assert.equal("5.5.5.5:1234", node.cluster_listening_address)
 
-      local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cluster/",
-        headers = {}
+        path = "/cluster/"
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(1, body.total)
@@ -120,13 +114,13 @@ describe("Cluster", function()
 
   describe("Auto-join", function()
     it("should register the second node on startup and auto-join sequentially", function()
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
       -- Wait for first node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 1
       end)
 
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
       -- Wait for second node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 2
@@ -141,13 +135,13 @@ describe("Cluster", function()
       assert.is_string(nodes[2].cluster_listening_address)
 
       -- Wait for nodes to be registered in Serf in both nodes
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.admin_listen, ":")[2]))
+      for _, v in ipairs({NODES_CONF.servroot1, NODES_CONF.servroot2}) do
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cluster/",
-            headers = {}
+            path = "/cluster/"
           })
           local body = cjson.decode(assert.res_status(200, res))
           return body.total == 2
@@ -156,25 +150,24 @@ describe("Cluster", function()
     end)
 
     it("should register the second node on startup and auto-join asyncronously", function()
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
 
       -- We need to wait a few seconds for the async job to kick in and join all the nodes together
       helpers.wait_until(function()
-        local ok, _, stdout = helpers.execute("serf members -format=json -rpc-addr="..NODES.servroot1.cluster_listen_rpc)
-        assert.True(ok)
+        local _, _, stdout = assert(helpers.execute("serf members -format=json -rpc-addr="..NODES.servroot1.cluster_listen_rpc))
         return #cjson.decode(stdout).members == 3
       end, 5)
 
       -- Wait for nodes to be registered in Serf in both nodes
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.admin_listen, ":")[2]))
+      for _, v in ipairs(NODES_CONF) do
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cluster/",
-            headers = {}
+            path = "/cluster/"
           })
           local body = cjson.decode(assert.res_status(200, res))
           return body.total == 3
@@ -185,14 +178,14 @@ describe("Cluster", function()
 
   describe("Cache purges", function()
     it("must purge cache on all nodes on member-join", function()
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
       -- Wait for first node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 1
       end)
 
-      -- Adding an API
-      local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+      -- adding an API
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
       local res = assert(api_client:send {
         method = "POST",
         path = "/apis/",
@@ -209,7 +202,7 @@ describe("Cluster", function()
       ngx.sleep(5) -- Wait for invalidation of API creation to propagate
 
       -- Populate the cache
-      local client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.proxy_listen, ":")[2]))
+      local client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.proxy_port)
       local res = assert(client:send {
         method = "GET",
         path = "/status/200/",
@@ -222,28 +215,27 @@ describe("Cluster", function()
       -- Checking the element in the cache
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key(),
-        headers = {}
+        path = "/cache/"..cache.all_apis_by_dict_key()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(1, pl_tablex.size(body.by_dns))
       assert.is_table(body.by_dns["test.com"])
 
       -- Starting second node
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
       -- Wait for the second node to be registered
       helpers.wait_until(function()
         return helpers.dao.nodes:count() == 2
       end)
 
       -- The cache on the first node should be invalidated, and the second node has no cache either because it was never invoked
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.admin_listen, ":")[2]))
+      for _, v in ipairs({NODES_CONF.servroot1, NODES_CONF.servroot2}) do
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
-            headers = {}
+            path = "/cache/"..cache.all_apis_by_dict_key()
           })
           res:read_body()
           return res.status == 404
@@ -252,16 +244,15 @@ describe("Cluster", function()
     end)
 
     it("must purge cache on all nodes when a failed serf starts again (member-join event - simulation of a crash in a 3-node setup)", function()
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
-      assert(exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
 
       helpers.wait_until(function()
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/",
-          headers = {}
+          path = "/cluster/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
@@ -270,7 +261,7 @@ describe("Cluster", function()
 
       -- Now we have three nodes connected to each other, let's create and consume an API
       -- Adding an API
-      local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
       local res = assert(api_client:send {
         method = "POST",
         path = "/apis/",
@@ -288,8 +279,8 @@ describe("Cluster", function()
       ngx.sleep(5) -- Wait for invalidation of API creation to propagate
 
       -- Populate the cache on every node
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.proxy_listen, ":")[2]))
+      for _, v in pairs(NODES_CONF) do
+        local api_client = helpers.http_client("127.0.0.1", v.proxy_port)
         local res = assert(api_client:send {
           method = "GET",
           path = "/status/200",
@@ -302,12 +293,11 @@ describe("Cluster", function()
       end
 
       -- Check the cache on every node
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.admin_listen, ":")[2]))
+      for _, v in pairs(NODES_CONF) do
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key(),
-          headers = {}
+          path = "/cache/"..cache.all_apis_by_dict_key()
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
@@ -316,12 +306,11 @@ describe("Cluster", function()
 
       -- The cluster status is "active" for all three nodes
       local node_name
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(v.admin_listen, ":")[2]))
+      for _, v in pairs(NODES_CONF) do
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/",
-          headers = {}
+          path = "/cluster/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
@@ -334,68 +323,69 @@ describe("Cluster", function()
       end
 
       -- Kill one Serf
-      os.execute(string.format("kill `cat %s` >/dev/null 2>&1", pl_path.join(NODES.servroot2.prefix, "pids", "serf.pid")))
+      assert(helpers.execute(string.format("kill `cat %s` >/dev/null 2>&1", NODES_CONF.servroot2.serf_pid)))
 
       -- Wait until the node becomes failed
       helpers.wait_until(function()
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/",
-          headers = {}
+          path = "/cluster/"
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
         api_client:close()
-        for _, v in ipairs(body.data) do
+        for _, v in ipairs(json.data) do
           if v.status == "failed" then
             return true
           else -- No "left" nodes. It's either "alive" or "failed"
             assert.equal("alive", v.status)
           end
         end
-      end, 70)
+      end, 30)
 
-      -- The member has now failed, let's bring him up again
-      os.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
+      assert(node_name, "node_name is nil")
+
+      -- The member has now failed, let's bring it up again
+      assert(helpers.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
                              .." -bind=%s -event-handler=member-join,"
                              .."member-leave,member-failed,member-update,"
-                             .."member-reap,user:kong=%s/serf/serf_event.sh > /dev/null &",
+                             .."member-reap,user:kong=%s > /dev/null &",
                             node_name,
                             NODES.servroot2.cluster_listen_rpc,
                             NODES.servroot2.cluster_listen,
-                            pl_path.abspath(NODES.servroot2.prefix)))
+                            NODES_CONF.servroot2.serf_event)))
 
-      -- Now wait until the nodes becomes active again
+      -- Now wait until the node becomes active again
       helpers.wait_until(function()
-        local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/"
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
         api_client:close()
-        for _, v in ipairs(body.data) do
+        for _, v in ipairs(json.data) do
           if v.status == "failed" then
             return false
           end
         end
         return true
-      end, 70)
+      end, 30)
 
       -- The cache should have been deleted on every node available
-      for _, v in ipairs({NODES.servroot1, NODES.servroot2, NODES.servroot3}) do
+      for _, v in ipairs(NODES_CONF) do
         helpers.wait_until(function()
-          local api_client = assert(helpers.http_client("127.0.0.1", pl_stringx.split(NODES.servroot1.admin_listen, ":")[2]))
+          local api_client = helpers.http_client("127.0.0.1", v.admin_port)
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
-            headers = {}
+            path = "/cache/"..cache.all_apis_by_dict_key()
           })
           api_client:close()
           return res.status == 404
-        end, 70)
+        end, 30)
       end
     end)
   end)
-
 end)

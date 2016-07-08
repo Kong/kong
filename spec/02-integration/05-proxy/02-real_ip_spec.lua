@@ -5,6 +5,7 @@ describe("Real IP proxying", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     helpers.dao:truncate_tables()
 
     assert(helpers.dao.apis:insert {
@@ -14,14 +15,13 @@ describe("Real IP proxying", function()
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.start_kong())
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
-    if client then
-      client:close()
-    end
+    if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   it("X-Forwarded-* request headers", function()

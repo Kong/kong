@@ -7,14 +7,14 @@ describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
+    admin_client = helpers.admin_client()
   end)
   teardown(function()
-    if admin_client then
-      admin_client:close()
-    end
+    if admin_client then admin_client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   describe("/consumers/:consumer/jwt/", function()

@@ -173,14 +173,22 @@ end
 
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @name proxy_client
-local proxy_client = function()
+local function proxy_client()
   return http_client(conf.proxy_ip, conf.proxy_port)
+end
+
+--- returns a pre-configured `http_client` for the Kong SSL proxy port.
+-- @name proxy_ssl_client
+local function proxy_ssl_client()
+  local client = http_client(conf.proxy_ip, conf.proxy_ssl_port)
+  client:ssl_handshake()
+  return client
 end
 
 --- returns a pre-configured `http_client` for the Kong admin port.
 -- @name admin_client
-local admin_client = function()
-  return http_client(conf.admin_ip, conf.admin_port)
+local function admin_client(timeout)
+  return http_client(conf.admin_ip, conf.admin_port, timeout)
 end
 
 local function udp_server(port)
@@ -190,7 +198,7 @@ local function udp_server(port)
     function(port)
       local socket = require "socket"
       local server = assert(socket.udp())
-      server:settimeout(1)
+      server:settimeout(10)
       server:setoption("reuseaddr", true)
       server:setsockname("127.0.0.1", port)
       local data = server:receive()
@@ -387,7 +395,7 @@ luassert:register("assertion", "res_status", res_status,     -- TODO: remove thi
                   "assertion.res_status.negative", "assertion.res_status.positive")
 
 --- Checks and returns a json body of an http response/request. Only checks
--- validity of the json, does not check appropriate headers. Setting the target to check 
+-- validity of the json, does not check appropriate headers. Setting the target to check
 -- can be done through `request` or `response` (requests are only supported with mockbin.com).
 -- @name jsonbody
 -- @return the decoded json as a table
@@ -395,7 +403,7 @@ luassert:register("assertion", "res_status", res_status,     -- TODO: remove thi
 -- local res = assert(client:send { .. your request params here .. })
 -- local body = assert.response(res).has.jsonbody()
 local function jsonbody(state, args)
-  assert((args[1] == nil) and (kong_state.kong_request or kong_state.kong_response), 
+  assert((args[1] == nil) and (kong_state.kong_request or kong_state.kong_response),
     "the `jsonbody` assertion does not take parameters. Use the `response`/`require` modifiers to set the target to operate on")
   if kong_state.kong_response then
     local body = kong_state.kong_response:read_body()
@@ -518,7 +526,7 @@ local function req_form_param(state, args)
   local param = args[1]
   local req = kong_state.kong_request
   assert(req, "'formparam' assertion can only be used with a mockbin/httpbin request object")
-  
+
   local value
   if req.postData then
     -- mockbin request
@@ -601,18 +609,24 @@ return {
   udp_server = udp_server,
   proxy_client = proxy_client,
   admin_client = admin_client,
+  proxy_ssl_client = proxy_ssl_client,
 
+  prepare_prefix = function(prefix)
+    prefix = prefix or conf.prefix
+    exec("rm -rf "..prefix.."/*")
+    return pl_dir.makepath(prefix)
+  end,
   clean_prefix = function(prefix)
     prefix = prefix or conf.prefix
     if pl_path.exists(prefix) then
       pl_dir.rmtree(prefix)
     end
   end,
-  start_kong = function()
-    return kong_exec("start --conf "..TEST_CONF_PATH)
+  start_kong = function(env)
+    return kong_exec("start --conf "..TEST_CONF_PATH, env)
   end,
   stop_kong = function()
-    return kong_exec("stop --conf "..TEST_CONF_PATH)
+    return kong_exec("stop --prefix "..conf.prefix)
   end,
   kill_all = function()
     dao:truncate_tables() -- truncate nodes table too

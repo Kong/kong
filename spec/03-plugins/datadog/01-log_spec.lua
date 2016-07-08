@@ -1,20 +1,15 @@
 local helpers = require "spec.helpers"
 local threads = require "llthreads2.ex"
 
-describe("plugin: datadog", function()
+describe("Plugin: datadog (log)", function()
   local client
   setup(function()
     helpers.kill_all()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
-    
-    local api1 = assert(helpers.dao.apis:insert {
-      request_host = "datadog1.com",
-      upstream_url = "http://mockbin.com"
-    })
-    local api2 = assert(helpers.dao.apis:insert {
-      request_host = "datadog2.com",
-      upstream_url = "http://mockbin.com"
-    })
+
+    local api1 = assert(helpers.dao.apis:insert {request_host = "datadog1.com", upstream_url = "http://mockbin.com"})
+    local api2 = assert(helpers.dao.apis:insert {request_host = "datadog2.com", upstream_url = "http://mockbin.com"})
 
     assert(helpers.dao.plugins:insert {
       name = "datadog",
@@ -34,12 +29,13 @@ describe("plugin: datadog", function()
       }
     })
 
-    client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+    helpers.clean_prefix()
   end)
 
   it("logs metrics over UDP", function()

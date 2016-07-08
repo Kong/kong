@@ -96,7 +96,6 @@ describe("NGINX conf compiler", function()
       local conf = assert(conf_loader(nil, {
         nginx_optimizations = false,
       }))
-
       local nginx_conf = prefix_handler.compile_nginx_conf(conf)
       assert.not_matches("worker_rlimit_nofile %d+;", nginx_conf)
       assert.not_matches("worker_connections %d+;", nginx_conf)
