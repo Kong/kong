@@ -58,6 +58,7 @@ build = {
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
     ["kong.cmd.init"] = "kong/cmd/init.lua",
     ["kong.cmd.stop"] = "kong/cmd/stop.lua",
+    ["kong.cmd.quit"] = "kong/cmd/quit.lua",
     ["kong.cmd.start"] = "kong/cmd/start.lua",
     ["kong.cmd.check"] = "kong/cmd/check.lua",
     ["kong.cmd.reload"] = "kong/cmd/reload.lua",

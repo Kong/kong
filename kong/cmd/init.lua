@@ -27,6 +27,7 @@ Options:
 local cmds = {
   start = "start",
   stop = "stop",
+  quit = "quit",
   restart = "restart",
   reload = "reload",
   check = "check",

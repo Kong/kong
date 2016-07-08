@@ -10,6 +10,10 @@ describe("kong restart", function()
     helpers.clean_prefix()
   end)
 
+  it("restart help", function()
+    local _, stderr = helpers.kong_exec "health --help"
+    assert.not_equal("", stderr)
+  end)
   it("restarts if not running", function()
     assert(helpers.kong_exec("restart --conf "..helpers.test_conf_path))
   end)
