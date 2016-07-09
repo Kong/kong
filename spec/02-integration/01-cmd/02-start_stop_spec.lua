@@ -103,6 +103,23 @@ describe("kong start/stop", function()
     end)
   end)
 
+  describe("custom --nginx-conf", function()
+    local templ_fixture = "spec/fixtures/custom_nginx.template"
+
+    it("accept a custom Nginx configuration", function()
+      finally(function()
+        helpers.kill_all()
+      end)
+
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path.." --nginx-conf "..templ_fixture))
+      assert.truthy(helpers.path.exists(helpers.test_conf.nginx_conf))
+
+      local contents = helpers.file.read(helpers.test_conf.nginx_conf)
+      assert.matches("# This is a custom nginx configuration template for Kong specs", contents, nil, true)
+      assert.matches("daemon on;", contents, nil, true)
+    end)
+  end)
+
   describe("Serf", function()
     it("starts Serf agent daemon", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))

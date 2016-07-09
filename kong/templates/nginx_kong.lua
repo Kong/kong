@@ -5,6 +5,10 @@ charset UTF-8;
 error_log logs/error.log ${{LOG_LEVEL}};
 access_log logs/access.log;
 
+> if anonymous_reports then
+${{SYSLOG_REPORTS}}
+> end
+
 > if nginx_optimizations then
 >-- send_timeout 60s;          # default value
 >-- keepalive_timeout 75s;     # default value
