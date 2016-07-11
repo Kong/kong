@@ -18,7 +18,7 @@ describe("kong reload", function()
     local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
 
     -- kong_exec uses test conf too, so same prefix
-    local ok, err = assert(helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix))
+    assert(helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix))
 
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))

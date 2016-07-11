@@ -626,7 +626,7 @@ return {
     return kong_exec("start --conf "..TEST_CONF_PATH, env)
   end,
   stop_kong = function()
-    return kong_exec("stop --prefix "..conf.prefix)
+    return kong_exec("stop --force --prefix "..conf.prefix)
   end,
   kill_all = function()
     dao:truncate_tables() -- truncate nodes table too

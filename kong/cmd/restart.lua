@@ -17,8 +17,8 @@ local lapp = [[
 Usage: kong restart [OPTIONS]
 
 Options:
- -c,--conf (optional string) configuration file
- --prefix  (optional string) prefix at which Kong should be running
+ -c,--conf    (optional string) configuration file
+ -p,--prefix  (optional string) prefix at which Kong should be running
 ]]
 
 return {
