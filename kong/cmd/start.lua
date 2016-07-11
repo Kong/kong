@@ -13,7 +13,7 @@ local function execute(args)
 
   local dao = DAOFactory(conf)
   assert(dao:run_migrations())
-  assert(prefix_handler.prepare_prefix(conf))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
   if conf.dnsmasq then
     assert(dnsmasq_signals.start(conf))
   end
@@ -26,8 +26,9 @@ local lapp = [[
 Usage: kong start [OPTIONS]
 
 Options:
- -c,--conf (optional string) configuration file
- --prefix  (optional string) override prefix directory
+ -c,--conf    (optional string) configuration file
+ --prefix     (optional string) override prefix directory
+ --nginx-conf (optional string) custom Nginx configuration template
 ]]
 
 return {

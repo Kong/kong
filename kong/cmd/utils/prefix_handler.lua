@@ -1,5 +1,5 @@
+local default_nginx_template = require "kong.templates.nginx"
 local kong_nginx_template = require "kong.templates.nginx_kong"
-local nginx_template = require "kong.templates.nginx"
 local pl_template = require "pl.template"
 local pl_stringx = require "pl.stringx"
 local pl_tablex = require "pl.tablex"
@@ -85,15 +85,14 @@ local function gather_system_infos(compile_env)
 
   local ulimit, err = get_ulimit()
   if not ulimit then return nil, err end
+
   infos.worker_rlimit = ulimit
   infos.worker_connections = math.min(16384, ulimit)
 
   return infos
 end
 
-local function compile_conf(kong_config, conf_template, env_t)
-  env_t = env_t or {}
-
+local function compile_conf(kong_config, conf_template)
   -- computed config properties for templating
   local compile_env = {
     _escape = ">",
@@ -118,7 +117,6 @@ local function compile_conf(kong_config, conf_template, env_t)
   end
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
-  compile_env = pl_tablex.merge(compile_env, env_t, true) -- union
 
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)
@@ -127,15 +125,16 @@ local function compile_conf(kong_config, conf_template, env_t)
   end)
 end
 
-local function compile_kong_conf(kong_config, env_t)
-  return compile_conf(kong_config, kong_nginx_template, env_t)
+local function compile_kong_conf(kong_config)
+  return compile_conf(kong_config, kong_nginx_template)
 end
 
-local function compile_nginx_conf(kong_config)
-  return compile_conf(kong_config, nginx_template)
+local function compile_nginx_conf(kong_config, template)
+  template = template or default_nginx_template
+  return compile_conf(kong_config, template)
 end
 
-local function prepare_prefix(kong_config)
+local function prepare_prefix(kong_config, nginx_custom_template_path)
   log.verbose("preparing nginx prefix directory at %s", kong_config.prefix)
 
   if not pl_path.exists(kong_config.prefix) then
@@ -152,7 +151,7 @@ local function prepare_prefix(kong_config)
     if not ok then return nil, err end
   end
 
-  -- create log files in case
+  -- create log files in case they don't already exist
   local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_err_logs)
   if not ok then return nil, stderr end
   local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_acc_logs)
@@ -170,40 +169,41 @@ local function prepare_prefix(kong_config)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end
 
-  local ssl_cert
-  local ssl_cert_key
-  if kong_config.ssl then
-    ssl_cert = kong_config.ssl_cert
-    ssl_cert_key = kong_config.ssl_cert_key
-    if not ssl_cert and not ssl_cert_key then
-      -- must generate default cert
-      local ok, err = gen_default_ssl_cert(kong_config)
-      if not ok then return nil, err end
-      ssl_cert = kong_config.ssl_cert_default
-      ssl_cert_key = kong_config.ssl_cert_key_default
-    end
+  -- generate default SSL certs if needed
+  if kong_config.ssl and not kong_config.ssl_cert and not kong_config.ssl_cert_key then
+    log.verbose("using default SSL certificate and key")
+    local ok, err = gen_default_ssl_cert(kong_config)
+    if not ok then return nil, err end
+    kong_config.ssl_cert = kong_config.ssl_cert_default
+    kong_config.ssl_cert_key = kong_config.ssl_cert_key_default
   end
 
   -- check ulimit
   local ulimit, err = get_ulimit()
-  if not ulimit then return nil, err end
-  if ulimit < 4096 then
+  if not ulimit then return nil, err
+  elseif ulimit < 4096 then
     log.warn([[ulimit is currently set to "%d". For better performance set it]]
            ..[[ to at least "4096" using "ulimit -n"]], ulimit)
   end
 
+  -- compile Nginx configurations
+  local nginx_template
+  if nginx_custom_template_path then
+    if not pl_path.exists(nginx_custom_template_path) then
+      return nil, "no such file: "..nginx_custom_template_path
+    end
+    nginx_template = pl_file.read(nginx_custom_template_path)
+  end
+
   -- write NGINX conf
-  local nginx_conf, err = compile_nginx_conf(kong_config)
+  local nginx_conf, err = compile_nginx_conf(kong_config, nginx_template)
   if not nginx_conf then return nil, err end
   pl_file.write(kong_config.nginx_conf, nginx_conf)
 
   -- write Kong's NGINX conf
-  local kong_nginx_conf, err = compile_kong_conf(kong_config, {
-    ssl_cert = ssl_cert,
-    ssl_cert_key = ssl_cert_key
-  })
-  if not kong_nginx_conf then return nil, err end
-  pl_file.write(kong_config.nginx_kong_conf, kong_nginx_conf)
+  local nginx_kong_conf, err = compile_kong_conf(kong_config)
+  if not nginx_kong_conf then return nil, err end
+  pl_file.write(kong_config.nginx_kong_conf, nginx_kong_conf)
 
   -- write kong.conf in prefix (for workers and CLI)
   local buf = {}
@@ -221,8 +221,8 @@ local function prepare_prefix(kong_config)
 end
 
 return {
-  gen_default_ssl_cert = gen_default_ssl_cert,
-  compile_nginx_conf = compile_nginx_conf,
+  prepare_prefix = prepare_prefix,
   compile_kong_conf = compile_kong_conf,
-  prepare_prefix = prepare_prefix
+  compile_nginx_conf = compile_nginx_conf,
+  gen_default_ssl_cert = gen_default_ssl_cert
 }
