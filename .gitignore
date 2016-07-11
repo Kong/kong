@@ -11,3 +11,5 @@ kong*.yml
 # luacov
 luacov.*
 /doc
+
+.settings/org.eclipse.ldt.prefs
