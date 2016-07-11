@@ -27,7 +27,7 @@ Usage: kong start [OPTIONS]
 
 Options:
  -c,--conf    (optional string) configuration file
- --prefix     (optional string) override prefix directory
+ -p,--prefix  (optional string) override prefix directory
  --nginx-conf (optional string) custom Nginx configuration template
 ]]
 
