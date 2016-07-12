@@ -191,6 +191,80 @@ local function admin_client(timeout)
   return http_client(conf.admin_ip, conf.admin_port, timeout)
 end
 
+--
+-- TCP/UDP server helpers
+--
+
+-- Starts a TCP server, accepting a single connection and then closes
+-- @param `port`    The port where the server will be listening to
+-- @return `thread` A thread object
+local function tcp_server(port, ...)
+  local threads = require "llthreads2.ex"
+  local thread = threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
+      local client = server:accept()
+      local line, err = client:receive()
+      if not err then client:send(line .. "\n") end
+      client:close()
+      server:close()
+      return line
+    end}, 
+  port)
+  
+  return thread:start(...)
+end
+
+
+-- Starts a HTTP server, accepting a single connection and then closes
+-- @param `port`    The port where the server will be listening to
+-- @return `thread` A thread object
+local function http_server(port, ...)
+  local threads = require "llthreads2.ex"
+  local thread = threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
+      local client = server:accept()
+
+      local lines = {}
+      local line, err
+      while #lines < 7 do
+        line, err = client:receive()
+        if err then
+          break
+        else
+          table.insert(lines, line)
+        end
+      end
+
+      if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
+        os.execute("sleep 2")
+      end
+
+      if err then
+        server:close()
+        error(err)
+      end
+
+      client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+      client:close()
+      server:close()
+      return lines
+    end;
+  }, port)
+
+  return thread:start(...)
+end
+
+
 local function udp_server(port)
   local threads = require "llthreads2.ex"
 
@@ -606,6 +680,8 @@ return {
   kong_exec = kong_exec,
   http_client = http_client,
   wait_until = wait_until,
+  tcp_server = tcp_server,
+  http_server = http_server,
   udp_server = udp_server,
   proxy_client = proxy_client,
   admin_client = admin_client,
