@@ -13,7 +13,10 @@ Usage: kong COMMAND [OPTIONS]
 The available commands are:
  start
  stop
+ quit
+ restart
  reload
+ health
  check
  compile
  migrations
@@ -26,7 +29,10 @@ Options:
 local cmds = {
   start = "start",
   stop = "stop",
+  quit = "quit",
+  restart = "restart",
   reload = "reload",
+  health = "health",
   check = "check",
   compile = "compile",
   migrations = "migrations",
@@ -78,8 +84,7 @@ return function(args)
     if not args.trace then
       err = err:match "^.-:.-:.(.*)$"
       io.stderr:write("Error: "..err.."\n")
-      io.stderr:write("\n  Run with --trace to see traceback")
-      io.stderr:write("\n  Please report issues to https://github.com/Mashape/kong/issues\n")
+      io.stderr:write("\n  Run with --trace to see traceback\n")
     else
       local trace = debug.traceback(err, 2)
       io.stderr:write("Error: \n")

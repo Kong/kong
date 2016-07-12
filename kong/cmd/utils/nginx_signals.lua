@@ -1,8 +1,8 @@
-local pl_utils = require "pl.utils"
-local pl_path = require "pl.path"
-local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
+local kill = require "kong.cmd.utils.kill"
+local pl_path = require "pl.path"
 local version = require "version"
+local pl_utils = require "pl.utils"
 local fmt = string.format
 
 local nginx_bin_name = "nginx"
@@ -13,7 +13,7 @@ local nginx_search_paths = {
 local nginx_version_command = "-v"                            -- commandline param to get version
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"  -- pattern to grab version from output
 local nginx_compatible = version.set("1.9.3.2","1.9.7.5")     -- compatible from-to versions
- 
+
 local function is_openresty(bin_path)
   local cmd = fmt("%s %s", bin_path, nginx_version_command)
   local ok, _, _, stderr = pl_utils.executeex(cmd)
@@ -36,7 +36,7 @@ local function send_signal(pid_path, signal)
 
   log.verbose("sending %s signal to Nginx running at %s", signal, pid_path)
 
-  local code = kill(pid_path, "-s "..signal)
+  local code = kill.kill(pid_path, "-s "..signal)
   if code ~= 0 then return nil, "could not send signal" end
 
   return true
@@ -69,11 +69,8 @@ function _M.start(kong_conf)
   local nginx_bin, err = _M.find_bin()
   if not nginx_bin then return nil, err end
 
-  if pl_path.exists(kong_conf.nginx_pid) then
-    local code = kill(kong_conf.nginx_pid, "-0")
-    if code == 0 then
-      return nil, "Nginx is already running in "..kong_conf.prefix
-    end
+  if kill.is_running(kong_conf.nginx_pid) then
+    return nil, "Nginx is already running in "..kong_conf.prefix
   end
 
   local cmd = fmt("%s -p %s -c %s", nginx_bin, kong_conf.prefix, "nginx.conf")
@@ -87,6 +84,10 @@ function _M.start(kong_conf)
 end
 
 function _M.stop(kong_conf)
+  return send_signal(kong_conf.nginx_pid, "TERM")
+end
+
+function _M.quit(kong_conf, graceful)
   return send_signal(kong_conf.nginx_pid, "QUIT")
 end
 
