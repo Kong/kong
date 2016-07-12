@@ -4,7 +4,8 @@ local log = require "kong.cmd.utils.log"
 local options = [[
  --trace     with traceback
  --v         verbose
- --vv        debug]]
+ --vv        debug
+ ]]
 
 local cmds_arr = {}
 local cmds = {
