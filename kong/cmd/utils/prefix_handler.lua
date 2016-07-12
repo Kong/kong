@@ -25,7 +25,7 @@ fi
 CMD="\
 local http = require 'resty.http' \
 local client = http.new() \
-client:settimeout(3000) \
+client:set_timeout(5000) \
 client:connect('%s', %d) \
 client:request { \
   method = 'POST', \
