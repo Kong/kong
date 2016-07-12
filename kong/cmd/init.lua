@@ -2,10 +2,10 @@ local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 
 local options = [[
- --trace     with traceback
  --v         verbose
  --vv        debug
- ]]
+ --trace     with traceback
+]]
 
 local cmds_arr = {}
 local cmds = {

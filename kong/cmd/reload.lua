@@ -29,6 +29,14 @@ end
 local lapp = [[
 Usage: kong reload [OPTIONS]
 
+Reload a Kong node (and start other configured services
+if necessary) in given prefix directory.
+
+This command sends a HUP signal to Nginx, which will spawn
+new workers (taking configuration changes into account),
+and stop the old ones when they have finished processing
+current requests.
+
 Options:
  -c,--conf   (optional string) configuration file
  -p,--prefix (optional string) prefix Kong is running at

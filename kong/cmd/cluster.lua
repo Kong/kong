@@ -38,11 +38,15 @@ end
 local lapp = [[
 Usage: kong cluster COMMAND [OPTIONS]
 
+Manage Kong's clustering capabilities.
+
 The available commands are:
- keygen
- members
- reachability
- force-leave <node_name>
+ keygen                  Generate an encryption key for intracluster traffic.
+                         See 'cluster_encrypt_key' setting
+ members                 Show members of this cluster and their state.
+ reachability            Check if the cluster is reachable.
+ force-leave <node_name> Forcefully remove a node from the cluster (useful
+                         if the node is in a failed state).
 
 Options:
  -p,--prefix (optional string) prefix Kong is running at

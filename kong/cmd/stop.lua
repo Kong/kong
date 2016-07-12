@@ -27,8 +27,13 @@ end
 local lapp = [[
 Usage: kong stop [OPTIONS]
 
+Stop a running Kong node (Nginx and other configured services) in given
+prefix directory.
+
+This command sends a SIGTERM signal to Nginx.
+
 Options:
- -p,--prefix  (optional string) prefix Kong is running at
+ -p,--prefix (optional string) prefix Kong is running at
 ]]
 
 return {

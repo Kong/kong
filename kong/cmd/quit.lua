@@ -47,6 +47,14 @@ end
 local lapp = [[
 Usage: kong quit [OPTIONS]
 
+Gracefully quit a running Kong node (Nginx and other
+configured services) in given prefix directory.
+
+This command sends a SIGQUIT signal to Nginx, meaning all
+requests will finish processing before shutting down.
+If the timeout delay is reached, the node will be forcefully
+stopped (SIGTERM).
+
 Options:
  -p,--prefix  (optional string) prefix Kong is running at
  -t,--timeout (default 10) timeout before forced shutdown
