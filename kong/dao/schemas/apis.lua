@@ -83,12 +83,20 @@ local function check_request_path(request_path, api_t)
   if request_path ~= nil and request_path ~= "" then
     if sub(request_path, 1, 1) ~= "/" then
       return false, fmt("must be prefixed with slash: '%s'", request_path)
-    elseif match(request_path, "//+") then
+    end
+    if match(request_path, "//+") then
       -- Check for empty segments (/status//123)
       return false, fmt("invalid: '%s'", request_path)
-    elseif not match(request_path, "^/[%w%.%-%_~%/]*$") then
-      -- Check if characters are in RFC 3986 unreserved list
-      return false, "must only contain alphanumeric and '., -, _, ~, /' characters"
+    end
+    if not match(request_path, "^/[%w%.%-%_~%/%%]*$") then
+      -- Check if characters are in RFC 3986 unreserved list, and % for percent encoding
+      return false, "must only contain alphanumeric and '., -, _, ~, /, %' characters"
+    end
+    local esc = request_path:gsub("%%%x%x", "___") -- drop all proper %-encodings
+    if match(esc, "%%") then
+      -- % is remaining, so not properly encoded
+      local err = request_path:sub(esc:find("%%.?.?"))
+      return false, "must use proper encoding; '"..err.."' is invalid"
     end
 
     -- From now on, the request_path is considered valid.

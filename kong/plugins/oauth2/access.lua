@@ -1,12 +1,14 @@
-local singletons = require "kong.singletons"
-local stringy = require "stringy"
+local url = require "socket.url"
+local json = require "cjson"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
+local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
-local url = require "socket.url"
-local Multipart = require "multipart"
+local singletons = require "kong.singletons"
+
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
 local check_https = utils.check_https
@@ -91,6 +93,8 @@ local function retrieve_parameters()
   local content_type = req_get_headers()[CONTENT_TYPE]
   if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
+  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
+    body_parameters = json.decode(ngx.req.get_body_data())
   else
     body_parameters = ngx.req.get_post_args()
   end
