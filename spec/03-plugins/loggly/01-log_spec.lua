@@ -78,7 +78,7 @@ describe("Plugin: loggly (log)", function()
     assert(helpers.start_kong())
   end)
   teardown(function()
-    assert(helpers.stop_kong())
+    helpers.stop_kong()
   end)
 
   before_each(function()
