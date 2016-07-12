@@ -22,6 +22,8 @@ end
 local lapp = [[
 Usage: kong check <conf>
 
+Check the validity of a given Kong configuration file.
+
 <conf> (default /etc/kong.conf) configuration file
 ]]
 

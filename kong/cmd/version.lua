@@ -3,6 +3,9 @@ local meta = require "kong.meta"
 local lapp = [[
 Usage: kong version
 
+Print Kong's version. With the -a option, will print
+the version of all underlying dependencies.
+
 Options:
  -a,--all    get version of all dependencies
 ]]

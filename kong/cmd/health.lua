@@ -45,6 +45,8 @@ end
 local lapp = [[
 Usage: kong health [OPTIONS]
 
+Check if the necessary services are running for this node.
+
 Options:
  -p,--prefix (optional string) prefix at which Kong should be running
 ]]
