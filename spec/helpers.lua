@@ -191,6 +191,81 @@ local function admin_client(timeout)
   return http_client(conf.admin_ip, conf.admin_port, timeout)
 end
 
+--
+-- TCP/UDP server helpers
+--
+
+-- Starts a TCP server, accepting a single connection and then closes
+-- @param `port`    The port where the server will be listening to
+-- @return `thread` A thread object
+local function tcp_server(port, ...)
+  local threads = require "llthreads2.ex"
+  local thread = threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
+      local client = server:accept()
+      local line, err = client:receive()
+      if not err then client:send(line .. "\n") end
+      client:close()
+      server:close()
+      return line
+    end
+  }, port)
+
+  return thread:start(...)
+end
+
+-- Starts a HTTP server, accepting a single connection and then closes
+-- @param `port`    The port where the server will be listening to
+-- @return `thread` A thread object
+local function http_server(port, ...)
+  local threads = require "llthreads2.ex"
+  local thread = threads.new({
+    function(port)
+      local socket = require "socket"
+      local server = assert(socket.tcp())
+      assert(server:setoption('reuseaddr', true))
+      assert(server:bind("*", port))
+      assert(server:listen())
+      local client = server:accept()
+
+      local lines = {}
+      local line, err
+      while #lines < 7 do
+        line, err = client:receive()
+        if err then
+          break
+        else
+          table.insert(lines, line)
+        end
+      end
+
+      if #lines > 0 and lines[1] == "GET /delay HTTP/1.0" then
+        ngx.sleep(2)
+      end
+
+      if err then
+        server:close()
+        error(err)
+      end
+
+      client:send("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+      client:close()
+      server:close()
+      return lines
+    end
+  }, port)
+
+  return thread:start(...)
+end
+
+-- Starts a UDP server, accepting a single connection and then closes
+-- @param `port`    The port where the server will be listening to
+-- @return `thread` A thread object
 local function udp_server(port)
   local threads = require "llthreads2.ex"
 
@@ -227,6 +302,7 @@ assert = function(...)
   kong_state = {}
   return old_assert(...)
 end
+
 -- tricky part: the assertions below, should not reset the `kong_state` inserted above. Hence
 -- we shadow the global assert (patched one) with a local assert (unpatched) to prevent this.
 local assert = old_assert
@@ -241,11 +317,15 @@ local assert = old_assert
 -- local length = assert.response(res).has.header("Content-Length")
 local function modifier_response(state, arguments, level)
   assert(arguments.n > 0, "response modifier requires a response object as argument")
+
   local res = arguments[1]
-  assert((type(res) == "table") and (type(res.read_body) == "function"),
-    "response modifier requires a response object as argument, got; "..tostring(res))
+
+  assert(type(res) == "table" and type(res.read_body) == "function",
+         "response modifier requires a response object as argument, got: "..tostring(res))
+
   kong_state.kong_response = res
   kong_state.kong_request = nil
+
   return state
 end
 luassert:register("modifier", "response", modifier_response)
@@ -263,21 +343,29 @@ local function modifier_request(state, arguments, level)
   local generic = "The assertion 'request' modifier takes a http response object as "..
                   "input to decode the json-body returned by httpbin.org/mockbin.org, "..
                   "to retrieve the proxied request."
+
   local res = arguments[1]
-  assert((type(res) == "table") and (type(res.read_body) == "function"),
-    "Expected a http response object, got '"..tostring(res).."'. "..generic)
+
+  assert(type(res) == "table" and type(res.read_body) == "function",
+         "Expected a http response object, got '"..tostring(res).."'. "..generic)
+
   local body, err
   body = assert(res:read_body())
   body, err = cjson.decode(body)
-  assert(body, "Expected the http response object to have a json encoded body, but decoding gave error '"..tostring(err).."'. "..generic)
+
+  assert(body, "Expected the http response object to have a json encoded body, "..
+               "but decoding gave error '"..err.."'. "..generic)
+
   -- check if it is a mockbin request
   if lookup((res.headers or {}),"X-Powered-By") ~= "mockbin" then
     -- not mockbin, so httpbin?
-    assert((type(body.url) == "string") and (body.url:find("//httpbin.org", 1, true)),
-      "Could not determine the response to be from either mockbin.com or httpbin.org")
+    assert(type(body.url) == "string" and body.url:find("//httpbin.org", 1, true),
+           "Could not determine the response to be from either mockbin.com or httpbin.org")
   end
+
   kong_state.kong_request = body
   kong_state.kong_response = nil
+
   return state
 end
 luassert:register("modifier", "request", modifier_request)
@@ -346,14 +434,20 @@ luassert:register("assertion", "contains", contains,
 -- local body = assert.has.status(200, res)             -- or alternativly
 -- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
-  assert(not kong_state.kong_request, "Cannot check statuscode against a request object, only against a response object")
+  assert(not kong_state.kong_request,
+         "Cannot check statuscode against a request object, only against a response object")
+
   local expected = args[1]
   local res = args[2] or kong_state.kong_response
-  assert(type(expected) == "number", "Expected response code must be a number value. Got; "..tostring(expected))
-  assert((type(res) == "table") and (type(res.read_body) == "function"), "Expected a http_client response. Got; "..tostring(res))
+
+  assert(type(expected) == "number",
+         "Expected response code must be a number value. Got: "..tostring(expected))
+  assert(type(res) == "table" and type(res.read_body) == "function",
+         "Expected a http_client response. Got: "..tostring(res))
+
   if expected ~= res.status then
     local body, err = res:read_body()
-    if not body then body = "Error reading body: "..tostring(err) end
+    if not body then body = "Error reading body: "..err end
     table.insert(args, 1, body)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
@@ -362,7 +456,7 @@ local function res_status(state, args)
   else
     local body, err = res:read_body()
     local output = body
-    if not output then output = "Error reading body: "..tostring(err) end
+    if not output then output = "Error reading body: "..err end
     output = pl_stringx.strip(output)
     table.insert(args, 1, output)
     table.insert(args, 1, res.status)
@@ -403,13 +497,15 @@ luassert:register("assertion", "res_status", res_status,     -- TODO: remove thi
 -- local res = assert(client:send { .. your request params here .. })
 -- local body = assert.response(res).has.jsonbody()
 local function jsonbody(state, args)
-  assert((args[1] == nil) and (kong_state.kong_request or kong_state.kong_response),
-    "the `jsonbody` assertion does not take parameters. Use the `response`/`require` modifiers to set the target to operate on")
+  assert(args[1] == nil and kong_state.kong_request or kong_state.kong_response,
+         "the `jsonbody` assertion does not take parameters. "..
+         "Use the `response`/`require` modifiers to set the target to operate on")
+
   if kong_state.kong_response then
     local body = kong_state.kong_response:read_body()
     local json, err = cjson.decode(body)
     if not json then
-      table.insert(args, 1, "Error decoding: "..tostring(err).."\nResponse body:"..tostring(body))
+      table.insert(args, 1, "Error decoding: "..err.."\nResponse body:"..body)
       args.n = 1
       return false
     end
@@ -418,7 +514,7 @@ local function jsonbody(state, args)
     assert(kong_state.kong_request.postData, "No post data found in the request. Only mockbin.com is supported!")
     local json, err = cjson.decode(kong_state.kong_request.postData.text)
     if not json then
-      table.insert(args, 1, "Error decoding: "..tostring(err).."\nRequest body:"..tostring(kong_state.kong_request.postData.text))
+      table.insert(args, 1, "Error decoding: "..err.."\nRequest body:"..kong_state.kong_request.postData.text)
       args.n = 1
       return false
     end
@@ -447,8 +543,8 @@ luassert:register("assertion", "jsonbody", jsonbody,
 local function res_header(state, args)
   local header = args[1]
   local res = args[2] or kong_state.kong_request or kong_state.kong_response
-  assert((type(res) == "table") and (type(res.headers) == "table"),
-    "'header' assertion input does not contain a 'headers' subtable")
+  assert(type(res) == "table" and type(res.headers) == "table",
+         "'header' assertion input does not contain a 'headers' subtable")
   local value = lookup(res.headers, header)
   table.insert(args, 1, res.headers)
   table.insert(args, 1, header)
@@ -606,7 +702,9 @@ return {
   kong_exec = kong_exec,
   http_client = http_client,
   wait_until = wait_until,
+  tcp_server = tcp_server,
   udp_server = udp_server,
+  http_server = http_server,
   proxy_client = proxy_client,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
