@@ -4,42 +4,39 @@ local log = require "kong.cmd.utils.log"
 local options = [[
  --trace     with traceback
  --v         verbose
- --vv        debug
-]]
+ --vv        debug]]
 
-local help = [[
+local cmds_arr = {}
+local cmds = {
+  start = true,
+  stop = true,
+  quit = true,
+  restart = true,
+  reload = true,
+  health = true,
+  check = true,
+  compile = true,
+  migrations = true,
+  cluster = true,
+  version = true,
+  roar = true
+}
+
+for k in pairs(cmds) do
+  cmds_arr[#cmds_arr+1] = k
+end
+
+table.sort(cmds_arr)
+
+local help = string.format([[
 Usage: kong COMMAND [OPTIONS]
 
 The available commands are:
- start
- stop
- quit
- restart
- reload
- health
- check
- compile
- migrations
- cluster
- version
+ %s
 
 Options:
-]]..options
-
-local cmds = {
-  start = "start",
-  stop = "stop",
-  quit = "quit",
-  restart = "restart",
-  reload = "reload",
-  health = "health",
-  check = "check",
-  compile = "compile",
-  migrations = "migrations",
-  cluster = "cluster",
-  version = "version",
-  roar = "roar"
-}
+%s
+]], table.concat(cmds_arr, "\n "), options)
 
 return function(args)
   local cmd_name = table.remove(args, 1)
