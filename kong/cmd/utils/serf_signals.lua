@@ -4,7 +4,6 @@
 
 local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
-local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local Serf = require "kong.serf"
 local kill = require "kong.cmd.utils.kill"
@@ -34,17 +33,11 @@ local function check_serf_bin()
   return nil, "could not find Serf executable (is it in your $PATH?)"
 end
 
-local function is_running(pid_path)
-  if not pl_path.exists(pid_path) then return nil end
-  local code = kill(pid_path, "-0")
-  return code == 0
-end
-
 local _M = {}
 
 function _M.start(kong_config, dao)
   -- is Serf already running in this prefix?
-  if is_running(kong_config.serf_pid) then
+  if kill.is_running(kong_config.serf_pid) then
     log.verbose("Serf agent already running at %s", kong_config.serf_pid)
     return true
   else
@@ -80,14 +73,14 @@ function _M.start(kong_config, dao)
   local ok = pl_utils.execute(cmd)
   if not ok then return nil end
 
+  log.verbose("waiting for Serf agent to be running...")
+
   -- ensure started (just an improved version of previous Serf service)
   local tstart = ngx.time()
   local texp, started = tstart + start_timeout
-
   repeat
-    log.debug("waiting for Serf agent to be running...")
     ngx.sleep(0.2)
-    started = is_running(kong_config.serf_pid)
+    started = kill.is_running(kong_config.serf_pid)
   until started or ngx.time() >= texp
 
   if not started then
@@ -119,7 +112,7 @@ function _M.stop(kong_config, dao)
   if not ok then return nil, err end
 
   log.verbose("stopping Serf agent at %s", kong_config.serf_pid)
-  local code, res = kill(kong_config.serf_pid, "-15") --SIGTERM
+  local code, res = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
   if code == 256 then -- If no error is returned
     pl_file.delete(kong_config.serf_pid)
   end

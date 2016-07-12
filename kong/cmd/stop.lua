@@ -28,7 +28,7 @@ local lapp = [[
 Usage: kong stop [OPTIONS]
 
 Options:
- -p,--prefix (optional string) prefix Kong is running at
+ -p,--prefix  (optional string) prefix Kong is running at
 ]]
 
 return {

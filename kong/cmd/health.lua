@@ -5,27 +5,18 @@ local pl_tablex = require "pl.tablex"
 local pl_stringx = require "pl.stringx"
 local conf_loader = require "kong.conf_loader"
 
-local function is_running(pid_path)
-  if not pl_path.exists(pid_path) then return end
-  return kill(pid_path, "-0") == 0
-end
-
 local function execute(args)
-  local conf
+  -- retrieve default prefix or use given one
+  local default_conf = assert(conf_loader(nil, {
+    prefix = args.prefix
+  }))
+  assert(pl_path.exists(default_conf.prefix),
+         "no such prefix: "..default_conf.prefix)
+  assert(pl_path.exists(default_conf.kong_conf),
+         "Kong is not running at "..default_conf.prefix)
 
-  if args.prefix then
-    -- retrieve prefix or use given one
-    local default_conf = assert(conf_loader(nil, {
-      prefix = args.prefix
-    }))
-    assert(pl_path.exists(default_conf.prefix),
-           "no such prefix: "..default_conf.prefix)
-
-    -- load <PREFIX>/kong.conf containing running node's config
-    conf = assert(conf_loader(default_conf.kong_conf))
-  else
-    conf = assert(conf_loader(args.conf))
-  end
+  -- load <PREFIX>/kong.conf containing running node's config
+  local conf = assert(conf_loader(default_conf.kong_conf))
 
   local pids = {
     serf = conf.serf_pid,
@@ -35,8 +26,8 @@ local function execute(args)
 
   local count = 0
   for k, v in pairs(pids) do
-    local running = is_running(v)
-    local msg = pl_stringx.ljust(k, 10, ".")..(running and "running" or "not running")
+    local running = kill.is_running(v)
+    local msg = pl_stringx.ljust(k, 12, ".")..(running and "running" or "not running")
     if running then
       count = count + 1
     end
@@ -55,8 +46,7 @@ local lapp = [[
 Usage: kong health [OPTIONS]
 
 Options:
- -c,--conf (optional string) configuration file
- --prefix  (optional string) prefix at which Kong should be running
+ -p,--prefix (optional string) prefix at which Kong should be running
 ]]
 
 return {

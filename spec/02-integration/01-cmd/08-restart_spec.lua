@@ -11,7 +11,7 @@ describe("kong restart", function()
   end)
 
   it("restart help", function()
-    local _, stderr = helpers.kong_exec "health --help"
+    local _, stderr = helpers.kong_exec "restart --help"
     assert.not_equal("", stderr)
   end)
   it("restarts if not running", function()

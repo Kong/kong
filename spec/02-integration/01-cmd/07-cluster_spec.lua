@@ -9,6 +9,7 @@ describe("kong cluster", function()
     helpers.clean_prefix()
   end)
 
+
   it("cluster help", function()
     local _, stderr = helpers.kong_exec "cluster --help"
     assert.not_equal("", stderr)
