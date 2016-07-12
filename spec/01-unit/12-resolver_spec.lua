@@ -1,40 +1,55 @@
--- Stubs
-require "kong.tools.ngx_stub"
-
-local singletons = require "kong.singletons"
-local resolver = require "kong.core.resolver"
-
-local APIS_FIXTURES = {
-  -- request_host
-  {name = "mockbin", request_host = "mockbin.com", upstream_url = "http://mockbin.com"},
-  {name = "mockbin", request_host = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
-  {name = "mockbin", request_host = "*.wildcard.com", upstream_url = "http://mockbin.com"},
-  {name = "mockbin", request_host = "wildcard.*", upstream_url = "http://mockbin.com"},
-  -- request_path
-  {name = "mockbin", request_path = "/mockbin", upstream_url = "http://mockbin.com"},
-  {name = "mockbin", request_path = "/mockbin-with-dashes", upstream_url = "http://mockbin.com/some/path"},
-  {name = "mockbin", request_path = "/some/deep", upstream_url = "http://mockbin.com"},
-  {name = "mockbin", request_path = "/some/deep/url", upstream_url = "http://mockbin.com"},
-  --
-  {name = "mockbin", request_path = "/strip", upstream_url = "http://mockbin.com/some/path/", strip_request_path = true},
-  {name = "mockbin", request_path = "/strip-me", upstream_url = "http://mockbin.com/", strip_request_path = true},
-  {name = "preserve-host", request_path = "/preserve-host", request_host = "preserve-host.com", upstream_url = "http://mockbin.com", preserve_host = true}
-}
-
-singletons.dao = {
-  apis = {
-    find_all = function()
-      return APIS_FIXTURES
-    end
-  }
-}
-
-local apis_dics
-
 describe("Resolver", function()
+  local old_ngx = _G.ngx
+  local singletons, resolver
+  local APIS_FIXTURES
+
+  setup(function()
+    local stubbed_ngx = {
+      header = {},
+      shared = require "spec.fixtures.shm-stub",
+      say = function() end,  -- not required as stub, but to prevent outputting to stdout
+      req = {
+        get_headers = function() return {} end,
+        set_header = function() return {} end,
+      }
+    }
+    _G.ngx = setmetatable(stubbed_ngx, {__index = old_ngx})
+
+    resolver = require "kong.core.resolver"
+    singletons = require "kong.singletons"
+    singletons.dao = {
+      apis = {
+        find_all = function()
+          return APIS_FIXTURES
+        end
+      }
+    }
+
+    APIS_FIXTURES = {
+      -- request_host
+      {name = "mockbin", request_host = "mockbin.com", upstream_url = "http://mockbin.com"},
+      {name = "mockbin", request_host = "mockbin-auth.com", upstream_url = "http://mockbin.com"},
+      {name = "mockbin", request_host = "*.wildcard.com", upstream_url = "http://mockbin.com"},
+      {name = "mockbin", request_host = "wildcard.*", upstream_url = "http://mockbin.com"},
+      -- request_path
+      {name = "mockbin", request_path = "/mockbin", upstream_url = "http://mockbin.com"},
+      {name = "mockbin", request_path = "/mockbin-with-dashes", upstream_url = "http://mockbin.com/some/path"},
+      {name = "mockbin", request_path = "/some/deep", upstream_url = "http://mockbin.com"},
+      {name = "mockbin", request_path = "/some/deep/url", upstream_url = "http://mockbin.com"},
+      --
+      {name = "mockbin", request_path = "/strip", upstream_url = "http://mockbin.com/some/path/", strip_request_path = true},
+      {name = "mockbin", request_path = "/strip-me", upstream_url = "http://mockbin.com/", strip_request_path = true},
+      {name = "preserve-host", request_path = "/preserve-host", request_host = "preserve-host.com", upstream_url = "http://mockbin.com", preserve_host = true}
+    }
+  end)
+
   describe("load_apis_in_memory()", function()
-    it("should retrieve all APIs in datastore and return them organized", function()
+    local apis_dics
+    setup(function()
       apis_dics = resolver.load_apis_in_memory()
+    end)
+
+    it("should retrieve all APIs in datastore and return them organized", function()
       assert.equal("table", type(apis_dics))
       assert.truthy(apis_dics.by_dns)
       assert.truthy(apis_dics.request_path_arr)
@@ -66,7 +81,13 @@ describe("Resolver", function()
       assert.equal("^wildcard%..+$", apis_dics.wildcard_dns_arr[2].pattern)
     end)
   end)
+
   describe("strip_request_path()", function()
+    local apis_dics
+    setup(function()
+      apis_dics = resolver.load_apis_in_memory()
+    end)
+
     it("should strip the api's request_path from the requested URI", function()
       assert.equal("/status/200", resolver.strip_request_path("/mockbin/status/200", apis_dics.request_path_arr[7].strip_request_path_pattern))
       assert.equal("/status/200", resolver.strip_request_path("/mockbin-with-dashes/status/200", apis_dics.request_path_arr[6].strip_request_path_pattern))

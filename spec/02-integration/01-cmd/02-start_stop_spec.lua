@@ -1,5 +1,3 @@
-local pl_dir = require "pl.dir"
-local pl_path = require "pl.path"
 local helpers = require "spec.helpers"
 
 describe("kong start/stop", function()
@@ -102,6 +100,23 @@ describe("kong start/stop", function()
       assert.matches('pg_password = "******"', stdout, nil, true)
       assert.matches('cassandra_password = "******"', stdout, nil, true)
       assert.matches('cluster_encrypt_key = "******"', stdout, nil, true)
+    end)
+  end)
+
+  describe("custom --nginx-conf", function()
+    local templ_fixture = "spec/fixtures/custom_nginx.template"
+
+    it("accept a custom Nginx configuration", function()
+      finally(function()
+        helpers.kill_all()
+      end)
+
+      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path.." --nginx-conf "..templ_fixture))
+      assert.truthy(helpers.path.exists(helpers.test_conf.nginx_conf))
+
+      local contents = helpers.file.read(helpers.test_conf.nginx_conf)
+      assert.matches("# This is a custom nginx configuration template for Kong specs", contents, nil, true)
+      assert.matches("daemon on;", contents, nil, true)
     end)
   end)
 
