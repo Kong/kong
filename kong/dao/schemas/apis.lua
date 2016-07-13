@@ -28,9 +28,6 @@ local function check_request_host_and_path(api_t)
   return true
 end
 
---local host_allowed_chars = "[%d%a%-%.%_]"
---local ext_allowed_chars = "[%d%a]"
---local dns_pattern = "^"..host_allowed_chars.."+$"
 local dns_pattern = "^[%d%a%-%.%_]+$"
 
 local function check_request_host(request_host, api_t)
