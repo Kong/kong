@@ -28,9 +28,10 @@ local function check_request_host_and_path(api_t)
   return true
 end
 
-local host_allowed_chars = "[%d%a%-%.%_]"
-local ext_allowed_chars = "[%d%a]"
-local dns_pattern = "^"..host_allowed_chars.."+%."..ext_allowed_chars..ext_allowed_chars.."+$"
+--local host_allowed_chars = "[%d%a%-%.%_]"
+--local ext_allowed_chars = "[%d%a]"
+--local dns_pattern = "^"..host_allowed_chars.."+$"
+local dns_pattern = "^[%d%a%-%.%_]+$"
 
 local function check_request_host(request_host, api_t)
   local valid, err = check_request_host_and_path(api_t)
@@ -48,8 +49,9 @@ local function check_request_host(request_host, api_t)
       end
 
       -- Reject prefix/trailing dashes and dots in each segment
+      -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
       for _, segment in ipairs(stringy.split(request_host, ".")) do
-        if segment == "" or segment:match("^-") or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
+        if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
           return false, "Invalid value: "..request_host
         end
       end

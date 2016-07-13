@@ -82,10 +82,10 @@ describe("Entities Schemas", function()
         assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
       end)
       it("should not accept an invalid request_host", function()
-        local invalids = {"/mockbin", ".mockbin", "mockbin.", "mockbin.f", "mock;bin",
-                          "mockbin.com-org", "mockbin.com/org", "mockbin.com_org",
-                          "-mockbin.org", "mockbin-.org", "mockbin.or-g", "mockbin.org-",
-                          "mockbin.-org", "hello.-mockbin.com", "hello..mockbin.com", "hello-.mockbin.com"}
+        local invalids = {"/mockbin", ".mockbin", "mockbin.", "mock;bin",
+                          "mockbin.com/org",
+                          "mockbin-.org", "mockbin.org-",
+                          "hello..mockbin.com", "hello-.mockbin.com"}
 
         for _, v in ipairs(invalids) do
           local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
@@ -98,7 +98,13 @@ describe("Entities Schemas", function()
       it("should accept valid request_host", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
                         "HELLO.com", "123helloWORLD.com", "mockbin.123", "mockbin-api.com",
-                        "hello.abcd", "mockbin_api.com"}
+                        "hello.abcd", "mockbin_api.com", "localhost",
+                        -- punycode exmaples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
+                        -- specifically the japanese ones as they mix ascii with escaped characters
+                        "3B-ww4c5e180e575a65lsy2b", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n",
+                        "Hello-Another-Way--fc4qua05auwb3674vfr0b", "2-u9tlzr9756bt3uc0v",
+                        "MajiKoi5-783gue6qz075azm5e", "de-jg4avhby1noc0d", "d9juau41awczczp",
+                        }
 
         for _, v in ipairs(valids) do
           local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
