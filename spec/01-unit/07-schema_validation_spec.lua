@@ -208,7 +208,7 @@ describe("Schemas", function()
       local valid, err = validate_entity(values, s)
       assert.False(valid)
       assert.truthy(err)
-      assert.equal("array is not a array", err.array)
+      assert.equal("array is not an array", err.array)
     end)
 
     describe("[aliases]", function()
