@@ -2,23 +2,19 @@
 
 set -e
 
+export BUSTED_ARGS="-o gtest -v --exclude-tags=ci"
+
 if [ "$TEST_SUITE" == "unit" ]; then
-  kong config -c kong.yml -e TEST -s TEST
+  make lint
+  make test
 else
-  kong config -c kong.yml -d $DATABASE -e TEST -s TEST
+  createuser --createdb kong
+  createdb -U kong kong_tests
+
+  if [ "$TEST_SUITE" == "integration" ]; then
+    make test-integration
+  elif [ "$TEST_SUITE" == "plugins" ]; then
+    make test-plugins
+  fi
 fi
 
-createuser --createdb kong
-createdb -U kong kong_tests
-
-CMD="busted -v -o gtest --exclude-tags=ci"
-
-if [ "$TEST_SUITE" == "unit" ]; then
-  CMD="$CMD --coverage spec/unit && luacov-coveralls -i kong"
-elif [ "$TEST_SUITE" == "plugins" ]; then
-  CMD="$CMD spec/plugins"
-elif [ "$TEST_SUITE" == "integration" ]; then
-  CMD="$CMD spec/integration"
-fi
-
-eval $CMD
