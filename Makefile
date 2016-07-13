@@ -1,6 +1,6 @@
 DEV_ROCKS = busted luacheck
 
-.PHONY: install dev clean doc lint test test-integration test-plugins test-all coverage
+.PHONY: install dev doc lint test test-integration test-plugins test-all
 
 install:
 	@if [ `uname` = "Darwin" ]; then \
@@ -20,10 +20,6 @@ dev: install
       echo $$rock already installed, skipping ; \
     fi \
 	done;
-
-clean:
-	rm -f luacov.*
-	rm -rf servroot
 
 doc:
 	@ldoc -c config.ld kong
