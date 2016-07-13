@@ -99,7 +99,7 @@ describe("Entities Schemas", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
                         "HELLO.com", "123helloWORLD.com", "mockbin.123", "mockbin-api.com",
                         "hello.abcd", "mockbin_api.com", "localhost",
-                        -- punycode exmaples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
+                        -- punycode examples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
                         -- specifically the japanese ones as they mix ascii with escaped characters
                         "3B-ww4c5e180e575a65lsy2b", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n",
                         "Hello-Another-Way--fc4qua05auwb3674vfr0b", "2-u9tlzr9756bt3uc0v",
