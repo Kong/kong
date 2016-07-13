@@ -77,7 +77,7 @@ local function send_keepalive(premature)
       ngx.log(ngx.ERR, tostring(err))
     elseif #nodes == 1 then
       local node = nodes[1]
-      local _, err = singletons.dao.nodes:update(node, node, {ttl=singletons.configuration.cluster.ttl_on_failure})
+      local _, err = singletons.dao.nodes:update(node, node, {ttl=singletons.configuration.cluster_ttl_on_failure})
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end
