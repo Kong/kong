@@ -1,13 +1,14 @@
 local helpers = require "spec.helpers"
 
-describe("kong restart", function()
-  before_each(function()
-    helpers.kill_all()
+describe("kong health", function()
+  setup(function()
     helpers.prepare_prefix()
   end)
   teardown(function()
-    helpers.kill_all()
     helpers.clean_prefix()
+  end)
+  after_each(function()
+    helpers.kill_all()
   end)
 
   it("health help", function()

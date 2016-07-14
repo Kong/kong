@@ -4,23 +4,21 @@ local cjson = require "cjson"
 describe("Real IP proxying", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    helpers.dao:truncate_tables()
-
     assert(helpers.dao.apis:insert {
       name = "mockbin",
       request_path = "/mockbin",
       strip_request_path = true,
       upstream_url = "http://mockbin.com"
     })
+
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

@@ -5,9 +5,6 @@ local cache = require "kong.tools.database_cache"
 describe("Plugin: ldap-auth (access)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
       request_host = "ldap.com",
@@ -44,10 +41,11 @@ describe("Plugin: ldap-auth (access)", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   before_each(function()

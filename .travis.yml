@@ -7,7 +7,6 @@ addons:
   postgresql: "9.4"
   apt:
     packages:
-      - sed
       - dnsmasq
       - uuid-dev
       - net-tools
@@ -23,6 +22,7 @@ env:
     - OPENRESTY=1.9.7.3
     - $CACHE_DIR=$HOME/cache
   matrix:
+    - TEST_SUITE=lint
     - TEST_SUITE=unit
     - TEST_SUITE=integration
     - TEST_SUITE=plugins
@@ -42,4 +42,3 @@ cache:
   directories:
     - $CACHE_DIR
     - $HOME/.ccm/repository
-

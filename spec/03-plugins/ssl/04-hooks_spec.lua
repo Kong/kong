@@ -13,9 +13,6 @@ describe("Plugin hooks: ssl", function()
   local api, plugin, admin_client
 
   before_each(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     api = assert(helpers.dao.apis:insert {
       request_host = "ssl1.com",
       upstream_url = "http://mockbin.com"
@@ -29,6 +26,7 @@ describe("Plugin hooks: ssl", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     admin_client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.admin_port))
   end)
@@ -37,7 +35,7 @@ describe("Plugin hooks: ssl", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

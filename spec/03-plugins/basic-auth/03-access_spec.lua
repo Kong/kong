@@ -5,10 +5,6 @@ local meta = require "kong.meta"
 describe("Plugin: basic-auth (access)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "basic-auth1.com",
       upstream_url = "http://mockbin.com"
@@ -39,11 +35,13 @@ describe("Plugin: basic-auth (access)", function()
       consumer_id = consumer.id
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

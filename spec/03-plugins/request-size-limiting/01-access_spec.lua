@@ -3,10 +3,6 @@ local helpers = require "spec.helpers"
 describe("Plugin: request-size-limiting (access)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api = assert(helpers.dao.apis:insert {
       request_host = "limit.com",
       upstream_url = "http://mockbin.com"
@@ -19,11 +15,13 @@ describe("Plugin: request-size-limiting (access)", function()
       }
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

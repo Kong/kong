@@ -5,7 +5,6 @@ local meta = require "kong.meta"
 describe("Resolver", function()
   local client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
 
     -- request_host
@@ -72,7 +71,7 @@ describe("Resolver", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

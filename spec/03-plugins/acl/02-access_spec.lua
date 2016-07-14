@@ -5,10 +5,6 @@ local cache = require "kong.tools.database_cache"
 describe("Plugin: ACL (access)", function()
   local client, api_client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -174,6 +170,9 @@ describe("Plugin: ACL (access)", function()
       api_id = api7.id,
       config = {}
     })
+
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
   end)
   before_each(function()
     client = helpers.proxy_client()
@@ -184,7 +183,7 @@ describe("Plugin: ACL (access)", function()
     api_client:close()
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

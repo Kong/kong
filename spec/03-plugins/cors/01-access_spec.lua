@@ -4,10 +4,6 @@ local cjson = require "cjson"
 describe("Plugin: cors (access)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "cors1.com",
       upstream_url = "http://mockbin.com"
@@ -50,12 +46,14 @@ describe("Plugin: cors (access)", function()
       }
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

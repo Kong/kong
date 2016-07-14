@@ -15,7 +15,6 @@ describe("Plugin: rate-limiting (access)", function()
   local client
 
   local function prepare()
-    helpers.kill_all()
     helpers.dao:drop_schema()
     assert(helpers.dao:run_migrations())
 
@@ -139,7 +138,7 @@ describe("Plugin: rate-limiting (access)", function()
     wait()
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
