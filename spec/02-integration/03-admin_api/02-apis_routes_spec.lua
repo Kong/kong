@@ -84,13 +84,13 @@ describe("Admin API", function()
               method = "POST",
               path = "/apis",
               body = {
-                request_host = "my-api",
+                request_host = "my-api.com/com",
                 upstream_url = "http://my-api.con"
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"request_host":"Invalid value: my-api"}]], body)
+            assert.equal([[{"request_host":"Invalid value: my-api.com\/com"}]], body)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -212,14 +212,14 @@ describe("Admin API", function()
               method = "PUT",
               path = "/apis",
               body = {
-                request_host = "my-api",
+                request_host = "my-api.com/com",
                 upstream_url = "http://my-api.com",
                 created_at = 1461276890000
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"request_host":"Invalid value: my-api"}]], body)
+            assert.equal([[{"request_host":"Invalid value: my-api.com\/com"}]], body)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
