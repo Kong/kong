@@ -24,6 +24,13 @@ describe("Plugin: oauth2 (access)", function()
       name = "testapp2",
       consumer_id = consumer.id
     })
+    assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientid456",
+      client_secret = "secret456",
+      redirect_uri = {"http://one.com/one/", "http://two.com/two"},
+      name = "testapp3",
+      consumer_id = consumer.id
+    })
 
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "oauth2.com",
@@ -344,6 +351,27 @@ describe("Plugin: oauth2 (access)", function()
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.is_table(ngx.re.match(body.redirect_uri, "^http://google\\.com/kong\\?code=[\\w]{32,32}&foo=bar$"))
+      end)
+      it("works with multiple redirect_uri in the application", function()
+        local res = assert(proxy_client:send {
+          method = "POST",
+          path = "/oauth2/authorize",
+          body = {
+            provision_key = "provision123",
+            authenticated_userid = "id123",
+            client_id = "clientid456",
+            scope = "email",
+            response_type = "code"
+          },
+          headers = {
+            ["Host"] = "oauth2_6.com",
+            ["Content-Type"] = "application/json",
+            ["X-Forwarded-Proto"] = "https"
+          }
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.truthy(ngx.re.match(json.redirect_uri, "^http://one\\.com/one/\\?code=[\\w]{32,32}$"))
       end)
       it("fails when not under HTTPS", function()
         local res = assert(proxy_client:send {
@@ -826,6 +854,62 @@ describe("Plugin: oauth2 (access)", function()
         })
         local body = assert.res_status(200, res)
         assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("returns success with an application that has multiple redirect_uri", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            client_id = "clientid456",
+            client_secret="secret456",
+            scope = "email",
+            grant_type = "client_credentials"
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("returns success with an application that has multiple redirect_uri, and by passing a valid redirect_uri", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            client_id = "clientid456",
+            client_secret="secret456",
+            scope = "email",
+            grant_type = "client_credentials",
+            redirect_uri = "http://two.com/two"
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+      end)
+      it("fails with an application that has multiple redirect_uri, and by passing an invalid redirect_uri", function()
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            client_id = "clientid456",
+            client_secret="secret456",
+            scope = "email",
+            grant_type = "client_credentials",
+            redirect_uri = "http://two.com/two/hello"
+          },
+          headers = {
+            ["Host"] = "oauth2_4.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        assert.equal([[{"error":"invalid_request","error_description":"Invalid redirect_uri that does not match with any redirect_uri created with the application"}]], body)
       end)
       it("returns success with authenticated_userid and valid provision_key", function()
         local res = assert(proxy_ssl_client:send {
