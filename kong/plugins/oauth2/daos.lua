@@ -49,6 +49,7 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   table = "oauth2_authorization_codes",
   fields = {
     id = { type = "id", dao_insert_value = true },
+    credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     code = { type = "string", required = false, unique = true, immutable = true, func = generate_if_missing },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },

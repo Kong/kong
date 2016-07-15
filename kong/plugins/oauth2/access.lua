@@ -168,6 +168,7 @@ local function authorize(conf)
       if not response_params[ERROR] then
         if response_type == CODE then
           local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
+            credential_id = client.id,
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = table.concat(scopes, " ")
           }, {ttl = 300})
@@ -285,8 +286,11 @@ local function issue_token(conf)
         local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({code = code})[1]
         if not authorization_code then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+        elseif authorization_code.credential_id ~= client.id then
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         else
           response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+          singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Only check the provision_key if the authenticated_userid is being set
