@@ -39,15 +39,9 @@ function _M.find_bin()
   return found
 end
 
-local function is_running(pid_path)
-  if not pl_path.exists(pid_path) then return nil end
-  local code = kill(pid_path, "-0")
-  return code == 0
-end
-
 function _M.start(kong_config)
   -- is dnsmasq already running in this prefix?
-  if is_running(kong_config.dnsmasq_pid) then
+  if kill.is_running(kong_config.dnsmasq_pid) then
     log.verbose("dnsmasq already running at %s", kong_config.dnsmasq_pid)
     return true
   else
@@ -71,7 +65,7 @@ end
 
 function _M.stop(kong_config)
   log.verbose("stopping dnsmasq at %s", kong_config.dnsmasq_pid)
-  return kill(kong_config.dnsmasq_pid, "-15") -- SIGTERM
+  return kill.kill(kong_config.dnsmasq_pid, "-15") -- SIGTERM
 end
 
 return _M

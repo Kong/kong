@@ -58,10 +58,12 @@ end
 local lapp = [[
 Usage: kong migrations COMMAND [OPTIONS]
 
+Manage Kong's database migrations.
+
 The available commands are:
- list
- up
- reset
+ list   List migrations currently executed.
+ up     Execute all missing migrations up to the latest available.
+ reset  Reset the configured database (irreversible).
 
 Options:
  -c,--conf (optional string) configuration file

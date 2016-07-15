@@ -17,19 +17,27 @@ describe("kong start/stop", function()
     local _, stderr = helpers.kong_exec "stop --help"
     assert.not_equal("", stderr)
   end)
-  it("start/stop default conf/prefix", function()
+  it("start/stop gracefully with default conf/prefix", function()
     -- don't want to force migrations to be run on default
     -- keyspace/database
-    assert(helpers.kong_exec "start", {
+    assert(helpers.kong_exec("start", {
       database = helpers.test_conf.database,
       pg_database = helpers.test_conf.pg_database,
       cassandra_keyspace = helpers.test_conf.cassandra_keyspace
-    })
+    }))
     assert(helpers.kong_exec "stop")
   end)
   it("start/stop custom Kong conf/prefix", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
     assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+  end)
+  it("start/stop forcefully", function()
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
+  end)
+  it("start/quit gracefully with --timeout option", function()
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    assert(helpers.kong_exec("quit --timeout 2 --prefix "..helpers.test_conf.prefix))
   end)
   it("start with inexistent prefix", function()
     finally(function()

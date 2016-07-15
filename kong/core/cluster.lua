@@ -1,6 +1,5 @@
-local singletons = require "kong.singletons"
-local cluster_utils = require "kong.tools.cluster"
 local cache = require "kong.tools.database_cache"
+local singletons = require "kong.singletons"
 
 local resty_lock
 local status, res = pcall(require, "resty.lock")
@@ -41,7 +40,7 @@ local function async_autojoin(premature)
         ngx.log(ngx.ERR, tostring(err))
       elseif #members < 2 then
         -- Trigger auto-join
-        local _, err = singletons.serf:autojoin(cluster_utils.get_node_name(singletons.configuration))
+        local _, err = singletons.serf:autojoin()
         if err then
           ngx.log(ngx.ERR, tostring(err))
         end
@@ -71,13 +70,14 @@ local function send_keepalive(premature)
   local elapsed = lock:lock("keepalive")
   if elapsed and elapsed == 0 then
     -- Send keepalive
-    local node_name = cluster_utils.get_node_name(singletons.configuration)
-    local nodes, err = singletons.dao.nodes:find_all {name = node_name}
+    local nodes, err = singletons.dao.nodes:find_all {
+      name = singletons.serf.node_name
+    }
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif #nodes == 1 then
       local node = nodes[1]
-      local _, err = singletons.dao.nodes:update(node, node, {ttl=singletons.configuration.cluster.ttl_on_failure})
+      local _, err = singletons.dao.nodes:update(node, node, {ttl=singletons.configuration.cluster_ttl_on_failure})
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end

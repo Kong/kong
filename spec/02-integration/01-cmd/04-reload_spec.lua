@@ -23,6 +23,32 @@ describe("kong reload", function()
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
   end)
+  it("reloads from a --conf argument", function()
+    finally(function()
+      helpers.kill_all()
+    end)
+
+    assert(helpers.start_kong {
+      proxy_listen = "0.0.0.0:9002"
+    })
+    local client = helpers.http_client("0.0.0.0", 9002, 5000)
+    client:close()
+
+    local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
+
+    assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path, {
+      proxy_listen = "0.0.0.0:9000"
+    }))
+
+    -- same master PID
+    assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
+
+    ngx.sleep(1)
+
+    -- new proxy port
+    client = helpers.http_client("0.0.0.0", 9000, 5000)
+    client:close()
+  end)
 
   describe("errors", function()
     it("complains about missing PID if not already running", function()

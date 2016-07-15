@@ -361,8 +361,11 @@ describe("Plugin: oauth2 (access)", function()
             ["Content-Type"] = "application/json"
           }
         })
-        local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"You must use HTTPS","error":"access_denied"}]], body)
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody(res)
+
+        assert.equal("You must use HTTPS", json.error_description)
+        assert.equal("access_denied", json.error)
       end)
       it("works when not under HTTPS but accept_http_if_already_terminated is true", function()
         local res = assert(proxy_client:send {
@@ -401,8 +404,11 @@ describe("Plugin: oauth2 (access)", function()
             ["X-Forwarded-Proto"] = "https"
           }
         })
-        local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"You must use HTTPS","error":"access_denied"}]], body)
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody(res)
+
+        assert.equal("You must use HTTPS", json.error_description)
+        assert.equal("access_denied", json.error)
       end)
       it("returns success", function()
         local res = assert(proxy_ssl_client:send {
@@ -758,8 +764,11 @@ describe("Plugin: oauth2 (access)", function()
             ["Content-Type"] = "application/json"
           }
         })
-        local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"You must use HTTPS","error":"access_denied"}]], body)
+        assert.response(res).has.status(400)
+        local json = assert.response(res).has.jsonbody(res)
+
+        assert.equal("You must use HTTPS", json.error_description)
+        assert.equal("access_denied", json.error)
       end)
       it("fails when setting authenticated_userid and no provision_key", function()
         local res = assert(proxy_ssl_client:send {

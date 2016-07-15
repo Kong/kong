@@ -103,15 +103,17 @@ local function parse_error(err_str)
   local err
   if string.find(err_str, "Key .* already exists") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
-    err = Errors.unique {[col] = value}
+    if col then
+      err = Errors.unique {[col] = value}
+    end
   elseif string.find(err_str, "violates foreign key constraint") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
-    err = Errors.foreign {[col] = value}
-  else
-    err = Errors.db(err_str)
+    if col then
+      err = Errors.foreign {[col] = value}
+    end
   end
-
-  return err
+  
+  return err or Errors.db(err_str)
 end
 
 local function get_select_fields(schema)
