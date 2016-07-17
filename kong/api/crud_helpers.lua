@@ -62,11 +62,12 @@ function _M.paginated_set(self, dao_collection)
   end
 
   local next_url
-  if offset ~= nil then
+  if offset then
+    offset = ngx.encode_base64(offset)
     next_url = self:build_url(self.req.parsed_url.path, {
       port = self.req.parsed_url.port,
       query = ngx.encode_args {
-        offset = ngx.encode_base64(offset),
+        offset = offset,
         size = size
       }
     })
@@ -75,7 +76,18 @@ function _M.paginated_set(self, dao_collection)
   -- This check is required otherwise the response is going to be a
   -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
   -- will not be translated as an empty array by cjson, but as an empty object.
-  local result = #rows == 0 and "{\"data\":[],\"total\":0}" or {data = rows, ["next"] = next_url, total = total_count}
+  -- TODO: fixme once https://github.com/openresty/lua-cjson/pull/6 lands in a release
+  local result
+  if #rows == 0 then
+    result = [[{"data":[],"total":0}]]
+  else
+    result = {
+      data = rows,
+      total = total_count,
+      offset = offset,
+      ["next"] = next_url,
+    }
+  end
 
   return responses.send_HTTP_OK(result, type(result) ~= "table")
 end
@@ -107,6 +119,9 @@ end
 --- Partial update of an entity.
 -- Filter keys must be given to get the row to update.
 function _M.patch(params, dao_collection, filter_keys)
+  if not next(params) then
+    return responses.send_HTTP_BAD_REQUEST("empty body")
+  end
   local updated_entity, err = dao_collection:update(params, filter_keys)
   if err then
     return app_helpers.yield_error(err)

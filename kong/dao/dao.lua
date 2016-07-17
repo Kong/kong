@@ -10,7 +10,7 @@
 -- (as with Cassandra).
 -- @module kong.dao
 
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local event_types = require("kong.core.events").TYPES
@@ -319,6 +319,10 @@ function DAO:delete(tbl)
     end
   end
   return row, err
+end
+
+function DAO:truncate()
+  return self.db:truncate_table(self.table)
 end
 
 return DAO

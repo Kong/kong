@@ -1,21 +1,19 @@
+local plugins = {
+  "ssl", "jwt", "acl", "correlation-id", "cors", "oauth2", "tcp-log", "udp-log",
+  "file-log", "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
+  "galileo", "request-transformer", "response-transformer",
+  "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
+  "loggly", "datadog", "runscope", "ldap-auth", "statsd", "bot-detection"
+}
+
+local plugin_map = {}
+for i = 1, #plugins do
+  plugin_map[plugins[i]] = true
+end
+
 return {
-  SYSLOG = {
-    ADDRESS = "kong-hf.mashape.com",
-    PORT = 61828,
-    API = "api"
-  },
-  CLI = {
-    GLOBAL_KONG_CONF = "/etc/kong/kong.yml",
-    NGINX_CONFIG = "nginx.conf"
-  },
-  PLUGINS_AVAILABLE = {
-    "ssl", "jwt", "acl", "correlation-id", "cors", "oauth2", "tcp-log", "udp-log", "file-log",
-    "http-log", "key-auth", "hmac-auth", "basic-auth", "ip-restriction",
-    "galileo", "request-transformer", "response-transformer",
-    "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
-    "loggly", "datadog", "runscope", "ldap-auth", "statsd"
-  },
-  -- Non standard headers, specific to Kong
+  PLUGINS_AVAILABLE = plugin_map,
+  -- non-standard headers, specific to Kong
   HEADERS = {
     HOST_OVERRIDE = "X-Host-Override",
     PROXY_LATENCY = "X-Kong-Proxy-Latency",
@@ -39,5 +37,9 @@ return {
       "month",
       "year"
     }
+  },
+  SYSLOG = {
+    ADDRESS = "kong-hf.mashape.com",
+    PORT = 61828
   }
 }

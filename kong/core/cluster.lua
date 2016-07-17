@@ -1,6 +1,5 @@
-local singletons = require "kong.singletons"
-local cluster_utils = require "kong.tools.cluster"
 local cache = require "kong.tools.database_cache"
+local singletons = require "kong.singletons"
 
 local resty_lock
 local status, res = pcall(require, "resty.lock")
@@ -25,8 +24,6 @@ local function async_autojoin(premature)
   -- If this node is the only node in the cluster, but other nodes are present, then try to join them
   -- This usually happens when two nodes are started very fast, and the first node didn't write his
   -- information into the datastore yet. When the second node starts up, there is nothing to join yet.
-  if not singletons.configuration.cluster["auto-join"] then return end
-
   local lock = resty_lock:new("cluster_autojoin_locks", {
     exptime = ASYNC_AUTOJOIN_INTERVAL - 0.001
   })
@@ -38,12 +35,12 @@ local function async_autojoin(premature)
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif count > 1 then
-      local members, err = singletons.serf:_members()
+      local members, err = singletons.serf:members()
       if err then
         ngx.log(ngx.ERR, tostring(err))
       elseif #members < 2 then
         -- Trigger auto-join
-        local _, err = singletons.serf:_autojoin(cluster_utils.get_node_identifier(singletons.configuration))
+        local _, err = singletons.serf:autojoin()
         if err then
           ngx.log(ngx.ERR, tostring(err))
         end
@@ -73,13 +70,14 @@ local function send_keepalive(premature)
   local elapsed = lock:lock("keepalive")
   if elapsed and elapsed == 0 then
     -- Send keepalive
-    local node_name = cluster_utils.get_node_identifier(singletons.configuration)
-    local nodes, err = singletons.dao.nodes:find_all {name = node_name}
+    local nodes, err = singletons.dao.nodes:find_all {
+      name = singletons.serf.node_name
+    }
     if err then
       ngx.log(ngx.ERR, tostring(err))
     elseif #nodes == 1 then
       local node = nodes[1]
-      local _, err = singletons.dao.nodes:update(node, node, {ttl=singletons.configuration.cluster.ttl_on_failure})
+      local _, err = singletons.dao.nodes:update(node, node, {ttl=singletons.configuration.cluster_ttl_on_failure})
       if err then
         ngx.log(ngx.ERR, tostring(err))
       end
