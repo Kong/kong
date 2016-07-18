@@ -1,5 +1,7 @@
 local helpers = require "spec.helpers"
 
+local TEST_SIZE = 1
+
 describe("Plugin: request-size-limiting (access)", function()
   local client
   setup(function()
@@ -15,7 +17,7 @@ describe("Plugin: request-size-limiting (access)", function()
       name = "request-size-limiting",
       api_id = api.id,
       config = {
-        allowed_payload_size = 10
+        allowed_payload_size = TEST_SIZE
       }
     })
 
@@ -29,7 +31,7 @@ describe("Plugin: request-size-limiting (access)", function()
 
   describe("with Content-Length set", function()
     it("allows request of lower size", function()
-      local body = "foo=test&bar=foobar"
+      local body = string.rep("a", TEST_SIZE * 1000000)
 
       local res = assert(client:request {
         method = "POST",
@@ -44,7 +46,7 @@ describe("Plugin: request-size-limiting (access)", function()
       assert.res_status(200, res)
     end)
     it("blocks request exceeding size limit", function()
-      local body = string.rep("a", 11 * 2^20)
+      local body = string.rep("a", TEST_SIZE * 1000000 + 1)
 
       local res = assert(client:send {
         method = "POST",
@@ -63,7 +65,7 @@ describe("Plugin: request-size-limiting (access)", function()
 
   describe("without Content-Length", function()
     it("allows request of lower size", function()
-      local body = "foo=test&bar=foobar"
+      local body = string.rep("a", TEST_SIZE * 1000000)
 
       local res = assert(client:request {
         method = "POST",
@@ -77,7 +79,7 @@ describe("Plugin: request-size-limiting (access)", function()
       assert.res_status(200, res)
     end)
     it("blocks request exceeding size limit", function()
-      local body = string.rep("a", 11 * 2^20)
+      local body = string.rep("a", TEST_SIZE * 1000000 + 1)
 
       local res = assert(client:send {
         method = "POST",
