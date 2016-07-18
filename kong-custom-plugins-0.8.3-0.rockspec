@@ -17,5 +17,7 @@ build = {
   modules = {
     ["kong.plugins.request-transformer-custom.handler"] = "kong/plugins/request-transformer-custom/handler.lua",
     ["kong.plugins.request-transformer-custom.schema"] = "kong/plugins/request-transformer-custom/schema.lua"
+    ["kong.plugins.request-validator.handler"] = "kong/plugins/request-validator/handler.lua"
+    ["kong.plugins.request-validator.schema"] = "kong/plugins/request-validator/schema.lua"
   }
 }
