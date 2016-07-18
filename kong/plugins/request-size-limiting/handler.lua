@@ -4,12 +4,14 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local strip = require("pl.stringx").strip
 
+local MEGABYTE = 10^6
+
 local RequestSizeLimitingHandler = BasePlugin:extend()
 
 RequestSizeLimitingHandler.PRIORITY = 950
 
 local function check_size(length, allowed_size, headers)
-  local allowed_bytes_size = allowed_size * 1000000
+  local allowed_bytes_size = allowed_size * MEGABYTE
   if length > allowed_bytes_size then
     if headers.expect and strip(headers.expect:lower()) == "100-continue" then
       return responses.send(417, "Request size limit exceeded")
