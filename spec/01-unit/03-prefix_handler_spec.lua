@@ -76,6 +76,17 @@ describe("NGINX conf compiler", function()
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_ssl_trusted_certificate '/path/to/ca.cert';", kong_nginx_conf, nil, true)
+      assert.matches("lua_ssl_verify_depth 1;", kong_nginx_conf, nil, true)
+    end)
+    it("sets lua_ssl_verify_depth", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        cassandra_ssl = true,
+        cassandra_ssl_trusted_cert = "/path/to/ca.cert",
+        lua_ssl_verify_depth = "2"
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("lua_ssl_trusted_certificate '/path/to/ca.cert';", kong_nginx_conf, nil, true)
+      assert.matches("lua_ssl_verify_depth 2;", kong_nginx_conf, nil, true)
     end)
     it("compiles without anonymous reports", function()
       local conf = assert(conf_loader(nil, {
