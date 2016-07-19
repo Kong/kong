@@ -257,8 +257,5 @@ build = {
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
-  },
-  install = {
-    bin = { "bin/kong" }
   }
 }
