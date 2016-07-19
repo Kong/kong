@@ -21,7 +21,7 @@ dependencies = {
   "lapis ~> 1.3.1-1",
   "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.5.2",
-  "pgmoon ~> 1.4.0",
+  "pgmoon ~> 1.5.0",
   "multipart ~> 0.3-2",
   "lua-cjson ~> 2.1.0-1",
   "lbase64 ~> 20120820-1",

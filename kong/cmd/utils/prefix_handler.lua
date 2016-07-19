@@ -100,9 +100,6 @@ local function compile_conf(kong_config, conf_template)
     tostring = tostring
   }
 
-  if kong_config.cassandra_ssl and kong_config.cassandra_ssl_trusted_cert then
-    compile_env["lua_ssl_trusted_certificate"] = kong_config.cassandra_ssl_trusted_cert
-  end
   if kong_config.dnsmasq then
     compile_env["dns_resolver"] = "127.0.0.1:"..kong_config.dnsmasq_port
   end
