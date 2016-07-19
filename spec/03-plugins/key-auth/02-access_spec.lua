@@ -5,9 +5,6 @@ local meta = require "kong.meta"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "key-auth1.com",
       upstream_url = "http://mockbin.com"
@@ -37,12 +34,13 @@ describe("Plugin: key-auth (access)", function()
       consumer_id = consumer1.id
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

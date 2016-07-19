@@ -42,15 +42,13 @@ end
 
 describe("Cluster", function()
   before_each(function()
-    helpers.kill_all()
-    helpers.dao:truncate_tables()
     for _, v in pairs(NODES) do
       helpers.prepare_prefix(v.prefix)
     end
   end)
   after_each(function()
-    helpers.kill_all()
     for _, v in pairs(NODES) do
+      helpers.kill_all(v.prefix)
       helpers.clean_prefix(v.prefix)
     end
   end)

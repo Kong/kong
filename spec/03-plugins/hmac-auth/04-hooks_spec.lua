@@ -8,7 +8,6 @@ local crypto = require "crypto"
 describe("Plugin: hmac-auth (hooks)", function()
   local client_proxy, client_admin, consumer, credential
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -43,7 +42,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       client_proxy:close()
       client_admin:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

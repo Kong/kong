@@ -4,9 +4,6 @@ local helpers = require "spec.helpers"
 describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
@@ -137,7 +134,7 @@ describe("Plugin: oauth2 (access)", function()
       proxy_client:close()
       proxy_ssl_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

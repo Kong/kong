@@ -4,7 +4,6 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -12,7 +11,7 @@ describe("Admin API", function()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
