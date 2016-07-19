@@ -47,6 +47,7 @@ dnsmasq_port = 8053
 dns_resolver = NONE
 
 lua_code_cache = on
+lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua
 lua_package_cpath = NONE
 ]]

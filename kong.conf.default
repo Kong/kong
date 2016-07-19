@@ -241,7 +241,7 @@
                                  # Only valid when `dnsmasq` is disabled.
 
 #------------------------------------------------------------------------------
-# DEVELOPMENT
+# DEVELOPMENT & MISCELLANEOUS
 #------------------------------------------------------------------------------
 
 # Additional settings inherited from lua-nginx-module allowing for more
@@ -249,6 +249,12 @@
 #
 # See the lua-nginx-module documentation for more informations:
 # https://github.com/openresty/lua-nginx-module
+
+#lua_ssl_verify_depth = 1        # Sets the verification depth in the server
+                                 # certificates chain used by Lua cosockets.
+                                 # This includes the certificates configured
+                                 # for database connections, like
+                                 # `cassandra_ssl_trusted_cert`.
 
 #lua_code_cache = on             # When disabled, every request will run in a
                                  # separate Lua VM instance: all Lua modules
