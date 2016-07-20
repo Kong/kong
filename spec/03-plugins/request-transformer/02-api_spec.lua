@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 describe("Plugin: request-transformer (API)", function()
   local admin_client
