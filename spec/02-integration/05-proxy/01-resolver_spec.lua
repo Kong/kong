@@ -5,7 +5,6 @@ local meta = require "kong.meta"
 describe("Resolver", function()
   local client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
 
     -- request_host
@@ -72,7 +71,7 @@ describe("Resolver", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -318,5 +317,21 @@ describe("Resolver", function()
       })
       assert.res_status(200, res)
     end)
+  end)
+
+  it("returns 414 when the URI is too long", function()
+    local querystring = ""
+    for i=1,5000 do 
+      querystring = string.format("%s%s_%d=%d&", querystring, "param", i, i)
+    end
+
+    local res = assert(client:send {
+      method = "GET",
+      path = "/status/200?"..querystring,
+      headers = {
+        ["Host"] = "mockbin.com"
+      }
+    })
+    assert.res_status(414, res)
   end)
 end)

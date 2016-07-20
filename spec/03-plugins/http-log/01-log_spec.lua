@@ -1,6 +1,6 @@
-local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local socket = require "socket"
+local helpers = require "spec.helpers"
 
 local mockbin_ip = socket.dns.toip("mockbin.org")
 
@@ -26,10 +26,6 @@ local mock_bin_https = create_mock_bin()
 describe("Plugin: http-log (log)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "http_logging.com",
       upstream_url = "http://mockbin.com"
@@ -53,9 +49,12 @@ describe("Plugin: http-log (log)", function()
         http_endpoint = "https://mockbin.org/bin/"..mock_bin_https
       }
     })
+
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

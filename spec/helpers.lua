@@ -732,10 +732,25 @@ return {
     return kong_exec("start --conf "..TEST_CONF_PATH, env)
   end,
   stop_kong = function()
+    dao:truncate_tables()
     return kong_exec("stop --prefix "..conf.prefix)
   end,
-  kill_all = function()
-    dao:truncate_tables() -- truncate nodes table too
-    return exec "pkill nginx; pkill serf; pkill dnsmasq"
+  kill_all = function(prefix)
+    local kill = require "kong.cmd.utils.kill"
+
+    dao:truncate_tables()
+
+    local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
+    local running_conf = conf_loader(default_conf.kong_conf)
+    if not running_conf then return end
+
+    -- kill kong_tests.conf services
+    for _, pid_path in ipairs {running_conf.nginx_pid,
+                               running_conf.dnsmasq_pid,
+                               running_conf.serf_pid} do
+      if pl_path.exists(pid_path) then
+        kill.kill(pid_path, "-TERM")
+      end
+    end
   end
 }

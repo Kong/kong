@@ -4,17 +4,16 @@ local cjson = require "cjson"
 describe("Plugin: response-rate-limiting (API)", function()
   local admin_client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
-
     assert(helpers.start_kong())
+
     admin_client = helpers.admin_client()
   end)
   teardown(function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   describe("POST", function()

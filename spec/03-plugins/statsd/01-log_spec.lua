@@ -4,9 +4,6 @@ local UDP_PORT = 20000
 describe("Plugin: statsd (log)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging1.com",
       upstream_url = "http://mockbin.com"
@@ -92,13 +89,14 @@ describe("Plugin: statsd (log)", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   it("logs over UDP with default metrics", function()

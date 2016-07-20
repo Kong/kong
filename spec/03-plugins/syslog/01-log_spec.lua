@@ -6,9 +6,6 @@ local pl_stringx = require "pl.stringx"
 describe("Plugin: syslog (log)", function()
   local client, platform
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
       upstream_url = "http://mockbin.com"
@@ -59,17 +56,16 @@ describe("Plugin: syslog (log)", function()
     assert(ok, "failed to retrieve platform name")
     platform = pl_stringx.strip(stdout)
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
   end)
-
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   before_each(function()
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
   end)
-
   after_each(function()
     if client then client:close() end
   end)

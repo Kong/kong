@@ -4,7 +4,6 @@ local helpers = require "spec.helpers"
 describe("Plugin: rate-limiting (API)", function()
   local admin_client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -12,7 +11,7 @@ describe("Plugin: rate-limiting (API)", function()
   end)
   teardown(function()
     if admin_client then admin_client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

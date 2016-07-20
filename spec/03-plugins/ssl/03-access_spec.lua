@@ -5,9 +5,6 @@ describe("Plugin: ssl (access)", function()
   local client, client_ssl
 
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api = assert(helpers.dao.apis:insert {
       request_host = "ssl2.com",
       upstream_url = "http://mockbin.com"
@@ -37,6 +34,7 @@ describe("Plugin: ssl (access)", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     client_ssl = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_ssl_port))
@@ -48,7 +46,7 @@ describe("Plugin: ssl (access)", function()
       client:close()
       client_ssl:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
