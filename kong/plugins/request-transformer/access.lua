@@ -309,8 +309,8 @@ local function transform_path(conf)
   -- Remove path_prefix(es)
   if #conf.remove.path_prefix > 0 then
     for _, name, value in iter(conf.remove.path_prefix) do
-      if (uri:substr(0, value:len()) == value) then
-        uri = uri:substr(value:len() + 1)
+      if (uri:sub(0, value:len()) == value) then
+        uri = uri:sub(value:len() + 1)
       end
     end
   end
