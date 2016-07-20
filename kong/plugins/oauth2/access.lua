@@ -125,6 +125,7 @@ local function authorize(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
+  local is_implicit_grant
 
   local is_https, err = check_https(conf.accept_http_if_already_terminated)
   if not is_https then
@@ -182,6 +183,7 @@ local function authorize(conf)
         else
           -- Implicit grant, override expiration to zero
           response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          is_implicit_grant = true
         end
       end
     end
@@ -192,10 +194,16 @@ local function authorize(conf)
 
   -- Appending kong generated params to redirect_uri query string
   if parsed_redirect_uri then
-    if not parsed_redirect_uri.query then
-      parsed_redirect_uri.query = ""
+    local encoded_params = utils.encode_args(utils.table_merge(ngx.decode_args(
+      (is_implicit_grant and 
+        (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or 
+        (parsed_redirect_uri.query and parsed_redirect_uri.query or "")
+      )), response_params))
+    if is_implicit_grant then
+      parsed_redirect_uri.fragment = encoded_params
+    else
+      parsed_redirect_uri.query = encoded_params
     end
-    parsed_redirect_uri.query = utils.encode_args(utils.table_merge(ngx.decode_args(parsed_redirect_uri.query), response_params))
   end
 
   -- Sending response in JSON format
