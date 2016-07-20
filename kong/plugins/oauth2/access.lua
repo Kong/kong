@@ -262,14 +262,17 @@ local function issue_token(conf)
     local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
 
     -- Check client_id and redirect_uri
-    local redirect_uri, client = get_redirect_uri(client_id)
-    if not redirect_uri then
+    local allowed_redirect_uris, client = get_redirect_uri(client_id)
+    if not allowed_redirect_uris then
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
       end
-    elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
+    else
+      local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
+      if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+      end
     end
 
     if client and client.client_secret ~= client_secret then
