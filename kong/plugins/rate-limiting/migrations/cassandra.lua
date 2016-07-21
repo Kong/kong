@@ -14,5 +14,38 @@ return {
     down = [[
       DROP TABLE ratelimiting_metrics;
     ]]
+  },
+  {
+    name = "2016-07-25-471385_ratelimiting_policies",
+    up = function(_, _, dao)
+      local rows, err = dao.plugins:find_all {name = "rate-limiting"}
+      if err then return err end
+
+      for i = 1, #rows do
+        local rate_limiting = rows[i]
+
+        local _, err = dao.plugins:insert {
+          name = "rate-limiting",
+          api_id = rate_limiting.api_id,
+          consumer_id = rate_limiting.consumer_id,
+          enabled = rate_limiting.enabled,
+          config = {
+            second = rate_limiting.second,
+            minute = rate_limiting.minute,
+            hour = rate_limiting.hour,
+            day = rate_limiting.day,
+            month = rate_limiting.month,
+            year = rate_limiting.year,
+            limit_by = "consumer",
+            policy = "cluster",
+            cluster_fault_tolerant = rate_limiting.continue_on_error
+          }
+        }
+        if err then return err end
+
+        _, err = dao.plugins:delete(rate_limiting)
+        if err then return err end
+      end
+    end
   }
 }

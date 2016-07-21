@@ -170,6 +170,7 @@ build = {
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
+    ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies.lua",
     ["kong.plugins.rate-limiting.dao.cassandra"] = "kong/plugins/rate-limiting/dao/cassandra.lua",
     ["kong.plugins.rate-limiting.dao.postgres"] = "kong/plugins/rate-limiting/dao/postgres.lua",
 

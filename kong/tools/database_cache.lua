@@ -24,8 +24,8 @@ local CACHE_KEYS = {
 
 local _M = {}
 
-function _M.rawset(key, value)
-  return cache:set(key, value)
+function _M.rawset(key, value, exptime)
+  return cache:set(key, value, exptime or 0)
 end
 
 function _M.set(key, value)
