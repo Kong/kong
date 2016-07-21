@@ -3,11 +3,12 @@ local helpers = require "spec.helpers"
 
 describe("Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
+  local client1
   setup(function()
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
-    assert(helpers.dao.oauth2_credentials:insert {
+    client1 = assert(helpers.dao.oauth2_credentials:insert {
       client_id = "clientid123",
       client_secret = "secret123",
       redirect_uri = "http://google.com/kong",
@@ -146,6 +147,7 @@ describe("Plugin: oauth2 (access)", function()
   end)
 
   local function provision_code()
+    local proxy_ssl_client = helpers.proxy_ssl_client()
     local res = assert(proxy_ssl_client:send {
       method = "POST",
       path = "/oauth2/authorize",
@@ -162,8 +164,8 @@ describe("Plugin: oauth2 (access)", function()
         ["Content-Type"] = "application/json"
       }
     })
-
     local body = cjson.decode(assert.res_status(200, res))
+    proxy_ssl_client:close()
     if body.redirect_uri then
       local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
       assert.is_nil(err)
@@ -563,6 +565,7 @@ describe("Plugin: oauth2 (access)", function()
         assert.are.equal(m[1], data[1].code)
         assert.are.equal("userid123", data[1].authenticated_userid)
         assert.are.equal("email", data[1].scope)
+        assert.are.equal(client1.id, data[1].credential_id)
       end)
       it("returns success with a dotted scope and store authenticated user properties", function()
         local res = assert(proxy_ssl_client:send {
@@ -1391,6 +1394,63 @@ describe("Plugin: oauth2 (access)", function()
       assert.are.equal("bob", body.headers["x-consumer-username"])
       assert.are.equal("email", body.headers["x-authenticated-scope"])
       assert.are.equal("userid123", body.headers["x-authenticated-userid"])
+    end)
+    it("fails when an authorization code is used more than once", function()
+      local code = provision_code()
+
+      local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            code = code,
+            client_id = "clientid123",
+            client_secret = "secret123",
+            grant_type = "authorization_code"
+          },
+          headers = {
+            ["Host"] = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            code = code,
+            client_id = "clientid123",
+            client_secret = "secret123",
+            grant_type = "authorization_code"
+          },
+          headers = {
+            ["Host"] = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
+    end)
+    it("fails when an authorization code is used by another application", function()
+      local code = provision_code()
+
+      local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/oauth2/token",
+          body = {
+            code = code,
+            client_id = "clientid789",
+            client_secret = "secret789",
+            grant_type = "authorization_code"
+          },
+          headers = {
+            ["Host"] = "oauth2.com",
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(400, res)
+        assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
     end)
   end)
 
