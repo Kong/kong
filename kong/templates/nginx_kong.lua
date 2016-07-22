@@ -42,7 +42,7 @@ lua_shared_dict cassandra 1m;
 lua_shared_dict cassandra_prepared 5m;
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
-lua_ssl_trusted_certificate '${{lua_ssl_trusted_certificate}}';
+lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
 lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 

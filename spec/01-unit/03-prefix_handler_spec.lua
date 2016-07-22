@@ -69,19 +69,17 @@ describe("NGINX conf compiler", function()
       assert.not_matches("ssl_protocols", kong_nginx_conf)
       assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
     end)
-    it("sets lua_ssl_trusted_certificate from cassandra_ssl_trusted_cert", function()
+    it("does not include lua_ssl_trusted_certificate/lua_ssl_verify_depth by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        cassandra_ssl = true,
-        cassandra_ssl_trusted_cert = "/path/to/ca.cert"
+        lua_ssl_verify_depth = "2"
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
-      assert.matches("lua_ssl_trusted_certificate '/path/to/ca.cert';", kong_nginx_conf, nil, true)
-      assert.matches("lua_ssl_verify_depth 1;", kong_nginx_conf, nil, true)
+      assert.not_matches("lua_ssl_trusted_certificate", kong_nginx_conf, nil, true)
+      assert.not_matches("lua_ssl_verify_depth", kong_nginx_conf, nil, true)
     end)
-    it("sets lua_ssl_verify_depth", function()
+    it("sets lua_ssl_trusted_certificate/lua_ssl_verify_depth", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        cassandra_ssl = true,
-        cassandra_ssl_trusted_cert = "/path/to/ca.cert",
+        lua_ssl_trusted_certificate = "/path/to/ca.cert",
         lua_ssl_verify_depth = "2"
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)

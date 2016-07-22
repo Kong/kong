@@ -40,7 +40,7 @@ function CassandraDB:new(kong_config)
     ssl_options = {
       enabled = kong_config.cassandra_ssl,
       verify = kong_config.cassandra_ssl_verify,
-      ca = kong_config.cassandra_ssl_trusted_cert
+      ca = kong_config.lua_ssl_trusted_certificate
     }
   }
 
