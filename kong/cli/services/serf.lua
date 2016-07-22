@@ -202,7 +202,7 @@ function Serf:start()
       
       -- Delete current node just in case it was there (due to an inconsistency caused by a crash)
       local _, err = self._dao_factory.nodes:delete({
-        name = current_node_name
+        name = node_name
       })
       if err then
         return false, tostring(err)
