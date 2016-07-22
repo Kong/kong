@@ -1,6 +1,5 @@
 local lapis = require "lapis"
 local utils = require "kong.tools.utils"
-local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local app_helpers = require "lapis.application"
@@ -66,11 +65,8 @@ app.handle_error = function(self, err, trace)
 end
 
 app:before_filter(function(self)
-  if needs_body[ngx.req.get_method()] then
-    local content_type = self.req.headers["content-type"]
-    if not content_type or stringy.strip(content_type) == "" then
-      return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
-    end
+  if needs_body[ngx.req.get_method()] and not self.req.headers["content-type"] then
+    return responses.send_HTTP_UNSUPPORTED_MEDIA_TYPE()
   end
 end)
 
