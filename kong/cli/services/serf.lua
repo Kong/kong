@@ -53,15 +53,11 @@ function Serf:prepare()
   local script = [[
 #!/bin/sh
 PAYLOAD=`cat` # Read from stdin
-
 if [ "$SERF_EVENT" != "user" ]; then
   PAYLOAD="{\"type\":\"${SERF_EVENT}\",\"entity\": \"${PAYLOAD}\"}"
 fi
-
 echo $PAYLOAD > /tmp/payload
-
 COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[=['${PAYLOAD}']=]"..[[, {["content-type"] = "application/json"})'
-
 echo $COMMAND | ]]..luajit_path..[[
 ]]
   local _, err = IO.write_to_file(self._script_path, script)
@@ -104,14 +100,6 @@ end
 function Serf:_autojoin(current_node_name)
   if self._configuration.cluster["auto-join"] then
     logger:info("Trying to auto-join Kong nodes, please wait..")
-
-    -- Delete current node just in case it was there (due to an inconsistency caused by a crash)
-    local _, err = self._dao_factory.nodes:delete({
-      name = current_node_name
-    })
-    if err then
-      return false, tostring(err)
-    end
 
     local nodes, err = self._dao_factory.nodes:find_all()
     if err then
@@ -211,9 +199,20 @@ function Serf:start()
 
     if self:is_running() then
       logger:info(string.format([[serf ..............%s]], str_cmd_args))
-
+      
+      -- Delete current node just in case it was there (due to an inconsistency caused by a crash)
+      local _, err = self._dao_factory.nodes:delete({
+        name = current_node_name
+      })
+      if err then
+        return false, tostring(err)
+      end
+      
       -- Auto-Join nodes
       local ok, err = self:_autojoin(node_name)
+      if not ok then
+        return nil, err
+      end
 
       -- Adding node to nodes table
       return self:_add_node()
