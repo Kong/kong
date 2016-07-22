@@ -1,7 +1,6 @@
 local DAO = require "kong.dao.dao"
 local utils = require "kong.tools.utils"
 local Object = require "kong.vendor.classic"
-local stringy = require "stringy"
 local ModelFactory = require "kong.dao.model_factory"
 
 local CORE_MODELS = {"apis", "consumers", "plugins", "nodes"}
@@ -24,7 +23,7 @@ local function build_constraints(schemas)
     local constraints = {foreign = {}, unique = {}}
     for col, field in pairs(schema.fields) do
       if type(field.foreign) == "string" then
-        local f_entity, f_field = unpack(stringy.split(field.foreign, ":"))
+        local f_entity, f_field = unpack(utils.split(field.foreign, ":"))
         if f_entity ~= nil and f_field ~= nil then
           local f_schema = schemas[f_entity]
           constraints.foreign[col] = {

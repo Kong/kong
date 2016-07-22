@@ -1,13 +1,13 @@
-local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
+local singletons = require "kong.singletons"
 
 local _M = {}
 
 local function find_api(hosts)
   local retrieved_api, err
   for _, host in ipairs(hosts) do
-    local sanitized_host = stringy.split(host, ":")[1]
+    local sanitized_host = utils.split(host, ":")[1]
 
     retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host), function()
       local apis, err = singletons.dao.apis:find_all {request_host = sanitized_host}

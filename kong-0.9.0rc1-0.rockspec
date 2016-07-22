@@ -19,7 +19,6 @@ dependencies = {
   "lua_system_constants ~> 0.1.1-0",
   "luatz ~> 0.3-1",
   "lapis ~> 1.3.1-1",
-  "stringy ~> 0.4-1",
   "lua-cassandra ~> 0.5.2",
   "pgmoon ~> 1.5.0",
   "multipart ~> 0.3-2",

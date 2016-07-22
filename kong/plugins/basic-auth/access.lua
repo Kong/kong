@@ -1,6 +1,6 @@
+local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
 local crypto = require "kong.plugins.basic-auth.crypto"
-local stringy = require "stringy"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
@@ -37,7 +37,7 @@ local function retrieve_credentials(request, header_name, conf)
     if m and table.getn(m) > 0 then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = stringy.split(decoded_basic, ":")
+        local basic_parts = utils.split(decoded_basic, ":")
         username = basic_parts[1]
         password = basic_parts[2]
       end
