@@ -122,6 +122,12 @@ function _M.all_apis_by_dict_key()
 end
 
 function _M.get_or_set(key, cb)
+  local value, err
+
+  -- Try to get the value from the cache
+  value = _M.get(key)
+  if value then return value end
+
   local lock, err = resty_lock:new("cache_locks", {
     exptime = 10,
     timeout = 5
@@ -130,12 +136,6 @@ function _M.get_or_set(key, cb)
     ngx_log(ngx.ERR, "could not create lock: ", err)
     return
   end
-  
-  local value, err
-
-  -- Try to get the value from the cache
-  value = _M.get(key)
-  if value then return value end
 
   -- The value is missing, acquire a lock
   local elapsed, err = lock:lock(key)
