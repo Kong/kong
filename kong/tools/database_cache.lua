@@ -127,7 +127,7 @@ function _M.get_or_set(key, cb)
     timeout = 5
   })
   if not lock then
-    ngx_log(ngx.ERR, "failed to init lock dictionary: ", err)
+    ngx_log(ngx.ERR, "could not create lock: ", err)
     return
   end
   

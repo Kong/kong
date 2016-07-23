@@ -30,7 +30,7 @@ local function async_autojoin(premature)
     exptime = ASYNC_AUTOJOIN_INTERVAL - 0.001
   })
   if not lock then
-    ngx_log(ngx.ERR, "failed to init lock dictionary", err)
+    ngx_log(ngx.ERR, "could not create lock: ", err)
     return
   end
   local elapsed = lock:lock("async_autojoin")

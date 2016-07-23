@@ -111,7 +111,7 @@ ping_handler = function(premature)
     exptime = ping_interval - 0.001
   })
   if not lock then
-    log_error("failed to init lock dictionary: ", err)
+    log_error("could not create lock: ", err)
     return
   end
 
