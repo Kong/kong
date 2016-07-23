@@ -6,9 +6,6 @@ local UDP_PORT = 20000
 describe("Plugin: loggly (log)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "logging.com",
       upstream_url = "http://mockbin.com"
@@ -75,6 +72,7 @@ describe("Plugin: loggly (log)", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
   end)
   teardown(function()

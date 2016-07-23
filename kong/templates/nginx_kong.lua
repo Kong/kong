@@ -5,6 +5,10 @@ charset UTF-8;
 error_log logs/error.log ${{LOG_LEVEL}};
 access_log logs/access.log;
 
+> if anonymous_reports then
+${{SYSLOG_REPORTS}}
+> end
+
 > if nginx_optimizations then
 >-- send_timeout 60s;          # default value
 >-- keepalive_timeout 75s;     # default value
@@ -39,7 +43,8 @@ lua_shared_dict cassandra 1m;
 lua_shared_dict cassandra_prepared 5m;
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
-lua_ssl_trusted_certificate '${{lua_ssl_trusted_certificate}}';
+lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
+lua_ssl_verify_depth ${{LUA_SSL_VERIFY_DEPTH}};
 > end
 
 init_by_lua_block {

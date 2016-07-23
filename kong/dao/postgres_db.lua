@@ -26,7 +26,10 @@ function PostgresDB:new(kong_config)
     port = kong_config.pg_port,
     user = kong_config.pg_user,
     password = kong_config.pg_password,
-    database = kong_config.pg_database
+    database = kong_config.pg_database,
+    ssl = kong_config.pg_ssl,
+    ssl_verify = kong_config.pg_ssl_verify,
+    cafile = kong_config.lua_ssl_trusted_certificate
   }
 
   PostgresDB.super.new(self, "postgres", conn_opts)
@@ -103,15 +106,17 @@ local function parse_error(err_str)
   local err
   if string.find(err_str, "Key .* already exists") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
-    err = Errors.unique {[col] = value}
+    if col then
+      err = Errors.unique {[col] = value}
+    end
   elseif string.find(err_str, "violates foreign key constraint") then
     local col, value = string.match(err_str, "%((.+)%)=%((.+)%)")
-    err = Errors.foreign {[col] = value}
-  else
-    err = Errors.db(err_str)
+    if col then
+      err = Errors.foreign {[col] = value}
+    end
   end
 
-  return err
+  return err or Errors.db(err_str)
 end
 
 local function get_select_fields(schema)
@@ -206,7 +211,7 @@ function PostgresDB:deserialize_rows(rows, schema)
     local json = require "cjson"
     for i, row in ipairs(rows) do
       for col, value in pairs(row) do
-        if type(value) == "string" and schema.fields[col] and 
+        if type(value) == "string" and schema.fields[col] and
           (schema.fields[col].type == "table" or schema.fields[col].type == "array") then
           rows[i][col] = json.decode(value)
         end

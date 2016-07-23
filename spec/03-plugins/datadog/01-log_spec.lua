@@ -4,10 +4,6 @@ local threads = require "llthreads2.ex"
 describe("Plugin: datadog (log)", function()
   local client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {request_host = "datadog1.com", upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {request_host = "datadog2.com", upstream_url = "http://mockbin.com"})
 
@@ -29,12 +25,14 @@ describe("Plugin: datadog (log)", function()
       }
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

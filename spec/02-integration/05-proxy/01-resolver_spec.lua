@@ -5,7 +5,6 @@ local meta = require "kong.meta"
 describe("Resolver", function()
   local client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
 
     -- request_host
@@ -61,6 +60,10 @@ describe("Resolver", function()
       upstream_url = "http://mockbin.com/status/204",
       strip_request_path = true
     })
+    assert(helpers.dao.apis:insert {
+      request_path = "/request/urlenc/%20%20",
+      upstream_url = "http://mockbin.com/",
+    })
 
     assert(helpers.start_kong())
     client = helpers.proxy_client()
@@ -68,7 +71,7 @@ describe("Resolver", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -198,7 +201,7 @@ describe("Resolver", function()
       })
       assert.res_status(200, res)
     end)
-    it("doesn't append trailing shalsh when strip_request_path is false", function()
+    it("doesn't append trailing slash when strip_request_path is false", function()
       local res = assert(client:send {
         method = "GET",
         path = "/request"
@@ -206,6 +209,15 @@ describe("Resolver", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.equal("http://mockbin.com/request", json.url)
+    end)
+    it("proxies percent-encoded request_path", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request/urlenc/%20%20"
+      })
+      assert.response(res).has.status(200)
+      local json = assert.response(res).has.jsonbody()
+      assert.equals("http://mockbin.com/request/urlenc/%20%20", json.url)
     end)
 
     describe("strip_request_path", function()
@@ -305,5 +317,21 @@ describe("Resolver", function()
       })
       assert.res_status(200, res)
     end)
+  end)
+
+  it("returns 414 when the URI is too long", function()
+    local querystring = ""
+    for i=1,5000 do 
+      querystring = string.format("%s%s_%d=%d&", querystring, "param", i, i)
+    end
+
+    local res = assert(client:send {
+      method = "GET",
+      path = "/status/200?"..querystring,
+      headers = {
+        ["Host"] = "mockbin.com"
+      }
+    })
+    assert.res_status(414, res)
   end)
 end)

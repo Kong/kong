@@ -1,6 +1,8 @@
 DEV_ROCKS = busted luacheck
+BUSTED_ARGS ?= -v
+TEST_CMD = bin/busted $(BUSTED_ARGS)
 
-.PHONY: install dev clean doc lint test test-integration test-plugins test-all coverage
+.PHONY: install dev lint test test-integration test-plugins test-all
 
 install:
 	@if [ `uname` = "Darwin" ]; then \
@@ -21,13 +23,6 @@ dev: install
     fi \
 	done;
 
-clean:
-	rm -f luacov.*
-	rm -rf servroot
-
-doc:
-	@ldoc -c config.ld kong
-
 lint:
 	@luacheck -q . \
 						--exclude-files 'kong/vendor/**/*.lua' \
@@ -40,13 +35,13 @@ lint:
 						--no-unused-args
 
 test:
-	@bin/busted -v spec/01-unit
+	@$(TEST_CMD) spec/01-unit
 
 test-integration:
-	@bin/busted -v spec/02-integration
+	@$(TEST_CMD) spec/02-integration
 
 test-plugins:
-	@bin/busted -v spec/03-plugins
+	@$(TEST_CMD) spec/03-plugins
 
 test-all:
-	@bin/busted -v spec/
+	@$(TEST_CMD) spec/

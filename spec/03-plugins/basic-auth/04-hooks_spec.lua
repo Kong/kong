@@ -5,7 +5,6 @@ local cjson = require "cjson"
 describe("Plugin: basic-auth (hooks)", function()
   local admin_client, proxy_client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -17,7 +16,7 @@ describe("Plugin: basic-auth (hooks)", function()
       admin_client:close()
       proxy_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

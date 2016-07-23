@@ -4,7 +4,6 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -12,7 +11,7 @@ describe("Admin API", function()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -48,7 +47,7 @@ describe("Admin API", function()
             body = {}, -- tmp: body to allow POST/PUT to work
             headers = {["Content-Type"] = "application/json"}
           })
-          local body = assert.res_status(405, res)
+          local body = assert.response(res).has.status(405)
           assert.equal([[{"message":"Method not allowed"}]], body)
         end
       end)

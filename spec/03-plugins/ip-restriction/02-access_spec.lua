@@ -6,10 +6,6 @@ describe("Plugin: ip-restriction (access)", function()
   local plugin_config
   local client, admin_client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "ip-restriction1.com",
       upstream_url = "http://mockbin.com"
@@ -68,6 +64,8 @@ describe("Plugin: ip-restriction (access)", function()
       }
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
@@ -76,7 +74,7 @@ describe("Plugin: ip-restriction (access)", function()
       client:close()
       admin_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

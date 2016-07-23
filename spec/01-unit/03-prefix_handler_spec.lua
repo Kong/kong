@@ -69,13 +69,36 @@ describe("NGINX conf compiler", function()
       assert.not_matches("ssl_protocols", kong_nginx_conf)
       assert.not_matches("ssl_certificate_by_lua_block", kong_nginx_conf)
     end)
-    it("sets lua_ssl_trusted_certificate", function()
+    it("does not include lua_ssl_trusted_certificate/lua_ssl_verify_depth by default", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        cassandra_ssl = true,
-        cassandra_ssl_trusted_cert = "/path/to/ca.cert"
+        lua_ssl_verify_depth = "2"
+      }))
+      local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.not_matches("lua_ssl_trusted_certificate", kong_nginx_conf, nil, true)
+      assert.not_matches("lua_ssl_verify_depth", kong_nginx_conf, nil, true)
+    end)
+    it("sets lua_ssl_trusted_certificate/lua_ssl_verify_depth", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        lua_ssl_trusted_certificate = "/path/to/ca.cert",
+        lua_ssl_verify_depth = "2"
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.matches("lua_ssl_trusted_certificate '/path/to/ca.cert';", kong_nginx_conf, nil, true)
+      assert.matches("lua_ssl_verify_depth 2;", kong_nginx_conf, nil, true)
+    end)
+    it("compiles without anonymous reports", function()
+      local conf = assert(conf_loader(nil, {
+        anonymous_reports = false,
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.not_matches("error_log syslog:server=.+ error;", nginx_conf)
+    end)
+    it("compiles with anonymous reports", function()
+      local conf = assert(conf_loader(nil, {
+        anonymous_reports = true,
+      }))
+      local nginx_conf = prefix_handler.compile_kong_conf(conf)
+      assert.matches("error_log syslog:server=.+:61828 error;", nginx_conf)
     end)
   end)
 
@@ -109,20 +132,6 @@ describe("NGINX conf compiler", function()
       assert.matches("worker_rlimit_nofile %d+;", nginx_conf)
       assert.matches("worker_connections %d+;", nginx_conf)
       assert.matches("multi_accept on;", nginx_conf)
-    end)
-    it("compiles without anonymous reports", function()
-      local conf = assert(conf_loader(nil, {
-        anonymous_reports = false,
-      }))
-      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-      assert.not_matches("error_log syslog:server=.+ error;", nginx_conf)
-    end)
-    it("compiles with anonymous reports", function()
-      local conf = assert(conf_loader(nil, {
-        anonymous_reports = true,
-      }))
-      local nginx_conf = prefix_handler.compile_nginx_conf(conf)
-      assert.matches("error_log syslog:server=.+:61828 error;", nginx_conf)
     end)
   end)
 
@@ -215,6 +224,7 @@ describe("NGINX conf compiler", function()
 
       assert.equal(identifier_1, identifier_2)
     end)
+
     describe("ssl", function()
       it("does not create SSL dir if disabled", function()
         local conf = conf_loader(nil, {
@@ -246,6 +256,25 @@ describe("NGINX conf compiler", function()
         assert.truthy(exists(join(conf.prefix, "ssl")))
         assert.truthy(exists(conf.ssl_cert_default))
         assert.truthy(exists(conf.ssl_cert_key_default))
+      end)
+    end)
+
+    describe("custom template", function()
+      local templ_fixture = "spec/fixtures/custom_nginx.template"
+
+      it("accepts a custom NGINX conf template", function()
+        assert(prefix_handler.prepare_prefix(tmp_config, templ_fixture))
+        assert.truthy(exists(tmp_config.nginx_conf))
+
+        local contents = helpers.file.read(tmp_config.nginx_conf)
+        assert.matches("# This is a custom nginx configuration template for Kong specs", contents, nil, true)
+        assert.matches("daemon on;", contents, nil, true)
+        assert.matches("listen 0.0.0.0:9000;", contents, nil, true)
+      end)
+      it("errors on non-existing file", function()
+        local ok, err = prefix_handler.prepare_prefix(tmp_config, "spec/fixtures/inexistent.template")
+        assert.is_nil(ok)
+        assert.equal("no such file: spec/fixtures/inexistent.template", err)
       end)
     end)
   end)

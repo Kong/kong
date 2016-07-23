@@ -1,32 +1,29 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("helpers: assertions and modifiers;", function()
+describe("helpers: assertions and modifiers", function()
   local client
 
   setup(function()
-    helpers.kill_all()
-
+    assert(helpers.dao:run_migrations())
     assert(helpers.dao.apis:insert {
-      name = "test-1",
       request_host = "mockbin.com",
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.apis:insert {
-      name = "test-2",
       request_host = "httpbin.org",
       upstream_url = "http://httpbin.org"
     })
 
-    helpers.create_prefix()
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
   end)
 
   before_each(function()
-    client = assert(helpers.proxy_client())
+    client = helpers.proxy_client()
   end)
   after_each(function()
     if client then client:close() end
@@ -43,7 +40,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/request",
         headers = {
-          host = "mockbin.com",
+          host = "mockbin.com"
         }
       })
       assert.response(r).True(true)
@@ -53,7 +50,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/request",
         headers = {
-          host = "httpbin.org",
+          host = "httpbin.org"
         }
       })
       assert.response(r).True(true)
@@ -71,7 +68,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/request",
         headers = {
-          host = "mockbin.com",
+          host = "mockbin.com"
         }
       })
       assert.request(r).True(true)
@@ -82,7 +79,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "httpbin.org",
+          host = "httpbin.org"
         }
       })
       assert.request(r).True(true)
@@ -96,7 +93,7 @@ describe("helpers: assertions and modifiers;", function()
         },
         headers = {
           host = "httpbin.org",
-          ["Content-Type"] = "www-form-urlencoded",
+          ["Content-Type"] = "www-form-urlencoded"
         }
       })
       assert.request(r).True(true)
@@ -106,7 +103,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/headers",   -- this path is not supported, but should yield valid json for the test
         headers = {
-          host = "httpbin.org",
+          host = "httpbin.org"
         }
       })
       assert.error(function() assert.request(r).True(true) end)
@@ -128,7 +125,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/get",
         headers = {
-          host = "httpbin.org",
+          host = "httpbin.org"
         }
       })
       assert.status(200, r)
@@ -139,7 +136,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/status/404",
         headers = {
-          host = "httpbin.org",
+          host = "httpbin.org"
         }
       })
       assert.response(r).has.status(404)
@@ -160,7 +157,7 @@ describe("helpers: assertions and modifiers;", function()
         method = "GET",
         path = "/request",
         headers = {
-          host = "mockbin.com",
+          host = "mockbin.com"
         }
       })
       local json = assert.response(r).has.jsonbody()
@@ -173,7 +170,7 @@ describe("helpers: assertions and modifiers;", function()
         body = { hello = "world" },
         headers = {
           host = "mockbin.com",
-          ["Content-Type"] = "application/json",
+          ["Content-Type"] = "application/json"
         }
       })
       local json = assert.request(r).has.jsonbody()
@@ -186,7 +183,7 @@ describe("helpers: assertions and modifiers;", function()
         body = { hello = "world" },
         headers = {
           host = "httpbin.org",
-          ["Content-Type"] = "application/json",
+          ["Content-Type"] = "application/json"
         }
       })
       assert.error(function() assert.request(r).has.jsonbody() end)
@@ -201,7 +198,7 @@ describe("helpers: assertions and modifiers;", function()
         body = { hello = "world" },
         headers = {
           host = "mockbin.com",
-          ["Content-Type"] = "application/json",
+          ["Content-Type"] = "application/json"
         }
       })
       local v1 = assert.response(r).has.header("x-powered-by")
@@ -215,7 +212,7 @@ describe("helpers: assertions and modifiers;", function()
         path = "/request",
         headers = {
           host = "mockbin.com",
-          ["just-a-test-header"] = "just-a-test-value",
+          ["just-a-test-header"] = "just-a-test-value"
         }
       })
       local v1 = assert.request(r).has.header("just-a-test-header")
@@ -230,7 +227,7 @@ describe("helpers: assertions and modifiers;", function()
         path = "/get",
         headers = {
           host = "httpbin.org",
-          ["just-a-test-header"] = "just-a-test-value",
+          ["just-a-test-header"] = "just-a-test-value"
         }
       })
       local v1 = assert.request(r).has.header("just-a-test-header")
@@ -250,7 +247,7 @@ describe("helpers: assertions and modifiers;", function()
           hello = "world"
         },
         headers = {
-          host = "mockbin.com",
+          host = "mockbin.com"
         }
       })
       local v1 = assert.request(r).has.queryparam("hello")
@@ -271,7 +268,7 @@ describe("helpers: assertions and modifiers;", function()
         },
         headers = {
           host = "httpbin.org",
-          ["Content-Type"] = "application/json",
+          ["Content-Type"] = "application/json"
         }
       })
       local v1 = assert.request(r).has.queryparam("hello")
@@ -292,7 +289,7 @@ describe("helpers: assertions and modifiers;", function()
         },
         headers = {
           host = "mockbin.com",
-          ["Content-Type"] = "application/x-www-form-urlencoded",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
         }
       })
       local v1 = assert.request(r).has.formparam("hello")
@@ -310,7 +307,7 @@ describe("helpers: assertions and modifiers;", function()
         },
         headers = {
           host = "mockbin.com",
-          ["Content-Type"] = "application/json",
+          ["Content-Type"] = "application/json"
         }
       })
       assert.error(function() assert.request(r).has.formparam("hello") end)
@@ -324,7 +321,7 @@ describe("helpers: assertions and modifiers;", function()
         },
         headers = {
           host = "httpbin.org",
-          ["Content-Type"] = "application/x-www-form-urlencoded",
+          ["Content-Type"] = "application/x-www-form-urlencoded"
         }
       })
       local v1 = assert.request(r).has.formparam("hello")
@@ -342,11 +339,10 @@ describe("helpers: assertions and modifiers;", function()
         },
         headers = {
           host = "httpbin.org",
-          ["Content-Type"] = "application/json",
+          ["Content-Type"] = "application/json"
         }
       })
       assert.error(function() assert.request(r).has.formparam("hello") end)
     end)
   end)
-
 end)

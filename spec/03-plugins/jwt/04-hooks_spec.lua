@@ -7,20 +7,17 @@ describe("Plugin: jwt (hooks)", function()
   local admin_client, proxy_client, consumer1, api1
 
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
-
     admin_client = helpers.admin_client()
     proxy_client = helpers.proxy_client()
   end)
-
   teardown(function()
     if admin_client and proxy_client then
       admin_client:close()
       proxy_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

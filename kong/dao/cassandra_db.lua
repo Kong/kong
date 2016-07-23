@@ -30,12 +30,17 @@ function CassandraDB:new(kong_config)
       default_port = kong_config.cassandra_port
     },
     query_options = {
-      prepare = true
+      prepare = true,
+      consistency = cassandra.consistencies[kong_config.cassandra_consistency:lower()]
+    },
+    socket_options = {
+      connect_timeout = kong_config.cassandra_timeout,
+      read_timeout = kong_config.cassandra_timeout,
     },
     ssl_options = {
       enabled = kong_config.cassandra_ssl,
       verify = kong_config.cassandra_ssl_verify,
-      ca = kong_config.cassandra_ssl_trusted_cert
+      ca = kong_config.lua_ssl_trusted_certificate
     }
   }
 
@@ -251,7 +256,7 @@ function CassandraDB:find_all(table_name, tbl, schema)
   local res_rows, err = {}, nil
 
   for rows, page_err in session:execute(query, args, {auto_paging = true}) do
-    if err then
+    if page_err then
       err = Errors.db(tostring(page_err))
       res_rows = nil
       break

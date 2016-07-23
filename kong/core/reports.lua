@@ -67,7 +67,7 @@ local function send(t, host, port)
         v = cjson.encode(v)
       end
 
-      buf[#buf+1] = k.."="..v
+      buf[#buf+1] = k.."="..tostring(v)
     end
   end
 

@@ -7,7 +7,7 @@ return {
     generator = {
       type = "string",
       default = "uuid#counter",
-      enum = {"uuid", "uuid#counter"}
+      enum = {"uuid", "uuid#counter", "tracker"}
     },
     echo_downstream = {
       type = "boolean",

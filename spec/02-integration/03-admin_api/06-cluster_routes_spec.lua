@@ -4,7 +4,6 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -14,7 +13,7 @@ describe("Admin API", function()
     if client then
       client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -41,18 +40,12 @@ describe("Admin API", function()
 
     describe("DELETE", function()
       -- old test converted
-      local function is_running(pid_path)
-        local kill = require "kong.cmd.utils.kill"
-        if not helpers.path.exists(pid_path) then return nil end
-        local code = kill(pid_path, "-0")
-        return code == 0
-      end
-
       local log_path = helpers.path.join(helpers.test_conf.prefix, "serf_cluster_tests.log")
       local pid_path = helpers.path.join(helpers.test_conf.prefix, "serf_cluster_tests.pid")
 
       setup(function()
         local pl_utils = require "pl.utils"
+        local kill = require "kong.cmd.utils.kill"
         local cmd = string.format("nohup serf agent -rpc-addr=127.0.0.1:20000 "
                                 .."-bind=127.0.0.1:20001 -node=newnode > "
                                 .."%s 2>&1 & echo $! > %s",
@@ -63,7 +56,7 @@ describe("Admin API", function()
         local texp, started = tstart + 2 -- 2s timeout
         repeat
           ngx.sleep(0.2)
-          started = is_running(pid_path)
+          started = kill.is_running(pid_path)
         until started or ngx.time() >= texp
         assert(started, "Serf agent start: timeout")
       end)

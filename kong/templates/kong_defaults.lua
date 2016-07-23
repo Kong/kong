@@ -21,6 +21,8 @@ pg_port = 5432
 pg_database = kong
 pg_user = kong
 pg_password = NONE
+pg_ssl = off
+pg_ssl_verify = off
 cassandra_contact_points = 127.0.0.1
 cassandra_port = 9042
 cassandra_keyspace = kong
@@ -31,7 +33,6 @@ cassandra_consistency = ONE
 cassandra_timeout = 5000
 cassandra_ssl = off
 cassandra_ssl_verify = off
-cassandra_ssl_trusted_cert = NONE
 cassandra_username = kong
 cassandra_password = NONE
 
@@ -47,6 +48,8 @@ dnsmasq_port = 8053
 dns_resolver = NONE
 
 lua_code_cache = on
+lua_ssl_trusted_certificate = NONE
+lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua
 lua_package_cpath = NONE
 ]]

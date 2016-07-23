@@ -10,9 +10,6 @@ describe("Plugin: response-transformer", function()
   local client
 
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer",
       request_host = "response.com",
@@ -31,10 +28,11 @@ describe("Plugin: response-transformer", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

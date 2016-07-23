@@ -3,21 +3,11 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local cache = require "kong.tools.database_cache"
+local check_https = require("kong.tools.utils").check_https
 
 local SSLHandler = BasePlugin:extend()
 
 SSLHandler.PRIORITY = 3000
-
-local HTTPS = "https"
-
-local function is_https(conf)
-  local result = ngx.var.scheme:lower() == HTTPS
-  if not result and conf.accept_http_if_already_terminated then
-    local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
-    result = forwarded_proto_header and forwarded_proto_header:lower() == HTTPS
-  end
-  return result
-end
 
 function SSLHandler:new()
   SSLHandler.super.new(self, "ssl")
@@ -50,7 +40,7 @@ end
 
 function SSLHandler:access(conf)
   SSLHandler.super.access(self)
-  if conf.only_https and not is_https(conf) then
+  if conf.only_https and not check_https(conf.accept_http_if_already_terminated) then
     ngx.header["connection"] = { "Upgrade" }
     ngx.header["upgrade"] = "TLS/1.0, HTTP/1.1"
     return responses.send(426, {message="Please use HTTPS protocol"})

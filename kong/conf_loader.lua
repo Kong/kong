@@ -58,6 +58,8 @@ local CONF_INFERENCES = {
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
+  pg_ssl = {typ = "boolean"},
+  pg_ssl_verify = {typ = "boolean"},
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
@@ -85,7 +87,8 @@ local CONF_INFERENCES = {
   nginx_daemon = {typ = "ngx_boolean"},
   nginx_optimizations = {typ = "boolean"},
 
-  lua_code_cache = {typ = "ngx_boolean"}
+  lua_code_cache = {typ = "ngx_boolean"},
+  lua_ssl_verify_depth = {typ = "number"}
 }
 
 -- List of settings whose values must not be printed when

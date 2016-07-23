@@ -5,19 +5,17 @@ describe("Plugin: key-auth (API)", function()
   local consumer
   local admin_client
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     admin_client = helpers.admin_client()
   end)
   teardown(function()
     if admin_client then admin_client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -42,8 +40,8 @@ describe("Plugin: key-auth (API)", function()
         assert.equal(consumer.id, json.consumer_id)
         assert.equal("1234", json.key)
       end)
-      it("creates a key-auth auto-generating the key", function()
-          local res = assert(admin_client:send {
+      it("creates a key-auth auto-generating a unique key", function()
+        local res = assert(admin_client:send {
           method = "POST",
           path = "/consumers/bob/key-auth",
           body = {},
@@ -55,6 +53,24 @@ describe("Plugin: key-auth (API)", function()
         local json = cjson.decode(body)
         assert.equal(consumer.id, json.consumer_id)
         assert.is_string(json.key)
+        
+        local first_key = json.key
+        helpers.dao:truncate_table("keyauth_credentials")
+        
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/key-auth",
+          body = {},
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+        assert.equal(consumer.id, json.consumer_id)
+        assert.is_string(json.key)
+
+        assert.not_equal(first_key, json.key)
       end)
     end)
 

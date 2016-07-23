@@ -73,15 +73,11 @@ function Serf:members()
 end
 
 function Serf:keygen()
-  local res, err = self:invoke_signal("keygen")
-  if not res then return nil, err end
-  return res
+  return self:invoke_signal("keygen", nil, true)
 end
 
 function Serf:reachability()
-  local res, err = self:invoke_signal("reachability")
-  if not res then return nil, err end
-  return res
+  return self:invoke_signal("reachability")
 end
 
 function Serf:autojoin()
