@@ -5,7 +5,6 @@ local meta = require "kong.meta"
 describe("Resolver", function()
   local client
   setup(function()
-    helpers.kill_all()
 
     assert(helpers.dao.apis:insert {
       request_host = "mockbin.com",
@@ -51,14 +50,9 @@ describe("Resolver", function()
       client:close()
     end
 
-    local ok, err = ngx.timer.at(0, make_request, 2)
-    assert.truthy(ok)
-
-    local ok, err = ngx.timer.at(0, make_request, 5)
-    assert.truthy(ok)
-
-    local ok, err = ngx.timer.at(0, make_request, 1)
-    assert.truthy(ok)
+    assert(ngx.timer.at(0, make_request, 2))
+    assert(ngx.timer.at(0, make_request, 5))
+    assert(ngx.timer.at(0, make_request, 1))
 
     helpers.wait_until(function()
       local admin_client = helpers.admin_client()
