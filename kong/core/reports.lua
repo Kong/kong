@@ -107,9 +107,13 @@ end
 ping_handler = function(premature)
   if premature then return end
 
-  local lock = resty_lock:new("reports_locks", {
+  local lock, err = resty_lock:new("reports_locks", {
     exptime = ping_interval - 0.001
   })
+  if not lock then
+    log_error("could not create lock: ", err)
+    return
+  end
 
   local elapsed, err = lock:lock("ping")
   if not elapsed then
