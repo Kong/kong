@@ -16,10 +16,6 @@ describe("Plugin: jwt (access)", function()
   local proxy_client, admin_client
 
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", request_host = "jwt.com", upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"})
     local api3 = assert(helpers.dao.apis:insert {name = "tests-jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"})
@@ -50,6 +46,8 @@ describe("Plugin: jwt (access)", function()
       rsa_public_key = fixtures.rs256_public_key
     })
 
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
@@ -57,7 +55,7 @@ describe("Plugin: jwt (access)", function()
   teardown(function()
     if proxy_client then proxy_client:close() end
     if admin_client then admin_client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

@@ -1,14 +1,15 @@
 local helpers = require "spec.helpers"
 
 describe("kong cluster", function()
-  before_each(function()
-    helpers.kill_all()
+  setup(function()
+    helpers.prepare_prefix()
   end)
   teardown(function()
-    helpers.kill_all()
     helpers.clean_prefix()
   end)
-
+  after_each(function()
+    helpers.kill_all()
+  end)
 
   it("cluster help", function()
     local _, stderr = helpers.kong_exec "cluster --help"
@@ -17,7 +18,7 @@ describe("kong cluster", function()
   it("generates a key", function()
     local _, stderr, stdout = assert(helpers.kong_exec "cluster keygen")
     assert.equal("", stderr)
-    assert.equal(26, stdout:len()) -- 24 + \r\n
+    assert.equal(26, #stdout) -- 24 + \r\n
   end)
   it("shows members", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))

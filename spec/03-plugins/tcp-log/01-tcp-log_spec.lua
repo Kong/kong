@@ -8,9 +8,6 @@ describe("Plugin: tcp-log (log)", function()
   local client
 
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {
       request_host = "tcp_logging.com",
       upstream_url = "http://mockbin.com",
@@ -39,13 +36,14 @@ describe("Plugin: tcp-log (log)", function()
       },
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

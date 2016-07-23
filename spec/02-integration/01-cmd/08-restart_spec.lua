@@ -1,13 +1,14 @@
 local helpers = require "spec.helpers"
 
 describe("kong restart", function()
-  before_each(function()
-    helpers.kill_all()
+  setup(function()
     helpers.prepare_prefix()
   end)
   teardown(function()
-    helpers.kill_all()
     helpers.clean_prefix()
+  end)
+  after_each(function()
+    helpers.kill_all()
   end)
 
   it("restart help", function()
@@ -49,7 +50,7 @@ describe("kong restart", function()
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.serf_pid)), serf_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.dnsmasq_pid)), dnsmasq_pid)
   end)
-  it("restarts with default configuration and prefix", function()
+  pending("restarts with default configuration and prefix", function()
     -- don't want to force migrations to be run on default
     -- keyspace/database
     local env = {

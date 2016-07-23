@@ -5,7 +5,6 @@ local helpers = require "spec.helpers"
 describe("Plugin: oauth2 (hooks)", function()
   local admin_client, proxy_ssl_client
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
 
@@ -17,7 +16,7 @@ describe("Plugin: oauth2 (hooks)", function()
       admin_client:close()
       proxy_ssl_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

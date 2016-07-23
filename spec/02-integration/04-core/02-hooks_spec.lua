@@ -11,8 +11,6 @@ describe("Core Hooks", function()
   local client, api_client
   local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
   before_each(function()
-    helpers.kill_all()
-
     consumer = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -72,7 +70,7 @@ describe("Core Hooks", function()
       client:close()
       api_client:close()
     end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -92,16 +90,14 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil),
-        headers = {}
+        path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
       })
       assert.res_status(200, res)
 
       -- Delete plugin
       local res = assert(api_client:send {
         method = "DELETE",
-        path = "/apis/"..api2.id.."/plugins/"..basic_auth2.id,
-        headers = {}
+        path = "/apis/"..api2.id.."/plugins/"..basic_auth2.id
       })
       assert.res_status(204, res)
 
@@ -109,8 +105,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil),
-          headers = {}
+          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
         })
         res:read_body()
         return res.status == 404
@@ -143,16 +138,14 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id),
-        headers = {}
+        path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
       })
       assert.res_status(200, res)
 
       -- Delete plugin
       local res = assert(api_client:send {
         method = "DELETE",
-        path = "/apis/"..api3.id.."/plugins/"..rate_limiting_consumer.id,
-        headers = {}
+        path = "/apis/"..api3.id.."/plugins/"..rate_limiting_consumer.id
       })
       assert.res_status(204, res)
 
@@ -160,8 +153,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id),
-          headers = {}
+          path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
         })
         res:read_body()
         return res.status == 404
@@ -196,8 +188,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id),
-        headers = {}
+        path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
       })
       assert.res_status(200, res)
 
@@ -218,8 +209,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id),
-          headers = {}
+          path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
         })
         res:read_body()
         return res.status == 404
@@ -263,8 +253,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil),
-        headers = {}
+        path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
       })
       assert.res_status(200, res)
 
@@ -285,8 +274,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil),
-          headers = {}
+          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
         })
         res:read_body()
         return res.status == 404
@@ -320,16 +308,14 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.consumer_key(consumer.id),
-        headers = {}
+        path = "/cache/"..cache.consumer_key(consumer.id)
       })
       assert.res_status(200, res)
 
       -- Delete consumer
       local res = assert(api_client:send {
         method = "DELETE",
-        path = "/consumers/"..consumer.id,
-        headers = {}
+        path = "/consumers/"..consumer.id
       })
       assert.res_status(204, res)
 
@@ -337,8 +323,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.consumer_key(consumer.id),
-          headers = {}
+          path = "/cache/"..cache.consumer_key(consumer.id)
         })
         res:read_body()
         return res.status == 404
@@ -348,8 +333,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.basicauth_credential_key("user123"),
-          headers = {}
+          path = "/cache/"..cache.basicauth_credential_key("user123")
         })
         res:read_body()
         return res.status == 404
@@ -382,8 +366,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.consumer_key(consumer.id),
-        headers = {}
+        path = "/cache/"..cache.consumer_key(consumer.id)
       })
       assert.res_status(200, res)
 
@@ -404,8 +387,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.consumer_key(consumer.id),
-          headers = {}
+          path = "/cache/"..cache.consumer_key(consumer.id)
         })
         res:read_body()
         return res.status == 404
@@ -425,8 +407,7 @@ describe("Core Hooks", function()
       -- Making sure the cache is updated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.consumer_key(consumer.id),
-        headers = {}
+        path = "/cache/"..cache.consumer_key(consumer.id)
       })
       local body = assert.res_status(200, res)
       assert.equal("updated_consumer", cjson.decode(body).username)
@@ -448,8 +429,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key(),
-        headers = {}
+        path = "/cache/"..cache.all_apis_by_dict_key()
       })
       assert.res_status(200, res)
 
@@ -491,8 +471,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key(),
-        headers = {}
+        path = "/cache/"..cache.all_apis_by_dict_key()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_table(body.by_dns["hooks1.com"])
@@ -513,8 +492,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key(),
-        headers = {}
+        path = "/cache/"..cache.all_apis_by_dict_key()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
@@ -578,8 +556,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key(),
-        headers = {}
+        path = "/cache/"..cache.all_apis_by_dict_key()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
@@ -587,8 +564,7 @@ describe("Core Hooks", function()
       -- Deleting the API
       local res = assert(api_client:send {
         method = "DELETE",
-        path = "/apis/"..api1.id,
-        headers = {}
+        path = "/apis/"..api1.id
       })
       assert.res_status(204, res)
 
@@ -616,8 +592,7 @@ describe("Core Hooks", function()
       -- Make sure the cache is populated with zero APIs
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key(),
-        headers = {}
+        path = "/cache/"..cache.all_apis_by_dict_key()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(2, pl_tablex.size(body.by_dns))
@@ -700,8 +675,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/",
-          headers = {}
+          path = "/cluster/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         if #body.data == 2 then
@@ -727,8 +701,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/",
-          headers = {}
+          path = "/cluster/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         local found

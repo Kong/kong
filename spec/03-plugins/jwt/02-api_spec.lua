@@ -7,14 +7,13 @@ local fixtures = require "spec.03-plugins.jwt.fixtures"
 describe("Plugin: jwt (API)", function()
   local admin_client, consumer, jwt_secret
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
     admin_client = assert(helpers.admin_client())
   end)
   teardown(function()
     if admin_client then admin_client:close() end
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
@@ -74,8 +73,8 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob3", 
-            algorithm = "RS256", 
+            key = "bob3",
+            algorithm = "RS256",
             rsa_public_key = rsa_public_key
           },
           headers = {
@@ -93,8 +92,8 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob4", 
-            algorithm = "RS256", 
+            key = "bob4",
+            algorithm = "RS256",
             rsa_public_key = rsa_public_key
           },
           headers = {
@@ -110,7 +109,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob5", 
+            key = "bob5",
             algorithm = "RS256"
           },
           headers = {
@@ -126,7 +125,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob5", 
+            key = "bob5",
             algorithm = "RS256",
             rsa_public_key = "test",
           },
@@ -143,7 +142,7 @@ describe("Plugin: jwt (API)", function()
           method = "POST",
           path = "/consumers/bob/jwt/",
           body = {
-            key = "bob5", 
+            key = "bob5",
             algorithm = "HS256",
           },
           headers = {

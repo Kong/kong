@@ -112,6 +112,14 @@
 #pg_password = kong              # The password to authenticate if required.
 #pg_database = kong              # The database name to connect to.
 
+#pg_ssl = off                    # Toggles client-server TLS connections
+                                 # between Kong and PostgreSQL.
+
+#pg_ssl_verify = off             # Toggles server certificate verification if
+                                 # `pg_ssl` is enabled.
+                                 # See the `lua_ssl_trusted_certificate`
+                                 # setting to specify a certificate authority.
+
 #cassandra_contact_points = 127.0.0.1  # A comma-separated list of contact
                                        # points to your cluster.
 
@@ -132,12 +140,8 @@
 
 #cassandra_ssl_verify = off      # Toggles server certificate verification if
                                  # `cassandra_ssl` is enabled.
-
-#cassandra_ssl_trusted_cert =    # Absolute path to the certificate
-                                 # authority file in PEM format. This setting
-                                 # will set the `lua_ssl_trusted_certificate`
-                                 # directive when Kong compiles the Nginx
-                                 # configuration file.
+                                 # See the `lua_ssl_trusted_certificate`
+                                 # setting to specify a certificate authority.
 
 #cassandra_username = kong       # Username when using the
                                  # `PasswordAuthenticator` scheme.
@@ -241,7 +245,7 @@
                                  # Only valid when `dnsmasq` is disabled.
 
 #------------------------------------------------------------------------------
-# DEVELOPMENT
+# DEVELOPMENT & MISCELLANEOUS
 #------------------------------------------------------------------------------
 
 # Additional settings inherited from lua-nginx-module allowing for more
@@ -249,6 +253,19 @@
 #
 # See the lua-nginx-module documentation for more informations:
 # https://github.com/openresty/lua-nginx-module
+
+#lua_ssl_trusted_certificate =   # Absolute path to the certificate
+                                 # authority file for Lua cosockets in PEM
+                                 # format. This certificate will be the one
+                                 # used for verifying Kong's database
+                                 # connections, when `pg_ssl_verify` or
+                                 # `cassandra_ssl_verify` are enabled.
+
+#lua_ssl_verify_depth = 1        # Sets the verification depth in the server
+                                 # certificates chain used by Lua cosockets,
+                                 # set by `lua_ssl_trusted_certificate`.
+                                 # This includes the certificates configured
+                                 # for Kong's database connections.
 
 #lua_code_cache = on             # When disabled, every request will run in a
                                  # separate Lua VM instance: all Lua modules

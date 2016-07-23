@@ -11,9 +11,6 @@ end
 
 describe("Plugin: ssl (certificate)", function()
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api = assert(helpers.dao.apis:insert {
       request_host = "ssl1.com",
       upstream_url = "http://mockbin.com"
@@ -56,6 +53,7 @@ describe("Plugin: ssl (certificate)", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong {
       ssl_cert = "", -- trigger cert auto-gen
       ssl_cert_key = ""
@@ -63,7 +61,7 @@ describe("Plugin: ssl (certificate)", function()
   end)
 
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 

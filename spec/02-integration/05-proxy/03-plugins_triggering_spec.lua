@@ -3,8 +3,6 @@ local helpers = require "spec.helpers"
 describe("Plugins triggering", function()
   local client
   setup(function()
-    helpers.kill_all()
-
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -72,13 +70,14 @@ describe("Plugins triggering", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
     helpers.clean_prefix()
   end)
 

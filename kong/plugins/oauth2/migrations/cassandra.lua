@@ -103,5 +103,15 @@ return {
         end
       end
     end
+  },
+  {
+    name = "2016-07-15-oauth2_code_credential_id",
+    up = [[
+      TRUNCATE oauth2_authorization_codes;
+      ALTER TABLE oauth2_authorization_codes ADD credential_id uuid;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_authorization_codes DROP credential_id;
+    ]]
   }
 }

@@ -4,9 +4,6 @@ describe("Plugin: request-transformer (access)", function()
   local client
 
   setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
-
     local api1 = assert(helpers.dao.apis:insert {request_host = "test1.com", upstream_url = "http://mockbin.com"})
     local api2 = assert(helpers.dao.apis:insert {request_host = "test2.com", upstream_url = "http://httpbin.org"})
     local api3 = assert(helpers.dao.apis:insert {request_host = "test3.com", upstream_url = "http://mockbin.com"})
@@ -97,10 +94,11 @@ describe("Plugin: request-transformer (access)", function()
       }
     })
 
+    helpers.prepare_prefix()
     assert(helpers.start_kong())
   end)
   teardown(function()
-    helpers.stop_kong()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
