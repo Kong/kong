@@ -303,10 +303,35 @@ local function transform_body(conf)
   end
 end
 
+local function transform_path(conf)
+  local uri = ngx.var.request_uri
+
+  -- Remove path_prefix(es)
+  if #conf.remove.path_prefix > 0 then
+    for _, name, value in iter(conf.remove.path_prefix) do
+      if (uri:sub(0, value:len()) == value) then
+        uri = uri:sub(value:len() + 1)
+      end
+    end
+  end
+
+  -- Add (prepend) path_prefix(es)
+  if #conf.add.path_prefix > 0 then
+    for _, name, value in iter(conf.remove.path_prefix) do
+      uri = value .. uri
+    end
+  end
+
+  -- Update the URI after our changes
+  ngx.req.set_uri(uri)
+
+end
+
 function _M.execute(conf)
   transform_body(conf)
   transform_headers(conf)
   transform_querystrings(conf)
+  transform_path(conf)
 end
 
 return _M

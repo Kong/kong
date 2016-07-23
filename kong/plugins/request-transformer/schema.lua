@@ -18,7 +18,8 @@ return {
         fields = {
           body = {type = "array", default = {}}, -- does not need colons
           headers = {type = "array", default = {}}, -- does not need colons
-          querystring = {type = "array", default = {}} -- does not need colons
+          querystring = {type = "array", default = {}}, -- does not need colons
+          path_prefix = {type = "array", default = {}} -- does not need colons
         }
       }
     },
@@ -38,7 +39,8 @@ return {
         fields = {
           body = {type = "array", default = {}, func = check_for_value},
           headers = {type = "array", default = {}, func = check_for_value},
-          querystring = {type = "array", default = {}, func = check_for_value}
+          querystring = {type = "array", default = {}, func = check_for_value},
+          path_prefix = {type = "array", default = {}, func = check_for_value}
         }
       }
     },

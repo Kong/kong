@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 describe("Plugin: request-transformer (access)", function()
   local client
@@ -10,6 +11,8 @@ describe("Plugin: request-transformer (access)", function()
     local api4 = assert(helpers.dao.apis:insert {request_host = "test4.com", upstream_url = "http://mockbin.com"})
     local api5 = assert(helpers.dao.apis:insert {request_host = "test5.com", upstream_url = "http://mockbin.com"})
     local api6 = assert(helpers.dao.apis:insert {request_host = "test6.com", upstream_url = "http://mockbin.com"})
+    local api7 = assert(helpers.dao.apis:insert {request_host = "test7.com", upstream_url = "http://mockbin.com"})
+    local api8 = assert(helpers.dao.apis:insert {request_host = "test8.com", upstream_url = "http://mockbin.com"})
 
     -- plugin config 1
     assert(helpers.dao.plugins:insert {
@@ -90,6 +93,26 @@ describe("Plugin: request-transformer (access)", function()
           headers = {"h1:v1", "h1:v2", "h2:v1",},
           querystring = {"q1:v1", "q1:v2", "q2:v1"},
           body = {"p1:v1", "p1:v2", "p2:value:1"}     -- payload containing a colon
+        }
+      }
+    })
+    -- plugin config 7
+    assert(helpers.dao.plugins:insert {
+      api_id = api7.id,
+      name = "request-transformer",
+      config = {
+        remove = {
+          path_prefix = {"/example"}
+        }
+      }
+    })
+    -- plugin config 8
+    assert(helpers.dao.plugins:insert {
+      api_id = api8.id,
+      name = "request-transformer",
+      config = {
+        add = {
+          path_prefix = {"/another"}
         }
       }
     })
@@ -446,6 +469,15 @@ describe("Plugin: request-transformer (access)", function()
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
     end)
+    it("removes a matched path prefix", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/example/page",
+      })
+      local body = assert.res_status(200, r)
+      local json = cjson.decode(body)
+      assert.equal("http://mockbin.com/page", json.url)
+    end)
   end)
 
   describe("add", function()
@@ -645,6 +677,15 @@ describe("Plugin: request-transformer (access)", function()
       local json = assert.response(r).has.jsonbody()
       local value = assert.has.header("host", json)
       assert.equals("httpbin.org", value)
+    end)
+    it("adds a path prefix", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/page",
+      })
+      local body = assert.res_status(200, r)
+      local json = cjson.decode(body)
+      assert.equal("http://mockbin.com/another/page", json.url)
     end)
   end)
 
