@@ -33,7 +33,7 @@ describe("Resolver", function()
   end)
 
   teardown(function()
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   it("avoids dog-pile effect", function()
