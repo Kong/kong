@@ -53,11 +53,15 @@ function Serf:prepare()
   local script = [[
 #!/bin/sh
 PAYLOAD=`cat` # Read from stdin
+
 if [ "$SERF_EVENT" != "user" ]; then
   PAYLOAD="{\"type\":\"${SERF_EVENT}\",\"entity\": \"${PAYLOAD}\"}"
 fi
+
 echo $PAYLOAD > /tmp/payload
+
 COMMAND='require("kong.tools.http_client").post("http://]]..self._configuration.admin_api_listen..[[/cluster/events/", ]].."[=['${PAYLOAD}']=]"..[[, {["content-type"] = "application/json"})'
+
 echo $COMMAND | ]]..luajit_path..[[
 ]]
   local _, err = IO.write_to_file(self._script_path, script)
