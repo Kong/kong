@@ -12,8 +12,7 @@
 ## this property with the names of the plugins to load.
 ## Plugins will be loaded from the kong.plugins.{name}.* namespace.
 custom_plugins:
-   - request-transformer-custom
-   - request-validator
+   - yop
 
 ######
 ## The Kong working directory. Equivalent to nginx's prefix path.
@@ -204,6 +203,7 @@ nginx: |
 
   env KONG_CONF;
   env PATH;
+  env YOP_HESSIAN=http://localhost:8054/yop-hessian/;
 
   events {
     worker_connections {{auto_worker_connections}};
@@ -256,6 +256,7 @@ nginx: |
     lua_shared_dict cache {{memory_cache_size}}m;
     lua_shared_dict cassandra 1m;
     lua_shared_dict cassandra_prepared 5m;
+    lua_shared_dict yop 10m;
     lua_socket_log_errors off;
     {{lua_ssl_trusted_certificate}}
 

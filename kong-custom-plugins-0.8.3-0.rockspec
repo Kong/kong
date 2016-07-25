@@ -15,9 +15,17 @@ dependencies = {
 build = {
   type = "builtin",
   modules = {
-    ["kong.plugins.request-transformer-custom.handler"] = "kong/plugins/request-transformer-custom/handler.lua",
-    ["kong.plugins.request-transformer-custom.schema"] = "kong/plugins/request-transformer-custom/schema.lua"
-    ["kong.plugins.request-validator.handler"] = "kong/plugins/request-validator/handler.lua"
-    ["kong.plugins.request-validator.schema"] = "kong/plugins/request-validator/schema.lua"
+    ["kong.yop.cache"] = "kong/yop/cache.lua",
+    ["kong.yop.http_client"] = "kong/yop/http_client.lua",
+    ["kong.yop.response"] = "kong/yop/response.lua",
+    ["kong.plugins.yop.interceptor.auth"] = "kong/plugins/yop/interceptor/auth.lua",
+    ["kong.plugins.yop.interceptor.decrypt"] = "kong/plugins/yop/interceptor/decrypt.lua",
+    ["kong.plugins.yop.interceptor.http_method"] = "kong/plugins/yop/interceptor/http_method.lua",
+    ["kong.plugins.yop.interceptor.initialize_ctx"] = "kong/plugins/yop/interceptor/initialize_ctx.lua",
+    ["kong.plugins.yop.interceptor.request_transformer"] = "kong/plugins/yop/interceptor/request_transformer.lua",
+    ["kong.plugins.yop.interceptor.request_validator"] = "kong/plugins/yop/interceptor/request_validator.lua",
+    ["kong.plugins.yop.interceptor.whitelist"] = "kong/plugins/yop/interceptor/whitelist.lua",
+    ["kong.plugins.yop.handler"] = "kong/plugins/yop/handler.lua",
+    ["kong.plugins.yop.schema"] = "kong/plugins/yop/schema.lua"
   }
 }
