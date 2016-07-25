@@ -92,6 +92,9 @@ function _M.start(kong_config, dao)
     return nil, "could not start Serf: "..err
   end
 
+  -- cleanup current node from cluster to prevent inconsistency of data
+  serf:cleanup()
+
   log.verbose("auto-joining Serf cluster...")
   local ok, err = serf:autojoin()
   if not ok then return nil, err end
