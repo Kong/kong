@@ -60,8 +60,20 @@ return {
 
   ["/consumers/:username_or_id/oauth2/:id"] = {
     before = function(self, dao_factory, helpers)
-     crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
+      crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
+
+      local credentials, err = dao_factory.oauth2_credentials:find_all {
+        consumer_id = self.params.consumer_id,
+        id = self.params.id
+      }
+      if err then
+        return helpers.yield_error(err)
+      elseif next(credentials) == nil then
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+
+      self.oauth2_credential = credentials[1]
     end,
 
     GET = function(self, dao_factory)

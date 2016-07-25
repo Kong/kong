@@ -1,5 +1,7 @@
+local resty_lock = require "resty.lock"
 local cjson = require "cjson"
 local cache = ngx.shared.cache
+local ngx_log = ngx.log
 
 local CACHE_KEYS = {
   APIS = "apis",
@@ -121,20 +123,45 @@ end
 
 function _M.get_or_set(key, cb)
   local value, err
-  -- Try to get
+
+  -- Try to get the value from the cache
+  value = _M.get(key)
+  if value then return value end
+
+  local lock, err = resty_lock:new("cache_locks", {
+    exptime = 10,
+    timeout = 5
+  })
+  if not lock then
+    ngx_log(ngx.ERR, "could not create lock: ", err)
+    return
+  end
+
+  -- The value is missing, acquire a lock
+  local elapsed, err = lock:lock(key)
+  if not elapsed then
+    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+  end
+
+  -- Lock acquired. Since in the meantime another worker may have 
+  -- populated the value we have to check again
   value = _M.get(key)
   if not value then
     -- Get from closure
     value, err = cb()
-    if err then
-      return nil, err
-    elseif value then
+    if value then
       local ok, err = _M.set(key, value)
       if not ok then
-        ngx.log(ngx.ERR, err)
+        ngx_log(ngx.ERR, err)
       end
     end
   end
+
+  local ok, err = lock:unlock()
+  if not ok then
+    ngx_log(ngx.ERR, "failed to unlock: ", err)
+  end
+
   return value
 end
 

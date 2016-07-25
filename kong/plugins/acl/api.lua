@@ -25,13 +25,17 @@ return {
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
-      local err
-      self.acl, err = dao_factory.acls:find(self.params)
+      local acls, err = dao_factory.acls:find_all {
+        consumer_id = self.params.consumer_id,
+        id = self.params.id
+      }
       if err then
         return helpers.yield_error(err)
-      elseif self.acl == nil then
+      elseif #acls == 0 then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+
+      self.acl = acls[1]
     end,
 
     GET = function(self, dao_factory, helpers)

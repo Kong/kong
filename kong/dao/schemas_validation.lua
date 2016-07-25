@@ -116,7 +116,8 @@ function _M.validate_entity(tbl, schema, options)
           end
 
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
-            errors = utils.add_error(errors, error_prefix..column, column.." is not a "..v.type)
+            errors = utils.add_error(errors, error_prefix..column, 
+                    string.format("%s is not %s %s", column, v.type == "array" and "an" or "a", v.type))
           end
         end
 
@@ -148,7 +149,7 @@ function _M.validate_entity(tbl, schema, options)
 
         -- [REGEX] Check field against a regex if specified
         if type(t[column]) == "string" and v.regex then
-          if not ngx.re.match(t[column], v.regex) then
+          if not ngx.re.find(t[column], v.regex) then
             errors = utils.add_error(errors, error_prefix..column, column.." has an invalid value")
           end
         end

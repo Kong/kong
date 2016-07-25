@@ -1,4 +1,4 @@
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local BasePlugin = Object:extend()
 
 function BasePlugin:new(name)

@@ -167,6 +167,9 @@ end
 -- @param t2 The second table
 -- @return The (new) merged table
 function _M.table_merge(t1, t2)
+  if not t1 then t1 = {} end
+  if not t2 then t2 = {} end
+  
   local res = {}
   for k,v in pairs(t1) do res[k] = v end
   for k,v in pairs(t2) do res[k] = v end

@@ -1,12 +1,14 @@
-local singletons = require "kong.singletons"
-local stringy = require "stringy"
+local url = require "socket.url"
+local json = require "cjson"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
+local stringy = require "stringy"
+local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
-local url = require "socket.url"
-local Multipart = require "multipart"
+local singletons = require "kong.singletons"
+
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
 local check_https = utils.check_https
@@ -91,6 +93,8 @@ local function retrieve_parameters()
   local content_type = req_get_headers()[CONTENT_TYPE]
   if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
+  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
+    body_parameters = json.decode(ngx.req.get_body_data())
   else
     body_parameters = ngx.req.get_post_args()
   end
@@ -121,6 +125,7 @@ local function authorize(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
+  local is_implicit_grant
 
   local is_https, err = check_https(conf.accept_http_if_already_terminated)
   if not is_https then
@@ -164,6 +169,7 @@ local function authorize(conf)
       if not response_params[ERROR] then
         if response_type == CODE then
           local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
+            credential_id = client.id,
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = table.concat(scopes, " ")
           }, {ttl = 300})
@@ -178,6 +184,7 @@ local function authorize(conf)
         else
           -- Implicit grant, override expiration to zero
           response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          is_implicit_grant = true
         end
       end
     end
@@ -188,10 +195,16 @@ local function authorize(conf)
 
   -- Appending kong generated params to redirect_uri query string
   if parsed_redirect_uri then
-    if not parsed_redirect_uri.query then
-      parsed_redirect_uri.query = ""
+    local encoded_params = utils.encode_args(utils.table_merge(ngx.decode_args(
+      (is_implicit_grant and 
+        (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or 
+        (parsed_redirect_uri.query and parsed_redirect_uri.query or "")
+      )), response_params))
+    if is_implicit_grant then
+      parsed_redirect_uri.fragment = encoded_params
+    else
+      parsed_redirect_uri.query = encoded_params
     end
-    parsed_redirect_uri.query = utils.encode_args(utils.table_merge(ngx.decode_args(parsed_redirect_uri.query), response_params))
   end
 
   -- Sending response in JSON format
@@ -258,14 +271,17 @@ local function issue_token(conf)
     local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
 
     -- Check client_id and redirect_uri
-    local redirect_uri, client = get_redirect_uri(client_id)
-    if not redirect_uri then
+    local allowed_redirect_uris, client = get_redirect_uri(client_id)
+    if not allowed_redirect_uris then
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
       end
-    elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
+    else
+      local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
+      if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+      end
     end
 
     if client and client.client_secret ~= client_secret then
@@ -281,8 +297,11 @@ local function issue_token(conf)
         local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({code = code})[1]
         if not authorization_code then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+        elseif authorization_code.credential_id ~= client.id then
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         else
           response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+          singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Only check the provision_key if the authenticated_userid is being set

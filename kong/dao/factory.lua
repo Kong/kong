@@ -1,6 +1,6 @@
 local DAO = require "kong.dao.dao"
 local utils = require "kong.tools.utils"
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local stringy = require "stringy"
 local ModelFactory = require "kong.dao.model_factory"
 
@@ -73,25 +73,25 @@ local function load_daos(self, schemas, constraints, events_handler)
   end
 end
 
-function Factory:new(db_type, options, plugins, events_handler)
-  self.db_type = db_type
+function Factory:new(kong_config, events_handler)
+  self.db_type = kong_config.database
   self.daos = {}
-  self.properties = options
-  self.plugins_names = plugins or {}
+  self.kong_config = kong_config
+  self.plugin_names = kong_config.plugins or {}
 
   local schemas = {}
-  local DB = require("kong.dao."..db_type.."_db")
-  _db = DB(options)
+  local DB = require("kong.dao."..self.db_type.."_db")
+  _db = DB(kong_config)
 
   for _, m_name in ipairs(CORE_MODELS) do
     schemas[m_name] = require("kong.dao.schemas."..m_name)
   end
 
-  for _, plugin_name in ipairs(self.plugins_names) do
+  for plugin_name in pairs(self.plugin_names) do
     local has_dao, plugin_daos = utils.load_module_if_exists("kong.plugins."..plugin_name..".dao."..self.db_type)
     if has_dao then
       for k, v in pairs(plugin_daos) do
-        self.daos[k] = v(options)
+        self.daos[k] = v(kong_config)
       end
     end
 
@@ -132,6 +132,10 @@ function Factory:drop_schema()
   _db:drop_table("schema_migrations")
 end
 
+function Factory:truncate_table(dao_name)
+  _db:truncate_table(self.daos[dao_name].table)
+end
+
 function Factory:truncate_tables()
   for _, dao in pairs(self.daos) do
     _db:truncate_table(dao.table)
@@ -149,7 +153,7 @@ function Factory:migrations_modules()
     core = require("kong.dao.migrations."..self.db_type)
   }
 
-  for _, plugin_name in ipairs(self.plugins_names) do
+  for plugin_name in pairs(self.plugin_names) do
     local ok, plugin_mig = utils.load_module_if_exists("kong.plugins."..plugin_name..".migrations."..self.db_type)
     if ok then
       migrations[plugin_name] = plugin_mig
@@ -182,9 +186,9 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     end
   end
 
-  if #to_run > 0 and on_migrate ~= nil then
+  if #to_run > 0 and on_migrate then
     -- we have some migrations to run
-    on_migrate(identifier)
+    on_migrate(identifier, _db:infos())
   end
 
   for _, migration in ipairs(to_run) do
@@ -193,7 +197,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     if mig_type == "string" then
       err = _db:queries(migration.up)
     elseif mig_type == "function" then
-      err = migration.up(_db, self.properties, self)
+      err = migration.up(_db, self.kong_config, self)
     end
 
     if err then
@@ -206,33 +210,52 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
       return false, string.format("Error recording migration %s: %s", migration.name, err)
     end
 
-    if on_success ~= nil then
-      on_success(identifier, migration.name)
+    if on_success then
+      on_success(identifier, migration.name, _db:infos())
     end
   end
 
-  return true
+  return true, nil, #to_run
+end
+
+local function default_on_migrate(identifier, db_infos)
+  local log = require "kong.cmd.utils.log"
+  log("Migrating %s for %s %s",
+      identifier, db_infos.desc, db_infos.name)
+end
+
+local function default_on_success(identifier, migration_name, db_infos)
+  local log = require "kong.cmd.utils.log"
+  log("%s migrated up to: %s",
+      identifier, migration_name)
 end
 
 function Factory:run_migrations(on_migrate, on_success)
+  on_migrate = on_migrate or default_on_migrate
+  on_success = on_success or default_on_success
+
+  local log = require "kong.cmd.utils.log"
+
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then
-    return false, err
-  end
+  if err then return nil, tostring(err) end
 
   local ok, err = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then
-    return false, err
-  end
+  if not ok then return nil, tostring(err) end
 
+  local migrations_ran = 0
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
-      ok, err = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then
-        return false, err
+      local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
+      if not ok then return nil, tostring(err)
+      else
+        migrations_ran = math.max(migrations_ran, n_ran)
       end
     end
+  end
+
+  if migrations_ran > 0 then
+    log("Migrations up to date")
   end
 
   return true
