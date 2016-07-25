@@ -1,26 +1,27 @@
 ## [Unreleased][unreleased]
 
-The main focus of this release is a new CLI, bringing more features, stability, and customizability to Kong. It also comes with a new configuration file using a simpler format than the previous YAML file, and allows for environment variables overriding. Finally, this release contains some bug fixes that were reported since our last 0.8.3 release.
+The main focus of this release is Kong's new CLI. With a simpler configuration file, new settings, environment variables support, new commands as well as a new interpreter, the new CLI gives more power and flexibility to Kong users and allow for an easier integration in your deployment workflow, as well as better testing for developers and plugins authors. Additionally, some new plugins and performance improvements are included as well as the regular bug fixes.
 
 ### Changed
 
-- :warning: New CLI, with similar commands but refined arguments. This new CLI uses the `resty` interpreter (see [lua-resty-cli](https://github.com/openresty/resty-cli)) instead of LuaJIT. As a result, the `resty` executable must be available in your `$PATH` (resty-cli is shipped in the OpenResty bundle) as well as the `bin/kong` executable. Kong does not rely on Luarocks installing the `bin/kong` executable anymore. This change of behavior is taken care of if you are using one of the official Kong packages.
+- :warning: New CLI, with new commands and refined arguments. This new CLI uses the `resty-cli` interpreter (see [lua-resty-cli](https://github.com/openresty/resty-cli)) instead of LuaJIT. As a result, the `resty` executable must be available in your `$PATH` (resty-cli is shipped in the OpenResty bundle) as well as the `bin/kong` executable. Kong does not rely on Luarocks installing the `bin/kong` executable anymore. This change of behavior is taken care of if you are using one of the official Kong packages.
 - :warning: Kong uses a new configuration file, with an easier syntax than the previous YAML file.
 - New arguments for the CLI, such as verbose, debug and tracing flags. We also avoid requiring the configuration file as an argument to each command as per the previous CLI.
-- Customization of the Nginx configuration can happen through two different ways, using `kong start --template <file>` to start Kong with a custom Nginx config template or `kong compile`, to embed Kong in a custom Nginx instance using the `include` directive.
+- Customization of the Nginx configuration can now be taken care of using two different approaches: with a custom Nginx configuration template and using `kong start --template <file>`, or by using `kong compile` to generate the Kong Nginx sub-configuration, and `include` it in a custom Nginx instance.
 
 ### Added
 
 - :fireworks: Support for overriding configuration settings with environment variables.
 - :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Mashape/kong/pull/1425)
+- :fireworks: Ability to apply plugins with more granularity: per-consumer, and global plugins are now possible. [#1403](https://github.com/Mashape/kong/pull/1403)
 - New `kong check` command: validates a Kong configuration file.
 - Better version check for third-party dependencies (OpenResty, Serf, dnsmasq). [#1307](https://github.com/Mashape/kong/pull/1307)
 - Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Mashape/kong/pull/1420)
-- Allows `request_host` to receive domain names without top level domain such as `localhost`, which allows for punycode-encoded domain names. [#1300](https://github.com/Mashape/kong/issues/1300)
+- `request_host`: internationalized url support; utf-8 domain names through punycode support and paths through %-encoding. [#1300](https://github.com/Mashape/kong/issues/1300)
 - Implements caching locks when fetching database configuration (APIs, Plugins...) to avoid dog pile effect on cold nodes. [#1402](https://github.com/Mashape/kong/pull/1402)
 - Plugins:
   - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Mashape/kong/pull/1288)
-  - request/response-transfoermer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
+  - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
 
 ### Fixed
 
