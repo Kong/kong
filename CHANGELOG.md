@@ -1,5 +1,42 @@
 ## [Unreleased][unreleased]
 
+The main focus of this release is a new CLI, bringing more features, stability, and customizability to Kong. It also comes with a new configuration file using a simpler format than the previous YAML file, and allows for environment variables overriding. Finally, this release contains some bug fixes that were reported since our last 0.8.3 release.
+
+### Changed
+
+- :warning: New CLI, with similar commands but refined arguments. This new CLI uses the `resty` interpreter (see [lua-resty-cli](https://github.com/openresty/resty-cli)) instead of LuaJIT. As a result, the `resty` executable must be available in your `$PATH` (resty-cli is shipped in the OpenResty bundle) as well as the `bin/kong` executable. Kong does not rely on Luarocks installing the `bin/kong` executable anymore. This change of behavior is taken care of if you are using one of the official Kong packages.
+- :warning: Kong uses a new configuration file, with an easier syntax than the previous YAML file.
+- New arguments for the CLI, such as verbose, debug and tracing flags. We also avoid requiring the configuration file as an argument to each command as per the previous CLI.
+- Customization of the Nginx configuration can happen through two different ways, using `kong start --template <file>` to start Kong with a custom Nginx config template or `kong compile`, to embed Kong in a custom Nginx instance using the `include` directive.
+
+### Added
+
+- :fireworks: Support for overriding configuration settings with environment variables.
+- :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Mashape/kong/pull/1425)
+- New `kong check` command: validates a Kong configuration file.
+- Better version check for third-party dependencies (OpenResty, Serf, dnsmasq). [#1307](https://github.com/Mashape/kong/pull/1307)
+- Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Mashape/kong/pull/1420)
+- Allows `request_host` to receive domain names without top level domain such as `localhost`, which allows for punycode-encoded domain names. [#1300](https://github.com/Mashape/kong/issues/1300)
+- Implements caching locks when fetching database configuration (APIs, Plugins...) to avoid dog pile effect on cold nodes. [#1402](https://github.com/Mashape/kong/pull/1402)
+- Plugins:
+  - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Mashape/kong/pull/1288)
+  - request/response-transfoermer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
+
+### Fixed
+
+- Sensitive configuration settings are not printed to stdout anymore. [#1256](https://github.com/Mashape/kong/issues/1256)
+- Plugins:
+  - request-size-limiting: use proper constant for MB units while setting the size limit. [#1416](https://github.com/Mashape/kong/pull/1416)
+  - OAuth2: security and config validation fixes. [#1409](https://github.com/Mashape/kong/pull/1409) [#1112](https://github.com/Mashape/kong/pull/1112)
+  - request/response-transformer: better validation of fields provided without a value. [#1399](https://github.com/Mashape/kong/pull/1399)
+  - JWT: handle some edge-cases that could result in HTTP 500 errors. [#1362](https://github.com/Mashape/kong/pull/1362)
+
+> **internal**
+> - new test suite using resty-cli and removing the need to monkey-patch the `ngx` global.
+> - custom assertions and new helper methods (`wait_until()`) to gracefully fail in case of timeout.
+> - increase atomicity of the testing environment.
+> - lighter testing instance, only running 1 worker and not using dnsmasq by default.
+
 ## [0.8.3] - 2016/06/01
 
 This release includes some bugfixes:
