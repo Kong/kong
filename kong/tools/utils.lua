@@ -4,6 +4,9 @@
 -- NOTE: Before implementing a function here, consider if it will be used in many places
 -- across Kong. If not, a local function in the appropriate module is prefered.
 --
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module kong.tools.utils
 
 local url = require "socket.url"
 local uuid = require "resty.jit-uuid"

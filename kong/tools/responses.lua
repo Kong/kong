@@ -1,7 +1,10 @@
 --- Kong helper methods to send HTTP responses to clients.
 -- Can be used in the proxy (core/resolver), plugins or Admin API.
 -- Most used HTTP status codes and responses are implemented as helper methods.
---
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module kong.tools.responses
+-- @usage
 --    local responses = require "kong.tools.responses"
 --
 --    -- In an Admin API endpoint handler, or in one of the plugins' phases.
@@ -14,6 +17,7 @@
 --
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
+
 local cjson = require "cjson"
 local meta = require "kong.meta"
 
