@@ -1,8 +1,8 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local rules = require "kong.plugins.bot-detection.rules"
-local stringy = require "stringy"
 local bot_cache = require "kong.plugins.bot-detection.cache"
+local strip = require("kong.tools.utils").strip
 
 local ipairs = ipairs
 local get_headers = ngx.req.get_headers
@@ -33,7 +33,7 @@ function BotDetectionHandler:access(conf)
   end
 
   if user_agent then
-    user_agent = stringy.strip(user_agent)
+    user_agent = strip(user_agent)
 
     -- Cache key, per API
     local cache_key = ngx.ctx.api.id..":"..user_agent
@@ -41,12 +41,10 @@ function BotDetectionHandler:access(conf)
     -- The cache already has the user_agents that should be blocked
     -- So we avoid matching the regexes everytime
     local cached_match = bot_cache.get(cache_key)
-    if cached_match ~= nil then
-      if cached_match then 
-        return
-      else
-        return responses.send_HTTP_FORBIDDEN()
-      end
+    if cached_match then 
+      return
+    elseif cached_match == false then
+      return responses.send_HTTP_FORBIDDEN()
     end
 
     if conf.whitelist then

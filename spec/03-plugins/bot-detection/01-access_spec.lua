@@ -3,12 +3,11 @@ local helpers = require "spec.helpers"
 local HELLOWORLD = "HelloWorld"             -- just a test value
 local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua` 
 
-describe("Plugin: bot-detection", function()
+describe("Plugin: bot-detection (access)", function()
 
   local client
   
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     
     local api1 = assert(helpers.dao.apis:insert {

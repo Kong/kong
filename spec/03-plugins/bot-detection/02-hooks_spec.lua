@@ -5,7 +5,6 @@ describe("Plugin: bot-detection (hooks)", function()
   local plugin, proxy_client, admin_client
 
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     
     local api1 = assert(helpers.dao.apis:insert {

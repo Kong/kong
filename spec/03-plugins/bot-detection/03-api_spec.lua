@@ -2,12 +2,11 @@ local helpers = require "spec.helpers"
 
 local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
 
-describe("Plugin: bot-detection", function()
+describe("Plugin: bot-detection (API)", function()
 
   local client
 
   setup(function()
-    helpers.kill_all()
     helpers.prepare_prefix()
     
     assert(helpers.dao.apis:insert {
