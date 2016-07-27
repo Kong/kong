@@ -1,5 +1,7 @@
 --
--- Created by IntelliJ IDEA.
+-- 权限拦截器，用于控制appKey对api的访问权限
+
+-- -- Created by IntelliJ IDEA.
 -- User: zhangwenkang
 -- Date: 16-7-23
 -- Time: 下午12:04

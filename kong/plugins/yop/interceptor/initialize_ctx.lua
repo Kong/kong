@@ -1,5 +1,6 @@
 --
--- Created by IntelliJ IDEA.
+-- 上下文初始化拦截器
+-- -- Created by IntelliJ IDEA.
 -- User: zhangwenkang
 -- Date: 16-7-23
 -- Time: 下午12:18
@@ -23,7 +24,8 @@ local _M = {}
 local function decodeOnceToTable(body) if body then return ngxDecodeArgs(body) end return {} end
 
 _M.process = function(ctx)
-  local apiUri = ngx.ctx.api.request_path
+  local requestPath = ngx.ctx.api.request_path
+  local apiUri = requestPath:gsub("/yop%-center", "")
 
   --  从缓存中获取api信息，如果不存在，就调用远程接口获取api信息并缓存
   local api = cache.cacheApi(apiUri)
@@ -61,10 +63,12 @@ _M.process = function(ctx)
   ctx.appKey = appKey
   ctx.app = app
   ctx.parameters = parameters
+  ctx.ip = ngxVar.remote_addr
   ctx.transformer = cache.cacheTransformer(apiUri)
   ctx.validator = cache.cacheValidator(apiUri)
   ctx.whitelist = cache.cacheIPWhitelist(apiUri)
   ctx.auth = cache.cacheAppAuth(appKey)
+  ctx.defaultValues = cache.cacheDefaultValues(apiUri)
 end
 
 return _M

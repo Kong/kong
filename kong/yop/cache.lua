@@ -22,6 +22,7 @@ local CACHE_KEYS = {
   VALIDATOR = "validator:",
   WHITELIST = "whitelist:",
   APP_AUTH = "appAuth:",
+  DEFAULT_VALUES = "defaultValues:",
   SECRET = "secret:"
 }
 
@@ -124,6 +125,21 @@ local function remoteGetTransformer(api)
   return transformer
 end
 
+local function remoteGetDefaultValues(api)
+  ngx.log(ngx.INFO, "remote get api default values info...api:" .. api)
+  local j = httpClient.post(url .. "/api", { apiUri = api, type = "param" }, { ['accept'] = "application/json" })
+  local o = json.decode(j)
+
+  local defaultValues = {}
+  for _, value in pairs(o) do
+    local defaultValue = value.defaultValue
+    if defaultValue ~= nil then
+      defaultValues[value.paramName] = defaultValue
+    end
+  end
+  return defaultValues
+end
+
 local function remoteGetValidator(api)
   ngx.log(ngx.INFO, "remote get api validator info...api:" .. api)
   local j = httpClient.post(url .. "/api", { apiUri = api, type = "validator" }, { ['accept'] = "application/json" })
@@ -170,6 +186,10 @@ end
 
 function _M.cacheAppAuth(appKey)
   return _M.get_or_set(appKey, CACHE_KEYS.APP_AUTH .. appKey, remoteGetAppAuth)
+end
+
+function _M.cacheDefaultValues(apiUri)
+  return _M.get_or_set(apiUri, CACHE_KEYS.DEFAULT_VALUES .. apiUri, remoteGetDefaultValues)
 end
 
 return _M

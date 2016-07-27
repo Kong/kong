@@ -7,10 +7,15 @@ local httpMethod = require 'kong.plugins.yop.interceptor.http_method'
 local whitelist = require 'kong.plugins.yop.interceptor.whitelist'
 local auth = require 'kong.plugins.yop.interceptor.auth'
 local decrypt = require 'kong.plugins.yop.interceptor.decrypt'
+local defaultValue = require 'kong.plugins.yop.interceptor.default_value'
 local requestValidator = require 'kong.plugins.yop.interceptor.request_validator'
 local requestTransformer = require 'kong.plugins.yop.interceptor.request_transformer'
+local prepare_upstream = require 'kong.plugins.yop.interceptor.prepare_upstream'
 
-local interceptors = { initializeCtx, httpMethod, whitelist, auth, decrypt, requestValidator, requestTransformer }
+local interceptors = {
+  initializeCtx, httpMethod, whitelist, auth, decrypt,
+  defaultValue, requestValidator, requestTransformer, prepare_upstream
+}
 
 local YopHandler = BasePlugin:extend()
 

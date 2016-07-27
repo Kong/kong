@@ -25,6 +25,8 @@ build = {
     ["kong.plugins.yop.interceptor.request_transformer"] = "kong/plugins/yop/interceptor/request_transformer.lua",
     ["kong.plugins.yop.interceptor.request_validator"] = "kong/plugins/yop/interceptor/request_validator.lua",
     ["kong.plugins.yop.interceptor.whitelist"] = "kong/plugins/yop/interceptor/whitelist.lua",
+    ["kong.plugins.yop.interceptor.default_value"] = "kong/plugins/yop/interceptor/default_value.lua",
+    ["kong.plugins.yop.interceptor.prepare_stream"] = "kong/plugins/yop/interceptor/prepare_stream.lua",
     ["kong.plugins.yop.handler"] = "kong/plugins/yop/handler.lua",
     ["kong.plugins.yop.schema"] = "kong/plugins/yop/schema.lua"
   }

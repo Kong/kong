@@ -1,12 +1,13 @@
 --
--- Created by IntelliJ IDEA.
+-- 参数名转换拦截器
+-- -- Created by IntelliJ IDEA.
 -- User: zhangwenkang
 -- Date: 16-7-23
 -- Time: 下午12:04
 -- To change this template use File | Settings | File Templates.
 --
 local pairs = pairs
-local next=next
+local next = next
 
 local _M = {}
 

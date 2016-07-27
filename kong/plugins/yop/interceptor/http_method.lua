@@ -1,4 +1,5 @@
 --
+-- http请求方法拦截器
 -- Created by IntelliJ IDEA.
 -- User: zhangwenkang
 -- Date: 16-7-23
