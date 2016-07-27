@@ -93,7 +93,8 @@ function _M.start(kong_config, dao)
   end
 
   -- cleanup current node from cluster to prevent inconsistency of data
-  serf:cleanup()
+  local ok, err = serf:cleanup()
+  if not ok then return nil, err end
 
   log.verbose("auto-joining Serf cluster...")
   local ok, err = serf:autojoin()
