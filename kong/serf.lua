@@ -80,12 +80,14 @@ function Serf:reachability()
   return self:invoke_signal("reachability")
 end
 
-function Serf:autojoin()
+function Serf:cleanup()
   -- Delete current node just in case it was there
   -- (due to an inconsistency caused by a crash)
-  local _, err = self.dao.nodes:delete {name = self.node_name}
-  if err then return nil, tostring(err) end
+  local ok, err = self.dao.nodes:delete {name = self.node_name }
+  return ok, tostring(err)
+end
 
+function Serf:autojoin()
   local nodes, err = self.dao.nodes:find_all()
   if err then return nil, tostring(err)
   elseif #nodes == 0 then
