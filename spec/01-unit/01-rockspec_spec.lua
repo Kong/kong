@@ -18,7 +18,7 @@ describe("rockspec", function()
   end)
 
   it("has same version as meta", function()
-    assert.matches(meta._VERSION, rock.version:match("(%d.%d.%d)"))
+    assert.matches(meta._VERSION, rock.version:match("(.-)%-.*$"))
   end)
   it("has same name as meta", function()
     assert.equal(meta._NAME, rock.package)
