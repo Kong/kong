@@ -35,5 +35,6 @@ return {
        and not plugin_t.enable_client_credentials and not plugin_t.enable_password_grant then
        return false, Errors.schema "You need to enable at least one OAuth flow"
     end
+    return true
   end
 }

@@ -31,6 +31,7 @@ describe("Plugin: oauth2 (hooks)", function()
       api_id = api.id,
       config = {
         scopes = { "email", "profile" },
+        enable_authorization_code = true,
         mandatory_scope = true,
         provision_key = "provision123",
         token_expiration = 5,
