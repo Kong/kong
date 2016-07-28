@@ -339,6 +339,8 @@ describe("Plugin: rate-limiting (access)", function()
 
   describe("Continue on error", function()
     after_each(function()
+      assert(helpers.stop_kong())
+      helpers.clean_prefix()
       prepare()
     end)
     it("should not continue if an error occurs", function()

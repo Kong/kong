@@ -76,7 +76,7 @@ describe("Plugin: request-size-limiting (access)", function()
       })
       assert.res_status(200, res)
     end)
-    it("blocks request exceeding size limit", function()
+    pending("blocks request exceeding the size limit", function()
       local body = string.rep("a", TEST_SIZE * 1000000 + 1)
 
       local res = assert(client:send {
