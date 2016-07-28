@@ -17,6 +17,7 @@ describe("Plugin: acl (API)", function()
 
   describe("/consumers/:consumer/acls/", function()
     setup(function()
+      helpers.dao:truncate_tables()
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
       })

@@ -394,6 +394,8 @@ describe("Plugin: response-ratelimiting (access)", function()
 
   describe("Continue on error", function()
     after_each(function()
+      assert(helpers.stop_kong())
+      helpers.clean_prefix()
       prepare()
     end)
 
