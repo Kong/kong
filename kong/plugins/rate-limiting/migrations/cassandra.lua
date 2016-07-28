@@ -30,15 +30,15 @@ return {
           consumer_id = rate_limiting.consumer_id,
           enabled = rate_limiting.enabled,
           config = {
-            second = rate_limiting.second,
-            minute = rate_limiting.minute,
-            hour = rate_limiting.hour,
-            day = rate_limiting.day,
-            month = rate_limiting.month,
-            year = rate_limiting.year,
+            second = rate_limiting.config.second,
+            minute = rate_limiting.config.minute,
+            hour = rate_limiting.config.hour,
+            day = rate_limiting.config.day,
+            month = rate_limiting.config.month,
+            year = rate_limiting.config.year,
             limit_by = "consumer",
             policy = "cluster",
-            cluster_fault_tolerant = rate_limiting.continue_on_error
+            cluster_fault_tolerant = rate_limiting.config.continue_on_error
           }
         }
         if err then return err end
