@@ -26,6 +26,7 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 ### Fixed
 
 - Sensitive configuration settings are not printed to stdout anymore. [#1256](https://github.com/Mashape/kong/issues/1256)
+- Fixed bug that caused nodes to remove themselves from the database when they attempted to join the cluster. [#1437](https://github.com/Mashape/kong/pull/1437)
 - Plugins:
   - request-size-limiting: use proper constant for MB units while setting the size limit. [#1416](https://github.com/Mashape/kong/pull/1416)
   - OAuth2: security and config validation fixes. [#1409](https://github.com/Mashape/kong/pull/1409) [#1112](https://github.com/Mashape/kong/pull/1112)
