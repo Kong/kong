@@ -181,14 +181,14 @@ end
 
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @name proxy_client
-local function proxy_client()
-  return http_client(conf.proxy_ip, conf.proxy_port)
+local function proxy_client(timeout)
+  return http_client(conf.proxy_ip, conf.proxy_port, tuimeout)
 end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
 -- @name proxy_ssl_client
-local function proxy_ssl_client()
-  local client = http_client(conf.proxy_ip, conf.proxy_ssl_port)
+local function proxy_ssl_client(timeout)
+  local client = http_client(conf.proxy_ip, conf.proxy_ssl_port, timeout)
   client:ssl_handshake()
   return client
 end
@@ -688,6 +688,19 @@ local function kong_exec(cmd, env)
   return exec(env_vars.." "..BIN_PATH.." "..cmd)
 end
 
+local function prepare_prefix(prefix)
+  prefix = prefix or conf.prefix
+  exec("rm -rf "..prefix.."/*")
+  return pl_dir.makepath(prefix)
+end
+
+local function clean_prefix(prefix)
+  prefix = prefix or conf.prefix
+  if pl_path.exists(prefix) then
+    pl_dir.rmtree(prefix)
+  end
+end
+
 ----------
 -- Exposed
 ----------
@@ -716,25 +729,24 @@ return {
   proxy_client = proxy_client,
   admin_client = admin_client,
   proxy_ssl_client = proxy_ssl_client,
+  prepare_prefix = prepare_prefix,
+  clean_prefix = clean_prefix,
 
-  prepare_prefix = function(prefix)
-    prefix = prefix or conf.prefix
-    exec("rm -rf "..prefix.."/*")
-    return pl_dir.makepath(prefix)
-  end,
-  clean_prefix = function(prefix)
-    prefix = prefix or conf.prefix
-    if pl_path.exists(prefix) then
-      pl_dir.rmtree(prefix)
-    end
-  end,
   start_kong = function(env)
+    env = env or {}
+    local ok, err = prepare_prefix(env.prefix)
+    if not ok then return nil, err end
+
     return kong_exec("start --conf "..TEST_CONF_PATH, env)
   end,
-  stop_kong = function()
+  stop_kong = function(prefix)
+    prefix = prefix or conf.prefix
+    local ok, err = kong_exec("stop --prefix "..prefix)
     dao:truncate_tables()
-    return kong_exec("stop --prefix "..conf.prefix)
+    clean_prefix(prefix)
+    return ok, err
   end,
+  -- Only use in CLI tests from spec/02-integration/01-cmd
   kill_all = function(prefix)
     local kill = require "kong.cmd.utils.kill"
 

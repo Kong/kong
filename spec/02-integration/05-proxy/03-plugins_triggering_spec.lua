@@ -3,6 +3,9 @@ local helpers = require "spec.helpers"
 describe("Plugins triggering", function()
   local client
   setup(function()
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
+
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -69,16 +72,11 @@ describe("Plugins triggering", function()
         hour = 4,
       }
     })
-
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   it("checks global configuration without credentials", function()
