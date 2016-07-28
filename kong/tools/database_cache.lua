@@ -79,7 +79,7 @@ function _M.consumer_key(id)
 end
 
 function _M.plugin_key(name, api_id, consumer_id)
-  return CACHE_KEYS.PLUGINS..":"..name..":"..api_id..(consumer_id and ":"..consumer_id or "")
+  return CACHE_KEYS.PLUGINS..":"..name..(api_id and ":"..api_id or "")..(consumer_id and ":"..consumer_id or "")
 end
 
 function _M.basicauth_credential_key(username)
