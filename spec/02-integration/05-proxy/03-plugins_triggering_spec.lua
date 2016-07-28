@@ -77,7 +77,7 @@ describe("Plugins triggering", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
