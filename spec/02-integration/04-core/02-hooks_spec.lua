@@ -10,7 +10,12 @@ local pl_stringx = require "pl.stringx"
 describe("Core Hooks", function()
   local client, api_client
   local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
+
   before_each(function()
+    helpers.start_kong()
+    client = helpers.proxy_client()
+    api_client = helpers.admin_client()
+
     consumer = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -59,19 +64,13 @@ describe("Core Hooks", function()
         minute = 3
       }
     })
-
-    helpers.prepare_prefix()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-    api_client = helpers.admin_client()
   end)
   after_each(function()
     if client and api_client then
       client:close()
       api_client:close()
     end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   describe("Plugin entity invalidation", function()
