@@ -739,11 +739,13 @@ return {
 
     return kong_exec("start --conf "..TEST_CONF_PATH, env)
   end,
-  stop_kong = function(prefix)
+  stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix
     local ok, err = kong_exec("stop --prefix "..prefix)
     dao:truncate_tables()
-    clean_prefix(prefix)
+    if not preserve_prefix then
+      clean_prefix(prefix)
+    end
     return ok, err
   end,
   -- Only use in CLI tests from spec/02-integration/01-cmd
