@@ -1,4 +1,4 @@
-DEV_ROCKS = busted luacheck
+DEV_ROCKS = busted luacheck lua-llthreads2
 BUSTED_ARGS ?= -v
 TEST_CMD = bin/busted $(BUSTED_ARGS)
 
