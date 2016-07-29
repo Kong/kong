@@ -1,6 +1,5 @@
 local cjson = require "cjson"
 local crypto = require "crypto"
-local base64 = require "base64"
 local helpers = require "spec.helpers"
 
 local hmac_sha1_binary = function(secret, data)
@@ -190,7 +189,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = base64.encode(hmac_sha1_binary("secret", "date: "..date))
+      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
         ..[[headers="date",signature="]]..encodedSignature..[["]]
       local res = assert(client:send {
@@ -210,7 +209,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET and proxy-authorization", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = base64.encode(hmac_sha1_binary("secret", "date: "..date))
+      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
         ..[[headers="date",signature="]]..encodedSignature..[["]]
       local res = assert(client:send {
@@ -228,7 +227,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with POST", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = base64.encode(hmac_sha1_binary("secret", "date: "..date))
+      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
         ..[[headers="date",signature="]]..encodedSignature..[["]]
       local res = assert(client:send {
@@ -248,7 +247,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET and valid authorization and wrong proxy-authorization", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = base64.encode(hmac_sha1_binary("secret", "date: "..date))
+      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
         ..[[headers="date",signature="]]..encodedSignature..[["]]
       local res = assert(client:send {
@@ -269,7 +268,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET and invalid authorization and valid proxy-authorization", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature   = base64.encode(
+      local encodedSignature   = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
         ..[[headers="date",signature="]]..encodedSignature..[["]]
@@ -289,7 +288,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET with content-md5 header", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n".."content-md5: md5"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
         ..[[headers="date content-md5",signature="]]..encodedSignature..[["]]
@@ -310,7 +309,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET with request-line", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "
           ..date.."\n".."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",  algorithm="hmac-sha1", ]]
@@ -333,7 +332,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with wrong username in signature", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
         .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bobb",  algorithm="hmac-sha1", ]]
@@ -359,7 +358,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with username blank in signature", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret",
           "date: "..date.."\n".."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="",  algorithm="hmac-sha1",]]
@@ -385,7 +384,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with username missing in signature", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret",
           "date: "..date.."\n".."content-md5: md5"
           .."\nGET /requests HTTP/1.1"))
@@ -412,7 +411,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with wrong hmac headers field name", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",  algorithm="hmac-sha1",   ]]
@@ -437,7 +436,7 @@ describe("Plugin: hmac-auth (access)", function()
 
      it("should not pass with GET with wrong hmac signature field name", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",  algorithm="hmac-sha1",]]
@@ -462,7 +461,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with malformed hmac signature field", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",  algorithm="hmac-sha1"]]
@@ -487,7 +486,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with malformed hmac headers field", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /request? HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",  algorithm="hmac-sha1" ]]
@@ -512,7 +511,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET with no space or space between hmac signatures fields", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
       hmac_sha1_binary("secret", "date: "..date.."\n"
         .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
@@ -535,7 +534,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET with wrong algorithm", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha256",]]
@@ -558,7 +557,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass the right headers to the upstream server", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha256",]]
@@ -585,7 +584,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET with x-date header", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "x-date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
@@ -606,7 +605,7 @@ describe("Plugin: hmac-auth (access)", function()
     end)
 
     it("should not pass with GET with both date and x-date missing", function()
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "content-md5: md5"
           .."\nGET /request? HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",  algorithm="hmac-sha1",]]
@@ -631,7 +630,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should not pass with GET with x-date malformed", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "x-date: "..date.."\n"
           .."content-md5: md5".."\nGET /request? HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
@@ -656,7 +655,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with GET with x-date malformed but date correct", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "content-md5: md5"
           .."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
@@ -679,7 +678,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with x-date malformed but date correct and used for signature", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: "..date.."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
@@ -702,7 +701,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should with x-date malformed and used for signature but skew test pass", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "x-date: ".."wrong date".."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
@@ -725,7 +724,7 @@ describe("Plugin: hmac-auth (access)", function()
 
     it("should pass with date malformed and used for signature but skew test pass", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-      local encodedSignature = base64.encode(
+      local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: ".."wrong date".."\n"
           .."content-md5: md5".."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]

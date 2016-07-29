@@ -2,7 +2,6 @@ local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
 local cache = require "kong.tools.database_cache"
-local base64 = require "base64"
 local crypto = require "crypto"
 
 describe("Plugin: hmac-auth (hooks)", function()
@@ -49,7 +48,7 @@ describe("Plugin: hmac-auth (hooks)", function()
 
   local function get_authorization(username)
     local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
-    local encodedSignature   = base64.encode(hmac_sha1_binary("secret", "date: "..date))
+    local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
     return [["hmac username="]]..username
          ..[[",algorithm="hmac-sha1",headers="date",signature="]]
          ..encodedSignature..[["]], date

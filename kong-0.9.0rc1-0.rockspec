@@ -22,7 +22,6 @@ dependencies = {
   "lua-cassandra ~> 0.5.2",
   "pgmoon ~> 1.5.0",
   "multipart ~> 0.3-2",
-  "lbase64 ~> 20120820-1",
   "lua-resty-iputils ~> 0.2.0-1",
   "mediator_lua ~> 1.1.2-0",
   "version == 0.2",
