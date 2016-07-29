@@ -36,7 +36,7 @@ describe("Resolver", function()
   it("avoids dog-pile effect", function()
     local function make_request(premature, sleep_time)
       local client = helpers.proxy_client()
-      local res = assert(client:send {
+      assert(client:send {
         method = "GET",
         path = "/status/200?sleep="..sleep_time,
         headers = {

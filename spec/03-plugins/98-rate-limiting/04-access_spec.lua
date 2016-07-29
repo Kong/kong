@@ -53,7 +53,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
         api_id = api1.id,
-        config = { policy = policy, minute = 6, cluster_fault_tolerant = false, redis_host = REDIS_HOST, redis_port = REDIS_PORT, redis_password = REDIS_PASSWORD }
+        config = {
+          policy = policy,
+          minute = 6,
+          cluster_fault_tolerant = false,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD
+        }
       })
 
       local api2 = assert(helpers.dao.apis:insert {
@@ -63,7 +70,15 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
         api_id = api2.id,
-        config = { minute = 3, hour = 5, cluster_fault_tolerant = false, policy = policy, redis_host = REDIS_HOST, redis_port = REDIS_PORT, redis_password = REDIS_PASSWORD }
+        config = {
+          minute = 3,
+          hour = 5,
+          cluster_fault_tolerant = false,
+          policy = policy,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD
+        }
       })
 
       local api3 = assert(helpers.dao.apis:insert {
@@ -77,13 +92,28 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
         api_id = api3.id,
-        config = { minute = 6, limit_by = "credential", cluster_fault_tolerant = false, policy = policy, redis_host = REDIS_HOST, redis_port = REDIS_PORT, redis_password = REDIS_PASSWORD }
+        config = {
+          minute = 6,
+          limit_by = "credential",
+          cluster_fault_tolerant = false,
+          policy = policy,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD
+        }
       })
       assert(helpers.dao.plugins:insert {
         name = "rate-limiting",
         api_id = api3.id,
         consumer_id = consumer1.id,
-        config = { minute = 8, cluster_fault_tolerant = false, policy = policy, redis_host = REDIS_HOST, redis_port = REDIS_PORT, redis_password = REDIS_PASSWORD }
+        config = {
+          minute = 8,
+          cluster_fault_tolerant = false,
+          policy = policy,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD
+        }
       })
 
       local api4 = assert(helpers.dao.apis:insert {
@@ -98,7 +128,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         name = "rate-limiting",
         api_id = api4.id,
         consumer_id = consumer1.id,
-        config = { minute = 6, cluster_fault_tolerant = true, policy = policy, redis_host = REDIS_HOST, redis_port = REDIS_PORT, redis_password = REDIS_PASSWORD }
+        config = {
+          minute = 6,
+          cluster_fault_tolerant = true,
+          policy = policy,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD
+        }
       })
     end)
     teardown(function()
@@ -374,9 +411,10 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("Expirations", function()
         local api
         setup(function()
-          helpers.kill_all()
+          helpers.stop_kong()
           helpers.dao:drop_schema()
           assert(helpers.dao:run_migrations())
+          assert(helpers.start_kong())
 
           api = assert(helpers.dao.apis:insert {
             request_host = "expire1.com",
@@ -385,14 +423,19 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert(helpers.dao.plugins:insert {
             name = "rate-limiting",
             api_id = api.id,
-            config = { second = 6, policy = policy, redis_host = REDIS_HOST, redis_port = REDIS_PORT, redis_password = REDIS_PASSWORD, cluster_fault_tolerant = false }
+            config = {
+              second = 6,
+              policy = policy,
+              redis_host = REDIS_HOST,
+              redis_port = REDIS_PORT,
+              redis_password = REDIS_PASSWORD,
+              cluster_fault_tolerant = false
+            }
           })
-
-          assert(helpers.start_kong())
         end)
 
         it("expires a counter", function()
-          local periods = timestamp.get_timestamps(current_timestamp)
+          local periods = timestamp.get_timestamps()
 
           local res = assert(helpers.proxy_client():send {
             method = "GET",

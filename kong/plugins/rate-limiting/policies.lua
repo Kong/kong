@@ -8,7 +8,7 @@ local get_local_key = function(api_id, identifier, period_date, period)
   return string.format("ratelimit:%s:%s:%s:%s", api_id, identifier, period_date, period)
 end
 
---TODO: Check that it really expires 
+--TODO: Check that it really expires
 local EXPIRATIONS = {
   second = 1,
   minute = 60,
@@ -93,7 +93,6 @@ return {
       end
 
       local periods = timestamp.get_timestamps(current_timestamp)
-      local ok = true
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, period)
         local exists, err = red:exists(cache_key)
@@ -109,7 +108,7 @@ return {
         end
 
         if not exists or exists == 0 then
-          local ok, err = red:expire(cache_key, EXPIRATIONS[period])
+          local _, err = red:expire(cache_key, EXPIRATIONS[period])
           if err then
             ngx_log(ngx.ERR, "failed to query Redis: ", err)
             return

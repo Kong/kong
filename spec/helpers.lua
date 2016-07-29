@@ -182,7 +182,7 @@ end
 --- returns a pre-configured `http_client` for the Kong proxy port.
 -- @name proxy_client
 local function proxy_client(timeout)
-  return http_client(conf.proxy_ip, conf.proxy_port, tuimeout)
+  return http_client(conf.proxy_ip, conf.proxy_port, timeout)
 end
 
 --- returns a pre-configured `http_client` for the Kong SSL proxy port.
