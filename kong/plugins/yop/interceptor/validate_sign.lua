@@ -71,21 +71,21 @@ local function validateSign(ctx)
     local signBody = prepareSignBody(ctx,needSignKeys)
     ngx.log(ngx.INFO,signBody)
 
-    local isSupport = false
+    local support = false
     local encodeBody
     if(alg == "SHA1") then
         encodeBody = codec.sha1_encode(signBody)
-        isSupport = true
+        support = true
     end
     if(alg == "SHA256") then
         encodeBody = codec.sha256_encode(signBody)
-        isSupport = true
+        support = true
     end
     if(alg == "MD5") then
         encodeBody = codec.md5_encode(signBody)
-        isSupport = true
+        support = true
     end
-    if(not isSupport) then
+    if(not support) then
         ngx.log(ngx.ERR,"不支持的签名算法!")
     end
 
