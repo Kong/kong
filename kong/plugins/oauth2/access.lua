@@ -40,13 +40,13 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
 local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
-local function verify_secure_value(plainStoredValue, digestStoredValue, providedValue) {
+local function verify_secure_value(plainStoredValue, digestStoredValue, providedValue)
   if not digestStoredValue then
     return plainStoredValue == providedValue
   else 
     return bcrypt.verify(providedValue, storedValue)
   end
-}
+end
 
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
