@@ -104,6 +104,7 @@ function KeyAuthHandler:access(conf)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_consumer = consumer
 end
 
 return KeyAuthHandler

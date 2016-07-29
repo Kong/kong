@@ -118,6 +118,7 @@ function _M.execute(conf)
   ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.req.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_consumer = consumer
 end
 
 return _M

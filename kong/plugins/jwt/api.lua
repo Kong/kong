@@ -11,11 +11,11 @@ return {
       crud.paginated_set(self, dao_factory.jwt_secrets)
     end,
 
-    PUT = function(self, dao_factory)
+    PUT = function(self, dao_factory, helpers)
       crud.put(self.params, dao_factory.jwt_secrets)
     end,
 
-    POST = function(self, dao_factory)
+    POST = function(self, dao_factory, helpers)
       crud.post(self.params, dao_factory.jwt_secrets)
     end
   },
