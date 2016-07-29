@@ -177,7 +177,7 @@ cassandra:
 ######
 ## Kong will send anonymous reports to Mashape. This helps Mashape fixing bugs/errors and improving Kong.
 ## By default is `true`.
-send_anonymous_reports: false
+#send_anonymous_reports: false
 
 ######
 ## A value specifying (in MB) the size of the internal preallocated in-memory cache. Kong uses an in-memory
@@ -247,6 +247,7 @@ nginx: |
 
     # Lua Settings
     lua_package_path ';;';
+    lua_package_cpath './so/?.so;;';
     lua_code_cache off;
     lua_max_running_timers 4096;
     lua_max_pending_timers 16384;

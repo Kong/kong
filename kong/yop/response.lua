@@ -107,4 +107,10 @@ function Response.notAllowdIpException(appKey, ip) responses.send(200, Response:
 
 function Response.permessionDeniedException(appKey) responses.send(200, Response:new():fail():error("99001004", appKey)) end
 
+function Response.signException(appKey) responses.send(200, Response:new():fail():error("99001008", appKey)) end
+
+function Response.decryptException(appKey) responses.send(200, Response:new():fail():error("99001009", appKey)) end
+
+
+
 return function() return Response, ErrorCode end
