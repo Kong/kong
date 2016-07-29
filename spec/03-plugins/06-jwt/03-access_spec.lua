@@ -1,5 +1,4 @@
 local cjson = require "cjson"
-local base64 = require "base64"
 local helpers = require "spec.helpers"
 local fixtures = require "spec.03-plugins.06-jwt.fixtures"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
@@ -165,7 +164,7 @@ describe("Plugin: jwt (access)", function()
     it("proxies the request if secret is base64", function()
       PAYLOAD.iss = base64_jwt_secret.key
       local original_secret = base64_jwt_secret.secret
-      local base64_secret = base64.encode(base64_jwt_secret.secret)
+      local base64_secret = ngx.encode_base64(base64_jwt_secret.secret)
       assert(admin_client:send {
         method = "PATCH",
         path = "/consumers/jwt_tests_consumer/jwt/"..base64_jwt_secret.id,

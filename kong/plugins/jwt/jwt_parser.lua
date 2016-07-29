@@ -6,9 +6,8 @@
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
-local base64 = require "base64"
-local crypto = require "crypto"
 local utils = require "kong.tools.utils"
+local crypto = require "crypto"
 
 local error = error
 local type = type
@@ -16,6 +15,8 @@ local pcall = pcall
 local ngx_time = ngx.time
 local string_rep = string.rep
 local setmetatable = setmetatable
+local encode_base64 = ngx.encode_base64
+local decode_base64 = ngx.decode_base64
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
@@ -40,7 +41,7 @@ local alg_verify = {
 -- @param input String to base64 encode
 -- @return Base64 encoded string
 local function b64_encode(input)
-  local result = base64.encode(input)
+  local result = encode_base64(input)
   result = result:gsub("+", "-"):gsub("/", "_"):gsub("=", "")
   return result
 end
@@ -57,7 +58,7 @@ local function b64_decode(input)
   end
 
   input = input:gsub("-", "+"):gsub("_", "/")
-  return base64.decode(input)
+  return decode_base64(input)
 end
 
 --- Tokenize a string by delimiter
@@ -111,11 +112,11 @@ local function decode_token(token)
   if not claims then
     return nil, "invalid claims"
   end
-  
+
   if not signature then
     return nil, "invalid signature"
   end
-  
+
   return {
     token = token,
     header_64 = header_64,
