@@ -25,14 +25,10 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
     end
 
     if #rows > 0 then
-      if consumer_id == nil then
-        for _, row in ipairs(rows) do
-          if row.consumer_id == nil then
-            return row
-          end
+      for _, row in ipairs(rows) do
+        if api_id == row.api_id and consumer_id == row.consumer_id then
+          return row
         end
-      else
-        return rows[1]
       end
     else
       -- insert a cached value to not trigger too many DB queries.
@@ -67,15 +63,27 @@ local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
     if plugin and ctx.api then
       -- load the plugin configuration in early phases
       if access_or_cert_ctx then
-        ctx.plugins_for_request[plugin.name] = load_plugin_configuration(ctx.api.id, nil, plugin.name)
 
+        local plugin_configuration
+
+        -- Search API and Consumer specific, or consumer specific
         local consumer_id = (ctx.authenticated_credential or empty).consumer_id
         if consumer_id and not plugin.schema.no_consumer then
-          local consumer_plugin_configuration = load_plugin_configuration(ctx.api.id, consumer_id, plugin.name)
-          if consumer_plugin_configuration then
-            ctx.plugins_for_request[plugin.name] = consumer_plugin_configuration
+          plugin_configuration = load_plugin_configuration(ctx.api.id, consumer_id, plugin.name)
+          if not plugin_configuration then
+            plugin_configuration = load_plugin_configuration(nil, consumer_id, plugin.name)
           end
         end
+
+        if not plugin_configuration then
+          -- Search API specific, or global
+          plugin_configuration = load_plugin_configuration(ctx.api.id, nil, plugin.name)
+          if not plugin_configuration then
+            plugin_configuration = load_plugin_configuration(nil, nil, plugin.name)
+          end
+        end
+
+        ctx.plugins_for_request[plugin.name] = plugin_configuration
       end
 
       -- return the plugin configuration

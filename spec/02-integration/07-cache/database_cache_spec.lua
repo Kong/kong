@@ -1,11 +1,8 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
-local meta = require "kong.meta"
 
 describe("Resolver", function()
-  local client
   setup(function()
-
     assert(helpers.dao.apis:insert {
       request_host = "mockbin.com",
       upstream_url = "http://mockbin.com"

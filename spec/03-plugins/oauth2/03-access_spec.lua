@@ -39,6 +39,7 @@ describe("Plugin: oauth2 (access)", function()
       api_id = api1.id,
       config = {
         scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
         mandatory_scope = true,
         provision_key = "provision123",
         token_expiration = 5,
@@ -56,6 +57,7 @@ describe("Plugin: oauth2 (access)", function()
       api_id = api2.id,
       config = {
         scopes = { "email", "profile" },
+        enable_authorization_code = true,
         mandatory_scope = true,
         provision_key = "provision123",
         token_expiration = 5,
@@ -72,6 +74,7 @@ describe("Plugin: oauth2 (access)", function()
       api_id = api3.id,
       config = {
         scopes = { "email", "profile" },
+        enable_authorization_code = true,
         mandatory_scope = true,
         provision_key = "provision123",
         token_expiration = 5,
@@ -123,6 +126,7 @@ describe("Plugin: oauth2 (access)", function()
       api_id = api6.id,
       config = {
         scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
         mandatory_scope = true,
         provision_key = "provision123",
         token_expiration = 5,

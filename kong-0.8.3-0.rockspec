@@ -171,6 +171,7 @@ build = {
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
+    ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies.lua",
     ["kong.plugins.rate-limiting.dao.cassandra"] = "kong/plugins/rate-limiting/dao/cassandra.lua",
     ["kong.plugins.rate-limiting.dao.postgres"] = "kong/plugins/rate-limiting/dao/postgres.lua",
 
@@ -257,6 +258,12 @@ build = {
 
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
-    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua"
+    ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
+
+    ["kong.plugins.bot-detection.handler"] = "kong/plugins/bot-detection/handler.lua",
+    ["kong.plugins.bot-detection.schema"] = "kong/plugins/bot-detection/schema.lua",
+    ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
+    ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
+    ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua",
   }
 }

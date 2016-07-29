@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local Errors = require "kong.dao.errors"
 local stringy = require "stringy"
 local bcrypt = require "bcrypt"
 
@@ -29,17 +30,21 @@ return {
     provision_key = { required = false, unique = true, type = "string", func = generate_if_missing },
     provision_key_hash = { required = false, unique = false, type = "string" },
     token_expiration = { required = true, type = "number", default = 7200 },
-    enable_authorization_code = { required = true, type = "boolean", default = true },
+    enable_authorization_code = { required = true, type = "boolean", default = false },
     enable_implicit_grant = { required = true, type = "boolean", default = false },
     enable_client_credentials = { required = true, type = "boolean", default = false },
     enable_password_grant = { required = true, type = "boolean", default = false },
     hide_credentials = { type = "boolean", default = false },
     accept_http_if_already_terminated = { required = false, type = "boolean", default = false }
   },
-  self_check = function (self, config, dao, is_update)
-    if not is_update and config.provision_key then
-      config.provision_key_hash = bcrypt.digest(config.provision_key, BCRYPT_ROUNDS)
-      config.provision_key = nil
+  self_check = function(schema, plugin_t, dao, is_update)
+    if not plugin_t.enable_authorization_code and not plugin_t.enable_implicit_grant
+       and not plugin_t.enable_client_credentials and not plugin_t.enable_password_grant then
+       return false, Errors.schema "You need to enable at least one OAuth flow"
+    end
+    if not is_update and plugin_t.provision_key then
+      plugin_t.provision_key_hash = bcrypt.digest(plugin_t.provision_key, BCRYPT_ROUNDS)
+      plugin_t.provision_key = nil
     end
     return true
   end

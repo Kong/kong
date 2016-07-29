@@ -479,6 +479,7 @@ function _M.execute(conf)
   ngx.req.set_header("x-authenticated-scope", token.scope)
   ngx.req.set_header("x-authenticated-userid", token.authenticated_userid)
   ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_consumer = consumer
 end
 
 return _M
