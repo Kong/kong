@@ -50,7 +50,7 @@ function Serf:leave()
   if not res then return nil, err end
 
   local _, err = self.dao.nodes:delete {name = self.node_name}
-  if err then return nil, err end
+  if err then return nil, tostring(err) end
 
   return true
 end

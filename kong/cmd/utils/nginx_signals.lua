@@ -12,7 +12,7 @@ local nginx_search_paths = {
 }
 local nginx_version_command = "-v"                            -- commandline param to get version
 local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"  -- pattern to grab version from output
-local nginx_compatible = version.set("1.9.3.2","1.9.7.5")     -- compatible from-to versions
+local nginx_compatible = version.set("1.9.15.1")              -- compatible from-to versions
 
 local function is_openresty(bin_path)
   local cmd = fmt("%s %s", bin_path, nginx_version_command)
