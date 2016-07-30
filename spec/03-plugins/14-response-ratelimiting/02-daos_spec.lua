@@ -1,4 +1,4 @@
-local uuid = require "lua_uuid"
+local uuid = require "resty.jit-uuid"
 local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
