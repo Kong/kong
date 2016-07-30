@@ -6,10 +6,11 @@
 --
 
 local url = require "socket.url"
-local uuid = require "lua_uuid"
+local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 local ffi = require "ffi"
 
+local fmt = string.format
 local type = type
 local pairs = pairs
 local ipairs = ipairs
@@ -18,7 +19,6 @@ local table_sort = table.sort
 local table_concat = table.concat
 local table_insert = table.insert
 local string_find = string.find
-local string_format = string.format
 
 ffi.cdef[[
 int gethostname(char *name, size_t len);
@@ -49,11 +49,16 @@ function _M.get_hostname()
   return result
 end
 
+local v4_uuid = uuid.generate_v4
 
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
-  return uuid():gsub("-", "")
+  return v4_uuid():gsub("-", "")
+end
+
+function _M.is_valid_uuid(str)
+  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
 end
 
 _M.split = pl_stringx.split
@@ -72,7 +77,7 @@ local function encode_args_value(key, value, raw)
       value = url.unescape(value)
       value = url.escape(value)
     end
-    return string_format("%s=%s", key, value)
+    return fmt("%s=%s", key, value)
   else
     return key
   end
@@ -169,7 +174,7 @@ end
 function _M.table_merge(t1, t2)
   if not t1 then t1 = {} end
   if not t2 then t2 = {} end
-  
+
   local res = {}
   for k,v in pairs(t1) do res[k] = v end
   for k,v in pairs(t2) do res[k] = v end

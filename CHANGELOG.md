@@ -24,6 +24,10 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
   - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Mashape/kong/pull/1288)
   - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
 
+### Removed
+
+- We now use [lua-resty-jit-uuid](https://github.com/thibaultCha/lua-resty-jit-uuid) for UUID generation, which is a pure Lua implementation of [RFC 4122](https://www.ietf.org/rfc/rfc4122.txt). As a result, libuuid is not a dependency of Kong anymore.
+
 ### Fixed
 
 - Sensitive configuration settings are not printed to stdout anymore. [#1256](https://github.com/Mashape/kong/issues/1256)

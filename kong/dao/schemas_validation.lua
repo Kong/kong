@@ -245,12 +245,6 @@ function _M.validate_entity(tbl, schema, options)
   return errors == nil, errors
 end
 
-local digit = "[0-9a-f]"
-local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
-function _M.is_valid_uuid(uuid)
-  return uuid and uuid:match(uuid_pattern) ~= nil
-end
-
 function _M.is_schema_subset(tbl, schema)
   local errors
 
@@ -258,7 +252,7 @@ function _M.is_schema_subset(tbl, schema)
     if schema.fields[k] == nil then
       errors = utils.add_error(errors, k, "unknown field")
     elseif schema.fields[k].type == "id" and v ~= nil then
-      if not _M.is_valid_uuid(v) then
+      if not utils.is_valid_uuid(v) then
         errors = utils.add_error(errors, k, v.."is not a valid uuid")
       end
     end
