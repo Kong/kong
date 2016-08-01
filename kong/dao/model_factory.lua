@@ -34,6 +34,20 @@ return setmetatable({}, {
       return ok
     end
 
+    function Model_mt:to_dao_transform(dao, model, is_update)
+      if self.__schema.to_dao_transform and type(self.__schema.to_dao_transform) == "function" then
+        return self.__schema.to_dao_transform(self.__schema, dao, model, is_update)
+      end
+      return model
+    end
+
+    function Model_mt:from_dao_transform(dao, original_model, transformed_model, dao_result, is_update)
+      if self.__schema.from_dao_transform and type(self.__schema.from_dao_transform) == "function" then
+        return self.__schema.from_dao_transform(self.__schema, dao, original_model, transformed_model, dao_result, is_update)
+      end
+      return dao_result
+    end
+
     function Model_mt:extract_keys()
       local schema = self.__schema
       local primary_keys_idx = {}

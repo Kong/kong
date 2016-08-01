@@ -71,6 +71,32 @@ return {
     end
     return result
   end,
+  to_dao_transform = function(self, dao, plugin_t, is_update)
+    -- Load the config schema
+    local config_schema, err = self.fields.config.schema(plugin_t)
+    if err then
+      return false, Errors.schema(err)
+    end
+  
+    if config_schema.to_dao_transform and type(config_schema.to_dao_transform) == "function" then
+      return config_schema.to_dao_transform(config_schema, dao, plugin_t, is_update)
+    end
+
+    return plugin_t
+  end,
+  from_dao_transform = function(self, dao, original_plugin_t, transformed_plugin_t, dao_result, is_update)
+    -- Load the config schema
+    local config_schema, err = self.fields.config.schema(original_plugin_t)
+    if err then
+      return false, Errors.schema(err)
+    end
+  
+    if config_schema.to_dao_transform and type(config_schema.to_dao_transform) == "function" then
+      return config_schema.to_dao_transform(config_schema, dao, original_plugin_t, transformed_plugin_t, dao_result, is_update)
+    end
+
+    return dao_result
+  end,
   self_check = function(self, plugin_t, dao, is_update)
     -- Load the config schema
     local config_schema, err = self.fields.config.schema(plugin_t)
