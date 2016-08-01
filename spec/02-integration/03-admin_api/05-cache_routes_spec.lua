@@ -5,9 +5,7 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client, proxy_client
   setup(function()
-    helpers.prepare_prefix()
     assert(helpers.start_kong())
-
     client = helpers.admin_client()
     proxy_client = helpers.proxy_client(2000)
   end)
@@ -16,8 +14,7 @@ describe("Admin API", function()
       client:close()
       proxy_client:close()
     end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   describe("/cache/{key}", function()
