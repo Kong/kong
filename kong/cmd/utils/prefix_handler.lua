@@ -36,8 +36,36 @@ client:request { \
   } \
 }"
 
-resty -e "$CMD"
+%s -e "$CMD"
 ]]
+
+local resty_bin_name = "resty"
+local resty_search_paths = {
+  "/usr/local/openresty/bin",
+  ""
+}
+
+local function find_resty_bin()
+  log.verbose("searching for OpenResty 'resty' executable...")
+
+  local found
+  for _, path in ipairs(resty_search_paths) do
+    local path_to_check = pl_path.join(path, resty_bin_name)
+    local cmd = fmt("%s -v", path_to_check)
+    if pl_utils.executeex(cmd) then
+      found = path_to_check
+      break
+    end
+  end
+
+  if not found then
+    return nil, "could not find OpenResty 'resty' executable"
+  end
+
+  log.verbose("found OpenResty 'resty' executable at %s", found)
+
+  return found
+end
 
 local function gen_default_ssl_cert(kong_config)
   -- create SSL folder
@@ -160,8 +188,11 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     pl_file.write(kong_config.serf_node_id, id)
   end
 
+  local resty_bin, err = find_resty_bin()
+  if not resty_bin then return nil, err end
+
   log.verbose("saving Serf shell script handler in %s", kong_config.serf_event)
-  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port)
+  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port, resty_bin)
   pl_file.write(kong_config.serf_event, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end
