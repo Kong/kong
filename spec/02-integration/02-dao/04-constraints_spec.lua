@@ -100,7 +100,7 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("FOREIGN constraints", function()
-      local uuid = require "lua_uuid"
+      local uuid = require "resty.jit-uuid"
 
       it("not insert plugin if invalid API foreign key", function()
         plugin_fixture.api_id = uuid()

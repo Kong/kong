@@ -1,14 +1,12 @@
-local responses = require "kong.tools.responses"
-local validations = require "kong.dao.schemas_validation"
-local app_helpers = require "lapis.application"
 local utils = require "kong.tools.utils"
-local is_uuid = validations.is_valid_uuid
+local responses = require "kong.tools.responses"
+local app_helpers = require "lapis.application"
 
 local _M = {}
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [is_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
   }
   self.params.name_or_id = nil
 
@@ -26,7 +24,7 @@ end
 
 function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [is_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
+    [utils.is_valid_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
   }
   self.params.username_or_id = nil
 

@@ -1,8 +1,8 @@
-local singletons = require "kong.singletons"
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
+local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
 local pl_stringx = require "pl.stringx"
-local stringy = require "stringy"
 
 local function invalidate_plugin(entity)
   cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))
@@ -45,7 +45,7 @@ local function retrieve_member_address(name)
 end
 
 local function parse_member(member_str)
-  if member_str and stringy.strip(member_str) ~= "" then
+  if member_str and utils.strip(member_str) ~= "" then
     local result = {}
     local index = 1
     for v in member_str:gmatch("%S+") do
