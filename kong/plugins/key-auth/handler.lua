@@ -8,7 +8,7 @@ local realm = 'Key realm="'.._KONG._NAME..'"'
 
 local KeyAuthHandler = BasePlugin:extend()
 
-KeyAuthHandler.PRIORITY = 1000
+KeyAuthHandler.PRIORITY = 1001
 
 -- Fast lookup for credential retrieval depending on the type of the authentication
 --
@@ -82,6 +82,15 @@ function KeyAuthHandler:access(conf)
 
   -- No key found in the request's headers or parameters
   if not key_found then
+    if conf.allow_unauthenticated then
+      -- Don't clear headers of a previously authenticated request
+      if not ngx.ctx.authenticated_credential then
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_ID)
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_USERNAME)
+      end
+      return
+    end
     ngx.header["WWW-Authenticate"] = realm
     return responses.send_HTTP_UNAUTHORIZED("No API Key found in headers, body or querystring")
   end

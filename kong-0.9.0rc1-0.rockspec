@@ -12,6 +12,7 @@ description = {
 }
 dependencies = {
   "luasec == 0.6",
+  "bcrypt-ffi ~> 1.0.0",
   "luasocket == 2.0.2",
   "penlight == 1.3.2",
   "mediator_lua == 1.1.2",

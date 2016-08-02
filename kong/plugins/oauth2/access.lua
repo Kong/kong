@@ -8,6 +8,7 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local singletons = require "kong.singletons"
+local bcrypt = require "bcrypt"
 
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
@@ -38,6 +39,14 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 
 local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
 local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
+
+local function verify_secure_value(plainStoredValue, digestStoredValue, providedValue)
+  if not digestStoredValue then
+    return plainStoredValue == providedValue
+  else 
+    return bcrypt.verify(providedValue, digestStoredValue)
+  end
+end
 
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
@@ -115,6 +124,10 @@ local function retrieve_scopes(parameters, conf)
     end
   elseif not scope and conf.mandatory_scope then
     return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+  elseif not conf.scopes then
+    for v in scope:gmatch("%S+") do
+      table.insert(scopes, v)
+    end
   end
 
   return true, scopes
@@ -131,7 +144,7 @@ local function authorize(conf)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
-    if conf.provision_key ~= parameters.provision_key then
+    if not verify_secure_value(conf.provision_key, conf.provision_key_hash, parameters.provision_key) then
       response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
     elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
       response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
@@ -284,7 +297,7 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
+    if client and not verify_secure_value(client.client_secret, client.client_secret_hash, client_secret) then
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
@@ -305,7 +318,7 @@ local function issue_token(conf)
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Only check the provision_key if the authenticated_userid is being set
-        if parameters.authenticated_userid and conf.provision_key ~= parameters.provision_key then
+        if parameters.authenticated_userid and not verify_secure_value(conf.provision_key, conf.provision_key_hash, parameters.provision_key) then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
         else
           -- Check scopes
@@ -318,7 +331,7 @@ local function issue_token(conf)
         end
       elseif grant_type == GRANT_PASSWORD then
         -- Check that it comes from the right client
-        if conf.provision_key ~= parameters.provision_key then
+        if not verify_secure_value(conf.provision_key, conf.provision_key_hash, parameters.provision_key) then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
         elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
@@ -428,8 +441,24 @@ function _M.execute(conf)
     end
   end
 
+  if conf.pass_authenticated and ngx.ctx.authenticated_credential then
+    return
+  end
+
   local accessToken = parse_access_token(conf);
   if not accessToken then
+    if conf.allow_unauthenticated then
+      -- Don't clear headers of a previously authenticated request
+      if not ngx.ctx.authenticated_credential then
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_ID)
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_USERNAME)
+      end
+      -- These are our headers, clear 'em since we didn't authenticate anybody
+      ngx.req.clear_header("x-authenticated-scope")
+      ngx.req.clear_header("x-authenticated-userid")
+      return
+    end
     return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 

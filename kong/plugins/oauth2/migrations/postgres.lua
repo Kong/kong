@@ -90,5 +90,14 @@ return {
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP COLUMN credential_id;
     ]]
+  },
+  {
+    name = "2016-08-01-142793_oauth_hash",
+    up = [[
+      ALTER TABLE oauth2_credentials ADD COLUMN client_secret_hash text;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_credentials DROP COLUMN client_secret_hash;
+    ]]
   }
 }

@@ -102,8 +102,10 @@ function DAO:insert(tbl, options)
     end
   end
 
-  local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
+  local fordb = model:to_dao_transform(self, model, false)
+  local res, err = self.db:insert(self.table, self.schema, fordb, self.constraints, options)
   if not err then
+    res = model:from_dao_transform(self, model, fordb, res, false)
     event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
   end
   return res, err
