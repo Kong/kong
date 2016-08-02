@@ -44,7 +44,7 @@ local function verify_secure_value(plainStoredValue, digestStoredValue, provided
   if not digestStoredValue then
     return plainStoredValue == providedValue
   else 
-    return bcrypt.verify(providedValue, storedValue)
+    return bcrypt.verify(providedValue, digestStoredValue)
   end
 end
 
