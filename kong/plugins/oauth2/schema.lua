@@ -26,6 +26,11 @@ end
 return {
   no_consumer = true,
   fields = {
+    -- Don't 401 someone without authentication, just don't fill out the user headers
+    allow_unauthenticated = { required = false, type = "boolean", default = false },
+    -- pass_authenticated means that if another auth plugin has already filled
+    -- out the context, we won't bother to re-auth
+    pass_authenticated = { required = false, type = "boolean", default = false },
     scopes = { required = false, type = "array" },
     mandatory_scope = { required = true, type = "boolean", default = false, func = check_mandatory_scope },
     provision_key = { required = false, unique = true, type = "string", func = generate_if_missing },

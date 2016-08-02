@@ -124,6 +124,10 @@ local function retrieve_scopes(parameters, conf)
     end
   elseif not scope and conf.mandatory_scope then
     return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+  elseif not conf.scopes then
+    for v in scope:gmatch("%S+") do
+      table.insert(scopes, v)
+    end
   end
 
   return true, scopes
@@ -437,8 +441,24 @@ function _M.execute(conf)
     end
   end
 
+  if conf.pass_authenticated and ngx.ctx.authenticated_credential then
+    return
+  end
+
   local accessToken = parse_access_token(conf);
   if not accessToken then
+    if conf.allow_unauthenticated then
+      -- Don't clear headers of a previously authenticated request
+      if not ngx.ctx.authenticated_credential then
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_ID)
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_CUSTOM_ID)
+        ngx.req.clear_header(constants.HEADERS.CONSUMER_USERNAME)
+      end
+      -- These are our headers, clear 'em since we didn't authenticate anybody
+      ngx.req.clear_header("x-authenticated-scope")
+      ngx.req.clear_header("x-authenticated-userid")
+      return
+    end
     return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 
