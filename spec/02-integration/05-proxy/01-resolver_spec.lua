@@ -5,7 +5,8 @@ local meta = require "kong.meta"
 describe("Resolver", function()
   local client
   setup(function()
-    helpers.prepare_prefix()
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
 
     -- request_host
     assert(helpers.dao.apis:insert {
@@ -64,15 +65,11 @@ describe("Resolver", function()
       request_path = "/request/urlenc/%20%20",
       upstream_url = "http://mockbin.com/",
     })
-
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
   end)
 
   teardown(function()
     if client then client:close() end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   it("404 if can't find API to proxy", function()
@@ -321,7 +318,7 @@ describe("Resolver", function()
 
   it("returns 414 when the URI is too long", function()
     local querystring = ""
-    for i=1,5000 do 
+    for i=1,5000 do
       querystring = string.format("%s%s_%d=%d&", querystring, "param", i, i)
     end
 

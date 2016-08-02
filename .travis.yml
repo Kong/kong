@@ -8,7 +8,6 @@ addons:
   apt:
     packages:
       - dnsmasq
-      - uuid-dev
       - net-tools
       - libpcre3-dev
       - build-essential

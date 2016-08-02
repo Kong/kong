@@ -1,6 +1,9 @@
---
--- Module for timestamp support.
+--- Module for timestamp support.
 -- Based on the LuaTZ module.
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module kong.tools.timestamp
+
 local luatz = require "luatz"
 local _M = {}
 

@@ -112,6 +112,7 @@ function _M.stop(kong_config, dao)
 
   local serf = Serf.new(kong_config, dao)
 
+  log.verbose("invoking Serf leave")
   local ok, err = serf:leave()
   if not ok then return nil, err end
 
