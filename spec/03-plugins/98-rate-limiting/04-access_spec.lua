@@ -20,7 +20,7 @@ end
 wait() -- Wait before starting
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("Plugin: rate-limiting (access) with policy: "..policy, function()
+  describe("#ci Plugin: rate-limiting (access) with policy: "..policy, function()
     setup(function()
       helpers.dao:drop_schema()
       assert(helpers.dao:run_migrations())
