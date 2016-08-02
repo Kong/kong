@@ -11,6 +11,7 @@ local next = next
 local pairs = pairs
 local stringy = require "stringy"
 local tonumber = tonumber
+local ngxMatch = ngx.re.match
 local _M = {}
 
 local function validateNull(p) if p.value == nil then response.validateNullException(p) end end
@@ -41,6 +42,15 @@ local function validateInt(p)
   if p.value ~= nil and not p.value:match("^[-+]?[%d]*$") then response.validateIntException(p) end
 end
 
+local function validatePattern(p, rule)
+  local value = p.value
+  if value == nil then return end
+  local matchResult = ngxMatch(value, rule, "o")
+  if matchResult == nil or matchResult[0] ~= value then
+    response.validatePatternException(p, rule)
+  end
+end
+
 local validators = {
   NotNull = validateNull,
   NotBlank = validateBlank,
@@ -48,7 +58,7 @@ local validators = {
   Mobile = validateMobile,
   Length = validateLength,
   Range = validateRange,
-  MatchPattern = function() end, --java正则跟lua正则不兼容，先都通过
+  MatchPattern = validatePattern,
   RequireInt = validateInt,
   URL = function() end --这个正则太jb费劲了
 }

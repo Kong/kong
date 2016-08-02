@@ -93,6 +93,8 @@ function Response.validateRangeLessException(p, rule) sendValidateError(p.app, "
 
 function Response.validateIntException(p) sendValidateError(p.app, "99100011", p.name) end
 
+function Response.validatePatternException(p, rule) sendValidateError(p.app, "99100003", p.name, rule) end
+
 function Response.apiNotExistException(apiUri) responses.send(200, Response:new():fail():error("99001002", apiUri)) end
 
 function Response.apiUnavailableException(apiUri) responses.send(200, Response:new():fail():error("99001003", apiUri)) end
