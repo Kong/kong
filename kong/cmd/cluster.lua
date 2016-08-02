@@ -5,21 +5,26 @@ local DAOFactory = require "kong.dao.factory"
 local conf_loader = require "kong.conf_loader"
 
 local function execute(args)
+  if args.command == "keygen" then
+    local conf = assert(conf_loader(args.conf))
+    local dao = DAOFactory(conf)
+    local serf = Serf.new(conf, dao)
+    print(assert(serf:keygen()))
+    return
+  end
+
   -- retrieve default prefix or use given one
   local default_conf = assert(conf_loader(nil, {
     prefix = args.prefix
   }))
+  -- load <PREFIX>/kong.conf containing running node's config
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
-
-  -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_conf))
   local dao = DAOFactory(conf)
   local serf = Serf.new(conf, dao)
 
-  if args.command == "keygen" then
-    print(assert(serf:keygen()))
-  elseif args.command == "members" then
+  if args.command == "members" then
     local members = assert(serf:members(true))
     for _, v in ipairs(members) do
       print(string.format("%s\t%s\t%s", v.name, v.addr, v.status))
@@ -41,14 +46,16 @@ Usage: kong cluster COMMAND [OPTIONS]
 Manage Kong's clustering capabilities.
 
 The available commands are:
- keygen                  Generate an encryption key for intracluster traffic.
-                         See 'cluster_encrypt_key' setting
- members                 Show members of this cluster and their state.
- reachability            Check if the cluster is reachable.
- force-leave <node_name> Forcefully remove a node from the cluster (useful
-                         if the node is in a failed state).
+ keygen -c                  Generate an encryption key for intracluster traffic.
+                            See 'cluster_encrypt_key' setting
+ members -p                 Show members of this cluster and their state.
+ reachability -p            Check if the cluster is reachable.
+ force-leave -p <node_name> Forcefully remove a node from the cluster (useful
+                            if the node is in a failed state).
+
 
 Options:
+ -c,--conf   (optional string) configuration file
  -p,--prefix (optional string) prefix Kong is running at
 ]]
 
