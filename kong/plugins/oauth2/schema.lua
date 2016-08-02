@@ -20,9 +20,6 @@ local function check_mandatory_scope(v, t)
   return true
 end
 
-local function marshall_event(conf)
-end
-
 return {
   no_consumer = true,
   fields = {
