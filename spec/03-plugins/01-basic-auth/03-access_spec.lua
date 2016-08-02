@@ -37,6 +37,11 @@ describe("Plugin: basic-auth (access)", function()
       password = "kong",
       consumer_id = consumer.id
     })
+     assert(helpers.dao.basicauth_credentials:insert {
+      username = "user123",
+      password = "password123",
+      consumer_id = consumer.id
+    })
   end)
   teardown(function()
     if client then client:close() end
@@ -127,6 +132,29 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       assert.res_status(200, res)
+    end)
+    it("authenticates valid credentials in Authorization", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Authorization"] = "Basic dXNlcjEyMzpwYXNzd29yZDEyMw==",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns 403 for valid Base64 encoding", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          ["Authorization"] = "Basic adXNlcjEyMzpwYXNzd29yZDEyMw==",
+          ["Host"] = "basic-auth1.com"
+        }
+      })
+      local body = assert.res_status(403, res)
+      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
     end)
     it("authenticates valid credentials in Proxy-Authorization", function()
       local res = assert(client:send {
