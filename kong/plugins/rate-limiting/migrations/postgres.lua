@@ -42,6 +42,10 @@ return {
       for i = 1, #rows do
         local rate_limiting = rows[i]
 
+        -- Delete the old one to avoid conflicts when inserting the new one
+        local _, err = dao.plugins:delete(rate_limiting)
+        if err then return err end
+
         local _, err = dao.plugins:insert {
           name = "rate-limiting",
           api_id = rate_limiting.api_id,
@@ -59,9 +63,6 @@ return {
             cluster_fault_tolerant = rate_limiting.config.continue_on_error
           }
         }
-        if err then return err end
-
-        _, err = dao.plugins:delete(rate_limiting)
         if err then return err end
       end
     end

@@ -2,7 +2,7 @@ local url = require "socket.url"
 local json = require "cjson"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
+local pl_stringx = require "pl.stringx"
 local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
@@ -44,7 +44,7 @@ local function verify_secure_value(plainStoredValue, digestStoredValue, provided
   if not digestStoredValue then
     return plainStoredValue == providedValue
   else 
-    return bcrypt.verify(providedValue, storedValue)
+    return bcrypt.verify(providedValue, digestStoredValue)
   end
 end
 
@@ -146,7 +146,7 @@ local function authorize(conf)
   else
     if not verify_secure_value(conf.provision_key, conf.provision_key_hash, parameters.provision_key) then
       response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
-    elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+    elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
       response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
     else
       local response_type = parameters[RESPONSE_TYPE]
@@ -209,8 +209,8 @@ local function authorize(conf)
   -- Appending kong generated params to redirect_uri query string
   if parsed_redirect_uri then
     local encoded_params = utils.encode_args(utils.table_merge(ngx.decode_args(
-      (is_implicit_grant and 
-        (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or 
+      (is_implicit_grant and
+        (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or
         (parsed_redirect_uri.query and parsed_redirect_uri.query or "")
       )), response_params))
     if is_implicit_grant then
@@ -252,7 +252,7 @@ local function retrieve_client_credentials(parameters)
     if m and table.getn(m) > 0 then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = stringy.split(decoded_basic, ":")
+        local basic_parts = utils.split(decoded_basic, ":")
         client_id = basic_parts[1]
         client_secret = basic_parts[2]
       end
@@ -297,7 +297,7 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
+    if client and not verify_secure_value(client.client_secret, client.client_secret_hash, client_secret) then
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
@@ -333,7 +333,7 @@ local function issue_token(conf)
         -- Check that it comes from the right client
         if not verify_secure_value(conf.provision_key, conf.provision_key_hash, parameters.provision_key) then
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
-        elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+        elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
         else
           -- Check scopes
@@ -428,8 +428,8 @@ end
 
 function _M.execute(conf)
   -- Check if the API has a request_path and if it's being invoked with the path resolver
-  local path_prefix = (ngx.ctx.api.request_path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
-  if stringy.endswith(path_prefix, "/") then
+  local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
+  if pl_stringx.endswith(path_prefix, "/") then
     path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
   end
 

@@ -1,9 +1,11 @@
 local utils = require "kong.tools.utils"
-local stringy = require "stringy"
 local url = require "socket.url"
+local bcrypt = require "bcrypt"
+
+local BCRYPT_ROUNDS = 12
 
 local function generate_if_missing(v, t, column)
-  if not v or stringy.strip(v) == "" then
+  if not v or utils.strip(v) == "" then
     return true, nil, { [column] = utils.random_string()}
   end
   return true
@@ -36,11 +38,25 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
     name = { type = "string", required = true },
     client_id = { type = "string", required = false, unique = true, func = generate_if_missing },
     client_secret = { type = "string", required = false, unique = true, func = generate_if_missing },
+    client_secret_hash = { type = "string", required = false },
     redirect_uri = { type = "array", required = true, func = validate_uris },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },
   marshall_event = function(self, t)
     return { id = t.id, consumer_id = t.consumer_id, client_id = t.client_id }
+  end,
+  to_dao_transform = function(self, dao, plugin_t, is_update)
+    local plugin_copy = utils.shallow_copy(plugin_t)
+    plugin_copy.client_secret_hash = bcrypt.digest(plugin_t.client_secret, BCRYPT_ROUNDS)
+    plugin_copy.client_secret = nil
+    return plugin_copy
+  end,
+  from_dao_transform = function(self, dao, original_model, transformed_model, dao_result, is_update)
+    if original_model.client_secret then
+      dao_result.client_secret = original_model.client_secret
+    end
+    dao_result.client_secret_hash = nil
+    return dao_result
   end
 }
 

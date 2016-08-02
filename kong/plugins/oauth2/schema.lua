@@ -1,13 +1,11 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
-local stringy = require "stringy"
-local utils = require "kong.tools.utils"
 local bcrypt = require "bcrypt"
 
 local BCRYPT_ROUNDS = 12
 
 local function generate_if_missing(v, t, column)
-  if not v or stringy.strip(v) == "" then
+  if not v or utils.strip(v) == "" then
     return true, nil, { [column] = utils.random_string()}
   end
   return true
@@ -18,9 +16,6 @@ local function check_mandatory_scope(v, t)
     return false, "To set a mandatory scope you also need to create available scopes"
   end
   return true
-end
-
-local function marshall_event(conf)
 end
 
 return {
@@ -58,7 +53,7 @@ return {
       config.provision_key_hash = bcrypt.digest(config.provision_key, BCRYPT_ROUNDS)
       config.provision_key = nil
       return plugin_copy
-    end
+  end
     return plugin_t
   end,
   from_dao_transform = function (schema, dao, original_plugin_t, transformed_plugin_t, dao_result, is_update)

@@ -11,15 +11,12 @@ end
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.prepare_prefix()
     assert(helpers.start_kong())
-
     client = assert(helpers.admin_client())
   end)
   teardown(function()
     if client then client:close() end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   describe("/apis", function()

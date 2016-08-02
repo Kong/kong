@@ -138,6 +138,10 @@ local function check_and_infer(conf)
     if type(value) == "string" then
       -- default type is string, and an empty if unset
       value = value ~= "" and tostring(value) or nil
+      if value then
+        value = string.gsub(value, "#.-$", "")
+        value = pl_stringx.strip(value)
+      end
     end
 
     typ = typ or "string"
