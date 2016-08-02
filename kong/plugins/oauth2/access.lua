@@ -44,7 +44,7 @@ local function verify_secure_value(plainStoredValue, digestStoredValue, provided
   if not digestStoredValue then
     return plainStoredValue == providedValue
   else 
-    return bcrypt.verify(providedValue, storedValue)
+    return bcrypt.verify(providedValue, digestStoredValue)
   end
 end
 
@@ -293,7 +293,7 @@ local function issue_token(conf)
       end
     end
 
-    if client and client.client_secret ~= client_secret then
+    if client and not verify_secure_value(client.client_secret, client.client_secret_hash, client_secret) then
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
