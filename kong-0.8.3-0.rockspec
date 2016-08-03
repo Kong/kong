@@ -11,7 +11,7 @@ description = {
   license = "MIT"
 }
 dependencies = {
-  "luasec ~> 0.5-2",
+  "luasec ~> 0.6-1",
 
   "penlight ~> 1.3.2",
   "lua-resty-http ~> 0.07-0",
