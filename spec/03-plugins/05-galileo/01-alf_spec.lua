@@ -463,21 +463,15 @@ describe("ALF serializer", function()
       _G.ngx.resp.get_headers = function()
         return {}
       end
+      _G.ngx.req.get_uri_args = function()
+        return {}
+      end
       reload_alf_serializer()
       local alf = alf_serializer.new()
       assert(alf:add_entry(_ngx))
       local json_encoded_alf = assert(alf:serialize("abcd"))
       assert.matches('"headers":[]', json_encoded_alf, nil, true)
-    end)
-    -- @TODO: get rid of once lua-cjson gets a release including
-    -- granular 'empty table as arrays'
-    it("limits ALF sizes to 20MB", function()
-      local alf = alf_serializer.new(true)
-      local body_12mb = string.rep(".", 21 * 2^20)
-      assert(alf:add_entry(_ngx, body_12mb))
-      local json_encoded_alf, err = alf:serialize("abcd")
-      assert.equal("ALF too large (> 20MB)", err)
-      assert.is_nil(json_encoded_alf)
+      assert.matches('"queryString":[]', json_encoded_alf, nil, true)
     end)
     it("handles nil environment", function()
       local alf = alf_serializer.new()
