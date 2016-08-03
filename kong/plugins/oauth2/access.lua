@@ -430,19 +430,19 @@ function _M.execute(conf)
 
   local accessToken = parse_access_token(conf);
   if not accessToken then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 
   local token = retrieve_token(accessToken)
   if not token then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
     end
   end
 

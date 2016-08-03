@@ -32,8 +32,9 @@ local http_version = ngx.req.http_version
 local setmetatable = setmetatable
 local tonumber = tonumber
 local os_date = os.date
-local type = type
 local pairs = pairs
+local type = type
+local gsub = string.gsub
 
 local _M = {
   _VERSION = "2.0.0",
@@ -195,19 +196,21 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
 end
 
 local buf = {
-   version = _M._ALF_VERSION,
-   serviceToken = nil,
-   environment = nil,
-   har = {
-     log = {
-       creator = {
-         name = _M._ALF_CREATOR,
-         version = _M._VERSION
-       },
-       entries = nil
-     }
-   }
- }
+  version = _M._ALF_VERSION,
+  serviceToken = nil,
+  environment = nil,
+  har = {
+    log = {
+      creator = {
+        name = _M._ALF_CREATOR,
+        version = _M._VERSION
+      },
+      entries = nil
+    }
+  }
+}
+
+local _alf_max_size = 20 * 2^20
 
 --- Encode the current ALF to JSON
 -- @param[type=string] service_token The ALF `serviceToken`
@@ -226,7 +229,12 @@ function _M:serialize(service_token, environment)
   buf.environment = environment
   buf.har.log.entries = self.entries
 
-  return cjson.encode(buf)
+  local json = cjson.encode(buf)
+  if #json > _alf_max_size then
+    return nil, "ALF too large (> 20MB)"
+  end
+
+  return gsub(json, "\\/", "/"), #self.entries
 end
 
 --- Empty the ALF

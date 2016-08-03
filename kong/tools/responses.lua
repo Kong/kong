@@ -27,7 +27,7 @@ local server_header = meta._NAME.."/"..meta._VERSION
 --- Define the most common HTTP status codes for sugar methods.
 -- Each of those status will generate a helper method (sugar)
 -- attached to this exported module prefixed with `send_`.
--- Final signature of those methods will be `send_<status_code_key>(message, raw, headers)`. See @{send} for more details on those parameters.
+-- Final signature of those methods will be `send_<status_code_key>(message, headers)`. See @{send} for more details on those parameters.
 -- @field HTTP_OK 200 OK
 -- @field HTTP_CREATED 201 Created
 -- @field HTTP_NO_CONTENT 204 No Content
@@ -94,10 +94,8 @@ local function send_response(status_code)
   -- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
   -- @see https://github.com/openresty/lua-nginx-module
   -- @param content (Optional) The content to send as a response.
-  -- @param raw     (Optional) A boolean defining if the `content` should not be serialized to JSON
-  --                             This useed to send text as JSON in some edge-cases of cjson.
   -- @return ngx.exit (Exit current context)
-  return function(content, raw, headers)
+  return function(content, headers)
     if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       if content then
         ngx.log(ngx.ERR, tostring(content))
@@ -118,15 +116,10 @@ local function send_response(status_code)
       content = response_default_content[status_code](content)
     end
 
-    if raw then
-      -- When we want to send an empty array, such as "{\"data\":[]}"
-      -- cjson has a flaw and encodes a Lua `{}` as a JSON `{}`.
-      -- This allows to send plain string JSON as "[]".
-      ngx.say(content)
-    elseif (type(content) == "table") then
+    if type(content) == "table" then
       ngx.say(cjson.encode(content))
     elseif content then
-      ngx.say(cjson.encode({ message = content }))
+      ngx.say(cjson.encode {message = content})
     end
 
     return ngx.exit(status_code)
@@ -148,17 +141,16 @@ local closure_cache = {}
 -- @see ngx.say
 -- @see ngx.exit
 -- @param[type=number] status_code HTTP status code to send
--- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property. Except if the `raw` parameter is set to `true`.
--- @param[type=boolean] raw If true, send the `body` as it is.
+-- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property.
 -- @param[type=table] headers Response headers to send.
 -- @return ngx.exit (Exit current context)
-function _M.send(status_code, body, raw, headers)
+function _M.send(status_code, body, headers)
   local res = closure_cache[status_code]
   if not res then
     res = send_response(status_code)
     closure_cache[status_code] = res
   end
-  return res(body, raw, headers)
+  return res(body, headers)
 end
 
 return _M

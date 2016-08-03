@@ -329,7 +329,23 @@ describe("Admin API", function()
         })
         assert.res_status(200, res)
       end)
+
+      describe("empty results", function()
+        setup(function()
+          helpers.dao:truncate_tables()
+        end)
+
+        it("data property is an empty array", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis"
+          })
+          local body = assert.res_status(200, res)
+          assert.equal([[{"data":[],"total":0}]], body)
+        end)
+      end)
     end)
+
     it("returns 405 on invalid method", function()
       local methods = {"DELETE"}
       for i = 1, #methods do
@@ -974,6 +990,52 @@ describe("Admin API", function()
           end)
         end)
       end)
+    end)
+  end)
+
+  describe("request size", function()
+    setup(function()
+      assert(helpers.dao.apis:insert {
+        name = "my-cool-api",
+        request_host = "my.api.com",
+        upstream_url = "http://api.com"
+      })
+    end)
+    it("handles req bodies < 10MB", function()
+      local ip = "204.48.16.0"
+      local n = 2^20 / #ip
+      local buf = {}
+      for i = 1, n do buf[#buf+1] = ip end
+      local ips = table.concat(buf, ",")
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/apis/my-cool-api/plugins",
+        body = {
+          name = "ip-restriction",
+          ["config.blacklist"] = ips
+        },
+        headers = {["Content-Type"] = "application/json"}
+      })
+      assert.res_status(201, res)
+    end)
+    it("fails with req bodies 10MB", function()
+      local ip = "204.48.16.0"
+      local n = 11 * 2^20 / #ip
+      local buf = {}
+      for i = 1, n do buf[#buf+1] = ip end
+      local ips = table.concat(buf, ",")
+
+      local res = assert(client:send {
+        method = "POST",
+        path = "/apis/my-cool-api/plugins",
+        body = {
+          name = "ip-restriction",
+          ["config.blacklist"] = ips
+        },
+        headers = {["Content-Type"] = "application/json"}
+      })
+      assert.res_status(413, res)
     end)
   end)
 end)
