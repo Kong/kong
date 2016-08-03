@@ -18,6 +18,8 @@ local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local event_types = require("kong.core.events").TYPES
 
+local RANDOM_VALUE = utils.random_string()
+
 local function check_arg(arg, arg_n, exp_type)
   if type(arg) ~= exp_type then
     local info = debug.getinfo(2)
@@ -40,7 +42,7 @@ local function check_utf8(tbl, arg_n)
   if tbl then
     for k, v in pairs(tbl) do
       if not utils.validate_utf8(v) then
-        tbl[k] = utils.random_string() -- Force a random string
+        tbl[k] = RANDOM_VALUE -- Force a random string
       end
     end
   end
