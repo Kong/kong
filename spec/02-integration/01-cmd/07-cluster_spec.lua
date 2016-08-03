@@ -21,7 +21,7 @@ describe("kong cluster", function()
     assert.equal(26, #stdout) -- 24 + \r\n
   end)
   it("generates a key from config file", function()
-    local _, stderr, stdout = assert(helpers.kong_exec "cluster keygen --conf "..helpers.test_conf_path)
+    local _, stderr, stdout = assert(helpers.kong_exec("cluster keygen --conf "..helpers.test_conf_path))
     assert.equal("", stderr)
     assert.equal(26, #stdout) -- 24 + \r\n
   end)

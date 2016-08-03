@@ -37,7 +37,8 @@ describe("kong restart", function()
   it("restarts if already running from --prefix", function()
     local env = {
       dnsmasq = true,
-      dns_resolver = ""
+      dns_resolver = "",
+      pg_database = helpers.test_conf.pg_database
     }
 
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, env))
