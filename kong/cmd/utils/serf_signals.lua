@@ -113,15 +113,14 @@ function _M.stop(kong_config, dao)
   local serf = Serf.new(kong_config, dao)
 
   log.verbose("invoking Serf leave")
-  local ok, err = serf:leave()
-  if not ok then return nil, err end
+  serf:leave()
 
   log.verbose("stopping Serf agent at %s", kong_config.serf_pid)
-  local code, res = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
+  local code = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
   if code == 256 then -- If no error is returned
     pl_file.delete(kong_config.serf_pid)
   end
-  return code, res
+  return true
 end
 
 return _M

@@ -85,7 +85,7 @@ function Serf:cleanup()
   -- (due to an inconsistency caused by a crash)
   local _, err = self.dao.nodes:delete {name = self.node_name }
   if err then return nil, tostring(err) end
-  
+
   return true
 end
 
