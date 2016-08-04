@@ -476,10 +476,23 @@ local function res_status(state, args)
   if expected ~= res.status then
     local body, err = res:read_body()
     if not body then body = "Error reading body: "..err end
-    table.insert(args, 1, body)
+    table.insert(args, 1, pl_stringx.strip(body))
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
+    if res.status == 500 then
+      -- on HTTP 500, we can try to read the server's error logs
+      -- for debugging purposes (very useful for travis)
+      local str = pl_file.read(conf.nginx_err_logs)
+      local str_t = pl_stringx.split(str, "\n")
+      local first_line = #str_t - math.min(20, #str_t) + 1
+      local msg = "\nError logs ("..conf.nginx_err_logs.."): \n"
+      for i = first_line, #str_t do
+        msg = msg .. str_t[i] .. "\n"
+      end
+      table.insert(args, 4, msg)
+      args.n = 4
+    end
     return false
   else
     local body, err = res:read_body()
@@ -501,7 +514,7 @@ Status received:
 %s
 Body:
 %s
-]])
+%s]])
 say:set("assertion.res_status.positive", [[
 Invalid response status code.
 Status not expected:
@@ -510,7 +523,7 @@ Status received:
 %s
 Body:
 %s
-]])
+%s]])
 luassert:register("assertion", "status", res_status,
                   "assertion.res_status.negative", "assertion.res_status.positive")
 luassert:register("assertion", "res_status", res_status,     -- TODO: remove this, for now will break too many existing tests
