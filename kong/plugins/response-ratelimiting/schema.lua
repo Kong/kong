@@ -36,7 +36,13 @@ end
 return {
   fields = {
     header_name = { type = "string", default = "x-kong-limit" },
-    continue_on_error = { type = "boolean", default = false },
+    limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
+    policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
+    cluster_fault_tolerant = { type = "boolean", default = true },
+    redis_host = { type = "string" },
+    redis_port = { type = "number", default = 6379 },
+    redis_password = { type = "string" },
+    redis_timeout = { type = "number", default = 2000 },
     block_on_first_violation = { type = "boolean", default = false},
     limits = { type = "table",
       schema = {
@@ -61,6 +67,16 @@ return {
         if not ok then
           return false, err
         end
+      end
+    end
+
+    if plugin_t.policy == REDIS then
+      if not plugin_t.redis_host then
+        return false, Errors.schema "You need to specify a Redis host"
+      elseif not plugin_t.redis_port then
+        return false, Errors.schema "You need to specify a Redis port"
+      elseif not plugin_t.redis_timeout then
+        return false, Errors.schema "You need to specify a Redis timeout"
       end
     end
 
