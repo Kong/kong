@@ -791,7 +791,7 @@ return {
     local ok, err = kong_exec("stop --prefix "..prefix)
     dao:truncate_tables()
     if not preserve_prefix then
-      clean_prefix(prefix)
+      --clean_prefix(prefix)
     end
     return ok, err
   end,

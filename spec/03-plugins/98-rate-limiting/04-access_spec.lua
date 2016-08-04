@@ -1,9 +1,9 @@
 local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
-local REDIS_HOST = "pub-redis-19911.us-east-1-2.4.ec2.garantiadata.com"
-local REDIS_PORT = 19911
-local REDIS_PASSWORD = "kongspecredis"
+local REDIS_HOST = "127.0.0.1"
+local REDIS_PORT = 6379
+local REDIS_PASSWORD = ""
 
 local SLEEP_TIME = 1
 
