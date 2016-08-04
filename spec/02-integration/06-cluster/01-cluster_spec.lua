@@ -153,7 +153,11 @@ describe("Cluster", function()
 
       -- We need to wait a few seconds for the async job to kick in and join all the nodes together
       helpers.wait_until(function()
-        local _, _, stdout = assert(helpers.execute("serf members -format=json -rpc-addr="..NODES.servroot1.cluster_listen_rpc))
+        local _, _, stdout = assert(helpers.execute(
+                                 string.format("%s members -format=json -rpc-addr=%s",
+                                   helpers.test_conf.serf_path, NODES.servroot1.cluster_listen_rpc)
+                               )
+                             )
         return #cjson.decode(stdout).members == 3
       end, 5)
 
@@ -344,10 +348,11 @@ describe("Cluster", function()
       assert(node_name, "node_name is nil")
 
       -- The member has now failed, let's bring it up again
-      assert(helpers.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
+      assert(helpers.execute(string.format("%s agent -profile=wan -node=%s -rpc-addr=%s"
                              .." -bind=%s -event-handler=member-join,"
                              .."member-leave,member-failed,member-update,"
                              .."member-reap,user:kong=%s > /dev/null &",
+                            helpers.test_conf.serf_path,
                             node_name,
                             NODES.servroot2.cluster_listen_rpc,
                             NODES.servroot2.cluster_listen,

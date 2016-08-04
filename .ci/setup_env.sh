@@ -1,8 +1,8 @@
 set -e
 
-OPENRESTY_INSTALL=$CACHE_DIR/openresty
-LUAROCKS_INSTALL=$CACHE_DIR/luarocks
-SERF_INSTALL=$CACHE_DIR/serf
+export OPENRESTY_INSTALL=$CACHE_DIR/openresty
+export LUAROCKS_INSTALL=$CACHE_DIR/luarocks
+export SERF_INSTALL=$CACHE_DIR/serf
 
 mkdir -p $CACHE_DIR
 
@@ -92,3 +92,7 @@ if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
   ccm status
 fi
 
+nginx -V
+resty -V
+luarocks --version
+serf version

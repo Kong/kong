@@ -1,8 +1,7 @@
-#!/bin/bash
-
 set -e
 
 export BUSTED_ARGS="-o gtest -v --exclude-tags=ci"
+export TEST_CMD="KONG_SERF_PATH=$SERF_INSTALL/serf bin/busted $BUSTED_ARGS"
 
 if [ "$TEST_SUITE" == "lint" ]; then
   make lint

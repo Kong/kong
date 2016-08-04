@@ -622,7 +622,8 @@ describe("Core Hooks", function()
       }
       setmetatable(args, require "kong.tools.printable")
 
-      local cmd = string.format("nohup serf agent %s > %s 2>&1 & echo $! > %s",
+      local cmd = string.format("nohup %s agent %s > %s 2>&1 & echo $! > %s",
+                  helpers.test_conf.serf_path,
                   tostring(args),
                   LOG_FILE, PID_FILE)
 

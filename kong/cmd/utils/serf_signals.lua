@@ -11,15 +11,14 @@ local log = require "kong.cmd.utils.log"
 local version = require "version"
 local fmt = string.format
 
-local serf_bin_name = "serf"
 local serf_event_name = "kong"
 local serf_version_command = " version"                -- commandline param to get version
 local serf_version_pattern = "^Serf v([%d%.]+)"        -- pattern to grab version from output
 local serf_compatible = version.set("0.7.0", "0.7.0")  -- compatible from-to versions
 local start_timeout = 5
 
-local function check_serf_bin()
-  local cmd = fmt("%s %s", serf_bin_name, serf_version_command)
+local function check_serf_bin(kong_config)
+  local cmd = fmt("%s %s", kong_config.serf_path, serf_version_command)
   local ok, _, stdout = pl_utils.executeex(cmd)
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
@@ -46,7 +45,7 @@ function _M.start(kong_config, dao)
   end
 
   -- make sure Serf is in PATH
-  local ok, err = check_serf_bin()
+  local ok, err = check_serf_bin(kong_config)
   if not ok then return nil, err end
 
   local serf = Serf.new(kong_config, dao)
@@ -64,7 +63,7 @@ function _M.start(kong_config, dao)
   }, Serf.args_mt)
 
   local cmd = string.format("nohup %s agent %s > %s 2>&1 & echo $! > %s",
-                            serf_bin_name, tostring(args),
+                            kong_config.serf_path, tostring(args),
                             kong_config.serf_log, kong_config.serf_pid)
 
   log.debug("starting Serf agent: %s", cmd)

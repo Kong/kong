@@ -34,8 +34,12 @@ function Serf:invoke_signal(signal, args, no_rpc)
     setmetatable(args, Serf.args_mt)
   end
   local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
-  local cmd = string.format("serf %s %s %s", signal, rpc, tostring(args))
-  local ok, code, stdout = pl_utils.executeex(cmd)
+  local cmd = string.format("%s %s %s %s", self.config.serf_path, signal, rpc, tostring(args))
+  local ok, code, stdout, stderr = pl_utils.executeex(cmd)
+  if not ok or code ~= 0 then
+    ngx.log(ngx.ERR, pl_utils.executeex('echo $PATH'))
+    ngx.log(ngx.ERR, "ok: ", ok, " code: ", code, " stdout: ", stdout, " stderr: ", stderr)
+  end
   if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 
   return stdout

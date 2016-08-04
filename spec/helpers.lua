@@ -480,19 +480,26 @@ local function res_status(state, args)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
+
     if res.status == 500 then
       -- on HTTP 500, we can try to read the server's error logs
       -- for debugging purposes (very useful for travis)
       local str = pl_file.read(conf.nginx_err_logs)
-      local str_t = pl_stringx.split(str, "\n")
-      local first_line = #str_t - math.min(20, #str_t) + 1
-      local msg = "\nError logs ("..conf.nginx_err_logs.."): \n"
-      for i = first_line, #str_t do
-        msg = msg .. str_t[i] .. "\n"
+      if not str then
+        return false -- no err logs to read in this prefix
       end
-      table.insert(args, 4, msg)
+
+      local str_t = pl_stringx.splitlines(str)
+      local first_line = #str_t - math.min(20, #str_t) + 1
+      local msg_t = {"\nError logs ("..conf.nginx_err_logs.."):"}
+      for i = first_line, #str_t do
+        msg_t[#msg_t+1] = str_t[i]
+      end
+
+      table.insert(args, 4, table.concat(msg_t, "\n"))
       args.n = 4
     end
+
     return false
   else
     local body, err = res:read_body()
@@ -729,6 +736,7 @@ end
 local function kong_exec(cmd, env)
   cmd = cmd or ""
   env = env or {}
+  env.serf_path = conf.serf_path
 
   local env_vars = ""
   for k, v in pairs(env) do

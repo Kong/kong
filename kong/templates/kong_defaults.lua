@@ -52,4 +52,5 @@ lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua
 lua_package_cpath = NONE
+serf_path = serf
 ]]
