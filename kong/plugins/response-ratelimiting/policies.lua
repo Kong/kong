@@ -8,7 +8,7 @@ local pairs = pairs
 local fmt = string.format
 
 local get_local_key = function(api_id, identifier, period_date, name, period)
-  return fmt("ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
+  return fmt("response-ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
 end
 
 local EXPIRATIONS = {

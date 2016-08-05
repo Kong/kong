@@ -29,7 +29,7 @@ local function flush_redis()
   end
 
   if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
-    local ok, err = red:auth(conf.redis_password)
+    local ok, err = red:auth(REDIS_PASSWORD)
     if not ok then
       error("failed to connect to Redis: ", err)
     end
@@ -427,7 +427,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         end)
       end)
 
-    elseif policy == "local" or policy == "redis" then -- Uncomment when TTLs have been implemented in Cassandra and Postgres
+    elseif policy == "local" then -- Uncomment when TTLs have been implemented in Cassandra and Postgres
       describe("Expirations", function()
         local api
         setup(function()
@@ -444,7 +444,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             name = "rate-limiting",
             api_id = api.id,
             config = {
-              second = 6,
+              minute = 6,
               policy = policy,
               redis_host = REDIS_HOST,
               redis_port = REDIS_PORT,
@@ -465,21 +465,21 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
-          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-second"]))
-          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-second"]))
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.second, "second")
+            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
           })
           local body = assert.res_status(200, res)
           assert.equal([[{"message":1}]], body)
 
-          ngx.sleep(SLEEP_TIME) -- Wait for counter to expire
+          ngx.sleep(61) -- Wait for counter to expire
 
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.second, "second")
+            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
           })
           assert.res_status(404, res)
         end)
