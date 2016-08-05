@@ -1,6 +1,8 @@
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 
+local REDIS = "redis"
+
 local function check_ordered_limits(limit_value)
   local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}
   local has_value

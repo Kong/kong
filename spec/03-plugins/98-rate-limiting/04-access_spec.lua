@@ -19,9 +19,30 @@ end
 
 wait() -- Wait before starting
 
+local function flush_redis()
+  local redis = require "resty.redis"
+  local red = redis:new()
+  red:set_timeout(2000)
+  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
+  if not ok then
+    error("failed to connect to Redis: ", err)
+  end
+
+  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
+    local ok, err = red:auth(conf.redis_password)
+    if not ok then
+      error("failed to connect to Redis: ", err)
+    end
+  end
+
+  red:flushall()
+  red:close()
+end
+
 for i, policy in ipairs({"local", "cluster", "redis"}) do
   describe("Plugin: rate-limiting (access) with policy: "..policy, function()
     setup(function()
+      flush_redis()
       helpers.dao:drop_schema()
       assert(helpers.dao:run_migrations())
       assert(helpers.start_kong())
@@ -252,7 +273,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
-
         end)
       end)
       describe("Plugin customized for specific consumer", function()
@@ -407,7 +427,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         end)
       end)
 
-    elseif policy == "local" then -- Uncomment when TTLs have been implemented in Cassandra and Postgres
+    elseif policy == "local" or policy == "redis" then -- Uncomment when TTLs have been implemented in Cassandra and Postgres
       describe("Expirations", function()
         local api
         setup(function()

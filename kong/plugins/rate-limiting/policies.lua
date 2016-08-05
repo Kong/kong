@@ -5,12 +5,12 @@ local redis = require "resty.redis"
 local ngx_log = ngx.log
 
 local pairs = pairs
+local fmt = string.format
 
-local get_local_key = function(api_id, identifier, period_date, period)
-  return string.format("ratelimit:%s:%s:%s:%s", api_id, identifier, period_date, period)
+local get_local_key = function(api_id, identifier, period_date, name, period)
+  return fmt("ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
 end
 
---TODO: Check that it really expires
 local EXPIRATIONS = {
   second = 1,
   minute = 60,
