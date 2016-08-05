@@ -1,8 +1,8 @@
-local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
+local singletons = require "kong.singletons"
 
 local math_abs = math.abs
 local ngx_time = ngx.time
@@ -14,7 +14,7 @@ local ngx_set_header = ngx.req.set_header
 local ngx_set_headers = ngx.req.get_headers
 local ngx_log = ngx.log
 
-local split = stringy.split
+local split = utils.split
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -184,6 +184,7 @@ function _M.execute(conf)
   ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.req.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_consumer = consumer
 end
 
 return _M

@@ -8,9 +8,11 @@
 -- and is responsible for propagating clustering events related to data invalidation,
 -- as well as foreign constraints when the underlying database does not support them
 -- (as with Cassandra).
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.dao
 
-local Object = require "classic"
+local Object = require "kong.vendor.classic"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local event_types = require("kong.core.events").TYPES
@@ -319,6 +321,10 @@ function DAO:delete(tbl)
     end
   end
   return row, err
+end
+
+function DAO:truncate()
+  return self.db:truncate_table(self.table)
 end
 
 return DAO

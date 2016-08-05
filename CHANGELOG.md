@@ -1,5 +1,54 @@
 ## [Unreleased][unreleased]
 
+The main focus of this release is Kong's new CLI. With a simpler configuration file, new settings, environment variables support, new commands as well as a new interpreter, the new CLI gives more power and flexibility to Kong users and allow for an easier integration in your deployment workflow, as well as better testing for developers and plugins authors. Additionally, some new plugins and performance improvements are included as well as the regular bug fixes.
+
+### Changed
+
+- :warning: New CLI, with new commands and refined arguments. This new CLI uses the `resty-cli` interpreter (see [lua-resty-cli](https://github.com/openresty/resty-cli)) instead of LuaJIT. As a result, the `resty` executable must be available in your `$PATH` (resty-cli is shipped in the OpenResty bundle) as well as the `bin/kong` executable. Kong does not rely on Luarocks installing the `bin/kong` executable anymore. This change of behavior is taken care of if you are using one of the official Kong packages.
+- :warning: Kong uses a new configuration file, with an easier syntax than the previous YAML file.
+- New arguments for the CLI, such as verbose, debug and tracing flags. We also avoid requiring the configuration file as an argument to each command as per the previous CLI.
+- Customization of the Nginx configuration can now be taken care of using two different approaches: with a custom Nginx configuration template and using `kong start --template <file>`, or by using `kong compile` to generate the Kong Nginx sub-configuration, and `include` it in a custom Nginx instance.
+- Plugins:
+  - Rate Limiting: the `continue_on_error` property is now called `cluster_fault_tolerant`.
+  - Response Rate Limiting: the `continue_on_error` property is now called `cluster_fault_tolerant`.
+
+### Added
+
+- :fireworks: Support for overriding configuration settings with environment variables.
+- :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Mashape/kong/pull/1425)
+- :fireworks: Ability to apply plugins with more granularity: per-consumer, and global plugins are now possible. [#1403](https://github.com/Mashape/kong/pull/1403)
+- New `kong check` command: validates a Kong configuration file.
+- Better version check for third-party dependencies (OpenResty, Serf, dnsmasq). [#1307](https://github.com/Mashape/kong/pull/1307)
+- Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Mashape/kong/pull/1420)
+- `request_host`: internationalized url support; utf-8 domain names through punycode support and paths through %-encoding. [#1300](https://github.com/Mashape/kong/issues/1300)
+- Implements caching locks when fetching database configuration (APIs, Plugins...) to avoid dog pile effect on cold nodes. [#1402](https://github.com/Mashape/kong/pull/1402)
+- Plugins:
+  - Bot Detection: Added a new plugin that protects APIs by detecting common bots and crawlers. [#1413](https://github.com/Mashape/kong/pull/1413)
+  - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Mashape/kong/pull/1288)
+  - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
+  - Rate Limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
+  - Response Rate Limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
+
+### Removed
+
+- We now use [lua-resty-jit-uuid](https://github.com/thibaultCha/lua-resty-jit-uuid) for UUID generation, which is a pure Lua implementation of [RFC 4122](https://www.ietf.org/rfc/rfc4122.txt). As a result, libuuid is not a dependency of Kong anymore.
+
+### Fixed
+
+- Sensitive configuration settings are not printed to stdout anymore. [#1256](https://github.com/Mashape/kong/issues/1256)
+- Fixed bug that caused nodes to remove themselves from the database when they attempted to join the cluster. [#1437](https://github.com/Mashape/kong/pull/1437)
+- Plugins:
+  - request-size-limiting: use proper constant for MB units while setting the size limit. [#1416](https://github.com/Mashape/kong/pull/1416)
+  - OAuth2: security and config validation fixes. [#1409](https://github.com/Mashape/kong/pull/1409) [#1112](https://github.com/Mashape/kong/pull/1112)
+  - request/response-transformer: better validation of fields provided without a value. [#1399](https://github.com/Mashape/kong/pull/1399)
+  - JWT: handle some edge-cases that could result in HTTP 500 errors. [#1362](https://github.com/Mashape/kong/pull/1362)
+
+> **internal**
+> - new test suite using resty-cli and removing the need to monkey-patch the `ngx` global.
+> - custom assertions and new helper methods (`wait_until()`) to gracefully fail in case of timeout.
+> - increase atomicity of the testing environment.
+> - lighter testing instance, only running 1 worker and not using dnsmasq by default.
+
 ## [0.8.3] - 2016/06/01
 
 This release includes some bugfixes:

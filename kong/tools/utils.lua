@@ -4,12 +4,16 @@
 -- NOTE: Before implementing a function here, consider if it will be used in many places
 -- across Kong. If not, a local function in the appropriate module is prefered.
 --
+-- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
+-- @module kong.tools.utils
 
 local url = require "socket.url"
-local uuid = require "lua_uuid"
-local stringy = require "stringy"
+local uuid = require "resty.jit-uuid"
+local pl_stringx = require "pl.stringx"
 local ffi = require "ffi"
 
+local fmt = string.format
 local type = type
 local pairs = pairs
 local ipairs = ipairs
@@ -18,7 +22,6 @@ local table_sort = table.sort
 local table_concat = table.concat
 local table_insert = table.insert
 local string_find = string.find
-local string_format = string.format
 
 ffi.cdef[[
 int gethostname(char *name, size_t len);
@@ -49,15 +52,20 @@ function _M.get_hostname()
   return result
 end
 
+local v4_uuid = uuid.generate_v4
 
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
-  return uuid():gsub("-", "")
+  return v4_uuid():gsub("-", "")
 end
 
-_M.split = stringy.split
-_M.strip = stringy.strip
+function _M.is_valid_uuid(str)
+  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
+end
+
+_M.split = pl_stringx.split
+_M.strip = pl_stringx.strip
 
 --- URL escape and format key and value
 -- An obligatory url.unescape pass must be done to prevent double-encoding
@@ -72,7 +80,7 @@ local function encode_args_value(key, value, raw)
       value = url.unescape(value)
       value = url.escape(value)
     end
-    return string_format("%s=%s", key, value)
+    return fmt("%s=%s", key, value)
   else
     return key
   end
@@ -119,30 +127,30 @@ function _M.encode_args(args, raw)
 end
 
 --- Checks whether a request is https or was originally https (but already terminated).
--- It will check in the current request (global `ngx` table). If the header `X-Forwarded-Proto` exists 
--- with value `https` then it will also be considered as an https connection. 
--- @param allow_terminated if truthy, the `X-Forwarded-Proto` header will be checked as well. 
+-- It will check in the current request (global `ngx` table). If the header `X-Forwarded-Proto` exists
+-- with value `https` then it will also be considered as an https connection.
+-- @param allow_terminated if truthy, the `X-Forwarded-Proto` header will be checked as well.
 -- @return boolean or nil+error in case the header exists multiple times
 _M.check_https = function(allow_terminated)
   if ngx.var.scheme:lower() == "https" then
     return true
   end
-  
+
   if not allow_terminated then
     return false
   end
-  
+
   local forwarded_proto_header = ngx.req.get_headers()["x-forwarded-proto"]
   if tostring(forwarded_proto_header):lower() == "https" then
     return true
   end
-  
+
   if type(forwarded_proto_header) == "table" then
     -- we could use the first entry (lower security), or check the contents of each of them (slow). So for now defensive, and error
     -- out on multiple entries for the x-forwarded-proto header.
     return nil, "Only one X-Forwarded-Proto header allowed"
   end
-  
+
   return false
 end
 
@@ -167,6 +175,9 @@ end
 -- @param t2 The second table
 -- @return The (new) merged table
 function _M.table_merge(t1, t2)
+  if not t1 then t1 = {} end
+  if not t2 then t2 = {} end
+
   local res = {}
   for k,v in pairs(t1) do res[k] = v end
   for k,v in pairs(t2) do res[k] = v end

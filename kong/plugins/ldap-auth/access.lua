@@ -1,7 +1,6 @@
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local cache = require "kong.tools.database_cache"
-local base64 = require "base64"
 local ldap = require "kong.plugins.ldap-auth.ldap"
 
 local match = string.match
@@ -9,6 +8,7 @@ local ngx_log = ngx.log
 local request = ngx.req
 local ngx_error = ngx.ERR
 local ngx_debug = ngx.DEBUG
+local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
 local tostring =  tostring
 
@@ -23,7 +23,7 @@ local function retrieve_credentials(authorization_header_value, conf)
     local cred = match(authorization_header_value, "%s*[ldap|LDAP]%s+(.*)")
 
     if cred ~= nil then
-      local decoded_cred = base64.decode(cred)
+      local decoded_cred = decode_base64(cred)
       username, password = match(decoded_cred, "(.+):(.+)")
     end
   end

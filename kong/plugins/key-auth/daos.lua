@@ -1,8 +1,7 @@
 local utils = require "kong.tools.utils"
-local stringy = require "stringy"
 
 local function generate_if_missing(v, t, column)
-  if not v or stringy.strip(v) == "" then
+  if not v or utils.strip(v) == "" then
     return true, nil, {[column] = utils.random_string()}
   end
   return true

@@ -1,5 +1,5 @@
 local url = require "socket.url"
-local stringy = require "stringy"
+local utils = require "kong.tools.utils"
 
 local fmt = string.format
 local sub = string.sub
@@ -18,8 +18,8 @@ local function validate_upstream_url_protocol(value)
 end
 
 local function check_request_host_and_path(api_t)
-  local request_host = type(api_t.request_host) == "string" and stringy.strip(api_t.request_host) or ""
-  local request_path = type(api_t.request_path) == "string" and stringy.strip(api_t.request_path) or ""
+  local request_host = type(api_t.request_host) == "string" and utils.strip(api_t.request_host) or ""
+  local request_path = type(api_t.request_path) == "string" and utils.strip(api_t.request_path) or ""
 
   if request_path == "" and request_host == "" then
     return false, "At least a 'request_host' or a 'request_path' must be specified"
@@ -28,9 +28,7 @@ local function check_request_host_and_path(api_t)
   return true
 end
 
-local host_allowed_chars = "[%d%a%-%.%_]"
-local ext_allowed_chars = "[%d%a]"
-local dns_pattern = "^"..host_allowed_chars.."+%."..ext_allowed_chars..ext_allowed_chars.."+$"
+local dns_pattern = "^[%d%a%-%.%_]+$"
 
 local function check_request_host(request_host, api_t)
   local valid, err = check_request_host_and_path(api_t)
@@ -48,8 +46,9 @@ local function check_request_host(request_host, api_t)
       end
 
       -- Reject prefix/trailing dashes and dots in each segment
-      for _, segment in ipairs(stringy.split(request_host, ".")) do
-        if segment == "" or segment:match("^-") or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
+      -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
+      for _, segment in ipairs(utils.split(request_host, ".")) do
+        if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
           return false, "Invalid value: "..request_host
         end
       end
@@ -83,12 +82,20 @@ local function check_request_path(request_path, api_t)
   if request_path ~= nil and request_path ~= "" then
     if sub(request_path, 1, 1) ~= "/" then
       return false, fmt("must be prefixed with slash: '%s'", request_path)
-    elseif match(request_path, "//+") then
+    end
+    if match(request_path, "//+") then
       -- Check for empty segments (/status//123)
       return false, fmt("invalid: '%s'", request_path)
-    elseif not match(request_path, "^/[%w%.%-%_~%/]*$") then
-      -- Check if characters are in RFC 3986 unreserved list
-      return false, "must only contain alphanumeric and '., -, _, ~, /' characters"
+    end
+    if not match(request_path, "^/[%w%.%-%_~%/%%]*$") then
+      -- Check if characters are in RFC 3986 unreserved list, and % for percent encoding
+      return false, "must only contain alphanumeric and '., -, _, ~, /, %' characters"
+    end
+    local esc = request_path:gsub("%%%x%x", "___") -- drop all proper %-encodings
+    if match(esc, "%%") then
+      -- % is remaining, so not properly encoded
+      local err = request_path:sub(esc:find("%%.?.?"))
+      return false, "must use proper encoding; '"..err.."' is invalid"
     end
 
     -- From now on, the request_path is considered valid.
