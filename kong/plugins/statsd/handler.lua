@@ -44,7 +44,11 @@ local gauges = {
       local stat = api_name.."."..string_gsub(message.authenticated_entity.consumer_id, "-", "_")..".request.count"
       logger:counter(stat, 1, 1)    
     end
-  end
+  end,
+  upstream_latency = function (api_name, message, logger)
+    local stat = api_name..".upstream_latency"
+    logger:gauge(stat, message.latencies.proxy, 1)
+  end,
 }
 
 local function log(premature, conf, message)
