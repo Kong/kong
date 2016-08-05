@@ -37,10 +37,10 @@ function Serf:invoke_signal(signal, args, no_rpc)
   local cmd = string.format("%s %s %s %s", self.config.serf_path, signal, rpc, tostring(args))
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then
-    ngx.log(ngx.ERR, pl_utils.executeex('echo $PATH'))
-    ngx.log(ngx.ERR, "ok: ", ok, " code: ", code, " stdout: ", stdout, " stderr: ", stderr)
+    -- always print the first error line of serf
+    local err = stdout ~= "" and pl_stringx.splitlines(stdout)[1] or stderr
+    return nil, err
   end
-  if not ok or code ~= 0 then return nil, pl_stringx.splitlines(stdout)[1] end -- always print the first error line of serf
 
   return stdout
 end

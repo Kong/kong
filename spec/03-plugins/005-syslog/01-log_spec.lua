@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 local cjson = require "cjson"
 local pl_stringx = require "pl.stringx"
 
-describe("Plugin: syslog (log)", function()
+describe("#ci Plugin: syslog (log)", function()
   local client, platform
   setup(function()
     assert(helpers.start_kong())

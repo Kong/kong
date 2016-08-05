@@ -44,11 +44,13 @@ describe("kong restart", function()
     }
 
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, env))
+    ngx.sleep(1)
     local serf_pid = assert(helpers.file.read(helpers.test_conf.serf_pid))
     local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid))
     local dnsmasq_pid = assert(helpers.file.read(helpers.test_conf.dnsmasq_pid))
 
     assert(helpers.kong_exec("restart --prefix "..helpers.test_conf.prefix, env))
+    ngx.sleep(1)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.nginx_pid)), nginx_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.serf_pid)), serf_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.dnsmasq_pid)), dnsmasq_pid)

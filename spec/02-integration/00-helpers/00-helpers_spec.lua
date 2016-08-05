@@ -23,7 +23,7 @@ describe("helpers: assertions and modifiers", function()
   end)
 
   before_each(function()
-    client = helpers.proxy_client(3000)
+    client = helpers.proxy_client(5000)
   end)
   after_each(function()
     if client then client:close() end
