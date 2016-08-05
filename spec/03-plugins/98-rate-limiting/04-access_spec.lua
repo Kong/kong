@@ -1,9 +1,9 @@
 local helpers = require "spec.helpers"
 local timestamp = require "kong.tools.timestamp"
 
-local REDIS_HOST = "pub-redis-19911.us-east-1-2.4.ec2.garantiadata.com"
-local REDIS_PORT = 19911
-local REDIS_PASSWORD = "kongspecredis"
+local REDIS_HOST = "127.0.0.1"
+local REDIS_PORT = 6379
+local REDIS_PASSWORD = ""
 
 local SLEEP_TIME = 1
 
@@ -19,9 +19,30 @@ end
 
 wait() -- Wait before starting
 
+local function flush_redis()
+  local redis = require "resty.redis"
+  local red = redis:new()
+  red:set_timeout(2000)
+  local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
+  if not ok then
+    error("failed to connect to Redis: ", err)
+  end
+
+  if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
+    local ok, err = red:auth(REDIS_PASSWORD)
+    if not ok then
+      error("failed to connect to Redis: ", err)
+    end
+  end
+
+  red:flushall()
+  red:close()
+end
+
 for i, policy in ipairs({"local", "cluster", "redis"}) do
   describe("Plugin: rate-limiting (access) with policy: "..policy, function()
     setup(function()
+      flush_redis()
       helpers.dao:drop_schema()
       assert(helpers.dao:run_migrations())
       assert(helpers.start_kong())
@@ -252,7 +273,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
-
         end)
       end)
       describe("Plugin customized for specific consumer", function()
@@ -424,7 +444,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             name = "rate-limiting",
             api_id = api.id,
             config = {
-              second = 6,
+              minute = 6,
               policy = policy,
               redis_host = REDIS_HOST,
               redis_port = REDIS_PORT,
@@ -445,21 +465,21 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
-          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-second"]))
-          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-second"]))
+          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.second, "second")
+            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
           })
           local body = assert.res_status(200, res)
           assert.equal([[{"message":1}]], body)
 
-          ngx.sleep(SLEEP_TIME) -- Wait for counter to expire
+          ngx.sleep(61) -- Wait for counter to expire
 
           local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.second, "second")
+            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
           })
           assert.res_status(404, res)
         end)

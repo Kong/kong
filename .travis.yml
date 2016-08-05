@@ -1,5 +1,8 @@
 sudo: false
 
+services:
+  - redis-server
+
 notifications:
   email: false
 

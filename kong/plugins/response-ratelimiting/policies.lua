@@ -8,7 +8,7 @@ local pairs = pairs
 local fmt = string.format
 
 local get_local_key = function(api_id, identifier, period_date, name, period)
-  return fmt("ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
+  return fmt("response-ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
 end
 
 local EXPIRATIONS = {
@@ -22,10 +22,10 @@ local EXPIRATIONS = {
 
 return {
   ["local"] = {
-    increment = function(conf, api_id, identifier, current_timestamp, value)
+    increment = function(conf, api_id, identifier, current_timestamp, value, name)
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
-        local cache_key = get_local_key(api_id, identifier, period_date, period)
+        local cache_key = get_local_key(api_id, identifier, period_date, name, period)
         if not cache.rawget(cache_key) then
           cache.rawset(cache_key, 0, EXPIRATIONS[period])
         end
@@ -36,9 +36,9 @@ return {
         end
       end
     end,
-    usage = function(conf, api_id, identifier, current_timestamp, name)
+    usage = function(conf, api_id, identifier, current_timestamp, period, name)
       local periods = timestamp.get_timestamps(current_timestamp)
-      local cache_key = get_local_key(api_id, identifier, periods[name], name)
+      local cache_key = get_local_key(api_id, identifier, periods[period], name, period)
       local current_metric, err = cache.rawget(cache_key)
       if err then
         return nil, err
@@ -47,14 +47,14 @@ return {
     end
   },
   ["cluster"] = {
-    increment = function(conf, api_id, identifier, current_timestamp, value)
-      local _, stmt_err = singletons.dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
+    increment = function(conf, api_id, identifier, current_timestamp, value, name)
+      local _, stmt_err = singletons.dao.response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value, name)
       if stmt_err then
-        ngx_log(ngx.ERR, "failed to increment: ", tostring(stmt_err))
+        ngx_log(ngx.ERR, tostring(stmt_err))
       end
     end,
-    usage = function(conf, api_id, identifier, current_timestamp, name)
-      local current_metric, err = singletons.dao.ratelimiting_metrics:find(api_id, identifier, current_timestamp, name)
+    usage = function(conf, api_id, identifier, current_timestamp, period, name)
+      local current_metric, err = singletons.dao.response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, name)
       if err then
         return nil, err
       end
@@ -62,7 +62,7 @@ return {
     end
   },
   ["redis"] = {
-    increment = function(conf, api_id, identifier, current_timestamp, value)
+    increment = function(conf, api_id, identifier, current_timestamp, value, name)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
       local ok, err = red:connect(conf.redis_host, conf.redis_port)
@@ -81,7 +81,7 @@ return {
 
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
-        local cache_key = get_local_key(api_id, identifier, period_date, period)
+        local cache_key = get_local_key(api_id, identifier, period_date, name, period)
         local exists, err = red:exists(cache_key)
         if err then
           ngx_log(ngx.ERR, "failed to query Redis: ", err)
@@ -109,7 +109,7 @@ return {
         return
       end
     end,
-    usage = function(conf, api_id, identifier, current_timestamp, name)
+    usage = function(conf, api_id, identifier, current_timestamp, period, name)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
       local ok, err = red:connect(conf.redis_host, conf.redis_port)
@@ -127,7 +127,7 @@ return {
       end
 
       local periods = timestamp.get_timestamps(current_timestamp)
-      local cache_key = get_local_key(api_id, identifier, periods[name], name)
+      local cache_key = get_local_key(api_id, identifier, periods[period], name, period)
       local current_metric, err = red:get(cache_key)
       if err then
         return nil, err

@@ -176,6 +176,7 @@ build = {
     ["kong.plugins.response-ratelimiting.header_filter"] = "kong/plugins/response-ratelimiting/header_filter.lua",
     ["kong.plugins.response-ratelimiting.log"] = "kong/plugins/response-ratelimiting/log.lua",
     ["kong.plugins.response-ratelimiting.schema"] = "kong/plugins/response-ratelimiting/schema.lua",
+    ["kong.plugins.response-ratelimiting.policies"] = "kong/plugins/response-ratelimiting/policies.lua",
     ["kong.plugins.response-ratelimiting.dao.cassandra"] = "kong/plugins/response-ratelimiting/dao/cassandra.lua",
     ["kong.plugins.response-ratelimiting.dao.postgres"] = "kong/plugins/response-ratelimiting/dao/postgres.lua",
 
