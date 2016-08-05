@@ -8,6 +8,9 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 - :warning: Kong uses a new configuration file, with an easier syntax than the previous YAML file.
 - New arguments for the CLI, such as verbose, debug and tracing flags. We also avoid requiring the configuration file as an argument to each command as per the previous CLI.
 - Customization of the Nginx configuration can now be taken care of using two different approaches: with a custom Nginx configuration template and using `kong start --template <file>`, or by using `kong compile` to generate the Kong Nginx sub-configuration, and `include` it in a custom Nginx instance.
+- Plugins:
+  - Rate Limiting: the `continue_on_error` property is now called `cluster_fault_tolerant`.
+  - Response Rate Limiting: the `continue_on_error` property is now called `cluster_fault_tolerant`.
 
 ### Added
 
@@ -23,6 +26,8 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
   - Bot Detection: Added a new plugin that protects APIs by detecting common bots and crawlers. [#1413](https://github.com/Mashape/kong/pull/1413)
   - correlation-id: new "tracker" generator, identifying requests per worker and connection. [#1288](https://github.com/Mashape/kong/pull/1288)
   - request/response-transformer: ability to add strings including colon characters. [#1353](https://github.com/Mashape/kong/pull/1353)
+  - Rate Limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
+  - Response Rate Limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
 
 ### Removed
 
