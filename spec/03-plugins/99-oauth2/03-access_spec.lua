@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-describe("Plugin: oauth2 (access)", function()
+describe("#ci Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
   setup(function()

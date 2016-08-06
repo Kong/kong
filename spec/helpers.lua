@@ -34,8 +34,8 @@ local dao = DAOFactory(conf)
 -----------------
 local resty_http_proxy_mt = {}
 
--- Case insensitive lookup function, returns the value and the original key. Or if not
--- found nil and the search key
+-- Case insensitive lookup function, returns the value and the original key. Or
+-- if not found nil and the search key
 -- @usage -- sample usage
 -- local test = { SoMeKeY = 10 }
 -- print(lookup(test, "somekey"))  --> 10, "SoMeKeY"
@@ -90,10 +90,11 @@ end
 -- @section http_client
 
 --- Send a http request. Based on https://github.com/pintsized/lua-resty-http.
--- If `opts.body` is a table and "Content-Type" header contains `application/json`,
--- `www-form-urlencoded`, or `multipart/form-data`, then it will automatically encode the body
--- according to the content type.
--- If `opts.query` is a table, a query string will be constructed from it and appended
+-- If `opts.body` is a table and "Content-Type" header contains
+-- `application/json`, `www-form-urlencoded`, or `multipart/form-data`, then it
+-- will automatically encode the body according to the content type.
+-- If `opts.query` is a table, a query string will be constructed from it and
+-- appended
 -- to the request path (assuming none is already present).
 -- @name http_client:send
 -- @param opts table with options. See https://github.com/pintsized/lua-resty-http
@@ -146,7 +147,8 @@ function resty_http_proxy_mt:send(opts)
 
   local res, err = self:request(opts)
   if res then
-    -- wrap the read_body() so it caches the result and can be called multiple times
+    -- wrap the read_body() so it caches the result and can be called multiple
+    -- times
     local reader = res.read_body
     res.read_body = function(self)
       if (not self._cached_body) and (not self._cached_error) then
@@ -169,7 +171,7 @@ function resty_http_proxy_mt:__index(k)
 end
 
 
---- Creates a http client. Based on https://github.com/pintsized/lua-resty-http.
+--- Creates a http client. Based on https://github.com/pintsized/lua-resty-http
 -- @name http_client
 -- @param host hostname to connect to
 -- @param port port to connect to
@@ -212,7 +214,8 @@ end
 -- @section servers
 
 --- Starts a TCP server.
--- Accepts a single connection and then closes, echoing what was received (single read).
+-- Accepts a single connection and then closes, echoing what was received
+-- (single read).
 -- @name tcp_server
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
@@ -238,8 +241,10 @@ local function tcp_server(port, ...)
 end
 
 --- Starts a HTTP server.
--- Accepts a single connection and then closes. Sends a 200 ok, 'Connection: close' response.
--- If the request received has path `/delay` then the response will be delayed by 2 seconds.
+-- Accepts a single connection and then closes. Sends a 200 ok, 'Connection:
+-- close' response.
+-- If the request received has path `/delay` then the response will be delayed
+-- by 2 seconds.
 -- @name http_server
 -- @param `port`    The port where the server will be listening to
 -- @return `thread` A thread object
@@ -328,8 +333,9 @@ assert = function(...)
   return old_assert(...)
 end
 
--- tricky part: the assertions below, should not reset the `kong_state` inserted above. Hence
--- we shadow the global assert (patched one) with a local assert (unpatched) to prevent this.
+-- tricky part: the assertions below, should not reset the `kong_state`
+-- inserted above. Hence we shadow the global assert (patched one) with a local
+-- assert (unpatched) to prevent this.
 local assert = old_assert
 
 --- Generic modifier "response".
@@ -341,7 +347,8 @@ local assert = old_assert
 -- local res = assert(client:send { ..your request parameters here ..})
 -- local length = assert.response(res).has.header("Content-Length")
 local function modifier_response(state, arguments, level)
-  assert(arguments.n > 0, "response modifier requires a response object as argument")
+  assert(arguments.n > 0,
+        "response modifier requires a response object as argument")
 
   local res = arguments[1]
 
@@ -360,14 +367,15 @@ luassert:register("modifier", "response", modifier_response)
 -- assertions will operate on the value set.
 -- The request must be inside a 'response' from mockbin.org or httpbin.org
 -- @name request
--- @param response results from `http_client:send` function. The request will be extracted from the response.
+-- @param response results from `http_client:send` function. The request will
+-- be extracted from the response.
 -- @usage
 -- local res = assert(client:send { ..your request parameters here ..})
 -- local length = assert.request(res).has.header("Content-Length")
 local function modifier_request(state, arguments, level)
-  local generic = "The assertion 'request' modifier takes a http response object as "..
-                  "input to decode the json-body returned by httpbin.org/mockbin.org, "..
-                  "to retrieve the proxied request."
+  local generic = "The assertion 'request' modifier takes a http response"
+                .." object as input to decode the json-body returned by"
+                .." httpbin.org/mockbin.org, to retrieve the proxied request."
 
   local res = arguments[1]
 
@@ -378,8 +386,8 @@ local function modifier_request(state, arguments, level)
   body = assert(res:read_body())
   body, err = cjson.decode(body)
 
-  assert(body, "Expected the http response object to have a json encoded body, "..
-               "but decoding gave error '"..tostring(err).."'. "..generic)
+  assert(body, "Expected the http response object to have a json encoded body,"
+             .." but decoding gave error '"..tostring(err).."'. "..generic)
 
   -- check if it is a mockbin request
   if lookup((res.headers or {}),"X-Powered-By") ~= "mockbin" then
@@ -395,8 +403,9 @@ local function modifier_request(state, arguments, level)
 end
 luassert:register("modifier", "request", modifier_request)
 
---- Generic fail assertion. A convenience function for debugging tests, always fails. It will output the
--- values it was called with as a table, with an `n` field to indicate the number of arguments received.
+--- Generic fail assertion. A convenience function for debugging tests, always
+-- fails. It will output the values it was called with as a table, with an `n`
+-- field to indicate the number of arguments received.
 -- @name fail
 -- @param ... any set of parameters to be displayed with the failure
 -- @usage
@@ -420,7 +429,8 @@ luassert:register("assertion", "fail", fail,
 -- @name contains
 -- @param expected The value to search for
 -- @param array The array to search for the value
--- @param pattern (optional) If thruthy, then `expected` is matched as a string pattern
+-- @param pattern (optional) If thruthy, then `expected` is matched as a string
+-- pattern
 -- @return the index at which the value was found
 -- @usage
 -- local arr = { "one", "three" }
@@ -455,7 +465,8 @@ luassert:register("assertion", "contains", contains,
 --- Assertion to check the statuscode of a http response.
 -- @name status
 -- @param expected the expected status code
--- @param response (optional) results from `http_client:send` function, alternatively use `response`.
+-- @param response (optional) results from `http_client:send` function,
+-- alternatively use `response`.
 -- @return the response body as a string
 -- @usage
 -- local res = assert(client:send { .. your request params here .. })
@@ -463,7 +474,8 @@ luassert:register("assertion", "contains", contains,
 -- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
   assert(not kong_state.kong_request,
-         "Cannot check statuscode against a request object, only against a response object")
+         "Cannot check statuscode against a request object,"
+       .." only against a response object")
 
   local expected = args[1]
   local res = args[2] or kong_state.kong_response
@@ -476,10 +488,30 @@ local function res_status(state, args)
   if expected ~= res.status then
     local body, err = res:read_body()
     if not body then body = "Error reading body: "..err end
-    table.insert(args, 1, body)
+    table.insert(args, 1, pl_stringx.strip(body))
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
+
+    if res.status == 500 then
+      -- on HTTP 500, we can try to read the server's error logs
+      -- for debugging purposes (very useful for travis)
+      local str = pl_file.read(conf.nginx_err_logs)
+      if not str then
+        return false -- no err logs to read in this prefix
+      end
+
+      local str_t = pl_stringx.splitlines(str)
+      local first_line = #str_t - math.min(60, #str_t) + 1
+      local msg_t = {"\nError logs ("..conf.nginx_err_logs.."):"}
+      for i = first_line, #str_t do
+        msg_t[#msg_t+1] = str_t[i]
+      end
+
+      table.insert(args, 4, table.concat(msg_t, "\n"))
+      args.n = 4
+    end
+
     return false
   else
     local body, err = res:read_body()
@@ -501,7 +533,7 @@ Status received:
 %s
 Body:
 %s
-]])
+%s]])
 say:set("assertion.res_status.positive", [[
 Invalid response status code.
 Status not expected:
@@ -510,15 +542,16 @@ Status received:
 %s
 Body:
 %s
-]])
+%s]])
 luassert:register("assertion", "status", res_status,
                   "assertion.res_status.negative", "assertion.res_status.positive")
-luassert:register("assertion", "res_status", res_status,     -- TODO: remove this, for now will break too many existing tests
+luassert:register("assertion", "res_status", res_status,
                   "assertion.res_status.negative", "assertion.res_status.positive")
 
 --- Checks and returns a json body of an http response/request. Only checks
--- validity of the json, does not check appropriate headers. Setting the target to check
--- can be done through `request` or `response` (requests are only supported with mockbin.com).
+-- validity of the json, does not check appropriate headers. Setting the target
+-- to check can be done through `request` or `response` (requests are only
+-- supported with mockbin.com).
 -- @name jsonbody
 -- @return the decoded json as a table
 -- @usage
@@ -694,7 +727,8 @@ luassert:register("assertion", "formparam", req_form_param,
 -- @section Shell-helpers
 
 --- Execute a command.
--- Modified version of `pl.utils.executeex()` so the output can directly be used on an assertion.
+-- Modified version of `pl.utils.executeex()` so the output can directly be
+-- used on an assertion.
 -- @name execute
 -- @param ... see penlight documentation
 -- @return ok, stderr, stdout; stdout is only included when the result was ok

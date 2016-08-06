@@ -104,7 +104,7 @@ describe("Plugin: jwt (parser)", function()
       assert.same({exp = "must be a number", nbf = "must be a number"}, errors)
     end)
     it("checks the exp claim", function()
-      local token = jwt_parser.encode({exp = os.time()}, "secret")
+      local token = jwt_parser.encode({exp = os.time() - 10}, "secret")
       local jwt = assert(jwt_parser:new(token))
 
       local ok, errors = jwt:verify_registered_claims({"exp"})

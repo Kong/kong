@@ -1,6 +1,6 @@
 DEV_ROCKS = busted luacheck lua-llthreads2
 BUSTED_ARGS ?= -v
-TEST_CMD = bin/busted $(BUSTED_ARGS)
+TEST_CMD ?= bin/busted $(BUSTED_ARGS)
 
 .PHONY: install dev lint test test-integration test-plugins test-all
 

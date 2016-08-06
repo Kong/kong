@@ -25,19 +25,24 @@ describe("kong reload", function()
     assert(helpers.start_kong {
       proxy_listen = "0.0.0.0:9002"
     })
+
+    -- http_client errors out if cannot connect
     local client = helpers.http_client("0.0.0.0", 9002, 5000)
     client:close()
 
-    local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
+    ngx.sleep(1)
+
+    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
+                             "no nginx master PID")
 
     assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path, {
       proxy_listen = "0.0.0.0:9000"
     }))
 
+    ngx.sleep(1)
+
     -- same master PID
     assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
-
-    ngx.sleep(1)
 
     -- new proxy port
     client = helpers.http_client("0.0.0.0", 9000, 5000)

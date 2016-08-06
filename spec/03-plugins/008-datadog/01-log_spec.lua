@@ -64,10 +64,10 @@ describe("Plugin: datadog (log)", function()
     assert.True(ok)
     assert.equal(5, #gauges)
     assert.contains("kong.datadog1_com.request.count:1|c", gauges)
-    --assert.contains("kong.datadog1_com.latency:247|g", gauges) -- latency changes, we only check it exists with length 5
-    assert.contains("kong.datadog1_com.request.size:101|g", gauges)
+    assert.contains("kong.datadog1_com.latency:%d+|g", gauges, true)
+    assert.contains("kong.datadog1_com.request.size:%d+|g", gauges, true)
     assert.contains("kong.datadog1_com.request.status.200:1|c", gauges)
-    assert.contains("kong.datadog1_com.response.size:894|g", gauges)
+    assert.contains("kong.datadog1_com.response.size:%d+|g", gauges, true)
   end)
 
   it("logs only given metrics", function()

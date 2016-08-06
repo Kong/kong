@@ -1,8 +1,8 @@
 set -e
 
-OPENRESTY_INSTALL=$CACHE_DIR/openresty
-LUAROCKS_INSTALL=$CACHE_DIR/luarocks
-SERF_INSTALL=$CACHE_DIR/serf
+export OPENRESTY_INSTALL=$CACHE_DIR/openresty
+export LUAROCKS_INSTALL=$CACHE_DIR/luarocks
+export SERF_INSTALL=$CACHE_DIR/serf
 
 mkdir -p $CACHE_DIR
 
@@ -32,7 +32,6 @@ if [ ! "$(ls -A $CACHE_DIR)" ]; then
       --with-http_realip_module \
       --with-http_stub_status_module \
       --without-lua_resty_websocket \
-      --without-lua_resty_upload \
       --without-lua_resty_mysql \
       --without-lua_resty_redis \
       --without-http_redis_module \
@@ -81,7 +80,7 @@ eval `luarocks path`
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
-if [ "$TEST_SUITE" != "unit" && "$TEST_SUITE" != "lint" ]; then
+if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
   pip install --user PyYAML six
   git clone https://github.com/pcmanus/ccm.git
   pushd ccm
@@ -92,3 +91,7 @@ if [ "$TEST_SUITE" != "unit" && "$TEST_SUITE" != "lint" ]; then
   ccm status
 fi
 
+nginx -V
+resty -V
+luarocks --version
+serf version
