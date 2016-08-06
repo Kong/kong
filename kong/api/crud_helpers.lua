@@ -1,4 +1,5 @@
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 local responses = require "kong.tools.responses"
 local app_helpers = require "lapis.application"
 
@@ -71,23 +72,14 @@ function _M.paginated_set(self, dao_collection)
     })
   end
 
-  -- This check is required otherwise the response is going to be a
-  -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
-  -- will not be translated as an empty array by cjson, but as an empty object.
-  -- TODO: fixme once https://github.com/openresty/lua-cjson/pull/6 lands in a release
-  local result
-  if #rows == 0 then
-    result = [[{"data":[],"total":0}]]
-  else
-    result = {
-      data = rows,
-      total = total_count,
-      offset = offset,
-      ["next"] = next_url,
-    }
-  end
-
-  return responses.send_HTTP_OK(result, type(result) ~= "table")
+  return responses.send_HTTP_OK {
+    -- can't use empty_array_mt here since apparently metatables are removed
+    -- before JSON encoding.
+    data = #rows > 0 and rows or cjson.empty_array,
+    total = total_count,
+    offset = offset,
+    ["next"] = next_url
+  }
 end
 
 -- Retrieval of an entity.
