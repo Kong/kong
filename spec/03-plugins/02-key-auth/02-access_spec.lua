@@ -52,7 +52,7 @@ describe("Plugin: key-auth (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"message":"No API Key found in headers, body or querystring"}]], body)
+      assert.equal([[{"message":"No API key found in headers or querystring"}]], body)
     end)
     it("returns WWW-Authenticate header on missing credentials", function()
       local res = assert(client:send {
@@ -88,6 +88,17 @@ describe("Plugin: key-auth (access)", function()
       })
       local body = assert.res_status(403, res)
       assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+    end)
+    it("handles duplicated key in querystring", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200?apikey=kong&apikey=kong",
+        headers = {
+          ["Host"] = "key-auth1.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"Duplicate API key found"}]], body)
     end)
   end)
 
