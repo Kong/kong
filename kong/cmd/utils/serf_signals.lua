@@ -12,24 +12,26 @@ local version = require "version"
 local fmt = string.format
 
 local serf_event_name = "kong"
-local serf_version_command = " version"                -- commandline param to get version
 local serf_version_pattern = "^Serf v([%d%.]+)"        -- pattern to grab version from output
 local serf_compatible = version.set("0.7.0", "0.7.0")  -- compatible from-to versions
 local start_timeout = 5
 
 local function check_serf_bin(kong_config)
-  local cmd = fmt("%s %s", kong_config.serf_path, serf_version_command)
+  log.verbose("checking 'serf' executable from 'serf_path' config setting...")
+
+  local cmd = fmt("%s version", kong_config.serf_path)
   local ok, _, stdout = pl_utils.executeex(cmd)
+  log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stdout)[1])
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
-    if (not version_match) or (not serf_compatible:matches(version_match)) then
-      return nil, "incompatible Serf version. Kong requires version "..tostring(serf_compatible)..
-        (version_match and ", got "..tostring(version_match) or "")
+    if not version_match or not serf_compatible:matches(version_match) then
+      return nil, "incompatible Serf found. Kong requires version "..
+                  tostring(serf_compatible)..", got "..version_match
     end
     return true
   end
 
-  return nil, "could not find Serf executable (is it in your $PATH?)"
+  return nil, "could not find 'serf' executable (is 'serf_path' correctly set?)"
 end
 
 local _M = {}

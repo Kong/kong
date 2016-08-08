@@ -51,10 +51,11 @@ local function find_resty_bin()
   local found
   for _, path in ipairs(resty_search_paths) do
     local path_to_check = pl_path.join(path, resty_bin_name)
-    local cmd = fmt("%s -V", path_to_check)
-    if pl_utils.executeex(cmd) then
+    local cmd = fmt("%s -v", path_to_check)
+    local ok, _, _, stderr = pl_utils.executeex(cmd)
+    log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stderr)[1])
+    if ok then
       found = path_to_check
-      log.verbose("found OpenResty 'resty' executable at %s", found)
       break
     end
     log.debug("OpenResty 'resty' executable not found at %s", path_to_check)
@@ -63,6 +64,8 @@ local function find_resty_bin()
   if not found then
     return nil, "could not find OpenResty 'resty' executable"
   end
+
+  log.verbose("found OpenResty 'resty' executable at %s", found)
 
   return found
 end
