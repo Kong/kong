@@ -26,13 +26,13 @@ local function flush_redis()
   red:set_timeout(2000)
   local ok, err = red:connect(REDIS_HOST, REDIS_PORT)
   if not ok then
-    error("failed to connect to Redis: ", err)
+    error("failed to connect to Redis: "..err)
   end
 
   if REDIS_PASSWORD and REDIS_PASSWORD ~= "" then
     local ok, err = red:auth(REDIS_PASSWORD)
     if not ok then
-      error("failed to connect to Redis: ", err)
+      error("failed to connect to Redis: "..err)
     end
   end
 
@@ -378,7 +378,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           }
         })
         assert.res_status(200, res)
-        
+
         ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
         local res = assert(helpers.proxy_client():send {
