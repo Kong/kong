@@ -1,5 +1,6 @@
 local log = require "kong.cmd.utils.log"
 local kill = require "kong.cmd.utils.kill"
+local meta = require "kong.meta"
 local pl_path = require "pl.path"
 local version = require "version"
 local pl_utils = require "pl.utils"
@@ -10,12 +11,11 @@ local nginx_search_paths = {
   "/usr/local/openresty/nginx/sbin",
   ""
 }
-local nginx_version_command = "-v"                            -- commandline param to get version
-local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"  -- pattern to grab version from output
-local nginx_compatible = version.set("1.9.15.1")              -- compatible from-to versions
+local nginx_version_pattern = "^nginx.-openresty.-([%d%.]+)"
+local nginx_compatible = version.set(meta._DEPENDENCIES.nginx)
 
 local function is_openresty(bin_path)
-  local cmd = fmt("%s %s", bin_path, nginx_version_command)
+  local cmd = fmt("%s -v", bin_path)
   local ok, _, _, stderr = pl_utils.executeex(cmd)
   log.debug("%s: '%s'", cmd, stderr:sub(1, -2))
   if ok and stderr then

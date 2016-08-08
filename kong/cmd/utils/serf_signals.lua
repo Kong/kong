@@ -8,12 +8,13 @@ local pl_file = require "pl.file"
 local Serf = require "kong.serf"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
+local meta = require "kong.meta"
 local version = require "version"
 local fmt = string.format
 
 local serf_event_name = "kong"
-local serf_version_pattern = "^Serf v([%d%.]+)"        -- pattern to grab version from output
-local serf_compatible = version.set("0.7.0", "0.7.0")  -- compatible from-to versions
+local serf_version_pattern = "^Serf v([%d%.]+)"
+local serf_compatible = version.set(meta._DEPENDENCIES.serf)
 local start_timeout = 5
 
 local function check_serf_bin(kong_config)
