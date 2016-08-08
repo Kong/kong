@@ -30,13 +30,7 @@ if [ ! "$(ls -A $CACHE_DIR)" ]; then
       --with-pcre-jit \
       --with-http_ssl_module \
       --with-http_realip_module \
-      --with-http_stub_status_module \
-      --without-lua_resty_websocket \
-      --without-lua_resty_mysql \
-      --without-lua_resty_redis \
-      --without-http_redis_module \
-      --without-http_redis2_module \
-      --without-lua_redis_parser
+      --with-http_stub_status_module
     make
     make install
   popd
