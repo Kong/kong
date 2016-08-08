@@ -18,15 +18,15 @@ local function is_openresty(bin_path)
   local cmd = fmt("%s %s", bin_path, nginx_version_command)
   local ok, _, _, stderr = pl_utils.executeex(cmd)
   if ok and stderr then
-    log.debug("%s: '%s'", cmd, stderr:sub(1, -2))
     local version_match = stderr:match(nginx_version_pattern)
     if (not version_match) or (not nginx_compatible:matches(version_match)) then
-      return nil, "incompatible nginx found. Kong requires OpenResty, version "..tostring(nginx_compatible) ..
-        (version_match and ", got "..version_match or "")
+      log.verbose("incompatible nginx found at "..bin_path..". Kong requires OpenResty, version "..tostring(nginx_compatible) ..
+        (version_match and ", got version "..version_match or ""))
+      return nil
     end
     return true
   end
-  return nil, "could not determine nginx version in use. Kong requires OpenResty version "..tostring(nginx_compatible)
+  log.verbose("OpenResty 'nginx' executable not found at %s", bin_path)
 end
 
 local function send_signal(pid_path, signal)
@@ -52,15 +52,14 @@ function _M.find_bin()
     local path_to_check = pl_path.join(path, nginx_bin_name)
     if is_openresty(path_to_check) then
       found = path_to_check
+      log.verbose("found OpenResty 'nginx' executable at %s", found)
       break
     end
   end
 
   if not found then
-    return nil, "could not find OpenResty 'nginx' executable"
+    return nil, ("could not find OpenResty 'nginx' executable. Kong requires version %s"):format(tostring(nginx_compatible))
   end
-
-  log.verbose("found OpenResty 'nginx' executable at %s", found)
 
   return found
 end
