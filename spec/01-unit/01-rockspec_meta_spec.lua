@@ -32,6 +32,11 @@ describe("rockspec/meta", function()
       assert.is_number(meta._VERSION_TABLE.patch)
       -- pre_release optional
     end)
+    it("has a _DEPENDENCIES field", function()
+      assert.is_table(meta._DEPENDENCIES)
+      assert.is_string(meta._DEPENDENCIES.nginx)
+      assert.is_string(meta._DEPENDENCIES.serf)
+    end)
   end)
 
   it("has same version as meta", function()

@@ -1,3 +1,4 @@
+local pl_stringx = require "pl.stringx"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -17,17 +18,20 @@ local dnsmasq_search_paths = {
   ""
 }
 
-function _M.find_bin()
+local function find_dnsmasq_bin()
   log.verbose("searching for 'dnsmasq' executable...")
 
   local found
   for _, path in ipairs(dnsmasq_search_paths) do
     local path_to_check = pl_path.join(path, dnsmasq_bin_name)
     local cmd = fmt("%s -v", path_to_check)
-    if pl_utils.executeex(cmd) then
+    local ok, _, stdout = pl_utils.executeex(cmd)
+    log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stdout)[1])
+    if ok then
       found = path_to_check
       break
     end
+    log.debug("'dnsmasq' executable not found at %s", path_to_check)
   end
 
   if not found then
@@ -49,7 +53,7 @@ function _M.start(kong_config)
     pl_file.delete(kong_config.dnsmasq_pid)
   end
 
-  local dnsmasq_bin, err = _M.find_bin()
+  local dnsmasq_bin, err = find_dnsmasq_bin()
   if not dnsmasq_bin then return nil, err end
 
   local cmd = fmt("%s -p %d --pid-file=%s -N -o --listen-address=127.0.0.1",
