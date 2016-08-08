@@ -5,7 +5,8 @@ local metrics = {
   "status_count",
   "response_size",
   "unique_users",
-  "request_per_user"
+  "request_per_user",
+  "upstream_latency"
 }
 
 return {
