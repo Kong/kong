@@ -13,5 +13,5 @@ local version = setmetatable({
 return {
   _NAME = "kong",
   _VERSION = tostring(version),
-  __VERSION = version
+  _VERSION_TABLE = version
 }

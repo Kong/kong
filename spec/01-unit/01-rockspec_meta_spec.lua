@@ -2,7 +2,7 @@ local pl_dir = require "pl.dir"
 local pl_path = require "pl.path"
 local meta = require "kong.meta"
 
-describe("rockspec", function()
+describe("rockspec/meta", function()
   local rock, lua_srcs = {}
   local rock_filename
 
@@ -15,6 +15,23 @@ describe("rockspec", function()
     local f = assert(loadfile(res[1]))
     setfenv(f, rock)
     f()
+  end)
+
+  describe("meta", function()
+    it("has a _NAME field", function()
+      assert.is_string(meta._NAME)
+    end)
+    it("has a _VERSION field", function()
+      assert.is_string(meta._VERSION)
+      assert.matches("%d+%.%d+%.%d+", meta._VERSION)
+    end)
+    it("has a _VERSION_TABLE field", function()
+      assert.is_table(meta._VERSION_TABLE)
+      assert.is_number(meta._VERSION_TABLE.major)
+      assert.is_number(meta._VERSION_TABLE.minor)
+      assert.is_number(meta._VERSION_TABLE.patch)
+      -- pre_release optional
+    end)
   end)
 
   it("has same version as meta", function()
