@@ -14,7 +14,7 @@ local fmt = string.format
 
 local serf_event_name = "kong"
 local serf_version_pattern = "^Serf v([%d%.]+)"
-local serf_compatible = version.set(meta._DEPENDENCIES.serf_from, meta._DEPENDENCIES.serf_to)
+local serf_compatible = version.set(unpack(meta._DEPENDENCIES.serf))
 local start_timeout = 5
 
 local function check_serf_bin(kong_config)
