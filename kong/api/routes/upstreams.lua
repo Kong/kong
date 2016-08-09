@@ -51,12 +51,14 @@ return {
       end)
     end,
 
-    PUT = function(self, dao_factory)
-      crud.put(self.params, dao_factory.targets)
-    end,
+-- only allow post: setting weight to 0 is disabling/deleting
 
---todo: add a delete method, to delete a target without knowing an ID, just by hostname+port combo
+--    PUT = function(self, dao_factory)
+--      crud.put(self.params, dao_factory.targets)
+--    end,
+
   },
+--[[ unused, only operate on the upstream object
 
   ["/upstreams/:name_or_id/targets/:id"] = {
     before = function(self, dao_factory, helpers)
@@ -86,4 +88,5 @@ return {
       crud.delete(self.target, dao_factory.targets)
     end
   }
+--]]
 }
