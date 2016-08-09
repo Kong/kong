@@ -6,9 +6,11 @@ local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
+local version = require "version"
 local pl_dir = require "pl.dir"
 local socket = require "socket"
 local utils = require "kong.tools.utils"
+local meta = require "kong.meta"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
 local fmt = string.format
@@ -40,10 +42,29 @@ client:request { \
 ]]
 
 local resty_bin_name = "resty"
+local resty_version_pattern = "nginx[^\n]-openresty[^\n]-([%d%.]+)"
+local resty_compatible = version.set(unpack(meta._DEPENDENCIES.nginx))
 local resty_search_paths = {
   "/usr/local/openresty/bin",
   ""
 }
+
+local function is_openresty(bin_path)
+  local cmd = fmt("%s -V", bin_path)
+  local ok, _, _, stderr = pl_utils.executeex(cmd)
+  log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stderr)[2]) -- show openresty version output
+  if ok and stderr then
+    local version_match = stderr:match(resty_version_pattern)
+    if not version_match or not resty_compatible:matches(version_match) then
+      log.verbose("'resty' found at %s uses incompatible OpenResty. Kong "..
+                  "requires OpenResty version %s, got %s", bin_path,
+                  tostring(resty_compatible), version_match)
+      return false
+    end
+    return true
+  end
+  log.debug("OpenResty 'resty' executable not found at %s", bin_path)
+end
 
 local function find_resty_bin()
   log.verbose("searching for OpenResty 'resty' executable...")
@@ -51,21 +72,17 @@ local function find_resty_bin()
   local found
   for _, path in ipairs(resty_search_paths) do
     local path_to_check = pl_path.join(path, resty_bin_name)
-    local cmd = fmt("%s -v", path_to_check)
-    local ok, _, _, stderr = pl_utils.executeex(cmd)
-    log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stderr)[1])
-    if ok then
+    if is_openresty(path_to_check) then
       found = path_to_check
+      log.verbose("found OpenResty 'resty' executable at %s", found)
       break
     end
-    log.debug("OpenResty 'resty' executable not found at %s", path_to_check)
   end
 
   if not found then
-    return nil, "could not find OpenResty 'resty' executable"
+    return nil, ("could not find OpenResty 'resty' executable. Kong requires"..
+                 " version %s"):format(tostring(resty_compatible))
   end
-
-  log.verbose("found OpenResty 'resty' executable at %s", found)
 
   return found
 end
