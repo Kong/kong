@@ -52,7 +52,13 @@ local resty_search_paths = {
 local function is_openresty(bin_path)
   local cmd = fmt("%s -V", bin_path)
   local ok, _, _, stderr = pl_utils.executeex(cmd)
-  log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stderr)[2]) -- show openresty version output
+  local lines = pl_stringx.splitlines(stderr)
+  if #lines > 1 then
+    stderr = lines[2] -- show openresty version line
+  else
+    stderr = lines[1] -- strip trailing line jump
+  end
+  log.debug("%s: '%s'", cmd, stderr)
   if ok and stderr then
     local version_match = stderr:match(resty_version_pattern)
     if not version_match or not resty_compatible:matches(version_match) then
