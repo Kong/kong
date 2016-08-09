@@ -219,7 +219,21 @@ describe("Configuration loader", function()
         dnsmasq = true,
         dns_resolver = "8.8.8.8:53"
       })
-      assert.equal("when specifying a custom DNS resolver you must turn off dnsmasq", err)
+      assert.equal("must disable dnsmasq when a custom DNS resolver is specified", err)
+      assert.is_nil(conf)
+
+      conf, err = conf_loader(nil, {
+        dnsmasq = false,
+        dns_resolver = "8.8.8.8:53"
+      })
+      assert.is_nil(err)
+      assert.is_table(conf)
+    end)
+    it("requires a dns_resolver when dnsmasq is disabled", function()
+      local conf, err = conf_loader(nil, {
+        dnsmasq = false
+      })
+      assert.equal("must specify a custom DNS resolver when dnsmasq is turned off", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {

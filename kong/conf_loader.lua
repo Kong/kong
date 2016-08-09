@@ -175,8 +175,11 @@ local function check_and_infer(conf)
   end
 
   if conf.dns_resolver and conf.dnsmasq then
-    errors[#errors+1] = "when specifying a custom DNS resolver you must turn off dnsmasq"
+    errors[#errors+1] = "must disable dnsmasq when a custom DNS resolver is specified"
+  elseif not conf.dns_resolver and not conf.dnsmasq then
+    errors[#errors+1] = "must specify a custom DNS resolver when dnsmasq is turned off"
   end
+
   local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
   if not conf.cluster_listen:match(ipv4_port_pattern) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
