@@ -7,56 +7,53 @@
 --
 local decodeOnceToString = ngx.unescape_uri
 local response, _ = require 'kong.yop.response'()
+local security_center = require 'kong.yop.security_center'
 
 local stringy = require "stringy"
-local json = require 'cjson'
-local codec = require 'codec'
+
+local pcall = pcall
+local ngx = ngx
+local pairs = pairs
+local table = table
 
 local _M = {}
 
-local function blowfishDecrypt(body, secret)
-    local pwd = codec.md5_encode(secret)
-    local key = string.sub(pwd,1,16)
-    local iv = string.sub(pwd,1,8)
-    return codec.blowfish_encrypt(body, key, iv)
-end
-
-local function aesDecryptWithKeyBase64(body, secret)
-    return codec.aes_decrypt(codec.base64_decode(body), codec.base64_decode(secret));
-end
 local function tryDecrypt(ctx)
     local keyStoreType = ctx.keyStoreType
     local secret = ctx.app.appSecret
     local parameters = ctx.parameters
     local body = parameters.encrypt
 
-    local status,message
-    if(keyStoreType == "CUST_BASED") then
-        status,message = pcall(blowfishDecrypt,body, secret)
-    else
-        status,message = pcall(aesDecryptWithKeyBase64,body, secret)
-    end
-
-    -- 解密失败
-    if(not status) then
-        ngx.log(ngx.ERR,"decypty error!appKey:"..ctx.appKey)
-        response.decryptException(ctx.appKey)
-    end
-
-    -- 解密成功,解析message
-    local params = stringy.split(message, "&")
-    local j = ""
-    for _,value in pairs(params) do
-        local kv = stringy.split(value, "=")
-        if(table.getn(kv) ~= 2) then
-            ngx.log(ngx.ERR,"the param from decryption error!appKey:"..ctx.appKey..";value:" .. value)
+    if body then
+        local status,message
+        if(keyStoreType == "CUST_BASED") then
+            status,message = pcall(security_center.blowfishDecrypt,body, secret)
         else
-            parameters[kv[1]] = decodeOnceToString(kv[2])
+            status,message = pcall(security_center.aesDecryptWithKeyBase64,body, secret)
         end
-    end
-    ctx.parameters = parameters
-end
 
+        -- 解密失败
+        if(not status) then
+            ngx.log(ngx.ERR,"decypty error!appKey:"..ctx.appKey)
+            response.decryptException(ctx.appKey)
+        end
+
+        -- 解密成功,解析message
+        local params = stringy.split(message, "&")
+        for _,value in pairs(params) do
+            local kv = stringy.split(value, "=")
+            if(table.getn(kv) ~= 2) then
+                ngx.log(ngx.ERR,"the param from decryption error!appKey:"..ctx.appKey..";value:" .. value)
+            else
+                parameters[kv[1]] = decodeOnceToString(kv[2])
+            end
+        end
+        ctx.parameters = parameters
+    else
+        ctx.parameters.encrypt = true        -- encrypt=true,表示无加密请求参数，但须加密返回
+    end
+
+end
 
 _M.process = function(ctx)
     tryDecrypt(ctx)

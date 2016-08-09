@@ -40,15 +40,14 @@ local ErrorCode = {
 }
 
 local Response = {
-  state = nil,
+  state = "SUCCESS",
   result = nil,
   ts = nil,
   sign = nil,
   error = nil,
   stringResult = nil,
   format = "json",
-  validSign = nil,
-  error = nil
+  validSign = nil
 }
 
 function Response:new()
@@ -63,9 +62,9 @@ function Response:success() self.state = "SUCCESS" return self end
 
 function Response:fail() self.state = "FAILURE" return self end
 
-function Response:format(format) self.format = format return self end
+function Response:formats(format) self.format = format return self end
 
-function Response:error(code, p1, p2, p3) self.error = { code = code, message = string.format(ErrorCode[code], p1, p2, p3) } return self end
+function Response:errors(code, p1, p2, p3) self.error = { code = code, message = string.format(ErrorCode[code], p1, p2, p3) } return self end
 
 function Response:requestValidatorError(appKey) self.error = { code = '99001007', message = string.format(ErrorCode['99001007'], appKey), subErrors = {} } return self end
 
@@ -95,23 +94,23 @@ function Response.validateIntException(p) sendValidateError(p.app, "99100011", p
 
 function Response.validatePatternException(p, rule) sendValidateError(p.app, "99100003", p.name, rule) end
 
-function Response.apiNotExistException(apiUri) responses.send(200, Response:new():fail():error("99001002", apiUri)) end
+function Response.apiNotExistException(apiUri) responses.send(200, Response:new():fail():errors("99001002", apiUri)) end
 
-function Response.apiUnavailableException(apiUri) responses.send(200, Response:new():fail():error("99001003", apiUri)) end
+function Response.apiUnavailableException(apiUri) responses.send(200, Response:new():fail():errors("99001003", apiUri)) end
 
-function Response.appUnavailableException(appKey) responses.send(200, Response:new():fail():error("99001001", appKey)) end
+function Response.appUnavailableException(appKey) responses.send(200, Response:new():fail():errors("99001001", appKey)) end
 
-function Response.missParameterException(appKey, requiredParameter) responses.send(200, Response:new():fail():error("99001006", appKey, requiredParameter)) end
+function Response.missParameterException(appKey, requiredParameter) responses.send(200, Response:new():fail():errors("99001006", appKey, requiredParameter)) end
 
-function Response.notAllowdHttpMethodException(appKey, method) responses.send(200, Response:new():fail():error("99001005", appKey, method)) end
+function Response.notAllowdHttpMethodException(appKey, method) responses.send(200, Response:new():fail():errors("99001005", appKey, method)) end
 
-function Response.notAllowdIpException(appKey, ip) responses.send(200, Response:new():fail():error("99001021", appKey, ip)) end
+function Response.notAllowdIpException(appKey, ip) responses.send(200, Response:new():fail():errors("99001021", appKey, ip)) end
 
-function Response.permessionDeniedException(appKey) responses.send(200, Response:new():fail():error("99001004", appKey)) end
+function Response.permessionDeniedException(appKey) responses.send(200, Response:new():fail():errors("99001004", appKey)) end
 
-function Response.signException(appKey) responses.send(200, Response:new():fail():error("99001008", appKey)) end
+function Response.signException(appKey) responses.send(200, Response:new():fail():errors("99001008", appKey)) end
 
-function Response.decryptException(appKey) responses.send(200, Response:new():fail():error("99001009", appKey)) end
+function Response.decryptException(appKey) responses.send(200, Response:new():fail():errors("99001009", appKey)) end
 
 
 

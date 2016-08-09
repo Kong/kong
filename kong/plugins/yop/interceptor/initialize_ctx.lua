@@ -69,6 +69,12 @@ _M.process = function(ctx)
   ctx.whitelist = cache.cacheIPWhitelist(apiUri)
   ctx.auth = cache.cacheAppAuth(appKey)
   ctx.defaultValues = cache.cacheDefaultValues(apiUri)
+
+  ngx.ctx.parameters = ctx.parameters
+  ngx.ctx.keyStoreType = ctx.keyStoreType
+  ngx.ctx.alg = ctx.api.signAlg
+  ngx.ctx.appSecret = ctx.app.appSecret      -- 将 appSercet 作为全局变量放在ngx.ctx里面,供转发后返回加密和签名使用/
+  ngx.ctx.body = ""
 end
 
 return _M

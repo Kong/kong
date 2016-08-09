@@ -18,6 +18,7 @@ build = {
     ["kong.yop.cache"] = "kong/yop/cache.lua",
     ["kong.yop.http_client"] = "kong/yop/http_client.lua",
     ["kong.yop.response"] = "kong/yop/response.lua",
+    ["kong.yop.security_center"] = "kong/yop/security_center.lua",
     ["kong.plugins.yop.interceptor.auth"] = "kong/plugins/yop/interceptor/auth.lua",
     ["kong.plugins.yop.interceptor.decrypt"] = "kong/plugins/yop/interceptor/decrypt.lua",
     ["kong.plugins.yop.interceptor.http_method"] = "kong/plugins/yop/interceptor/http_method.lua",
@@ -29,5 +30,7 @@ build = {
     ["kong.plugins.yop.interceptor.prepare_stream"] = "kong/plugins/yop/interceptor/prepare_stream.lua",
     ["kong.plugins.yop.handler"] = "kong/plugins/yop/handler.lua",
     ["kong.plugins.yop.schema"] = "kong/plugins/yop/schema.lua"
+    ["kong.yop.marshaller_util"] = "kong/yop/marshaller_util.lua",
+
   }
 }

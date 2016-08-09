@@ -7,7 +7,12 @@
 --
 
 local response, _ = require 'kong.yop.response'()
-local codec = require 'codec'
+local security_center = require 'kong.yop.security_center'
+
+local table = table
+local string = string
+local pairs = pairs
+local ngx = ngx
 
 function table.containKey(t, key)
     for _, v in pairs(t) do
@@ -63,28 +68,13 @@ local function validateSign(ctx)
     local signRet = parameters.signRet     -- 客户端是否有过签名
     local sign = parameters.sign           -- 签名摘要
     local alg = ctx.api.signAlg            -- 签名算法
-    local needSignKeys = {}
     if not signRet then
         return
     end
-    needSignKeys = prepareSignParams(ctx)
+    local needSignKeys = prepareSignParams(ctx)
     local signBody = prepareSignBody(ctx,needSignKeys)
-    ngx.log(ngx.INFO,signBody)
-
-    local support = false
     local encodeBody
-    if(alg == "SHA1") then
-        encodeBody = codec.sha1_encode(signBody)
-        support = true
-    end
-    if(alg == "SHA256") then
-        encodeBody = codec.sha256_encode(signBody)
-        support = true
-    end
-    if(alg == "MD5") then
-        encodeBody = codec.md5_encode(signBody)
-        support = true
-    end
+    local encodeBody,support = security_center.validataSign(signBody,alg)
     if(not support) then
         ngx.log(ngx.ERR,"不支持的签名算法!")
     end
