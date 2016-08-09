@@ -18,9 +18,13 @@ return {
   -- third-party dependencies' required version, as they would be specified
   -- to lua-version's `set()`.
   _DEPENDENCIES = {
-    nginx = "1.9.15.1",
-    --resty = "", -- not version dependent for now
-    serf  = "0.7.0",
-    --dnsmasq = "" -- not version dependent for now
+    nginx_from = "1.9.15.1",
+    nginx_to = "1.9.15.1",
+    --resty_from = "", -- not version dependent for now
+    --resty_to = ""
+    serf_from  = "0.7.0",
+    serf_to  = "0.7.0",
+    --dnsmasq_from = "" -- not version dependent for now
+    --dnsmasq_to = ""
   }
 }
