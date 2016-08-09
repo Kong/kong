@@ -43,7 +43,7 @@ client:request { \
 
 local resty_bin_name = "resty"
 local resty_version_pattern = "nginx[^\n]-openresty[^\n]-([%d%.]+)"
-local resty_compatible = version.set(meta._DEPENDENCIES.nginx_from, meta._DEPENDENCIES.nginx_to)
+local resty_compatible = version.set(unpack(meta._DEPENDENCIES.nginx))
 local resty_search_paths = {
   "/usr/local/openresty/bin",
   ""
@@ -52,13 +52,13 @@ local resty_search_paths = {
 local function is_openresty(bin_path)
   local cmd = fmt("%s -V", bin_path)
   local ok, _, _, stderr = pl_utils.executeex(cmd)
-  log.debug("%s: '%s'", cmd, stderr:sub(1, -2))
+  log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stderr)[2]) -- show openresty version output
   if ok and stderr then
     local version_match = stderr:match(resty_version_pattern)
     if not version_match or not resty_compatible:matches(version_match) then
-      log.verbose("incompatible 'resty' found at %s. Kong requires version"..
-                  " %s, got %s", bin_path, tostring(resty_compatible),
-                  version_match)
+      log.verbose("'resty' found at %s uses incompatible OpenResty. Kong "..
+                  "requires OpenResty version %s, got %s", bin_path,
+                  tostring(resty_compatible), version_match)
       return false
     end
     return true
