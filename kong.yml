@@ -303,7 +303,7 @@ nginx: |
         proxy_set_header Host $upstream_host;
         proxy_pass $upstream_url;
         proxy_pass_header Server;
-        chunked_transfer_encoding off
+        chunked_transfer_encoding off;
 
         # Add additional response headers
         header_filter_by_lua_block {
