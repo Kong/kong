@@ -23,8 +23,9 @@ This command is equivalent to doing both 'kong stop' and
 'kong start'.
 
 Options:
- -c,--conf   (optional string) configuration file
- -p,--prefix (optional string) prefix at which Kong should be running
+ -c,--conf    (optional string) configuration file
+ -p,--prefix  (optional string) prefix at which Kong should be running
+ --nginx-conf (optional string) custom Nginx configuration template
 ]]
 
 return {

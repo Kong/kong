@@ -35,7 +35,7 @@ describe("kong health", function()
 
     local ok, stderr = helpers.kong_exec("health --prefix "..helpers.test_conf.prefix)
     assert.False(ok)
-    assert.matches("Some services are not running", stderr, nil, true)
+    assert.matches("some services are not running", stderr, nil, true)
   end)
   it("checks dnsmasq if enabled", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
@@ -45,7 +45,7 @@ describe("kong health", function()
       dns_resolver = ""
     })
     assert.False(ok)
-    assert.matches("Some services are not running", stderr, nil, true)
+    assert.matches("some services are not running", stderr, nil, true)
   end)
 
   describe("errors", function()

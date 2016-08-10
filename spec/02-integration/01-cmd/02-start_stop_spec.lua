@@ -183,7 +183,7 @@ describe("kong start/stop", function()
         pg_database = helpers.test_conf.pg_database
       })
       assert.False(ok)
-      assert.matches("Nginx is already running in", stderr)
+      assert.matches("nginx is already running in "..helpers.test_conf.prefix, stderr, nil, true)
     end)
   end)
 end)
