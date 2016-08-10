@@ -150,6 +150,7 @@ function _M.send(status_code, body, headers)
     res = send_response(status_code)
     closure_cache[status_code] = res
   end
+
   return res(body, headers)
 end
 

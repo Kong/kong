@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 
-local TEST_SIZE = 1
+local TEST_SIZE = 2
+local MB = 2^20
 
 describe("Plugin: request-size-limiting (access)", function()
   local client
@@ -10,7 +11,7 @@ describe("Plugin: request-size-limiting (access)", function()
 
     local api = assert(helpers.dao.apis:insert {
       request_host = "limit.com",
-      upstream_url = "http://mockbin.com"
+      upstream_url = "http://mockbin.com/"
     })
     assert(helpers.dao.plugins:insert {
       name = "request-size-limiting",
@@ -25,69 +26,117 @@ describe("Plugin: request-size-limiting (access)", function()
     helpers.stop_kong()
   end)
 
-  describe("with Content-Length set", function()
-    it("allows request of lower size", function()
-      local body = string.rep("a", TEST_SIZE * 1000000)
-
+  describe("with Content-Length", function()
+    it("works if size is lower than limit", function()
+      local body = string.rep("a", (TEST_SIZE * MB))
       local res = assert(client:request {
         method = "POST",
         path = "/request",
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          ["Content-Length"] = #body
+          ["Content-Length"] = string.len(body)
         }
       })
       assert.res_status(200, res)
     end)
-    pending("blocks request exceeding size limit", function()
-      local body = string.rep("a", TEST_SIZE * 1000000 + 1)
-
-      local res = assert(client:send {
+    it("works if size is lower than limit and Expect header", function()
+      local body = string.rep("a", (TEST_SIZE * MB))
+      local res = assert(client:request {
         method = "POST",
         path = "/request",
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          ["Content-Length"] = #body
+          ["Expect"] = "100-continue",
+          ["Content-Length"] = string.len(body)
         }
       })
-      local response_body = assert.res_status(413, res)
-      assert.equal([[{"message":"Request size limit exceeded"}]], response_body)
+      assert.res_status(200, res)
+    end)
+    it("blocks if size is greater than limit", function()
+      local body = string.rep("a", (TEST_SIZE * MB) + 1)
+      local res = assert(client:request {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com",
+          ["Content-Length"] = string.len(body)
+        }
+      })
+      local body = assert.res_status(413, res)
+      assert.matches([[{"message":"Request size limit exceeded"}]], body)
+    end)
+    it("blocks if size is greater than limit and Expect header", function()
+      local body = string.rep("a", (TEST_SIZE * MB) + 1)
+      local res = assert(client:request {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com",
+          ["Expect"] = "100-continue",
+          ["Content-Length"] = string.len(body)
+        }
+      })
+      local body = assert.res_status(417, res)
+      assert.matches([[{"message":"Request size limit exceeded"}]], body)
     end)
   end)
 
   describe("without Content-Length", function()
-    it("allows request of lower size", function()
-      local body = string.rep("a", TEST_SIZE * 1000000)
-
+    it("works if size is lower than limit", function()
+      local body = string.rep("a", (TEST_SIZE * MB))
+      local res = assert(client:request {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("works if size is lower than limit and Expect header", function()
+      local body = string.rep("a", (TEST_SIZE * MB))
       local res = assert(client:request {
         method = "POST",
         path = "/request",
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Type"] = "application/x-www-form-urlencoded"
+          ["Expect"] = "100-continue"
         }
       })
       assert.res_status(200, res)
     end)
-    pending("blocks request exceeding the size limit", function()
-      local body = string.rep("a", TEST_SIZE * 1000000 + 1)
-
-      local res = assert(client:send {
+    it("blocks if size is greater than limit", function()
+      local body = string.rep("a", (TEST_SIZE * MB) + 1)
+      local res = assert(client:request {
+        method = "POST",
+        path = "/request",
+        body = body,
+        headers = {
+          ["Host"] = "limit.com"
+        }
+      })
+      local body = assert.res_status(413, res)
+      assert.matches([[{"message":"Request size limit exceeded"}]], body)
+    end)
+    it("blocks if size is greater than limit and Expect header", function()
+      local body = string.rep("a", (TEST_SIZE * MB) + 1)
+      local res = assert(client:request {
         method = "POST",
         path = "/request",
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Type"] = "application/x-www-form-urlencoded"
+          ["Expect"] = "100-continue"
         }
       })
-      local response_body = assert.res_status(413, res)
-      assert.equal([[{"message":"Request size limit exceeded"}]], response_body)
+      local body = assert.res_status(417, res)
+      assert.matches([[{"message":"Request size limit exceeded"}]], body)
     end)
   end)
 end)
