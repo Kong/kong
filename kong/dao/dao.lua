@@ -39,11 +39,9 @@ local function check_not_empty(tbl, arg_n)
 end
 
 local function check_utf8(tbl, arg_n)
-  if tbl then
-    for k, v in pairs(tbl) do
-      if not utils.validate_utf8(v) then
-        tbl[k] = RANDOM_VALUE -- Force a random string
-      end
+  for k, v in pairs(tbl) do
+    if not utils.validate_utf8(v) then
+      tbl[k] = RANDOM_VALUE -- Force a random string
     end
   end
 end
