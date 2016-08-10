@@ -13,9 +13,12 @@
 -- @module kong.dao
 
 local Object = require "kong.vendor.classic"
+local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
 local schemas_validation = require "kong.dao.schemas_validation"
 local event_types = require("kong.core.events").TYPES
+
+local RANDOM_VALUE = utils.random_string()
 
 local function check_arg(arg, arg_n, exp_type)
   if type(arg) ~= exp_type then
@@ -32,6 +35,14 @@ local function check_not_empty(tbl, arg_n)
     local err = string.format("bad argument #%d to '%s' (expected table to not be empty)",
                               arg_n, info.name)
     error(err, 3)
+  end
+end
+
+local function check_utf8(tbl, arg_n)
+  for k, v in pairs(tbl) do
+    if not utils.validate_utf8(v) then
+      tbl[k] = RANDOM_VALUE -- Force a random string
+    end
   end
 end
 
@@ -116,6 +127,7 @@ end
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
+  check_utf8(tbl, 1)
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -138,7 +150,9 @@ end
 function DAO:find_all(tbl)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
+    check_utf8(tbl, 1)
     check_not_empty(tbl, 1)
+
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
       return nil, Errors.schema(err)

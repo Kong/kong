@@ -270,6 +270,13 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.same({}, rows)
       end)
+      it("handles non-string values", function()
+        local rows, err = apis:find_all {
+          request_host = string.char(105, 213, 205, 149)
+        }
+        assert.falsy(err)
+        assert.same({}, rows)
+      end)
 
       describe("errors", function()
         it("handle invalid arg", function()
