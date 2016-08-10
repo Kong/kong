@@ -6,6 +6,7 @@
 -- To change this template use File | Settings | File Templates.
 --
 local codec = require 'codec'
+local mcrypt = require 'mcrypt'
 
 local response, _ = require 'kong.yop.response'()
 
@@ -19,7 +20,7 @@ function _M.blowfishDecrypt(body, secret)
     local pwd = codec.md5_encode(secret)
     local key = string.sub(pwd,1,16)
     local iv = string.sub(pwd,1,8)
-    return codec.blowfish_decrypt(body, key, iv)
+    return mcrypt.bf_cfb_de(key, iv, codec.base64_decode(body))
 end
 
 function _M.aesDecryptWithKeyBase64(body, secret)
@@ -61,7 +62,7 @@ local function blowfishEncrypt(body, secret)
     local pwd = codec.md5_encode(secret)
     local key = string.sub(pwd,1,16)
     local iv = string.sub(pwd,1,8)
-    return codec.blowfish_encrypt(body, key, iv)
+    return mcrypt.bf_cfb_en(key, iv, body)
 end
 
 local function aesEncryptWithKeyBase64(body, secret)

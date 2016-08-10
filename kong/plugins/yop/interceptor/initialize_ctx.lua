@@ -48,7 +48,11 @@ _M.process = function(ctx)
 
   local parameters = decodeOnceToTable(decodeOnceToString(original))
 
-  local appKey = parameters['appKey'] or parameters['customerNo']
+  local appKey = parameters['appKey']
+  if not appKey then
+    appKey = parameters['customerNo']
+    ctx.keyStoreType = 'CUST_BASED'
+  end
   --  缺少appKey参数
   if appKey == nil then response.missParameterException("", "appKey") end
 

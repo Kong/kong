@@ -91,6 +91,7 @@ end
 local function remoteGetApp(appKey)
   ngx.log(ngx.INFO, "remote get app info...appKey:" .. appKey)
   local j = httpClient.post(url .. "/app", { appKey = appKey }, { ['accept'] = "application/json" })
+  ngx.log(ngx.INFO,j)
   local o = json.decode(j)
   if isEmptyTable(o) then return nil end
   return o

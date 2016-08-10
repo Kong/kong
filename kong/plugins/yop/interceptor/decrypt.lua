@@ -23,7 +23,6 @@ local function tryDecrypt(ctx)
     local secret = ctx.app.appSecret
     local parameters = ctx.parameters
     local body = parameters.encrypt
-
     if body then
         local status,message
         if(keyStoreType == "CUST_BASED") then
@@ -31,7 +30,6 @@ local function tryDecrypt(ctx)
         else
             status,message = pcall(security_center.aesDecryptWithKeyBase64,body, secret)
         end
-
         -- 解密失败
         if(not status) then
             ngx.log(ngx.ERR,"decypty error!appKey:"..ctx.appKey)
