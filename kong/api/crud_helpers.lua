@@ -1,14 +1,13 @@
-local responses = require "kong.tools.responses"
-local validations = require "kong.dao.schemas_validation"
-local app_helpers = require "lapis.application"
 local utils = require "kong.tools.utils"
-local is_uuid = validations.is_valid_uuid
+local cjson = require "cjson"
+local responses = require "kong.tools.responses"
+local app_helpers = require "lapis.application"
 
 local _M = {}
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [is_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
   }
   self.params.name_or_id = nil
 
@@ -26,7 +25,7 @@ end
 
 function _M.find_consumer_by_username_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [is_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
+    [utils.is_valid_uuid(self.params.username_or_id) and "id" or "username"] = self.params.username_or_id
   }
   self.params.username_or_id = nil
 
@@ -91,23 +90,14 @@ function _M.paginated_set(self, dao_collection)
     })
   end
 
-  -- This check is required otherwise the response is going to be a
-  -- JSON Object and not a JSON array. The reason is because an empty Lua array `{}`
-  -- will not be translated as an empty array by cjson, but as an empty object.
-  -- TODO: fixme once https://github.com/openresty/lua-cjson/pull/6 lands in a release
-  local result
-  if #rows == 0 then
-    result = [[{"data":[],"total":0}]]
-  else
-    result = {
-      data = rows,
-      total = total_count,
-      offset = offset,
-      ["next"] = next_url,
-    }
-  end
-
-  return responses.send_HTTP_OK(result, type(result) ~= "table")
+  return responses.send_HTTP_OK {
+    -- can't use empty_array_mt here since apparently metatables are removed
+    -- before JSON encoding.
+    data = #rows > 0 and rows or cjson.empty_array,
+    total = total_count,
+    offset = offset,
+    ["next"] = next_url
+  }
 end
 
 -- Retrieval of an entity.

@@ -5,6 +5,7 @@ local pl_tablex = require "pl.tablex"
 local pl_stringx = require "pl.stringx"
 local conf_loader = require "kong.conf_loader"
 
+local CLIENT_TIMEOUT = 5000
 local NODES_CONF = {}
 local NODES = {
   servroot1 = {
@@ -48,8 +49,7 @@ describe("Cluster", function()
   end)
   after_each(function()
     for _, v in pairs(NODES) do
-      helpers.kill_all(v.prefix)
-      helpers.clean_prefix(v.prefix)
+      helpers.stop_kong(v.prefix)
     end
   end)
 
@@ -67,7 +67,7 @@ describe("Cluster", function()
       assert.is_string(node.name)
       assert.is_string(node.cluster_listening_address)
 
-      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
       local res = assert(api_client:send {
         method = "GET",
         path = "/cluster/"
@@ -96,7 +96,7 @@ describe("Cluster", function()
       assert.is_string(node.name)
       assert.equal("5.5.5.5:1234", node.cluster_listening_address)
 
-      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
       local res = assert(api_client:send {
         method = "GET",
         path = "/cluster/"
@@ -133,7 +133,7 @@ describe("Cluster", function()
 
       -- Wait for nodes to be registered in Serf in both nodes
       for _, v in ipairs({NODES_CONF.servroot1, NODES_CONF.servroot2}) do
-        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
 
         helpers.wait_until(function()
           local res = assert(api_client:send {
@@ -153,13 +153,17 @@ describe("Cluster", function()
 
       -- We need to wait a few seconds for the async job to kick in and join all the nodes together
       helpers.wait_until(function()
-        local _, _, stdout = assert(helpers.execute("serf members -format=json -rpc-addr="..NODES.servroot1.cluster_listen_rpc))
+        local _, _, stdout = assert(helpers.execute(
+                                 string.format("%s members -format=json -rpc-addr=%s",
+                                   helpers.test_conf.serf_path, NODES.servroot1.cluster_listen_rpc)
+                               )
+                             )
         return #cjson.decode(stdout).members == 3
       end, 5)
 
       -- Wait for nodes to be registered in Serf in both nodes
       for _, v in ipairs(NODES_CONF) do
-        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
 
         helpers.wait_until(function()
           local res = assert(api_client:send {
@@ -182,7 +186,7 @@ describe("Cluster", function()
       end)
 
       -- adding an API
-      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
       local res = assert(api_client:send {
         method = "POST",
         path = "/apis/",
@@ -199,7 +203,7 @@ describe("Cluster", function()
       ngx.sleep(5) -- Wait for invalidation of API creation to propagate
 
       -- Populate the cache
-      local client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.proxy_port)
+      local client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.proxy_port, CLIENT_TIMEOUT)
       local res = assert(client:send {
         method = "GET",
         path = "/status/200/",
@@ -227,7 +231,7 @@ describe("Cluster", function()
 
       -- The cache on the first node should be invalidated, and the second node has no cache either because it was never invoked
       for _, v in ipairs({NODES_CONF.servroot1, NODES_CONF.servroot2}) do
-        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
 
         helpers.wait_until(function()
           local res = assert(api_client:send {
@@ -246,7 +250,7 @@ describe("Cluster", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
 
       helpers.wait_until(function()
-        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/"
@@ -258,7 +262,7 @@ describe("Cluster", function()
 
       -- Now we have three nodes connected to each other, let's create and consume an API
       -- Adding an API
-      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+      local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
       local res = assert(api_client:send {
         method = "POST",
         path = "/apis/",
@@ -277,7 +281,7 @@ describe("Cluster", function()
 
       -- Populate the cache on every node
       for _, v in pairs(NODES_CONF) do
-        local api_client = helpers.http_client("127.0.0.1", v.proxy_port)
+        local api_client = helpers.http_client("127.0.0.1", v.proxy_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
           path = "/status/200",
@@ -291,7 +295,7 @@ describe("Cluster", function()
 
       -- Check the cache on every node
       for _, v in pairs(NODES_CONF) do
-        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
           path = "/cache/"..cache.all_apis_by_dict_key()
@@ -304,7 +308,7 @@ describe("Cluster", function()
       -- The cluster status is "active" for all three nodes
       local node_name
       for _, v in pairs(NODES_CONF) do
-        local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/"
@@ -324,7 +328,7 @@ describe("Cluster", function()
 
       -- Wait until the node becomes failed
       helpers.wait_until(function()
-        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/"
@@ -344,10 +348,11 @@ describe("Cluster", function()
       assert(node_name, "node_name is nil")
 
       -- The member has now failed, let's bring it up again
-      assert(helpers.execute(string.format("serf agent -profile=wan -node=%s -rpc-addr=%s"
+      assert(helpers.execute(string.format("%s agent -profile=wan -node=%s -rpc-addr=%s"
                              .." -bind=%s -event-handler=member-join,"
                              .."member-leave,member-failed,member-update,"
                              .."member-reap,user:kong=%s > /dev/null &",
+                            helpers.test_conf.serf_path,
                             node_name,
                             NODES.servroot2.cluster_listen_rpc,
                             NODES.servroot2.cluster_listen,
@@ -355,7 +360,7 @@ describe("Cluster", function()
 
       -- Now wait until the node becomes active again
       helpers.wait_until(function()
-        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port)
+        local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
           path = "/cluster/"
@@ -369,12 +374,12 @@ describe("Cluster", function()
           end
         end
         return true
-      end, 30)
+      end, 60)
 
       -- The cache should have been deleted on every node available
       for _, v in ipairs(NODES_CONF) do
         helpers.wait_until(function()
-          local api_client = helpers.http_client("127.0.0.1", v.admin_port)
+          local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
           local res = assert(api_client:send {
             method = "GET",
             path = "/cache/"..cache.all_apis_by_dict_key()

@@ -1,6 +1,6 @@
 local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
-local uuid = require "lua_uuid"
+local uuid = require "resty.jit-uuid"
 local utils = require "kong.tools.utils"
 
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute

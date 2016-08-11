@@ -4,15 +4,12 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.prepare_prefix()
     assert(helpers.start_kong())
-
     client = helpers.admin_client(10000)
   end)
   teardown(function()
     if client then client:close() end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    helpers.stop_kong()
   end)
 
   describe("Kong routes", function()
@@ -76,52 +73,6 @@ describe("Admin API", function()
       assert.is_number(json.server.connections_writing)
       assert.is_number(json.server.connections_waiting)
       assert.is_number(json.server.total_requests)
-    end)
-  end)
-
-  describe("request size", function()
-    setup(function()
-      assert(helpers.dao.apis:insert {
-        name = "my-api",
-        request_host = "my.api.com",
-        upstream_url = "http://api.com"
-      })
-    end)
-    it("handles req bodies < 10MB", function()
-      local ip = "204.48.16.0"
-      local n = 2^20 / #ip
-      local buf = {}
-      for i = 1, n do buf[#buf+1] = ip end
-      local ips = table.concat(buf, ",")
-
-      local res = assert(client:send {
-        method = "POST",
-        path = "/apis/my-api/plugins",
-        body = {
-          name = "ip-restriction",
-          ["config.blacklist"] = ips
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-      assert.res_status(201, res)
-    end)
-    it("fails with req bodies 10MB", function()
-      local ip = "204.48.16.0"
-      local n = 11 * 2^20 / #ip
-      local buf = {}
-      for i = 1, n do buf[#buf+1] = ip end
-      local ips = table.concat(buf, ",")
-
-      local res = assert(client:send {
-        method = "POST",
-        path = "/apis/my-api/plugins",
-        body = {
-          name = "ip-restriction",
-          ["config.blacklist"] = ips
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-      assert.res_status(413, res)
     end)
   end)
 end)

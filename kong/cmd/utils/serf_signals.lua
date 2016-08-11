@@ -8,29 +8,31 @@ local pl_file = require "pl.file"
 local Serf = require "kong.serf"
 local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
+local meta = require "kong.meta"
 local version = require "version"
 local fmt = string.format
 
-local serf_bin_name = "serf"
 local serf_event_name = "kong"
-local serf_version_command = " version"                -- commandline param to get version
-local serf_version_pattern = "^Serf v([%d%.]+)"        -- pattern to grab version from output
-local serf_compatible = version.set("0.7.0", "0.7.0")  -- compatible from-to versions
+local serf_version_pattern = "^Serf v([%d%.]+)"
+local serf_compatible = version.set(unpack(meta._DEPENDENCIES.serf))
 local start_timeout = 5
 
-local function check_serf_bin()
-  local cmd = fmt("%s %s", serf_bin_name, serf_version_command)
+local function check_serf_bin(kong_config)
+  log.verbose("checking 'serf' executable from 'serf_path' config setting...")
+
+  local cmd = fmt("%s version", kong_config.serf_path)
   local ok, _, stdout = pl_utils.executeex(cmd)
+  log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stdout)[1])
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
-    if (not version_match) or (not serf_compatible:matches(version_match)) then
-      return nil, "incompatible Serf version. Kong requires version "..tostring(serf_compatible)..
-        (version_match and ", got "..tostring(version_match) or "")
+    if not version_match or not serf_compatible:matches(version_match) then
+      return nil, "incompatible Serf found. Kong requires version "..
+                  tostring(serf_compatible)..", got "..version_match
     end
     return true
   end
 
-  return nil, "could not find Serf executable (is it in your $PATH?)"
+  return nil, "could not find 'serf' executable (is 'serf_path' correctly set?)"
 end
 
 local _M = {}
@@ -46,7 +48,7 @@ function _M.start(kong_config, dao)
   end
 
   -- make sure Serf is in PATH
-  local ok, err = check_serf_bin()
+  local ok, err = check_serf_bin(kong_config)
   if not ok then return nil, err end
 
   local serf = Serf.new(kong_config, dao)
@@ -64,7 +66,7 @@ function _M.start(kong_config, dao)
   }, Serf.args_mt)
 
   local cmd = string.format("nohup %s agent %s > %s 2>&1 & echo $! > %s",
-                            serf_bin_name, tostring(args),
+                            kong_config.serf_path, tostring(args),
                             kong_config.serf_log, kong_config.serf_pid)
 
   log.debug("starting Serf agent: %s", cmd)
@@ -112,15 +114,15 @@ function _M.stop(kong_config, dao)
 
   local serf = Serf.new(kong_config, dao)
 
-  local ok, err = serf:leave()
-  if not ok then return nil, err end
+  log.verbose("invoking Serf leave")
+  serf:leave()
 
   log.verbose("stopping Serf agent at %s", kong_config.serf_pid)
-  local code, res = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
+  local code = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
   if code == 256 then -- If no error is returned
     pl_file.delete(kong_config.serf_pid)
   end
-  return code, res
+  return true
 end
 
 return _M

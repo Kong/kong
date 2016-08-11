@@ -175,12 +175,13 @@ describe("kong start/stop", function()
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
     it("notifies when Nginx is already running", function()
-      assert(helpers.dir.makepath(helpers.test_conf.prefix))
       assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       }))
 
-      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix)
+      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+        pg_database = helpers.test_conf.pg_database
+      })
       assert.False(ok)
       assert.matches("Nginx is already running in", stderr)
     end)

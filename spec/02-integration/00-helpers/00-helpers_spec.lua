@@ -19,11 +19,11 @@ describe("helpers: assertions and modifiers", function()
     assert(helpers.start_kong())
   end)
   teardown(function()
-    assert(helpers.stop_kong())
+    helpers.stop_kong()
   end)
 
   before_each(function()
-    client = helpers.proxy_client()
+    client = helpers.proxy_client(5000)
   end)
   after_each(function()
     if client then client:close() end

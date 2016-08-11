@@ -1,5 +1,5 @@
 local url = require "socket.url"
-local stringy = require "stringy"
+local utils = require "kong.tools.utils"
 
 local fmt = string.format
 local sub = string.sub
@@ -18,8 +18,8 @@ local function validate_upstream_url_protocol(value)
 end
 
 local function check_request_host_and_path(api_t)
-  local request_host = type(api_t.request_host) == "string" and stringy.strip(api_t.request_host) or ""
-  local request_path = type(api_t.request_path) == "string" and stringy.strip(api_t.request_path) or ""
+  local request_host = type(api_t.request_host) == "string" and utils.strip(api_t.request_host) or ""
+  local request_path = type(api_t.request_path) == "string" and utils.strip(api_t.request_path) or ""
 
   if request_path == "" and request_host == "" then
     return false, "At least a 'request_host' or a 'request_path' must be specified"
@@ -47,7 +47,7 @@ local function check_request_host(request_host, api_t)
 
       -- Reject prefix/trailing dashes and dots in each segment
       -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
-      for _, segment in ipairs(stringy.split(request_host, ".")) do
+      for _, segment in ipairs(utils.split(request_host, ".")) do
         if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
           return false, "Invalid value: "..request_host
         end

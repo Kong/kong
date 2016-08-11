@@ -4,17 +4,12 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    helpers.prepare_prefix()
     assert(helpers.start_kong())
-
     client = helpers.admin_client()
   end)
   teardown(function()
-    if client then
-      client:close()
-    end
-    assert(helpers.stop_kong())
-    helpers.clean_prefix()
+    if client then client:close() end
+    helpers.stop_kong()
   end)
 
   describe("/cluster", function()
@@ -46,10 +41,10 @@ describe("Admin API", function()
       setup(function()
         local pl_utils = require "pl.utils"
         local kill = require "kong.cmd.utils.kill"
-        local cmd = string.format("nohup serf agent -rpc-addr=127.0.0.1:20000 "
+        local cmd = string.format("nohup %s agent -rpc-addr=127.0.0.1:20000 "
                                 .."-bind=127.0.0.1:20001 -node=newnode > "
                                 .."%s 2>&1 & echo $! > %s",
-                                log_path, pid_path)
+                                helpers.test_conf.serf_path, log_path, pid_path)
         assert(pl_utils.execute(cmd))
 
         local tstart = ngx.time()
@@ -69,7 +64,9 @@ describe("Admin API", function()
 
       it("force-leaves a node", function()
         -- old test converted
-        local cmd = string.format("serf join -rpc-addr=%s 127.0.0.1:20001", helpers.test_conf.cluster_listen_rpc)
+        local cmd = string.format("%s join -rpc-addr=%s 127.0.0.1:20001",
+                                  helpers.test_conf.serf_path,
+                                  helpers.test_conf.cluster_listen_rpc)
         assert(helpers.execute(cmd))
 
         local res = assert(client:send {

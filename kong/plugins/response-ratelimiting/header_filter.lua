@@ -1,5 +1,4 @@
 local utils = require "kong.tools.utils"
-local stringy = require "stringy"
 local responses = require "kong.tools.responses"
 
 local pairs = pairs
@@ -15,13 +14,13 @@ local _M = {}
 local function parse_header(header_value, limits)
   local increments = {}
   if header_value then
-    local parts = stringy.split(header_value, ",")
+    local parts = utils.split(header_value, ",")
     for _, v in ipairs(parts) do
-      local increment_parts = stringy.split(v, "=")
+      local increment_parts = utils.split(v, "=")
       if utils.table_size(increment_parts) == 2 then
-        local limit_name = stringy.strip(increment_parts[1])
+        local limit_name = utils.strip(increment_parts[1])
         if limits[limit_name] then -- Only if the limit exists
-          increments[stringy.strip(increment_parts[1])] = tonumber(stringy.strip(increment_parts[2]))
+          increments[utils.strip(increment_parts[1])] = tonumber(utils.strip(increment_parts[2]))
         end
       end
     end
@@ -31,7 +30,7 @@ end
 
 function _M.execute(conf)
   ngx.ctx.increments = {}
-  
+
   if utils.table_size(conf.limits) <= 0 then
     return
   end

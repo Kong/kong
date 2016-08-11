@@ -33,6 +33,7 @@ _G._KONG = {
 
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
+local uuid = require 'resty.jit-uuid'
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
 local singletons = require "kong.singletons"
@@ -139,6 +140,13 @@ function Kong.init()
 end
 
 function Kong.init_worker()
+  -- it is very important to seed this module in the init_worker phase
+  -- to avoid duplicated UUID sequences accross workers since jit-uuid
+  -- uses LuaJIT's math.random().
+  -- jit-uuid handles unique seeds for multiple workers thanks to
+  -- ngx.worker.pid().
+  uuid.seed()
+
   core.init_worker.before()
 
   singletons.dao:init() -- Executes any initialization by the DB

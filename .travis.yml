@@ -1,5 +1,8 @@
 sudo: false
 
+services:
+  - redis-server
+
 notifications:
   email: false
 
@@ -8,7 +11,6 @@ addons:
   apt:
     packages:
       - dnsmasq
-      - uuid-dev
       - net-tools
       - libpcre3-dev
       - build-essential
@@ -17,9 +19,9 @@ env:
   global:
     - SERF=0.7.0
     - LUAROCKS=2.3.0
-    - OPENSSL=1.0.2f
-    - CASSANDRA=2.2.4
-    - OPENRESTY=1.9.7.3
+    - OPENSSL=1.0.2h
+    - CASSANDRA=2.2.7
+    - OPENRESTY=1.9.15.1
     - $CACHE_DIR=$HOME/cache
   matrix:
     - TEST_SUITE=lint

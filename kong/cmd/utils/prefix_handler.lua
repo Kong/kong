@@ -6,9 +6,11 @@ local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_file = require "pl.file"
 local pl_path = require "pl.path"
+local version = require "version"
 local pl_dir = require "pl.dir"
 local socket = require "socket"
 local utils = require "kong.tools.utils"
+local meta = require "kong.meta"
 local log = require "kong.cmd.utils.log"
 local constants = require "kong.constants"
 local fmt = string.format
@@ -36,8 +38,60 @@ client:request { \
   } \
 }"
 
-resty -e "$CMD"
+%s -e "$CMD"
 ]]
+
+local resty_bin_name = "resty"
+local resty_version_pattern = "nginx[^\n]-openresty[^\n]-([%d%.]+)"
+local resty_compatible = version.set(unpack(meta._DEPENDENCIES.nginx))
+local resty_search_paths = {
+  "/usr/local/openresty/bin",
+  ""
+}
+
+local function is_openresty(bin_path)
+  local cmd = fmt("%s -V", bin_path)
+  local ok, _, _, stderr = pl_utils.executeex(cmd)
+  local lines = pl_stringx.splitlines(stderr)
+  if #lines > 1 then
+    stderr = lines[2] -- show openresty version line
+  else
+    stderr = lines[1] -- strip trailing line jump
+  end
+  log.debug("%s: '%s'", cmd, stderr)
+  if ok and stderr then
+    local version_match = stderr:match(resty_version_pattern)
+    if not version_match or not resty_compatible:matches(version_match) then
+      log.verbose("'resty' found at %s uses incompatible OpenResty. Kong "..
+                  "requires OpenResty version %s, got %s", bin_path,
+                  tostring(resty_compatible), version_match)
+      return false
+    end
+    return true
+  end
+  log.debug("OpenResty 'resty' executable not found at %s", bin_path)
+end
+
+local function find_resty_bin()
+  log.verbose("searching for OpenResty 'resty' executable...")
+
+  local found
+  for _, path in ipairs(resty_search_paths) do
+    local path_to_check = pl_path.join(path, resty_bin_name)
+    if is_openresty(path_to_check) then
+      found = path_to_check
+      log.verbose("found OpenResty 'resty' executable at %s", found)
+      break
+    end
+  end
+
+  if not found then
+    return nil, ("could not find OpenResty 'resty' executable. Kong requires"..
+                 " version %s"):format(tostring(resty_compatible))
+  end
+
+  return found
+end
 
 local function gen_default_ssl_cert(kong_config)
   -- create SSL folder
@@ -160,8 +214,11 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
     pl_file.write(kong_config.serf_node_id, id)
   end
 
+  local resty_bin, err = find_resty_bin()
+  if not resty_bin then return nil, err end
+
   log.verbose("saving Serf shell script handler in %s", kong_config.serf_event)
-  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port)
+  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port, resty_bin)
   pl_file.write(kong_config.serf_event, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end

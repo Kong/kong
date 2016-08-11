@@ -8,6 +8,7 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local ngx_log = ngx.log
 local pairs = pairs
 local tostring = tostring
+local ngx_timer_at = ngx.timer.at
 
 local RATELIMIT_LIMIT = "X-RateLimit-Limit"
 local RATELIMIT_REMAINING = "X-RateLimit-Remaining"
@@ -105,8 +106,16 @@ function RateLimitingHandler:access(conf)
     end
   end
 
+  local incr = function(premature, conf, api_id, identifier, current_timestamp, value)
+    if premature then return end
+    policies[policy].increment(conf, api_id, identifier, current_timestamp, value)
+  end
+
   -- Increment metrics for all periods if the request goes through
-  policies[policy].increment(conf, api_id, identifier, current_timestamp, 1)
+  local ok, err = ngx_timer_at(0, incr, conf, api_id, identifier, current_timestamp, 1)
+  if not ok then
+    ngx_log(ngx.ERR, "failed to create timer: ", err)
+  end
 end
 
 return RateLimitingHandler
