@@ -13,6 +13,7 @@ for k, v in pairs(_LEVELS) do
 end
 
 local log_lvl = _LEVELS.info
+local old_lvl
 
 local _M = {
   levels = _LEVELS
@@ -22,6 +23,18 @@ function _M.set_lvl(lvl)
   if r_levels[lvl] then
     log_lvl = lvl
   end
+end
+
+function _M.disable()
+  if not old_lvl then
+    old_lvl = log_lvl
+    log_lvl = _LEVELS.quiet
+  end
+end
+
+function _M.enable()
+  log_lvl = old_lvl or log_lvl
+  old_lvl = nil
 end
 
 local function log(lvl, ...)

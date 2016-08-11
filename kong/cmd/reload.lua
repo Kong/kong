@@ -8,10 +8,12 @@ local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
+  log.disable()
   -- retrieve prefix or use given one
   local default_conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
+  log.enable()
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
 
@@ -23,7 +25,7 @@ local function execute(args)
   end
   assert(serf_signals.start(conf, DAOFactory(conf)))
   assert(nginx_signals.reload(conf))
-  log("Reloaded")
+  log("Kong reloaded")
 end
 
 local lapp = [[

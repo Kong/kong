@@ -37,7 +37,7 @@ local function execute(args)
   log("") -- line jump
 
   assert(count > 0, "Kong is not running at "..conf.prefix)
-  assert(count == pl_tablex.size(pids), "Some services are not running at "..conf.prefix)
+  assert(count == pl_tablex.size(pids), "some services are not running at "..conf.prefix)
 
   log("Kong is healthy at %s", conf.prefix)
 end

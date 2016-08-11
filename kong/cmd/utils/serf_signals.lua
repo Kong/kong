@@ -18,7 +18,7 @@ local serf_compatible = version.set(unpack(meta._DEPENDENCIES.serf))
 local start_timeout = 5
 
 local function check_serf_bin(kong_config)
-  log.verbose("checking 'serf' executable from 'serf_path' config setting...")
+  log.debug("checking 'serf' executable from 'serf_path' config setting")
 
   local cmd = fmt("%s version", kong_config.serf_path)
   local ok, _, stdout = pl_utils.executeex(cmd)
@@ -26,7 +26,7 @@ local function check_serf_bin(kong_config)
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
     if not version_match or not serf_compatible:matches(version_match) then
-      return nil, "incompatible Serf found. Kong requires version "..
+      return nil, "incompatible serf found. Kong requires version "..
                   tostring(serf_compatible)..", got "..version_match
     end
     return true
@@ -40,10 +40,10 @@ local _M = {}
 function _M.start(kong_config, dao)
   -- is Serf already running in this prefix?
   if kill.is_running(kong_config.serf_pid) then
-    log.verbose("Serf agent already running at %s", kong_config.serf_pid)
+    log.verbose("serf agent already running at %s", kong_config.serf_pid)
     return true
   else
-    log.verbose("Serf agent not running, deleting %s", kong_config.serf_pid)
+    log.verbose("serf agent not running, deleting %s", kong_config.serf_pid)
     pl_file.delete(kong_config.serf_pid)
   end
 
@@ -69,13 +69,13 @@ function _M.start(kong_config, dao)
                             kong_config.serf_path, tostring(args),
                             kong_config.serf_log, kong_config.serf_pid)
 
-  log.debug("starting Serf agent: %s", cmd)
+  log.debug("starting serf agent: %s", cmd)
 
   -- start Serf agent
   local ok = pl_utils.execute(cmd)
   if not ok then return nil end
 
-  log.verbose("waiting for Serf agent to be running...")
+  log.verbose("waiting for serf agent to be running")
 
   -- ensure started (just an improved version of previous Serf service)
   local tstart = ngx.time()
@@ -91,37 +91,40 @@ function _M.start(kong_config, dao)
     local tlogs = pl_stringx.split(logs, "\n")
     local err = string.gsub(tlogs[#tlogs-1], "==> ", "")
     err = pl_stringx.strip(err)
-    return nil, "could not start Serf: "..err
+    return nil, "could not start serf: "..err
   end
+
+  log.verbose("serf agent started")
 
   -- cleanup current node from cluster to prevent inconsistency of data
   local ok, err = serf:cleanup()
   if not ok then return nil, err end
 
-  log.verbose("auto-joining Serf cluster...")
+  log.verbose("auto-joining serf cluster")
   local ok, err = serf:autojoin()
   if not ok then return nil, err end
 
-  log.verbose("adding node to Serf cluster (in datastore)...")
+  log.verbose("registering serf node in datastore")
   local ok, err = serf:add_node()
   if not ok then return nil, err end
+
+  log.verbose("cluster joined and node registered in datastore")
 
   return true
 end
 
 function _M.stop(kong_config, dao)
-  log.info("leaving cluster")
-
+  log.verbose("leaving serf cluster")
   local serf = Serf.new(kong_config, dao)
-
-  log.verbose("invoking Serf leave")
   serf:leave()
+  log.verbose("left serf cluster")
 
-  log.verbose("stopping Serf agent at %s", kong_config.serf_pid)
+  log.verbose("stopping serf agent at %s", kong_config.serf_pid)
   local code = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
   if code == 256 then -- If no error is returned
     pl_file.delete(kong_config.serf_pid)
   end
+  log.verbose("serf agent stopped")
   return true
 end
 

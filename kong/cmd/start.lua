@@ -19,7 +19,7 @@ local function execute(args)
   end
   assert(serf_signals.start(conf, dao))
   assert(nginx_signals.start(conf))
-  log("Started")
+  log("Kong started")
 end
 
 local lapp = [[

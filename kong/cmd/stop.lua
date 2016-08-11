@@ -7,10 +7,12 @@ local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
-  -- retrieve default prefix or use given one
+  log.disable()
+  -- only to retrieve the default prefix or use given one
   local default_conf = assert(conf_loader(nil, {
     prefix = args.prefix
   }))
+  log.enable()
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
 
@@ -21,7 +23,7 @@ local function execute(args)
   if conf.dnsmasq then
     assert(dnsmasq_signals.stop(conf))
   end
-  log("Stopped")
+  log("Kong stopped")
 end
 
 local lapp = [[
