@@ -18,8 +18,10 @@ local function execute(args)
          "no such prefix: "..default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_conf))
-  assert(prefix_handler.prepare_prefix(conf))
+  local conf = assert(conf_loader(default_conf.kong_conf, {
+    prefix = args.prefix
+  }))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
   if conf.dnsmasq then
     assert(dnsmasq_signals.start(conf))
   end
@@ -40,8 +42,9 @@ and stop the old ones when they have finished processing
 current requests.
 
 Options:
- -c,--conf   (optional string) configuration file
- -p,--prefix (optional string) prefix Kong is running at
+ -c,--conf    (optional string) configuration file
+ -p,--prefix  (optional string) prefix Kong is running at
+ --nginx-conf (optional string) custom Nginx configuration template
 ]]
 
 return {

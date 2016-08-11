@@ -55,6 +55,26 @@ describe("kong restart", function()
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.serf_pid)), serf_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.dnsmasq_pid)), dnsmasq_pid)
   end)
+  it("accepts a custom nginx template", function()
+    local env = {
+      pg_database = helpers.test_conf.pg_database
+    }
+
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, env))
+    ngx.sleep(1)
+
+    assert(helpers.kong_exec("restart --prefix "..helpers.test_conf.prefix
+           .." --nginx-conf spec/fixtures/custom_nginx.template", env))
+    ngx.sleep(1)
+
+    -- new server
+    local client = helpers.http_client("0.0.0.0", 9999, 5000)
+    local res = assert(client:send {
+      path = "/custom_server_path"
+    })
+    assert.res_status(200, res)
+    client:close()
+  end)
   pending("restarts with default configuration and prefix", function()
     -- don't want to force migrations to be run on default
     -- keyspace/database

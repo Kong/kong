@@ -11,7 +11,7 @@ describe("kong reload", function()
     helpers.kill_all()
   end)
 
-  it("send a HUP signal to a running Nginx master process", function()
+  it("send a 'reload' signal to a running Nginx master process", function()
     assert(helpers.start_kong())
     local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
 
@@ -48,12 +48,36 @@ describe("kong reload", function()
     client = helpers.http_client("0.0.0.0", 9000, 5000)
     client:close()
   end)
+  it("accepts a custom nginx template", function()
+    assert(helpers.start_kong {
+      proxy_listen = "0.0.0.0:9002"
+    })
+
+    -- http_client errors out if cannot connect
+    local client = helpers.http_client("0.0.0.0", 9002, 5000)
+    client:close()
+
+    ngx.sleep(1)
+
+    assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path
+           .." --nginx-conf spec/fixtures/custom_nginx.template"))
+
+    ngx.sleep(1)
+
+    -- new server
+    client = helpers.http_client("0.0.0.0", 9999, 5000)
+    local res = assert(client:send {
+      path = "/custom_server_path"
+    })
+    assert.res_status(200, res)
+    client:close()
+  end)
 
   describe("errors", function()
     it("complains about missing PID if not already running", function()
       local ok, err = helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix)
       assert.False(ok)
-      assert.matches("Error: could not get Nginx pid (is Nginx running in this prefix?)", err, nil, true)
+      assert.matches("Error: nginx not running in prefix: "..helpers.test_conf.prefix, err, nil, true)
     end)
   end)
 end)

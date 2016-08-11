@@ -31,14 +31,14 @@ local function is_openresty(bin_path)
   log.debug("OpenResty 'nginx' executable not found at %s", bin_path)
 end
 
-local function send_signal(pid_path, signal)
-  if not pl_path.exists(pid_path) then
-    return nil, "could not get nginx pid (is Nginx running in this prefix?)"
+local function send_signal(kong_conf, signal)
+  if not kill.is_running(kong_conf.nginx_pid) then
+    return nil, "nginx not running in prefix: "..kong_conf.prefix
   end
 
-  log.verbose("sending %s signal to nginx running at %s", signal, pid_path)
+  log.verbose("sending %s signal to nginx running at %s", signal, kong_conf.nginx_pid)
 
-  local code = kill.kill(pid_path, "-s "..signal)
+  local code = kill.kill(kong_conf.nginx_pid, "-s "..signal)
   if code ~= 0 then return nil, "could not send signal" end
 
   return true
@@ -88,15 +88,30 @@ function _M.start(kong_conf)
 end
 
 function _M.stop(kong_conf)
-  return send_signal(kong_conf.nginx_pid, "TERM")
+  return send_signal(kong_conf, "TERM")
 end
 
 function _M.quit(kong_conf, graceful)
-  return send_signal(kong_conf.nginx_pid, "QUIT")
+  return send_signal(kong_conf, "QUIT")
 end
 
 function _M.reload(kong_conf)
-  return send_signal(kong_conf.nginx_pid, "HUP")
+  if not kill.is_running(kong_conf.nginx_pid) then
+    return nil, "nginx not running in prefix: "..kong_conf.prefix
+  end
+
+  local nginx_bin, err = find_nginx_bin()
+  if not nginx_bin then return nil, err end
+
+  local cmd = fmt("%s -p %s -c %s -s %s",
+                  nginx_bin, kong_conf.prefix, "nginx.conf", "reload")
+
+  log.debug("reloading nginx: %s", cmd)
+
+  local ok, _, _, stderr = pl_utils.executeex(cmd)
+  if not ok then return nil, stderr end
+
+  return true
 end
 
 return _M
