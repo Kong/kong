@@ -50,8 +50,10 @@ function Serf:join_node(address)
 end
 
 function Serf:leave()
-  local res, err = self:invoke_signal("leave")
-  if not res then return nil, err end
+  -- See https://github.com/hashicorp/serf/issues/400
+  -- Currently sometimes this returns an error, once that Serf issue has been
+  -- fixed we can check again for any errors returned by the following command.
+  self:invoke_signal("leave")
 
   local _, err = self.dao.nodes:delete {name = self.node_name}
   if err then return nil, tostring(err) end
