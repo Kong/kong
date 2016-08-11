@@ -525,66 +525,84 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
         end)
       end)
-    elseif policy == "local" then -- Uncomment when TTLs have been implemented in Cassandra and Postgres
-      describe("Expirations", function()
-        local api
-        setup(function()
-          helpers.stop_kong()
-          helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
-          assert(helpers.start_kong())
+    end
 
-          api = assert(helpers.dao.apis:insert {
-            request_host = "expire1.com",
-            upstream_url = "http://httpbin.org"
-          })
-          assert(helpers.dao.plugins:insert {
-            name = "response-ratelimiting",
-            api_id = api.id,
-            config = {
-              policy = policy,
-              redis_host = REDIS_HOST,
-              redis_port = REDIS_PORT,
-              redis_password = REDIS_PASSWORD,
-              cluster_fault_tolerant = false,
-              limits = {video = {minute = 6}}
-            }
-          })
-        end)
+    describe("Expirations", function()
+      local api
+      setup(function()
+        helpers.stop_kong()
+        helpers.dao:drop_schema()
+        assert(helpers.dao:run_migrations())
+        assert(helpers.start_kong())
 
-        it("expires a counter", function()
-          local periods = timestamp.get_timestamps()
+        api = assert(helpers.dao.apis:insert {
+          request_host = "expire1.com",
+          upstream_url = "http://httpbin.org"
+        })
+        assert(helpers.dao.plugins:insert {
+          name = "response-ratelimiting",
+          api_id = api.id,
+          config = {
+            policy = policy,
+            redis_host = REDIS_HOST,
+            redis_port = REDIS_PORT,
+            redis_password = REDIS_PASSWORD,
+            cluster_fault_tolerant = false,
+            limits = {video = {minute = 6}}
+          }
+        })
+      end)
 
-          local res = assert(helpers.proxy_client():send {
-            method = "GET",
-            path = "/response-headers?x-kong-limit=video=1",
-            headers = {
-              ["Host"] = "expire1.com"
-            }
-          })
+      it("expires a counter", function()
+        local periods = timestamp.get_timestamps()
 
-          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/response-headers?x-kong-limit=video=1",
+          headers = {
+            ["Host"] = "expire1.com"
+          }
+        })
 
-          assert.res_status(200, res)
-          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
-          assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+        ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
+        assert.res_status(200, res)
+        assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+        assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+
+        if policy == "local" then
           local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute")
           })
           local body = assert.res_status(200, res)
           assert.equal([[{"message":1}]], body)
+        end
 
-          ngx.sleep(61) -- Wait for counter to expire
+        ngx.sleep(61) -- Wait for counter to expire
 
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/response-headers?x-kong-limit=video=1",
+          headers = {
+            ["Host"] = "expire1.com"
+          }
+        })
+
+        ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+
+        assert.res_status(200, res)
+        assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+        assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+
+        if policy == "local" then
           local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute")
           })
           assert.res_status(404, res)
-        end)
+        end
       end)
-    end
+    end)
   end)
 end

@@ -3,6 +3,7 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses = require "kong.tools.responses"
 local strip = require("pl.stringx").strip
+local tonumber = tonumber
 
 local MB = 2^20
 
@@ -29,7 +30,8 @@ function RequestSizeLimitingHandler:access(conf)
   RequestSizeLimitingHandler.super.access(self)
   local headers = ngx.req.get_headers()
   local cl = headers["content-length"]
-  if cl then
+
+  if cl and tonumber(cl) then
     check_size(tonumber(cl), conf.allowed_payload_size, headers)
   else
     -- If the request body is too big, this could consume too much memory (to check)

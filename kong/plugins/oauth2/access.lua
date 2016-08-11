@@ -210,7 +210,7 @@ local function authorize(conf)
   -- Sending response in JSON format
   return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
     redirect_uri = url.build(parsed_redirect_uri)
-  } or response_params, false, {
+  } or response_params, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
   })
@@ -349,7 +349,7 @@ local function issue_token(conf)
 
   -- Sending response in JSON format
   return responses.send(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400)
-                        or 200, response_params, false, {
+                        or 200, response_params, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache",
     ["www-authenticate"] = invalid_client_properties and invalid_client_properties.www_authenticate
