@@ -28,8 +28,6 @@ local function check_request_host_and_path(api_t)
   return true
 end
 
-local dns_pattern = "^[%d%a%-%.%_]+$"
-
 local function check_request_host(request_host, api_t)
   local valid, err = check_request_host_and_path(api_t)
   if valid == false then
@@ -37,22 +35,15 @@ local function check_request_host(request_host, api_t)
   end
 
   if request_host ~= nil and request_host ~= "" then
-    local _, count = request_host:gsub("%*", "")
-    if count == 0 then
-      -- Validate regular request_host
-      local match = request_host:match(dns_pattern)
-      if match == nil then
-        return false, "Invalid value: "..request_host
-      end
-
-      -- Reject prefix/trailing dashes and dots in each segment
-      -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
-      for _, segment in ipairs(utils.split(request_host, ".")) do
-        if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
-          return false, "Invalid value: "..request_host
-        end
-      end
-    elseif count == 1 then
+    local temp, count = request_host:gsub("%*", "abc")  -- insert valid placeholder for verification
+    
+    -- Validate regular request_host
+    local normalized = utils.normalize_ip(temp)
+    if (not normalized) or normalized.port then  
+      return false, "Invalid value: "..request_host
+    end
+    
+    if count == 1 then
       -- Validate wildcard request_host
       local valid
       local pos = request_host:find("%*")
@@ -65,7 +56,7 @@ local function check_request_host(request_host, api_t)
       if not valid then
         return false, "Invalid wildcard placement: "..request_host
       end
-    else
+    elseif count > 1 then
       return false, "Only one wildcard is allowed: "..request_host
     end
   end

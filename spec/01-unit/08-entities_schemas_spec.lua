@@ -134,13 +134,28 @@ describe("Entities Schemas", function()
         assert.False(valid)
         assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.request_host)
       end)
-      it("should refuse invalid wildcard request_host", function()
+      it("should refuse invalid wildcard request_host placement", function()
         local invalids = {"*mockbin.com", "www.mockbin*", "mock*bin.com"}
 
         for _, v in ipairs(invalids) do
           local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.equal("Invalid wildcard placement: "..v, (errors and errors.request_host or ""))
+          assert.False(valid)
+        end
+      end)
+      it("should refuse invalid wildcard request_host", function()
+        local invalids = {"/mockbin", ".mockbin", "mockbin.", "mock;bin",
+                          "mockbin.com/org",
+                          "mockbin-.org", "mockbin.org-",
+                          "hello..mockbin.com", "hello-.mockbin.com"}
+
+        for _, v in ipairs(invalids) do
+          v = "*."..v 
+          local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
+          local valid, errors = validate_entity(t, api_schema)
+          assert.equal("Invalid value: "..v, (errors and errors.request_host or ""))
+          assert.falsy(errors.request_path)
           assert.False(valid)
         end
       end)
