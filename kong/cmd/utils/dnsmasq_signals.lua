@@ -19,7 +19,7 @@ local dnsmasq_search_paths = {
 }
 
 local function find_dnsmasq_bin()
-  log.verbose("searching for 'dnsmasq' executable...")
+  log.debug("searching for 'dnsmasq' executable")
 
   local found
   for _, path in ipairs(dnsmasq_search_paths) do
@@ -38,7 +38,7 @@ local function find_dnsmasq_bin()
     return nil, "could not find 'dnsmasq' executable"
   end
 
-  log.verbose("found 'dnsmasq' executable at %s", found)
+  log.debug("found 'dnsmasq' executable at %s", found)
 
   return found
 end
