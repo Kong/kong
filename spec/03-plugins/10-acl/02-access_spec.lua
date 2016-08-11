@@ -359,7 +359,7 @@ describe("Plugin: ACL (access)", function()
       })
       assert.res_status(201, res)
 
-      for i=1,10 do
+      for i = 1, 3 do
         -- Create API
         local res = assert(api_client:send {
           method = "POST",
@@ -419,21 +419,26 @@ describe("Plugin: ACL (access)", function()
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.acls_key(consumer_id),
-            headers = {}
+            path = "/cache/"..cache.acls_key(consumer_id)
           })
           res:read_body()
           return res.status == 404
         end, 5)
 
         -- Make the request, and it should work
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200?apikey=secret123",
-          headers = {
-            ["Host"] = "acl_test"..i..".com"
-          }
-        })
+
+        local res
+        helpers.wait_until(function()
+          res = assert(client:send {
+            method = "GET",
+            path = "/status/200?apikey=secret123",
+            headers = {
+              ["Host"] = "acl_test"..i..".com"
+            }
+          })
+          return res.status ~= 404
+        end, 5)
+
         assert.res_status(200, res)
       end
     end)

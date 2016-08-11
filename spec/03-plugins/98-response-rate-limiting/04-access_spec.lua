@@ -41,7 +41,7 @@ local function flush_redis()
 end
 
 for i, policy in ipairs({"local", "cluster", "redis"}) do
-  describe("Plugin: response-ratelimiting (access) with policy: "..policy, function()
+  describe("#ci Plugin: response-ratelimiting (access) with policy: "..policy, function()
     setup(function()
       flush_redis()
       helpers.dao:drop_schema()
