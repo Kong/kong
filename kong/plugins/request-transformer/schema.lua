@@ -12,6 +12,16 @@ end
 
 return {
   fields = {
+    rename = {
+      type = "table",
+      schema = {
+        fields = {
+          body = {type = "array", default = {}},
+          headers = {type = "array", default = {}},
+          querystring = {type = "array", default = {}} 
+        }
+      }
+    },
     remove = {
       type = "table",
       schema = {
