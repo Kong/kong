@@ -149,7 +149,7 @@ return {
         id uuid PRIMARY KEY,
         name text UNIQUE,
         slots int NOT NULL,
-        "order" text NOT NULL,
+        orderlist text NOT NULL,
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
       );
       DO $$

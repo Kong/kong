@@ -146,7 +146,7 @@ return {
         id uuid,
         name text,
         slots int,
-        "order" text,
+        orderlist text,
         created_at timestamp,
         PRIMARY KEY (id)
       );

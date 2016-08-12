@@ -1,7 +1,7 @@
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 
-local default_slots = 1000
+local default_slots = 100
 local slots_min, slots_max = 10, 2^16
 local slots_msg = "number of slots must be between "..slots_min.." and "..slots_max
 
@@ -32,7 +32,7 @@ return {
       type = "number",
       default = default_slots,
     },
-    order = {
+    orderlist = {
       -- a list of sequential, but randomly ordered, integer numbers. In the datastore
       -- because all Kong nodes need the exact-same 'randomness'. If changed, consistency is lost.
       -- must have exactly `slots` number of entries, so regenerated whenever `slots` is changed.
@@ -60,7 +60,7 @@ return {
     end
     
     -- check the order array
-    local order = config.order
+    local order = config.orderlist
     if #order == config.slots then
       -- array size unchanged, check consistency
       local t = {}
@@ -92,7 +92,7 @@ return {
         t[i] = v.id
       end
       
-      config.order = t
+      config.orderlist = t
     end
     return true
   end,
