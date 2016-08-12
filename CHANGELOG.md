@@ -1,5 +1,11 @@
 ## [Unreleased][unreleased]
 
+## [0.5.5] - 2016/12/08
+
+### Added
+
+- OAuth2: added the `/oauth2_tokens` endpoint to retrieve tokens.
+
 ## [0.5.4] - 2015/12/03
 
 ### Fixed
