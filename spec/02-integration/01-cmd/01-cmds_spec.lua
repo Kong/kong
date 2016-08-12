@@ -7,6 +7,12 @@ describe("CLI commands", function()
       assert.matches("kong COMMAND [OPTIONS]", stderr, nil, true)
     end)
 
+    it("don't remove the cool tagline", function()
+      local ok, _, stdout = helpers.kong_exec("roar")
+      assert.True(ok)
+      assert.matches("Kong, Monolith destroyer.", stdout, nil, true)
+    end)
+
     describe("errors", function()
       it("errors on invalid command", function()
         local _, stderr = helpers.kong_exec "foobar"

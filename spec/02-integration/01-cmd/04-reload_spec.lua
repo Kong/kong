@@ -13,11 +13,12 @@ describe("kong reload", function()
 
   it("send a 'reload' signal to a running Nginx master process", function()
     assert(helpers.start_kong())
+    ngx.sleep(1)
+
     local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
 
     -- kong_exec uses test conf too, so same prefix
     assert(helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix))
-
     ngx.sleep(1)
 
     -- same master PID

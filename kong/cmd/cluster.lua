@@ -53,7 +53,6 @@ The available commands are:
  force-leave -p <node_name> Forcefully remove a node from the cluster (useful
                             if the node is in a failed state).
 
-
 Options:
  -c,--conf   (optional string) configuration file
  -p,--prefix (optional string) prefix Kong is running at
