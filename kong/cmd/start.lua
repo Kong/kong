@@ -25,7 +25,7 @@ end
 local lapp = [[
 Usage: kong start [OPTIONS]
 
-Start Kong (Nginx and other configured services) in configured
+Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
