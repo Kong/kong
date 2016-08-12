@@ -471,4 +471,38 @@ _M.normalize_ip = function(address)
   }
 end
 
+--- Formats an ip address or hostname with an (optional) port.
+-- Supports ipv4, ipv6 and names. Ipv6 adresses are only wrapped in brackets if a port is provided.
+--
+-- Explictly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
+-- @param p1 address to format, either string with name/ip, or table returned from `normalize_ip`.
+-- @param p2 port (optional) if p1 is a table, then this port will be inserted if no port-field is in the table
+-- @return formatted address or nil+error
+-- @usage
+-- local addr, err = format_ip(normalize_ip("001.002.003.004:123"))  --> "1.2.3.4:123"
+-- local addr, err = format_ip(normalize_ip("::1"))                  --> "0000:0000:0000:0000:0000:0000:0000:0001"
+-- local addr, err = format_ip("::1", 80))                           --> "[::1]:80"
+-- local addr, err = format_ip(check_hostname("//bad..name\\"))      --> nil, "invalid hostname: ..."
+_M.format_ip = function(p1, p2)
+  local t = type(p1)
+  if t == "nil" then 
+    return p1, p2   -- just pass through any errors passed in
+  end
+  if t == "string" then
+    -- add brackets if ipv6, and no brackets yet, while a port is present
+    if (_M.hostname_type(p1) == "ipv6") and p2 and (not find(p1, "%[")) then
+      p1 = "["..p1.."]"
+    end
+    return p1 .. (p2 and ":"..p2 or "")
+  end
+  if t == "table" then
+    p2 = p1.port or p2
+    if (p1.type == "ipv6") and p2 then
+      p1.address = "["..p1.address.."]"
+    end
+    return p1.address .. (p2 and ":"..p2 or "")
+  end
+  return nil, "cannot format type '"..t.."'"
+end
+
 return _M

@@ -1,5 +1,7 @@
 local Errors = require "kong.dao.errors"
+local utils = require "kong.tools.utils"
 
+local default_slots = 1000
 local slots_min, slots_max = 10, 2^16
 local slots_msg = "number of slots must be between "..slots_min.." and "..slots_max
 
@@ -19,7 +21,8 @@ return {
       required = true,
     },
     name = {
-      -- name is a hostname like name that can be referenced in an `upstream_url` field
+      -- name is a hostname like name that can be referenced in an `upstream_url` field, 
+      -- may include a port, if omitted defaults to 'default_port'
       type = "string", 
       unique = true, 
       required = true,
@@ -27,7 +30,7 @@ return {
     slots = {
       -- the number of slots in the loadbalancer algorithm
       type = "number",
-      default = 1000,
+      default = default_slots,
     },
     order = {
       -- a list of sequential, but randomly ordered, integer numbers. In the datastore
@@ -39,11 +42,24 @@ return {
   },
   self_check = function(schema, config, dao, is_updating)
     
+    -- check the name
+    local p = utils.normalize_ip(config.name)
+    if not p then
+      return false, Errors.schema("Invalid name; must be a valid hostname")
+    end
+    if p.type ~= "name" then
+      return false, Errors.schema("Invalid name; no ip addresses allowed")
+    end
+    if p.port then
+      return false, Errors.schema("Invalid name; no port allowed")
+    end
+    
     -- check the slots number
     if config.slots < slots_min or config.slots > slots_max then
       return false, Errors.schema(slots_msg)
     end
     
+    -- check the order array
     local order = config.order
     if #order == config.slots then
       -- array size unchanged, check consistency
