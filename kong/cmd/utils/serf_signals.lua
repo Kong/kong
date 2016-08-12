@@ -116,7 +116,8 @@ end
 function _M.stop(kong_config, dao)
   log.verbose("leaving serf cluster")
   local serf = Serf.new(kong_config, dao)
-  serf:leave()
+  local ok, err = serf:leave()
+  if not ok then return nil, err end
   log.verbose("left serf cluster")
 
   log.verbose("stopping serf agent at %s", kong_config.serf_pid)
