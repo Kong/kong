@@ -3,7 +3,7 @@ local find = string.find
 local function check_for_value(value)
   for i, entry in ipairs(value) do
     local ok = find(entry, ":")
-    if not ok then 
+    if not ok then
       return false, "key '"..entry.."' has no value"
     end
   end
@@ -12,6 +12,16 @@ end
 
 return {
   fields = {
+    rename = {
+      type = "table",
+      schema = {
+        fields = {
+          body = {type = "array", default = {}},
+          headers = {type = "array", default = {}},
+          querystring = {type = "array", default = {}} 
+        }
+      }
+    },
     remove = {
       type = "table",
       schema = {
