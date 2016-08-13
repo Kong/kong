@@ -45,7 +45,7 @@ describe("Admin API", function()
       before_each(function()
         helpers.dao:truncate_tables()
       end)
-      it_content_types("creates an upstream", function(content_type)
+      it_content_types("creates an upstream with defaults", function(content_type)
         return function()
           local res = assert(client:send {
             method = "POST",
@@ -64,12 +64,53 @@ describe("Admin API", function()
           validate_order(json.orderlist, json.slots)
         end
       end)
---[=[
+      it_content_types("creates an upstream without defaults", function(content_type)
+        return function()
+--TODO: line below disables the test for urlencoded, because the orderlist array isn't passed/received properly
+if content_type == "application/x-www-form-urlencoded" then return end
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my.upstream",
+              slots = 10,
+              orderlist = { 10,9,8,7,6,5,4,3,2,1 },
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+          assert.equal("my.upstream", json.name)
+          assert.is_number(json.created_at)
+          assert.is_string(json.id)
+          assert.are.equal(10, json.slots)
+          validate_order(json.orderlist, json.slots)
+          assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
+        end
+      end)
+      it("creates an upstream without 2^16 slots", function(content_type)
+        local res = assert(client:send {
+          method = "POST",
+          path = "/upstreams",
+          body = {
+            name = "my.upstream",
+            slots = 2^16,
+          },
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("my.upstream", json.name)
+        assert.is_number(json.created_at)
+        assert.is_string(json.id)
+        assert.are.equal(2^16, json.slots)
+        validate_order(json.orderlist, json.slots)
+      end)
       describe("errors", function()
         it("handles malformed JSON body", function()
           local res = assert(client:request {
             method = "POST",
-            path = "/apis",
+            path = "/upstreams",
             body = '{"hello": "world"',
             headers = {["Content-Type"] = "application/json"}
           })
@@ -81,40 +122,92 @@ describe("Admin API", function()
             -- Missing parameter
             local res = assert(client:send {
               method = "POST",
-              path = "/apis",
-              body = {},
+              path = "/upstreams",
+              body = {
+                slots = 50,
+              },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"upstream_url":"upstream_url is required",]]
-                         ..[["request_path":"At least a 'request_host' or a]]
-                         ..[[ 'request_path' must be specified","request_host":]]
-                         ..[["At least a 'request_host' or a 'request_path']]
-                         ..[[ must be specified"}]], body)
+            assert.equal([[{"name":"name is required"}]], body)
 
-            -- Invalid parameter
+            -- Invalid name parameter
             res = assert(client:send {
               method = "POST",
-              path = "/apis",
+              path = "/upstreams",
               body = {
-                request_host = "my-api.com/com",
-                upstream_url = "http://my-api.con"
+                name = "some invalid host name",
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"request_host":"Invalid value: my-api.com\/com"}]], body)
+            assert.equal([[{"message":"Invalid name; must be a valid hostname"}]], body)
+            -- Invalid slots parameter
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                slots = 2^16+1
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            assert.equal([[{"message":"number of slots must be between 10 and 65536"}]], body)
+          end
+        end)
+        it_content_types("handles invalid input - orderlist", function(content_type)
+          return function()
+--TODO: line below disables the test for urlencoded, because the orderlist array isn't passed/received properly
+if content_type == "application/x-www-form-urlencoded" then return end
+            -- non-integers
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                slots = 10,
+                orderlist = { "one","two","three","four","five","six","seven","eight","nine","ten" },
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            assert.equal([[{"message":"invalid orderlist"}]], body)
+            -- non-consecutive
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                slots = 10,
+                orderlist = { 1,2,3,4,5,6,7,8,9,11 }, -- 10 is missing
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            assert.equal([[{"message":"invalid orderlist"}]], body)
+            -- doubles
+            res = assert(client:send {
+              method = "POST",
+              path = "/upstreams",
+              body = {
+                name = "my.upstream",
+                slots = 10,
+                orderlist = { 1,2,3,4,5,1,2,3,4,5 }, 
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            body = assert.res_status(400, res)
+            assert.equal([[{"message":"invalid orderlist"}]], body)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
           return function()
             local res = assert(client:send {
               method = "POST",
-              path = "/apis",
+              path = "/upstreams",
               body = {
-                name = "my-api",
-                request_host = "my-api.com",
-                upstream_url = "http://my-api.com"
+                name = "my.upstream",
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -122,19 +215,21 @@ describe("Admin API", function()
 
             res = assert(client:send {
               method = "POST",
-              path = "/apis",
+              path = "/upstreams",
               body = {
-                name = "my-api",
-                request_host = "my-api2.com",
-                upstream_url = "http://my-api2.com"
+                name = "my.upstream",
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"name":"already exists with value 'my-api'"}]], body)
+            assert.equal([[{"name":"already exists with value 'my.upstream'"}]], body)
           end
         end)
       end)
+-- 'pending' placeholder as a reminder to fix this
+      pending("Tests below need to be modified for upstreams and enabled", function()
+      end)
+    --[=[
     end)
 
     describe("PUT", function()

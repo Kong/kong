@@ -63,22 +63,24 @@ return {
     local order = config.orderlist
     if #order == config.slots then
       -- array size unchanged, check consistency
-      local t = {}
-      for i = 1, config.slots do
-        local v = order[i]
-        if type(v) ~= "number" or v ~= math.floor(v) then
-          return false, Errors.schema("non-integer value found in order array")
+--do return false, Errors.schema("size unchanged, checking consistency") end
+      local t = utils.shallow_copy(order)
+      table.sort(t)
+      local count, max = 0, 0
+      for i, v in pairs(t) do
+        if (i ~= v) then
+          return false, Errors.schema("invalid orderlist")
         end
-        if v < 1 or v > config.slots then
-          return false, Errors.schema("order value out of bounds")
-        end
-        if t[v] then 
-          return false, Errors.schema("duplicate value in order array")
-        end
-        t[v] = true
+        count = count + 1
+        if i > max then max = i end
+      end
+      if (count ~= config.slots) or (max ~= config.slots) then
+        return false, Errors.schema("invalid orderlist")
       end
     else
       -- size mismatch, regenerate order array
+--local x = require("cjson").encode(config)
+--do return false, Errors.schema("size changed, regenerating"..tostring(#order).."-"..tostring(config.slots)..x) end
 --TODO: check if it is safe to update data here!
       local t = {}
       for i = 1, config.slots do
@@ -87,7 +89,9 @@ return {
           order = math.random(1, config.slots),
         }
       end
-      table.sort(t, function(a,b) return a.order < b.order end)
+      table.sort(t, function(a,b) 
+        return a.order < b.order
+      end)
       for i, v in ipairs(t) do
         t[i] = v.id
       end
