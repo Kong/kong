@@ -8,22 +8,26 @@ local pl_path = require "pl.path"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
+  log.disable()
   -- retrieve prefix or use given one
   local default_conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
+  log.enable()
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_conf))
-  assert(prefix_handler.prepare_prefix(conf))
+  local conf = assert(conf_loader(default_conf.kong_conf, {
+    prefix = args.prefix
+  }))
+  assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
   if conf.dnsmasq then
     assert(dnsmasq_signals.start(conf))
   end
   assert(serf_signals.start(conf, DAOFactory(conf)))
   assert(nginx_signals.reload(conf))
-  log("Reloaded")
+  log("Kong reloaded")
 end
 
 local lapp = [[
@@ -38,8 +42,9 @@ and stop the old ones when they have finished processing
 current requests.
 
 Options:
- -c,--conf   (optional string) configuration file
- -p,--prefix (optional string) prefix Kong is running at
+ -c,--conf    (optional string) configuration file
+ -p,--prefix  (optional string) prefix Kong is running at
+ --nginx-conf (optional string) custom Nginx configuration template
 ]]
 
 return {

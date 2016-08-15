@@ -8,10 +8,12 @@ local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
+  log.disable()
   -- retrieve default prefix or use given one
   local default_conf = assert(conf_loader(nil, {
     prefix = args.prefix
   }))
+  log.enable()
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
 
@@ -21,7 +23,7 @@ local function execute(args)
   -- try graceful shutdown (QUIT)
   assert(nginx_signals.quit(conf))
 
-  log.verbose("waiting for Nginx to finish processing requests...")
+  log.verbose("waiting for nginx to finish processing requests")
 
   local tstart = ngx.time()
   local texp, running = tstart + math.max(args.timeout, 1) -- min 1s timeout
@@ -31,7 +33,7 @@ local function execute(args)
   until not running or ngx.time() >= texp
 
   if running then
-    log.verbose("Nginx is still running at %s, forcing shutdown", conf.prefix)
+    log.verbose("nginx is still running at %s, forcing shutdown", conf.prefix)
     assert(nginx_signals.stop(conf))
   end
 
@@ -41,7 +43,7 @@ local function execute(args)
     assert(dnsmasq_signals.stop(conf))
   end
 
-  log("Stopped (gracefully)")
+  log("Kong stopped (gracefully)")
 end
 
 local lapp = [[

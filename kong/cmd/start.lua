@@ -19,13 +19,13 @@ local function execute(args)
   end
   assert(serf_signals.start(conf, dao))
   assert(nginx_signals.start(conf))
-  log("Started")
+  log("Kong started")
 end
 
 local lapp = [[
 Usage: kong start [OPTIONS]
 
-Start Kong (Nginx and other configured services) in configured
+Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:

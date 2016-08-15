@@ -7,8 +7,8 @@ local ngx_log = ngx.log
 local pairs = pairs
 local fmt = string.format
 
-local get_local_key = function(api_id, identifier, period_date, name, period)
-  return fmt("ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
+local get_local_key = function(api_id, identifier, period_date, name)
+  return fmt("ratelimit:%s:%s:%s:%s", api_id, identifier, period_date, name)
 end
 
 local EXPIRATIONS = {
@@ -88,18 +88,16 @@ return {
           return
         end
 
-        local ok, err = red:incrby(cache_key, value)
-        if not ok then
-          ngx_log(ngx.ERR, "failed to query Redis: ", err)
-          return
+        red:init_pipeline((not exists or exists == 0) and 2 or 1)
+        red:incrby(cache_key, value)
+        if not exists or exists == 0 then
+          red:expire(cache_key, EXPIRATIONS[period])
         end
 
-        if not exists or exists == 0 then
-          local _, err = red:expire(cache_key, EXPIRATIONS[period])
-          if err then
-            ngx_log(ngx.ERR, "failed to query Redis: ", err)
-            return
-          end
+        local _, err = red:commit_pipeline()
+        if err then
+          ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
+          return
         end
       end
 

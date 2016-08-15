@@ -88,18 +88,16 @@ return {
           return
         end
 
-        local ok, err = red:incrby(cache_key, value)
-        if not ok then
-          ngx_log(ngx.ERR, "failed to query Redis: ", err)
-          return
-        end
-
+        red:init_pipeline((not exists or exists == 0) and 2 or 1)
+        red:incrby(cache_key, value)
         if not exists or exists == 0 then
-          local _, err = red:expire(cache_key, EXPIRATIONS[period])
-          if err then
-            ngx_log(ngx.ERR, "failed to query Redis: ", err)
-            return
-          end
+          red:expire(cache_key, EXPIRATIONS[period])
+        end
+        
+        local _, err = red:commit_pipeline()
+        if err then
+          ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
+          return
         end
       end
 

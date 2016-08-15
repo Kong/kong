@@ -1,7 +1,7 @@
 return {
   execute = function()
     print [==[
--- Kong, the biggest ape in town
+-- Kong, Monolith destroyer.
 --
 --     /\  ____
 --     <> ( oo )
@@ -25,6 +25,7 @@ return {
 --  ========
 -- ==========
 -- |[[    ]]|
--- ==========]==]
+-- ==========
+]==]
   end
 }

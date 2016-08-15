@@ -29,6 +29,8 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
   - rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
   - response-rate-limiting: support for new rate-limiting policies (`cluster`, `local` and `redis`), and for a new `limit_by` property to force rate-limiting by `consumer`, `credential` or `ip`.
   - galileo: performance improvements of ALF serialization. ALFs are not discarded when exceeding 20MBs anymore. [#1463](https://github.com/Mashape/kong/issues/1463)
+  - statsd: new `upstream_stream` latency metric. [#1466](https://github.com/Mashape/kong/pull/1466)
+  - datadog: new `upstream_stream` latency metric and tagging support for each metric. [#1473](https://github.com/Mashape/kong/pull/1473)
 
 ### Removed
 

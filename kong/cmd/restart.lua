@@ -16,15 +16,16 @@ end
 local lapp = [[
 Usage: kong restart [OPTIONS]
 
-Restart a Kong node (and start other configured services
-if necessary) in given prefix directory.
+Restart a Kong node (and other configured services like dnsmasq and Serf)
+in the given prefix directory.
 
 This command is equivalent to doing both 'kong stop' and
 'kong start'.
 
 Options:
- -c,--conf   (optional string) configuration file
- -p,--prefix (optional string) prefix at which Kong should be running
+ -c,--conf    (optional string) configuration file
+ -p,--prefix  (optional string) prefix at which Kong should be running
+ --nginx-conf (optional string) custom Nginx configuration template
 ]]
 
 return {

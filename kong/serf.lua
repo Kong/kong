@@ -50,8 +50,10 @@ function Serf:join_node(address)
 end
 
 function Serf:leave()
-  local res, err = self:invoke_signal("leave")
-  if not res then return nil, err end
+  -- See https://github.com/hashicorp/serf/issues/400
+  -- Currently sometimes this returns an error, once that Serf issue has been
+  -- fixed we can check again for any errors returned by the following command.
+  self:invoke_signal("leave")
 
   local _, err = self.dao.nodes:delete {name = self.node_name}
   if err then return nil, tostring(err) end
@@ -97,7 +99,7 @@ function Serf:autojoin()
   local nodes, err = self.dao.nodes:find_all()
   if err then return nil, tostring(err)
   elseif #nodes == 0 then
-    log.info("No other Kong nodes were found in the cluster")
+    log.verbose("no other nodes found in the cluster")
   else
     -- Sort by newest to oldest (although by TTL would be a better sort)
     table.sort(nodes, function(a, b) return a.created_at > b.created_at end)
@@ -105,11 +107,12 @@ function Serf:autojoin()
     local joined
     for _, v in ipairs(nodes) do
       if self:join_node(v.cluster_listening_address) then
-        log("Successfully auto-joined %s", v.cluster_listening_address)
+        log.verbose("successfully joined cluster at %s", v.cluster_listening_address)
         joined = true
         break
       else
-        log.warn("could not join %s, if the node does not exist anymore it will be automatically purged", v.cluster_listening_address)
+        log.warn("could not join cluster at %s, if the node does not exist "..
+                 "anymore it will be purged automatically", v.cluster_listening_address)
       end
     end
     if not joined then
@@ -151,7 +154,7 @@ function Serf:event(t_payload)
 
   if #payload > 512 then
     -- Serf can't send a payload greater than 512 bytes
-    return nil, "Encoded payload is "..#payload.." and exceeds the limit of 512 bytes!"
+    return nil, "encoded payload is "..#payload.." and exceeds the limit of 512 bytes!"
   end
 
   return self:invoke_signal("event -coalesce=false", " kong '"..payload.."'")

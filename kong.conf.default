@@ -204,7 +204,7 @@
                                  # However, in some cases (specifically NAT
                                  # traversal), there may be a routable address
                                  # that cannot be bound to. This flag enables
-                                 # gossiping a different address to support
+                                 # advertising a different address to support
                                  # this.
 
 #cluster_encrypt_key =           # base64-encoded 16-bytes key to encrypt
@@ -220,7 +220,7 @@
                                  # attempting to connect to it.
                                  # Recommended to be at least `60`.
 
-#cluster_profile = wan           # The timing profile for infracluster pings
+#cluster_profile = wan           # The timing profile for inter-cluster pings
                                  # and timeouts. If a `lan` or `local` profile
                                  # is used over the Internet, a high rate of
                                  # failures is risked as the timing contraints
@@ -272,6 +272,8 @@
                                  # will be loaded from scratch. Useful for
                                  # adopting an edit-and-refresh approach while
                                  # developing a plugin.
+                                 # Turning this directive off has a severe
+                                 # impact on performance.
 
 #lua_package_path =              # Sets the Lua module search path (LUA_PATH).
                                  # Useful when developing or using custom

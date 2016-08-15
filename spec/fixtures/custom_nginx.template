@@ -3,7 +3,7 @@
 worker_processes ${{NGINX_WORKER_PROCESSES}};
 daemon ${{NGINX_DAEMON}};
 
-pid pids/nginx.pid;
+pid pids/nginx.pid; # mandatory even for custom config templates
 error_log logs/error.log ${{LOG_LEVEL}};
 
 events {}
@@ -133,6 +133,15 @@ http {
 
         location /robots.txt {
             return 200 'User-agent: *\nDisallow: /';
+        }
+    }
+
+    server {
+        server_name custom_server;
+        listen 9999;
+
+        location /custom_server_path {
+            return 200;
         }
     }
 }
