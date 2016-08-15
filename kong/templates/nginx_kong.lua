@@ -57,6 +57,14 @@ init_worker_by_lua_block {
     kong.init_worker()
 }
 
+upstream kong_upstream {
+    server 0.0.0.1;
+    balancer_by_lua_block {
+        kong.balancer()
+    }
+    keepalive 60;
+}
+
 server {
     server_name kong;
     listen ${{PROXY_LISTEN}};

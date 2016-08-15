@@ -231,18 +231,13 @@
 # DNS RESOLVER
 #------------------------------------------------------------------------------
 
-#dnsmasq = on                    # Toggles if Kong should start/stop dnsmasq,
-                                 # which can be used as the Nginx DNS resolver.
-                                 # Using dnsmasq allows Nginx to resolve
-                                 # domains defined in /etc/hosts.
-                                 # dnsmasq must be installed and available in
-                                 # your $PATH.
+#dns_resolver =                  # Comma separated list of name servers, each
+                                 # entry in `ipv4[:port]` format to be used by
+                                 # Kong. If not specified the nameservers in
+                                 # the local `resolv.conf` file will be used.
+                                 # Port defaults to 53 if omitted.
 
-#dnsmasq_port = 8053             # The port on which dnsmasq should listen to
-                                 # for queries.
-
-#dns_resolver = 8.8.8.8          # Configure a name server to be used by Nginx.
-                                 # Only valid when `dnsmasq` is disabled.
+#dns_hostsfile = /etc/hosts      # The `hosts` file to use.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
