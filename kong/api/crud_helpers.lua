@@ -43,7 +43,7 @@ end
 
 function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [is_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
   }
   self.params.name_or_id = nil
 

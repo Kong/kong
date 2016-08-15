@@ -1,4 +1,5 @@
 local crud = require "kong.api.crud_helpers"
+local reports = require "kong.core.reports"
 
 return {
   ["/upstreams/"] = {
@@ -10,7 +11,7 @@ return {
       crud.put(self.params, dao_factory.upstreams)
     end,
 
-    POST = function(self, dao_factory)
+    POST = function(self, dao_factory, helpers)
       crud.post(self.params, dao_factory.upstreams)
     end
   },
@@ -44,49 +45,7 @@ return {
     end,
 
     POST = function(self, dao_factory)
-      crud.post(self.params, dao_factory.targets, function(data)
---todo: what is this? how does it work???
-        data.signal = reports.upstream_signal
-        reports.send(data)
-      end)
+      crud.post(self.params, dao_factory.targets)
     end,
-
--- only allow post: setting weight to 0 is disabling/deleting
-
---    PUT = function(self, dao_factory)
---      crud.put(self.params, dao_factory.targets)
---    end,
-
   },
---[[ unused, only operate on the upstream object
-
-  ["/upstreams/:name_or_id/targets/:id"] = {
-    before = function(self, dao_factory, helpers)
-      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
-      local rows, err = dao_factory.targets:find_all {
-        id = self.params.id,
-        upstream_id = self.upstream.id
-      }
-      if err then
-        return helpers.yield_error(err)
-      elseif #rows == 0 then
-        return helpers.responses.send_HTTP_NOT_FOUND()
-      end
-
-      self.target = rows[1]
-    end,
-
-    GET = function(self, dao_factory, helpers)
-      return helpers.responses.send_HTTP_OK(self.target)
-    end,
-
-    PATCH = function(self, dao_factory)
-      crud.patch(self.params, dao_factory.targets, self.target)
-    end,
-
-    DELETE = function(self, dao_factory)
-      crud.delete(self.target, dao_factory.targets)
-    end
-  }
---]]
 }

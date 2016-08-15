@@ -3,7 +3,7 @@ local utils = require "kong.tools.utils"
 local Object = require "kong.vendor.classic"
 local ModelFactory = require "kong.dao.model_factory"
 
-local CORE_MODELS = {"apis", "consumers", "plugins", "nodes", "upstreams"}
+local CORE_MODELS = {"apis", "consumers", "plugins", "nodes", "upstreams", "targets"}
 local _db
 
 local Factory = Object:extend()

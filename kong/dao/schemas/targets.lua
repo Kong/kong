@@ -1,15 +1,17 @@
-
 -- This schema defines a sequential list of updates to the upstream/loadbalancer algorithm
 -- hence entries cannot be deleted or modified. Only new ones appended that will overrule
 -- previous entries.
 
-local default_weight = 100
+local Errors = require "kong.dao.errors"
+local utils = require "kong.tools.utils"
+
 local default_port = 8000
+local default_weight = 100
 local weight_min, weight_max = 0, 1000
 local weight_msg = "weight must be from "..weight_min.." to "..weight_max
 
 return {
-  table = "upstreams",
+  table = "targets",
   primary_key = {"id"},
   fields = {
     id = {
@@ -50,14 +52,9 @@ return {
     -- check the target
     local p, err = utils.normalize_ip(config.target)
     if not p then
-      return false, Errors.schema("Invalid name; must be a valid hostname or ip address")
+      return false, Errors.schema("Invalid target; not a valid hostname or ip address")
     end
     config.target = utils.format_ip(p, default_port)
-
-    -- check the slots number
-    if config.slots < slots_min or config.slots > slots_max then
-      return false, Errors.schema(slots_msg)
-    end
 
     return true
   end,

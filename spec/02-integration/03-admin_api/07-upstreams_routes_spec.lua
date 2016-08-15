@@ -64,31 +64,46 @@ describe("Admin API", function()
           validate_order(json.orderlist, json.slots)
         end
       end)
-      it_content_types("creates an upstream without defaults", function(content_type)
-        return function()
---TODO: line below disables the test for urlencoded, because the orderlist array isn't passed/received properly
-if content_type == "application/x-www-form-urlencoded" then return end
-          local res = assert(client:send {
-            method = "POST",
-            path = "/upstreams",
-            body = {
-              name = "my.upstream",
-              slots = 10,
-              orderlist = { 10,9,8,7,6,5,4,3,2,1 },
-            },
-            headers = {["Content-Type"] = content_type}
-          })
-          assert.response(res).has.status(201)
-          local json = assert.response(res).has.jsonbody()
-          assert.equal("my.upstream", json.name)
-          assert.is_number(json.created_at)
-          assert.is_string(json.id)
-          assert.are.equal(10, json.slots)
-          validate_order(json.orderlist, json.slots)
-          assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
-        end
+      it("creates an upstream without defaults with application/json", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/upstreams",
+          body = {
+            name = "my.upstream",
+            slots = 10,
+            orderlist = { 10,9,8,7,6,5,4,3,2,1 },
+          },
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("my.upstream", json.name)
+        assert.is_number(json.created_at)
+        assert.is_string(json.id)
+        assert.are.equal(10, json.slots)
+        validate_order(json.orderlist, json.slots)
+        assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
       end)
-      it("creates an upstream without 2^16 slots", function(content_type)
+      pending("creates an upstream without defaults with application/www-form-urlencoded", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/upstreams",
+          body = "name=my.upstream&slots=10&"..
+                 "orderlist[]=10&orderlist[]=9&orderlist[]=8&orderlist[]=7&"..
+                 "orderlist[]=6&orderlist[]=5&orderlist[]=4&orderlist[]=3&"..
+                 "orderlist[]=2&orderlist[]=1",
+          headers = {["Content-Type"] = "application/www-form-urlencoded"}
+        })
+        assert.response(res).has.status(201)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal("my.upstream", json.name)
+        assert.is_number(json.created_at)
+        assert.is_string(json.id)
+        assert.are.equal(10, json.slots)
+        validate_order(json.orderlist, json.slots)
+        assert.are.same({ 10,9,8,7,6,5,4,3,2,1 }, json.orderlist)
+      end)
+      it("creates an upstream with 2^16 slots", function(content_type)
         local res = assert(client:send {
           method = "POST",
           path = "/upstreams",
@@ -227,7 +242,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
         end)
       end)
 -- 'pending' placeholder as a reminder to fix this
-      pending("Tests below need to be modified for upstreams and enabled", function()
+      pending("Tests below need to be modified for upstreams and enabled, as well as url encoding above", function()
       end)
     --[=[
     end)

@@ -42,6 +42,9 @@ return {
   },
   self_check = function(schema, config, dao, is_updating)
     
+--local x = require("cjson").encode(config)
+--do return false, Errors.schema("Received: "..x) end
+    
     -- check the name
     local p = utils.normalize_ip(config.name)
     if not p then
