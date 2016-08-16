@@ -100,10 +100,9 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     describe("FOREIGN constraints", function()
-      local uuid = require "resty.jit-uuid"
 
       it("not insert plugin if invalid API foreign key", function()
-        plugin_fixture.api_id = uuid()
+        plugin_fixture.api_id = utils.uuid()
 
         local plugin, err = plugins:insert(plugin_fixture)
         assert.falsy(plugin)
@@ -115,7 +114,7 @@ helpers.for_each_dao(function(kong_config)
         local plugin_tbl = {
           name = "rate-limiting",
           api_id = api_fixture.id,
-          consumer_id = uuid(),
+          consumer_id = utils.uuid(),
           config = {minute = 1}
         }
 
@@ -132,7 +131,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.truthy(plugin)
 
-        local fake_api_id = uuid()
+        local fake_api_id = utils.uuid()
         plugin.api_id = fake_api_id
         plugin, err = plugins:update(plugin, {id = plugin.id})
         assert.falsy(plugin)

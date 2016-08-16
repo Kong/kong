@@ -54,15 +54,36 @@ end
 
 local v4_uuid = uuid.generate_v4
 
+--- Generates a v4 uuid.
+-- @return string with uuid
+function _M.uuid() end -- just to trick Ldoc for documentation purposes
+_M.uuid = uuid.generate_v4
+
+--- Seeds the random generator, use with care.
+-- Kong already seeds this once per worker process. It's 
+-- dangerous to ever call it again. So ask yourself
+-- "Do I feel lucky?" Well, do ya, punk?
+function _M.uuid_seed() end -- just to trick Ldoc for documentation purposes
+_M.uuid_seed = uuid.seed
+
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
   return v4_uuid():gsub("-", "")
 end
 
-function _M.is_valid_uuid(str)
-  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
+local digit = "[0-9a-f]"
+local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
+function _M.is_valid_uuid(uuid)
+  return uuid and uuid:match(uuid_pattern) ~= nil
 end
+
+-- function below is more acurate, but invalidates previously accepted uuids and hence causes 
+-- trouble with existing data during migrations.
+-- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
+--function _M.is_valid_uuid(str)
+--  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
+--end
 
 _M.split = pl_stringx.split
 _M.strip = pl_stringx.strip

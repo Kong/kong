@@ -8,9 +8,13 @@ describe("Utils", function()
 
   describe("is_valid_uuid()", function()
     it("validates UUIDs from jit-uuid", function()
-      assert.True(utils.is_valid_uuid("cbb297c0-a956-486d-ad1d-f9b42df9465a"))
-      assert.False(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a")) -- invalid variant
+      assert.True (utils.is_valid_uuid("cbb297c0-a956-486d-ad1d-f9b42df9465a"))
       assert.False(utils.is_valid_uuid("cbb297c0-a956486d-ad1d-f9b42df9465a"))
+    end)
+    pending("invalidates UUIDs with invalid variants", function()
+      -- this is disabled because existing uuids in the database fail the check upon migrations
+      -- see https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
+      assert.False(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a")) -- invalid variant
     end)
     it("considers the null UUID a valid one", function()
       -- we use the null UUID for plugins' consumer_id when none is set
