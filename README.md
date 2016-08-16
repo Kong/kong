@@ -183,23 +183,28 @@ You can use a Vagrant box running Kong and Cassandra that you can find at
 
 #### Source Install
 
-Since Kong needs many third-party dependencies such as Serf, dnsmasq and
-[Luarocks], it is easier to first install those by following one of the
-installation methods provided at
-[getkong.org/download](https://getkong.org/download), and
-then clone this repository containing Kong's code.
+Kong mostly is an OpenResty application made of Lua source files, but also
+requires some additional third-party dependencies. We recommend installing
+those by following the source install instructions at
+https://getkong.org/install/source/.
+
+Instead of following the second step (Install Kong), clone this repository
+and install the latest Lua sources instead of the currently released ones:
 
 ```shell
 $ git clone https://github.com/Mashape/kong
 $ cd kong/
 
-# You might want to switch to the development branch. See CONTRIBUTING.md
+# you might want to switch to the development branch. See CONTRIBUTING.md
 $ git checkout next
+
+# install the Lua sources
+$ luarocks make
 ```
 
 #### Running for development
 
-Check the [development section](https://github.com/Mashape/kong/blob/next/kong.conf.default#L244)
+Check out the [development section](https://github.com/Mashape/kong/blob/next/kong.conf.default#L244)
 of the default configuration file for properties to tweak in order to ease
 the development process for Kong.
 
@@ -210,25 +215,31 @@ might be in your system.
 
 #### Tests
 
-Install the development dependencies with:
+Install the development dependencies ([busted], [luacheck]) with:
 
 ```shell
 $ make dev
 ```
 
-Kong relies on three test suites:
+Kong relies on three test suites using the [busted] testing library:
 
 * Unit tests
 * Integration tests, which require Postgres and Cassandra to be up and running
 * Plugins tests, which require Postgres to be running
 
-The first can simply be run after installing [busted] and running:
+The first can simply be run after installing busted and running:
 
 ```
 $ make test
 ```
 
-You can run the integration tests with:
+However, the integration and plugins tests will spawn a Kong instance and
+perform their tests against it. As so, consult/edit the `spec/kong_tests.conf`
+configuration file to make your test instance point to your Postgres/Cassandra
+servers, depending on your needs.
+
+You can run the integration tests (assuming **both** Postgres and Cassandra are
+running and configured according to `spec/kong_tests.conf`) with:
 
 ```
 $ make test-integration
@@ -240,10 +251,21 @@ And the plugins tests with:
 $ make test-plugins
 ```
 
-Finally, all suites can be run at once by simply running:
+Finally, all suites can be run at once by simply using:
 
 ```
 $ make test-all
+```
+
+Consult the [run_tests.sh](.ci/run_tests.sh) script for a more advanced example
+usage of the tests suites and the Makefile.
+
+Finally, a very useful tool in Lua development (as with many other dynamic
+languages) is performing static linting of your code. You can use [luacheck]
+(installed with `make dev`) for this:
+
+```
+$ make lint
 ```
 
 #### Makefile
