@@ -55,15 +55,15 @@ end
 local v4_uuid = uuid.generate_v4
 
 --- Generates a v4 uuid.
+-- @function uuid
 -- @return string with uuid
-function _M.uuid() end -- just to trick Ldoc for documentation purposes
 _M.uuid = uuid.generate_v4
 
 --- Seeds the random generator, use with care.
 -- Kong already seeds this once per worker process. It's 
 -- dangerous to ever call it again. So ask yourself
 -- "Do I feel lucky?" Well, do ya, punk?
-function _M.uuid_seed() end -- just to trick Ldoc for documentation purposes
+-- @function uuid_seed
 _M.uuid_seed = uuid.seed
 
 --- Generates a random unique string
