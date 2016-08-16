@@ -18,8 +18,6 @@ local DEFAULT_PATHS = {
 }
 
 local PREFIX_PATHS = {
-  dnsmasq_pid = {"pids", "dnsmasq.pid"}
-  ;
   serf_pid = {"pids", "serf.pid"},
   serf_log = {"logs", "serf.log"},
   serf_event = {"serf", "serf_event.sh"},

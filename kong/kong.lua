@@ -31,6 +31,7 @@ _G._KONG = {
   _VERSION = meta._VERSION
 }
 
+local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
 local uuid = require 'resty.jit-uuid'
@@ -130,6 +131,7 @@ function Kong.init()
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
+  singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)
   singletons.dao = dao

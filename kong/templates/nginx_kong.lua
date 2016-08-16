@@ -1,5 +1,4 @@
 return [[
-resolver ${{DNS_RESOLVER}} ipv6=off;
 charset UTF-8;
 
 error_log logs/error.log ${{LOG_LEVEL}};

@@ -75,6 +75,7 @@ build = {
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
 
+    ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.responses"] = "kong/tools/responses.lua",
