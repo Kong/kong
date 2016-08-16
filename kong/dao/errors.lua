@@ -3,10 +3,15 @@ local setmetatable = setmetatable
 local getmetatable = getmetatable
 local tostring = tostring
 local type = type
+local fmt = string.format
 
 local error_mt = {}
 
 function error_mt.__tostring(t)
+  if t.db_type then
+    return fmt("[%s error] %s", t.db_type, tostring(t.message))
+  end
+
   return tostring(t.message)
 end
 
@@ -43,7 +48,7 @@ local serializers = {
 }
 
 local function build_error(err_type)
-  return function(err)
+  return function(err, db_type)
     if err == nil then
       return
     elseif getmetatable(err) == error_mt then
@@ -51,6 +56,7 @@ local function build_error(err_type)
     end
 
     local err_obj = {
+      db_type = db_type,
       [err_type] = true
     }
 
