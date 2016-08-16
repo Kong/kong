@@ -74,7 +74,7 @@ function RateLimitingHandler:access(conf)
   local identifier = get_identifier(conf)
   local api_id = ngx.ctx.api.id
   local policy = conf.policy
-  local cluster_fault_tolerant = conf.cluster_fault_tolerant
+  local fault_tolerant = conf.fault_tolerant
 
   -- Load current metric for configured period
   local usage, stop, err = get_usage(conf, api_id, identifier, current_timestamp, {
@@ -86,7 +86,7 @@ function RateLimitingHandler:access(conf)
     year = conf.year
   })
   if err then
-    if cluster_fault_tolerant then
+    if fault_tolerant then
       ngx_log(ngx.ERR, "failed to get usage: ", tostring(err))
     else
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)

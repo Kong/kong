@@ -60,7 +60,7 @@ return {
             year = rate_limiting.config.year,
             limit_by = "consumer",
             policy = "cluster",
-            cluster_fault_tolerant = rate_limiting.config.continue_on_error
+            fault_tolerant = rate_limiting.config.continue_on_error
           }
         }
         if err then return err end
