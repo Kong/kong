@@ -16,6 +16,11 @@ describe("Utils", function()
       -- see https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
       assert.False(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a")) -- invalid variant
     end)
+    it("validates UUIDs with invalid variants for backwards-compatibility reasons", function()
+      -- See pending test just above  ^^
+      -- see https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
+      assert.True(utils.is_valid_uuid("cbb297c0-a956-486d-dd1d-f9b42df9465a"))
+    end)
     it("considers the null UUID a valid one", function()
       -- we use the null UUID for plugins' consumer_id when none is set
       assert.True(utils.is_valid_uuid("00000000-0000-0000-0000-000000000000"))
