@@ -40,7 +40,7 @@ return {
     header_name = { type = "string", default = "x-kong-limit" },
     limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },
     policy = { type = "string", enum = {"local", "cluster", REDIS}, default = "cluster" },
-    cluster_fault_tolerant = { type = "boolean", default = true },
+    fault_tolerant = { type = "boolean", default = true },
     redis_host = { type = "string" },
     redis_port = { type = "number", default = 6379 },
     redis_password = { type = "string" },
