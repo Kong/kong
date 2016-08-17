@@ -9,8 +9,8 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 - New arguments for the CLI, such as verbose, debug and tracing flags. We also avoid requiring the configuration file as an argument to each command as per the previous CLI.
 - Customization of the Nginx configuration can now be taken care of using two different approaches: with a custom Nginx configuration template and using `kong start --template <file>`, or by using `kong compile` to generate the Kong Nginx sub-configuration, and `include` it in a custom Nginx instance.
 - Plugins:
-  - Rate Limiting: the `continue_on_error` property is now called `cluster_fault_tolerant`.
-  - Response Rate Limiting: the `continue_on_error` property is now called `cluster_fault_tolerant`.
+  - Rate Limiting: the `continue_on_error` property is now called `fault_tolerant`.
+  - Response Rate Limiting: the `continue_on_error` property is now called `fault_tolerant`.
 
 ### Added
 

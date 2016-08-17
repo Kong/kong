@@ -66,7 +66,7 @@ function _M.execute(conf)
   -- Load current metric for configured period
   local usage, err = get_usage(conf, api_id, identifier, current_timestamp, conf.limits)
   if err then
-    if conf.cluster_fault_tolerant then
+    if conf.fault_tolerant then
       ngx.log(ngx.ERR, "failed to get usage: ", tostring(err))
       return
     else

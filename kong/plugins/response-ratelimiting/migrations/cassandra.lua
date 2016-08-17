@@ -43,7 +43,7 @@ return {
             block_on_first_violation = response_rate_limiting.config.block_on_first_violation,
             limit_by = "consumer",
             policy = "cluster",
-            cluster_fault_tolerant = response_rate_limiting.config.continue_on_error
+            fault_tolerant = response_rate_limiting.config.continue_on_error
           }
         }
         if err then return err end
