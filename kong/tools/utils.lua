@@ -17,6 +17,7 @@ local fmt = string.format
 local type = type
 local pairs = pairs
 local ipairs = ipairs
+local re_find = ngx.re.find
 local tostring = tostring
 local table_sort = table.sort
 local table_concat = table.concat
@@ -72,16 +73,16 @@ function _M.random_string()
   return v4_uuid():gsub("-", "")
 end
 
-local digit = "[0-9a-f]"
-local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
-function _M.is_valid_uuid(uuid)
-  return uuid and uuid:match(uuid_pattern) ~= nil
+local uuid_regex = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+function _M.is_valid_uuid(str)
+  if type(str) ~= 'string' or #str ~= 36 then return false end
+  return re_find(str, uuid_regex, 'ioj') ~= nil
 end
 
 -- function below is more acurate, but invalidates previously accepted uuids and hence causes 
 -- trouble with existing data during migrations.
 -- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
---function _M.is_valid_uuid(str)
+-- function _M.is_valid_uuid(str)
 --  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
 --end
 
