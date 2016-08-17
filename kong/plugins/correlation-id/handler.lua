@@ -1,10 +1,9 @@
 -- Copyright (C) Mashape, Inc.
 
 local BasePlugin = require "kong.plugins.base_plugin"
-local uuid = require "resty.jit-uuid"
 local req_set_header = ngx.req.set_header
 local req_get_headers = ngx.req.get_headers
-local uuid_v4 = uuid.generate_v4
+local uuid = require("kong.tools.utils").uuid
 
 local CorrelationIdHandler = BasePlugin:extend()
 
@@ -17,7 +16,7 @@ local worker_pid = ngx.worker.pid()
 
 local generators = setmetatable({
   ["uuid"] = function()
-    return uuid_v4()
+    return uuid()
   end,
   ["uuid#counter"] = function()
     worker_counter = worker_counter + 1
@@ -45,7 +44,7 @@ end
 
 function CorrelationIdHandler:init_worker()
   CorrelationIdHandler.super.init_worker(self)
-  worker_uuid = uuid_v4()
+  worker_uuid = uuid()
   worker_counter = 0
 end
 
