@@ -10,8 +10,13 @@ return {
         strategy_properties = string.format(", 'replication_factor': %s", kong_config.cassandra_repl_factor)
       elseif strategy == "NetworkTopologyStrategy" then
         local dcs = {}
-        for dc_name, dc_repl in pairs(kong_config.cassandra_data_centers) do
-          table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
+        for _, dc_conf in ipairs(kong_config.cassandra_data_centers) do
+          local dc_name, dc_repl = string.match(dc_conf, "(%w+):(%d+)")
+          if dc_name and dc_repl then
+            table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
+          else
+            return "invalid cassandra_data_centers configuration"
+          end
         end
         if #dcs > 0 then
           strategy_properties = string.format(", %s", table.concat(dcs, ", "))
