@@ -27,7 +27,8 @@ dependencies = {
   "lua-resty-iputils == 0.2.1",
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
-  "lua_pack == 1.0.4"
+  "lua_pack == 1.0.4",
+  "dns == 0.1",
 }
 build = {
   type = "builtin",
@@ -63,7 +64,6 @@ build = {
     ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
-    ["kong.cmd.utils.dnsmasq_signals"] = "kong/cmd/utils/dnsmasq_signals.lua",
 
     ["kong.api.init"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
@@ -74,6 +74,7 @@ build = {
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
+    ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
@@ -98,6 +99,8 @@ build = {
     ["kong.dao.schemas.nodes"] = "kong/dao/schemas/nodes.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
+    ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
+    ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
     ["kong.dao.base_db"] = "kong/dao/base_db.lua",
     ["kong.dao.cassandra_db"] = "kong/dao/cassandra_db.lua",
     ["kong.dao.postgres_db"] = "kong/dao/postgres_db.lua",
