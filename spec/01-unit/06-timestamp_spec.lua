@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 
 describe("Timestamp", function()
