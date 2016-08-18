@@ -82,7 +82,7 @@ describe("Resolver", function()
     end)
   end)
 
-  describe("strip_request_path()", function()
+  pending("strip_request_path()", function()
     local apis_dics
     setup(function()
       apis_dics = resolver.load_apis_in_memory()
