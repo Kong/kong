@@ -1,8 +1,12 @@
-local utils = require "kong.tools.utils"
 local timestamp = require "kong.tools.timestamp"
 
 describe("Timestamp", function()
-
+  local table_size = function(t)
+    local s = 0
+    for _ in pairs(t) do s = s + 1 end
+    return s
+  end
+  
   it("should get UTC time", function()
     assert.truthy(timestamp.get_utc())
     assert.are.same(13, string.len(tostring(timestamp.get_utc())))
@@ -11,7 +15,7 @@ describe("Timestamp", function()
   it("should get timestamps table when no timestamp is provided", function()
     local timestamps = timestamp.get_timestamps()
     assert.truthy(timestamps)
-    assert.are.same(6, utils.table_size(timestamps))
+    assert.are.same(6, table_size(timestamps))
 
     assert.truthy(timestamps.second)
     assert.truthy(timestamps.minute)
@@ -24,7 +28,7 @@ describe("Timestamp", function()
   it("should get timestamps table when no timestamp is provided", function()
     local timestamps = timestamp.get_timestamps(timestamp.get_utc())
     assert.truthy(timestamps)
-    assert.are.same(6, utils.table_size(timestamps))
+    assert.are.same(6, table_size(timestamps))
 
     assert.truthy(timestamps.second)
     assert.truthy(timestamps.minute)
@@ -46,8 +50,8 @@ describe("Timestamp", function()
     local timestamps_two = timestamp.get_timestamps(timestamp.get_utc())
     assert.truthy(timestamps_one)
     assert.truthy(timestamps_two)
-    assert.are.same(6, utils.table_size(timestamps_one))
-    assert.are.same(6, utils.table_size(timestamps_two))
+    assert.are.same(6, table_size(timestamps_one))
+    assert.are.same(6, table_size(timestamps_two))
     assert.are.same(timestamps_one, timestamps_two)
   end)
 
