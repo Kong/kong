@@ -52,7 +52,7 @@ local function get_usage(conf, api_id, identifier, current_timestamp, limits)
 end
 
 function _M.execute(conf)
-  if utils.table_size(conf.limits) <= 0 then
+  if not next(conf.limits) then
     return
   end
 

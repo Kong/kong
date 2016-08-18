@@ -176,21 +176,6 @@ _M.check_https = function(allow_terminated)
   return false
 end
 
-
---- Calculates a table size.
--- All entries both in array and hash part.
--- @param t The table to use
--- @return number The size
-function _M.table_size(t)
-  local res = 0
-  if t then
-    for _ in pairs(t) do
-      res = res + 1
-    end
-  end
-  return res
-end
-
 --- Merges two table together.
 -- A new table is created with a non-recursive copy of the provided tables
 -- @param t1 The first table

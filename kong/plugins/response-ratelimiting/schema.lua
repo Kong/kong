@@ -61,7 +61,7 @@ return {
     }
   },
   self_check = function(schema, plugin_t, dao, is_update)
-    if not plugin_t.limits or utils.table_size(plugin_t.limits) == 0 then
+    if not plugin_t.limits or (not next(plugin_t.limits)) then
       return false, Errors.schema "You need to set at least one limit name"
     else
       for k,v in pairs(plugin_t.limits) do

@@ -40,7 +40,7 @@ function ACLHandler:access(conf)
 
   local block
 
-  if utils.table_size(conf.blacklist) > 0 and utils.table_size(acls) > 0 then
+  if next(conf.blacklist) and next(acls) then
     for _, v in ipairs(acls) do
       if utils.table_contains(conf.blacklist, v.group) then
         block = true
@@ -49,8 +49,8 @@ function ACLHandler:access(conf)
     end
   end
 
-  if utils.table_size(conf.whitelist) > 0 then
-    if utils.table_size(acls) == 0 then
+  if next(conf.whitelist) then
+    if not next(acls) then
       block = true
     else
       local contains

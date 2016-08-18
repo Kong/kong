@@ -17,7 +17,7 @@ local function parse_header(header_value, limits)
     local parts = utils.split(header_value, ",")
     for _, v in ipairs(parts) do
       local increment_parts = utils.split(v, "=")
-      if utils.table_size(increment_parts) == 2 then
+      if #increment_parts == 2 then
         local limit_name = utils.strip(increment_parts[1])
         if limits[limit_name] then -- Only if the limit exists
           increments[utils.strip(increment_parts[1])] = tonumber(utils.strip(increment_parts[2]))
@@ -31,7 +31,7 @@ end
 function _M.execute(conf)
   ngx.ctx.increments = {}
 
-  if utils.table_size(conf.limits) <= 0 then
+  if not next(conf.limits) then
     return
   end
 
