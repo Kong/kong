@@ -1,5 +1,4 @@
 local Errors = require "kong.dao.errors"
-local utils = require "kong.tools.utils"
 
 local REDIS = "redis"
 
