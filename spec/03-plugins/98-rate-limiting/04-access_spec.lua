@@ -164,14 +164,21 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       helpers.stop_kong()
     end)
 
+    local client, admin_client
     before_each(function()
       wait(45)
+      client = helpers.proxy_client()
+      admin_client = helpers.admin_client()
+    end)
+    after_each(function()
+      if client then client:close() end
+      if admin_client then admin_client:close() end
     end)
 
     describe("Without authentication (IP address)", function()
       it("blocks if exceeding limit", function()
         for i = 1, 6 do
-          local res = assert(helpers.proxy_client():send {
+          local res = assert(client:send {
             method = "GET",
             path = "/status/200/",
             headers = {
@@ -187,7 +194,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         end
 
         -- Additonal request, while limit is 6/minute
-        local res = assert(helpers.proxy_client():send {
+        local res = assert(client:send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -205,7 +212,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         }
 
         for i = 1, 3 do
-          local res = assert(helpers.proxy_client():send {
+          local res = assert(client:send {
             method = "GET",
             path = "/status/200/",
             headers = {
@@ -222,7 +229,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.are.same(limits.hour - i, tonumber(res.headers["x-ratelimit-remaining-hour"]))
         end
 
-        local res = assert(helpers.proxy_client():send {
+        local res = assert(client:send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -239,7 +246,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("API-specific plugin", function()
         it("blocks if exceeding limit", function()
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client():send {
+            local res = assert(client:send {
               method = "GET",
               path = "/status/200/?apikey=apikey123",
               headers = {
@@ -255,7 +262,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           -- Third query, while limit is 2/minute
-          local res = assert(helpers.proxy_client():send {
+          local res = assert(client:send {
             method = "GET",
             path = "/status/200/?apikey=apikey123",
             headers = {
@@ -266,7 +273,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
 
           -- Using a different key of the same consumer works
-          local res = assert(helpers.proxy_client():send {
+          local res = assert(client:send {
             method = "GET",
             path = "/status/200/?apikey=apikey333",
             headers = {
@@ -279,7 +286,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("Plugin customized for specific consumer", function()
         it("blocks if exceeding limit", function()
           for i = 1, 8 do
-            local res = assert(helpers.proxy_client():send {
+            local res = assert(client:send {
               method = "GET",
               path = "/status/200/?apikey=apikey122",
               headers = {
@@ -294,7 +301,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             assert.are.same(8 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
-          local res = assert(helpers.proxy_client():send {
+          local res = assert(client:send {
             method = "GET",
             path = "/status/200/?apikey=apikey122",
             headers = {
@@ -306,7 +313,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         end)
         it("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
           for i = 1, 6 do
-            local res = assert(helpers.proxy_client():send {
+            local res = assert(client:send {
               method = "GET",
               path = "/status/200/?apikey=apikey122",
               headers = {
@@ -321,7 +328,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
-          local res = assert(helpers.proxy_client():send {
+          local res = assert(client:send {
             method = "GET",
             path = "/status/200/?apikey=apikey122",
             headers = {
@@ -458,7 +465,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       it("expires a counter", function()
         local periods = timestamp.get_timestamps()
 
-        local res = assert(helpers.proxy_client():send {
+        local res = assert(client:send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -473,7 +480,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
         if policy == "local" then
-          local res = assert(helpers.admin_client():send {
+          local res = assert(admin_client:send {
             method = "GET",
             path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
           })
@@ -483,7 +490,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         ngx.sleep(61) -- Wait for counter to expire
 
-        local res = assert(helpers.proxy_client():send {
+        local res = assert(client:send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -498,7 +505,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
         if policy == "local" then
-          local res = assert(helpers.admin_client():send {
+          local res = assert(admin_client:send {
             method = "GET",
             path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
           })
