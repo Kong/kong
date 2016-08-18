@@ -36,6 +36,8 @@ local core = require "kong.core.handler"
 local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
+local balance = require("kong.core.balancer").execute
+local balancer = require "ngx.balancer"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
 local plugins_iterator = require "kong.core.plugins_iterator"
@@ -162,6 +164,24 @@ function Kong.ssl_certificate()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
+  end
+end
+
+function Kong.balancer()
+  local addr = ngx.ctx.balancer_address
+  if addr.tries ~= 1 then  
+    -- only call balancer on retry, first one is done in `core.
+    addr.tries = addr.tries + 1
+    local ok, err = balance(addr)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to retry the balancer: ", err)
+      return ngx.exit(500)
+    end
+  end
+  local ok, err = balancer.set_current_peer(addr.ip, addr.port)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
+    return ngx.exit(500)
   end
 end
 

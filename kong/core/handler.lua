@@ -10,11 +10,13 @@
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
-local resolver = require "kong.core.resolver"
+local balance = require("kong.core.balancer").execute
+local resolve = require("kong.core.resolver").execute
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
 
 local ngx_now = ngx.now
+local match = string.match
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
 local function get_now()
@@ -37,7 +39,28 @@ return {
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = get_now()
-      ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
+      local upstream_host, balancer_address
+      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host = resolve(ngx.var.request_uri, ngx.req.get_headers())
+      
+      balancer_address = {
+        -- static fields (same for each try)
+        upstream_host = upstream_host,     -- original 'hostname[:port]' from the resolver
+        upstream_type = nil,               -- type; 'ipv4', 'ipv6' or 'name'
+        upstream_name = nil,               -- hostname/ip part of upstream_host
+        upstream_port = nil,               -- port part of upstream_host
+        -- dynamic fields (change for each try)
+        tries = 1,                         -- retry counter
+        ip = nil,                          -- final target IP address
+        port = nil,                        -- final target port
+        --todo; add some healthchecker data here on retries???
+      }
+      ngx.ctx.balancer_address = balancer_address
+      ngx.var.upstream_host = "kong_upstream"    -- TODO: if this is constant, shouldn't we update the template and skip the variable?
+      local ok, err = balance(balancer_address)
+      if not ok then
+        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
+        return ngx.exit(500)
+      end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
