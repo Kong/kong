@@ -2,7 +2,7 @@ local timestamp = require "kong.tools.timestamp"
 local Errors = require "kong.dao.errors"
 local BaseDB = require "kong.dao.base_db"
 local utils = require "kong.tools.utils"
-local uuid = require "resty.jit-uuid"
+local uuid = utils.uuid
 
 local ngx_stub = _G.ngx
 _G.ngx = nil

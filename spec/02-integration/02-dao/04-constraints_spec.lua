@@ -69,7 +69,7 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.equal("Plugin configuration already exists", tostring(err))
+          assert.matches("Plugin configuration already exists", tostring(err), nil, true)
         end)
         it("API/Consumer/Plugin", function()
           local consumer, err = factory.consumers:insert {
@@ -94,28 +94,27 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.equal("Plugin configuration already exists", tostring(err))
+          assert.matches("Plugin configuration already exists", tostring(err), nil, true)
         end)
       end)
     end)
 
     describe("FOREIGN constraints", function()
-      local uuid = require "resty.jit-uuid"
 
       it("not insert plugin if invalid API foreign key", function()
-        plugin_fixture.api_id = uuid()
+        plugin_fixture.api_id = utils.uuid()
 
         local plugin, err = plugins:insert(plugin_fixture)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.equal("api_id=does not exist with value '"..plugin_fixture.api_id.."'", tostring(err))
+        assert.matches("api_id=does not exist with value '"..plugin_fixture.api_id.."'", tostring(err), nil, true)
       end)
       it("not insert plugin if invalid Consumer foreign key", function()
         local plugin_tbl = {
           name = "rate-limiting",
           api_id = api_fixture.id,
-          consumer_id = uuid(),
+          consumer_id = utils.uuid(),
           config = {minute = 1}
         }
 
@@ -123,7 +122,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.equal("consumer_id=does not exist with value '"..plugin_tbl.consumer_id.."'", tostring(err))
+        assert.matches("consumer_id=does not exist with value '"..plugin_tbl.consumer_id.."'", tostring(err), nil, true)
       end)
       it("does not update plugin if invalid foreign key", function()
         plugin_fixture.api_id = api_fixture.id
@@ -132,13 +131,13 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.truthy(plugin)
 
-        local fake_api_id = uuid()
+        local fake_api_id = utils.uuid()
         plugin.api_id = fake_api_id
         plugin, err = plugins:update(plugin, {id = plugin.id})
         assert.falsy(plugin)
         assert.truthy(err)
         assert.True(err.foreign)
-        assert.equal("api_id=does not exist with value '"..fake_api_id.."'", tostring(err))
+        assert.matches("api_id=does not exist with value '"..fake_api_id.."'", tostring(err), nil, true)
       end)
     end)
 

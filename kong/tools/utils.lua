@@ -22,6 +22,7 @@ local split = pl_stringx.split
 local strip = pl_stringx.strip
 local lower = string.lower
 local ipairs = ipairs
+local re_find = ngx.re.find
 local tostring = tostring
 local table_sort = table.sort
 local table_concat = table.concat
@@ -67,19 +68,43 @@ end
 
 local v4_uuid = uuid.generate_v4
 
+--- Generates a v4 uuid.
+-- @function uuid
+-- @return string with uuid
+_M.uuid = uuid.generate_v4
+
+--- Seeds the random generator, use with care.
+-- Kong already seeds this once per worker process. It's 
+-- dangerous to ever call it again. So ask yourself
+-- "Do I feel lucky?" Well, do ya, punk?
+-- @function uuid_seed
+_M.uuid_seed = uuid.seed
+
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
 function _M.random_string()
   return gsub(v4_uuid(), "-", "")
 end
 
+local uuid_regex = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 --- Validates a uuid.
 -- _NOTE_: a null-uuid is considered valid (all 0's), otherwise the check is done by the lua-resty-jit-uuid module.
 -- @param str the uuid string to validate
 -- @return true if it is valid.
 function _M.is_valid_uuid(str)
-  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
+  if type(str) ~= 'string' or #str ~= 36 then return false end
+  return re_find(str, uuid_regex, 'ioj') ~= nil
 end
+
+-- function below is more acurate, but invalidates previously accepted uuids and hence causes 
+-- trouble with existing data during migrations.
+-- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
+-- function _M.is_valid_uuid(str)
+--  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
+--end
+
+_M.split = pl_stringx.split
+_M.strip = pl_stringx.strip
 
 --- URL escape and format key and value
 -- An obligatory url.unescape pass must be done to prevent double-encoding

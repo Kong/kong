@@ -74,7 +74,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         name = "response-ratelimiting",
         api_id = api.id,
         config = {
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -91,7 +91,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         name = "response-ratelimiting",
         api_id = api.id,
         config = {
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -118,7 +118,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         api_id = api.id,
         consumer_id = consumer1.id,
         config = {
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -135,7 +135,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         name = "response-ratelimiting",
         api_id = api.id,
         config = {
-          cluster_fault_tolerant = true,
+          fault_tolerant = true,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -152,7 +152,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         name = "response-ratelimiting",
         api_id = api.id,
         config = {
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -178,7 +178,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         name = "response-ratelimiting",
         api_id = api.id,
         config = {
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -433,7 +433,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             name = "response-ratelimiting",
             api_id = api1.id,
             config = {
-              cluster_fault_tolerant = false,
+              fault_tolerant = false,
               policy = policy,
               redis_host = REDIS_HOST,
               redis_port = REDIS_PORT,
@@ -450,7 +450,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             name = "response-ratelimiting",
             api_id = api2.id,
             config = {
-              cluster_fault_tolerant = true,
+              fault_tolerant = true,
               policy = policy,
               redis_host = REDIS_HOST,
               redis_port = REDIS_PORT,
@@ -547,7 +547,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             redis_host = REDIS_HOST,
             redis_port = REDIS_PORT,
             redis_password = REDIS_PASSWORD,
-            cluster_fault_tolerant = false,
+            fault_tolerant = false,
             limits = {video = {minute = 6}}
           }
         })

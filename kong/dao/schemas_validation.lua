@@ -253,7 +253,7 @@ function _M.is_schema_subset(tbl, schema)
       errors = utils.add_error(errors, k, "unknown field")
     elseif schema.fields[k].type == "id" and v ~= nil then
       if not utils.is_valid_uuid(v) then
-        errors = utils.add_error(errors, k, v.."is not a valid uuid")
+        errors = utils.add_error(errors, k, v.." is not a valid uuid")
       end
     end
   end

@@ -78,7 +78,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         config = {
           policy = policy,
           minute = 6,
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD
@@ -95,7 +95,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         config = {
           minute = 3,
           hour = 5,
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -117,7 +117,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         config = {
           minute = 6,
           limit_by = "credential",
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -130,7 +130,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         consumer_id = consumer1.id,
         config = {
           minute = 8,
-          cluster_fault_tolerant = false,
+          fault_tolerant = false,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -152,7 +152,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         consumer_id = consumer1.id,
         config = {
           minute = 6,
-          cluster_fault_tolerant = true,
+          fault_tolerant = true,
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
@@ -349,7 +349,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert(helpers.dao.plugins:insert {
             name = "rate-limiting",
             api_id = api1.id,
-            config = { minute = 6, cluster_fault_tolerant = false }
+            config = { minute = 6, fault_tolerant = false }
           })
 
           local api2 = assert(helpers.dao.apis:insert {
@@ -359,7 +359,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert(helpers.dao.plugins:insert {
             name = "rate-limiting",
             api_id = api2.id,
-            config = { minute = 6, cluster_fault_tolerant = true }
+            config = { minute = 6, fault_tolerant = true }
           })
 
           assert(helpers.start_kong())
@@ -450,7 +450,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             redis_host = REDIS_HOST,
             redis_port = REDIS_PORT,
             redis_password = REDIS_PASSWORD,
-            cluster_fault_tolerant = false
+            fault_tolerant = false
           }
         })
       end)
