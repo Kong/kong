@@ -8,6 +8,7 @@ local constants = require "kong.constants"
 local table_insert = table.insert
 local table_concat = table.concat
 local ipairs = ipairs
+local empty = {}
 
 local ACLHandler = BasePlugin:extend()
 
@@ -40,7 +41,7 @@ function ACLHandler:access(conf)
 
   local block
 
-  if utils.table_size(conf.blacklist) > 0 and utils.table_size(acls) > 0 then
+  if next(conf.blacklist or empty) and next(acls or empty) then
     for _, v in ipairs(acls) do
       if utils.table_contains(conf.blacklist, v.group) then
         block = true
@@ -49,8 +50,8 @@ function ACLHandler:access(conf)
     end
   end
 
-  if utils.table_size(conf.whitelist) > 0 then
-    if utils.table_size(acls) == 0 then
+  if next(conf.whitelist or empty) then
+    if not next(acls or empty) then
       block = true
     else
       local contains
