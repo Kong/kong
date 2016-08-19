@@ -1,5 +1,4 @@
 local utils = require "kong.tools.utils"
-local stringy = require "stringy"
 
 local POSSIBLE_TYPES = {
   table = true,
@@ -65,7 +64,7 @@ function _M.validate_entity(tbl, schema, options)
   for tk, t in pairs(key_values) do
     if t ~= nil then
       local error_prefix = ""
-      if stringy.strip(tk) ~= "" then
+      if utils.strip(tk) ~= "" then
         error_prefix = tk.."."
       end
 
@@ -94,15 +93,15 @@ function _M.validate_entity(tbl, schema, options)
           local is_valid_type
           -- ALIASES: number, timestamp, boolean and array can be passed as strings and will be converted
           if type(t[column]) == "string" then
-            t[column] = stringy.strip(t[column])
+            t[column] = utils.strip(t[column])
             if v.type == "boolean" then
               local bool = t[column]:lower()
               is_valid_type = bool == "true" or bool == "false"
               t[column] = bool == "true"
             elseif v.type == "array" then
-              t[column] = stringy.strip(t[column]) == "" and {} or stringy.split(t[column], ",") -- Handling empty arrays
+              t[column] = utils.strip(t[column]) == "" and {} or utils.split(t[column], ",") -- Handling empty arrays
               for arr_k, arr_v in ipairs(t[column]) do
-                t[column][arr_k] = stringy.strip(arr_v)
+                t[column][arr_k] = utils.strip(arr_v)
               end
               is_valid_type = validate_type(v.type, t[column])
             elseif v.type == "number" or v.type == "timestamp" then
@@ -116,7 +115,8 @@ function _M.validate_entity(tbl, schema, options)
           end
 
           if not is_valid_type and POSSIBLE_TYPES[v.type] then
-            errors = utils.add_error(errors, error_prefix..column, column.." is not a "..v.type)
+            errors = utils.add_error(errors, error_prefix..column,
+                    string.format("%s is not %s %s", column, v.type == "array" and "an" or "a", v.type))
           end
         end
 
@@ -148,7 +148,7 @@ function _M.validate_entity(tbl, schema, options)
 
         -- [REGEX] Check field against a regex if specified
         if type(t[column]) == "string" and v.regex then
-          if not ngx.re.match(t[column], v.regex) then
+          if not ngx.re.find(t[column], v.regex) then
             errors = utils.add_error(errors, error_prefix..column, column.." has an invalid value")
           end
         end
@@ -224,7 +224,7 @@ function _M.validate_entity(tbl, schema, options)
       for k in pairs(t) do
         if schema.fields[k] == nil then
           if schema.flexible then
-            if stringy.strip(tk) ~= "" and k ~= tk then
+            if utils.strip(tk) ~= "" and k ~= tk then
               errors = utils.add_error(errors, error_prefix..k, k.." is an unknown field")
             end
           else
@@ -245,12 +245,6 @@ function _M.validate_entity(tbl, schema, options)
   return errors == nil, errors
 end
 
-local digit = "[0-9a-f]"
-local uuid_pattern = "^"..table.concat({ digit:rep(8), digit:rep(4), digit:rep(4), digit:rep(4), digit:rep(12) }, '%-').."$"
-function _M.is_valid_uuid(uuid)
-  return uuid and uuid:match(uuid_pattern) ~= nil
-end
-
 function _M.is_schema_subset(tbl, schema)
   local errors
 
@@ -258,8 +252,8 @@ function _M.is_schema_subset(tbl, schema)
     if schema.fields[k] == nil then
       errors = utils.add_error(errors, k, "unknown field")
     elseif schema.fields[k].type == "id" and v ~= nil then
-      if not _M.is_valid_uuid(v) then
-        errors = utils.add_error(errors, k, v.."is not a valid uuid")
+      if not utils.is_valid_uuid(v) then
+        errors = utils.add_error(errors, k, v.." is not a valid uuid")
       end
     end
   end

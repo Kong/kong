@@ -19,12 +19,6 @@
 -- * bodyCaptured properties are determined using HTTP headers
 -- * timings.blocked is ignored
 -- * timings.connect is ignored
---
--- * we are waiting for lua-cjson support of granular 'empty table
---   as JSON arrays' to be released in OpenResty. Until then, we
---   have to use a workaround involving string substituion, which
---   is slower and limits the maximum size of ALFs we can deal with.
---   ALFs are thus limited to 20MB
 
 local cjson = require "cjson.safe"
 local resp_get_headers = ngx.resp.get_headers
@@ -38,8 +32,9 @@ local http_version = ngx.req.http_version
 local setmetatable = setmetatable
 local tonumber = tonumber
 local os_date = os.date
-local type = type
 local pairs = pairs
+local type = type
+local gsub = string.gsub
 
 local _M = {
   _VERSION = "2.0.0",
@@ -61,18 +56,10 @@ function _M.new(log_bodies, server_addr)
   return setmetatable(alf, _mt)
 end
 
-local _empty_arr_placeholder = "__empty_array_placeholder__"
-local _empty_arr_t = {_empty_arr_placeholder}
-
 -- Convert a table such as returned by ngx.*.get_headers()
 -- to integer-indexed arrays.
--- @warn Encoding of empty arrays workaround forces us
--- to replace empty arrays with a placeholder to be substituted
--- at serialization time.
--- waiting on the releast of:
--- https://github.com/openresty/lua-cjson/pull/6
 local function hash_to_array(t)
-  local arr = {}
+  local arr = setmetatable({}, cjson.empty_array_mt)
   for k, v in pairs(t) do
     if type(v) == "table" then
       for i = 1, #v do
@@ -82,12 +69,7 @@ local function hash_to_array(t)
       arr[#arr+1] = {name = k, value = v}
     end
   end
-
-  if #arr == 0 then
-    return _empty_arr_t
-  else
-    return arr
-  end
+  return arr
 end
 
 local function get_header(t, name, default)
@@ -214,22 +196,20 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
 end
 
 local buf = {
-   version = _M._ALF_VERSION,
-   serviceToken = nil,
-   environment = nil,
-   har = {
-     log = {
-       creator = {
-         name = _M._ALF_CREATOR,
-         version = _M._VERSION
-       },
-       entries = nil
-     }
-   }
- }
+  version = _M._ALF_VERSION,
+  serviceToken = nil,
+  environment = nil,
+  har = {
+    log = {
+      creator = {
+        name = _M._ALF_CREATOR,
+        version = _M._VERSION
+      },
+      entries = nil
+    }
+  }
+}
 
-local gsub = string.gsub
-local pat = '"'.._empty_arr_placeholder..'"'
 local _alf_max_size = 20 * 2^20
 
 --- Encode the current ALF to JSON
@@ -249,19 +229,12 @@ function _M:serialize(service_token, environment)
   buf.environment = environment
   buf.har.log.entries = self.entries
 
-  -- tmp workaround for empty arrays
-  -- this prevents us from dealing with ALFs
-  -- larger than a few MBs at once
-  local encoded =  cjson.encode(buf)
-
-  if #encoded > _alf_max_size then
+  local json = cjson.encode(buf)
+  if #json > _alf_max_size then
     return nil, "ALF too large (> 20MB)"
   end
 
-  encoded = gsub(encoded, pat, "")
-  return gsub(encoded, "\\/", "/"), #self.entries
-
-  --return cjson.encode(buf)
+  return gsub(json, "\\/", "/"), #self.entries
 end
 
 --- Empty the ALF

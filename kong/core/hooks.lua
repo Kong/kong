@@ -1,7 +1,8 @@
-local singletons = require "kong.singletons"
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
-local stringy = require "stringy"
+local utils = require "kong.tools.utils"
+local singletons = require "kong.singletons"
+local pl_stringx = require "pl.stringx"
 
 local function invalidate_plugin(entity)
   cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))
@@ -22,7 +23,7 @@ local function invalidate(message_t)
 end
 
 local function get_cluster_members()
-  local members, err = singletons.serf:_members()
+  local members, err = singletons.serf:members()
   if err then
     return nil, err
   else
@@ -44,7 +45,7 @@ local function retrieve_member_address(name)
 end
 
 local function parse_member(member_str)
-  if member_str and stringy.strip(member_str) ~= "" then
+  if member_str and utils.strip(member_str) ~= "" then
     local result = {}
     local index = 1
     for v in member_str:gmatch("%S+") do
@@ -63,8 +64,8 @@ local function parse_member(member_str)
   end
 end
 
-local function member_leave(message_t)
-  local member, err = parse_member(message_t.entity)
+local function member_leave(s_node)
+  local member, err = parse_member(s_node)
   if err then
     ngx.log(ngx.ERR, err)
     return
@@ -78,8 +79,8 @@ local function member_leave(message_t)
   end
 end
 
-local function member_update(message_t, is_reap)
-  local member, err = parse_member(message_t.entity)
+local function member_update(s_node, is_reap)
+  local member, err = parse_member(s_node)
   if err then
     ngx.log(ngx.ERR, err)
     return
@@ -109,8 +110,8 @@ local function member_update(message_t, is_reap)
   end
 end
 
-local function member_join(message_t)
-  local member, err = parse_member(message_t.entity)
+local function member_join(s_node)
+  local member, err = parse_member(s_node)
   if err then
     ngx.log(ngx.ERR, err)
     return
@@ -125,7 +126,7 @@ local function member_join(message_t)
   end
 
   if #nodes == 1 then -- Update
-    member_update(message_t)
+    member_update(s_node)
   elseif #nodes > 1 then
     error("Inconsistency error. More than one node found with name "..member.name)
   end
@@ -153,18 +154,38 @@ return {
     singletons.serf:event(message_t)
   end,
   [events.TYPES["MEMBER-JOIN"]] = function(message_t)
-    member_join(message_t)
+    -- Sometimes multiple nodes are sent at once
+    local members = pl_stringx.splitlines(message_t.entity)
+    for _, member in ipairs(members) do
+      member_join(member)
+    end
   end,
   [events.TYPES["MEMBER-LEAVE"]] = function(message_t)
-    member_leave(message_t)
+    -- Sometimes multiple nodes are sent at once
+    local members = pl_stringx.splitlines(message_t.entity)
+    for _, member in ipairs(members) do
+      member_leave(member)
+    end
   end,
   [events.TYPES["MEMBER-FAILED"]] = function(message_t)
-    member_update(message_t)
+    -- Sometimes multiple nodes are sent at once
+    local members = pl_stringx.splitlines(message_t.entity)
+    for _, member in ipairs(members) do
+      member_update(member)
+    end
   end,
   [events.TYPES["MEMBER-UPDATE"]] = function(message_t)
-    member_update(message_t)
+    -- Sometimes multiple nodes are sent at once
+    local members = pl_stringx.splitlines(message_t.entity)
+    for _, member in ipairs(members) do
+      member_update(member)
+    end
   end,
   [events.TYPES["MEMBER-REAP"]] = function(message_t)
-    member_update(message_t, true)
+    -- Sometimes multiple nodes are sent at once
+    local members = pl_stringx.splitlines(message_t.entity)
+    for _, member in ipairs(members) do
+      member_update(member, true)
+    end
   end
 }

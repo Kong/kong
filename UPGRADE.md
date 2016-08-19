@@ -22,6 +22,16 @@ $ kong reload [-c configuration_file]
 
 **Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly starts new workers taking over the old ones until they all have been terminated. This will guarantee you no drop in your current incoming traffic.
 
+## Upgrade to `0.9.x`
+
+This release introduces a new CLI, which uses the [lua-resty-cli](https://github.com/openresty/resty-cli) interpreter. As such, the `resty` executable (shipped in the OpenResty bundle) must be available in your `$PATH`.
+Additionally, the `bin/kong` executable is not installed through Luarocks anymore, and must be placed in your `$PATH` as well.
+This change of behavior is taken care of if you are using one of the official Kong packages.
+
+Once Kong updated, familiarize yourself with its new configuration format, and consider setting some of its properties via environment variables, if the need arises. This behavior as well as all available settings are documented in the `kong.conf.default` file shipped with this version.
+
+Once your nodes configured, we recommend that you seamingly redirect your traffic through the new Kong 0.9 nodes before decomissioning your old nodes.
+
 ## Upgrade to `0.8.x`
 
 No important breaking changes for this release, just be careful to not use the long deprecated routes `/consumers/:consumer/keyauth/` and `/consumers/:consumer/basicauth/` as instructed in the Changelog. As always, also make sure to check the configuration file for new properties (this release allows you to configure the read/write consistency of Cassandra).

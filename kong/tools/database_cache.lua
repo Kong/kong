@@ -1,5 +1,7 @@
+local resty_lock = require "resty.lock"
 local cjson = require "cjson"
 local cache = ngx.shared.cache
+local ngx_log = ngx.log
 
 local CACHE_KEYS = {
   APIS = "apis",
@@ -17,13 +19,14 @@ local CACHE_KEYS = {
   AUTOJOIN_RETRIES = "autojoin_retries",
   TIMERS = "timers",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
-  LDAP_CREDENTIAL = "ldap_credentials"
+  LDAP_CREDENTIAL = "ldap_credentials",
+  BOT_DETECTION = "bot_detection"
 }
 
 local _M = {}
 
-function _M.rawset(key, value)
-  return cache:set(key, value)
+function _M.rawset(key, value, exptime)
+  return cache:set(key, value, exptime or 0)
 end
 
 function _M.set(key, value)
@@ -76,7 +79,7 @@ function _M.consumer_key(id)
 end
 
 function _M.plugin_key(name, api_id, consumer_id)
-  return CACHE_KEYS.PLUGINS..":"..name..":"..api_id..(consumer_id and ":"..consumer_id or "")
+  return CACHE_KEYS.PLUGINS..":"..name..(api_id and ":"..api_id or "")..(consumer_id and ":"..consumer_id or "")
 end
 
 function _M.basicauth_credential_key(username)
@@ -115,26 +118,53 @@ function _M.ssl_data(api_id)
   return CACHE_KEYS.SSL..":"..api_id
 end
 
+function _M.bot_detection_key(key)
+  return CACHE_KEYS.BOT_DETECTION..":"..key
+end
+
 function _M.all_apis_by_dict_key()
   return CACHE_KEYS.ALL_APIS_BY_DIC
 end
 
 function _M.get_or_set(key, cb)
-  local value, err
-  -- Try to get
+  -- Try to get the value from the cache
+  local value = _M.get(key)
+  if value then return value end
+
+  local lock, err = resty_lock:new("cache_locks", {
+    exptime = 10,
+    timeout = 5
+  })
+  if not lock then
+    ngx_log(ngx.ERR, "could not create lock: ", err)
+    return
+  end
+
+  -- The value is missing, acquire a lock
+  local elapsed, err = lock:lock(key)
+  if not elapsed then
+    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+  end
+
+  -- Lock acquired. Since in the meantime another worker may have
+  -- populated the value we have to check again
   value = _M.get(key)
   if not value then
     -- Get from closure
-    value, err = cb()
-    if err then
-      return nil, err
-    elseif value then
+    value = cb()
+    if value then
       local ok, err = _M.set(key, value)
       if not ok then
-        ngx.log(ngx.ERR, err)
+        ngx_log(ngx.ERR, err)
       end
     end
   end
+
+  local ok, err = lock:unlock()
+  if not ok and err then
+    ngx_log(ngx.ERR, "failed to unlock: ", err)
+  end
+
   return value
 end
 

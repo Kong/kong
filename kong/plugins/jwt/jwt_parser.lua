@@ -6,9 +6,8 @@
 -- @see https://github.com/x25/luajwt
 
 local json = require "cjson"
-local base64 = require "base64"
-local crypto = require "crypto"
 local utils = require "kong.tools.utils"
+local crypto = require "crypto"
 
 local error = error
 local type = type
@@ -16,6 +15,8 @@ local pcall = pcall
 local ngx_time = ngx.time
 local string_rep = string.rep
 local setmetatable = setmetatable
+local encode_base64 = ngx.encode_base64
+local decode_base64 = ngx.decode_base64
 
 --- Supported algorithms for signing tokens.
 local alg_sign = {
@@ -31,7 +32,8 @@ local alg_verify = {
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
   --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
   ["RS256"] = function(data, signature, key)
-    return crypto.verify('sha256', data, signature, crypto.pkey.from_pem(key))
+    local pkey = assert(crypto.pkey.from_pem(key),"Consumer Public Key is Invalid")
+    return crypto.verify('sha256', data, signature, pkey)
   end
 }
 
@@ -39,7 +41,7 @@ local alg_verify = {
 -- @param input String to base64 encode
 -- @return Base64 encoded string
 local function b64_encode(input)
-  local result = base64.encode(input)
+  local result = encode_base64(input)
   result = result:gsub("+", "-"):gsub("/", "_"):gsub("=", "")
   return result
 end
@@ -56,7 +58,7 @@ local function b64_decode(input)
   end
 
   input = input:gsub("-", "+"):gsub("_", "/")
-  return base64.decode(input)
+  return decode_base64(input)
 end
 
 --- Tokenize a string by delimiter
@@ -96,15 +98,23 @@ local function decode_token(token)
            b64_decode(signature_64)
   end)
   if not ok then
-    return nil, "Invalid JSON"
+    return nil, "invalid JSON"
   end
 
   if header.typ and header.typ:upper() ~= "JWT" then
-    return nil, "Invalid typ"
+    return nil, "invalid typ"
   end
 
   if not header.alg or type(header.alg) ~= "string" or not alg_verify[header.alg] then
-    return nil, "Invalid alg"
+    return nil, "invalid alg"
+  end
+
+  if not claims then
+    return nil, "invalid claims"
+  end
+
+  if not signature then
+    return nil, "invalid signature"
   end
 
   return {
@@ -158,7 +168,7 @@ _M.__index = _M
 -- @return JWT parser
 -- @return error if any
 function _M:new(token)
-  if type(token) ~= "string" then error("JWT must be a string", 2) end
+  if type(token) ~= "string" then error("Token must be a string, got "..tostring(token), 2) end
 
   local token, err = decode_token(token)
   if err then
