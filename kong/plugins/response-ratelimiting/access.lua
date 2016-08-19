@@ -1,7 +1,6 @@
 local policies = require "kong.plugins.response-ratelimiting.policies"
 local timestamp = require "kong.tools.timestamp"
 local responses = require "kong.tools.responses"
-local utils = require "kong.tools.utils"
 
 local pairs = pairs
 local tostring = tostring
@@ -52,7 +51,7 @@ local function get_usage(conf, api_id, identifier, current_timestamp, limits)
 end
 
 function _M.execute(conf)
-  if utils.table_size(conf.limits) <= 0 then
+  if not next(conf.limits) then
     return
   end
 
@@ -87,7 +86,7 @@ function _M.execute(conf)
       end
     end
 
-      ngx.req.set_header(RATELIMIT_REMAINING.."-"..k, remaining)
+    ngx.req.set_header(RATELIMIT_REMAINING.."-"..k, remaining)
   end
 
   ngx.ctx.usage = usage -- For later use
