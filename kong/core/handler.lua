@@ -40,7 +40,7 @@ return {
     before = function()
       ngx.ctx.KONG_ACCESS_START = get_now()
       local upstream_host, balancer_address
-      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host = resolve(ngx.var.request_uri, ngx.req.get_headers())
+      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, ngx.ctx.upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
       
       balancer_address = {
         -- static fields (same for each try)
