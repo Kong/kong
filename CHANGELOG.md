@@ -1,3 +1,5 @@
+## [Unreleased][unreleased]
+
 ## [0.9.0] - 2016/08/18
 
 The main focus of this release is Kong's new CLI. With a simpler configuration file, new settings, environment variables support, new commands as well as a new interpreter, the new CLI gives more power and flexibility to Kong users and allow for an easier integration in your deployment workflow, as well as better testing for developers and plugins authors. Additionally, some new plugins and performance improvements are included as well as the regular bug fixes.
@@ -659,7 +661,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.8.3...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.0...next
+[0.9.0]: https://github.com/mashape/kong/compare/0.8.3...0.9.0
 [0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
 [0.8.2]: https://github.com/mashape/kong/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/mashape/kong/compare/0.8.0...0.8.1
