@@ -14,6 +14,7 @@ local _M = {}
 local HEADERS_HOST_OVERRIDE = constants.HEADERS.HOST_OVERRIDE
 local HEADERS_FORWARDED_HOST = constants.HEADERS.FORWARDED_HOST
 local HEADERS_FORWARDED_PREFIX = constants.HEADERS.FORWARDED_PREFIX
+local DEFAULT_PORTS = { http = 80, https = 443 }
 
 -- Take a request_host and make it a pattern for wildcard matching.
 -- Only do so if the request_host actually has a wildcard.
@@ -142,7 +143,7 @@ end
 -- @param  `uri`          The URI for this request.
 -- @return `err`          Any error encountered during the retrieval.
 -- @return `api`          The retrieved API, if any.
--- @return `matched_host` The host that was matched for this API, if matched.
+-- @return `matched_host`  The host that was matched for this API, if matched.
 -- @return `hosts`        The list of headers values found in Host and X-Host-Override.
 -- @return `strip_request_path_pattern` If the API was retrieved by request_path, contain the pattern to strip it from the URI.
 local function find_api(uri, headers)
@@ -169,7 +170,7 @@ local function find_api(uri, headers)
 end
 
 function _M.execute(request_uri, request_headers)
-  local uri = request_uri:match("^([^%?]+)")  -- grab everything before "?"
+  local uri = request_uri:match("^([^%?]+)")  -- grab everything before "?", dropping the query string
   local err, api, matched_host, hosts_list, strip_request_path_pattern = find_api(uri, request_headers)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -187,9 +188,10 @@ function _M.execute(request_uri, request_headers)
   -- If API was retrieved by request_path and the request_path needs to be stripped
   if strip_request_path_pattern and api.strip_request_path then
     local _, count_slashes = upstream_url:gsub("/", "")
-
     uri = uri:gsub(strip_request_path_pattern, "", 1)
     if (count_slashes <= 2) and (uri:sub(1,1) ~= "/") then
+      -- upstream_url has no path, only the 2 scheme slashes, and the uri doesn't start with a slash
+      -- so we need to insert one
       uri = "/"..uri
     end
     
@@ -197,24 +199,18 @@ function _M.execute(request_uri, request_headers)
   end
 
   upstream_url = upstream_url..uri
+  local upstream_table = url.parse(upstream_url)  
+  upstream_table.port = upstream_table.port or DEFAULT_PORTS[upstream_table.scheme]
 
   local upstream_host
   if api.preserve_host then
     upstream_host = matched_host or ngx.req.get_headers()["host"]
   end
-
-  if upstream_host == nil then
-    local parsed_url = url.parse(upstream_url)
-    if parsed_url.port then 
-      upstream_host = parsed_url.host..":"..parsed_url.port
-    elseif parsed_url.scheme == "https" then 
-      upstream_host = parsed_url.host..":443" 
-    else
-      upstream_host = parsed_url.host
-    end  
+  if not upstream_host then
+    upstream_host = upstream_table.host..(upstream_table.port and ":"..upstream_table.port or "")
   end
 
-  return api, upstream_url, upstream_host
+  return api, upstream_url, upstream_host, upstream_table
 end
 
 -- export local for test pruposes

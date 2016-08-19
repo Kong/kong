@@ -37,7 +37,7 @@ return {
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = get_now()
-      ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
+      ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host, ngx.ctx.upstream_table = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
