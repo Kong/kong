@@ -1,5 +1,6 @@
 local singletons = require "kong.singletons"
 local url = require "socket.url"
+local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
@@ -207,7 +208,7 @@ function _M.execute(request_uri, request_headers)
     upstream_host = matched_host or ngx.req.get_headers()["host"]
   end
   if not upstream_host then
-    upstream_host = upstream_table.host..(upstream_table.port and ":"..upstream_table.port or "")
+    upstream_host = utils.format_host(upstream_table)
   end
 
   return api, upstream_url, upstream_host, upstream_table

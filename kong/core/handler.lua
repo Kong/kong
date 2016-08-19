@@ -16,7 +16,6 @@ local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
 
 local ngx_now = ngx.now
-local match = string.match
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
 local function get_now()
@@ -39,20 +38,20 @@ return {
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = get_now()
-      local upstream_host, balancer_address
-      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, ngx.ctx.upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
+      local upstream_host, balancer_address, upstream_table
+      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
       
       balancer_address = {
-        -- static fields (same for each try)
-        upstream_host = upstream_host,     -- original 'hostname[:port]' from the resolver
-        upstream_type = nil,               -- type; 'ipv4', 'ipv6' or 'name'
-        upstream_name = nil,               -- hostname/ip part of upstream_host
-        upstream_port = nil,               -- port part of upstream_host
-        -- dynamic fields (change for each try)
-        tries = 1,                         -- retry counter
-        ip = nil,                          -- final target IP address
-        port = nil,                        -- final target port
-        --todo; add some healthchecker data here on retries???
+        upstream = upstream_table,                       -- original parsed upstream url from the resolver
+        type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
+        tries = 0,                                       -- retry counter
+        ip = nil,                                        -- final target IP address
+        port = nil,                                      -- final target port
+        -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
+        failures = nil                                   -- for each failure an entry { name = "...", code = xx }
+        -- in case of dns
+        dns_record = nil,                                -- the top-level list of DNS records resolved
+        dns_pointer = nil,                               -- index of the last record tried in `dns_record`.
       }
       ngx.ctx.balancer_address = balancer_address
       ngx.var.upstream_host = "kong_upstream"    -- TODO: if this is constant, shouldn't we update the template and skip the variable?

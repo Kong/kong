@@ -169,15 +169,25 @@ end
 
 function Kong.balancer()
   local addr = ngx.ctx.balancer_address
-  if addr.tries ~= 1 then  
-    -- only call balancer on retry, first one is done in `core.
-    addr.tries = addr.tries + 1
+  addr.tries = addr.tries + 1
+  if addr.tries > 1 then  
+    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- in the ACCESS context and hence has less limitations than this BALANCER context
+    -- where the retries are executed
+    
+    -- record failure data
+    addr.failures = addr.failures or {}
+    local state, code = balancer.get_last_failure()
+    addr.failures[tries-1] = { name = state, code = code }
+    
     local ok, err = balance(addr)
     if not ok then
-      ngx.log(ngx.ERR, "failed to retry the balancer: ", err)
+      ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
       return ngx.exit(500)
     end
   end
+  
+  -- set the targets as resolved
   local ok, err = balancer.set_current_peer(addr.ip, addr.port)
   if not ok then
     ngx.log(ngx.ERR, "failed to set the current peer: ", err)
