@@ -219,7 +219,7 @@ end
 
 local function default_on_migrate(identifier, db_infos)
   local log = require "kong.cmd.utils.log"
-  log("Migrating %s for %s %s",
+  log("migrating %s for %s %s",
       identifier, db_infos.desc, db_infos.name)
 end
 
@@ -234,6 +234,8 @@ function Factory:run_migrations(on_migrate, on_success)
   on_success = on_success or default_on_success
 
   local log = require "kong.cmd.utils.log"
+
+  log.verbose("running datastore migrations")
 
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
@@ -254,8 +256,10 @@ function Factory:run_migrations(on_migrate, on_success)
   end
 
   if migrations_ran > 0 then
-    log("Migrations up to date")
+    log("%d migrations ran", migrations_ran)
   end
+
+  log.verbose("migrations up to date")
 
   return true
 end
