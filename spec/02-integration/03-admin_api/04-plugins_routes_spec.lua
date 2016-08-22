@@ -21,6 +21,7 @@ describe("Admin API", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.is_table(json.enabled_plugins)
+      assert.True(#json.enabled_plugins > 0)
     end)
   end)
 
