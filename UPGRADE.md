@@ -24,6 +24,8 @@ $ kong reload [-c configuration_file]
 
 ## Upgrade to `0.9.x`
 
+PostgreSQL is the new default datastore for Kong. If you were using Cassandra and you are upgrading, you must explicitly set `cassandra` as your `database`.
+
 This release introduces a new CLI, which uses the [lua-resty-cli](https://github.com/openresty/resty-cli) interpreter. As such, the `resty` executable (shipped in the OpenResty bundle) must be available in your `$PATH`.
 Additionally, the `bin/kong` executable is not installed through Luarocks anymore, and must be placed in your `$PATH` as well.
 This change of behavior is taken care of if you are using one of the official Kong packages.
