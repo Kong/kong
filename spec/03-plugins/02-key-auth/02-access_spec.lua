@@ -43,6 +43,16 @@ describe("Plugin: key-auth (access)", function()
   end)
 
   describe("Unauthorized", function()
+    it("allows OPTIONS requests", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "key-auth1.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
     it("returns Unauthorized on missing credentials", function()
       local res = assert(client:send {
         method = "GET",

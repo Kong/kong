@@ -17,12 +17,19 @@ local KeyAuthHandler = BasePlugin:extend()
 
 KeyAuthHandler.PRIORITY = 1000
 
+local get_method = ngx.req.get_method
+
 function KeyAuthHandler:new()
   KeyAuthHandler.super.new(self, "key-auth")
 end
 
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
+
+  -- do not authenticate preflight OPTIONS requests
+  if get_method() == "OPTIONS" then
+    return
+  end
 
   if type(conf.key_names) ~= "table" then
     ngx.log(ngx.ERR, "[key-auth] no conf.key_names set, aborting plugin execution")
