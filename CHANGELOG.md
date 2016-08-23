@@ -6,6 +6,7 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 
 ### Changed
 
+- :warning: PostgreSQL is the new default datastore for Kong. If you were using Cassandra and you are upgrading, you need to explicitly set `cassandra` as your `database`.
 - :warning: New CLI, with new commands and refined arguments. This new CLI uses the `resty-cli` interpreter (see [lua-resty-cli](https://github.com/openresty/resty-cli)) instead of LuaJIT. As a result, the `resty` executable must be available in your `$PATH` (resty-cli is shipped in the OpenResty bundle) as well as the `bin/kong` executable. Kong does not rely on Luarocks installing the `bin/kong` executable anymore. This change of behavior is taken care of if you are using one of the official Kong packages.
 - :warning: Kong uses a new configuration file, with an easier syntax than the previous YAML file.
 - New arguments for the CLI, such as verbose, debug and tracing flags. We also avoid requiring the configuration file as an argument to each command as per the previous CLI.
