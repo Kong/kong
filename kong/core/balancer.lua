@@ -6,16 +6,21 @@ local dns_client = require "dns.client"
 -- Will not return on client errors (returned as http errorcodes)
 -- incoming nil+error will be passed through.
 -- @return valid record with at least 1 entry, or nil + error
-local handle_dns_error = function(rec, err)
+local dns_lookup = function(host, cache_only)
+  local rec, err = dns_client.resolve(host, cache_only)
   if not rec then
     return rec, err
   elseif rec.errcode then
     -- TODO: proper dns server error, what http errors to return???
     ngx.log(ngx.ERR, "dns server error")
+ngx.log(ngx.ERR, "dns server error for "..tostring(host).."\n"..require("cjson").encode(ngx.ctx.balancer_address))
+error(debug.traceback("dns server error for "..tostring(host)))
     return ngx.exit(500)
   elseif #rec == 0 then
     -- TODO: proper dns server error, what http error to return???
-    ngx.log(ngx.ERR, "no dns entries found")
+ngx.log(ngx.ERR, "no dns entries found for "..tostring(host).."\n"..require("cjson").encode(ngx.ctx.balancer_address))
+error(debug.traceback("no dns entries found for "..tostring(host)))
+    ngx.log(ngx.ERR, "no dns entries found for "..tostring(host))
     return ngx.exit(500)
   end
   return rec
@@ -71,7 +76,7 @@ local get_ip = function(target, dns_cache_only)
   local i = 1
   local host = rec.target
   repeat
-    local list, err = handle_dns_error(dns_client.resolve(host, dns_cache_only))
+    local list, err = dns_lookup(host, dns_cache_only)
     if not list then
       return list, err
     end
@@ -99,21 +104,22 @@ end
 
 
 local first_try_dns = function(target)
-  local rec, err = handle_dns_error(dns_client.resolve(target.upstream.host))
+  local rec, err = dns_lookup(target.upstream.host)
   if not rec then
-    return rec, err
+    return nil, err
   end
   -- store the top level dns result in the ctx structure for future use.
   -- Note: cname records will have been dereferenced by the dns lib, so
   -- we got A, AAAA or SRV.
   target.dns_record = rec
 
+--print("first_try_dns 2")
   return get_ip(target)  
 end
 
 -- NOTE: retry runs in the limited `BALANCER` context
 local retry_dns = function(target)
-  return get_ip(target, true)
+  return get_ip(target, true) -- true to do only local dns cache lookups
 end
 
 
