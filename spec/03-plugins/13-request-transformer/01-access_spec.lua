@@ -113,6 +113,146 @@ describe("Plugin: request-transformer (access)", function()
     if client then client:close() end
   end)
 
+  describe("remove", function()
+    it("specified header", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test4.com",
+          ["x-to-remove"] = "true",
+          ["x-another-header"] = "true"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-remove")
+      assert.request(r).has.header("x-another-header")
+    end)
+    it("parameters on url encoded form POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["toremoveform"] = "yes",
+          ["nottoremove"] = "yes"
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test4.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.formparam("toremoveform")
+      local value = assert.request(r).has.formparam("nottoremove")
+      assert.equals("yes", value)
+    end)
+    it("parameters from JSON body in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["toremoveform"] = "yes",
+          ["nottoremove"] = "yes"
+        },
+        headers = {
+          host = "test4.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_nil(json["toremoveform"])
+      assert.equals("yes", json["nottoremove"])
+    end)
+    it("does not fail if JSON body is malformed in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = "malformed json body",
+        headers = {
+          host = "test4.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("malformed json body", json.postData.text)
+    end)
+    it("does not fail if body is empty and content type is application/json in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {},
+        headers = {
+          host = "test4.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals('{}', json.postData.text)
+      assert.equals("2", json.headers["content-length"])
+    end)
+    it("does not fail if body is empty in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          host = "test4.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.same({}, json.postData.params)
+      assert.equal('', json.postData.text)
+      local value = assert.request(r).has.header("content-length")
+      assert.equal("0", value)
+    end)
+    it("parameters on multipart POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["toremoveform"] = "yes",
+          ["nottoremove"] = "yes"
+        },
+        headers = {
+          ["Content-Type"] = "multipart/form-data",
+          host = "test4.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.postData.params["toremoveform"])
+      assert.equals("yes", json.postData.params["nottoremove"])
+    end)
+    it("queryString on GET if it exist", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          q1 = "v1",
+          q2 = "v2",
+        },
+        body = {
+          hello = "world"
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test4.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.queryparam("q1")
+      local value = assert.request(r).has.queryparam("q2")
+      assert.equals("v2", value)
+    end)
+  end)
+
   describe("rename", function()
     it("specified header", function()
       local r = assert(client:send {
@@ -256,146 +396,6 @@ describe("Plugin: request-transformer (access)", function()
       assert.equals("true", value1)
       local value2 = assert.request(r).has.queryparam("nottorename")
       assert.equals("true", value2)
-    end)
-  end)
-
-  describe("remove", function()
-    it("specified header", function()
-      local r = assert(client:send {
-        method = "GET",
-        path = "/request",
-        headers = {
-          host = "test4.com",
-          ["x-to-remove"] = "true",
-          ["x-another-header"] = "true"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.header("x-to-remove")
-      assert.request(r).has.header("x-another-header")
-    end)
-    it("parameters on url encoded form POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          ["toremoveform"] = "yes",
-          ["nottoremove"] = "yes"
-        },
-        headers = {
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test4.com"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.formparam("toremoveform")
-      local value = assert.request(r).has.formparam("nottoremove")
-      assert.equals("yes", value)
-    end)
-    it("parameters from JSON body in POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          ["toremoveform"] = "yes",
-          ["nottoremove"] = "yes"
-        },
-        headers = {
-          host = "test4.com",
-          ["content-type"] = "application/json"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      local json = assert.request(r).has.jsonbody()
-      assert.is_nil(json["toremoveform"])
-      assert.equals("yes", json["nottoremove"])
-    end)
-    it("does not fail if JSON body is malformed in POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = "malformed json body",
-        headers = {
-          host = "test4.com",
-          ["content-type"] = "application/json"
-        }
-      })
-      assert.response(r).has.status(200)
-      local json = assert.response(r).has.jsonbody()
-      assert.equals("malformed json body", json.postData.text)
-    end)
-    it("does not fail if body is empty and content type is application/json in POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {},
-        headers = {
-          host = "test4.com",
-          ["content-type"] = "application/json"
-        }
-      })
-      assert.response(r).has.status(200)
-      local json = assert.response(r).has.jsonbody()
-      assert.equals('{}', json.postData.text)
-      assert.equals("2", json.headers["content-length"])
-    end)
-    it("does not fail if body is empty in POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        headers = {
-          host = "test4.com"
-        }
-      })
-      assert.response(r).has.status(200)
-      local json = assert.response(r).has.jsonbody()
-      assert.same({}, json.postData.params)
-      assert.equal('', json.postData.text)
-      local value = assert.request(r).has.header("content-length")
-      assert.equal("0", value)
-    end)
-    it("parameters on multipart POST", function()
-      local r = assert(client:send {
-        method = "POST",
-        path = "/request",
-        body = {
-          ["toremoveform"] = "yes",
-          ["nottoremove"] = "yes"
-        },
-        headers = {
-          ["Content-Type"] = "multipart/form-data",
-          host = "test4.com"
-        }
-      })
-      assert.response(r).has.status(200)
-      local json = assert.response(r).has.jsonbody()
-      assert.is_nil(json.postData.params["toremoveform"])
-      assert.equals("yes", json.postData.params["nottoremove"])
-    end)
-    it("queryString on GET if it exist", function()
-      local r = assert( client:send {
-        method = "GET",
-        path = "/request",
-        query = {
-          q1 = "v1",
-          q2 = "v2",
-        },
-        body = {
-          hello = "world"
-        },
-        headers = {
-          ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test4.com"
-        }
-      })
-      assert.response(r).has.status(200)
-      assert.response(r).has.jsonbody()
-      assert.request(r).has.no.queryparam("q1")
-      local value = assert.request(r).has.queryparam("q2")
-      assert.equals("v2", value)
     end)
   end)
 
