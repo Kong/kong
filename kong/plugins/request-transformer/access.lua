@@ -81,6 +81,11 @@ local function append_value(current_value, value)
 end
 
 local function transform_headers(conf)
+  -- Remove header(s)
+  for _, name, value in iter(conf.remove.headers) do
+    req_clear_header(name)
+  end
+
   -- Rename headers(s)
   for _, old_name, new_name in iter(conf.rename.headers) do
     if req_get_headers()[old_name] then
@@ -88,11 +93,6 @@ local function transform_headers(conf)
       req_set_header(new_name, value)
       req_clear_header(old_name)
     end
-  end
-
-  -- Remove header(s)
-  for _, name, value in iter(conf.remove.headers) do
-    req_clear_header(name)
   end
 
   -- Replace header(s)
@@ -125,6 +125,15 @@ local function transform_headers(conf)
 end
 
 local function transform_querystrings(conf)
+  -- Remove querystring(s)
+  if conf.remove.querystring then
+    local querystring = req_get_uri_args()
+    for _, name, value in iter(conf.remove.querystring) do
+      querystring[name] = nil
+    end
+    req_set_uri_args(querystring)
+  end
+
   -- Rename querystring(s)
   if conf.rename.querystring then
     local querystring = req_get_uri_args()
@@ -132,15 +141,6 @@ local function transform_querystrings(conf)
       local value = querystring[old_name]
       querystring[new_name] = value
       querystring[old_name] = nil
-    end
-    req_set_uri_args(querystring)
-  end
-
-  -- Remove querystring(s)
-  if conf.remove.querystring then
-    local querystring = req_get_uri_args()
-    for _, name, value in iter(conf.remove.querystring) do
-      querystring[name] = nil
     end
     req_set_uri_args(querystring)
   end
@@ -178,10 +178,17 @@ local function transform_querystrings(conf)
 end
 
 local function transform_json_body(conf, body, content_length)
-  local renamed, removed, replaced, added, appended = false, false, false, false, false
+  local removed, renamed, replaced, added, appended = false, false, false, false, false
   local content_length = (body and #body) or 0
   local parameters = parse_json(body)
   if parameters == nil and content_length > 0 then return false, nil end
+
+  if content_length > 0 and #conf.remove.body > 0 then
+    for _, name, value in iter(conf.remove.body) do
+      parameters[name] = nil
+      removed = true
+    end
+  end
 
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body) do
@@ -189,13 +196,6 @@ local function transform_json_body(conf, body, content_length)
       parameters[new_name] = value
       parameters[old_name] = nil
       renamed = true
-    end
-  end
-
-  if content_length > 0 and #conf.remove.body > 0 then
-    for _, name, value in iter(conf.remove.body) do
-      parameters[name] = nil
-      removed = true
     end
   end
 
@@ -225,7 +225,7 @@ local function transform_json_body(conf, body, content_length)
     end
   end
 
-  if renamed or removed or replaced or added or appended then
+  if removed or renamed or replaced or added or appended then
     return true, cjson.encode(parameters)
   end
 end
@@ -234,19 +234,19 @@ local function transform_url_encoded_body(conf, body, content_length)
   local renamed, removed, replaced, added, appended = false, false, false, false, false
   local parameters = decode_args(body)
 
+  if content_length > 0 and #conf.remove.body > 0 then
+    for _, name, value in iter(conf.remove.body) do
+      parameters[name] = nil
+      removed = true
+    end
+  end
+
   if content_length > 0 and #conf.rename.body > 0 then
     for _, old_name, new_name in iter(conf.rename.body) do
       local value = parameters[old_name]
       parameters[new_name] = value
       parameters[old_name] = nil
       renamed = true
-    end
-  end
-
-  if content_length > 0 and #conf.remove.body > 0 then
-    for _, name, value in iter(conf.remove.body) do
-      parameters[name] = nil
-      removed = true
     end
   end
 
@@ -276,13 +276,13 @@ local function transform_url_encoded_body(conf, body, content_length)
     end
   end
 
-  if renamed or removed or replaced or added or appended then
+  if removed or renamed or replaced or added or appended then
     return true, encode_args(parameters)
   end
 end
 
 local function transform_multipart_body(conf, body, content_length, content_type_value)
-  local renamed, removed, replaced, added, appended = false, false, false, false, false
+  local removed, renamed, replaced, added, appended = false, false, false, false, false
   local parameters = multipart(body and body or "", content_type_value)
 
   if content_length > 0 and #conf.rename.body > 0 then
@@ -322,7 +322,7 @@ local function transform_multipart_body(conf, body, content_length, content_type
     end
   end
 
-  if renamed or removed or replaced or added or appended then
+  if removed or renamed or replaced or added or appended then
     return true, parameters:tostring()
   end
 end
