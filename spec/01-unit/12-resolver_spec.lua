@@ -88,9 +88,16 @@ describe("Resolver", function()
     local DEFAULT_REQUEST_URI = "/"
 
     it("should find an API by the request's simple Host header", function()
-      local api, upstream_url, upstream_host = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "mockbin.com"})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "mockbin.com"})
       assert.same(APIS_FIXTURES[1], api)
-      assert.equal("http://mockbin.com/", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/", upstream_url)
       assert.equal("mockbin.com:80", upstream_host)
 
       api = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "mockbin-auth.com"})
@@ -100,9 +107,16 @@ describe("Resolver", function()
       assert.same(APIS_FIXTURES[1], api)
     end)
     it("should find an API by the request's wildcard Host header", function()
-      local api, upstream_url, upstream_host = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "foobar.wildcard.com"})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "foobar.wildcard.com"})
       assert.same(APIS_FIXTURES[3], api)
-      assert.equal("http://mockbin.com/", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/", upstream_url)
       assert.equal("mockbin.com:80", upstream_host)
 
       api = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "something.wildcard.com"})
@@ -115,9 +129,16 @@ describe("Resolver", function()
       assert.same(APIS_FIXTURES[4], api)
     end)
     it("should find an API by the request's URI (path component)", function()
-      local api, upstream_url, upstream_host = resolver.execute("/mockbin", {})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/mockbin", {})
       assert.same(APIS_FIXTURES[5], api)
-      assert.equal("http://mockbin.com/mockbin", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/mockbin',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/mockbin", upstream_url)
       assert.equal("mockbin.com:80", upstream_host)
 
       api = resolver.execute("/mockbin-with-dashes", {})
@@ -137,7 +158,7 @@ describe("Resolver", function()
       end)
 
       -- non existant request_path
-      local api, upstream_url, upstream_host = resolver.execute("/inexistant-mockbin", {})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/inexistant-mockbin", {})
       assert.falsy(api)
       assert.falsy(upstream_url)
       assert.falsy(upstream_host)
@@ -200,45 +221,73 @@ describe("Resolver", function()
       assert.same(APIS_FIXTURES[9], api)
 
       -- strip when contains pattern characters
-      local api, upstream_url, upstream_host = resolver.execute("/strip-me/hello/world", {})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/strip-me/hello/world", {})
       assert.same(APIS_FIXTURES[10], api)
-      assert.equal("http://mockbin.com/hello/world", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/hello/world',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/hello/world", upstream_url)
       assert.equal("mockbin.com:80", upstream_host)
 
       -- only strip first match of request_uri
       api, upstream_url = resolver.execute("/strip-me/strip-me/hello/world", {})
       assert.same(APIS_FIXTURES[10], api)
-      assert.equal("http://mockbin.com/strip-me/hello/world", upstream_url)
+      assert.equal("http://kong_upstream/strip-me/hello/world", upstream_url)
     end)
     it("should preserve_host", function()
-      local api, upstream_url, upstream_host = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "preserve-host.com"})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute(DEFAULT_REQUEST_URI, {["Host"] = "preserve-host.com"})
       assert.same(APIS_FIXTURES[11], api)
-      assert.equal("http://mockbin.com/", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/", upstream_url)
       assert.equal("preserve-host.com", upstream_host)
 
-      api, upstream_url, upstream_host = resolver.execute(DEFAULT_REQUEST_URI, {
+      api, upstream_url, upstream_host, upstream_table = resolver.execute(DEFAULT_REQUEST_URI, {
         ["Host"] = {"inexistant.com", "preserve-host.com"},
         ["X-Host-Override"] = "hello.com"
       })
       assert.same(APIS_FIXTURES[11], api)
-      assert.equal("http://mockbin.com/", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/", upstream_url)
       assert.equal("preserve-host.com", upstream_host)
 
       -- No host given to this request, we extract if from the configured upstream_url
       api, upstream_url, upstream_host = resolver.execute("/preserve-host", {})
       assert.same(APIS_FIXTURES[11], api)
-      assert.equal("http://mockbin.com/preserve-host", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/preserve-host", upstream_url)
       assert.equal("mockbin.com:80", upstream_host)
     end)
     it("should not decode percent-encoded values in URI", function()
       -- they should be forwarded as-is
       local api, upstream_url = resolver.execute("/mockbin/path%2Fwith%2Fencoded/values", {})
       assert.same(APIS_FIXTURES[5], api)
-      assert.equal("http://mockbin.com/mockbin/path%2Fwith%2Fencoded/values", upstream_url)
+      assert.equal("http://kong_upstream/mockbin/path%2Fwith%2Fencoded/values", upstream_url)
 
       api, upstream_url = resolver.execute("/strip-me/path%2Fwith%2Fencoded/values", {})
       assert.same(APIS_FIXTURES[10], api)
-      assert.equal("http://mockbin.com/path%2Fwith%2Fencoded/values", upstream_url)
+      assert.equal("http://kong_upstream/path%2Fwith%2Fencoded/values", upstream_url)
     end)
     it("should not recognized request_path if percent-encoded", function()
       local responses = require "kong.tools.responses"
@@ -254,27 +303,41 @@ describe("Resolver", function()
       ngx.status = nil
     end)
     it("should have or not have a trailing slash depending on the request URI", function()
-      local api, upstream_url = resolver.execute("/strip/", {})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/strip/", {})
       assert.same(APIS_FIXTURES[9], api)
-      assert.equal("http://mockbin.com/some/path/", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/some/path/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/some/path/", upstream_url)
 
       api, upstream_url = resolver.execute("/strip", {})
       assert.same(APIS_FIXTURES[9], api)
-      assert.equal("http://mockbin.com/some/path", upstream_url)
+      assert.equal("http://kong_upstream/some/path", upstream_url)
 
       api, upstream_url = resolver.execute("/mockbin-with-dashes", {})
       assert.same(APIS_FIXTURES[6], api)
-      assert.equal("http://mockbin.com/some/path/mockbin-with-dashes", upstream_url)
+      assert.equal("http://kong_upstream/some/path/mockbin-with-dashes", upstream_url)
 
       api, upstream_url = resolver.execute("/mockbin-with-dashes/", {})
       assert.same(APIS_FIXTURES[6], api)
-      assert.equal("http://mockbin.com/some/path/mockbin-with-dashes/", upstream_url)
+      assert.equal("http://kong_upstream/some/path/mockbin-with-dashes/", upstream_url)
     end)
     it("should strip the querystring out of the URI", function()
       -- it will be re-inserted by core.handler just before proxying, once all plugins have been run and eventually modified it
-      local api, upstream_url = resolver.execute("/?hello=world&foo=bar", {["Host"] = "mockbin.com"})
+      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/?hello=world&foo=bar", {["Host"] = "mockbin.com"})
       assert.same(APIS_FIXTURES[1], api)
-      assert.equal("http://mockbin.com/", upstream_url)
+      assert.same({
+          authority = 'mockbin.com',
+          host = 'mockbin.com',
+          path = '/',
+          port = 80,
+          scheme = 'http',
+        }, upstream_table)
+      assert.equal("http://kong_upstream/", upstream_url)
     end)
   end)
 end)

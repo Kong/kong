@@ -41,7 +41,7 @@ end
 -- @return true (with ip and port fields set) or nil+error
 local get_ip = function(target, dns_cache_only)
   
--- TODO: make dns_pointer a table with pointers indexed by their dns list
+-- TODO: make dns_pointer a table with pointers indexed by their dns record list
 -- reduces code duplication below and handles pointer on deeper levels
 
   local list = target.dns_record
@@ -60,7 +60,7 @@ local get_ip = function(target, dns_cache_only)
   -- we have the port by now
   target.port = rec.port or target.port  -- rec.port only exists for SRV records
   
-  -- A and AAAA have an address field, and the SRV target field might be an IP address
+  -- A and AAAA have an address field, whilst the SRV target field might be an IP address
   local ip = rec.address or (utils.hostname_type(rec.target) ~= "name" and rec.target)
   if ip then
     target.ip = ip
@@ -99,7 +99,7 @@ end
 
 
 local first_try_dns = function(target)
-  local rec, err = handle_dns_error(dns_client.resolve(target.upstream_table.host))
+  local rec, err = handle_dns_error(dns_client.resolve(target.upstream.host))
   if not rec then
     return rec, err
   end
@@ -107,6 +107,7 @@ local first_try_dns = function(target)
   -- Note: cname records will have been dereferenced by the dns lib, so
   -- we got A, AAAA or SRV.
   target.dns_record = rec
+
   return get_ip(target)  
 end
 
@@ -135,8 +136,10 @@ local function execute(target)
   -- when tries >= 2 then it performs a retry in the `balancer` context
   if target.tries == 0 then
     local err
+    -- first try, so try and find a matching balancer/upstream object
     target.balancer, err = get_balancer(target)
     if err then return nil, err end
+
     if target.balancer then
       return first_try_balancer(target)
     else

@@ -201,7 +201,7 @@ function _M.execute(request_uri, request_headers)
 
   upstream_url = upstream_url..uri
   local upstream_table = url.parse(upstream_url)  
-  upstream_table.port = upstream_table.port or DEFAULT_PORTS[upstream_table.scheme]
+  upstream_table.port = upstream_table.port or DEFAULT_PORTS[upstream_table.scheme] or DEFAULT_PORTS.http
 
   local upstream_host
   if api.preserve_host then
@@ -211,7 +211,7 @@ function _M.execute(request_uri, request_headers)
     upstream_host = utils.format_host(upstream_table)
   end
 
-  return api, upstream_url, upstream_host, upstream_table
+  return api, upstream_table.scheme.."://kong_upstream"..upstream_table.path, upstream_host, upstream_table
 end
 
 -- export local for test pruposes

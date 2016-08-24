@@ -92,6 +92,7 @@ build = {
     ["kong.core.cluster"] = "kong/core/cluster.lua",
     ["kong.core.events"] = "kong/core/events.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
+    ["kong.core.balancer"] = "kong/core/balancer.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",

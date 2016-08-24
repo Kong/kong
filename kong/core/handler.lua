@@ -10,10 +10,10 @@
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
-local balance = require("kong.core.balancer").execute
 local resolve = require("kong.core.resolver").execute
 local constants = require "kong.constants"
 local certificate = require "kong.core.certificate"
+local balancer_execute = require("kong.core.balancer").execute
 
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
@@ -46,16 +46,18 @@ return {
         type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
         tries = 0,                                       -- retry counter
         ip = nil,                                        -- final target IP address
-        port = nil,                                      -- final target port
+        port = upstream_table.port,                      -- final target port
         -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
         failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
         -- in case of dns
         dns_record = nil,                                -- the top-level list of DNS records resolved
         dns_pointer = nil,                               -- index of the last record tried in `dns_record`.
+        -- in case of balancer
+        balancer = nil,                                  -- the balancer object
       }
       ngx.ctx.balancer_address = balancer_address
-      ngx.var.upstream_host = "kong_upstream"    -- TODO: if this is constant, shouldn't we update the template and skip the variable?
-      local ok, err = balance(balancer_address)
+      ngx.var.upstream_host = upstream_host
+      local ok, err = balancer_execute(balancer_address)
       if not ok then
         ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
         return ngx.exit(500)

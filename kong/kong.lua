@@ -36,11 +36,11 @@ local core = require "kong.core.handler"
 local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
-local balance = require("kong.core.balancer").execute
-local balancer = require "ngx.balancer"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
+local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
+local balancer_execute = require("kong.core.balancer").execute
 
 local ipairs = ipairs
 
@@ -177,10 +177,10 @@ function Kong.balancer()
     
     -- record failure data
     addr.failures = addr.failures or {}
-    local state, code = balancer.get_last_failure()
-    addr.failures[tries-1] = { name = state, code = code }
+    local state, code = ngx_balancer.get_last_failure()
+    addr.failures[addr.tries-1] = { name = state, code = code }
     
-    local ok, err = balance(addr)
+    local ok, err = balancer_execute(addr)
     if not ok then
       ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
       return ngx.exit(500)
@@ -188,7 +188,7 @@ function Kong.balancer()
   end
   
   -- set the targets as resolved
-  local ok, err = balancer.set_current_peer(addr.ip, addr.port)
+  local ok, err = ngx_balancer.set_current_peer(addr.ip, addr.port)
   if not ok then
     ngx.log(ngx.ERR, "failed to set the current peer: ", err)
     return ngx.exit(500)
