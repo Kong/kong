@@ -43,7 +43,29 @@ describe("Plugin: key-auth (access)", function()
   end)
 
   describe("Unauthorized", function()
-    it("allows OPTIONS requests", function()
+    it("returns 200 on OPTIONS requests if authenticate_preflight is false", function()
+      local api3 = assert(helpers.dao.apis:insert {
+        request_host = "key-auth3.com",
+        upstream_url = "http://mockbin.com"
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "key-auth",
+        api_id = api3.id,
+        config = {
+          authenticate_preflight = false
+        }
+      })
+
+      local res = assert(client:send {
+        method = "OPTIONS",
+        path = "/status/200",
+        headers = {
+          ["Host"] = "key-auth3.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
+    it("returns Unauthorized on OPTIONS requests if authenticate_preflight is true", function()
       local res = assert(client:send {
         method = "OPTIONS",
         path = "/status/200",
@@ -51,7 +73,9 @@ describe("Plugin: key-auth (access)", function()
           ["Host"] = "key-auth1.com"
         }
       })
-      assert.res_status(200, res)
+      assert.res_status(401, res)
+      local body = assert.res_status(401, res)
+      assert.equal([[{"message":"No API key found in headers or querystring"}]], body)
     end)
     it("returns Unauthorized on missing credentials", function()
       local res = assert(client:send {

@@ -26,8 +26,8 @@ end
 function KeyAuthHandler:access(conf)
   KeyAuthHandler.super.access(self)
 
-  -- do not authenticate preflight OPTIONS requests
-  if get_method() == "OPTIONS" then
+  -- check if preflight request and should be authenticated
+  if not conf.authenticate_preflight and get_method() == "OPTIONS" then
     return
   end
 
