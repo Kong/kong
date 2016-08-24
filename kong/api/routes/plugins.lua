@@ -1,4 +1,5 @@
 local crud = require "kong.api.crud_helpers"
+local cjson = require "cjson"
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local singletons = require "kong.singletons"
@@ -74,8 +75,12 @@ return {
 
   ["/plugins/enabled"] = {
     GET = function(self, dao_factory, helpers)
+      local enabled_plugins = setmetatable({}, cjson.empty_array_mt)
+      for k in pairs(singletons.configuration.plugins) do
+        enabled_plugins[#enabled_plugins+1] = k
+      end
       return helpers.responses.send_HTTP_OK {
-        enabled_plugins = singletons.configuration.plugins
+        enabled_plugins = enabled_plugins
       }
     end
   }
