@@ -9,24 +9,48 @@
 -- @module kong.tools.utils
 
 local url = require "socket.url"
+local ffi = require "ffi"
 local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
-local ffi = require "ffi"
 
-local fmt = string.format
-local type = type
-local pairs = pairs
-local ipairs = ipairs
-local re_find = ngx.re.find
-local tostring = tostring
-local table_sort = table.sort
-local table_concat = table.concat
-local table_insert = table.insert
-local string_find = string.find
+local ffi_new    = ffi.new
+local ffi_str    = ffi.string
+local ffi_typeof = ffi.typeof
+local C          = ffi.C
+local fmt        = string.format
+local type       = type
+local pairs      = pairs
+local ipairs     = ipairs
+local re_find    = ngx.re.find
+local tostring   = tostring
+local sort       = table.sort
+local concat     = table.concat
+local insert     = table.insert
+local find       = string.find
+local gsub       = string.gsub
 
 ffi.cdef[[
+typedef unsigned char u_char;
+u_char * ngx_hex_dump(u_char *dst, const u_char *src, size_t len);
+int RAND_bytes(u_char *buf, int num);
+
 int gethostname(char *name, size_t len);
 ]]
+
+local t = ffi_typeof "uint8_t[?]"
+
+local function bytes(len, format)
+  local s = ffi_new(t, len)
+  C.RAND_bytes(s, len)
+  if not s then return nil end
+  if format == "hex" then
+    local b = ffi_new(t, len * 2)
+    C.ngx_hex_dump(b, s, len)
+    return ffi_str(b, len * 2), true
+  else
+    return ffi_str(s, len), true
+  end
+end
 
 local _M = {}
 
@@ -34,7 +58,6 @@ local _M = {}
 -- @return string  The hostname
 function _M.get_hostname()
   local result
-  local C = ffi.C
   local SIZE = 128
 
   local buf = ffi.new("unsigned char[?]", SIZE)
@@ -42,12 +65,12 @@ function _M.get_hostname()
 
   if res == 0 then
     local hostname = ffi.string(buf, SIZE)
-    result = string.gsub(hostname, "%z+$", "")
+    result = gsub(hostname, "%z+$", "")
   else
-    local f = io.popen ("/bin/hostname")
+    local f = io.popen("/bin/hostname")
     local hostname = f:read("*a") or ""
     f:close()
-    result = string.gsub(hostname, "\n$", "")
+    result = gsub(hostname, "\n$", "")
   end
 
   return result
@@ -61,11 +84,16 @@ local v4_uuid = uuid.generate_v4
 _M.uuid = uuid.generate_v4
 
 --- Seeds the random generator, use with care.
--- Kong already seeds this once per worker process. It's 
+-- Kong already seeds this once per worker process. It's
 -- dangerous to ever call it again. So ask yourself
 -- "Do I feel lucky?" Well, do ya, punk?
--- @function uuid_seed
-_M.uuid_seed = uuid.seed
+-- See https://github.com/bungle/lua-resty-random/blob/master/lib/resty/random.lua#L49-L52
+function _M.randomseed()
+  local a,b,c,d = bytes(4):byte(1, 4)
+  local seed = a * 0x1000000 + b * 0x10000 + c * 0x100 + d
+  ngx.log(ngx.DEBUG, "seeding random number generator with: ", seed)
+  return math.randomseed(seed)
+end
 
 --- Generates a random unique string
 -- @return string  The random string (a uuid without hyphens)
@@ -79,7 +107,7 @@ function _M.is_valid_uuid(str)
   return re_find(str, uuid_regex, 'ioj') ~= nil
 end
 
--- function below is more acurate, but invalidates previously accepted uuids and hence causes 
+-- function below is more acurate, but invalidates previously accepted uuids and hence causes
 -- trouble with existing data during migrations.
 -- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
 -- function _M.is_valid_uuid(str)
@@ -125,7 +153,7 @@ function _M.encode_args(args, raw)
     keys[#keys+1] = k
   end
 
-  table_sort(keys)
+  sort(keys)
 
   for _, key in ipairs(keys) do
     local value = args[key]
@@ -145,7 +173,7 @@ function _M.encode_args(args, raw)
     end
   end
 
-  return table_concat(query, "&")
+  return concat(query, "&")
 end
 
 --- Checks whether a request is https or was originally https (but already terminated).
@@ -278,7 +306,7 @@ function _M.add_error(errors, k, v)
       errors[k] = setmetatable({errors[k]}, err_list_mt)
     end
 
-    table_insert(errors[k], v)
+    insert(errors[k], v)
   else
     errors[k] = v
   end
@@ -297,7 +325,7 @@ function _M.load_module_if_exists(module_name)
   if status then
     return true, res
   -- Here we match any character because if a module has a dash '-' in its name, we would need to escape it.
-  elseif type(res) == "string" and string_find(res, "module '"..module_name.."' not found", nil, true) then
+  elseif type(res) == "string" and find(res, "module '"..module_name.."' not found", nil, true) then
     return false
   else
     error(res)
