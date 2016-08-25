@@ -147,7 +147,7 @@ describe("#ci Plugin: oauth2 (access)", function()
     helpers.stop_kong()
   end)
 
-  local function provision_code()
+  local function provision_code(host)
     local proxy_ssl_client = helpers.proxy_ssl_client()
     local res = assert(proxy_ssl_client:send {
       method = "POST",
@@ -161,7 +161,7 @@ describe("#ci Plugin: oauth2 (access)", function()
         authenticated_userid = "userid123"
       },
       headers = {
-        ["Host"] = "oauth2.com",
+        ["Host"] = host and host or "oauth2.com",
         ["Content-Type"] = "application/json"
       }
     })
@@ -176,14 +176,14 @@ describe("#ci Plugin: oauth2 (access)", function()
     end
   end
 
-  local function provision_token()
-    local code = provision_code()
+  local function provision_token(host)
+    local code = provision_code(host)
     local res = assert(proxy_ssl_client:send {
       method = "POST",
       path = "/oauth2/token",
       body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
       headers = {
-        ["Host"] = "oauth2.com",
+        ["Host"] = host and host or "oauth2.com",
         ["Content-Type"] = "application/json"
       }
     })
@@ -1453,6 +1453,26 @@ describe("#ci Plugin: oauth2 (access)", function()
         local body = assert.res_status(400, res)
         assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
     end)
+
+    it("fails when an authorization code is used for another API", function()
+      local code = provision_code()
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          code = code,
+          client_id = "clientid123",
+          client_secret = "secret123",
+          grant_type = "authorization_code"
+        },
+        headers = {
+          ["Host"] = "oauth2_3.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(400, res)
+      assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
+    end)
   end)
 
   describe("Making a request", function()
@@ -1467,6 +1487,19 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       assert.res_status(200, res)
+    end)
+    it("does not work when requesting a different API", function()
+      local token = provision_token()
+
+      local res = assert(proxy_ssl_client:send {
+        method = "GET",
+        path = "/request?access_token="..token.access_token,
+        headers = {
+          ["Host"] = "oauth2_3.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
     end)
     it("works when a correct access_token is being sent in a form body", function()
       local token = provision_token()
@@ -1690,7 +1723,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.equal(token.access_token, body.postData.params.access_token)
     end)
     it("hides credentials in the body", function()
-      local token = provision_token()
+      local token = provision_token("oauth2_3.com")
 
       local res = assert(proxy_client:send {
         method = "POST",
@@ -1720,7 +1753,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.equal(token.access_token, body.queryString.access_token)
     end)
     it("hides credentials in the querystring", function()
-      local token = provision_token()
+      local token = provision_token("oauth2_3.com")
 
       local res = assert(proxy_client:send {
         method = "GET",
@@ -1747,7 +1780,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.equal("bearer "..token.access_token, body.headers.authorization)
     end)
     it("hides credentials in the header", function()
-      local token = provision_token()
+      local token = provision_token("oauth2_3.com")
 
       local res = assert(proxy_client:send {
         method = "GET",

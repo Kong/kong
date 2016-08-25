@@ -90,5 +90,19 @@ return {
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP COLUMN credential_id;
     ]]
+  },
+  {
+    name = "2016-08-24-oauth2_api_id",
+    up = [[
+      DELETE FROM oauth2_authorization_codes;
+      ALTER TABLE oauth2_authorization_codes ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+
+      DELETE FROM oauth2_tokens;
+      ALTER TABLE oauth2_tokens ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_authorization_codes DROP api_id;
+      ALTER TABLE oauth2_tokens DROP api_id;
+    ]]
   }
 }

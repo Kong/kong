@@ -2,7 +2,7 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
 describe("Plugin: oauth (API)", function()
-  local consumer, admin_client
+  local consumer, api, admin_client
   setup(function()
     helpers.prepare_prefix()
     assert(helpers.start_kong())
@@ -17,6 +17,10 @@ describe("Plugin: oauth (API)", function()
 
   describe("/consumers/:consumer/oauth2/", function()
     setup(function()
+      api = assert(helpers.dao.apis:insert {
+        request_host = "oauth2_token.com",
+        upstream_url = "http://mockbin.com/"
+      })
       consumer = assert(helpers.dao.consumers:insert {
         username = "bob"
       })
@@ -316,6 +320,7 @@ describe("Plugin: oauth (API)", function()
           path = "/oauth2_tokens",
           body = {
             credential_id = oauth2_credential.id,
+            api_id = api.id,
             expires_in = 10
           },
           headers = {
@@ -326,6 +331,7 @@ describe("Plugin: oauth (API)", function()
         assert.equal(oauth2_credential.id, body.credential_id)
         assert.equal(10, body.expires_in)
         assert.truthy(body.access_token)
+        assert.truthy(body.api_id)
         assert.falsy(body.refresh_token)
         assert.equal("bearer", body.token_type)
       end)
@@ -340,7 +346,7 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"credential_id":"credential_id is required","expires_in":"expires_in is required"}]], body)
+          assert.equal([[{"expires_in":"expires_in is required","api_id":"api_id is required","credential_id":"credential_id is required"}]], body)
         end)
       end)
     end)
@@ -352,6 +358,7 @@ describe("Plugin: oauth (API)", function()
           path = "/oauth2_tokens",
           body = {
             credential_id = oauth2_credential.id,
+            api_id = api.id,
             expires_in = 10
           },
           headers = {
@@ -376,7 +383,7 @@ describe("Plugin: oauth (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"credential_id":"credential_id is required","expires_in":"expires_in is required"}]], body)
+          assert.equal([[{"expires_in":"expires_in is required","api_id":"api_id is required","credential_id":"credential_id is required"}]], body)
         end)
       end)
     end)
@@ -386,6 +393,7 @@ describe("Plugin: oauth (API)", function()
         for i = 1, 3 do
           assert(helpers.dao.oauth2_tokens:insert {
             credential_id = oauth2_credential.id,
+            api_id = api.id,
             expires_in = 10
           })
         end
@@ -412,6 +420,7 @@ describe("Plugin: oauth (API)", function()
         helpers.dao:truncate_table("oauth2_tokens")
         token = assert(helpers.dao.oauth2_tokens:insert {
           credential_id = oauth2_credential.id,
+          api_id = api.id,
           expires_in = 10
         })
       end)
@@ -435,6 +444,7 @@ describe("Plugin: oauth (API)", function()
           local res = assert(admin_client:send {
             method = "PUT",
             path = "/oauth2_tokens/"..token.id,
+            api_id = api.id,
             body = token,
             headers = {
               ["Content-Type"] = "application/json"

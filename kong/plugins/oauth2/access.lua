@@ -39,7 +39,7 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
 local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
-local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
+local function generate_token(conf, api, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
   local refresh_token
@@ -48,6 +48,7 @@ local function generate_token(conf, credential, authenticated_userid, scope, sta
   end
 
   local token, err = singletons.dao.oauth2_tokens:insert({
+    api_id = api.id,
     credential_id = credential.id,
     authenticated_userid = authenticated_userid,
     expires_in = token_expiration,
@@ -169,6 +170,7 @@ local function authorize(conf)
       if not response_params[ERROR] then
         if response_type == CODE then
           local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
+            api_id = ngx.ctx.api.id,
             credential_id = client.id,
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = table.concat(scopes, " ")
@@ -183,7 +185,7 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          response_params = generate_token(conf, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
           is_implicit_grant = true
         end
       end
@@ -294,13 +296,13 @@ local function issue_token(conf)
     if not response_params[ERROR] then
       if grant_type == GRANT_AUTHORIZATION_CODE then
         local code = parameters[CODE]
-        local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({code = code})[1]
+        local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({api_id = ngx.ctx.api.id, code = code})[1]
         if not authorization_code then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         elseif authorization_code.credential_id ~= client.id then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         else
-          response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+          response_params = generate_token(conf, ngx.ctx.api, client, authorization_code.authenticated_userid, authorization_code.scope, state)
           singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
@@ -313,7 +315,7 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state, nil, true)
+            response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), state, nil, true)
           end
         end
       elseif grant_type == GRANT_PASSWORD then
@@ -328,16 +330,16 @@ local function issue_token(conf)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
+            response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
           end
         end
       elseif grant_type == GRANT_REFRESH_TOKEN then
         local refresh_token = parameters[REFRESH_TOKEN]
-        local token = refresh_token and singletons.dao.oauth2_tokens:find_all({refresh_token = refresh_token})[1]
+        local token = refresh_token and singletons.dao.oauth2_tokens:find_all({api_id = ngx.ctx.api.id, refresh_token = refresh_token})[1]
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
         else
-          response_params = generate_token(conf, client, token.authenticated_userid, token.scope, state)
+          response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
           singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
         end
       end
@@ -360,7 +362,7 @@ local function retrieve_token(access_token)
   local token
   if access_token then
     token = cache.get_or_set(cache.oauth2_token_key(access_token), function()
-      local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+      local credentials, err = singletons.dao.oauth2_tokens:find_all { api_id = ngx.ctx.api.id, access_token = access_token }
       local result
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
