@@ -116,11 +116,15 @@ describe("Plugin: acl (API)", function()
   end)
 
   describe("/consumers/:consumer/acls/:id", function()
-    local acl
+    local acl, acl2
     before_each(function()
       helpers.dao:truncate_table("acls")
       acl = assert(helpers.dao.acls:insert {
         group = "hello",
+        consumer_id = consumer.id
+      })
+      acl2 = assert(helpers.dao.acls:insert {
+        group = "hello2",
         consumer_id = consumer.id
       })
     end)
@@ -129,6 +133,15 @@ describe("Plugin: acl (API)", function()
         local res = assert(admin_client:send {
           method = "GET",
           path = "/consumers/bob/acls/"..acl.id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(acl.id, json.id)
+      end)
+      it("retrieves by group", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/acls/"..acl.group
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -151,10 +164,23 @@ describe("Plugin: acl (API)", function()
         })
         assert.res_status(404, res)
       end)
+      it("retrieves ACL by group only if the ACL belongs to the specified consumer", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/acls/"..acl.group
+        })
+        assert.res_status(200, res)
+
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/alice/acls/"..acl.group
+        })
+        assert.res_status(404, res)
+      end)
     end)
 
     describe("PATCH", function()
-      it("updates an ACL group", function()
+      it("updates an ACL group by id", function()
         local previous_group = acl.group
 
         local res = assert(admin_client:send {
@@ -162,6 +188,23 @@ describe("Plugin: acl (API)", function()
           path = "/consumers/bob/acls/"..acl.id,
           body = {
             group = "updatedGroup"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.not_equal(previous_group, json.group)
+      end)
+      it("updates an ACL group by group", function()
+        local previous_group = acl.group
+
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/consumers/bob/acls/"..acl.group,
+          body = {
+            group = "updatedGroup2"
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -188,20 +231,27 @@ describe("Plugin: acl (API)", function()
     end)
 
     describe("DELETE", function()
-      it("deletes an ACL group", function()
+      it("deletes an ACL group by id", function()
         local res = assert(admin_client:send {
           method = "DELETE",
           path = "/consumers/bob/acls/"..acl.id,
         })
         assert.res_status(204, res)
       end)
+      it("deletes an ACL group by group", function()
+        local res = assert(admin_client:send {
+          method = "DELETE",
+          path = "/consumers/bob/acls/"..acl2.group,
+        })
+        assert.res_status(204, res)
+      end)
       describe("errors", function()
-        it("returns 400 on invalid input", function()
+        it("returns 404 on missing group", function()
           local res = assert(admin_client:send {
             method = "DELETE",
             path = "/consumers/bob/acls/blah"
           })
-          assert.res_status(400, res)
+          assert.res_status(404, res)
         end)
         it("returns 404 if not found", function()
           local res = assert(admin_client:send {
