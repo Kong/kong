@@ -144,7 +144,7 @@ function Kong.init_worker()
   -- uses LuaJIT's math.random().
   -- jit-uuid handles unique seeds for multiple workers thanks to
   -- ngx.worker.pid().
-  utils.uuid_seed()
+  utils.randomseed()
 
   core.init_worker.before()
 
