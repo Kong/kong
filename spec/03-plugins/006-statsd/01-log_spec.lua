@@ -35,6 +35,10 @@ describe("Plugin: statsd (log)", function()
       request_host = "logging7.com",
       upstream_url = "http://mockbin.com"
     })
+    local api8 = assert(helpers.dao.apis:insert {
+      request_host = "logging8.com",
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -98,6 +102,15 @@ describe("Plugin: statsd (log)", function()
         metrics = {"upstream_latency"}
       }
     })
+    assert(helpers.dao.plugins:insert {
+      api_id = api8.id,
+      name = "statsd",
+      config = {
+        host = "127.0.0.1",
+        port = UDP_PORT,
+        metrics = {"kong_latency"}
+      }
+    })
   end)
 
   teardown(function()
@@ -137,11 +150,12 @@ describe("Plugin: statsd (log)", function()
     local ok, metrics = thread:join()
     assert.True(ok)
     assert.contains("kong.logging1_com.request.count:1|c", metrics)
-    assert.contains("kong%.logging1_com%.latency:%d+|g", metrics, true)
-    assert.contains("kong.logging1_com.request.size:98|g", metrics)
+    assert.contains("kong%.logging1_com%.latency:%d+|ms", metrics, true)
+    assert.contains("kong.logging1_com.request.size:98|ms", metrics)
     assert.contains("kong.logging1_com.request.status.200:1|c", metrics)
-    assert.contains("kong%.logging1_com%.response%.size:%d+|g", metrics, true)
-    assert.contains("kong%.logging1_com%.upstream_latency:%d+|g", metrics, true)
+    assert.contains("kong%.logging1_com%.response%.size:%d+|ms", metrics, true)
+    assert.contains("kong%.logging1_com%.upstream_latency:%d+|ms", metrics, true)
+    assert.contains("kong%.logging1_com%.kong_latency:%d+|ms", metrics, true)
   end)
 
   describe("metrics", function()
@@ -188,7 +202,7 @@ describe("Plugin: statsd (log)", function()
 
       local ok, res = thread:join()
       assert.True(ok)
-      assert.matches("kong.logging4_com.request.size:%d+|g", res)
+      assert.matches("kong.logging4_com.request.size:.*|ms", res)
     end)
     it("latency", function()
       local thread = helpers.udp_server(UDP_PORT)
@@ -203,7 +217,7 @@ describe("Plugin: statsd (log)", function()
 
       local ok, res = thread:join()
       assert.True(ok)
-      assert.matches("kong.logging2_com.latency:.*|g", res)
+      assert.matches("kong.logging2_com.latency:.*|ms", res)
     end)
     it("response_size", function()
       local thread = helpers.udp_server(UDP_PORT)
@@ -218,7 +232,7 @@ describe("Plugin: statsd (log)", function()
 
       local ok, res = thread:join()
       assert.True(ok)
-      assert.matches("kong.logging6_com.response.size:%d+|g", res)
+      assert.matches("kong.logging6_com.response.size:.*|ms", res)
     end)
     it("upstream_latency", function()
       local thread = helpers.udp_server(UDP_PORT)
@@ -233,7 +247,22 @@ describe("Plugin: statsd (log)", function()
 
       local ok, res = thread:join()
       assert.True(ok)
-      assert.matches("kong.logging7_com.upstream_latency:.*|g", res)
+      assert.matches("kong.logging7_com.upstream_latency:.*|ms", res)
+    end)
+    it("kong_latency", function()
+      local thread = helpers.udp_server(UDP_PORT)
+      local response = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "logging8.com"
+        }
+      })
+      assert.res_status(200, response)
+
+      local ok, res = thread:join()
+      assert.True(ok)
+      assert.matches("kong.logging8_com.kong_latency:.*|ms", res)
     end)
   end)
 end)

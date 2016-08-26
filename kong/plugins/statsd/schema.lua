@@ -6,7 +6,8 @@ local metrics = {
   "response_size",
   "unique_users",
   "request_per_user",
-  "upstream_latency"
+  "upstream_latency",
+  "kong_latency"
 }
 
 return {

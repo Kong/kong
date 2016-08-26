@@ -15,11 +15,11 @@ local NGX_ERR = ngx.ERR
 local gauges = {
   request_size = function (api_name, message, logger)
     local stat = api_name..".request.size"
-    logger:gauge(stat, message.request.size, 1)
+    logger:timer(stat, message.request.size, 1)
   end,
   response_size = function (api_name, message, logger)
     local stat = api_name..".response.size"
-    logger:gauge(stat, message.response.size, 1)
+    logger:timer(stat, message.response.size, 1)
   end,
   status_count = function (api_name, message, logger)
     local stat = api_name..".request.status."..message.response.status
@@ -27,7 +27,7 @@ local gauges = {
   end,
   latency = function (api_name, message, logger)
     local stat = api_name..".latency"
-    logger:gauge(stat, message.latencies.request, 1)
+    logger:timer(stat, message.latencies.request, 1)
   end,
   request_count = function (api_name, message, logger)
     local stat = api_name..".request.count"
@@ -42,13 +42,17 @@ local gauges = {
   request_per_user = function (api_name, message, logger)
     if message.authenticated_entity ~= nil and message.authenticated_entity.consumer_id ~= nil then
       local stat = api_name.."."..string_gsub(message.authenticated_entity.consumer_id, "-", "_")..".request.count"
-      logger:counter(stat, 1, 1)    
+      logger:counter(stat, 1, 1)
     end
   end,
   upstream_latency = function (api_name, message, logger)
     local stat = api_name..".upstream_latency"
-    logger:gauge(stat, message.latencies.proxy, 1)
+    logger:timer(stat, message.latencies.proxy, 1)
   end,
+  kong_latency = function (api_name, message, logger)
+    local stat = api_name..".kong_latency"
+    logger:timer(stat, message.latencies.kong, 1)
+  end
 }
 
 local function log(premature, conf, message)
