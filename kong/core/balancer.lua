@@ -6,20 +6,30 @@ local dns_client = require "dns.client"
 -- Will not return on client errors (returned as http errorcodes)
 -- incoming nil+error will be passed through.
 -- @return valid record with at least 1 entry, or nil + error
-local dns_lookup = function(host, cache_only)
+local function dns_lookup(host, cache_only, retry)
   local rec, err = dns_client.resolve(host, cache_only)
   if not rec then
     return rec, err
   elseif rec.errcode then
     -- TODO: proper dns server error, what http errors to return???
     ngx.log(ngx.ERR, "dns server error")
-ngx.log(ngx.ERR, "dns server error for "..tostring(host).."\n"..require("cjson").encode(ngx.ctx.balancer_address))
-error(debug.traceback("dns server error for "..tostring(host)))
+    ngx.log(ngx.ERR, "dns server error for "..tostring(host).."\n"..
+      require("cjson").encode(ngx.ctx.balancer_address)..
+      require("cjson").encode(dns_client.__cache))
+    error(debug.traceback("dns server error for "..tostring(host)))
     return ngx.exit(500)
   elseif #rec == 0 then
+    -- workaround, retry if empty
+    -- TODO: find out why this is necessary??? only seems to fail
+    -- on httpbin.org in tests
+    if not retry then
+      return dns_lookup(host, cache_only, true)
+    end
     -- TODO: proper dns server error, what http error to return???
-ngx.log(ngx.ERR, "no dns entries found for "..tostring(host).."\n"..require("cjson").encode(ngx.ctx.balancer_address))
-error(debug.traceback("no dns entries found for "..tostring(host)))
+    ngx.log(ngx.ERR, "no dns entries found for "..tostring(host).."\n"..
+      require("cjson").encode(ngx.ctx.balancer_address)..
+      require("cjson").encode(dns_client.__cache))
+    error(debug.traceback("no dns entries found for "..tostring(host)))
     ngx.log(ngx.ERR, "no dns entries found for "..tostring(host))
     return ngx.exit(500)
   end
