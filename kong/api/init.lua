@@ -108,7 +108,7 @@ local function insert_405(routes)
 end
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster" }) do
+for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster", "upstreams" }) do
   local routes = require("kong.api.routes."..v)
   attach_routes(insert_405(routes))
 end

@@ -141,5 +141,41 @@ return {
       DROP TABLE ttls;
       DROP FUNCTION upsert_ttl(text, uuid, text, text, timestamp);
     ]]
+  },
+  {
+    name = "2016-08-09-120815_upstreams",
+    up = [[
+      CREATE TABLE IF NOT EXISTS upstreams(
+        id uuid PRIMARY KEY,
+        name text UNIQUE,
+        slots int NOT NULL,
+        orderlist text NOT NULL,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('upstreams_name_idx')) IS NULL THEN
+          CREATE INDEX upstreams_name_idx ON upstreams(name);
+        END IF;
+      END$$;
+
+      CREATE TABLE IF NOT EXISTS targets(
+        id uuid PRIMARY KEY,
+        target text NOT NULL,
+        weight int NOT NULL,
+        upstream_id uuid REFERENCES upstreams(id) ON DELETE CASCADE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('targets_target_idx')) IS NULL THEN
+          CREATE INDEX targets_target_idx ON targets(target);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP TABLE upstreams;
+      DROP TABLE targets;
+    ]],
   }
 }

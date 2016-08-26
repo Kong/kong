@@ -21,6 +21,5 @@ return {
     nginx = {"1.9.15.1", "1.9.15.1"},
     serf = {"0.7.0", "0.7.0"},
     --resty = {}, -- not version dependent for now
-    --dnsmasq = {} -- not version dependent for now
   }
 }

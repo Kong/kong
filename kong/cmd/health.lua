@@ -21,7 +21,6 @@ local function execute(args)
   local pids = {
     serf = conf.serf_pid,
     nginx = conf.nginx_pid,
-    dnsmasq = conf.dnsmasq and conf.dnsmasq_pid or nil
   }
 
   local count = 0
