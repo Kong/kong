@@ -88,7 +88,7 @@ describe("Admin API", function()
         })
         assert.res_status(200, res) -- why not 204??
 
-        ngx.sleep(1)
+        ngx.sleep(3)
 
         res = assert(client:send {
           method = "GET",
