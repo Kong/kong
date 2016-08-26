@@ -1,4 +1,4 @@
-#!/usr/bin/env /usr/local/openresty/bin/resty
+#!/usr/bin/env resty
 
 -- force LuaSocket usage to resolve `/etc/hosts` until
 -- supported by resty-cli.
