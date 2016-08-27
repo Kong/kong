@@ -330,5 +330,6 @@ describe("Resolver", function()
       }
     })
     assert.res_status(414, res)
+    assert.match("kong", res.headers["server"])
   end)
 end)
