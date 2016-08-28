@@ -1,17 +1,20 @@
-local stringy = require "stringy"
-local cjson = require "cjson"
+local cjson_decode = require("cjson").decode
+local cjson_encode = require("cjson").encode
 
 local table_insert = table.insert
 local pcall = pcall
-local string_find = string.find
-local unpack = unpack
+local find = string.find
+local sub = string.sub
+local gsub = string.gsub
+local match = string.match
+local lower = string.lower
 local type = type
 
 local _M = {}
 
 local function read_json_body(body)
   if body then
-    local status, res = pcall(cjson.decode, body)
+    local status, res = pcall(cjson_decode, body)
     if status then
       return res
     end
@@ -38,13 +41,16 @@ local function iter(config_array)
     if current_pair == nil then -- n + 1
       return nil
     end
-    local current_name, current_value = unpack(stringy.split(current_pair, ":"))
+
+    local current_name, current_value = match(current_pair, "^([^:]+):*(.-)$")
+    if current_value == "" then current_value = nil end
+ 
     return i, current_name, current_value  
   end, config_array, 0
 end
 
 function _M.is_json_body(content_type)
-  return content_type and string_find(content_type:lower(), "application/json", nil, true)
+  return content_type and find(lower(content_type), "application/json", nil, true)
 end
 
 function _M.transform_json_body(conf, buffered_data)
@@ -58,11 +64,11 @@ function _M.transform_json_body(conf, buffered_data)
   
   -- replace key:value to body
   for _, name, value in iter(conf.replace.json) do
-    local v = cjson.encode(value)
-    if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
-      v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
+    local v = cjson_encode(value)
+    if (sub(v, 1, 1) == [["]]) and (sub(v, -1, -1) == [["]]) then
+      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
-    v = v:gsub("\\/", "/") -- To prevent having double encoded slashes
+    v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
     if json_body[name] then
       json_body[name] = v
     end
@@ -70,11 +76,11 @@ function _M.transform_json_body(conf, buffered_data)
   
   -- add new key:value to body    
   for _, name, value in iter(conf.add.json) do
-    local v = cjson.encode(value)
-    if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
-      v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
+    local v = cjson_encode(value)
+    if (sub(v, 1, 1) == [["]]) and (sub(v, -1, -1) == [["]]) then
+      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
-    v = v:gsub("\\/", "/") -- To prevent having double encoded slashes
+    v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
     if not json_body[name] then
       json_body[name] = v
     end
@@ -82,15 +88,15 @@ function _M.transform_json_body(conf, buffered_data)
   
   -- append new key:value or value to existing key    
   for _, name, value in iter(conf.append.json) do
-    local v = cjson.encode(value)
-    if stringy.startswith(v, "\"") and stringy.endswith(v, "\"") then
-      v = v:sub(2, v:len() - 1):gsub("\\\"", "\"") -- To prevent having double encoded quotes
+    local v = cjson_encode(value)
+    if (sub(v, 1, 1) == [["]]) and (sub(v, -1, -1) == [["]]) then
+      v = gsub(sub(v, 2, -2), [[\"]], [["]]) -- To prevent having double encoded quotes
     end
-    v = v:gsub("\\/", "/") -- To prevent having double encoded slashes
+    v = gsub(v, [[\/]], [[/]]) -- To prevent having double encoded slashes
     json_body[name] = append_value(json_body[name],v)
   end
   
-  return cjson.encode(json_body) 
+  return cjson_encode(json_body) 
 end
 
 return _M

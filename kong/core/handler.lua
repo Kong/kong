@@ -44,7 +44,7 @@ return {
       -- Append any querystring parameters modified during plugins execution
       local upstream_url = ngx.ctx.upstream_url
       local uri_args = ngx.req.get_uri_args()
-      if utils.table_size(uri_args) > 0 then
+      if next(uri_args) then
         upstream_url = upstream_url.."?"..utils.encode_args(uri_args)
       end
 

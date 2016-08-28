@@ -1,54 +1,11 @@
-#!/usr/bin/env luajit
+#!/usr/bin/env resty
 
--- Kong CLI entry-point (bin/kong).
---
--- Kong's CLI is a set of small commands invoked by a global executable, this file.
---
--- All commands are invoked by this script, then parsed (arguments and options)
--- by lapp (see http://lua-users.org/wiki/LappFramework).
---
--- This script is not parsed by lapp due to limitations of the said framework as it
--- is currently implemented.
-
-local meta = require "kong.meta"
-local commands = {
-  db = "kong.cli.cmds.db",
-  stop = "kong.cli.cmds.stop",
-  quit = "kong.cli.cmds.quit",
-  start = "kong.cli.cmds.start",
-  reload = "kong.cli.cmds.reload",
-  config = "kong.cli.cmds.config",
-  restart = "kong.cli.cmds.restart",
-  version = "kong.cli.cmds.version",
-  status = "kong.cli.cmds.status",
-  migrations = "kong.cli.cmds.migrations",
-  cluster = "kong.cli.cmds.cluster",
-  ["--version"] = "kong.cli.cmds.version"
-}
-
-local help_message = string.format([[
-Usage: kong <command>
-
-  where <command> is one of:
-    start, restart, reload, stop, quit, cluster, status, migrations, version
-
-  kong --help            print this message
-  kong <command> --help  print the help message of a command
-
-%s@%s]], meta._NAME, meta._VERSION)
-
--- Determine validity of the given command
-local cmd = arg[1]
-if not cmd then
-  print("Missing <command>\n\n"..help_message)
-  os.exit(1)
-elseif cmd == "-h" or cmd == "--help" then
-  print(help_message)
-  os.exit(0)
-elseif not commands[cmd] then
-  print("Invalid <command>: "..cmd.."\n\n"..help_message)
-  os.exit(1)
+-- force LuaSocket usage to resolve `/etc/hosts` until
+-- supported by resty-cli.
+-- See https://github.com/Mashape/kong/issues/1523
+for _, namespace in ipairs({"cassandra", "pgmoon"}) do
+  local socket = require(namespace .. ".socket")
+  socket.force_luasocket(ngx.get_phase(), true)
 end
 
--- Load and execute desired command
-require(commands[cmd])
+require("kong.cmd.init")(arg)
