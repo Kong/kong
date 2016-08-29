@@ -68,7 +68,7 @@ local function load_plugins(kong_conf, dao, events)
   for plugin in pairs(kong_conf.plugins) do
     local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
     if not ok then
-      return nil, plugin.." plugin is enabled but not installed"
+      return nil, plugin.." plugin is enabled but not installed;\n"..handler
     end
 
     local ok, schema = utils.load_module_if_exists("kong.plugins."..plugin..".schema")
