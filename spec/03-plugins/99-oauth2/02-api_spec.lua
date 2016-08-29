@@ -214,6 +214,15 @@ describe("Plugin: oauth (API)", function()
         local json = cjson.decode(body)
         assert.equal(credential.id, json.id)
       end)
+      it("retrieves oauth2 credential by client id", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/oauth2/"..credential.client_id
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(credential.id, json.id)
+      end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
         assert(helpers.dao.consumers:insert {
           username = "alice"
@@ -231,10 +240,23 @@ describe("Plugin: oauth (API)", function()
         })
         assert.res_status(404, res)
       end)
+      it("retrieves credential by clientid only if the credential belongs to the specified consumer", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/oauth2/"..credential.client_id
+        })
+        assert.res_status(200, res)
+
+        res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/alice/oauth2/"..credential.client_id
+        })
+        assert.res_status(404, res)
+      end)
     end)
 
     describe("PATCH", function()
-      it("updates a credential", function()
+      it("updates a credential by id", function()
         local previous_name = credential.name
 
         local res = assert(admin_client:send {
@@ -242,6 +264,23 @@ describe("Plugin: oauth (API)", function()
           path = "/consumers/bob/oauth2/"..credential.id,
           body = {
             name = "4321"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.not_equal(previous_name, json.name)
+      end)
+      it("updates a credential by client id", function()
+        local previous_name = credential.name
+
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/consumers/bob/oauth2/"..credential.client_id,
+          body = {
+            name = "4321UDP"
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -283,7 +322,7 @@ describe("Plugin: oauth (API)", function()
             method = "DELETE",
             path = "/consumers/bob/oauth2/blah"
           })
-          assert.res_status(400, res)
+          assert.res_status(404, res)
         end)
         it("returns 404 if not found", function()
           local res = assert(admin_client:send {
@@ -426,28 +465,19 @@ describe("Plugin: oauth (API)", function()
           local json = cjson.decode(body)
           assert.equal(token.id, json.id)
         end)
-      end)
-
-      describe("PUT", function()
-        it("should update every field", function()
-          token.access_token = "helloworld"
-          token.refresh_token = nil
+        it("retrieves oauth2 token by access_token", function()
           local res = assert(admin_client:send {
-            method = "PUT",
-            path = "/oauth2_tokens/"..token.id,
-            body = token,
-            headers = {
-              ["Content-Type"] = "application/json"
-            }
+            method = "GET",
+            path = "/oauth2_tokens/"..token.access_token
           })
-          local body = cjson.decode(assert.res_status(200, res))
-          assert.is_nil(body.refresh_token)
-          assert.equal("helloworld", body.access_token)
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(token.id, json.id)
         end)
       end)
 
       describe("PATCH", function()
-        it("updates a token", function()
+        it("updates a token by id", function()
           local previous_expires_in = token.expires_in
 
           local res = assert(admin_client:send {
@@ -455,6 +485,23 @@ describe("Plugin: oauth (API)", function()
             path = "/oauth2_tokens/"..token.id,
             body = {
               expires_in = 20
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.not_equal(previous_expires_in, json.expires_in)
+        end)
+        it("updates a token by access_token", function()
+          local previous_expires_in = token.expires_in
+
+          local res = assert(admin_client:send {
+            method = "PATCH",
+            path = "/oauth2_tokens/"..token.access_token,
+            body = {
+              expires_in = 400
             },
             headers = {
               ["Content-Type"] = "application/json"
@@ -496,7 +543,7 @@ describe("Plugin: oauth (API)", function()
               method = "DELETE",
               path = "/oauth2_tokens/blah"
             })
-            assert.res_status(400, res)
+            assert.res_status(404, res)
           end)
           it("returns 404 if not found", function()
             local res = assert(admin_client:send {
