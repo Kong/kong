@@ -16,7 +16,7 @@ dependencies = {
   "penlight == 1.3.2",
   "mediator_lua == 1.1.2",
   "lua-resty-http == 0.08",
-  "lua-resty-jit-uuid == 0.0.4",
+  "lua-resty-jit-uuid == 0.0.5",
   "multipart == 0.3",
   "version == 0.2",
   "lapis == 1.5.1",
@@ -90,6 +90,7 @@ build = {
     ["kong.core.cluster"] = "kong/core/cluster.lua",
     ["kong.core.events"] = "kong/core/events.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
+    ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
