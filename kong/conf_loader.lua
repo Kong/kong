@@ -271,7 +271,9 @@ local function load(path, custom_conf)
     end
   end
 
-  if path then -- we have a file? then load it
+  if not path then
+    log.verbose("no config file, skipping loading")
+  else
     local f, err = pl_file.read(path)
     if not f then return nil, err end
 
