@@ -116,6 +116,11 @@ local function check_and_infer(conf)
     local v_schema = CONF_INFERENCES[k] or {}
     local typ = v_schema.typ
 
+    if type(value) == "string" then
+      value = string.gsub(value, "#.-$", "") -- remove trailing comment if any
+      value = pl_stringx.strip(value)
+    end
+
     -- transform {boolean} values ("on"/"off" aliasing to true/false)
     -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
     -- transform {explicit string} values (number values converted to strings)
@@ -135,13 +140,9 @@ local function check_and_infer(conf)
       value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
     end
 
-    if type(value) == "string" then
-      -- default type is string, and an empty if unset
-      value = value ~= "" and tostring(value) or nil
-      if value then
-        value = string.gsub(value, "#.-$", "")
-        value = pl_stringx.strip(value)
-      end
+    if value == "" then
+      -- unset values are removed
+      value = nil
     end
 
     typ = typ or "string"
@@ -279,7 +280,10 @@ local function load(path, custom_conf)
 
     log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
-    from_file_conf, err = pl_config.read(s)
+    from_file_conf, err = pl_config.read(s, {
+      smart = false,
+      list_delim = "_blank_" -- mandatory but we want to ignore it
+    })
     s:close()
     if not from_file_conf then return nil, err end
   end
