@@ -20,6 +20,7 @@ local CACHE_KEYS = {
   TIMERS = "timers",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
   LDAP_CREDENTIAL = "ldap_credentials",
+  LDAP_BIND_CONSUMER = "ldap_bind_consumers",
   BOT_DETECTION = "bot_detection"
 }
 
@@ -108,6 +109,10 @@ end
 
 function _M.ldap_credential_key(username)
   return CACHE_KEYS.LDAP_CREDENTIAL.."/"..username
+end
+
+function _M.ldap_bind_consumer(username)
+  return CACHE_KEYS.LDAP_BIND_CONSUMER..":"..username
 end
 
 function _M.acls_key(consumer_id)

@@ -31,4 +31,8 @@ describe("Database cache", function()
     assert.are.equal("requests", cache.requests_key())
   end)
 
+  it("returns a valid LdapBindConsumer cache key", function()
+    assert.are.equal("ldap_bind_consumers:username", cache.ldap_bind_consumer("username"))
+  end)
+
 end)
