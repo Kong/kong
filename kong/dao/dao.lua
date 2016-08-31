@@ -100,11 +100,12 @@ end
 --- Insert a row.
 -- Insert a given Lua table as a row in the related table.
 -- @param[type=table] tbl Table to insert as a row.
--- @param[type=table] options Options to use for this insertion. (`ttl`: Time-to-live for this row, in seconds)
+-- @param[type=table] options Options to use for this insertion. (`ttl`: Time-to-live for this row, in seconds, `quiet`: does not send event)
 -- @treturn table res A table representing the insert row (with fields created during the insertion).
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
   check_arg(tbl, 1, "table")
+  options = options or {}
 
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self}
@@ -122,7 +123,7 @@ function DAO:insert(tbl, options)
   end
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
-  if not err then
+  if not err and not options.quiet then
     event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
   end
   return ret_error(self, res, err)
@@ -247,7 +248,7 @@ end
 -- with the one specified in `tbl` at once.
 -- @param[type=table] tbl A table containing the new values for this row.
 -- @param[type=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
--- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity).
+-- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity, `quiet`: does not send event).
 -- @treturn table res A table representing the updated entity.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:update(tbl, filter_keys, options)
@@ -288,7 +289,7 @@ function DAO:update(tbl, filter_keys, options)
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
     return ret_error(self, nil, err)
-  elseif res then
+  elseif res and not options.quiet then
     event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
     return setmetatable(res, nil)
   end

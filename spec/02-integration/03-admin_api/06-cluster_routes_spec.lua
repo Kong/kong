@@ -12,14 +12,14 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  describe("/cluster", function()
+  describe("/cluster/nodes/", function()
     describe("GET", function()
       it("retrieves the members list", function()
         -- old test converted
         --os.execute("sleep 2") -- Let's wait for serf to register the node
         local res = assert(client:send {
           method = "GET",
-          path = "/cluster"
+          path = "/cluster/nodes"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -71,7 +71,7 @@ describe("Admin API", function()
 
         local res = assert(client:send {
           method = "GET",
-          path = "/cluster"
+          path = "/cluster/nodes/"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -82,17 +82,15 @@ describe("Admin API", function()
 
         res = assert(client:send {
           method = "DELETE",
-          path = "/cluster",
-          body = "name=newnode", -- why not in URI??
-          headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
+          path = "/cluster/nodes/newnode"
         })
-        assert.res_status(200, res) -- why not 204??
+        assert.res_status(204, res)
 
         ngx.sleep(3)
 
         res = assert(client:send {
           method = "GET",
-          path = "/cluster"
+          path = "/cluster/nodes/"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)

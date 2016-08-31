@@ -17,9 +17,7 @@ local seed
 -- unique seed for Nginx workers).
 -- luacheck: globals math
 _G.math.randomseed = function()
-  if ngx.get_phase() ~= "init_worker" then
-    ngx.log(ngx.ERR, "math.randomseed() must be called in init_worker")
-  elseif not seed then
+  if not seed and ngx.get_phase() == "init_worker" then
     seed = ngx.time() + ngx.worker.pid()
     ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
                        " (pid: ", ngx.worker.pid(), ")")

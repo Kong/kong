@@ -7,6 +7,7 @@ local CACHE_KEYS = {
   APIS = "apis",
   CONSUMERS = "consumers",
   PLUGINS = "plugins",
+  EVENTS = "events",
   BASICAUTH_CREDENTIAL = "basicauth_credentials",
   HMACAUTH_CREDENTIAL = "hmacauth_credentials",
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
@@ -76,6 +77,10 @@ end
 
 function _M.consumer_key(id)
   return CACHE_KEYS.CONSUMERS..":"..id
+end
+
+function _M.event_key(message_type)
+  return CACHE_KEYS.EVENTS..(message_type and ":"..message_type or "")
 end
 
 function _M.plugin_key(name, api_id, consumer_id)

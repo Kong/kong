@@ -70,7 +70,7 @@ describe("Cluster", function()
       local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cluster/"
+        path = "/cluster/nodes/"
       })
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
@@ -99,7 +99,7 @@ describe("Cluster", function()
       local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cluster/"
+        path = "/cluster/nodes/"
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(1, body.total)
@@ -138,7 +138,7 @@ describe("Cluster", function()
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cluster/"
+            path = "/cluster/nodes/"
           })
           local body = cjson.decode(assert.res_status(200, res))
           return body.total == 2
@@ -168,7 +168,7 @@ describe("Cluster", function()
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cluster/"
+            path = "/cluster/nodes/"
           })
           local body = cjson.decode(assert.res_status(200, res))
           return body.total == 3
@@ -253,7 +253,7 @@ describe("Cluster", function()
         local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/"
+          path = "/cluster/nodes/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
@@ -311,7 +311,7 @@ describe("Cluster", function()
         local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/"
+          path = "/cluster/nodes/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
@@ -331,7 +331,7 @@ describe("Cluster", function()
         local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/"
+          path = "/cluster/nodes/"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -363,7 +363,7 @@ describe("Cluster", function()
         local api_client = helpers.http_client("127.0.0.1", NODES_CONF.servroot1.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/"
+          path = "/cluster/nodes/"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
