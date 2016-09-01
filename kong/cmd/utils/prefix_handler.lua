@@ -131,7 +131,12 @@ end
 local function get_ulimit()
   local ok, _, stdout, stderr = pl_utils.executeex "ulimit -n"
   if not ok then return nil, stderr end
-  return tonumber(pl_stringx.strip(stdout))
+  local sanitized_limit = pl_stringx.strip(stdout)
+  if sanitized_limit:lower():match("unlimited") then
+    return 65536
+  else
+    return tonumber(sanitized_limit)
+  end
 end
 
 local function gather_system_infos(compile_env)
