@@ -73,7 +73,6 @@ describe("Configuration loader", function()
   end)
   it("attaches prefix paths", function()
     local conf = assert(conf_loader())
-    assert.equal("/usr/local/kong/pids/dnsmasq.pid", conf.dnsmasq_pid)
     assert.equal("/usr/local/kong/pids/serf.pid", conf.serf_pid)
     assert.equal("/usr/local/kong/logs/serf.log", conf.serf_log)
     assert.equal("/usr/local/kong/serf/serf_event.sh", conf.serf_event)
@@ -104,7 +103,6 @@ describe("Configuration loader", function()
   describe("inferences", function()
     it("infer booleans (on/off/true/false strings)", function()
       local conf = assert(conf_loader())
-      assert.True(conf.dnsmasq)
       assert.equal("on", conf.nginx_daemon)
       assert.equal("on", conf.lua_code_cache)
       assert.True(conf.anonymous_reports)
@@ -220,30 +218,26 @@ describe("Configuration loader", function()
       assert.is_nil(conf)
       assert.equal("proxy_listen_ssl must be of form 'address:port'", err)
     end)
-    it("errors when both a resolver and dnsmasq are enabled", function()
+    it("errors when dns_resolver is not a list in ipv4[:port] format", function()
       local conf, err = conf_loader(nil, {
-        dnsmasq = true,
-        dns_resolver = "8.8.8.8:53"
+        dns_resolver = "[::1]:53"
       })
-      assert.equal("must disable dnsmasq when a custom DNS resolver is specified", err)
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port", err)
+      assert.is_nil(conf)
+
+      local conf, err = conf_loader(nil, {
+        dns_resolver = "1.2.3.4:53;4.3.2.1" -- ; as separator
+      })
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        dnsmasq = false,
-        dns_resolver = "8.8.8.8:53"
+        dns_resolver = "8.8.8.8,1.2.3.4:53"
       })
       assert.is_nil(err)
       assert.is_table(conf)
-    end)
-    it("requires a dns_resolver when dnsmasq is disabled", function()
-      local conf, err = conf_loader(nil, {
-        dnsmasq = false
-      })
-      assert.equal("must specify a custom DNS resolver when dnsmasq is turned off", err)
-      assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
-        dnsmasq = false,
         dns_resolver = "8.8.8.8:53"
       })
       assert.is_nil(err)

@@ -27,7 +27,8 @@ dependencies = {
   "lua-resty-iputils == 0.2.1",
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
-  "lua_pack == 1.0.4"
+  "lua_pack == 1.0.4",
+  "dns == 0.1",
 }
 build = {
   type = "builtin",
@@ -63,7 +64,6 @@ build = {
     ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
-    ["kong.cmd.utils.dnsmasq_signals"] = "kong/cmd/utils/dnsmasq_signals.lua",
 
     ["kong.api.init"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
@@ -75,6 +75,7 @@ build = {
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
 
+    ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.responses"] = "kong/tools/responses.lua",
@@ -91,6 +92,7 @@ build = {
     ["kong.core.events"] = "kong/core/events.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
     ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
+    ["kong.core.balancer"] = "kong/core/balancer.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",

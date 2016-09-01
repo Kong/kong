@@ -1,5 +1,4 @@
 return [[
-resolver ${{DNS_RESOLVER}} ipv6=off;
 charset UTF-8;
 
 error_log logs/error.log ${{LOG_LEVEL}};
@@ -55,6 +54,14 @@ init_by_lua_block {
 
 init_worker_by_lua_block {
     kong.init_worker()
+}
+
+upstream kong_upstream {
+    server 0.0.0.1;
+    balancer_by_lua_block {
+        kong.balancer()
+    }
+    keepalive 60;
 }
 
 server {

@@ -26,13 +26,16 @@
 
 require "kong.core.globalpatches"
 
+local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
+local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
+local balancer_execute = require("kong.core.balancer").execute
 
 local ipairs = ipairs
 
@@ -124,6 +127,7 @@ function Kong.init()
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
+  singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)
   singletons.dao = dao
@@ -154,6 +158,34 @@ function Kong.ssl_certificate()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
+  end
+end
+
+function Kong.balancer()
+  local addr = ngx.ctx.balancer_address
+  addr.tries = addr.tries + 1
+  if addr.tries > 1 then  
+    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- in the ACCESS context and hence has less limitations than this BALANCER context
+    -- where the retries are executed
+    
+    -- record failure data
+    addr.failures = addr.failures or {}
+    local state, code = ngx_balancer.get_last_failure()
+    addr.failures[addr.tries-1] = { name = state, code = code }
+    
+    local ok, err = balancer_execute(addr)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
+      return ngx.exit(500)
+    end
+  end
+  
+  -- set the targets as resolved
+  local ok, err = ngx_balancer.set_current_peer(addr.ip, addr.port)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
+    return ngx.exit(500)
   end
 end
 

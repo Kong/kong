@@ -43,9 +43,8 @@ cluster_encrypt_key = NONE
 cluster_profile = wan
 cluster_ttl_on_failure = 3600
 
-dnsmasq = on
-dnsmasq_port = 8053
 dns_resolver = NONE
+dns_hostsfile = /etc/hosts
 
 lua_code_cache = on
 lua_ssl_trusted_certificate = NONE

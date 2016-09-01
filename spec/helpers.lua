@@ -841,7 +841,6 @@ return {
 
     -- kill kong_tests.conf services
     for _, pid_path in ipairs {running_conf.nginx_pid,
-                               running_conf.dnsmasq_pid,
                                running_conf.serf_pid} do
       if pl_path.exists(pid_path) then
         kill.kill(pid_path, "-TERM")
