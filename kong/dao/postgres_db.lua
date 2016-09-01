@@ -1,14 +1,10 @@
+local pgmoon = require "pgmoon-mashape"
 local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local uuid = utils.uuid
 
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
-
-local ngx_stub = _G.ngx
-_G.ngx = nil
-local pgmoon = require "pgmoon"
-_G.ngx = ngx_stub
 
 local PostgresDB = BaseDB:extend()
 
