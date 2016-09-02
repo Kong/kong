@@ -33,7 +33,9 @@ local function execute(args)
     log.verbose("stopped services")
   end)
 
-  error(err) -- report to main error handler
+  if err then
+    error(err) -- report to main error handler
+  end
 end
 
 local lapp = [[
