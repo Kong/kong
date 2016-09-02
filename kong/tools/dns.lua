@@ -25,7 +25,6 @@ local setup_client = function(conf)
   local opts = {
     hosts = hosts,
     resolv_conf = nil,
-    max_resolvers = 50,
     nameservers = servers,
     retrans = 5,
     timeout = 2000,
