@@ -165,9 +165,9 @@ describe("Plugin: jwt (access)", function()
       PAYLOAD.iss = base64_jwt_secret.key
       local original_secret = base64_jwt_secret.secret
       local base64_secret = ngx.encode_base64(base64_jwt_secret.secret)
-      assert(admin_client:send {
+      local res = assert(admin_client:send {
         method = "PATCH",
-        path = "/consumers/jwt_tests_consumer/jwt/"..base64_jwt_secret.id,
+        path = "/consumers/jwt_tests_base64_consumer/jwt/"..base64_jwt_secret.id,
         body = {
           key = base64_jwt_secret.key,
           secret = base64_secret},
@@ -175,6 +175,7 @@ describe("Plugin: jwt (access)", function()
           ["Content-Type"] = "application/json"
         }
       })
+      assert.res_status(200, res)
 
       local jwt = jwt_encoder.encode(PAYLOAD, original_secret)
       local authorization = "Bearer "..jwt
@@ -188,7 +189,7 @@ describe("Plugin: jwt (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal(authorization, body.headers.authorization)
-      assert.equal("jwt_tests_consumer", body.headers["x-consumer-username"])
+      assert.equal("jwt_tests_base64_consumer", body.headers["x-consumer-username"])
     end)
     it("finds the JWT if given in URL parameters", function()
       PAYLOAD.iss = jwt_secret.key
