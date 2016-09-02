@@ -1,21 +1,16 @@
 DEV_ROCKS = busted luacheck lua-llthreads2
 BUSTED_ARGS ?= -v
 TEST_CMD ?= bin/busted $(BUSTED_ARGS)
+OPENSSL_DIR ?= /usr/local/opt/openssl
 
 .PHONY: install dev lint test test-integration test-plugins test-all
 
 install:
-	@if [ `uname` = "Darwin" ]; then \
-		luarocks make kong-*.rockspec; \
-	else \
-		luarocks make kong-*.rockspec \
-		PCRE_LIBDIR=`find / -type f -name "libpcre.so*" -print -quit | xargs dirname` \
-		OPENSSL_LIBDIR=`find / -type f -name "libssl.so*" -print -quit | xargs dirname`; \
-	fi
+	@luarocks make OPENSSL_DIR=$(OPENSSL_DIR)
 
 dev: install
 	@for rock in $(DEV_ROCKS) ; do \
-		if ! command -v $$rock > /dev/null ; then \
+		if ! luarocks list | grep $$rock > /dev/null ; then \
       echo $$rock not found, installing via luarocks... ; \
       luarocks install $$rock ; \
     else \

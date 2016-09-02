@@ -20,19 +20,17 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.same({}, cur_migrations)
       end)
-      it("should return empty migrations", function()
-        local invalid_conf = utils.shallow_copy(kong_config)
-        if invalid_conf.database == "cassandra" then
+      if kong_config.database == "cassandra" then
+        it("returns empty migrations on non-existing Cassandra keyspace", function()
+          local invalid_conf = utils.shallow_copy(kong_config)
           invalid_conf.cassandra_keyspace = "_inexistent_"
-        elseif invalid_conf.database == "postgres" then
-          invalid_conf.pg_database = "_inexistent_"
-        end
 
-        local xfactory = Factory(invalid_conf)
-        local cur_migrations, err = xfactory:current_migrations()
-        assert.is_nil(err)
-        assert.same({}, cur_migrations)
-      end)
+          local xfactory = Factory(invalid_conf)
+          local cur_migrations, err = xfactory:current_migrations()
+          assert.is_nil(err)
+          assert.same({}, cur_migrations)
+        end)
+      end
     end)
 
     describe("migrations_modules()", function()
@@ -95,6 +93,28 @@ helpers.for_each_dao(function(kong_config)
 
         assert.spy(on_migration).was_not_called()
         assert.spy(on_success).was_not_called()
+      end)
+    end)
+
+    describe("errors", function()
+      it("returns errors prefixed by the DB type in __tostring()", function()
+        local pg_port = kong_config.pg_port
+        local cassandra_port = kong_config.cassandra_port
+        local cassandra_timeout = kong_config.cassandra_timeout
+        finally(function()
+          kong_config.pg_port = pg_port
+          kong_config.cassandra_port = cassandra_port
+          kong_config.cassandra_timeout = cassandra_timeout
+        end)
+        kong_config.pg_port = 3333
+        kong_config.cassandra_port = 3333
+        kong_config.cassandra_timeout = 1000
+
+        local fact = Factory(kong_config)
+
+        local apis, err = fact:run_migrations()
+        assert.matches("["..kong_config.database.." error]", err, nil, true)
+        assert.is_nil(apis)
       end)
     end)
   end)

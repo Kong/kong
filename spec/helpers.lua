@@ -225,6 +225,7 @@ local function tcp_server(port, ...)
     function(port)
       local socket = require "socket"
       local server = assert(socket.tcp())
+      server:settimeout(10)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
