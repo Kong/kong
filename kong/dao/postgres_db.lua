@@ -35,7 +35,11 @@ end
 
 local function do_clean_ttl(premature, postgres)
   if premature then return end
-  postgres:clear_expired_ttl()
+  
+  local ok, err = postgres:clear_expired_ttl()
+  if not ok then
+    ngx.log(ngx.ERR, "failed to cleanup TTLs: ", err)
+  end
   local ok, err = ngx.timer.at(TTL_CLEANUP_INTERVAL, do_clean_ttl, postgres)
   if not ok then
     ngx.log(ngx.ERR, "failed to create timer: ", err)
