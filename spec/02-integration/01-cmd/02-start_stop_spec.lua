@@ -203,5 +203,27 @@ describe("kong start/stop", function()
       assert.False(ok)
       assert.matches("nginx is already running in "..helpers.test_conf.prefix, stderr, nil, true)
     end)
+    it("stops other services when could not start", function()
+      local kill = require "kong.cmd.utils.kill"
+      local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
+      finally(function()
+        -- make tcp server receive and close
+        helpers.proxy_client():send {
+          method = "GET",
+          path = "/"
+        }
+        thread:join()
+      end)
+
+      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+        dnsmasq = true,
+        dns_resolver = ""
+      })
+      assert.False(ok)
+      assert.matches("Address already in use", err, nil, true)
+
+      assert.falsy(kill.is_running(helpers.test_conf.dnsmasq_pid))
+      assert.falsy(kill.is_running(helpers.test_conf.serf_pid))
+    end)
   end)
 end)
