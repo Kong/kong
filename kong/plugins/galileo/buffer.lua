@@ -21,6 +21,7 @@
 
 local alf_serializer = require "kong.plugins.galileo.alf"
 local http = require "resty.http"
+local connect = require("kong.singletons").dns.connect
 
 local setmetatable = setmetatable
 local timer_at = ngx.timer.at
@@ -111,7 +112,7 @@ _send = function(premature, self, to_send)
   local client = http.new()
   client:set_timeout(self.connection_timeout)
 
-  local ok, err = client:connect(self.host, self.port)
+  local ok, err = connect(client, self.host, self.port)
   if not ok then
     retry = true
     log(ERR, "could not connect to Galileo collector: ", err)

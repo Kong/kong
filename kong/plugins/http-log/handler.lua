@@ -2,6 +2,7 @@ local basic_serializer = require "kong.plugins.log-serializers.basic"
 local BasePlugin = require "kong.plugins.base_plugin"
 local cjson = require "cjson"
 local url = require "socket.url"
+local connect = require("kong.singletons").dns.connect
 
 local HttpLogHandler = BasePlugin:extend()
 
@@ -54,7 +55,7 @@ local function log(premature, conf, body, name)
   local sock = ngx.socket.tcp()
   sock:settimeout(conf.timeout)
 
-  ok, err = sock:connect(host, port)
+  ok, err = connect(sock, host, port)
   if not ok then
     ngx.log(ngx.ERR, name.."failed to connect to "..host..":"..tostring(port)..": ", err)
     return

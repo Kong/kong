@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local url = require "socket.url"
+local connect = require("kong.singletons").dns.connect
 
 local _M = {}
 
@@ -59,7 +60,7 @@ local function log(premature, conf, message)
   local sock = ngx.socket.tcp()
   sock:settimeout(conf.timeout)
 
-  ok, err = sock:connect(host, port)
+  ok, err = connect(sock, host, port)
   if not ok then
     ngx_log(ngx_log_ERR, "[runscope] failed to connect to "..host..":"..tostring(port)..": ", err)
     return

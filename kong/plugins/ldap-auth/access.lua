@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local cache = require "kong.tools.database_cache"
@@ -11,6 +12,7 @@ local ngx_debug = ngx.DEBUG
 local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
 local tostring =  tostring
+local connect = singletons.dns.connect
 
 local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
@@ -37,7 +39,8 @@ local function ldap_authenticate(given_username, given_password, conf)
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
-  ok, error = sock:connect(conf.ldap_host, conf.ldap_port)
+  
+  ok, error = connect(sock, conf.ldap_host, conf.ldap_port)
   if not ok then
     ngx_log(ngx_error, "[ldap-auth] failed to connect to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", error)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(error)

@@ -3,6 +3,7 @@ local timestamp = require "kong.tools.timestamp"
 local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
 local ngx_log = ngx.log
+local connect = require("kong.singletons").dns.connect
 
 local pairs = pairs
 local fmt = string.format
@@ -65,7 +66,7 @@ return {
     increment = function(conf, api_id, identifier, current_timestamp, value, name)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = red:connect(conf.redis_host, conf.redis_port)
+      local ok, err = connect(red, conf.redis_host, conf.redis_port)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
         return
@@ -110,7 +111,7 @@ return {
     usage = function(conf, api_id, identifier, current_timestamp, period, name)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = red:connect(conf.redis_host, conf.redis_port)
+      local ok, err = connect(red, conf.redis_host, conf.redis_port)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
         return
