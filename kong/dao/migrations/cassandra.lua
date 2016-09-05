@@ -143,5 +143,15 @@ return {
     down = [[
       ALTER TABLE nodes WITH default_time_to_live = 3600;
     ]]
+  },
+  {
+    name = "2016-09-05-212515_retries",
+    up = [[
+      ALTER TABLE apis ADD retries int;
+      UPDATE apis SET retries = 5;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP retries;
+    ]]
   }
 }

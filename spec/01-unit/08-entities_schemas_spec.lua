@@ -257,6 +257,27 @@ describe("Entities Schemas", function()
         end
       end)
     end)
+  
+    describe("retries", function()
+      it("accepts valid values", function()
+        local valids = {0, 5, 100, 32767}
+        for _, v in ipairs(valids) do
+          local t = {request_host = "mydomain.com", upstream_url = "http://mockbin.com", name = "mockbin", retries = v}
+          local valid, errors = validate_entity(t, api_schema)
+          assert.falsy(errors)
+          assert.True(valid)
+        end
+      end)
+      it("rejects invalid values", function()
+        local valids = { -5, 32768}
+        for _, v in ipairs(valids) do
+          local t = {request_host = "mydomain.com", upstream_url = "http://mockbin.com", name = "mockbin", retries = v}
+          local valid, errors = validate_entity(t, api_schema)
+          assert.False(valid)
+          assert.equal("retries must be a integer, from 0 to 32767", errors.retries)
+        end
+      end)
+    end)
 
     it("should validate without a request_path", function()
       local valid, errors = validate_entity({

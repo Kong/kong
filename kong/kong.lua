@@ -38,6 +38,9 @@ local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 
 local ipairs = ipairs
+local get_last_failure = ngx_balancer.get_last_failure
+local set_current_peer = ngx_balancer.set_current_peer
+local set_more_tries = ngx_balancer.set_more_tries
 
 local function attach_hooks(events, hooks)
   for k, v in pairs(hooks) do
@@ -171,7 +174,7 @@ function Kong.balancer()
     
     -- record failure data
     addr.failures = addr.failures or {}
-    local state, code = ngx_balancer.get_last_failure()
+    local state, code = get_last_failure()
     addr.failures[addr.tries-1] = { name = state, code = code }
     
     local ok, err = balancer_execute(addr)
@@ -179,10 +182,16 @@ function Kong.balancer()
       ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
       return ngx.exit(500)
     end
+  else
+    -- first try, so set the max number of retries
+    local retries = addr.retries
+    if retries > 0 then
+      set_more_tries(retries)
+    end
   end
   
   -- set the targets as resolved
-  local ok, err = ngx_balancer.set_current_peer(addr.ip, addr.port)
+  local ok, err = set_current_peer(addr.ip, addr.port)
   if not ok then
     ngx.log(ngx.ERR, "failed to set the current peer: ", err)
     return ngx.exit(500)

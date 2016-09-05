@@ -141,5 +141,14 @@ return {
       DROP TABLE ttls;
       DROP FUNCTION upsert_ttl(text, uuid, text, text, timestamp);
     ]]
-  }
+  },
+  {
+    name = "2016-09-05-212515_retries",
+    up = [[
+      ALTER TABLE apis ADD COLUMN retries smallint NOT NULL DEFAULT 5;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP COLUMN IF EXISTS retries;
+    ]]
+  },
 }
