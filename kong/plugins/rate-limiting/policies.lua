@@ -65,7 +65,7 @@ return {
     increment = function(conf, api_id, identifier, current_timestamp, value)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = connect(red, conf.redis_host, conf.redis_port)
+      local ok, err = red:connect(conf.redis_host, conf.redis_port)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
         return
@@ -110,7 +110,7 @@ return {
     usage = function(conf, api_id, identifier, current_timestamp, name)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = connect(red, conf.redis_host, conf.redis_port)
+      local ok, err = red:connect(conf.redis_host, conf.redis_port)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
         return
