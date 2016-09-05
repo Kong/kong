@@ -32,35 +32,35 @@ end
 
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
-  local err, suppressed_err, ok
+  local error, suppressed_err, ok
   local who = conf.attribute.."="..given_username..","..conf.base_dn
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
-  ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
+  ok, error = sock:connect(conf.ldap_host, conf.ldap_port)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth] failed to connect to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    ngx_log(ngx_error, "[ldap-auth] failed to connect to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", error)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(error)
   end
 
   if conf.start_tls then
-    local success, err = ldap.start_tls(sock)
+    local success, error = ldap.start_tls(sock)
     if not success then
-      return false, err
+      return false, error
     end
-    local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
-    if err ~= nil then
-      return false, "failed to do SSL handshake with "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ".. err
+    local _, error = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
+    if error ~= nil then
+      return false, "failed to do SSL handshake with "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ".. error
     end
   end
 
-  is_authenticated, err = ldap.bind_request(sock, who, given_password)
+  is_authenticated, error = ldap.bind_request(sock, who, given_password)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
   if not ok then
     ngx_log(ngx_error, "[ldap-auth] failed to keepalive to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", suppressed_err)
   end
-  return is_authenticated, err
+  return is_authenticated, error
 end
 
 local function authenticate(conf, given_credentials)
