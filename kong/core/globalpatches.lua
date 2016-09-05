@@ -32,3 +32,33 @@ _G.math.randomseed = function()
   return seed
 end
 
+--- Patch the TCP connect method such that all connections will be resolved
+-- first by the internal DNS resolver. 
+-- STEP 1: load code that should not be using the patched versions
+require "resty.dns.resolver"  -- will cache TCP and UDP functions
+-- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
+local toip
+-- STEP 3: store original unpatched versions
+local old_tcp = ngx.socket.tcp
+-- STEP 4: patch globals
+_G.ngx.socket.tcp = function(...)
+  local sock = old_tcp(...)
+  local old_connect = sock.connect
+  sock.connect = function(s, host, port, sock_opts)
+    local target_ip, target_port = toip(host, port)
+    
+    if not target_ip then 
+      return nil, target_port 
+    else
+      -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
+      if not sock_opts then
+        return old_connect(s, target_ip, target_port)
+      else
+        return old_connect(s, target_ip, target_port, sock_opts)
+      end
+    end
+  end
+  return sock
+end
+-- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
+toip = require("dns.client").toip  -- this will load utils and penlight modules for example
