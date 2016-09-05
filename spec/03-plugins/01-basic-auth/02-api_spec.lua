@@ -161,6 +161,15 @@ describe("Plugin: basic-auth (API)", function()
         local json = cjson.decode(body)
         assert.equal(credential.id, json.id)
       end)
+      it("retrieves basic-auth credential by username", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/basic-auth/"..credential.username
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(credential.id, json.id)
+      end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
         assert(helpers.dao.consumers:insert {
           username = "alice"
@@ -181,7 +190,7 @@ describe("Plugin: basic-auth (API)", function()
     end)
 
     describe("PATCH", function()
-      it("updates a credential", function()
+      it("updates a credential by id", function()
         local previous_hash = credential.password
 
         local res = assert(admin_client:send {
@@ -189,6 +198,23 @@ describe("Plugin: basic-auth (API)", function()
           path = "/consumers/bob/basic-auth/"..credential.id,
           body = {
             password = "4321"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.not_equal(previous_hash, json.password)
+      end)
+      it("updates a credential by username", function()
+        local previous_hash = credential.password
+
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/consumers/bob/basic-auth/"..credential.username,
+          body = {
+            password = "upd4321"
           },
           headers = {
             ["Content-Type"] = "application/json"
@@ -225,12 +251,12 @@ describe("Plugin: basic-auth (API)", function()
         assert.res_status(204, res)
       end)
       describe("errors", function()
-        it("returns 400 on invalid input", function()
+        it("returns 404 on missing username", function()
           local res = assert(admin_client:send {
             method = "DELETE",
             path = "/consumers/bob/basic-auth/blah"
           })
-          assert.res_status(400, res)
+          assert.res_status(404, res)
         end)
         it("returns 404 if not found", function()
           local res = assert(admin_client:send {

@@ -358,5 +358,6 @@ describe("Resolver", function()
       }
     })
     assert.res_status(414, res)
+    assert.match(meta._NAME.."/"..meta._VERSION, res.headers["server"])
   end)
 end)
