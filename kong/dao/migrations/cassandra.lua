@@ -146,10 +146,30 @@ return {
   },
   {
     name = "2016-09-05-212515_retries",
-    up = [[
-      ALTER TABLE apis ADD retries int;
-      UPDATE apis SET retries = 5;
-    ]],
+    up = { 
+      -- two step migration, add column first, then populate it
+      [[
+        ALTER TABLE apis ADD retries int;
+      ]],
+      function(_, _, dao)
+        local rows, err = dao.apis:find_all() -- fetch all rows
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          if not row.retries then  -- only if retries is not set already
+            local copy = {}
+            for k,v in pairs(row) do copy[k]=v end
+            copy.retries = 5
+            local _, err = dao.apis:update(copy, row, {full = true})
+            if err then
+              return err
+            end
+          end
+        end
+      end
+    },
     down = [[
       ALTER TABLE apis DROP retries;
     ]]

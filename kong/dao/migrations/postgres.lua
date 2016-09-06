@@ -145,7 +145,12 @@ return {
   {
     name = "2016-09-05-212515_retries",
     up = [[
-      ALTER TABLE apis ADD COLUMN retries smallint NOT NULL DEFAULT 5;
+      DO $$ 
+      BEGIN
+        ALTER TABLE apis ADD COLUMN retries smallint NOT NULL DEFAULT 5;
+      EXCEPTION WHEN duplicate_column THEN 
+          -- Do nothing, accept existing state
+      END$$;
     ]],
     down = [[
       ALTER TABLE apis DROP COLUMN IF EXISTS retries;

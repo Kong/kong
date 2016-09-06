@@ -187,7 +187,6 @@ describe("kong start/stop", function()
       assert.False(ok)
       assert.matches("Address already in use", err, nil, true)
 
-      assert.falsy(kill.is_running(helpers.test_conf.dnsmasq_pid))
       assert.falsy(kill.is_running(helpers.test_conf.serf_pid))
     end)
   end)
