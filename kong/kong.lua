@@ -165,6 +165,7 @@ function Kong.ssl_certificate()
 end
 
 function Kong.balancer()
+ngx.log(ngx.DEBUG, "hitting balancer")
   local addr = ngx.ctx.balancer_address
   addr.tries = addr.tries + 1
   if addr.tries > 1 then  
