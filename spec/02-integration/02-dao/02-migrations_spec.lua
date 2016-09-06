@@ -9,6 +9,9 @@ helpers.for_each_dao(function(kong_config)
     setup(function()
       local f = Factory(kong_config)
       f:drop_schema()
+      -- some `setup` functions also use `factory` and they run before the `before_each` chain
+      -- hence we need to set it here, and again in `before_each`.
+      factory = Factory(kong_config) 
     end)
     before_each(function()
       factory = Factory(kong_config)
