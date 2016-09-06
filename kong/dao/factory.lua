@@ -239,16 +239,16 @@ function Factory:run_migrations(on_migrate, on_success)
 
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then return DAO.ret_error(_db.db_type, nil, err) end
+  if err then return nil, tostring(DAO.ret_error(_db.db_type, nil, err)) end
 
   local ok, err = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then return DAO.ret_error(_db.db_type, nil, tostring(err)) end
+  if not ok then return nil, tostring(DAO.ret_error(_db.db_type, nil, err)) end
 
   local migrations_ran = 0
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
       local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then return DAO.ret_error(_db.db_type, nil, tostring(err))
+      if not ok then return nil, tostring(DAO.ret_error(_db.db_type, nil, err))
       else
         migrations_ran = math.max(migrations_ran, n_ran)
       end
