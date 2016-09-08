@@ -7,6 +7,16 @@
 - Plugins:
   - ACL: allow to retrieve/update/delete an ACL by group name.
     [#1544](https://github.com/Mashape/kong/pull/1544)
+  - Basic Authentication: allow to retrieve/update/delete a credential by `username`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - HMAC Authentication: allow to retrieve/update/delete a credential by `username`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - JWT Authentication: allow to retrieve/update/delete a credential by `key`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - Key Authentication: allow to retrieve/update/delete a credential by `key`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - OAuth2 Authentication: allow to retrieve/update/delete a credential by `client_id` and tokens by `access_token`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
 
 ### Fixed
 
@@ -21,6 +31,8 @@
   [#1582](https://github.com/Mashape/kong/pull/1582)
 - Avoid exposing OpenResty's information on HTTP `4xx` errors.
   [#1567](https://github.com/Mashape/kong/pull/1567)
+- ulimit with `unlimited` value is now properly handled.
+  [#1545](https://github.com/Mashape/kong/pull/1545)
 - CLI:
   - Stop third-party services (dnsmasq/Serf) when Kong could not start.
     [#1588](https://github.com/Mashape/kong/pull/1588)

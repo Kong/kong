@@ -174,7 +174,7 @@ local function compile_conf(kong_config, conf_template)
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)
-    return compile_env[name:lower()]
+    return compile_env[name:lower()] or ""
   end)
 end
 
