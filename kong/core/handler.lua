@@ -47,11 +47,9 @@ return {
         tries = 0,                                       -- retry counter
         ip = nil,                                        -- final target IP address
         port = upstream_table.port,                      -- final target port
+        retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
         -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
         failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
-        -- in case of dns
-        dns_record = nil,                                -- the top-level list of DNS records resolved
-        dns_pointer = nil,                               -- index of the last record tried in `dns_record`.
         -- in case of balancer
         balancer = nil,                                  -- the balancer object
       }

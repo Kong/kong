@@ -143,6 +143,15 @@ local function check_name(name)
   return true
 end
 
+-- check that retries is a valid number
+local function check_retries(retries)
+  -- Postgres 'smallint' size, 2 bytes
+  if (retries < 0) or (math.floor(retries) ~= retries) or (retries > 32767) then
+    return false, "retries must be a integer, from 0 to 32767"
+  end
+  return true
+end
+
 return {
   table = "apis",
   primary_key = {"id"},
@@ -154,7 +163,8 @@ return {
     request_path = {type = "string", unique = true, func = check_request_path},
     strip_request_path = {type = "boolean", default = false},
     upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
-    preserve_host = {type = "boolean", default = false}
+    preserve_host = {type = "boolean", default = false},
+    retries = {type = "number", default = 5, func = check_retries},
   },
   marshall_event = function(self, t)
     return { id = t.id }
