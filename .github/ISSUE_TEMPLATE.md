@@ -12,6 +12,7 @@ SUMMARY_GOES_HERE
 ### Additional Details & Logs
 
 - Kong version (`$ kong version`)
-- Kong configuration (registered APIs/Plugins & configuration file)
+- Kong debug-level startup logs (`$ kong start --vv`)
 - Kong error logs (`<KONG_PREFIX>/logs/error.log`)
+- Kong configuration (registered APIs/Plugins & configuration file)
 - Operating System
