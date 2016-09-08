@@ -6,6 +6,12 @@ local ModelFactory = require "kong.dao.model_factory"
 local CORE_MODELS = {"apis", "consumers", "plugins", "nodes"}
 local _db
 
+-- returns db errors as strings, including the initial `nil`
+local function ret_error_string(db_type, res, err)
+  res, err = DAO.ret_error(db_type, res, err)
+  return res, tostring(err)
+end
+
 local Factory = Object:extend()
 
 function Factory:__index(key)
@@ -239,16 +245,16 @@ function Factory:run_migrations(on_migrate, on_success)
 
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then return nil, tostring(DAO.ret_error(_db.db_type, nil, err)) end
+  if err then return ret_error_string(_db.db_type, nil, err) end
 
   local ok, err = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then return nil, tostring(DAO.ret_error(_db.db_type, nil, err)) end
+  if not ok then return ret_error_string(_db.db_type, nil, err) end
 
   local migrations_ran = 0
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
       local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then return nil, tostring(DAO.ret_error(_db.db_type, nil, err))
+      if not ok then return ret_error_string(_db.db_type, nil, err)
       else
         migrations_ran = math.max(migrations_ran, n_ran)
       end
