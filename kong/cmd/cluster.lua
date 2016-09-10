@@ -7,7 +7,7 @@ local conf_loader = require "kong.conf_loader"
 local function execute(args)
   if args.command == "keygen" then
     local conf = assert(conf_loader(args.conf))
-    local dao = DAOFactory(conf)
+    local dao = assert(DAOFactory(conf))
     local serf = Serf.new(conf, dao)
     print(assert(serf:keygen()))
     return
@@ -21,7 +21,7 @@ local function execute(args)
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
   local conf = assert(conf_loader(default_conf.kong_conf))
-  local dao = DAOFactory(conf)
+  local dao = assert(DAOFactory.new(conf))
   local serf = Serf.new(conf, dao)
 
   if args.command == "members" then

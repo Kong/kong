@@ -8,8 +8,8 @@ local fmt = string.format
 local error_mt = {}
 
 function error_mt.__tostring(t)
-  if t.db_type then
-    return fmt("[%s error] %s", t.db_type, tostring(t.message))
+  if t.db_name then
+    return fmt("[%s error] %s", t.db_name, tostring(t.message))
   end
 
   return tostring(t.message)

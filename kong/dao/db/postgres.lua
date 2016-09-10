@@ -1,23 +1,24 @@
 local pgmoon = require "pgmoon-mashape"
-local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local uuid = utils.uuid
 
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
 
-local PostgresDB = BaseDB:extend()
+local _M = require("kong.dao.db").new_db("postgres")
 
-PostgresDB.dao_insert_values = {
+_M.dao_insert_values = {
   id = function()
     return uuid()
   end
 }
 
-PostgresDB.additional_tables = {"ttls"}
+_M.additional_tables = {"ttls"}
 
-function PostgresDB:new(kong_config)
-  local conn_opts = {
+function _M.new(kong_config)
+  local self = _M.super.new()
+
+  self.query_options = {
     host = kong_config.pg_host,
     port = kong_config.pg_port,
     user = kong_config.pg_user,
@@ -28,14 +29,14 @@ function PostgresDB:new(kong_config)
     cafile = kong_config.lua_ssl_trusted_certificate
   }
 
-  PostgresDB.super.new(self, "postgres", conn_opts)
+  return self
 end
 
 -- TTL clean up timer functions
 
 local function do_clean_ttl(premature, postgres)
   if premature then return end
-  
+
   local ok, err = postgres:clear_expired_ttl()
   if not ok then
     ngx.log(ngx.ERR, "failed to cleanup TTLs: ", err)
@@ -46,7 +47,7 @@ local function do_clean_ttl(premature, postgres)
   end
 end
 
-function PostgresDB:start_ttl_timer()
+function _M:start_ttl_timer()
   if ngx then
     local ok, err = ngx.timer.at(TTL_CLEANUP_INTERVAL, do_clean_ttl, self)
     if not ok then
@@ -56,14 +57,14 @@ function PostgresDB:start_ttl_timer()
   end
 end
 
-function PostgresDB:init()
+function _M:init()
   self:start_ttl_timer()
 end
 
-function PostgresDB:infos()
+function _M:infos()
   return {
     desc = "database",
-    name = self:_get_conn_options().database
+    name = self:clone_query_options().database
   }
 end
 
@@ -134,10 +135,8 @@ end
 
 -- Querying
 
-function PostgresDB:query(query, schema)
-  PostgresDB.super.query(self, query)
-
-  local conn_opts = self:_get_conn_options()
+function _M:query(query, schema)
+  local conn_opts = self:clone_query_options()
   local pg = pgmoon.new(conn_opts)
   local ok, err = pg:connect()
   if not ok then
@@ -160,7 +159,7 @@ function PostgresDB:query(query, schema)
   return res
 end
 
-function PostgresDB:retrieve_primary_key_type(schema, table_name)
+function _M:retrieve_primary_key_type(schema, table_name)
   if schema.primary_key and #schema.primary_key == 1 then
     if not self.column_types then self.column_types = {} end
 
@@ -181,7 +180,7 @@ function PostgresDB:retrieve_primary_key_type(schema, table_name)
   end
 end
 
-function PostgresDB:get_select_query(select_clause, schema, table, where, offset, limit)
+function _M:get_select_query(select_clause, schema, table, where, offset, limit)
   local query
 
   local join_ttl = schema.primary_key and #schema.primary_key == 1
@@ -206,7 +205,7 @@ function PostgresDB:get_select_query(select_clause, schema, table, where, offset
   return query
 end
 
-function PostgresDB:deserialize_rows(rows, schema)
+function _M:deserialize_rows(rows, schema)
   if schema then
     local json = require "cjson"
     for i, row in ipairs(rows) do
@@ -220,7 +219,7 @@ function PostgresDB:deserialize_rows(rows, schema)
   end
 end
 
-function PostgresDB:deserialize_timestamps(row, schema)
+function _M:deserialize_timestamps(row, schema)
   local result = row
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" and result[k] then
@@ -236,7 +235,7 @@ function PostgresDB:deserialize_timestamps(row, schema)
   return result
 end
 
-function PostgresDB:serialize_timestamps(tbl, schema)
+function _M:serialize_timestamps(tbl, schema)
   local result = tbl
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" and result[k] then
@@ -252,7 +251,7 @@ function PostgresDB:serialize_timestamps(tbl, schema)
   return result
 end
 
-function PostgresDB:ttl(tbl, table_name, schema, ttl)
+function _M:ttl(tbl, table_name, schema, ttl)
   if not schema.primary_key or #schema.primary_key ~= 1 then
     return false, "Cannot set a TTL if the entity has no primary key, or has more than one primary key"
   end
@@ -280,7 +279,7 @@ function PostgresDB:ttl(tbl, table_name, schema, ttl)
 end
 
 -- Delete old expired TTL entities
-function PostgresDB:clear_expired_ttl()
+function _M:clear_expired_ttl()
   local query = "SELECT * FROM ttls WHERE expire_at < CURRENT_TIMESTAMP(0) at time zone 'utc'"
   local res, err = self:query(query)
   if err then
@@ -303,7 +302,7 @@ function PostgresDB:clear_expired_ttl()
   return true
 end
 
-function PostgresDB:insert(table_name, schema, model, _, options)
+function _M:insert(table_name, schema, model, _, options)
   local values, err = self:serialize_timestamps(model, schema)
   if err then
     return nil, err
@@ -340,7 +339,7 @@ function PostgresDB:insert(table_name, schema, model, _, options)
   end
 end
 
-function PostgresDB:find(table_name, schema, primary_keys)
+function _M:find(table_name, schema, primary_keys)
   local where = get_where(primary_keys)
   local query = self:get_select_query(get_select_fields(schema), schema, table_name, where)
   local rows, err = self:query(query, schema)
@@ -351,7 +350,7 @@ function PostgresDB:find(table_name, schema, primary_keys)
   end
 end
 
-function PostgresDB:find_all(table_name, tbl, schema)
+function _M:find_all(table_name, tbl, schema)
   local where
   if tbl ~= nil then
     where = get_where(tbl)
@@ -361,7 +360,7 @@ function PostgresDB:find_all(table_name, tbl, schema)
   return self:query(query, schema)
 end
 
-function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
+function _M:find_page(table_name, tbl, page, page_size, schema)
   if page == nil then
     page = 1
   end
@@ -389,7 +388,7 @@ function PostgresDB:find_page(table_name, tbl, page, page_size, schema)
   return rows, nil, (next_page <= total_pages and next_page or nil)
 end
 
-function PostgresDB:count(table_name, tbl, schema)
+function _M:count(table_name, tbl, schema)
   local where
   if tbl ~= nil then
     where = get_where(tbl)
@@ -404,7 +403,7 @@ function PostgresDB:count(table_name, tbl, schema)
   end
 end
 
-function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, full, _, options)
+function _M:update(table_name, schema, _, filter_keys, values, nils, full, _, options)
   local args = {}
   local values, err = self:serialize_timestamps(values, schema)
   if err then
@@ -446,7 +445,7 @@ function PostgresDB:update(table_name, schema, _, filter_keys, values, nils, ful
   end
 end
 
-function PostgresDB:delete(table_name, schema, primary_keys)
+function _M:delete(table_name, schema, primary_keys)
   local where = get_where(primary_keys)
   local query = string.format("DELETE FROM %s WHERE %s RETURNING *",
                               table_name, where)
@@ -462,7 +461,7 @@ end
 
 -- Migrations
 
-function PostgresDB:queries(queries)
+function _M:queries(queries)
   if utils.strip(queries) ~= "" then
     local err = select(2, self:query(queries))
     if err then
@@ -471,15 +470,15 @@ function PostgresDB:queries(queries)
   end
 end
 
-function PostgresDB:drop_table(table_name)
+function _M:drop_table(table_name)
   return select(2, self:query("DROP TABLE "..table_name.." CASCADE"))
 end
 
-function PostgresDB:truncate_table(table_name)
+function _M:truncate_table(table_name)
   return select(2, self:query("TRUNCATE "..table_name.." CASCADE"))
 end
 
-function PostgresDB:current_migrations()
+function _M:current_migrations()
   -- Check if schema_migrations table exists
   local rows, err = self:query "SELECT to_regclass('schema_migrations')"
   if err then
@@ -493,7 +492,7 @@ function PostgresDB:current_migrations()
   end
 end
 
-function PostgresDB:record_migration(id, name)
+function _M:record_migration(id, name)
   return select(2, self:query {
     [[
       CREATE OR REPLACE FUNCTION upsert_schema_migrations(identifier text, migration_name varchar) RETURNS VOID AS $$
@@ -510,4 +509,4 @@ function PostgresDB:record_migration(id, name)
   })
 end
 
-return PostgresDB
+return _M

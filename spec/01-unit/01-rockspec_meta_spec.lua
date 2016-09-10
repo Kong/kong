@@ -67,7 +67,7 @@ describe("rockspec/meta", function()
     it("all modules named as their path", function()
       for mod_name, mod_path in pairs(rock.build.modules) do
         if mod_name ~= "kong" then
-          mod_path = mod_path:gsub("%.lua", ""):gsub("/", '.')
+          mod_path = mod_path:gsub("%.lua", ""):gsub("/", '.'):gsub("%.init", "")
           assert(mod_name == mod_path, mod_path.." has different name ("..mod_name..")")
         end
       end

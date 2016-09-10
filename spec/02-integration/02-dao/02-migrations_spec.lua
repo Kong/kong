@@ -7,11 +7,11 @@ helpers.for_each_dao(function(kong_config)
   describe("Model migrations with DB: #"..kong_config.database, function()
     local factory
     setup(function()
-      local f = Factory(kong_config)
+      local f = assert(Factory.new(kong_config))
       f:drop_schema()
     end)
     before_each(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
     end)
 
     describe("current_migrations()", function()
@@ -25,7 +25,7 @@ helpers.for_each_dao(function(kong_config)
           local invalid_conf = utils.shallow_copy(kong_config)
           invalid_conf.cassandra_keyspace = "_inexistent_"
 
-          local xfactory = Factory(invalid_conf)
+          local xfactory = assert(Factory.new(invalid_conf))
           local cur_migrations, err = xfactory:current_migrations()
           assert.is_nil(err)
           assert.same({}, cur_migrations)
@@ -110,11 +110,10 @@ helpers.for_each_dao(function(kong_config)
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 
-        local fact = Factory(kong_config)
-
-        local apis, err = fact:run_migrations()
-        assert.matches("["..kong_config.database.." error]", err, nil, true)
-        assert.is_nil(apis)
+        assert.error_matches(function()
+          local fact = assert(Factory.new(kong_config))
+          assert(fact:run_migrations())
+        end, "["..kong_config.database.." error]", nil, true)
       end)
     end)
   end)

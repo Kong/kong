@@ -6,7 +6,7 @@ helpers.for_each_dao(function(kong_config)
   describe("TTL with #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       assert(factory:run_migrations())
 
       factory:truncate_tables()

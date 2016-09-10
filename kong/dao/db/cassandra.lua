@@ -1,23 +1,14 @@
+local cassandra = require "cassandra"
+local Cluster = require "resty.cassandra.cluster"
 local timestamp = require "kong.tools.timestamp"
 local Errors = require "kong.dao.errors"
-local BaseDB = require "kong.dao.base_db"
 local utils = require "kong.tools.utils"
+local cjson = require "cjson"
 local uuid = utils.uuid
 
-local cassandra
+local _M = require("kong.dao.db").new_db("cassandra")
 
-if ngx.IS_CLI then
-  local ngx_stub = _G.ngx
-  _G.ngx = nil
-  cassandra = require "cassandra"
-  _G.ngx = ngx_stub
-else
-  cassandra = require "cassandra"
-end
-
-local CassandraDB = BaseDB:extend()
-
-CassandraDB.dao_insert_values = {
+_M.dao_insert_values = {
   id = function()
     return uuid()
   end,
@@ -26,42 +17,105 @@ CassandraDB.dao_insert_values = {
   end
 }
 
-function CassandraDB:new(kong_config)
-  local conn_opts = {
+function _M.new(kong_config)
+  local self = _M.super.new()
+
+  local query_opts = {
+    consistency = cassandra.consistencies[kong_config.cassandra_consistency:lower()],
+    prepared = true
+  }
+
+  local cluster_options = {
     shm = "cassandra",
-    prepared_shm = "cassandra_prepared",
     contact_points = kong_config.cassandra_contact_points,
+    default_port = kong_config.cassandra_port,
     keyspace = kong_config.cassandra_keyspace,
-    protocol_options = {
-      default_port = kong_config.cassandra_port
-    },
-    query_options = {
-      prepare = true,
-      consistency = cassandra.consistencies[kong_config.cassandra_consistency:lower()]
-    },
-    socket_options = {
-      connect_timeout = kong_config.cassandra_timeout,
-      read_timeout = kong_config.cassandra_timeout,
-    },
-    ssl_options = {
-      enabled = kong_config.cassandra_ssl,
-      verify = kong_config.cassandra_ssl_verify,
-      ca = kong_config.lua_ssl_trusted_certificate
-    }
+    connect_timeout = kong_config.cassandra_timeout,
+    read_timeout = kong_config.cassandra_timeout,
+    ssl = kong_config.cassandra_ssl,
+    verify = kong_config.cassandra_ssl_verify
   }
 
   if kong_config.cassandra_username and kong_config.cassandra_password then
-    conn_opts.auth = cassandra.auth.PlainTextProvider(kong_config.cassandra_username,
-                                                      kong_config.cassandra_password)
+    cluster_options.auth = cassandra.auth_providers.plain_text(
+      kong_config.cassandra_username,
+      kong_config.cassandra_password
+    )
   end
 
-  CassandraDB.super.new(self, "cassandra", conn_opts)
+  local cluster, err = Cluster.new(cluster_options)
+  if not cluster then return nil, err end
+
+  self.cluster = cluster
+  self.query_options = query_opts
+  self.cluster_options = cluster_options
+
+  if ngx.RESTY_CLI then
+    -- we must manually call our init phase (usually called from `init_by_lua`)
+    -- to refresh the cluster.
+    local ok, err = self:init()
+    if not ok then return nil, err end
+  end
+
+  return self
 end
 
-function CassandraDB:infos()
+local function extract_major(release_version)
+  return string.match(release_version, "^(%d+)%.%d+%.?%d*$")
+end
+
+local function cluster_release_version(peers)
+  local first_release_version
+  local ok = true
+
+  for i = 1, #peers do
+    local release_version = peers[i].release_version
+    if not release_version then
+      return nil, 'no release_version for peer '..peers[i].host
+    end
+
+    local major_version = extract_major(release_version)
+    if i == 1 then
+      first_release_version = major_version
+    elseif major_version ~= first_release_version then
+      ok = false
+      break
+    end
+  end
+
+  if not ok then
+    local err_t = {"different major versions detected (only all of 2.x or 3.x supported):"}
+    for i = 1, #peers do
+      err_t[#err_t+1] = string.format("%s (%s)", peers[i].host, peers[i].release_version)
+    end
+
+    return nil, table.concat(err_t, " ")
+  end
+
+  return tonumber(first_release_version)
+end
+
+_M.extract_major = extract_major
+_M.cluster_release_version = cluster_release_version
+
+function _M:init()
+  local ok, err = self.cluster:refresh()
+  if not ok then return nil, err end
+
+  local peers, err = self.cluster:get_peers()
+  if err then return nil, err
+  elseif not peers then return nil, 'no peers in shm' end
+
+  self.release_version, err = cluster_release_version(peers)
+  if not self.release_version then return nil, err end
+
+  return true
+end
+
+function _M:infos()
   return {
     desc = "keyspace",
-    name = self:_get_conn_options().keyspace
+    name = self.cluster_options.keyspace
   }
 end
 
@@ -75,19 +129,17 @@ local function serialize_arg(field, value)
   elseif field.type == "timestamp" then
     return cassandra.timestamp(value)
   elseif field.type == "table" or field.type == "array" then
-    local json = require "cjson"
-    return json.encode(value)
+    return cjson.encode(value)
   else
     return value
   end
 end
 
 local function deserialize_rows(rows, schema)
-  local json = require "cjson"
   for i, row in ipairs(rows) do
     for col, value in pairs(row) do
       if schema.fields[col].type == "table" or schema.fields[col].type == "array" then
-        rows[i][col] = json.decode(value)
+        rows[i][col] = cjson.decode(value)
       end
     end
   end
@@ -170,23 +222,17 @@ local function check_foreign_constaints(self, values, constraints)
   return Errors.foreign(errors)
 end
 
-function CassandraDB:query(query, args, opts, schema, no_keyspace)
-  CassandraDB.super.query(self, query, args)
-
-  local conn_opts = self:_get_conn_options()
+function _M:query(query, args, options, schema, no_keyspace)
+  local opts = self:clone_query_options(options)
+  local coordinator_opts = {}
   if no_keyspace then
-    conn_opts.keyspace = nil
+    -- defaults to the system keyspace, always present
+    coordinator_opts.keyspace = "system"
   end
 
-  local session, err = cassandra.spawn_session(conn_opts)
-  if err then
-    return nil, Errors.db(tostring(err))
-  end
-
-  local res, err = session:execute(query, args, opts)
-  session:set_keep_alive()
-  if err then
-    return nil, Errors.db(tostring(err))
+  local res, err = self.cluster:execute(query, args, opts, coordinator_opts)
+  if not res then
+    return nil, Errors.db(err)
   end
 
   if schema ~= nil and res.type == "ROWS" then
@@ -196,7 +242,7 @@ function CassandraDB:query(query, args, opts, schema, no_keyspace)
   return res
 end
 
-function CassandraDB:insert(table_name, schema, model, constraints, options)
+function _M:insert(table_name, schema, model, constraints, options)
   local err = check_unique_constraints(self, table_name, constraints, model)
   if err then
     return nil, err
@@ -235,7 +281,7 @@ function CassandraDB:insert(table_name, schema, model, constraints, options)
   return row
 end
 
-function CassandraDB:find(table_name, schema, filter_keys)
+function _M:find(table_name, schema, filter_keys)
   local where, args = get_where(schema, filter_keys)
   local query = get_select_query(table_name, where)
   local rows, err = self:query(query, args, nil, schema)
@@ -246,24 +292,20 @@ function CassandraDB:find(table_name, schema, filter_keys)
   end
 end
 
-function CassandraDB:find_all(table_name, tbl, schema)
-  local conn_opts = self:_get_conn_options()
-  local session, err = cassandra.spawn_session(conn_opts)
-  if err then
-    return nil, Errors.db(tostring(err))
-  end
-
+function _M:find_all(table_name, tbl, schema)
+  local opts = self:clone_query_options()
   local where, args
   if tbl ~= nil then
     where, args = get_where(schema, tbl)
   end
 
+  local err
   local query = get_select_query(table_name, where)
-  local res_rows, err = {}, nil
+  local res_rows = {}
 
-  for rows, page_err in session:execute(query, args, {auto_paging = true}) do
+  for rows, page_err in self.cluster:iterate(query, args, opts) do
     if page_err then
-      err = Errors.db(tostring(page_err))
+      err = Errors.db(page_err)
       res_rows = nil
       break
     end
@@ -275,12 +317,10 @@ function CassandraDB:find_all(table_name, tbl, schema)
     end
   end
 
-  session:set_keep_alive()
-
   return res_rows, err
 end
 
-function CassandraDB:find_page(table_name, tbl, paging_state, page_size, schema)
+function _M:find_page(table_name, tbl, paging_state, page_size, schema)
   local where, args
   if tbl ~= nil then
     where, args = get_where(schema, tbl)
@@ -301,7 +341,7 @@ function CassandraDB:find_page(table_name, tbl, paging_state, page_size, schema)
   end
 end
 
-function CassandraDB:count(table_name, tbl, schema)
+function _M:count(table_name, tbl, schema)
   local where, args
   if tbl ~= nil then
     where, args = get_where(schema, tbl)
@@ -316,7 +356,7 @@ function CassandraDB:count(table_name, tbl, schema)
   end
 end
 
-function CassandraDB:update(table_name, schema, constraints, filter_keys, values, nils, full, model, options)
+function _M:update(table_name, schema, constraints, filter_keys, values, nils, full, model, options)
   -- must check unique constaints manually too
   local err = check_unique_constraints(self, table_name, constraints, values, filter_keys, true)
   if err then
@@ -403,7 +443,7 @@ local function cascade_delete(self, primary_keys, constraints)
   end
 end
 
-function CassandraDB:delete(table_name, schema, primary_keys, constraints)
+function _M:delete(table_name, schema, primary_keys, constraints)
   local row, err = self:find(table_name, schema, primary_keys)
   if err or row == nil then
     return nil, err
@@ -425,7 +465,7 @@ end
 
 -- Migrations
 
-function CassandraDB:queries(queries, no_keyspace)
+function _M:queries(queries, no_keyspace)
   for _, query in ipairs(utils.split(queries, ";")) do
     if utils.strip(query) ~= "" then
       local err = select(2, self:query(query, nil, nil, nil, no_keyspace))
@@ -436,19 +476,19 @@ function CassandraDB:queries(queries, no_keyspace)
   end
 end
 
-function CassandraDB:drop_table(table_name)
+function _M:drop_table(table_name)
   return select(2, self:query("DROP TABLE "..table_name))
 end
 
-function CassandraDB:truncate_table(table_name)
+function _M:truncate_table(table_name)
   return select(2, self:query("TRUNCATE "..table_name))
 end
 
-function CassandraDB:current_migrations()
+function _M:current_migrations()
   -- Check if keyspace exists
   local rows, err = self:query([[
     SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?
-  ]], {self.options.keyspace}, nil, nil, true)
+  ]], {self.cluster_options.keyspace}, nil, nil, true)
   if err then
     return nil, err
   elseif #rows == 0 then
@@ -460,7 +500,7 @@ function CassandraDB:current_migrations()
     SELECT COUNT(*) FROM system.schema_columnfamilies
     WHERE keyspace_name = ? AND columnfamily_name = ?
   ]], {
-    self.options.keyspace,
+    self.cluster_options.keyspace,
     "schema_migrations"
   })
   if err then
@@ -474,7 +514,7 @@ function CassandraDB:current_migrations()
   end
 end
 
-function CassandraDB:record_migration(id, name)
+function _M:record_migration(id, name)
   return select(2, self:query([[
     UPDATE schema_migrations SET migrations = migrations + ? WHERE id = ?
   ]], {
@@ -483,4 +523,4 @@ function CassandraDB:record_migration(id, name)
   }))
 end
 
-return CassandraDB
+return _M
