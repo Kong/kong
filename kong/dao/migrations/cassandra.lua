@@ -145,6 +145,9 @@ return {
     ]]
   },
   {
+    -- This is a 2 step migration; first create the extra column, using a cql statement
+    -- and following iterate over the entries to insert default values.
+    -- Step 1)
     name = "2016-09-05-212515_retries_step_1",
     up = [[
       ALTER TABLE apis ADD retries int;
@@ -154,6 +157,7 @@ return {
     ]]
   },
   {
+    -- Step 2)
     name = "2016-09-05-212515_retries_step_2",
     up = function(_, _, dao)
       local rows, err = dao.apis:find_all() -- fetch all rows
@@ -163,7 +167,6 @@ return {
 
       for _, row in ipairs(rows) do
         if not row.retries then  -- only if retries is not set already
-          row.retries = 5
           local _, err = dao.apis:update(row, { id = row.id }, {full = true})
           if err then
             return err
@@ -171,9 +174,7 @@ return {
         end
       end
     end,
-    down = [[
-      ALTER TABLE apis DROP retries;
-    ]]
+    down = nil, 
   }
 }
 
