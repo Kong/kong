@@ -158,7 +158,7 @@ describe("Resolver", function()
       end)
 
       -- non existant request_path
-      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/inexistant-mockbin", {})
+      local api, upstream_url, upstream_host, _ = resolver.execute("/inexistant-mockbin", {})
       assert.falsy(api)
       assert.falsy(upstream_url)
       assert.falsy(upstream_host)
@@ -303,7 +303,7 @@ describe("Resolver", function()
       ngx.status = nil
     end)
     it("should have or not have a trailing slash depending on the request URI", function()
-      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/strip/", {})
+      local api, upstream_url, _, upstream_table = resolver.execute("/strip/", {})
       assert.same(APIS_FIXTURES[9], api)
       assert.same({
           authority = 'mockbin.com',
@@ -328,7 +328,7 @@ describe("Resolver", function()
     end)
     it("should strip the querystring out of the URI", function()
       -- it will be re-inserted by core.handler just before proxying, once all plugins have been run and eventually modified it
-      local api, upstream_url, upstream_host, upstream_table = resolver.execute("/?hello=world&foo=bar", {["Host"] = "mockbin.com"})
+      local api, upstream_url, _, upstream_table = resolver.execute("/?hello=world&foo=bar", {["Host"] = "mockbin.com"})
       assert.same(APIS_FIXTURES[1], api)
       assert.same({
           authority = 'mockbin.com',

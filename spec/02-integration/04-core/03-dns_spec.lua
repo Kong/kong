@@ -16,7 +16,6 @@ local function bad_tcp_server(port, duration, ...)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
-      local clientlist = {}
       while socket.gettime() < expire do
         local client, err = server:accept()
         socket.sleep(0.1)
@@ -39,6 +38,7 @@ describe("Core DNS", function()
   describe("retries", function()
     
     local retries = 3
+    local client
     
     setup(function()
       assert(helpers.start_kong())

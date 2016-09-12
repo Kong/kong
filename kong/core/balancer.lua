@@ -1,4 +1,3 @@
-local utils = require "kong.tools.utils"
 local dns_client = require "dns.client"
 
 local toip = dns_client.toip
