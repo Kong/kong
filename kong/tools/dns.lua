@@ -13,6 +13,7 @@ local setup_client = function(conf)
   conf = conf or {}
   local hosts = conf.dns_hostsfile      -- filename
   local servers = conf.dns_resolver     -- array with ipv4[:port] entries
+  if #servers == 0 then servers = nil end  -- drop an empty table to switch to defaults from `resolv.conf`
   
   -- servers must be reformatted as name/port sub-arrays
   if servers then
