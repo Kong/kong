@@ -262,7 +262,7 @@ usage of the tests suites and the Makefile.
 
 Finally, a very useful tool in Lua development (as with many other dynamic
 languages) is performing static linting of your code. You can use [luacheck]
-(installed with `make dev`) for this:
+\(installed with `make dev`\) for this:
 
 ```
 $ make lint
