@@ -14,8 +14,8 @@ local function execute(args)
   local dao = DAOFactory(conf)
   local err
   xpcall(function()
-    assert(dao:run_migrations())
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
+    assert(dao:run_migrations())
     if conf.dnsmasq then
       assert(dnsmasq_signals.start(conf))
     end
@@ -24,10 +24,10 @@ local function execute(args)
     log("Kong started")
   end, function(e)
     log.verbose("could not start Kong, stopping services")
-    nginx_signals.stop(conf)
-    serf_signals.stop(conf, dao)
+    pcall(nginx_signals.stop(conf))
+    pcall(serf_signals.stop(conf, dao))
     if conf.dnsmasq then
-      dnsmasq_signals.stop(conf)
+      pcall(dnsmasq_signals.stop(conf))
     end
     err = e -- cannot throw from this function
     log.verbose("stopped services")
