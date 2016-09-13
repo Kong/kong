@@ -1,4 +1,4 @@
-local pgmoon = require "pgmoon-mashape"
+local pgmoon = require "pgmoon"
 local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
@@ -138,7 +138,6 @@ function PostgresDB:query(query, schema)
   PostgresDB.super.query(self, query)
 
   local conn_opts = self:_get_conn_options()
-print(require("pl.pretty").write(conn_opts))
   local pg = pgmoon.new(conn_opts)
   local ok, err = pg:connect()
   if not ok then

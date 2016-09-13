@@ -39,16 +39,16 @@ local toip
 -- STEP 3: store original unpatched versions
 local old_tcp = ngx.socket.tcp
 -- STEP 4: patch globals
+print(" ======================> Patching global socket.tcp...")
 _G.ngx.socket.tcp = function(...)
-print("=======================> Here we go! <=======================")
   local sock = old_tcp(...)
   local old_connect = sock.connect
   sock.connect = function(s, host, port, sock_opts)
-print("=======================> connecting <========================")
+print(" ======================> Patching a tcp socket here...")
     local target_ip, target_port = toip(host, port)
     
     if not target_ip then 
-      return nil, target_port 
+      return nil, "[toip() name lookup failed]:"..tostring(target_port)
     else
       -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
       if not sock_opts then

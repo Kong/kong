@@ -1,5 +1,7 @@
 #!/usr/bin/env resty
 
+-- require global patches, to enable dns resolution by the internal client
+-- initializing the dns client is done in `./kong/conf_loader.lua` 
 require "kong.core.globalpatches"
 
 require("kong.cmd.init")(arg)

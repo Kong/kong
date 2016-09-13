@@ -1,12 +1,11 @@
 local dns_client
 
 --- Load and setup the DNS client according to the provided configuration.
+-- Will clear the cache if called multiple times.
 -- @param conf (table) Kong configuration
 -- @return the initialized `dns.client` module, or nil+error if it was already initialized
 local setup_client = function(conf)
-  if dns_client then
-    return nil, "DNS client already initialized"
-  else
+  if not dns_client then 
     dns_client = require "dns.client"
   end
 

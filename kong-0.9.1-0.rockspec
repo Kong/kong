@@ -21,14 +21,14 @@ dependencies = {
   "version == 0.2",
   "lapis == 1.5.1",
   "lua-cassandra == 0.5.3",
-  "pgmoon-mashape == 2.0.0",
+  "pgmoon == 1.6.0",
   "luatz == 0.3",
   "lua_system_constants == 0.1.1",
   "lua-resty-iputils == 0.2.1",
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.4",
-  "dns == 0.1",
+  "dns == 0.1.0",
 }
 build = {
   type = "builtin",

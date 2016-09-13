@@ -372,6 +372,10 @@ local function load(path, custom_conf)
 
   log.verbose("prefix in use: %s", conf.prefix)
 
+  -- initialize the dns client, so the globally patched tcp.connect method
+  -- will work from here onwards.
+  assert(require("kong.tools.dns")(conf))
+  
   return setmetatable(conf, nil) -- remove Map mt
 end
 
