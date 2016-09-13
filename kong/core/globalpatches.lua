@@ -17,9 +17,7 @@ local seed
 -- unique seed for Nginx workers).
 -- luacheck: globals math
 _G.math.randomseed = function()
-  if ngx.get_phase() ~= "init_worker" then
-    ngx.log(ngx.ERR, "math.randomseed() must be called in init_worker")
-  elseif not seed then
+  if not seed then
     seed = ngx.time() + ngx.worker.pid()
     ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
                        " (pid: ", ngx.worker.pid(), ")")
@@ -42,9 +40,11 @@ local toip
 local old_tcp = ngx.socket.tcp
 -- STEP 4: patch globals
 _G.ngx.socket.tcp = function(...)
+print("=======================> Here we go! <=======================")
   local sock = old_tcp(...)
   local old_connect = sock.connect
   sock.connect = function(s, host, port, sock_opts)
+print("=======================> connecting <========================")
     local target_ip, target_port = toip(host, port)
     
     if not target_ip then 
