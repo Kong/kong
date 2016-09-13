@@ -6,7 +6,7 @@ _G._KONG = {
   _VERSION = meta._VERSION
 }
 
-local seed
+local seed_registry = {}
 
 --- Seeds the random generator, use with care.
 -- The uuid.seed() method will create a unique seed per worker
@@ -17,19 +17,21 @@ local seed
 -- unique seed for Nginx workers).
 -- luacheck: globals math
 _G.math.randomseed = function()
-  if not seed then
-    if ngx.get_phase() ~= "init_worker" then
-      ngx.log(ngx.ERR, "math.randomseed() must be called in init_worker")
-      return
-    end
-
+  local pid = ngx.worker.pid()
+  local seed
+  
+  if not seed_registry[pid] then
     seed = ngx.time() + ngx.worker.pid()
-    ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
-                       " (pid: ", ngx.worker.pid(), ")")
+    ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker ", pid)
     randomseed(seed)
+    seed_registry[pid] = { 
+      seed = seed, 
+      trace = debug.traceback("Initially seeded from context '"..ngx.get_phase().."':"),
+    }
   else
-    ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                       "already seeded with ", seed)
+    seed = seed_registry[pid].seed
+    ngx.log(ngx.ERR, debug.traceback("attempt to re-seed random number generator")..
+                                     "\n"..seed_registry[pid].trace)
   end
 
   return seed
