@@ -1,5 +1,10 @@
 sudo: false
 
+language: c
+
+compiler:
+  - gcc
+
 notifications:
   email: false
 
@@ -15,11 +20,12 @@ addons:
 env:
   global:
     - SERF=0.7.0
-    - LUAROCKS=2.3.0
+    - LUAROCKS=2.4.0
     - OPENSSL=1.0.2h
     - CASSANDRA=2.2.7
     - OPENRESTY=1.9.15.1
-    - $CACHE_DIR=$HOME/cache
+    - DOWNLOAD_CACHE=$HOME/download-cache
+    - INSTALL_CACHE=$HOME/install-cache
   matrix:
     - TEST_SUITE=lint
     - TEST_SUITE=unit
@@ -39,5 +45,6 @@ cache:
   apt: true
   pip: true
   directories:
-    - $CACHE_DIR
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
     - $HOME/.ccm/repository
