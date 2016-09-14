@@ -303,7 +303,33 @@ local function transform_body(conf)
   end
 end
 
+local function transform_method(conf)
+  if conf.http_method then
+    ngx.req.set_method(ngx["HTTP_"..conf.http_method:upper()])
+    if conf.http_method == "GET" then
+      local content_type_value = req_get_headers()[CONTENT_TYPE]
+      local content_type = get_content_type(content_type_value)
+      if content_type == ENCODED then
+        -- Also put the body into querystring
+
+        -- Read the body
+        req_read_body()
+        local body = req_get_body_data()
+        local parameters = decode_args(body)
+
+        -- Append to querystring
+        local querystring = req_get_uri_args()
+        for name, value in pairs(parameters) do
+          querystring[name] = value
+        end
+        req_set_uri_args(querystring)
+      end
+    end
+  end
+end
+
 function _M.execute(conf)
+  transform_method(conf)
   transform_body(conf)
   transform_headers(conf)
   transform_querystrings(conf)

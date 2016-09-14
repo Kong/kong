@@ -12,6 +12,8 @@ describe("Plugin: request-transformer (access)", function()
     local api4 = assert(helpers.dao.apis:insert {request_host = "test4.com", upstream_url = "http://mockbin.com"})
     local api5 = assert(helpers.dao.apis:insert {request_host = "test5.com", upstream_url = "http://mockbin.com"})
     local api6 = assert(helpers.dao.apis:insert {request_host = "test6.com", upstream_url = "http://mockbin.com"})
+    local api7 = assert(helpers.dao.apis:insert {request_host = "test7.com", upstream_url = "http://mockbin.com"})
+    local api8 = assert(helpers.dao.apis:insert {request_host = "test8.com", upstream_url = "http://mockbin.com"})
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -89,6 +91,20 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
+    assert(helpers.dao.plugins:insert {
+      api_id = api7.id,
+      name = "request-transformer",
+      config = {
+        http_method = "POST"
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api8.id,
+      name = "request-transformer",
+      config = {
+        http_method = "GET"
+      }
+    })
   end)
   teardown(function()
     helpers.stop_kong()
@@ -101,6 +117,41 @@ describe("Plugin: request-transformer (access)", function()
     if client then client:close() end
   end)
 
+  describe("http method", function()
+    it("changes the HTTP method from GET to POST", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request?hello=world&name=marco",
+        headers = {
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equal("POST", json.method)
+      assert.equal("world", json.queryString.hello)
+      assert.equal("marco", json.queryString.name)
+    end)
+    it("changes the HTTP method from POST to GET", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request?hello=world",
+        body = {
+          name = "marco"
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test8.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equal("GET", json.method)
+      assert.equal("marco", json.postData.params.name)
+      assert.equal("world", json.queryString.hello)
+      assert.equal("marco", json.queryString.name)
+    end)
+  end)
   describe("remove", function()
     it("specified header", function()
       local r = assert(client:send {
