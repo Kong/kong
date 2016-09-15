@@ -261,5 +261,8 @@ build = {
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
     ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
     ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua",
+
+    ["kong.plugins.path-router.handler"] = "kong/plugins/path-router/handler.lua",
+    ["kong.plugins.path-router.schema"] = "kong/plugins/path-router/schema.lua"
   }
 }
