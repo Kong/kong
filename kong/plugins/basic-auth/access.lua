@@ -6,6 +6,7 @@ local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 
 local realm = 'Basic realm="'.._KONG._NAME..'"'
+local empty = {}
 
 local _M = {}
 
@@ -34,7 +35,7 @@ local function retrieve_credentials(request, header_name, conf)
       return
     end
 
-    if m and table.getn(m) > 0 then
+    if next(m or empty) then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
         local basic_parts = utils.split(decoded_basic, ":")

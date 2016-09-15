@@ -105,7 +105,7 @@ helpers.for_each_dao(function(kong_config)
         assert.truthy(api.id)
         assert.False(api.preserve_host)
         assert.is_number(api.created_at)
-        assert.equal(13, string.len(tostring(api.created_at))) -- Make sure the timestamp has millisecond precision when returned
+        assert.equal(13, #tostring(api.created_at)) -- Make sure the timestamp has millisecond precision when returned
       end)
       it("respect UNIQUE fields", function()
         local api, err = apis:insert(api_tbl)
@@ -488,7 +488,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.same(api_fixture, api)
         assert.is_number(api.created_at)
-        assert.equal(13, string.len(tostring(api.created_at))) -- Make sure the timestamp has millisecond precision when returned
+        assert.equal(13, #tostring(api.created_at)) -- Make sure the timestamp has millisecond precision when returned
       end)
       it("update with arbitrary filtering keys", function()
         api_fixture.name = "updated"
