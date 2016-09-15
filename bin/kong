@@ -12,4 +12,8 @@ for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
   socket.force_luasocket(ngx.get_phase(), true)
 end
 
+if ngx ~= nil then
+  ngx.exit = function()end
+end
+
 require("kong.cmd.init")(arg)
