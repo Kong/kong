@@ -1,5 +1,9 @@
 #!/usr/bin/env resty
 
+-- a flag to detect whether our modules (especially kong.core.globalpatches)
+-- are running under resty-cli or in a real ngx_lua, runtime environment.
+ngx.RESTY_CLI = true
+
 -- force LuaSocket usage to resolve `/etc/hosts` until
 -- supported by resty-cli.
 -- See https://github.com/Mashape/kong/issues/1523

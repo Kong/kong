@@ -9,21 +9,29 @@ _G._KONG = {
 local seed
 
 --- Seeds the random generator, use with care.
--- The uuid.seed() method will create a unique seed per worker
--- process, using a combination of both time and the worker's pid.
--- We only allow it to be called once to prevent third-party modules
--- from overriding our correct seed (many modules make a wrong usage
--- of `math.randomseed()` by calling it multiple times or do not use
--- unique seed for Nginx workers).
+-- Once - properly - seeded, this method is replaced with a stub
+-- one. This is to enforce best-practises for seeding in ngx_lua,
+-- and prevents third-party modules from overriding our correct seed
+-- (many modules make a wrong usage of `math.randomseed()` by calling
+-- it multiple times or do not use unique seed for Nginx workers).
+--
+-- This patched method will create a unique seed per worker process,
+-- using a combination of both time and the worker's pid.
 -- luacheck: globals math
 _G.math.randomseed = function()
   if not seed then
-    if ngx.get_phase() ~= "init_worker" then
+    -- If we're in runtime nginx, we have multiple workers so we _only_
+    -- accept seeding when in the 'init_worker' phase.
+    -- That is because that phase is the earliest one before the
+    -- workers have a chance to process business logic, and because
+    -- if we'd do that in the 'init' phase, the Lua VM is not forked
+    -- yet and all workers would end-up using the same seed.
+    if not ngx.RESTY_CLI and ngx.get_phase() ~= "init_worker" then
       error("math.randomseed() must be called in init_worker", 2)
     end
 
     seed = ngx.time() + ngx.worker.pid()
-    ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
+    ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ", ngx.worker.id(),
                        " (pid: ", ngx.worker.pid(), ")")
     randomseed(seed)
   else
