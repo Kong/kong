@@ -5,9 +5,31 @@ _G._KONG = {
   _VERSION = meta._VERSION
 }
 
+local is_resty_cli = (arg ~= nil) -- only the cli has a global `arg` table, openresty doesn't have it
 
 do -- randomseeding patch
   
+  -- globally disable randomseed
+  local randomseed = _G.math.randomseed
+  local seed_index = {}
+  _G.math.randomseed = function()
+
+    -- Init is special because a forked worker has to reseed, so we use a string key.
+    -- Not entirely sure this is necessary, but better safe than sorry.
+    local whoami = ngx.get_phase() == "init" and "init" or ngx.worker.pid()
+
+    if not seed_index[whoami] then
+      local seed = ngx.time() + ngx.worker.pid()
+      ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
+                         " (pid: ", ngx.worker.pid(), ")")
+      randomseed(seed)
+      seed_index[whoami] = seed
+    else
+      ngx.log(ngx.DEBUG, debug.traceback("ignoring attempt to reseed the random generator @ "))
+    end
+  end
+
+  --[[ The below code will enforce best practices, but fails when the culprit is in external code
   local randomseed = math.randomseed
   local seed
 
@@ -21,17 +43,20 @@ do -- randomseeding patch
   -- luacheck: globals math
   _G.math.randomseed = function()
     if not seed then
+      if ngx.get_phase() ~= "init_worker" and not is_resty_cli then  
+        error("math.randomseed() must be called in init_worker", 2)
+      end
+
       seed = ngx.time() + ngx.worker.pid()
       ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
                          " (pid: ", ngx.worker.pid(), ")")
       randomseed(seed)
     else
       ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                         "already seeded")
+                         "already seeded with ", seed)
     end
-
-    return seed
   end
+  --]]
 end
 
 
@@ -74,7 +99,7 @@ end
 
 do -- patch for LuaSocket tcp sockets, block usage in cli.
 
-  if arg then  -- resty has an `arg` global, `openresty` does not
+  if is_resty_cli then
     local socket = require "socket"
     socket.tcp = function(...)
       error("should not be using this")
@@ -89,7 +114,7 @@ do -- Cassandra cache-shm patch
   --- Patch cassandra driver.
   -- The cache module depends on an `shm` which isn't available on the `resty` cli.
   -- in non-nginx Lua it uses a stub. So for the cli make it think it's non-nginx.
-  if arg then  -- resty has an `arg` global, `openresty` does not
+  if is_resty_cli then
     local old_ngx = _G.ngx
     _G.ngx = nil
     require "cassandra.cache"
@@ -103,16 +128,18 @@ do -- cassandra resty-lock patch
   
   --- stub for resty.lock module which isn't available in the `resty` cli because it
   -- requires an `shm`.
-  package.loaded["resty.lock"] = {
-      new = function()
-        return {
-          lock = function(self, key)
-            return 0   -- cli is single threaded, so a lock always succeeds
-          end,
-          unlock = function(self, key)
-            return 1   -- same as above, always succeeds
-          end
-        }
-      end,
-    }
+  if is_resty_cli then
+    package.loaded["resty.lock"] = {
+        new = function()
+          return {
+            lock = function(self, key)
+              return 0   -- cli is single threaded, so a lock always succeeds
+            end,
+            unlock = function(self, key)
+              return 1   -- same as above, always succeeds
+            end
+          }
+        end,
+      }
+  end
 end
