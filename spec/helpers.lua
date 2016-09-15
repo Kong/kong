@@ -34,6 +34,21 @@ local dao = DAOFactory(conf)
 -----------------
 local resty_http_proxy_mt = {}
 
+local pack = function(...) return { n = select("#", ...), ... } end
+local unpack = function(t) return unpack(t, 1, t.n) end
+
+--- Prints all returned parameters.
+-- Simple debugging aid.
+-- @usage -- modify
+-- local a,b = some_func(c,d)
+-- -- into
+-- local a,b = intercept(some_func(c,d))
+local function intercept(...)
+  local args = pack(...)
+  print(require("pl.pretty").write(args))
+  return unpack(args)
+end
+
 -- Case insensitive lookup function, returns the value and the original key. Or
 -- if not found nil and the search key
 -- @usage -- sample usage

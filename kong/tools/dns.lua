@@ -11,12 +11,11 @@ local setup_client = function(conf)
 
   conf = conf or {}
   local hosts = conf.dns_hostsfile      -- filename
-  local servers = conf.dns_resolver     -- array with ipv4[:port] entries
-  if #servers == 0 then servers = nil end  -- drop an empty table to switch to defaults from `resolv.conf`
+  local servers = {}
   
   -- servers must be reformatted as name/port sub-arrays
-  if servers then
-    for i, server in ipairs(servers) do
+  if conf.dns_resolver then
+    for i, server in ipairs(conf.dns_resolver) do
       local ip, port = server:match("^([^:]+)%:*(%d*)$")
       servers[i] = { ip, tonumber(port) or 53 }   -- inserting port if omitted
     end
