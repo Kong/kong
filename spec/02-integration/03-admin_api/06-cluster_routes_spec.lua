@@ -88,17 +88,21 @@ describe("Admin API", function()
         })
         assert.res_status(200, res) -- why not 204??
 
-        ngx.sleep(3)
+        local json
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/cluster"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        assert.equal("alive", json.data[1].status)
+        helpers.wait_until(function()
+          res = assert(client:send {
+            method = "GET",
+            path = "/cluster"
+          })
+          local body = assert.res_status(200, res)
+          json = cjson.decode(body)
+          assert.equal(2, #json.data)
+          assert.equal(2, json.total)
+          assert.equal("alive", json.data[1].status)
+          return json.data[2].status == "leaving"
+        end, 10)
+
         assert.equal("leaving", json.data[2].status)
       end)
     end)
