@@ -229,9 +229,9 @@ local function tcp_server(port, ...)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
-      local client = server:accept()
-      local line, err = client:receive()
-      if not err then client:send(line .. "\n") end
+      local client = assert(server:accept())
+      local line = assert(client:receive())
+      client:send(line .. "\n")
       client:close()
       server:close()
       return line
@@ -258,7 +258,7 @@ local function http_server(port, ...)
       assert(server:setoption('reuseaddr', true))
       assert(server:bind("*", port))
       assert(server:listen())
-      local client = server:accept()
+      local client = assert(server:accept())
 
       local lines = {}
       local line, err
@@ -302,12 +302,12 @@ local function udp_server(port)
     function(port)
       local socket = require "socket"
       local server = assert(socket.udp())
-      server:settimeout(10)
+      server:settimeout(5)
       server:setoption("reuseaddr", true)
       server:setsockname("127.0.0.1", port)
-      local data = server:receive()
+      local data, err = server:receive()
       server:close()
-      return data
+      return data, err
     end
   }, port or 9999)
 
