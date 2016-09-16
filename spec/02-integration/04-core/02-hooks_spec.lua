@@ -657,7 +657,7 @@ describe("Core Hooks", function()
       os.execute(string.format("kill `cat %s` >/dev/null 2>&1", PID_FILE))
     end
 
-    it("should syncronize nodes on members events", function()
+    it("should synchronize nodes on members events", function()
       start_serf()
 
       -- Tell Kong to join the new Serf

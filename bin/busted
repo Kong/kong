@@ -1,17 +1,11 @@
-#!/usr/bin/env resty
-
--- force LuaSocket usage to resolve `/etc/hosts` until
--- supported by resty-cli.
--- See https://github.com/Mashape/kong/issues/1523
-for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
-  local socket = require(namespace .. ".socket")
-  socket.force_luasocket(ngx.get_phase(), true)
-end
+#!/usr/bin/env resty -c 65535
 
 package.path = "?/init.lua;"..package.path
 
+require "kong.core.globalpatches"
+
 if ngx ~= nil then
-  ngx.exit = function()end
+  ngx.exit = function() end
 end
 
 -- Busted command-line runner
