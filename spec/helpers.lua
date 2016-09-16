@@ -73,15 +73,24 @@ local function wait_until(f, timeout)
 
   timeout = timeout or 2
   local tstart = ngx.time()
-  local texp, ok = tstart + timeout
+  local texp = tstart + timeout
+  local ok, res, err
 
   repeat
     ngx.sleep(0.2)
-    ok = f()
-  until ok or ngx.time() >= texp
+    ok, res, err = pcall(f)
+  until not ok or res or ngx.time() >= texp
 
   if not ok then
-    error("wait_until() timeout", 2)
+    -- report error from `f`, such as assert gone wrong
+    error(tostring(res), 2)
+  elseif not res and err then
+    -- report a failure for `f` to meet its condition
+    -- and eventually an error return value which could be the cause
+    error("wait_until() timeout: "..tostring(err).." (after delay: "..timeout.."s)", 2)
+  elseif not res then
+    -- report a failure for `f` to meet its condition
+    error("wait_until() timeout (after delay "..timeout.."s)", 2)
   end
 end
 
