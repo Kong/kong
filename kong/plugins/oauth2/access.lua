@@ -39,8 +39,6 @@ local AUTHENTICATED_USERID = "authenticated_userid"
 local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
 local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
-local empty = {}
-
 local function generate_token(conf, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
@@ -238,7 +236,7 @@ local function retrieve_client_credentials(parameters)
       return
     end
 
-    if next(m or empty) then
+    if m and next(m) then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
         local basic_parts = utils.split(decoded_basic, ":")
