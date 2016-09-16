@@ -236,7 +236,7 @@ local function retrieve_client_credentials(parameters)
       return
     end
 
-    if m and table.getn(m) > 0 then
+    if m and next(m) then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
         local basic_parts = utils.split(decoded_basic, ":")
@@ -404,7 +404,7 @@ local function parse_access_token(conf)
         parameters = ngx.req.get_post_args()
         parameters[ACCESS_TOKEN] = nil
         local encoded_args = ngx.encode_args(parameters)
-        ngx.req.set_header(CONTENT_LENGTH, string.len(encoded_args))
+        ngx.req.set_header(CONTENT_LENGTH, #encoded_args)
         ngx.req.set_body_data(encoded_args)
       end
     end
