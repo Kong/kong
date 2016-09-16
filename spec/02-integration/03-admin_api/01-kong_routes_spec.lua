@@ -4,7 +4,9 @@ local cjson = require "cjson"
 describe("Admin API", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong {
+      pg_password = "hide_me"
+    })
     client = helpers.admin_client(10000)
   end)
   teardown(function()
@@ -47,6 +49,25 @@ describe("Admin API", function()
           local body = assert.response(res).has.status(405)
           assert.equal([[{"message":"Method not allowed"}]], body)
         end
+      end)
+      it("exposes the node's configuration", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_table(json.configuration)
+      end)
+      it("obfuscates sensitive settings from the configuration", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/"
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.is_string(json.configuration.pg_password)
+        assert.not_equal("hide_me", json.configuration.pg_password)
       end)
     end)
   end)
