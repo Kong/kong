@@ -75,9 +75,9 @@ do -- cosockets connect patch for dns resolution
   _G.ngx.socket.tcp = function(...)
     local sock = old_tcp(...)
     local old_connect = sock.connect
+    
     sock.connect = function(s, host, port, sock_opts)
       local target_ip, target_port = toip(host, port)
-      
       if not target_ip then 
         return nil, "[toip() name lookup failed]:"..tostring(target_port)
       else

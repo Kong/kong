@@ -1,8 +1,8 @@
-#!/usr/bin/env resty
+#!/usr/bin/env resty -c 65535
 
 package.path = "?/init.lua;"..package.path
 
--- require "kong.core.globalpatches"
+require "kong.core.globalpatches"
 
 if ngx ~= nil then
   ngx.exit = function() end
