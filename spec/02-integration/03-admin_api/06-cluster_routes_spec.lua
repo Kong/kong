@@ -88,22 +88,28 @@ describe("Admin API", function()
         })
         assert.res_status(200, res) -- why not 204??
 
-        local json
-
         helpers.wait_until(function()
           res = assert(client:send {
             method = "GET",
             path = "/cluster"
           })
           local body = assert.res_status(200, res)
-          json = cjson.decode(body)
+          local json = cjson.decode(body)
           assert.equal(2, #json.data)
           assert.equal(2, json.total)
-          assert.equal("alive", json.data[1].status)
+
+          local alive, leaving
+          for k, v in ipairs(json.data) do
+            if v.address == "127.0.0.1:20001" then
+              leaving = v
+            else
+              alive = v
+            end
+          end
+
+          assert.equal("alive", alive.status)
           return json.data[2].status == "leaving"
         end, 10)
-
-        assert.equal("leaving", json.data[2].status)
       end)
     end)
   end)
