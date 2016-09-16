@@ -29,6 +29,32 @@ describe("helpers: assertions and modifiers", function()
     if client then client:close() end
   end)
 
+  describe("wait_until()", function()
+    it("does not errors out if thing happens", function()
+      assert.has_no_error(function()
+        local i = 0
+        helpers.wait_until(function()
+          i = i + 1
+          return i > 1
+        end, 1)
+      end)
+    end)
+    it("errors out after delay", function()
+      assert.error_matches(function()
+        helpers.wait_until(function()
+          return false, "thing still not done"
+        end, 1)
+      end, "timeout: thing still not done")
+    end)
+    it("reports errors in test function", function()
+      assert.error_matches(function()
+        helpers.wait_until(function()
+          assert.equal("foo", "bar")
+        end, 1)
+      end, "Expected objects to be equal.", nil, true)
+    end)
+  end)
+
   describe("response modifier", function()
     it("fails with bad input", function()
       assert.error(function() assert.response().True(true) end)
