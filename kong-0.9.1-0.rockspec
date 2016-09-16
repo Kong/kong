@@ -74,6 +74,7 @@ build = {
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
+    ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
@@ -100,6 +101,8 @@ build = {
     ["kong.dao.schemas.nodes"] = "kong/dao/schemas/nodes.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
+    ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
+    ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
     ["kong.dao.base_db"] = "kong/dao/base_db.lua",
     ["kong.dao.cassandra_db"] = "kong/dao/cassandra_db.lua",
     ["kong.dao.postgres_db"] = "kong/dao/postgres_db.lua",

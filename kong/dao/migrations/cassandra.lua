@@ -175,6 +175,33 @@ return {
       end
     end,
     down = nil, 
-  }
+  },
+  {
+    name = "2016-09-16-141423_upstreams",
+    up = [[
+      CREATE TABLE IF NOT EXISTS upstreams(
+        id uuid,
+        name text,
+        slots int,
+        orderlist text,
+        created_at timestamp,
+        PRIMARY KEY (id)
+      );
+      CREATE INDEX IF NOT EXISTS ON upstreams(name);
+      CREATE TABLE IF NOT EXISTS targets(
+        id uuid,
+        target text,
+        weight int,
+        upstream_id uuid,
+        created_at timestamp,
+        PRIMARY KEY ((id), created_at)
+      );
+      CREATE INDEX IF NOT EXISTS ON targets(upstream_id);
+    ]],
+    down = [[
+      DROP TABLE upstreams;
+      DROP TABLE targets;
+    ]],
+  },
 }
 
