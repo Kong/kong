@@ -108,7 +108,7 @@ describe("Admin API", function()
           end
 
           assert.equal("alive", alive.status)
-          return json.data[2].status == "leaving"
+          return leaving.status == "leaving"
         end, 10)
       end)
     end)
