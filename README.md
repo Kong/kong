@@ -262,7 +262,7 @@ usage of the tests suites and the Makefile.
 
 Finally, a very useful tool in Lua development (as with many other dynamic
 languages) is performing static linting of your code. You can use [luacheck]
-(installed with `make dev`) for this:
+\(installed with `make dev`\) for this:
 
 ```
 $ make lint
@@ -312,7 +312,7 @@ limitations under the License.
 [gitter-url]: https://gitter.im/Mashape/kong
 [gitter-badge]: https://img.shields.io/badge/Gitter-Join%20Chat-blue.svg
 [google-groups-url]: https://groups.google.com/forum/#!forum/konglayer
-[badge-travis-url]: https://travis-ci.org/Mashape/kong
+[badge-travis-url]: https://travis-ci.org/Mashape/kong/branches
 [badge-travis-image]: https://travis-ci.org/Mashape/kong.svg?branch=master
 
 [busted]: https://github.com/Olivine-Labs/busted

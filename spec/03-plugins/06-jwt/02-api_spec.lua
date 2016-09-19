@@ -194,10 +194,17 @@ describe("Plugin: jwt (API)", function()
         })
         assert.res_status(200, res)
       end)
+      it("retrieves by key", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/jwt/"..jwt_secret.key,
+        })
+        assert.res_status(200, res)
+      end)
     end)
 
     describe("PATCH", function()
-      it("updates a credential", function()
+      it("updates a credential by id", function()
         local res = assert(admin_client:send {
           method = "PATCH",
           path = "/consumers/bob/jwt/"..jwt_secret.id,
@@ -212,6 +219,22 @@ describe("Plugin: jwt (API)", function()
         local body = assert.res_status(200, res)
         jwt_secret = cjson.decode(body)
         assert.equal("newsecret", jwt_secret.secret)
+      end)
+      it("updates a credential by key", function()
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/consumers/bob/jwt/"..jwt_secret.key,
+          body = {
+            key = "alice",
+            secret = "newsecret2"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        jwt_secret = cjson.decode(body)
+        assert.equal("newsecret2", jwt_secret.secret)
       end)
     end)
 
@@ -236,7 +259,7 @@ describe("Plugin: jwt (API)", function()
             ["Content-Type"] = "application/json"
           }
         })
-        assert.res_status(400, res)
+        assert.res_status(404, res)
 
        local res = assert(admin_client:send {
           method = "DELETE",

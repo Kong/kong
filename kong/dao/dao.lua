@@ -46,9 +46,9 @@ local function check_utf8(tbl, arg_n)
   end
 end
 
-local function ret_error(self, res, err, ...)
+local function ret_error(db_type, res, err, ...)
   if type(err) == "table" then
-    err.db_type = self.db.db_type
+    err.db_type = db_type
   end
 
   return res, err, ...
@@ -78,6 +78,8 @@ local function event(self, type, table, schema, data_t)
 end
 
 local DAO = Object:extend()
+
+DAO.ret_error = ret_error
 
 --- Instanciate a DAO.
 -- The DAO Factory is responsible for instanciating DAOs for each entity.
@@ -110,7 +112,7 @@ function DAO:insert(tbl, options)
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self}
   if not ok then
-    return ret_error(self, nil, err)
+    return ret_error(self.db.db_type, nil, err)
   end
 
   for col, field in pairs(model.__schema.fields) do
@@ -126,7 +128,7 @@ function DAO:insert(tbl, options)
   if not err and not options.quiet then
     event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
   end
-  return ret_error(self, res, err)
+  return ret_error(self.db.db_type, res, err)
 end
 
 --- Find a row.
@@ -145,10 +147,10 @@ function DAO:find(tbl)
 
   local primary_keys, _, _, err = model:extract_keys()
   if err then
-    return ret_error(self, nil, Errors.schema(err))
+    return ret_error(self.db.db_type, nil, Errors.schema(err))
   end
 
-  return ret_error(self, self.db:find(self.table, self.schema, primary_keys))
+  return ret_error(self.db.db_type, self.db:find(self.table, self.schema, primary_keys))
 end
 
 --- Find all rows.
@@ -164,11 +166,11 @@ function DAO:find_all(tbl)
 
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
-      return ret_error(self, nil, Errors.schema(err))
+      return ret_error(self.db.db_type, nil, Errors.schema(err))
     end
   end
 
-  return ret_error(self, self.db:find_all(self.table, tbl, self.schema))
+  return ret_error(self.db.db_type, self.db:find_all(self.table, tbl, self.schema))
 end
 
 --- Find a paginated set of rows.
@@ -184,7 +186,7 @@ function DAO:find_page(tbl, page_offset, page_size)
     check_not_empty(tbl, 1)
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
-      return ret_error(self, nil, Errors.schema(err))
+      return ret_error(self.db.db_type, nil, Errors.schema(err))
     end
   end
 
@@ -194,7 +196,7 @@ function DAO:find_page(tbl, page_offset, page_size)
 
   check_arg(page_size, 3, "number")
 
-  return ret_error(self, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
+  return ret_error(self.db.db_type, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
 end
 
 --- Count the number of rows.
@@ -208,7 +210,7 @@ function DAO:count(tbl)
     check_not_empty(tbl, 1)
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
-      return ret_error(self, nil, Errors.schema(err))
+      return ret_error(self.db.db_type, nil, Errors.schema(err))
     end
   end
 
@@ -216,7 +218,7 @@ function DAO:count(tbl)
     tbl = nil
   end
 
-  return ret_error(self, self.db:count(self.table, tbl, self.schema))
+  return ret_error(self.db.db_type, self.db:count(self.table, tbl, self.schema))
 end
 
 local function fix(old, new, schema)
@@ -267,17 +269,17 @@ function DAO:update(tbl, filter_keys, options)
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self, update = true, full_update = options.full}
   if not ok then
-    return ret_error(self, nil, err)
+    return ret_error(self.db.db_type, nil, err)
   end
 
   local primary_keys, values, nils, err = model:extract_keys()
   if err then
-    return ret_error(self, nil, Errors.schema(err))
+    return ret_error(self.db.db_type, nil, Errors.schema(err))
   end
 
   local old, err = self.db:find(self.table, self.schema, primary_keys)
   if err then
-    return ret_error(self, nil, err)
+    return ret_error(self.db.db_type, nil, err)
   elseif old == nil then
     return
   end
@@ -288,9 +290,11 @@ function DAO:update(tbl, filter_keys, options)
 
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
-    return ret_error(self, nil, err)
-  elseif res and not options.quiet then
-    event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
+    return ret_error(self.db.db_type, nil, err)
+  elseif res then
+    if not options.quiet then
+      event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
+    end
     return setmetatable(res, nil)
   end
 end
@@ -313,7 +317,7 @@ function DAO:delete(tbl)
 
   local primary_keys, _, _, err = model:extract_keys()
   if err then
-    return ret_error(self, nil, Errors.schema(err))
+    return ret_error(self.db.db_type, nil, Errors.schema(err))
   end
 
   -- Find associated entities
@@ -323,7 +327,7 @@ function DAO:delete(tbl)
       local f_fetch_keys = {[cascade.f_col] = tbl[cascade.col]}
       local rows, err = self.db:find_all(cascade.table, f_fetch_keys, cascade.schema)
       if err then
-        return ret_error(self, nil, err)
+        return ret_error(self.db.db_type, nil, err)
       end
       associated_entites[cascade.table] = {
         schema = cascade.schema,
@@ -343,11 +347,11 @@ function DAO:delete(tbl)
       end
     end
   end
-  return ret_error(self, row, err)
+  return ret_error(self.db.db_type, row, err)
 end
 
 function DAO:truncate()
-  return ret_error(self, self.db:truncate_table(self.table))
+  return ret_error(self.db.db_type, self.db:truncate_table(self.table))
 end
 
 return DAO

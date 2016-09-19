@@ -1,10 +1,10 @@
 local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
+local meta = require "kong.meta"
 
 local options = [[
  --v         verbose
  --vv        debug
- --trace     with traceback
 ]]
 
 local cmds_arr = {}
@@ -75,14 +75,18 @@ return function(args)
     log.set_lvl(log.levels.verbose)
   elseif args.vv then
     log.set_lvl(log.levels.debug)
-    args.trace = true
   end
 
+  log.verbose("Kong: %s", meta._VERSION)
+  log.debug("ngx_lua: %s", ngx.config.ngx_lua_version)
+  log.debug("nginx: %s", ngx.config.nginx_version)
+  log.debug("Lua: %s", jit and jit.version or _VERSION)
+
   xpcall(function() cmd_exec(args) end, function(err)
-    if not args.trace then
+    if not (args.v or args.vv) then
       err = err:match "^.-:.-:.(.*)$"
       io.stderr:write("Error: "..err.."\n")
-      io.stderr:write("\n  Run with --trace to see traceback\n")
+      io.stderr:write("\n  Run with --v (verbose) or --vv (debug) for more details\n")
     else
       local trace = debug.traceback(err, 2)
       io.stderr:write("Error: \n")

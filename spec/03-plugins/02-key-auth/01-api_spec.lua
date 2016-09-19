@@ -151,6 +151,15 @@ describe("Plugin: key-auth (API)", function()
         local json = cjson.decode(body)
         assert.equal(credential.id, json.id)
       end)
+      it("retrieves key-auth credential by key", function()
+        local res = assert(admin_client:send {
+          method = "GET",
+          path = "/consumers/bob/key-auth/"..credential.key
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal(credential.id, json.id)
+      end)
       it("retrieves credential by id only if the credential belongs to the specified consumer", function()
         assert(helpers.dao.consumers:insert {
           username = "alice"
@@ -171,7 +180,7 @@ describe("Plugin: key-auth (API)", function()
     end)
 
     describe("PATCH", function()
-      it("updates a credential", function()
+      it("updates a credential by id", function()
         local res = assert(admin_client:send {
           method = "PATCH",
           path = "/consumers/bob/key-auth/"..credential.id,
@@ -185,6 +194,21 @@ describe("Plugin: key-auth (API)", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal("4321", json.key)
+      end)
+      it("updates a credential by key", function()
+        local res = assert(admin_client:send {
+          method = "PATCH",
+          path = "/consumers/bob/key-auth/"..credential.key,
+          body = {
+            key = "4321UPD"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("4321UPD", json.key)
       end)
       describe("errors", function()
         it("handles invalid input", function()
@@ -218,7 +242,7 @@ describe("Plugin: key-auth (API)", function()
             method = "DELETE",
             path = "/consumers/bob/key-auth/blah"
           })
-          assert.res_status(400, res)
+          assert.res_status(404, res)
         end)
         it("returns 404 if not found", function()
           local res = assert(admin_client:send {

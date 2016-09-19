@@ -106,10 +106,21 @@ describe("Plugin: hmac-auth (API)", function()
         local body = cjson.decode(body_json)
         assert.equals(credential.id, body.id)
       end)
+      it("should retrieve by username", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/consumers/bob/hmac-auth/"..credential.username,
+          body = {},
+          headers = {["Content-Type"] = "application/json"}
+        })
+        local body_json = assert.res_status(200, res)
+        local body = cjson.decode(body_json)
+        assert.equals(credential.id, body.id)
+      end)
     end)
 
     describe("PATCH", function()
-      it("[SUCCESS] should update a credential", function()
+      it("[SUCCESS] should update a credential by id", function()
         local res = assert(client:send {
           method = "PATCH",
           path = "/consumers/bob/hmac-auth/"..credential.id,
@@ -119,6 +130,17 @@ describe("Plugin: hmac-auth (API)", function()
         local body_json = assert.res_status(200, res)
         credential = cjson.decode(body_json)
         assert.equals("alice", credential.username)
+      end)
+      it("[SUCCESS] should update a credential by username", function()
+        local res = assert(client:send {
+          method = "PATCH",
+          path = "/consumers/bob/hmac-auth/"..credential.username,
+          body = {username = "aliceUPD"},
+          headers = {["Content-Type"] = "application/json"}
+        })
+        local body_json = assert.res_status(200, res)
+        credential = cjson.decode(body_json)
+        assert.equals("aliceUPD", credential.username)
       end)
       it("[FAILURE] should return proper errors", function()
         local res = assert(client:send {
@@ -136,11 +158,11 @@ describe("Plugin: hmac-auth (API)", function()
       it("[FAILURE] should return proper errors", function()
         local res = assert(client:send {
           method = "DELETE",
-          path = "/consumers/bob/hmac-auth/alice",
+          path = "/consumers/bob/hmac-auth/aliceasd",
           body = {},
           headers = {["Content-Type"] = "application/json"}
         })
-        assert.res_status(400, res)
+        assert.res_status(404, res)
 
         local res = assert(client:send {
           method = "DELETE",

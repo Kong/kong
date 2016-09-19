@@ -86,18 +86,21 @@ describe("Admin API", function()
         })
         assert.res_status(204, res)
 
-        ngx.sleep(3)
-
-        res = assert(client:send {
-          method = "GET",
-          path = "/cluster/nodes/"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        assert.equal("alive", json.data[1].status)
-        assert.equal("leaving", json.data[2].status)
+        helpers.wait_until(function()
+          local ok = pcall(function()
+            res = assert(client:send {
+              method = "GET",
+              path = "/cluster/nodes/"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(2, #json.data)
+            assert.equal(2, json.total)
+            assert.equal("alive", json.data[1].status)
+            assert.equal("leaving", json.data[2].status)
+          end)
+          return ok
+        end, 10)
       end)
     end)
   end)

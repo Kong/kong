@@ -192,7 +192,7 @@ describe("kong start/stop", function()
       assert.False(ok)
       assert.matches("Error: no such prefix: .*/inexistent", stderr)
     end)
-    it("notifies when Nginx is already running", function()
+    it("notifies when Kong is already running", function()
       assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       }))
@@ -201,7 +201,44 @@ describe("kong start/stop", function()
         pg_database = helpers.test_conf.pg_database
       })
       assert.False(ok)
-      assert.matches("nginx is already running in "..helpers.test_conf.prefix, stderr, nil, true)
+      assert.matches("Kong is already running in "..helpers.test_conf.prefix, stderr, nil, true)
+    end)
+    it("stops other services when could not start", function()
+      local kill = require "kong.cmd.utils.kill"
+      local thread = helpers.tcp_server(helpers.test_conf.proxy_port)
+      finally(function()
+        -- make tcp server receive and close
+        helpers.proxy_client():send {
+          method = "GET",
+          path = "/"
+        }
+        thread:join()
+      end)
+
+      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+        dnsmasq = true,
+        dns_resolver = ""
+      })
+      assert.False(ok)
+      assert.matches("Address already in use", err, nil, true)
+
+      assert.falsy(kill.is_running(helpers.test_conf.dnsmasq_pid))
+      assert.falsy(kill.is_running(helpers.test_conf.serf_pid))
+    end)
+    it("should not stop Kong if already running in prefix", function()
+      local kill = require "kong.cmd.utils.kill"
+
+      assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+        pg_database = helpers.test_conf.pg_database
+      }))
+
+      local ok, stderr = helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
+        pg_database = helpers.test_conf.pg_database
+      })
+      assert.False(ok)
+      assert.matches("Kong is already running in "..helpers.test_conf.prefix, stderr, nil, true)
+
+      assert(kill.is_running(helpers.test_conf.nginx_pid))
     end)
   end)
 end)

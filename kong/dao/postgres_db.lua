@@ -1,14 +1,10 @@
+local pgmoon = require "pgmoon-mashape"
 local BaseDB = require "kong.dao.base_db"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local uuid = utils.uuid
 
 local TTL_CLEANUP_INTERVAL = 60 -- 1 minute
-
-local ngx_stub = _G.ngx
-_G.ngx = nil
-local pgmoon = require "pgmoon"
-_G.ngx = ngx_stub
 
 local PostgresDB = BaseDB:extend()
 
@@ -39,7 +35,11 @@ end
 
 local function do_clean_ttl(premature, postgres)
   if premature then return end
-  postgres:clear_expired_ttl()
+  
+  local ok, err = postgres:clear_expired_ttl()
+  if not ok then
+    ngx.log(ngx.ERR, "failed to cleanup TTLs: ", err)
+  end
   local ok, err = ngx.timer.at(TTL_CLEANUP_INTERVAL, do_clean_ttl, postgres)
   if not ok then
     ngx.log(ngx.ERR, "failed to create timer: ", err)
