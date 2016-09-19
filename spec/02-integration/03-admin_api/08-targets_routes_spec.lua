@@ -13,6 +13,8 @@ local upstream_name = "my_upstream"
 describe("Admin API", function()
   
   local client, upstream
+  local weight_default, weight_min, weight_max = 100, 0, 1000
+  local default_port = 8000
   
   before_each(function()
     assert(helpers.start_kong())
@@ -44,13 +46,13 @@ describe("Admin API", function()
           })
           assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
-          assert.equal("mashape.com:8000", json.target)
+          assert.equal("mashape.com:"..default_port, json.target)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
-          assert.are.equal(100, json.weight)
+          assert.are.equal(weight_default, json.weight)
         end
       end)
-      it_content_types("creates an upstream without defaults", function(content_type)
+      it_content_types("creates a target without defaults", function(content_type)
         return function()
           local res = assert(client:send {
             method = "POST",
@@ -91,7 +93,7 @@ describe("Admin API", function()
               method = "POST",
               path = "/upstreams/"..upstream_name.."/targets/",
               body = {
-                weight = 50,
+                weight = weight_min,
               },
               headers = {["Content-Type"] = content_type}
             })
@@ -116,7 +118,7 @@ describe("Admin API", function()
               path = "/upstreams/"..upstream_name.."/targets/",
               body = {
                 target = "mashape.com",
-                weight = 1001,
+                weight = weight_max + 1,
               },
               headers = {["Content-Type"] = content_type}
             })

@@ -1,16 +1,19 @@
 local api_schema = require "kong.dao.schemas.apis"
 local consumer_schema = require "kong.dao.schemas.consumers"
 local plugins_schema = require "kong.dao.schemas.plugins"
+local targets_schema = require "kong.dao.schemas.targets"
+local upstreams_schema = require "kong.dao.schemas.upstreams"
 local validations = require "kong.dao.schemas_validation"
 local validate_entity = validations.validate_entity
-
---require "kong.tools.ngx_stub"
+local utils = require "kong.tools.utils"
 
 describe("Entities Schemas", function()
 
   for k, schema in pairs({api = api_schema,
                           consumer = consumer_schema,
-                          plugins = plugins_schema}) do
+                          plugins = plugins_schema,
+                          targets = targets_schema,
+                          upstreams = upstreams_schema}) do
     it(k.." schema should have some required properties", function()
       assert.is_table(schema.primary_key)
       assert.is_table(schema.fields)
@@ -446,6 +449,230 @@ describe("Entities Schemas", function()
         assert.True(valid)
         assert.falsy(err)
       end)
+    end)
+  end)
+
+  --
+  -- UPSTREAMS
+  --
+
+  describe("Upstreams", function()
+    local slots_default, slots_min, slots_max = 100, 10, 2^16
+
+    it("should require a valid `name` and no port", function()
+      local valid, errors, check
+      valid, errors = validate_entity({}, upstreams_schema)
+      assert.False(valid)
+      assert.equal("name is required", errors.name)
+
+      valid, errors, check = validate_entity({ name = "123.123.123.123" }, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.equal("Invalid name; no ip addresses allowed", check.message)
+
+      valid, errors, check = validate_entity({ name = "\\\\bad\\\\////name////" }, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.equal("Invalid name; must be a valid hostname", check.message)
+      
+      valid, errors, check = validate_entity({ name = "name:80" }, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.equal("Invalid name; no port allowed", check.message)
+      
+      valid, errors, check = validate_entity({ name = "valid.host.name" }, upstreams_schema)
+      assert.True(valid)
+      assert.Nil(errors)
+      assert.Nil(check)
+    end)
+
+    it("should require (optional) slots in a valid range", function()
+      local valid, errors, check
+      local data = { name = "valid.host.name" }
+      valid, errors, check = validate_entity(data, upstreams_schema)
+      assert.True(valid)
+      assert.equal(slots_default, data.slots)
+
+      local bad_slots = { -1, slots_min - 1, slots_max + 1 }
+      for _, slots in ipairs(bad_slots) do
+        local data = { 
+          name = "valid.host.name",
+          slots = slots,
+        }
+        valid, errors, check = validate_entity(data, upstreams_schema)
+        assert.False(valid)
+        assert.Nil(errors)
+        assert.equal("number of slots must be between "..slots_min.." and "..slots_max, check.message)
+      end
+      
+      local good_slots = { slots_min, 500, slots_max }
+      for _, slots in ipairs(good_slots) do
+        local data = { 
+          name = "valid.host.name",
+          slots = slots,
+        }
+        valid, errors, check = validate_entity(data, upstreams_schema)
+        assert.True(valid)
+        assert.Nil(errors)
+        assert.Nil(check)
+      end
+    end)
+  
+    it("should require (optional) orderlist to be a proper list", function()
+      local data, valid, errors, check
+      local function validate_order(list, size)
+        assert(type(list) == "table", "expected list table, got "..type(list))
+        assert(next(list), "table is empty")
+        assert(type(size) == "number", "expected size number, got "..type(size))
+        assert(size > 0, "expected size to be > 0")
+        local c = {}
+        local max = 0
+        for i,v in pairs(list) do  --> note: pairs, not ipairs!!
+          if i > max then max = i end
+          c[i] = v
+        end
+        assert(max == size, "highest key is not equal to the size")
+        table.sort(c)
+        max = 0
+        for i, v in ipairs(c) do
+          assert(i == v, "expected sorted table to have equal keys and values")
+          if i>max then max = i end
+        end
+        assert(max == size, "expected array, but got list with holes")
+      end
+    
+      for _ = 1, 20 do  -- have Kong generate 20 random sized arrays and verify them
+        data = { 
+          name = "valid.host.name",
+          slots = math.random(slots_min, slots_max)
+        }
+        valid, errors, check = validate_entity(data, upstreams_schema)
+        assert.True(valid)
+        assert.Nil(errors)
+        assert.Nil(check)
+        validate_order(data.orderlist, data.slots)
+      end
+
+      local lst = { 9,7,5,3,1,2,4,6,8,10 }   -- a valid list
+      data = { 
+        name = "valid.host.name",
+        slots = 10,
+        orderlist = utils.shallow_copy(lst)
+      }
+      valid, errors, check = validate_entity(data, upstreams_schema)
+      assert.True(valid)
+      assert.Nil(errors)
+      assert.Nil(check)
+      assert.same(lst, data.orderlist)
+    
+      data = { 
+        name = "valid.host.name",
+        slots = 10,
+        orderlist = { 9,7,5,3,1,2,4,6,8 }   -- too short (9)
+      }
+      valid, errors, check = validate_entity(data, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
+
+      data = { 
+        name = "valid.host.name",
+        slots = 10,
+        orderlist = { 9,7,5,3,1,2,4,6,8,10,11 }   -- too long (11)
+      }
+      valid, errors, check = validate_entity(data, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
+
+      data = { 
+        name = "valid.host.name",
+        slots = 10,
+        orderlist = { 9,7,5,3,1,2,4,6,8,8 }   -- a double value (2x 8, no 10)
+      }
+      valid, errors, check = validate_entity(data, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.are.equal("invalid orderlist",check.message)
+
+      data = { 
+        name = "valid.host.name",
+        slots = 10,
+        orderlist = { 9,7,5,3,1,2,4,6,8,11 }   -- a hole (10 missing)
+      }
+      valid, errors, check = validate_entity(data, upstreams_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.are.equal("invalid orderlist",check.message)
+    end)
+
+  end)
+  
+  --
+  -- TARGETS
+  --
+
+  describe("Targets", function()
+    local weight_default, weight_min, weight_max = 100, 0, 1000
+    local default_port = 8000
+    
+    it("should validate the required 'target' field", function()
+      local valid, errors, check
+
+      valid, errors, check = validate_entity({}, targets_schema)
+      assert.False(valid)
+      assert.equal(errors.target, "target is required")
+      assert.is_nil(check)
+
+      local names = { "valid.name", "valid.name:8080", "12.34.56.78", "1.2.3.4:123" }
+      for _, name in ipairs(names) do
+        valid, errors, check = validate_entity({ target = name }, targets_schema)
+        assert.True(valid)
+        assert.is_nil(errors)
+        assert.is_nil(check)
+      end
+
+      valid, errors, check = validate_entity({ target = "\\\\bad\\\\////name////" }, targets_schema)
+      assert.False(valid)
+      assert.Nil(errors)
+      assert.equal("Invalid target; not a valid hostname or ip address", check.message)
+
+    end)
+    
+    it("should normalize 'target' field and verify default port", function()
+      local valid, errors, check
+
+      -- the utils module does the normalization, here just check whether it is being invoked.
+      local names_in = { "012.034.056.078", "01.02.03.04:123" }
+      local names_out = { "12.34.56.78:"..default_port, "1.2.3.4:123" }
+      for i, name in ipairs(names_in) do
+        local data = { target = name }
+        valid, errors, check = validate_entity(data, targets_schema)
+        assert.True(valid)
+        assert.is_nil(errors)
+        assert.is_nil(check)
+        assert.equal(names_out[i], data.target)
+      end
+    end)
+  
+    it("should validate the optional 'weight' field", function()
+      local weights, valid, errors, check
+
+      weights = { -10, weight_min - 1, weight_max + 1 }
+      for _, weight in ipairs(weights) do
+        valid, errors, check = validate_entity({ target = "1.2.3.4", weight = weight }, targets_schema)
+        assert.False(valid)
+        assert.is_nil(errors)
+        assert.equal("weight must be from "..weight_min.." to "..weight_max, check.message)
+      end
+
+      weights = { weight_min, weight_default, weight_max }
+      for _, weight in ipairs(weights) do
+        valid, errors, check = validate_entity({ target = "1.2.3.4", weight = weight }, targets_schema)
+        assert.True(valid)
+        assert.is_nil(errors)
+        assert.is_nil(check)
+      end
     end)
   end)
 

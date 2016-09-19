@@ -54,7 +54,7 @@ return {
     if not p then
       return false, Errors.schema("Invalid target; not a valid hostname or ip address")
     end
-    config.target = utils.format_ip(p, default_port)
+    config.target = utils.format_host(p, default_port)
 
     return true
   end,

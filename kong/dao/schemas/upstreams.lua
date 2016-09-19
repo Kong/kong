@@ -21,8 +21,7 @@ return {
       required = true,
     },
     name = {
-      -- name is a hostname like name that can be referenced in an `upstream_url` field, 
-      -- may include a port, if omitted defaults to 'default_port'
+      -- name is a hostname like name that can be referenced in an `upstream_url` field
       type = "string", 
       unique = true, 
       required = true,
@@ -41,9 +40,6 @@ return {
     }
   },
   self_check = function(schema, config, dao, is_updating)
-    
---local x = require("cjson").encode(config)
---do return false, Errors.schema("Received: "..x) end
     
     -- check the name
     local p = utils.normalize_ip(config.name)
@@ -66,7 +62,6 @@ return {
     local order = config.orderlist
     if #order == config.slots then
       -- array size unchanged, check consistency
---do return false, Errors.schema("size unchanged, checking consistency") end
       local t = utils.shallow_copy(order)
       table.sort(t)
       local count, max = 0, 0
@@ -81,9 +76,11 @@ return {
         return false, Errors.schema("invalid orderlist")
       end
     else
-      -- size mismatch, regenerate order array
---local x = require("cjson").encode(config)
---do return false, Errors.schema("size changed, regenerating"..tostring(#order).."-"..tostring(config.slots)..x) end
+      -- size mismatch
+      if #order > 0 then
+        return false, Errors.schema("size mismatch between 'slots' and 'orderlist'")
+      end
+      -- No list given, regenerate order array
 --TODO: check if it is safe to update data here!
       local t = {}
       for i = 1, config.slots do
