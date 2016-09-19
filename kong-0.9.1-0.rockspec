@@ -261,5 +261,9 @@ build = {
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
     ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
     ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua",
+
+    ["kong.plugins.ldap-acl.bind_consumer"] = "kong/plugins/ldap-acl/bind_consumer.lua",
+    ["kong.plugins.ldap-acl.handler"] = "kong/plugins/ldap-acl/handler.lua",
+    ["kong.plugins.ldap-acl.schema"] = "kong/plugins/ldap-acl/schema.lua",
   }
 }
