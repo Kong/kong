@@ -128,8 +128,8 @@ function _M.upstreams_key()
   return CACHE_KEYS.UPSTREAMS
 end
 
-function _M.targets_key(upstream_name)
-  return CACHE_KEYS.TARGETS..":"..upstream_name
+function _M.targets_key(upstream_id)
+  return CACHE_KEYS.TARGETS..":"..upstream_id
 end
 
 function _M.all_apis_by_dict_key()

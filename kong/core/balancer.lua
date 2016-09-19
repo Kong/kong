@@ -1,12 +1,79 @@
-local dns_client = require "dns.client"
-
+local singletons = require "kong.singletons"
+local cache = require "kong.tools.database_cache"
+local dns_client = require "dns.client"  -- due to startup/require order, cannot use the one from 'singletons' here
 local toip = dns_client.toip
+
+--===========================================================
+-- Balancer based resolution
+--===========================================================
+local balancers = {}  -- table holding our balancer objects, indexed by upstream name
+
+local function load_upstreams_into_memory()
+  local upstreams, err = singletons.dao.upstreams:find_all()
+  if err then
+    return nil, err
+  end
+  
+  -- build a dictionary, indexed by the upstreams name
+  local upstream_dic = {}
+  for _, up in ipairs(upstreams) do
+    upstream_dic[up.name] = up
+  end
+  
+  return upstream_dic
+end
+
+-- @param upstream_id Upstream uuid for which to load the target history
+local function load_targets_into_memory(upstream_id)
+  local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
+  if err then
+    return nil, err
+  end
+  
+  -- order by 'created_at'
+  table.sort(target_history, function(a,b) return a.created_at<b.created_at end)
+
+  return target_history
+end
 
 -- looks up a balancer for the target.
 -- @param target the table with the target details
 -- @return balancer if found, or nil if not found, or nil+error on error
 local get_balancer = function(target)
-  return nil  -- TODO: place holder, forces dns use to first fix regression
+  
+  local upstreams_dic, err = cache.get_or_set(cache.upstreams_key(), load_upstreams_into_memory)
+  if err then
+    return nil, err
+  end
+  
+  local upstream = upstreams_dic[target.upstream.host]
+  if not upstream then
+    return nil   -- there is no upstream by this name, so must be regular name, return and try dns 
+  end
+  
+  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
+    function() 
+      return load_targets_into_memory(upstream.id) 
+    end
+  )
+  if err then
+    return nil, err
+  end
+
+  local balancer = balancers[upstream.name]
+  if not balancer then
+    
+-- TODO: create a new balancer
+  
+  elseif #balancer.targets_history ~= #targets_history or 
+         balancer.target_history[#balancer.targets_history].created_at ~= target_history[#target_history].created_at then
+
+-- TODO: target history has changed, go update balancer
+  
+  else
+    -- found it
+    return balancer
+  end
 end
 
 
@@ -15,6 +82,10 @@ end
 
 local retry_balancer = function(target)
 end
+
+--===========================================================
+-- simple DNS based resolution
+--===========================================================
 
 local first_try_dns = function(target)
   local ip, port = toip(target.upstream.host, target.upstream.port, false)
@@ -36,6 +107,10 @@ local retry_dns = function(target)
   return true
 end
 
+
+--===========================================================
+-- Main entry point when resolving
+--===========================================================
 
 -- Resolves the target structure in-place (fields `ip` and `port`).
 --
@@ -76,4 +151,5 @@ end
 
 return { 
   execute = execute,
+  load_upstreams_into_memory = load_upstreams_into_memory,  -- exported for test purposes
 }
