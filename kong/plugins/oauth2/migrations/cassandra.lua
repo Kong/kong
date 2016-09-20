@@ -115,7 +115,13 @@ return {
     ]]
   },
   {
-    name = "2016-08-24-oauth2_api_id",
+    name = "2016-09-19-oauth2_code_index",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(credential_id);
+    ]]
+  },
+  {
+    name = "2016-09-19-oauth2_api_id",
     up = [[
       TRUNCATE oauth2_authorization_codes;
       ALTER TABLE oauth2_authorization_codes ADD api_id uuid;
