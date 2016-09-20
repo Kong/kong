@@ -48,6 +48,8 @@ return {
         upstream_url = upstream_url.."?"..utils.encode_args(uri_args)
       end
 
+      print(upstream_url)
+
       -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
       -- directive in kong.yml.
       ngx.var.upstream_url = upstream_url
