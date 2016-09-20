@@ -1,5 +1,52 @@
 ## [Unreleased][unreleased]
 
+## [0.9.1] - 2016/09/02
+
+### Added
+
+- Plugins:
+  - ACL: allow to retrieve/update/delete an ACL by group name.
+    [#1544](https://github.com/Mashape/kong/pull/1544)
+  - Basic Authentication: allow to retrieve/update/delete a credential by `username`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - HMAC Authentication: allow to retrieve/update/delete a credential by `username`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - JWT Authentication: allow to retrieve/update/delete a credential by `key`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - Key Authentication: allow to retrieve/update/delete a credential by `key`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+  - OAuth2 Authentication: allow to retrieve/update/delete a credential by `client_id` and tokens by `access_token`.
+    [#1570](https://github.com/Mashape/kong/pull/1570)
+
+### Fixed
+
+- Correctly parse configuration file settings contaning comments.
+  [#1569](https://github.com/Mashape/kong/pull/1569)
+- Prevent third-party Lua modules (and plugins) to override the seed for random
+  number generation. This prevents the creation of conflicitng UUIDs.
+  [#1558](https://github.com/Mashape/kong/pull/1558)
+- Use [pgmoon-mashape](https://github.com/Mashape/pgmoon) `2.0.0` which
+  properly namespaces our fork, avoiding conflicts with other versions of
+  pgmoon, such as the one installed by Lapis.
+  [#1582](https://github.com/Mashape/kong/pull/1582)
+- Avoid exposing OpenResty's information on HTTP `4xx` errors.
+  [#1567](https://github.com/Mashape/kong/pull/1567)
+- ulimit with `unlimited` value is now properly handled.
+  [#1545](https://github.com/Mashape/kong/pull/1545)
+- CLI:
+  - Stop third-party services (dnsmasq/Serf) when Kong could not start.
+    [#1588](https://github.com/Mashape/kong/pull/1588)
+  - Prefix database migration errors (such as Postgres' `connection refused`)
+    with the database name (`postgres`/`cassandra`) to avoid confusions.
+    [#1583](https://github.com/Mashape/kong/pull/1583)
+- Plugins:
+  - galileo: Use `Content-Length` header to get request/response body size when
+    `log_bodies` is disabled.
+    [#1584](https://github.com/Mashape/kong/pull/1584)
+- Admin API:
+  - Revert the `/plugins/enabled` endpoint's response to be a JSON array, and
+    not an Object. [#1529](https://github.com/Mashape/kong/pull/1529)
+
 ## [0.9.0] - 2016/08/18
 
 The main focus of this release is Kong's new CLI. With a simpler configuration file, new settings, environment variables support, new commands as well as a new interpreter, the new CLI gives more power and flexibility to Kong users and allow for an easier integration in your deployment workflow, as well as better testing for developers and plugins authors. Additionally, some new plugins and performance improvements are included as well as the regular bug fixes.
@@ -662,7 +709,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.1...next
+[0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/mashape/kong/compare/0.8.3...0.9.0
 [0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
 [0.8.2]: https://github.com/mashape/kong/compare/0.8.1...0.8.2

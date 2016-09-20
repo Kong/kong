@@ -99,6 +99,8 @@ local CONF_SENSITIVE = {
   cluster_encrypt_key = true
 }
 
+local CONF_SENSITIVE_PLACEHOLDER = "******"
+
 local typ_checks = {
   array = function(v) return type(v) == "table" end,
   string = function(v) return type(v) == "string" end,
@@ -115,6 +117,11 @@ local function check_and_infer(conf)
   for k, value in pairs(conf) do
     local v_schema = CONF_INFERENCES[k] or {}
     local typ = v_schema.typ
+
+    if type(value) == "string" then
+      value = string.gsub(value, "#.-$", "") -- remove trailing comment if any
+      value = pl_stringx.strip(value)
+    end
 
     -- transform {boolean} values ("on"/"off" aliasing to true/false)
     -- transform {ngx_boolean} values ("on"/"off" aliasing to on/off)
@@ -135,13 +142,9 @@ local function check_and_infer(conf)
       value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
     end
 
-    if type(value) == "string" then
-      -- default type is string, and an empty if unset
-      value = value ~= "" and tostring(value) or nil
-      if value then
-        value = string.gsub(value, "#.-$", "")
-        value = pl_stringx.strip(value)
-      end
+    if value == "" then
+      -- unset values are removed
+      value = nil
     end
 
     typ = typ or "string"
@@ -218,7 +221,7 @@ local function overrides(k, default_v, file_conf, arg_conf)
   if env ~= nil then
     local to_print = env
     if CONF_SENSITIVE[k] then
-      to_print = "******"
+      to_print = CONF_SENSITIVE_PLACEHOLDER
     end
     log.debug('%s ENV found with "%s"', env_name, to_print)
     value = env
@@ -271,13 +274,18 @@ local function load(path, custom_conf)
     end
   end
 
-  if path then -- we have a file? then load it
+  if not path then
+    log.verbose("no config file, skipping loading")
+  else
     local f, err = pl_file.read(path)
     if not f then return nil, err end
 
     log.verbose("reading config file at %s", path)
     local s = pl_stringio.open(f)
-    from_file_conf, err = pl_config.read(s)
+    from_file_conf, err = pl_config.read(s, {
+      smart = false,
+      list_delim = "_blank_" -- mandatory but we want to ignore it
+    })
     s:close()
     if not from_file_conf then return nil, err end
   end
@@ -366,4 +374,19 @@ local function load(path, custom_conf)
   return setmetatable(conf, nil) -- remove Map mt
 end
 
-return load
+return setmetatable({
+  load = load,
+  remove_sensitive = function(conf)
+    local purged_conf = tablex.deepcopy(conf)
+    for k in pairs(CONF_SENSITIVE) do
+      if purged_conf[k] then
+        purged_conf[k] = CONF_SENSITIVE_PLACEHOLDER
+      end
+    end
+    return purged_conf
+  end
+}, {
+  __call = function(_, ...)
+    return load(...)
+  end
+})

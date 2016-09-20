@@ -35,7 +35,7 @@ describe("Plugin: request-size-limiting (access)", function()
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       assert.res_status(200, res)
@@ -49,7 +49,7 @@ describe("Plugin: request-size-limiting (access)", function()
         headers = {
           ["Host"] = "limit.com",
           ["Expect"] = "100-continue",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       assert.res_status(200, res)
@@ -62,7 +62,7 @@ describe("Plugin: request-size-limiting (access)", function()
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       local body = assert.res_status(413, res)
@@ -77,7 +77,7 @@ describe("Plugin: request-size-limiting (access)", function()
         headers = {
           ["Host"] = "limit.com",
           ["Expect"] = "100-continue",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       local body = assert.res_status(417, res)

@@ -58,7 +58,7 @@ local function check_request_host(request_host, api_t)
       local pos = request_host:find("%*")
       if pos == 1 then
         valid = request_host:match("^%*%.") ~= nil
-      elseif pos == string.len(request_host) then
+      elseif pos == #request_host then
         valid = request_host:match(".%.%*$") ~= nil
       end
 

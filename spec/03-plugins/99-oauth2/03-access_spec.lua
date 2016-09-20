@@ -203,7 +203,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
         assert.are.equal("no-store", res.headers["cache-control"])
         assert.are.equal("no-cache", res.headers["pragma"])
       end)
@@ -474,7 +474,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("returns success with a path", function()
         local res = assert(proxy_ssl_client:send {
@@ -816,7 +816,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("fails when setting authenticated_userid and invalid provision_key", function()
         local res = assert(proxy_ssl_client:send {
@@ -836,7 +836,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("returns success", function()
         local res = assert(proxy_ssl_client:send {
@@ -1097,7 +1097,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("fails when no provision key is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1115,7 +1115,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("fails when no authenticated user id is being sent", function()
         local res = assert(proxy_ssl_client:send {

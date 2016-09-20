@@ -200,7 +200,6 @@ describe("ALF serializer", function()
 
         local entry1 = assert(alf_with_body:add_entry(_ngx, body_str))
         assert.is_table(entry1.request.postData)
-        assert.equal(#body_str, entry1.request.bodySize)
         assert.same({
           text = "base64_hello=world&foo=bar",
           encoding = "base64",
@@ -209,7 +208,44 @@ describe("ALF serializer", function()
 
         local entry2 = assert(alf_without_body:add_entry(_ngx, body_str))
         assert.is_nil(entry2.request.postData)
-        assert.equal(0, entry2.request.bodySize)
+      end)
+      it("captures bodySize from Content-Length if not logging bodies", function()
+        _G.ngx.req.get_headers = function()
+          return {["content-length"] = "38"}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new() -- log_bodies disabled
+        local entry = assert(alf:add_entry(_ngx)) -- no body str
+        assert.equal(38, entry.request.bodySize)
+      end)
+      it("captures bodySize reading the body if logging bodies", function()
+        local body_str = "hello=world"
+
+        _G.ngx.req.get_headers = function()
+          return {["content-length"] = "3800"}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new(true) -- log_bodies enabled
+        local entry = assert(alf:add_entry(_ngx, body_str))
+        assert.equal(#body_str, entry.request.bodySize)
+      end)
+      it("zeroes bodySize if body logging but no body", function()
+        _G.ngx.req.get_headers = function()
+          return {}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new(true) -- log_bodies enabled
+        local entry = assert(alf:add_entry(_ngx))
+        assert.equal(0, entry.request.bodySize)
+      end)
+      it("zeroes bodySize if no body logging or Content-Length", function()
+        _G.ngx.req.get_headers = function()
+          return {}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new() -- log_bodies disabled
+        local entry = assert(alf:add_entry(_ngx)) -- no body str
+        assert.equal(0, entry.request.bodySize)
       end)
       it("ignores nil body string (no postData)", function()
         local alf = alf_serializer.new(true)
@@ -301,7 +337,6 @@ describe("ALF serializer", function()
 
         local entry1 = assert(alf_with_body:add_entry(_ngx, nil, body_str))
         assert.is_table(entry1.response.content)
-        assert.equal(#body_str, entry1.response.bodySize)
         assert.same({
           text = "base64_message=hello",
           encoding = "base64",
@@ -310,7 +345,44 @@ describe("ALF serializer", function()
 
         local entry2 = assert(alf_without_body:add_entry(_ngx, body_str))
         assert.is_nil(entry2.response.postData)
-        assert.equal(0, entry2.response.bodySize)
+      end)
+      it("captures bodySize from Content-Length if not logging bodies", function()
+        _G.ngx.resp.get_headers = function()
+          return {["content-length"] = "38"}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new() -- log_bodies disabled
+        local entry = assert(alf:add_entry(_ngx)) -- no body str
+        assert.equal(38, entry.response.bodySize)
+      end)
+      it("captures bodySize reading the body if logging bodies", function()
+        local body_str = "hello=world"
+
+        _G.ngx.resp.get_headers = function()
+          return {["content-length"] = "3800"}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new(true) -- log_bodies enabled
+        local entry = assert(alf:add_entry(_ngx, nil, body_str))
+        assert.equal(#body_str, entry.response.bodySize)
+      end)
+      it("zeroes bodySize if body logging but no body", function()
+        _G.ngx.resp.get_headers = function()
+          return {}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new(true) -- log_bodies enabled
+        local entry = assert(alf:add_entry(_ngx))
+        assert.equal(0, entry.response.bodySize)
+      end)
+      it("zeroes bodySize if no body logging or Content-Length", function()
+        _G.ngx.resp.get_headers = function()
+          return {}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new() -- log_bodies disabled
+        local entry = assert(alf:add_entry(_ngx)) -- no body str
+        assert.equal(0, entry.response.bodySize)
       end)
       it("ignores nil body string (no response.content)", function()
         local alf = alf_serializer.new(true)

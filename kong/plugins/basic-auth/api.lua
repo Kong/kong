@@ -1,4 +1,5 @@
 local crud = require "kong.api.crud_helpers"
+local utils = require "kong.tools.utils"
 
 return {
   ["/consumers/:username_or_id/basic-auth/"] = {
@@ -19,15 +20,18 @@ return {
       crud.post(self.params, dao_factory.basicauth_credentials)
     end
   },
-  ["/consumers/:username_or_id/basic-auth/:id"] = {
+  ["/consumers/:username_or_id/basic-auth/:credential_username_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
-      local credentials, err = dao_factory.basicauth_credentials:find_all {
+      local filter_keys = {
+        [utils.is_valid_uuid(self.params.credential_username_or_id) and "id" or "username"] = self.params.credential_username_or_id,
         consumer_id = self.params.consumer_id,
-        id = self.params.id
       }
+      self.params.credential_username_or_id = nil
+
+      local credentials, err = dao_factory.basicauth_credentials:find_all(filter_keys)
       if err then
         return helpers.yield_error(err)
       elseif next(credentials) == nil then

@@ -24,12 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-local meta = require "kong.meta"
-
-_G._KONG = {
-  _NAME = meta._NAME,
-  _VERSION = meta._VERSION
-}
+require "kong.core.globalpatches"
 
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
@@ -68,7 +63,7 @@ local function load_plugins(kong_conf, dao, events)
   for plugin in pairs(kong_conf.plugins) do
     local ok, handler = utils.load_module_if_exists("kong.plugins."..plugin..".handler")
     if not ok then
-      return nil, plugin.." plugin is enabled but not installed"
+      return nil, plugin.." plugin is enabled but not installed;\n"..handler
     end
 
     local ok, schema = utils.load_module_if_exists("kong.plugins."..plugin..".schema")
@@ -139,12 +134,11 @@ function Kong.init()
 end
 
 function Kong.init_worker()
-  -- it is very important to seed this module in the init_worker phase
-  -- to avoid duplicated UUID sequences accross workers since jit-uuid
-  -- uses LuaJIT's math.random().
-  -- jit-uuid handles unique seeds for multiple workers thanks to
-  -- ngx.worker.pid().
-  utils.uuid_seed()
+  -- special math.randomseed from kong.core.globalpatches
+  -- not taking any argument. Must be called only once
+  -- and in the init_worker phase, to avoid duplicated
+  -- seeds.
+  math.randomseed()
 
   core.init_worker.before()
 

@@ -15,7 +15,7 @@ end
 
 function _M.get_timetable(now)
   local timestamp = now and now or _M.get_utc()
-  if string.len(tostring(timestamp)) == 13 then
+  if #tostring(timestamp) == 13 then
     timestamp = timestamp / 1000
   end
   return luatz.timetable.new_from_timestamp(timestamp)
