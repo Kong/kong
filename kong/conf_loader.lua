@@ -50,6 +50,7 @@ local CONF_INFERENCES = {
   -- forced string inferences (or else are retrieved as numbers)
   proxy_listen = {typ = "string"},
   proxy_listen_ssl = {typ = "string"},
+  set_real_ip_from = {typ = "string"},
   admin_listen = {typ = "string"},
   cluster_listen = {typ = "string"},
   cluster_listen_rpc = {typ = "string"},
