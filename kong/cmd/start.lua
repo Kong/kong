@@ -4,12 +4,16 @@ local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local serf_signals = require "kong.cmd.utils.serf_signals"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
   local conf = assert(conf_loader(args.conf, {
     prefix = args.prefix
   }))
+
+  assert(not kill.is_running(conf.nginx_pid),
+         "Kong is already running in "..conf.prefix)
 
   local dao = DAOFactory(conf)
   local err

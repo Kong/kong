@@ -6,7 +6,6 @@ local basic_serializer = require "kong.plugins.log-serializers.basic"
 local BasePlugin = require "kong.plugins.base_plugin"
 
 local ngx_timer = ngx.timer.at
-local string_len = string.len
 local O_CREAT = system_constants.O_CREAT()
 local O_WRONLY = system_constants.O_WRONLY()
 local O_APPEND = system_constants.O_APPEND()
@@ -59,7 +58,7 @@ local function log(premature, conf, message)
     end
   end
 
-  ffi.C.write(fd, string_to_char(msg), string_len(msg))
+  ffi.C.write(fd, string_to_char(msg), #msg)
 end
 
 local FileLogHandler = BasePlugin:extend()
