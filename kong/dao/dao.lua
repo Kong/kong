@@ -106,8 +106,9 @@ end
 -- @treturn table res A table representing the insert row (with fields created during the insertion).
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
-  check_arg(tbl, 1, "table")
   options = options or {}
+  check_arg(tbl, 1, "table")
+  check_arg(options, 2, "table")
 
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self}
@@ -254,11 +255,12 @@ end
 -- @treturn table res A table representing the updated entity.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:update(tbl, filter_keys, options)
+  options = options or {}
   check_arg(tbl, 1, "table")
   check_not_empty(tbl, 1)
   check_arg(filter_keys, 2, "table")
   check_not_empty(filter_keys, 2)
-  options = options or {}
+  check_arg(options, 3, "table")
 
   for k, v in pairs(filter_keys) do
     if tbl[k] == nil then
@@ -307,8 +309,10 @@ end
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
 -- @treturn table row A table representing the deleted row
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:delete(tbl)
+function DAO:delete(tbl, options)
+  options = options or {}
   check_arg(tbl, 1, "table")
+  check_arg(options, 2, "table")
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -337,7 +341,7 @@ function DAO:delete(tbl)
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
-  if not err and row ~= nil then
+  if not err and row ~= nil and not options.quiet then
     event(self, event_types.ENTITY_DELETED, self.table, self.schema, row)
 
     -- Also propagate the deletion for the associated entities
