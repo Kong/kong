@@ -125,12 +125,15 @@ return {
     up = [[
       TRUNCATE oauth2_authorization_codes;
       ALTER TABLE oauth2_authorization_codes ADD api_id uuid;
+      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(api_id);
 
       TRUNCATE oauth2_tokens;
       ALTER TABLE oauth2_tokens ADD api_id uuid;
+      CREATE INDEX IF NOT EXISTS ON oauth2_tokens(api_id);
     ]],
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP api_id;
+      ALTER TABLE oauth2_tokens DROP api_id;
     ]]
   }
 }
