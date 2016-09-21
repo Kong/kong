@@ -21,12 +21,10 @@ function KeyAuthHandler:new()
   KeyAuthHandler.super.new(self, "key-auth")
 end
 
-function KeyAuthHandler:access(conf)
-  KeyAuthHandler.super.access(self)
-
+local function do_authentication(conf)
   if type(conf.key_names) ~= "table" then
     ngx.log(ngx.ERR, "[key-auth] no conf.key_names set, aborting plugin execution")
-    return
+    return false, {status = 500, message= "Invalid plugin configuration"}
   end
 
   local key
@@ -52,15 +50,15 @@ function KeyAuthHandler:access(conf)
       break
     elseif type(v) == "table" then
       -- duplicate API key, HTTP 401
-      return responses.send_HTTP_UNAUTHORIZED("Duplicate API key found")
+      return false, {status = 401, message = "Duplicate API key found"}
     end
   end
 
   -- this request is missing an API key, HTTP 401
   if not key then
     ngx.header["WWW-Authenticate"] = _realm
-    return responses.send_HTTP_UNAUTHORIZED("No API key found in headers"
-                                          .." or querystring")
+    return false, {status = 401, message = "No API key found in headers"
+                                          .." or querystring"}
   end
 
   -- retrieve our consumer linked to this API key
@@ -77,7 +75,7 @@ function KeyAuthHandler:access(conf)
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
   if not credential then
-    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
+    return false, {status = 403, message = "Invalid authentication credentials"}
   end
 
   -----------------------------------------
@@ -100,6 +98,21 @@ function KeyAuthHandler:access(conf)
   set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.ctx.authenticated_credential = credential
   ngx.ctx.authenticated_consumer = consumer
+
+  return true
+end
+
+function KeyAuthHandler:access(conf)
+  KeyAuthHandler.super.access(self)
+
+  local ok, err = do_authentication(conf)
+  if not ok then
+    if conf.anonymous then
+      ngx.req.set_header(constants.HEADERS.ANONYMOUS, true)
+    else
+      return responses.send(err.status, err.message, err.headers)
+    end
+  end
 end
 
 return KeyAuthHandler

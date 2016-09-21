@@ -138,16 +138,16 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
   return true
 end
 
-function _M.execute(conf)
+local function do_authentication(conf)
   local headers = ngx_set_headers();
   -- If both headers are missing, return 401
   if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
-    return responses.send_HTTP_UNAUTHORIZED()
+    return false, {status = 401}
   end
 
   -- validate clock skew
   if not (validate_clock_skew(headers, X_DATE, conf.clock_skew) or validate_clock_skew(headers, DATE, conf.clock_skew)) then
-      responses.send_HTTP_FORBIDDEN("HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication")
+    return false, {status = 403, message = "HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication"}
   end
 
   -- retrieve hmac parameter from Proxy-Authorization header
@@ -157,17 +157,17 @@ function _M.execute(conf)
     hmac_params = retrieve_hmac_fields(ngx.req, headers, AUTHORIZATION, conf)
   end
   if not (hmac_params.username and hmac_params.signature) then
-    responses.send_HTTP_FORBIDDEN(SIGNATURE_NOT_VALID)
+    return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
 
   -- validate signature
   local credential = load_credential(hmac_params.username)
   if not credential then
-    responses.send_HTTP_FORBIDDEN(SIGNATURE_NOT_VALID)
+    return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
   hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
-    return responses.send_HTTP_FORBIDDEN("HMAC signature does not match")
+    return false, {status = 403, message = "HMAC signature does not match"}
   end
 
   -- Retrieve consumer
@@ -185,6 +185,19 @@ function _M.execute(conf)
   ngx.req.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   ngx.ctx.authenticated_credential = credential
   ngx.ctx.authenticated_consumer = consumer
+
+  return true
+end
+
+function _M.execute(conf)
+  local ok, err = do_authentication(conf)
+  if not ok then
+    if conf.anonymous then
+      ngx.req.set_header(constants.HEADERS.ANONYMOUS, true)
+    else
+      return responses.send(err.status, err.message, err.headers)
+    end
+  end
 end
 
 return _M

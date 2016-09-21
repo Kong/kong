@@ -35,6 +35,19 @@ describe("Plugin: hmac-auth (access)", function()
         secret = "secret",
         consumer_id = consumer.id
     })
+
+    local api2 = assert(helpers.dao.apis:insert {
+      request_host = "hmacauth2.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "hmac-auth",
+      api_id = api2.id,
+      config = {
+        anonymous = true,
+        clock_skew = 3000
+      }
+    })
   end)
 
   teardown(function()
@@ -580,6 +593,7 @@ describe("Plugin: hmac-auth (access)", function()
       assert.equal(consumer.id, parsed_body.headers["x-consumer-id"])
       assert.equal(consumer.username, parsed_body.headers["x-consumer-username"])
       assert.equal(credential.username, parsed_body.headers["x-credential-username"])
+      assert.is_nil(parsed_body.headers["x-anonymous-consumer"])
     end)
 
     it("should pass with GET with x-date header", function()
@@ -743,6 +757,43 @@ describe("Plugin: hmac-auth (access)", function()
         }
       })
       assert.res_status(200, res)
+    end)
+
+    it("should pass with valid credentials and anonymous", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+        ..[[headers="date",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        body = {},
+        headers = {
+          ["HOST"] = "hmacauth2.com",
+          date = date,
+          authorization = hmacAuth
+        }
+      })
+      local body = assert.res_status(200, res)
+      body = cjson.decode(body)
+      assert.equal(hmacAuth, body.headers["authorization"])
+      assert.equal("bob", body.headers["x-consumer-username"])
+      assert.is_nil(body.headers["x-anonymous-consumer"])
+    end)
+
+    it("should pass with invalid credentials and anonymous", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        body = {},
+        headers = {
+          ["HOST"] = "hmacauth2.com"
+        }
+      })
+      local body = assert.res_status(200, res)
+      body = cjson.decode(body)
+      assert.equal("true", body.headers["x-anonymous-consumer"])
+      assert.is_nil(body.headers["x-consumer-username"])
     end)
   end)
 end)

@@ -413,36 +413,22 @@ local function parse_access_token(conf)
   return result
 end
 
-function _M.execute(conf)
-  -- Check if the API has a request_path and if it's being invoked with the path resolver
-  local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
-  if pl_stringx.endswith(path_prefix, "/") then
-    path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
-  end
-
-  if ngx.req.get_method() == "POST" then
-    if ngx.re.match(ngx.var.request_uri, string.format(AUTHORIZE_URL, path_prefix)) then
-      authorize(conf)
-    elseif ngx.re.match(ngx.var.request_uri, string.format(TOKEN_URL, path_prefix)) then
-      issue_token(conf)
-    end
-  end
-
+local function do_authentication(conf)
   local accessToken = parse_access_token(conf);
   if not accessToken then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, {["WWW-Authenticate"] = 'Bearer realm="service"'})
+    return false, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service"'}}
   end
 
   local token = retrieve_token(accessToken)
   if not token then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
     end
   end
 
@@ -471,6 +457,33 @@ function _M.execute(conf)
   ngx.req.set_header("x-authenticated-userid", token.authenticated_userid)
   ngx.ctx.authenticated_credential = credential
   ngx.ctx.authenticated_consumer = consumer
+
+  return true
+end
+
+function _M.execute(conf)
+  -- Check if the API has a request_path and if it's being invoked with the path resolver
+  local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
+  if pl_stringx.endswith(path_prefix, "/") then
+    path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
+  end
+
+  if ngx.req.get_method() == "POST" then
+    if ngx.re.match(ngx.var.request_uri, string.format(AUTHORIZE_URL, path_prefix)) then
+      authorize(conf)
+    elseif ngx.re.match(ngx.var.request_uri, string.format(TOKEN_URL, path_prefix)) then
+      issue_token(conf)
+    end
+  end
+
+  local ok, err = do_authentication(conf)
+  if not ok then
+    if conf.anonymous then
+      ngx.req.set_header(constants.HEADERS.ANONYMOUS, true)
+    else
+      return responses.send(err.status, err.message, err.headers)
+    end
+  end
 end
 
 return _M
