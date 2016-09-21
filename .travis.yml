@@ -23,14 +23,22 @@ env:
     - LUAROCKS=2.4.0
     - OPENSSL=1.0.2h
     - CASSANDRA=2.2.7
-    - OPENRESTY=1.9.15.1
+    - OPENRESTY_BASE=1.9.15.1
+    - OPENRESTY_LATEST=1.11.2.1
+    - OPENRESTY=$OPENRESTY_BASE
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
   matrix:
     - TEST_SUITE=lint
     - TEST_SUITE=unit
     - TEST_SUITE=integration
+      OPENRESTY=$OPENRESTY_BASE
     - TEST_SUITE=plugins
+      OPENRESTY=$OPENRESTY_BASE
+    - TEST_SUITE=integration
+      OPENRESTY=$OPENRESTY_LATEST
+    - TEST_SUITE=plugins
+      OPENRESTY=$OPENRESTY_LATEST
 
 before_install:
   - source .ci/setup_env.sh
