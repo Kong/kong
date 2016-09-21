@@ -10,5 +10,6 @@ fields = {
     hide_credentials = {type = "boolean", default = false},
     timeout = {type = "number", default = 10000},
     keepalive = {type = "number", default = 60000},
+    anonymous = {type = "boolean", default = false}
   }
 }

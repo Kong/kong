@@ -10,6 +10,7 @@ local ngx_error = ngx.ERR
 local ngx_debug = ngx.DEBUG
 local decode_base64 = ngx.decode_base64
 local ngx_socket_tcp = ngx.socket.tcp
+local ngx_set_header = ngx.req.set_header
 local tostring =  tostring
 
 local AUTHORIZATION = "authorization"
@@ -83,14 +84,15 @@ local function authenticate(conf, given_credentials)
   return credential and credential.password == given_password, credential
 end
 
-function _M.execute(conf)
-  local authorization_value = request.get_headers()[AUTHORIZATION]
-  local proxy_authorization_value = request.get_headers()[PROXY_AUTHORIZATION]
+local function do_authentication(conf)
+  local headers = request.get_headers()
+  local authorization_value = headers[AUTHORIZATION]
+  local proxy_authorization_value = headers[PROXY_AUTHORIZATION]
 
   -- If both headers are missing, return 401
   if not (authorization_value or proxy_authorization_value) then
     ngx.header["WWW-Authenticate"] = 'LDAP realm="kong"'
-    return responses.send_HTTP_UNAUTHORIZED()
+    return false, {status = 401}
   end
 
   local is_authorized, credential = authenticate(conf, proxy_authorization_value)
@@ -99,7 +101,7 @@ function _M.execute(conf)
   end
 
   if not is_authorized then
-    return responses.send_HTTP_FORBIDDEN("Invalid authentication credentials")
+    return false, {status = 403, message = "Invalid authentication credentials"}
   end
 
   if conf.hide_credentials then
@@ -107,8 +109,22 @@ function _M.execute(conf)
     request.clear_header(PROXY_AUTHORIZATION)
   end
 
-  request.set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+  ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
+  ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
   ngx.ctx.authenticated_credential = credential
+
+  return true
+end
+
+function _M.execute(conf)
+  local ok, err = do_authentication(conf)
+  if not ok then
+    if conf.anonymous then
+      ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    else
+      return responses.send(err.status, err.message, err.headers)
+    end
+  end
 end
 
 return _M
