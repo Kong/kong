@@ -38,10 +38,19 @@ end
 
 -- looks up a balancer for the target.
 -- @param target the table with the target details
+-- @param cache_only if truthy, no database access is done, only the cache will be checked
 -- @return balancer if found, or nil if not found, or nil+error on error
-local get_balancer = function(target)
+local get_balancer = function(target, cache_only)
   
-  local upstreams_dic, err = cache.get_or_set(cache.upstreams_key(), load_upstreams_into_memory)
+  local loader = (cache_only and 
+    load_upstreams_into_memory 
+  or 
+    function()
+      return nil, "loading upstreams; cache-only lookup failed"
+    end
+  )
+  
+  local upstreams_dic, err = cache.get_or_set(cache.upstreams_key(), loader)
   if err then
     return nil, err
   end
@@ -51,11 +60,17 @@ local get_balancer = function(target)
     return nil   -- there is no upstream by this name, so must be regular name, return and try dns 
   end
   
-  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
+  local loader = (cache_only and 
     function() 
       return load_targets_into_memory(upstream.id) 
     end
+  or 
+    function()
+      return nil, "loading targets; cache-only lookup failed"
+    end
   )
+  
+  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), loader)
   if err then
     return nil, err
   end
@@ -71,7 +86,7 @@ local get_balancer = function(target)
 -- TODO: target history has changed, go update balancer
   
   else
-    -- found it
+    -- found it, and it's up-to-date
     return balancer
   end
 end

@@ -45,6 +45,7 @@ return {
     end,
 
     POST = function(self, dao_factory)
+--TODO: check number of entries and do a cleanup if required!
       crud.post(self.params, dao_factory.targets)
     end,
   },
