@@ -1,5 +1,40 @@
 ## [Unreleased][unreleased]
 
+## [0.9.2] - 2016/09/20
+
+### Fixed
+
+- Correctly report migrations errors. This was caused by an error being thrown
+  from the error handler, and superseding the actual error. [#1605]
+  (https://github.com/Mashape/kong/pull/1605)
+- Prevent Kong from silently failing to start. This would be caused by an
+  erroneous error handler. [28f5d10]
+  (https://github.com/Mashape/kong/commit/28f5d10)
+- Only report a random number generator seeding error when it is not already
+  seeded. [#1613](https://github.com/Mashape/kong/pull/1613)
+- Reduce intra-cluster noise by not propagating keepalive requests events.
+  [#1660](https://github.com/Mashape/kong/pull/1660)
+- Admin API:
+  - Obfuscates sensitive configuration settings from the `/` route.
+    [#1650](https://github.com/Mashape/kong/pull/1650)
+- CLI:
+  - Prevent a failed `kong start` to stop an already running Kong node.
+    [#1645](https://github.com/Mashape/kong/pull/1645)
+  - Remove unset configuration placeholders from the nginx configuration
+    template. This would occur when no Internet connection would be
+    available and would cause Kong to compile an erroneous nginx config.
+    [#1606](https://github.com/Mashape/kong/pull/1606)
+  - Properly count the number of executed migrations.
+    [#1649](https://github.com/Mashape/kong/pull/1649)
+- Plugins:
+  - OAuth2: remove the "Kong" mentions in missing `provision_key` error
+    messages. [#1633](https://github.com/Mashape/kong/pull/1633)
+  - OAuth2: allow to correctly delete applications when using Cassandra.
+    [#1659](https://github.com/Mashape/kong/pull/1659)
+  - galileo: provide a default `bodySize` value when `log_bodies=true` but the
+    current request/response has no body.
+    [#1657](https://github.com/Mashape/kong/pull/1657)
+
 ## [0.9.1] - 2016/09/02
 
 ### Added
@@ -709,7 +744,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.1...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.2...next
+[0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/mashape/kong/compare/0.8.3...0.9.0
 [0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
