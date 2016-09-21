@@ -139,7 +139,7 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
 end
 
 local function do_authentication(conf)
-  local headers = ngx_get_headers();
+  local headers = ngx_get_headers()
   -- If both headers are missing, return 401
   if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
     return false, {status = 401}
