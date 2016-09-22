@@ -9,7 +9,7 @@ describe("Timestamp", function()
   
   it("should get UTC time", function()
     assert.truthy(timestamp.get_utc())
-    assert.are.same(13, string.len(tostring(timestamp.get_utc())))
+    assert.are.same(13, #tostring(timestamp.get_utc()))
   end)
 
   it("should get timestamps table when no timestamp is provided", function()

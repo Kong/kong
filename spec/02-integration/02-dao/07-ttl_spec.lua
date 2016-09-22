@@ -1,4 +1,5 @@
 local helpers = require "spec.02-integration.02-dao.helpers"
+local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 
 helpers.for_each_dao(function(kong_config)
@@ -28,9 +29,11 @@ helpers.for_each_dao(function(kong_config)
 
       ngx.sleep(1)
 
-      row, err = factory.apis:find {id = api.id}
-      assert.falsy(err)
-      assert.falsy(row)
+      spec_helpers.wait_until(function()
+        row, err = factory.apis:find {id = api.id}
+        assert.falsy(err)
+        return row == nil
+      end, 1)
     end)
 
     it("on update", function()
@@ -56,9 +59,11 @@ helpers.for_each_dao(function(kong_config)
 
       ngx.sleep(1)
 
-      row, err = factory.apis:find {id = api.id}
-      assert.falsy(err)
-      assert.falsy(row)
+      spec_helpers.wait_until(function()
+        row, err = factory.apis:find {id = api.id}
+        assert.falsy(err)
+        return row == nil
+      end, 1)
     end)
 
     if kong_config.database == "postgres" then
@@ -94,13 +99,15 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.truthy(ok)
 
-        res, err = _db:query("SELECT COUNT(*) FROM apis")
-        assert.falsy(err)
-        assert.equal(1, res[1].count)
+        spec_helpers.wait_until(function()
+          local res_apis, err = _db:query("SELECT COUNT(*) FROM apis")
+          assert.falsy(err)
 
-        res, err = _db:query("SELECT COUNT(*) FROM ttls")
-        assert.falsy(err)
-        assert.equal(1, res[1].count)
+          local res_ttls, err = _db:query("SELECT COUNT(*) FROM ttls")
+          assert.falsy(err)
+
+          return res_apis[1].count == 1 and res_ttls[1].count == 1
+        end, 1)
       end)
     end
   end)

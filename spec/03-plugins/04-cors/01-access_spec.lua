@@ -19,6 +19,10 @@ describe("Plugin: cors (access)", function()
       request_host = "cors3.com",
       upstream_url = "http://mockbin.com"
     })
+    local api4 = assert(helpers.dao.apis:insert {
+      request_host = "cors4.com",
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       name = "cors",
@@ -47,6 +51,15 @@ describe("Plugin: cors (access)", function()
         max_age = 23,
         preflight_continue = true
       }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api4.id
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api4.id
     })
   end)
 
@@ -130,6 +143,37 @@ describe("Plugin: cors (access)", function()
       assert.equal("true", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
+    end)
+    it("works with 404 responses", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/asdasdasd",
+        headers = {
+          ["Host"] = "cors1.com"
+        }
+      })
+      assert.res_status(404, res)
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
+    end)
+    it("works with 40x responses returned by another plugin", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors4.com"
+        }
+      })
+      assert.res_status(401, res)
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Methods"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
   end)

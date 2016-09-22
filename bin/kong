@@ -1,11 +1,19 @@
 #!/usr/bin/env resty
 
+-- a flag to detect whether our modules (especially kong.core.globalpatches)
+-- are running under resty-cli or in a real ngx_lua, runtime environment.
+ngx.RESTY_CLI = true
+
 -- force LuaSocket usage to resolve `/etc/hosts` until
 -- supported by resty-cli.
 -- See https://github.com/Mashape/kong/issues/1523
 for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
   local socket = require(namespace .. ".socket")
   socket.force_luasocket(ngx.get_phase(), true)
+end
+
+if ngx ~= nil then
+  ngx.exit = function()end
 end
 
 require("kong.cmd.init")(arg)
