@@ -17,6 +17,7 @@ local function check_method(value)
   if not ngx_method then
     return false, method.." is not supported"
   end
+  return true
 end
 
 return {

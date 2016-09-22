@@ -10,6 +10,7 @@ local req_read_body = ngx.req.read_body
 local req_set_body_data = ngx.req.set_body_data
 local req_get_body_data = ngx.req.get_body_data
 local req_clear_header = ngx.req.clear_header
+local req_set_method = ngx.req.set_method
 local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 local type = type
@@ -305,8 +306,8 @@ end
 
 local function transform_method(conf)
   if conf.http_method then
-    ngx.req.set_method(ngx["HTTP_"..conf.http_method:upper()])
-    if conf.http_method == "GET" then
+    req_set_method(ngx["HTTP_"..conf.http_method:upper()])
+    if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
       local content_type_value = req_get_headers()[CONTENT_TYPE]
       local content_type = get_content_type(content_type_value)
       if content_type == ENCODED then
