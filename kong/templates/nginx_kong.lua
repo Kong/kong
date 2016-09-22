@@ -26,7 +26,7 @@ proxy_ssl_server_name on;
 underscores_in_headers on;
 
 real_ip_header X-Forwarded-For;
-set_real_ip_from ${{SET_REAL_IP_FROM}};
+set_real_ip_from ${{PROXY_SET_REAL_IP_FROM}};
 real_ip_recursive on;
 
 lua_package_path '${{LUA_PACKAGE_PATH}};;';

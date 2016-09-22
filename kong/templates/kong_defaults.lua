@@ -4,9 +4,9 @@ log_level = notice
 custom_plugins = NONE
 anonymous_reports = on
 
-set_real_ip_from = 0.0.0.0/0
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443
+proxy_set_real_ip_from = 0.0.0.0/0
 admin_listen = 0.0.0.0:8001
 nginx_worker_processes = auto
 nginx_optimizations = on

@@ -48,13 +48,6 @@
 # NGINX
 #------------------------------------------------------------------------------
 
-#set_real_ip_from = 0.0.0.0/0;   # Defines trusted addresses that are known to send
-				 # correct replacement addresses. 
-				 # If the special value unix: is specified, 
-				 # all UNIX-domain sockets will be trusted.
-				 # See: http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
-
-
 #proxy_listen = 0.0.0.0:8000     # Address and port on which Kong will accept
                                  # HTTP requests.
                                  # This is the public-facing entrypoint of
@@ -65,6 +58,13 @@
 
 #proxy_listen_ssl = 0.0.0.0:8443 # Address and port on which Kong will accept
                                  # HTTPS requests if `ssl` is enabled.
+
+#proxy_set_real_ip_from = 0.0.0.0/0    # Defines trusted addresses that are known to send
+                                 # correct replacement addresses.
+                                 # If the special value unix: is specified,
+                                 # all UNIX-domain sockets will be trusted.
+# Note: See http://nginx.org/en/docs/http/ngx_http_realip_module.html#set_real_ip_from
+# for a list of accepted values.
 
 #admin_listen = 0.0.0.0:8001     # Address and port on which Kong will expose
                                  # an entrypoint to the Admin API.
