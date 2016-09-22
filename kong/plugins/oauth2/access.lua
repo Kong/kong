@@ -1,12 +1,14 @@
-local singletons = require "kong.singletons"
-local stringy = require "stringy"
+local url = require "socket.url"
+local json = require "cjson"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
+local pl_stringx = require "pl.stringx"
+local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
-local url = require "socket.url"
-local Multipart = require "multipart"
+local singletons = require "kong.singletons"
+
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
 local check_https = utils.check_https
@@ -91,6 +93,8 @@ local function retrieve_parameters()
   local content_type = req_get_headers()[CONTENT_TYPE]
   if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
+  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
+    body_parameters = json.decode(ngx.req.get_body_data())
   else
     body_parameters = ngx.req.get_post_args()
   end
@@ -121,14 +125,15 @@ local function authorize(conf)
   local parameters = retrieve_parameters()
   local state = parameters[STATE]
   local allowed_redirect_uris, client, redirect_uri, parsed_redirect_uri
+  local is_implicit_grant
 
   local is_https, err = check_https(conf.accept_http_if_already_terminated)
   if not is_https then
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
-      response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
-    elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+      response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
+    elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
       response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
     else
       local response_type = parameters[RESPONSE_TYPE]
@@ -164,6 +169,7 @@ local function authorize(conf)
       if not response_params[ERROR] then
         if response_type == CODE then
           local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
+            credential_id = client.id,
             authenticated_userid = parameters[AUTHENTICATED_USERID],
             scope = table.concat(scopes, " ")
           }, {ttl = 300})
@@ -178,6 +184,7 @@ local function authorize(conf)
         else
           -- Implicit grant, override expiration to zero
           response_params = generate_token(conf, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          is_implicit_grant = true
         end
       end
     end
@@ -188,16 +195,22 @@ local function authorize(conf)
 
   -- Appending kong generated params to redirect_uri query string
   if parsed_redirect_uri then
-    if not parsed_redirect_uri.query then
-      parsed_redirect_uri.query = ""
+    local encoded_params = utils.encode_args(utils.table_merge(ngx.decode_args(
+      (is_implicit_grant and
+        (parsed_redirect_uri.fragment and parsed_redirect_uri.fragment or "") or
+        (parsed_redirect_uri.query and parsed_redirect_uri.query or "")
+      )), response_params))
+    if is_implicit_grant then
+      parsed_redirect_uri.fragment = encoded_params
+    else
+      parsed_redirect_uri.query = encoded_params
     end
-    parsed_redirect_uri.query = utils.encode_args(utils.table_merge(ngx.decode_args(parsed_redirect_uri.query), response_params))
   end
 
   -- Sending response in JSON format
   return responses.send(response_params[ERROR] and 400 or 200, redirect_uri and {
     redirect_uri = url.build(parsed_redirect_uri)
-  } or response_params, false, {
+  } or response_params, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache"
   })
@@ -226,7 +239,7 @@ local function retrieve_client_credentials(parameters)
     if m and table.getn(m) > 0 then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
-        local basic_parts = stringy.split(decoded_basic, ":")
+        local basic_parts = utils.split(decoded_basic, ":")
         client_id = basic_parts[1]
         client_secret = basic_parts[2]
       end
@@ -258,14 +271,17 @@ local function issue_token(conf)
     local client_id, client_secret, from_authorization_header = retrieve_client_credentials(parameters)
 
     -- Check client_id and redirect_uri
-    local redirect_uri, client = get_redirect_uri(client_id)
-    if not redirect_uri then
+    local allowed_redirect_uris, client = get_redirect_uri(client_id)
+    if not allowed_redirect_uris then
       response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication"}
       if from_authorization_header then
         invalid_client_properties = { status = 401, www_authenticate = "Basic realm=\"OAuth2.0\""}
       end
-    elseif parameters[REDIRECT_URI] and parameters[REDIRECT_URI] ~= redirect_uri then
-      response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.." that does not match with the one created with the application"}
+    else
+      local redirect_uri = parameters[REDIRECT_URI] and parameters[REDIRECT_URI] or allowed_redirect_uris[1]
+      if not utils.table_contains(allowed_redirect_uris, redirect_uri) then
+        response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REDIRECT_URI.. " that does not match with any redirect_uri created with the application" }
+      end
     end
 
     if client and client.client_secret ~= client_secret then
@@ -281,13 +297,16 @@ local function issue_token(conf)
         local authorization_code = code and singletons.dao.oauth2_authorization_codes:find_all({code = code})[1]
         if not authorization_code then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
+        elseif authorization_code.credential_id ~= client.id then
+          response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         else
           response_params = generate_token(conf, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+          singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Only check the provision_key if the authenticated_userid is being set
         if parameters.authenticated_userid and conf.provision_key ~= parameters.provision_key then
-          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
         else
           -- Check scopes
           local ok, scopes = retrieve_scopes(parameters, conf)
@@ -300,8 +319,8 @@ local function issue_token(conf)
       elseif grant_type == GRANT_PASSWORD then
         -- Check that it comes from the right client
         if conf.provision_key ~= parameters.provision_key then
-          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
-        elseif not parameters.authenticated_userid or stringy.strip(parameters.authenticated_userid) == "" then
+          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
+        elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
         else
           -- Check scopes
@@ -330,7 +349,7 @@ local function issue_token(conf)
 
   -- Sending response in JSON format
   return responses.send(response_params[ERROR] and (invalid_client_properties and invalid_client_properties.status or 400)
-                        or 200, response_params, false, {
+                        or 200, response_params, {
     ["cache-control"] = "no-store",
     ["pragma"] = "no-cache",
     ["www-authenticate"] = invalid_client_properties and invalid_client_properties.www_authenticate
@@ -396,8 +415,8 @@ end
 
 function _M.execute(conf)
   -- Check if the API has a request_path and if it's being invoked with the path resolver
-  local path_prefix = (ngx.ctx.api.request_path and stringy.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
-  if stringy.endswith(path_prefix, "/") then
+  local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
+  if pl_stringx.endswith(path_prefix, "/") then
     path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
   end
 
@@ -411,19 +430,19 @@ function _M.execute(conf)
 
   local accessToken = parse_access_token(conf);
   if not accessToken then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, false, {["WWW-Authenticate"] = 'Bearer realm="service"'})
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, {["WWW-Authenticate"] = 'Bearer realm="service"'})
   end
 
   local token = retrieve_token(accessToken)
   if not token then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
   end
 
   -- Check expiration date
   if token.expires_in > 0 then -- zero means the token never expires
     local now = timestamp.get_utc()
     if now - token.created_at > (token.expires_in * 1000) then
-      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, false, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
     end
   end
 
@@ -451,6 +470,7 @@ function _M.execute(conf)
   ngx.req.set_header("x-authenticated-scope", token.scope)
   ngx.req.set_header("x-authenticated-userid", token.authenticated_userid)
   ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_consumer = consumer
 end
 
 return _M

@@ -21,6 +21,7 @@ return {
         local _, err = dao.plugins:insert {
           name = "galileo",
           api_id = analytics.api_id,
+          consumer_id = analytics.consumer_id,
           enabled = analytics.enabled,
           config = {
             service_token = analytics.config.service_token,

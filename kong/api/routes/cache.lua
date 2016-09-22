@@ -17,7 +17,7 @@ return {
           return responses.send_HTTP_OK(cached_item)
         end
       end
-      
+
       return responses.send_HTTP_NOT_FOUND()
     end,
 
@@ -26,7 +26,7 @@ return {
         cache.delete(self.params.key)
         return responses.send_HTTP_NO_CONTENT()
       end
-      
+
       return responses.send_HTTP_NOT_FOUND()
     end
   }

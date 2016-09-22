@@ -1,10 +1,10 @@
-local base64 = require "base64"
+local encode_base64 = ngx.encode_base64
 
 local function validate_cert(v)
   local ssl = require "ngx.ssl"
   local der = ssl.cert_pem_to_der(v)
   if der then
-    return true, nil, { _cert_der_cache = base64.encode(der) }
+    return true, nil, { _cert_der_cache = encode_base64(der) }
   end
   return false, "Invalid SSL certificate"
 end
@@ -13,7 +13,7 @@ local function validate_key(v)
   local ssl = require "ngx.ssl"
   local der = ssl.priv_key_pem_to_der(v)
   if der then
-    return true, nil, { _key_der_cache = base64.encode(der) }
+    return true, nil, { _key_der_cache = encode_base64(der) }
   end
   return false, "Invalid SSL certificate key"
 end

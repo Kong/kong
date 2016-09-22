@@ -1,4 +1,5 @@
 local crud = require "kong.api.crud_helpers"
+local utils = require "kong.tools.utils"
 
 return {
   ["/consumers/:username_or_id/acls/"] = {
@@ -20,18 +21,25 @@ return {
     end
   },
 
-  ["/consumers/:username_or_id/acls/:id"] = {
+  ["/consumers/:username_or_id/acls/:group_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
       self.params.consumer_id = self.consumer.id
 
-      local err
-      self.acl, err = dao_factory.acls:find(self.params)
+      local filter_keys = {
+        [utils.is_valid_uuid(self.params.group_or_id) and "id" or "group"] = self.params.group_or_id,
+        consumer_id = self.params.consumer_id,
+      }
+      self.params.group_or_id = nil
+
+      local acls, err = dao_factory.acls:find_all(filter_keys)
       if err then
         return helpers.yield_error(err)
-      elseif self.acl == nil then
+      elseif #acls == 0 then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
+
+      self.acl = acls[1]
     end,
 
     GET = function(self, dao_factory, helpers)

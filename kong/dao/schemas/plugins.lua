@@ -29,7 +29,6 @@ return {
     },
     api_id = {
       type = "id",
-      required = true,
       foreign = "apis:id"
     },
     consumer_id = {

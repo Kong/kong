@@ -1,8 +1,8 @@
-local singletons = require "kong.singletons"
 local crud = require "kong.api.crud_helpers"
+local cjson = require "cjson"
 local utils = require "kong.tools.utils"
-local syslog = require "kong.tools.syslog"
-local constants = require "kong.constants"
+local reports = require "kong.core.reports"
+local singletons = require "kong.singletons"
 
 -- Remove functions from a schema definition so that
 -- cjson can encode the schema.
@@ -29,10 +29,8 @@ return {
 
     POST = function(self, dao_factory)
       crud.post(self.params, dao_factory.plugins, function(data)
-        if singletons.configuration.send_anonymous_reports then
-          data.signal = constants.SYSLOG.API
-          syslog.log(syslog.format_entity(data))
-        end
+        data.signal = reports.api_signal
+        reports.send(data)
       end)
     end
   },
@@ -77,8 +75,12 @@ return {
 
   ["/plugins/enabled"] = {
     GET = function(self, dao_factory, helpers)
+      local enabled_plugins = setmetatable({}, cjson.empty_array_mt)
+      for k in pairs(singletons.configuration.plugins) do
+        enabled_plugins[#enabled_plugins+1] = k
+      end
       return helpers.responses.send_HTTP_OK {
-        enabled_plugins = singletons.configuration.plugins
+        enabled_plugins = enabled_plugins
       }
     end
   }

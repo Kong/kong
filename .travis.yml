@@ -1,59 +1,50 @@
 sudo: false
+
+language: c
+
+compiler:
+  - gcc
+
 notifications:
   email: false
+
 addons:
   postgresql: "9.4"
   apt:
     packages:
-      - sed
+      - dnsmasq
       - net-tools
-      - uuid-dev
       - libpcre3-dev
       - build-essential
+
 env:
   global:
-    - LUAJIT=2.1
-    - LUAROCKS=2.3.0
-    - OPENRESTY=1.9.7.3
-    - CASSANDRA=2.2.4
-    - OPENSSL=1.0.2f
     - SERF=0.7.0
-    - DNSMASQ=2.75
-    - CASSANDRA_HOSTS=127.0.0.1
-    - OPENRESTY_DIR=$HOME/openresty-$OPENRESTY
-    - SERF_DIR=$HOME/serf
-    - DNSMASQ_DIR=$HOME/dnsmasq
-    - LUA_DIR=$HOME/lua
-    - LUAROCKS_DIR=$HOME/luarocks
+    - LUAROCKS=2.4.0
+    - OPENSSL=1.0.2h
+    - CASSANDRA=2.2.7
+    - OPENRESTY=1.9.15.1
+    - DOWNLOAD_CACHE=$HOME/download-cache
+    - INSTALL_CACHE=$HOME/install-cache
   matrix:
+    - TEST_SUITE=lint
     - TEST_SUITE=unit
     - TEST_SUITE=integration
-      DATABASE=cassandra
     - TEST_SUITE=plugins
-      DATABASE=cassandra
-    - TEST_SUITE=integration
-      DATABASE=postgres
-    - TEST_SUITE=plugins
-      DATABASE=postgres
+
 before_install:
-  - source .ci/setenv_kong.sh
-  - bash .ci/setup_cassandra.sh
+  - source .ci/setup_env.sh
+
 install:
-  - luarocks purge --tree=$LUAROCKS_DIR
-  - luarocks install busted
-  - luarocks install luacov-coveralls
-  - luarocks install luacheck
-  - luarocks make
+  - make dev
+
 script:
-  - make lint
   - .ci/run_tests.sh
+
 cache:
   apt: true
   pip: true
   directories:
-    - $LUA_DIR
-    - $LUAROCKS_DIR
-    - $SERF_DIR
-    - $DNSMASQ_DIR
-    - $OPENRESTY_DIR
+    - $DOWNLOAD_CACHE
+    - $INSTALL_CACHE
     - $HOME/.ccm/repository

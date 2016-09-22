@@ -16,7 +16,7 @@ JwtHandler.PRIORITY = 1000
 -- Checks for the JWT in URI parameters, then in the `Authorization` header.
 -- @param request ngx request object
 -- @param conf Plugin configuration
--- @return token JWT token contained in request or nil
+-- @return token JWT token contained in request (can be a table) or nil
 -- @return err
 local function retrieve_token(request, conf)
   local uri_parameters = request.get_uri_args()
@@ -56,14 +56,21 @@ function JwtHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  if not token then
-    return responses.send_HTTP_UNAUTHORIZED()
+  local ttype = type(token)
+  if ttype ~= "string" then
+    if ttype == "nil" then
+      return responses.send_HTTP_UNAUTHORIZED()
+    elseif ttype == "table" then
+      return responses.send_HTTP_UNAUTHORIZED("Multiple tokens provided")
+    else
+      return responses.send_HTTP_UNAUTHORIZED("Unrecognizable token")
+    end
   end
-
+  
   -- Decode token to find out who the consumer is
   local jwt, err = jwt_decoder:new(token)
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    return responses.send_HTTP_UNAUTHORIZED("Bad token; "..tostring(err))
   end
 
   local claims = jwt.claims
@@ -99,6 +106,10 @@ function JwtHandler:access(conf)
     jwt_secret_value = jwt:b64_decode(jwt_secret_value)
   end
 
+  if not jwt_secret_value then
+    return responses.send_HTTP_FORBIDDEN("Invalid key/secret")
+  end
+  
   -- Now verify the JWT signature
   if not jwt:verify_signature(jwt_secret_value) then
     return responses.send_HTTP_FORBIDDEN("Invalid signature")
@@ -128,6 +139,7 @@ function JwtHandler:access(conf)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
   ngx.ctx.authenticated_credential = jwt_secret
+  ngx.ctx.authenticated_consumer = consumer
 end
 
 return JwtHandler
