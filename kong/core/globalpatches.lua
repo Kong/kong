@@ -5,58 +5,44 @@ _G._KONG = {
   _VERSION = meta._VERSION
 }
 
-local is_resty_cli = (arg ~= nil) -- only the cli has a global `arg` table, openresty doesn't have it
-
 do -- randomseeding patch
   
-  -- globally disable randomseed
-  local randomseed = _G.math.randomseed
-  local seed_index = {}
-  _G.math.randomseed = function()
-
-    -- Init is special because a forked worker has to reseed, so we use a string key.
-    -- Not entirely sure this is necessary, but better safe than sorry.
-    local whoami = ngx.get_phase() == "init" and "init" or ngx.worker.pid()
-
-    if not seed_index[whoami] then
-      local seed = ngx.time() + ngx.worker.pid()
-      ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
-                         " (pid: ", ngx.worker.pid(), ")")
-      randomseed(seed)
-      seed_index[whoami] = seed
-    else
-      ngx.log(ngx.DEBUG, debug.traceback("ignoring attempt to reseed the random generator @ "))
-    end
-  end
-
-  --[[ The below code will enforce best practices, but fails when the culprit is in external code
   local randomseed = math.randomseed
   local seed
 
   --- Seeds the random generator, use with care.
-  -- The uuid.seed() method will create a unique seed per worker
-  -- process, using a combination of both time and the worker's pid.
-  -- We only allow it to be called once to prevent third-party modules
-  -- from overriding our correct seed (many modules make a wrong usage
-  -- of `math.randomseed()` by calling it multiple times or do not use
-  -- unique seed for Nginx workers).
+  -- Once - properly - seeded, this method is replaced with a stub
+  -- one. This is to enforce best-practises for seeding in ngx_lua,
+  -- and prevents third-party modules from overriding our correct seed
+  -- (many modules make a wrong usage of `math.randomseed()` by calling
+  -- it multiple times or do not use unique seed for Nginx workers).
+  --
+  -- This patched method will create a unique seed per worker process,
+  -- using a combination of both time and the worker's pid.
   -- luacheck: globals math
   _G.math.randomseed = function()
     if not seed then
-      if ngx.get_phase() ~= "init_worker" and not is_resty_cli then  
-        error("math.randomseed() must be called in init_worker", 2)
+      -- If we're in runtime nginx, we have multiple workers so we _only_
+      -- accept seeding when in the 'init_worker' phase.
+      -- That is because that phase is the earliest one before the
+      -- workers have a chance to process business logic, and because
+      -- if we'd do that in the 'init' phase, the Lua VM is not forked
+      -- yet and all workers would end-up using the same seed.
+      if not ngx.RESTY_CLI and ngx.get_phase() ~= "init_worker" then
+        ngx.log(ngx.ERR, debug.traceback("math.randomseed() must be called in init_worker"))
       end
 
       seed = ngx.time() + ngx.worker.pid()
-      ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker n", ngx.worker.id(),
+      ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ", ngx.worker.id(),
                          " (pid: ", ngx.worker.pid(), ")")
       randomseed(seed)
     else
       ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
                          "already seeded with ", seed)
     end
+
+    return seed
   end
-  --]]
 end
 
 
@@ -99,7 +85,7 @@ end
 
 do -- patch for LuaSocket tcp sockets, block usage in cli.
 
-  if is_resty_cli then
+  if ngx.RESTY_CLI then
     local socket = require "socket"
     socket.tcp = function(...)
       error("should not be using this")
@@ -107,14 +93,18 @@ do -- patch for LuaSocket tcp sockets, block usage in cli.
   end
 end
 
-
+do -- patch cassandra driver to use the cosockets anyway, as we've patched them above already
+  
+  require("cassandra.socket")  --just pre-loading the module will do
+end
+--[[ no longer needed, since pulling 0.9.2?
 
 do -- Cassandra cache-shm patch
 
   --- Patch cassandra driver.
   -- The cache module depends on an `shm` which isn't available on the `resty` cli.
   -- in non-nginx Lua it uses a stub. So for the cli make it think it's non-nginx.
-  if is_resty_cli then
+  if ngx.RESTY_CLI then
     local old_ngx = _G.ngx
     _G.ngx = nil
     require "cassandra.cache"
@@ -128,7 +118,7 @@ do -- cassandra resty-lock patch
   
   --- stub for resty.lock module which isn't available in the `resty` cli because it
   -- requires an `shm`.
-  if is_resty_cli then
+  if ngx.RESTY_CLI then
     package.loaded["resty.lock"] = {
         new = function()
           return {
@@ -143,3 +133,4 @@ do -- cassandra resty-lock patch
       }
   end
 end
+--]]
