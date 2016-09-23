@@ -312,6 +312,17 @@ describe("Configuration loader", function()
       assert.True(helpers.path.isabs(conf.ssl_cert))
       assert.True(helpers.path.isabs(conf.ssl_cert_key))
     end)
+    it("honors path if provided even if a default file exists", function()
+      conf_loader.add_default_path("spec/fixtures/to-strip.conf")
+
+      finally(function()
+        package.loaded["kong.conf_loader"] = nil
+        conf_loader = require "kong.conf_loader"
+      end)
+
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.equal("postgres", conf.database)
+    end)
   end)
 
   describe("errors", function()
