@@ -24,7 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-require "kong.core.globalpatches"
+require("kong.core.globalpatches")()
 
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
