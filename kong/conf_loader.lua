@@ -263,8 +263,9 @@ local function load(path, custom_conf)
   if path and not pl_path.exists(path) then
     -- file conf has been specified and must exist
     return nil, "no file at: "..path
-  else
-    -- try to look for a conf, but no big deal if none
+  elseif not path then
+    -- try to look for a conf in default locations, but no big
+    -- deal if none is found: we will use our defaults.
     for _, default_path in ipairs(DEFAULT_PATHS) do
       if pl_path.exists(default_path) then
         path = default_path
@@ -376,6 +377,9 @@ end
 
 return setmetatable({
   load = load,
+  add_default_path = function(path)
+    DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
+  end,
   remove_sensitive = function(conf)
     local purged_conf = tablex.deepcopy(conf)
     for k in pairs(CONF_SENSITIVE) do
