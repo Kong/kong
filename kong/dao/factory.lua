@@ -249,11 +249,17 @@ function Factory:run_migrations(on_migrate, on_success)
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
   if not ok then return ret_error_string(_db.db_type, nil, err) end
+  
+  if migrations_ran > 0 then
+    log("%d core migrations ran", migrations_ran)
+    migrations_ran = 0
+  end
 
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
       local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then return ret_error_string(_db.db_type, nil, err)
+      if not ok then
+        return ret_error_string(_db.db_type, nil, err)
       else
         migrations_ran = migrations_ran + n_ran
       end
@@ -261,7 +267,7 @@ function Factory:run_migrations(on_migrate, on_success)
   end
 
   if migrations_ran > 0 then
-    log("%d migrations ran", migrations_ran)
+    log("%d plugin migrations ran", migrations_ran)
   end
 
   log.verbose("migrations up to date")
