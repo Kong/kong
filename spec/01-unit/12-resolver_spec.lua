@@ -39,7 +39,8 @@ describe("Resolver", function()
       --
       {name = "mockbin", request_path = "/strip", upstream_url = "http://mockbin.com/some/path/", strip_request_path = true},
       {name = "mockbin", request_path = "/strip-me", upstream_url = "http://mockbin.com/", strip_request_path = true},
-      {name = "preserve-host", request_path = "/preserve-host", request_host = "preserve-host.com", upstream_url = "http://mockbin.com", preserve_host = true}
+      {name = "preserve-host", request_path = "/preserve-host", request_host = "preserve-host.com", upstream_url = "http://mockbin.com", preserve_host = true},
+      {name = "upstream-url-with-port", request_path = "/wiht-port", request_host = "with-port.com", upstream_url = "http://mockbin.com:9000"},
     }
   end)
 
@@ -61,24 +62,24 @@ describe("Resolver", function()
     end)
     it("should return an array of APIs by request_path", function()
       assert.equal("table", type(apis_dics.request_path_arr))
-      assert.equal(7, #apis_dics.request_path_arr)
+      assert.equal(8, #apis_dics.request_path_arr)
       for _, item in ipairs(apis_dics.request_path_arr) do
         assert.truthy(item.strip_request_path_pattern)
         assert.truthy(item.request_path)
         assert.truthy(item.api)
       end
-      assert.equal("/strip%-me", apis_dics.request_path_arr[1].strip_request_path_pattern)
-      assert.equal("/strip", apis_dics.request_path_arr[2].strip_request_path_pattern)
+      assert.equal("/strip%-me", apis_dics.request_path_arr[2].strip_request_path_pattern)
+      assert.equal("/strip", apis_dics.request_path_arr[3].strip_request_path_pattern)
     end)
     it("should return an array of APIs with wildcard request_host", function()
       assert.equal("table", type(apis_dics.wildcard_dns_arr))
       assert.equal(2, #apis_dics.wildcard_dns_arr)
       for _, item in ipairs(apis_dics.wildcard_dns_arr) do
         assert.truthy(item.api)
-        assert.truthy(item.pattern)
+        assert.truthy(item.regex)
       end
-      assert.equal("^.+%.wildcard%.com$", apis_dics.wildcard_dns_arr[1].pattern)
-      assert.equal("^wildcard%..+$", apis_dics.wildcard_dns_arr[2].pattern)
+      assert.equal("^.+\\.wildcard\\.com$", apis_dics.wildcard_dns_arr[1].regex)
+      assert.equal("^wildcard\\..+$", apis_dics.wildcard_dns_arr[2].regex)
     end)
   end)
 
@@ -89,13 +90,13 @@ describe("Resolver", function()
     end)
 
     it("should strip the api's request_path from the requested URI", function()
-      assert.equal("/status/200", resolver.strip_request_path("/mockbin/status/200", apis_dics.request_path_arr[7].strip_request_path_pattern))
-      assert.equal("/status/200", resolver.strip_request_path("/mockbin-with-dashes/status/200", apis_dics.request_path_arr[6].strip_request_path_pattern))
-      assert.equal("/", resolver.strip_request_path("/mockbin", apis_dics.request_path_arr[7].strip_request_path_pattern))
-      assert.equal("/", resolver.strip_request_path("/mockbin/", apis_dics.request_path_arr[7].strip_request_path_pattern))
+      assert.equal("/status/200", resolver.strip_request_path("/mockbin/status/200", apis_dics.request_path_arr[8].strip_request_path_pattern))
+      assert.equal("/status/200", resolver.strip_request_path("/mockbin-with-dashes/status/200", apis_dics.request_path_arr[7].strip_request_path_pattern))
+      assert.equal("/", resolver.strip_request_path("/mockbin", apis_dics.request_path_arr[8].strip_request_path_pattern))
+      assert.equal("/", resolver.strip_request_path("/mockbin/", apis_dics.request_path_arr[8].strip_request_path_pattern))
     end)
     it("should only strip the first pattern", function()
-      assert.equal("/mockbin/status/200/mockbin", resolver.strip_request_path("/mockbin/mockbin/status/200/mockbin", apis_dics.request_path_arr[7].strip_request_path_pattern))
+      assert.equal("/mockbin/status/200/mockbin", resolver.strip_request_path("/mockbin/mockbin/status/200/mockbin", apis_dics.request_path_arr[8].strip_request_path_pattern))
     end)
     it("should not add final slash", function()
       assert.equal("hello", resolver.strip_request_path("hello", apis_dics.request_path_arr[3].strip_request_path_pattern, true))
@@ -250,6 +251,12 @@ describe("Resolver", function()
       assert.same(APIS_FIXTURES[11], api)
       assert.equal("http://mockbin.com/preserve-host", upstream_url)
       assert.equal("mockbin.com", upstream_host)
+    end)
+    it("preserves upstream_url port", function()
+      local api, upstream_url, upstream_host = resolver.execute("/hello/world?foo=bar", {["Host"] = "with-port.com"})
+      assert.same(APIS_FIXTURES[12], api)
+      assert.equal("http://mockbin.com:9000/hello/world", upstream_url)
+      assert.equal("mockbin.com:9000", upstream_host)
     end)
     it("should not decode percent-encoded values in URI", function()
       -- they should be forwarded as-is

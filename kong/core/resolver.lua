@@ -1,40 +1,43 @@
 local singletons = require "kong.singletons"
-local url = require "socket.url"
-local cache = require "kong.tools.database_cache"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+local cache = require "kong.tools.database_cache"
 
 local table_insert = table.insert
 local table_sort = table.sort
+local re_match = ngx.re.match
+local re_find = ngx.re.find
+local sub = string.sub
+local gsub = string.gsub
+local log = ngx.log
+local ERR = ngx.ERR
+local req_set_header = ngx.req.set_header
+local req_get_headers = ngx.req.get_headers
 local ipairs = ipairs
 local type = type
 
 local _M = {}
-
--- Take a request_host and make it a pattern for wildcard matching.
--- Only do so if the request_host actually has a wildcard.
-local function create_wildcard_pattern(request_host)
-  if request_host:find("*", 1, true) then
-    return "^"..request_host:gsub("%.", "%%."):gsub("*", ".+").."$"
-  end
-end
 
 -- Handles pattern-specific characters if any.
 local function create_strip_request_path_pattern(request_path)
   return request_path:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", function(c) return "%"..c end)
 end
 
-local function get_upstream_url(api)
-  -- Remove trailing slash because ngx.var.request_uri always starts with a slash
-  return api.upstream_url:match("^(.-)/?$")
-end
-
 local function get_host_from_upstream_url(val)
-  local parsed_url = url.parse(val)
-
-  if parsed_url.port              then return parsed_url.host..":"..parsed_url.port end
-  if parsed_url.scheme == "https" then return parsed_url.host..":443" end
-  return parsed_url.host
+  local m, err = re_match(val, "^(http[s]?):\\/\\/([^:\\/\\s]+):?([0-9]*)\\/?", "oj")
+  if err then
+    log(ERR, "[resolver] error extracting host from upstream_url: ", err)
+    return
+  elseif m then
+    local scheme, host, port = m[1], m[2], m[3] -- avoid unpack()
+    if scheme == "https" then
+      return host .. ":443"
+    elseif port ~= "" then
+      return host .. ":" .. port
+    else
+      return host
+    end
+  end
 end
 
 -- Load all APIs in memory.
@@ -50,11 +53,13 @@ function _M.load_apis_in_memory()
   local dns_dic, dns_wildcard_arr, request_path_arr = {}, {}, {}
   for _, api in ipairs(apis) do
     if api.request_host then
-      local pattern = create_wildcard_pattern(api.request_host)
-      if pattern then
+      if api.request_host:find("*", 1, true) then
         -- If the request_host is a wildcard, we have a pattern and we can
         -- store it in an array for later lookup.
-        table_insert(dns_wildcard_arr, {pattern = pattern, api = api})
+        dns_wildcard_arr[#dns_wildcard_arr+1] = {
+          regex = "^"..api.request_host:gsub("%.", "\\."):gsub("*", ".+").."$",
+          api = api
+        }
       else
         -- Keep non-wildcard request_host in a dictionary for faster lookup.
         dns_dic[api.request_host] = api
@@ -64,6 +69,7 @@ function _M.load_apis_in_memory()
       table_insert(request_path_arr, {
         api = api,
         request_path = api.request_path,
+        request_path_regex = "^"..(api.request_path == "/" and "/" or api.request_path.."/"),
         strip_request_path_pattern = create_strip_request_path_pattern(api.request_path)
       })
     end
@@ -91,15 +97,28 @@ function _M.find_api_by_request_host(req_headers, apis_dics)
       end
       -- for all values of this header, try to find an API using the apis_by_dns dictionnary
       for _, host in ipairs(hosts) do
-        host = host:match("^([^:]+)")  -- grab everything before ":"
-        table_insert(hosts_list, host)
+        local m, err = re_match(host, "^([^:]+)", "oj") -- grab everything before ":"
+        if err then
+          log(ERR, "[resolver] error stripping port number from host: ", err)
+          return
+        end
+
+        host = m[1]
+        hosts_list[#hosts_list+1] = host
+
         if apis_dics.by_dns[host] then
           return apis_dics.by_dns[host], host
         else
           -- If the API was not found in the dictionary, maybe it is a wildcard request_host.
           -- In that case, we need to loop over all of them.
           for _, wildcard_dns in ipairs(apis_dics.wildcard_dns_arr) do
-            if host:match(wildcard_dns.pattern) then
+            local m, err = re_match(host, wildcard_dns.regex, "oj")
+            if err then
+              log(ERR, "[resolver] error matching wildcard DNS from request_host: ", err)
+              return
+            end
+
+            if m then
               return wildcard_dns.api
             end
           end
@@ -113,28 +132,28 @@ end
 
 -- To do so, we have to compare entire URI segments (delimited by "/").
 -- Comparing by entire segment allows us to avoid edge-cases such as:
--- uri = /mockbin-with-pattern/xyz
+-- uri_path = /mockbin-with-pattern/xyz
 -- api.request_path regex = ^/mockbin
 -- ^ This would wrongfully match. Wether:
 -- api.request_path regex = ^/mockbin/
 -- ^ This does not match.
 
 -- Because we need to compare by entire URI segments, all URIs need to have a trailing slash, otherwise:
--- uri = /mockbin
+-- uri_path = /mockbin
 -- api.request_path regex = ^/mockbin/
 -- ^ This would not match.
 -- @param  `uri` The URI for this request.
 -- @param  `request_path_arr`    An array of all APIs that have a request_path property.
-function _M.find_api_by_request_path(uri, request_path_arr)
-  if uri:sub(-1) ~= "/" then
-    uri = uri.."/"
+function _M.find_api_by_request_path(uri_path, request_path_arr)
+  if sub(uri_path, -1) ~= "/" then
+    uri_path = uri_path.."/"
   end
 
   for _, item in ipairs(request_path_arr) do
-    local m, err = ngx.re.match(uri, "^"..(item.request_path == "/" and "/" or item.request_path.."/"))
+    local from, _, err = re_find(uri_path, item.request_path_regex, "oj")
     if err then
-      ngx.log(ngx.ERR, "[resolver] error matching requested request_path: "..err)
-    elseif m then
+      log(ERR, "[resolver] error matching requested request_path: ", err)
+    elseif from then
       return item.api, item.strip_request_path_pattern
     end
   end
@@ -143,7 +162,7 @@ end
 -- Replace `/request_path` with `request_path`, and then prefix with a `/`
 -- or replace `/request_path/foo` with `/foo`, and then do not prefix with `/`.
 function _M.strip_request_path(uri, strip_request_path_pattern, upstream_url_has_path)
-  local uri = uri:gsub(strip_request_path_pattern, "", 1)
+  local uri = gsub(uri, strip_request_path_pattern, "", 1)
 
   -- Sometimes uri can be an empty string, and adding a slash "/"..uri will lead to a trailing slash
   -- We don't want to add a trailing slash in one specific scenario, when the upstream_url already has
@@ -182,8 +201,8 @@ local function find_api(uri, headers)
   api, matched_host, hosts_list = _M.find_api_by_request_host(headers, apis_dics)
   -- If it was found by Host, return
   if api then
-    ngx.req.set_header(constants.HEADERS.FORWARDED_HOST, matched_host)
-    return nil, api, matched_host, hosts_list
+    req_set_header(constants.HEADERS.FORWARDED_HOST, matched_host)
+    return nil, api, matched_host, hosts_list, nil
   end
 
   -- Otherwise, we look for it by request_path. We have to loop over all APIs and compare the requested URI.
@@ -193,12 +212,23 @@ local function find_api(uri, headers)
 end
 
 local function url_has_path(url)
-  local _, count_slashes = url:gsub("/", "")
+  local _, count_slashes = gsub(url, "/", "")
   return count_slashes > 2
 end
 
+local function strip_querystring(uri)
+  local m, err = re_match(uri, "^(.*)\\?", "oj") -- grab everything before "?"
+  if err then
+    log(ERR, "[resolver] error stripping querystring from URI: ", err)
+  elseif m and m[1] then
+    uri = m[1]
+  end
+
+  return uri
+end
+
 function _M.execute(request_uri, request_headers)
-  local uri = request_uri:match("^([^%?]+)")  -- grab everything before "?"
+  local uri = strip_querystring(request_uri)
   local err, api, matched_host, hosts_list, strip_request_path_pattern = find_api(uri, request_headers)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
@@ -211,18 +241,23 @@ function _M.execute(request_uri, request_headers)
   end
 
   local upstream_host
-  local upstream_url = get_upstream_url(api)
+  local upstream_url = api.upstream_url
+
+  -- remove trailing slash because ngx.var.request_uri always starts with a slash
+  if sub(upstream_url, -1) == "/" then
+    upstream_url = sub(upstream_url, 1, -2)
+  end
 
   -- If API was retrieved by request_path and the request_path needs to be stripped
   if strip_request_path_pattern and api.strip_request_path then
     uri = _M.strip_request_path(uri, strip_request_path_pattern, url_has_path(upstream_url))
-    ngx.req.set_header(constants.HEADERS.FORWARDED_PREFIX, api.request_path)
+    req_set_header(constants.HEADERS.FORWARDED_PREFIX, api.request_path)
   end
 
   upstream_url = upstream_url..uri
 
   if api.preserve_host then
-    upstream_host = matched_host or ngx.req.get_headers()["host"]
+    upstream_host = matched_host or req_get_headers()["host"]
   end
 
   if upstream_host == nil then
