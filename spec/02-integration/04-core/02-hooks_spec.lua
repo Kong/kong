@@ -663,7 +663,7 @@ describe("Core Hooks", function()
       -- Tell Kong to join the new Serf
       local res = assert(api_client:send {
         method = "POST",
-        path = "/cluster/",
+        path = "/cluster/nodes/",
         headers = {
           ["Content-Type"] = "application/json"
         },
@@ -675,7 +675,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/"
+          path = "/cluster/nodes/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         if #body.data == 2 then
@@ -701,7 +701,7 @@ describe("Core Hooks", function()
       helpers.wait_until(function()
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cluster/"
+          path = "/cluster/nodes/"
         })
         local body = cjson.decode(assert.res_status(200, res))
         local found
