@@ -193,8 +193,9 @@ local function find_api(uri, headers)
 end
 
 local function url_has_path(url)
-  local _, count_slashes = url:gsub("/", "")
-  return count_slashes > 2
+  local scheme_slashes = 2
+  local _, count_slashes = url:gsub("/", "", scheme_slashes+1)
+  return count_slashes > scheme_slashes
 end
 
 function _M.execute(request_uri, request_headers)
