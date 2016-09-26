@@ -1,6 +1,8 @@
 #!/usr/bin/env resty -c 65535
 
-package.path = "?/init.lua;"..package.path
+-- a flag to detect whether our modules (especially kong.core.globalpatches)
+-- are running under resty-cli or in a real ngx_lua, runtime environment.
+ngx.RESTY_CLI = true
 
 require "kong.core.globalpatches"
 
