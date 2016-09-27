@@ -55,11 +55,11 @@ local function async_autojoin(premature)
     end
 
     -- Create retries counter key if it doesn't exist
-    if not cache.get(cache.autojoin_retries_key()) then
-      cache.rawset(cache.autojoin_retries_key(), 0)
+    if not cache.sh_get(cache.autojoin_retries_key()) then
+      cache.sh_set(cache.autojoin_retries_key(), 0)
     end
 
-    local autojoin_retries = cache.incr(cache.autojoin_retries_key(), 1) -- Increment retries counter
+    local autojoin_retries = cache.sh_incr(cache.autojoin_retries_key(), 1) -- Increment retries counter
     if (autojoin_retries < ASYNC_AUTOJOIN_RETRIES) then
       create_timer(ASYNC_AUTOJOIN_INTERVAL, async_autojoin)
     end

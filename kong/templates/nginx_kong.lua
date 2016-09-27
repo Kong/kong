@@ -39,6 +39,7 @@ lua_shared_dict reports_locks 100k;
 lua_shared_dict cluster_locks 100k;
 lua_shared_dict cluster_autojoin_locks 100k;
 lua_shared_dict cache_locks 100k;
+lua_shared_dict process_events 1m;
 lua_shared_dict cassandra 1m;
 lua_shared_dict cassandra_prepared 5m;
 lua_socket_log_errors off;

@@ -1,5 +1,7 @@
 local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
+local constants = require "kong.constants"
+local ev = require "resty.worker.events"
 
 local pairs = pairs
 local table_insert = table.insert
@@ -60,7 +62,9 @@ return {
       local message_t = self.params
 
       -- The type is always upper case
-      if message_t.type then
+      if not message_t or not message_t.type then
+        return responses.send_HTTP_BAD_REQUEST()
+      else
         message_t.type = string_upper(message_t.type)
       end
 
@@ -88,7 +92,7 @@ return {
       end
 
       -- Trigger event in the node
-      singletons.events:publish(message_t.type, message_t)
+      ev.post(constants.CACHE.CLUSTER, message_t.type, message_t)
 
       return responses.send_HTTP_OK()
     end

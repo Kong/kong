@@ -121,11 +121,11 @@ ping_handler = function(premature)
   elseif elapsed == 0 then
     send {
       signal = "ping",
-      requests = cache.get(cache.requests_key()) or 0,
+      requests = cache.sh_get(cache.requests_key()) or 0,
       unique_id = unique_str,
       database = singletons.configuration.database
     }
-    cache.rawset(cache.requests_key(), 0)
+    cache.sh_set(cache.requests_key(), 0)
   end
 
   create_ping_timer()
@@ -137,12 +137,12 @@ return {
   -----------------
   init_worker = function()
     if not enabled then return end
-    cache.rawset(cache.requests_key(), 0)
+    cache.sh_set(cache.requests_key(), 0)
     create_ping_timer()
   end,
   log = function()
     if not enabled then return end
-    cache.incr(cache.requests_key(), 1)
+    cache.sh_incr(cache.requests_key(), 1)
   end,
   -----------------
   -- custom methods
