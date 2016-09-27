@@ -62,7 +62,7 @@ describe("Configuration loader", function()
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["my-plugin"])
   end)
-  it("loads custom plugins sorrounded by spaces", function()
+  it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = " hello-world ,   another-one  "  
     }))
