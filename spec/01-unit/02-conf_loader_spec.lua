@@ -56,11 +56,12 @@ describe("Configuration loader", function()
   end)
   it("loads custom plugins", function()
     local conf = assert(conf_loader(nil, {
-      custom_plugins = "hello-world,my-plugin"
+      custom_plugins = "hello-world,my-plugin, another-one"
     }))
     assert.is_nil(conf.custom_plugins)
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["my-plugin"])
+    assert.True(conf.plugins["another-one"])
   end)
   it("extracts ports and listen ips from proxy_listen/admin_listen", function()
     local conf = assert(conf_loader())
