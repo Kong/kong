@@ -44,7 +44,7 @@ end
 -- Log to a Http end point.
 -- @param `premature`
 -- @param `conf`     Configuration table, holds http endpoint details
--- @param `message`  Message to be logged
+-- @param `body`  Body to be logged
 local function log(premature, conf, body, name)
   if premature then return end
   name = "["..name.."] "
