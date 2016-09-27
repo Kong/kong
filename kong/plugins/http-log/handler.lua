@@ -15,9 +15,15 @@ local HTTPS = "https"
 -- @param `message`  Message to be logged
 -- @return `body` http payload
 local function generate_post_payload(method, content_type, parsed_url, body)
+  local url
+  if parsed_url.query then
+    url = parsed_url.path .. "?".. parsed_url.query
+  else
+    url = parsed_url.path
+  end
   return string.format(
     "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: %s\r\nContent-Length: %s\r\n\r\n%s",
-    method:upper(), parsed_url.path..(parsed_url.query or ""), parsed_url.host, content_type, #body, body)
+    method:upper(), url, parsed_url.host, content_type, #body, body)
 end
 
 -- Parse host url
@@ -34,9 +40,6 @@ local function parse_url(host_url)
   end
   if not parsed_url.path then
     parsed_url.path = "/"
-  end
-  if parsed_url.query then
-    parsed_url.query = "?"..parsed_url.query
   end
   return parsed_url
 end
