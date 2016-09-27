@@ -6,7 +6,7 @@ describe("Resolver", function()
 
   setup(function()
     assert(helpers.start_kong({
-      custom_plugins = "database-cache",
+      custom_plugins = "database-cache, cache-readonly",
       lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
     }))
     admin_client = helpers.admin_client()
@@ -21,6 +21,22 @@ describe("Resolver", function()
       path = "/apis/mockbin.com/plugins/",
       body = {
         name = "database-cache"
+      },
+      headers = {
+        ["Content-Type"] = "application/json"
+      }
+    })
+    assert.res_status(201, res)
+
+    assert(helpers.dao.apis:insert {
+      request_host = "mockbin2.com",
+      upstream_url = "http://mockbin.com"
+    })
+    local res = assert(admin_client:send {
+      method = "POST",
+      path = "/apis/mockbin2.com/plugins/",
+      body = {
+        name = "cache-readonly"
       },
       headers = {
         ["Content-Type"] = "application/json"
@@ -68,5 +84,17 @@ describe("Resolver", function()
     assert.equal(1, cjson.decode(body).message)
 
     ngx.sleep(1) -- block to allow timers requests to finish
+  end)
+
+  it("fails if attempting to change readonly cache tables", function()
+    local res = assert(helpers.proxy_client():send {
+      method = "GET",
+      path = "/status/200",
+      headers = {
+        ["Host"] = "mockbin2.com"
+      }
+    })
+    local body = assert.res_status(500, res)
+    assert.equal([[{"message":"An unexpected error occurred"}]], body)
   end)
 end)

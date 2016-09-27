@@ -330,7 +330,7 @@ local function load(path, custom_conf)
   do
     local custom_plugins = {}
     for i = 1, #conf.custom_plugins do
-      local plugin_name = conf.custom_plugins[i]
+      local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
       custom_plugins[plugin_name] = true
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)

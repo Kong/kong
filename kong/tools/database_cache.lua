@@ -62,6 +62,16 @@ function _M.set(key, value)
   return true
 end
 
+local function readonlytable(table)
+   return setmetatable({}, {
+     __index = table,
+     __newindex = function(table, key, value)
+                    error("Attempt to modify read-only table")
+                  end,
+     __metatable = false
+   });
+end
+
 function _M.get(key)
   local value = DATA[key]
   
@@ -71,6 +81,11 @@ function _M.get(key)
     if value ~= nil then 
       value = cjson.decode(value) 
     end
+  end
+
+  -- Set the table as read-only
+  if value ~= nil and type(value) == "table" then
+    value = readonlytable(value)
   end
 
   return value
