@@ -14,7 +14,7 @@ local HTTPS = "https"
 -- @param `parsed_url` contains the host details
 -- @param `message`  Message to be logged
 -- @return `body` http payload
-local function generate_post_payload(method, parsed_url, body)
+local function generate_post_payload(method, content_type, parsed_url, body)
   return string.format(
     "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: %s\r\nContent-Length: %s\r\n\r\n%s",
     method:upper(), parsed_url.path..(parsed_url.query or ""), parsed_url.host, content_type, #body, body)
@@ -67,7 +67,7 @@ local function log(premature, conf, body, name)
     end
   end
 
-  ok, err = sock:send(generate_post_payload(conf.method, parsed_url, body))
+  ok, err = sock:send(generate_post_payload(conf.method, conf.content_type, parsed_url, body))
   if not ok then
     ngx.log(ngx.ERR, name.."failed to send data to "..host..":"..tostring(port)..": ", err)
   end
