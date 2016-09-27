@@ -35,6 +35,9 @@ local function parse_url(host_url)
   if not parsed_url.path then
     parsed_url.path = "/"
   end
+  if parsed_url.query then
+    parsed_url.query = "?"..parsed_url.query
+  end
   return parsed_url
 end
 
