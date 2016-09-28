@@ -1,6 +1,5 @@
 local resty_lock = require "resty.lock"
 local cjson = require "cjson"
-local pl_tablex = require "pl.tablex"
 local cache = ngx.shared.cache
 local ngx_log = ngx.log
 
@@ -72,11 +71,6 @@ function _M.get(key)
     if value ~= nil then 
       value = cjson.decode(value) 
     end
-  end
-
-  -- Set the table as read-only
-  if value ~= nil and type(value) == "table" then
-    value = pl_tablex.readonly(value)
   end
 
   return value
