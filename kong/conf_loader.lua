@@ -10,8 +10,8 @@ local tablex = require "pl.tablex"
 local log = require "kong.cmd.utils.log"
 
 local DEFAULT_PATHS = {
-  "/etc/kong.conf",
-  "/etc/kong/kong.conf"
+  "/etc/kong/kong.conf",
+  "/etc/kong.conf"
 }
 
 local PREFIX_PATHS = {
