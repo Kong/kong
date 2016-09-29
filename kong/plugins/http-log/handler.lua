@@ -48,7 +48,7 @@ end
 
 -- Log to a Http end point.
 -- This basically is structured as a timer callback.
--- @param `premature` see openresty timer_at function
+-- @param `premature` see openresty ngx.timer.at function
 -- @param `conf` plugin configuration table, holds http endpoint details
 -- @param `body` raw http body to be logged
 -- @param `name` the plugin name (used for logging purposes in case of errors etc.)
