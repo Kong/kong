@@ -7,7 +7,7 @@ local conf_loader = require "kong.conf_loader"
 local function execute(args)
   if args.command == "keygen" then
     local conf = assert(conf_loader(args.conf))
-    local dao = assert(DAOFactory(conf))
+    local dao = assert(DAOFactory.new(conf))
     local serf = Serf.new(conf, dao)
     print(assert(serf:keygen()))
     return

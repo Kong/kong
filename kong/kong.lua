@@ -121,6 +121,7 @@ function Kong.init()
 
   local events = Events() -- retrieve node plugins
   local dao = assert(DAOFactory.new(config, events)) -- instanciate long-lived DAO
+  assert(dao:init())
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
@@ -142,10 +143,7 @@ function Kong.init_worker()
 
   core.init_worker.before()
 
-  local ok, err = singletons.dao:init() -- Executes any initialization by the DB
-  if not ok then
-    ngx.log(ngx.ERR, err)
-  end
+  singletons.dao:init_worker()
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()

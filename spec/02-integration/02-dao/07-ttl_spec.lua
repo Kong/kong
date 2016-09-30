@@ -68,8 +68,8 @@ helpers.for_each_dao(function(kong_config)
 
     if kong_config.database == "postgres" then
       it("clears old entities", function()
-        local DB = require "kong.dao.postgres_db"
-        local _db = DB(kong_config)
+        local DB = require "kong.dao.db.postgres"
+        local _db = DB.new(kong_config)
 
         for i = 1, 4 do
           local _, err = factory.apis:insert({

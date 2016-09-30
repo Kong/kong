@@ -2,13 +2,14 @@ local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
+local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
 local ngx_log = ngx.log
 
 local pairs = pairs
 local fmt = string.format
 
-local get_local_key = function(api_id, identifier, period_date, name, period)
-  return fmt("response-ratelimit:%s:%s:%s:%s:%s", api_id, identifier, period_date, name, period)
+local get_local_key = function(api_id, identifier, period_date, name)
+  return fmt("ratelimit:%s:%s:%s:%s", api_id, identifier, period_date, name)
 end
 
 local EXPIRATIONS = {
@@ -22,10 +23,10 @@ local EXPIRATIONS = {
 
 return {
   ["local"] = {
-    increment = function(conf, api_id, identifier, current_timestamp, value, name)
+    increment = function(conf, api_id, identifier, current_timestamp, value)
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
-        local cache_key = get_local_key(api_id, identifier, period_date, name, period)
+        local cache_key = get_local_key(api_id, identifier, period_date, period)
         if not cache.rawget(cache_key) then
           cache.rawset(cache_key, 0, EXPIRATIONS[period])
         end
@@ -36,9 +37,9 @@ return {
         end
       end
     end,
-    usage = function(conf, api_id, identifier, current_timestamp, period, name)
+    usage = function(conf, api_id, identifier, current_timestamp, name)
       local periods = timestamp.get_timestamps(current_timestamp)
-      local cache_key = get_local_key(api_id, identifier, periods[period], name, period)
+      local cache_key = get_local_key(api_id, identifier, periods[name], name)
       local current_metric, err = cache.rawget(cache_key)
       if err then
         return nil, err
@@ -47,22 +48,26 @@ return {
     end
   },
   ["cluster"] = {
-    increment = function(conf, api_id, identifier, current_timestamp, value, name)
-      local _, stmt_err = singletons.dao.response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value, name)
-      if stmt_err then
-        ngx_log(ngx.ERR, tostring(stmt_err))
+    increment = function(conf, api_id, identifier, current_timestamp, value)
+      local db = singletons.dao.db
+      local ok, err = policy_cluster[db.name].increment(db, api_id, identifier,
+                                                        current_timestamp, value)
+      if not ok then
+        ngx_log(ngx.ERR, "[rate-limiting] cluster policy: could not increment ",
+                          db.name, " counter: ", err)
       end
     end,
-    usage = function(conf, api_id, identifier, current_timestamp, period, name)
-      local current_metric, err = singletons.dao.response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, name)
-      if err then
-        return nil, err
-      end
-      return current_metric and current_metric.value or 0
+    usage = function(conf, api_id, identifier, current_timestamp, name)
+      local db = singletons.dao.db
+      local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
+                                                     current_timestamp, name)
+      if not rows then return nil, err end
+
+      return rows and rows.value or 0
     end
   },
   ["redis"] = {
-    increment = function(conf, api_id, identifier, current_timestamp, value, name)
+    increment = function(conf, api_id, identifier, current_timestamp, value)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
       local ok, err = red:connect(conf.redis_host, conf.redis_port)
@@ -81,7 +86,7 @@ return {
 
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
-        local cache_key = get_local_key(api_id, identifier, period_date, name, period)
+        local cache_key = get_local_key(api_id, identifier, period_date, period)
         local exists, err = red:exists(cache_key)
         if err then
           ngx_log(ngx.ERR, "failed to query Redis: ", err)
@@ -93,7 +98,7 @@ return {
         if not exists or exists == 0 then
           red:expire(cache_key, EXPIRATIONS[period])
         end
-        
+
         local _, err = red:commit_pipeline()
         if err then
           ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
@@ -107,7 +112,7 @@ return {
         return
       end
     end,
-    usage = function(conf, api_id, identifier, current_timestamp, period, name)
+    usage = function(conf, api_id, identifier, current_timestamp, name)
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
       local ok, err = red:connect(conf.redis_host, conf.redis_port)
@@ -125,7 +130,7 @@ return {
       end
 
       local periods = timestamp.get_timestamps(current_timestamp)
-      local cache_key = get_local_key(api_id, identifier, periods[period], name, period)
+      local cache_key = get_local_key(api_id, identifier, periods[name], name)
       local current_metric, err = red:get(cache_key)
       if err then
         return nil, err

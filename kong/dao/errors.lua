@@ -48,7 +48,7 @@ local serializers = {
 }
 
 local function build_error(err_type)
-  return function(err, db_type)
+  return function(err, db_name)
     if err == nil then
       return
     elseif getmetatable(err) == error_mt then
@@ -56,7 +56,7 @@ local function build_error(err_type)
     end
 
     local err_obj = {
-      db_type = db_type,
+      db_name = db_name,
       [err_type] = true
     }
 

@@ -8,6 +8,10 @@ local uuid = utils.uuid
 
 local _M = require("kong.dao.db").new_db("cassandra")
 
+-- expose cassandra binding serializers
+-- ex: cassandra.uuid('')
+_M.cassandra = cassandra
+
 _M.dao_insert_values = {
   id = function()
     return uuid()
@@ -123,7 +127,7 @@ end
 
 local function serialize_arg(field, value)
   if value == nil then
-    return cassandra.unset
+    return cassandra.null
   elseif field.type == "id" then
     return cassandra.uuid(value)
   elseif field.type == "timestamp" then
@@ -485,30 +489,42 @@ function _M:truncate_table(table_name)
 end
 
 function _M:current_migrations()
-  -- Check if keyspace exists
-  local rows, err = self:query([[
-    SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?
-  ]], {self.cluster_options.keyspace}, nil, nil, true)
-  if err then
-    return nil, err
-  elseif #rows == 0 then
-    return {}
+  local q_keyspace_exists, q_migrations_table_exists
+
+  assert(self.release_version, "release_version not set for Cassandra cluster")
+
+  if self.release_version == 3 then
+    q_keyspace_exists = "SELECT * FROM system_schema.keyspaces WHERE keyspace_name = ?"
+    q_migrations_table_exists = [[
+      SELECT COUNT(*) FROM system_schema.tables
+      WHERE keyspace_name = ? AND table_name = ?
+    ]]
+  else
+    q_keyspace_exists = "SELECT * FROM system.schema_keyspaces WHERE keyspace_name = ?"
+    q_migrations_table_exists = [[
+      SELECT COUNT(*) FROM system.schema_columnfamilies
+      WHERE keyspace_name = ? AND columnfamily_name = ?
+    ]]
   end
 
-  -- Check if schema_migrations table exists first
-  rows, err = self:query([[
-    SELECT COUNT(*) FROM system.schema_columnfamilies
-    WHERE keyspace_name = ? AND columnfamily_name = ?
-  ]], {
+  -- Check if keyspace exists
+  local rows, err = self:query(q_keyspace_exists, {
+    self.cluster_options.keyspace
+  }, {prepared = false}, nil, true)
+  if err then return nil, err
+  elseif #rows == 0 then return {} end
+
+  -- Check if schema_migrations table exists
+  rows, err = self:query(q_migrations_table_exists, {
     self.cluster_options.keyspace,
     "schema_migrations"
-  })
-  if err then
-    return nil, err
-  end
+  }, {prepared = false})
+  if err then return nil, err end
 
   if rows[1].count > 0 then
-    return self:query "SELECT * FROM schema_migrations"
+    return self:query("SELECT * FROM schema_migrations", nil, {
+      prepared = false
+    })
   else
     return {}
   end

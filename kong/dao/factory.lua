@@ -113,7 +113,6 @@ function _M.new(kong_config, events_handler)
   end
 
   local constraints = build_constraints(schemas)
-
   load_daos(factory, schemas, constraints, events_handler)
 
   return setmetatable(factory, _M)

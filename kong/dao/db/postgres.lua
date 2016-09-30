@@ -57,7 +57,7 @@ function _M:start_ttl_timer()
   end
 end
 
-function _M:init()
+function _M:init_worker()
   self:start_ttl_timer()
 end
 

@@ -5,7 +5,8 @@ local _M = {}
 function _M.new_db(name)
   local db_mt           = {
     name                = name,
-    init                = function() error('init() not implemented') end,
+    init                = function() return true end,
+    init_worker         = function() return true end,
     infos               = function() error('infos() not implemented') end,
     query               = function() error('query() not implemented') end,
     insert              = function() error('insert() not implemented') end,
