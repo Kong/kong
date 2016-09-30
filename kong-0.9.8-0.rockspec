@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.9.7-0"
+version = "0.9.8-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.9.7"
+  tag = "0.9.8"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -258,7 +258,9 @@ build = {
     ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
     ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
-
+    
+    ["kong.plugins.statsd.migrations.cassandra"] = "kong/plugins/statsd/migrations/cassandra.lua",
+    ["kong.plugins.statsd.migrations.postgres"] = "kong/plugins/statsd/migrations/postgres.lua",
     ["kong.plugins.statsd.handler"] = "kong/plugins/statsd/handler.lua",
     ["kong.plugins.statsd.schema"] = "kong/plugins/statsd/schema.lua",
     ["kong.plugins.statsd.statsd_logger"] = "kong/plugins/statsd/statsd_logger.lua",
