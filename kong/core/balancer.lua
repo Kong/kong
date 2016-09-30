@@ -36,7 +36,9 @@ local function load_targets_into_memory(upstream_id)
   
   -- split `target` field into `name` and `port`
   for _, target in ipairs(target_history) do
-    target.name, target.port = string.match(target.target, "^(.-):(%d+)$")
+    local port
+    target.name, port = string.match(target.target, "^(.-):(%d+)$")
+    target.port = tonumber(port)
   end
   
   -- order by 'created_at'
@@ -114,7 +116,8 @@ local get_balancer = function(target)
   end
   
   -- we've got the upstream, now fetch its targets, from cache or the db
-  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), load_targets_into_memory(upstream.id))
+  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
+    function() return load_targets_into_memory(upstream.id) end)
   if err or #targets_history == 0 then  -- 'no targets' equals 'no upstream', so exit as well
     return nil, err
   end
@@ -159,14 +162,28 @@ local first_try_balancer = function(target)
   local b = target.balancer
   local hashValue = nil  -- TODO: implement, nil does simple round-robin
   
-  return b:getPeer(hashValue, false)
+  local ip, port, hostname = b:getPeer(hashValue, false)
+  if not ip then 
+    return ip, port
+  end
+  target.ip = ip
+  target.port = port
+  target.hostname = hostname
+  return true
 end
 
 local retry_balancer = function(target)
   local b = target.balancer
   local hashValue = nil  -- TODO: implement, nil does simple round-robin
   
-  return b:getPeer(hashValue, true)
+  local ip, port, hostname = b:getPeer(hashValue, true)
+  if not ip then 
+    return ip, port
+  end
+  target.ip = ip
+  target.port = port
+  target.hostname = hostname
+  return true
 end
 
 --===========================================================
