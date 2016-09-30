@@ -5,7 +5,9 @@ function _M.serialize(ngx)
   if ngx.ctx.authenticated_credential ~= nil then
     authenticated_entity = {
       id = ngx.ctx.authenticated_credential.id,
-      consumer_id = ngx.ctx.authenticated_credential.consumer_id
+      consumer_id = ngx.ctx.authenticated_credential.consumer_id,
+      custom_id = ngx.ctx.authenticated_consumer.custom_id,
+      username = ngx.ctx.authenticated_consumer.username
     }
   end
 
