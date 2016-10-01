@@ -64,6 +64,10 @@
                                  # This API lets you configure and manage Kong,
                                  # and should be kept private and secured.
 
+#admin_listen_ssl = 0.0.0.0:8444 # Address and port on which Kong will accept
+                                 # HTTPS requests to the admin API, if
+                                 # `admin_ssl` is enabled.
+
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
@@ -89,6 +93,20 @@
 
 #ssl_cert_key =                  # If `ssl` is enabled, the absolute path to
                                  # the SSL key for the `proxy_listen_ssl`
+                                 # address.
+
+#admin_ssl = on                  # Determines if Nginx should be listening for
+                                 # HTTPS traffic on the `admin_listen_ssl`
+                                 # address. If disabled, Nginx will only bind
+                                 # itself on `admin_listen`, and all SSL
+                                 # settings will be ignored.
+
+#admin_ssl_cert =                # If `admin_ssl` is enabled, the absolute path
+                                 # to the SSL certificate for the
+                                 # `admin_listen_ssl` address.
+
+#admin_ssl_cert_key =            # If `admin_ssl` is enabled, the absolute path 
+                                 # to the SSL key for the `admin_listen_ssl`
                                  # address.
 
 #------------------------------------------------------------------------------
