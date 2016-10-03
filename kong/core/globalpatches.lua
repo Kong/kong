@@ -3,6 +3,16 @@ return function(options)
 
   if options.cli then
     ngx.IS_CLI = true
+
+    ngx.exit = function()end
+
+    -- force LuaSocket usage to resolve `/etc/hosts` until
+    -- supported by resty-cli.
+    -- See https://github.com/Mashape/kong/issues/1523
+    for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
+      local socket = require(namespace .. ".socket")
+      socket.force_luasocket(ngx.get_phase(), true)
+    end
   end
 
   if options.rbusted then
@@ -21,7 +31,7 @@ return function(options)
       if assert_mt then
         assert_mt.__call = function(self, bool, message, level, ...)
           if not bool then
-            local lvl = 1
+            local lvl = 2
             if type(level) == "number" then
               lvl = level + 1
             end
