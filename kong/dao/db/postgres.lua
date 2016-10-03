@@ -463,19 +463,21 @@ end
 
 function _M:queries(queries)
   if utils.strip(queries) ~= "" then
-    local err = select(2, self:query(queries))
-    if err then
-      return err
-    end
+    local res, err = self:query(queries)
+    if not res then return err end
   end
 end
 
 function _M:drop_table(table_name)
-  return select(2, self:query("DROP TABLE "..table_name.." CASCADE"))
+  local res, err = self:query("DROP TABLE "..table_name.." CASCADE")
+  if not res then return nil, err end
+  return true
 end
 
 function _M:truncate_table(table_name)
-  return select(2, self:query("TRUNCATE "..table_name.." CASCADE"))
+  local res, err = self:query("TRUNCATE "..table_name.." CASCADE")
+  if not res then return nil, err end
+  return true
 end
 
 function _M:current_migrations()
@@ -493,7 +495,7 @@ function _M:current_migrations()
 end
 
 function _M:record_migration(id, name)
-  return select(2, self:query {
+  local res, err = self:query{
     [[
       CREATE OR REPLACE FUNCTION upsert_schema_migrations(identifier text, migration_name varchar) RETURNS VOID AS $$
       DECLARE
@@ -506,7 +508,9 @@ function _M:record_migration(id, name)
       $$ LANGUAGE 'plpgsql';
     ]],
     string.format("SELECT upsert_schema_migrations('%s', %s)", id, escape_literal(name))
-  })
+  }
+  if not res then return nil, err end
+  return true
 end
 
 return _M

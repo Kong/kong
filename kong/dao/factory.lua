@@ -209,13 +209,13 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     end
 
     if err then
-      return false, string.format("Error during migration %s: %s", migration.name, err)
+      return nil, string.format("Error during migration %s: %s", migration.name, err)
     end
 
     -- record success
-    err = _db:record_migration(identifier, migration.name)
-    if err then
-      return false, string.format("Error recording migration %s: %s", migration.name, err)
+    local ok, err = _db:record_migration(identifier, migration.name)
+    if not ok then
+      return nil, string.format("Error recording migration %s: %s", migration.name, err)
     end
 
     if on_success then
