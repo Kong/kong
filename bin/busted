@@ -1,6 +1,9 @@
 #!/usr/bin/env resty
 
-require("kong.core.globalpatches")({cli = true})
+require("kong.core.globalpatches")({
+  cli = true,
+  rbusted = true
+})
 
 -- force LuaSocket usage to resolve `/etc/hosts` until
 -- supported by resty-cli.
