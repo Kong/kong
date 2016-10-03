@@ -154,7 +154,7 @@ function _M:query(query, args, options, schema, no_keyspace)
   local res, err = self.cluster:execute(query, args, opts, coordinator_opts)
   if not res then return nil, Errors.db(err) end
 
-  if schema ~= nil and res.type == "ROWS" then
+  if schema and res.type == "ROWS" then
     deserialize_rows(res, schema)
   end
 
