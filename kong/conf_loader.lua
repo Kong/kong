@@ -63,14 +63,16 @@ local CONF_INFERENCES = {
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
-  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
-  cassandra_repl_factor = {typ = "number"},
-  cassandra_data_centers = {typ = "array"},
-  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
-                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
   cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
+  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
+                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
+  cassandra_lb_policy = {enum = {"RoundRobin", "DCAwareRoundRobin"}},
+  cassandra_local_datacenter = {typ = "string"},
+  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
+  cassandra_repl_factor = {typ = "number"},
+  cassandra_data_centers = {typ = "array"},
 
   cluster_profile = {enum = {"local", "lan", "wan"}},
   cluster_ttl_on_failure = {typ = "number"},
@@ -161,6 +163,12 @@ local function check_and_infer(conf)
   ---------------------
   -- custom validations
   ---------------------
+
+  if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
+     not conf.cassandra_local_datacenter then
+     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when "..
+                        "DCAwareRoundRobin policy is in use"
+  end
 
   if conf.ssl then
     if conf.ssl_cert and not conf.ssl_cert_key then

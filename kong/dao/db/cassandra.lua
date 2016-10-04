@@ -47,11 +47,23 @@ function _M.new(kong_config)
     verify = kong_config.cassandra_ssl_verify
   }
 
+  --
+  -- cluster options from Kong config
+  --
+
   if kong_config.cassandra_username and kong_config.cassandra_password then
     cluster_options.auth = cassandra.auth_providers.plain_text(
       kong_config.cassandra_username,
       kong_config.cassandra_password
     )
+  end
+
+  if kong_config.cassandra_lb_policy == "RoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.rr")
+    cluster_options.lb_policy = policy.new()
+  elseif kong_config.cassandra_lb_policy == "DCAwareRoundRobin" then
+    local policy = require("resty.cassandra.policies.lb.dc_rr")
+    cluster_options.lb_policy = policy.new(kong_config.cassandra_local_cluster)
   end
 
   local cluster, err = Cluster.new(cluster_options)

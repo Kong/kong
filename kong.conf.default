@@ -129,9 +129,6 @@
 
 #cassandra_keyspace = kong       # The keyspace to use in your cluster.
 
-#cassandra_consistency = ONE     # Consistency setting to use when reading/
-                                 # writing to the Cassandra cluster.
-
 #cassandra_timeout = 5000        # Defines the timeout (in ms), for reading
                                  # and writing.
 
@@ -148,6 +145,22 @@
 
 #cassandra_password = kong       # Password when using the
                                  # `PasswordAuthenticator` scheme.
+
+#cassandra_consistency = ONE     # Consistency setting to use when reading/
+                                 # writing to the Cassandra cluster.
+
+#cassandra_lb_policy = RoundRobin  # Load balancing policy to use when
+                                   # distributing queries across your Cassandra
+                                   # cluster.
+                                   # Accepted values are `RoundRobin` and
+                                   # `DCAwareRoundRobin`.
+                                   # Prefer the later if and only if you are
+                                   # using a multi-datacenter cluster.
+
+#cassandra_local_datacenter =    # When using the `DCAwareRoundRobin` load
+                                 # balancing policy, you must specify the name
+                                 # of the local (closest) datacenter for this
+                                 # Kong node.
 
 #cassandra_repl_strategy = SimpleStrategy  # When migrating for the first time,
                                            # Kong will use this setting to
