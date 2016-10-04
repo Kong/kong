@@ -12,14 +12,14 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  describe("/cluster", function()
+  describe("/cluster/nodes/", function()
     describe("GET", function()
       it("retrieves the members list", function()
         -- old test converted
         --os.execute("sleep 2") -- Let's wait for serf to register the node
         local res = assert(client:send {
           method = "GET",
-          path = "/cluster"
+          path = "/cluster/nodes"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -71,7 +71,7 @@ describe("Admin API", function()
 
         local res = assert(client:send {
           method = "GET",
-          path = "/cluster"
+          path = "/cluster/nodes/"
         })
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
@@ -82,33 +82,24 @@ describe("Admin API", function()
 
         res = assert(client:send {
           method = "DELETE",
-          path = "/cluster",
-          body = "name=newnode", -- why not in URI??
-          headers = {["Content-Type"] = "application/x-www-form-urlencoded"}
+          path = "/cluster/nodes/newnode"
         })
-        assert.res_status(200, res) -- why not 204??
+        assert.res_status(204, res)
 
         helpers.wait_until(function()
-          res = assert(client:send {
-            method = "GET",
-            path = "/cluster"
-          })
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(2, #json.data)
-          assert.equal(2, json.total)
-
-          local alive, leaving
-          for k, v in ipairs(json.data) do
-            if v.address == "127.0.0.1:20001" then
-              leaving = v
-            else
-              alive = v
-            end
-          end
-
-          assert.equal("alive", alive.status)
-          return leaving.status == "leaving"
+          local ok = pcall(function()
+            res = assert(client:send {
+              method = "GET",
+              path = "/cluster/nodes/"
+            })
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(2, #json.data)
+            assert.equal(2, json.total)
+            assert.equal("alive", json.data[1].status)
+            assert.equal("leaving", json.data[2].status)
+          end)
+          return ok
         end, 10)
       end)
     end)

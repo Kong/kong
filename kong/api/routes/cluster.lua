@@ -1,44 +1,84 @@
 local singletons = require "kong.singletons"
 local responses = require "kong.tools.responses"
+local cache = require "kong.tools.database_cache"
+local event_types = require("kong.core.events").TYPES
 
 local pairs = pairs
 local table_insert = table.insert
 local string_upper = string.upper
 
+local OTHER = "other"
+
+local function get_members(filters)
+  local members, err = singletons.serf:members()
+  if err then
+    return nil, err
+  end
+
+  local result = {}
+  for _, member in pairs(members) do
+    local matches = true
+    if filters then
+      for k, v in pairs(filters) do
+        matches = matches and member[k] == v
+      end
+    end
+    if matches then
+      table_insert(result, {
+        name = member.name,
+        address = member.addr,
+        status = member.status
+      })
+    end
+  end
+
+  return result
+end
+
+local function increment(key, value)
+  local ok, err = cache.incr(key, value)
+  if not ok and err == "not found" then
+    cache.rawset(key, value)
+  elseif not ok then
+    ngx.log(ngx.ERR, err)
+  end
+end
+
 return {
   ["/cluster/"] = {
     GET = function(self, dao_factory, helpers)
-      local members, err = singletons.serf:members()
+
+      local events_stat = {
+        total = cache.get(cache.event_key()),
+        other = cache.get(cache.event_key(OTHER))
+      }
+
+      for _, v in pairs(event_types) do
+        events_stat[v] = cache.get(cache.event_key(v))
+      end
+
+      return responses.send_HTTP_OK({
+        nodes = self:build_url(self.req.parsed_url.path..
+          (string.sub(self.req.parsed_url.path, string.len(self.req.parsed_url.path)) == "/" and
+            "" or "/").."nodes", {
+          port = self.req.parsed_url.port,
+        }),
+        events = events_stat
+      })
+    end
+  },
+
+  ["/cluster/nodes/"] = {
+    GET = function(self, dao_factory, helpers)
+      local members, err = get_members(self.params)
       if err then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
       end
 
-      local result = {data = {}}
-      for _, v in pairs(members) do
-        if not self.params.status or (self.params.status and v.status == self.params.status) then
-          table_insert(result.data, {
-            name = v.name,
-            address = v.addr,
-            status = v.status
-          })
-        end
-      end
-
+      local result = {data = members}
       result.total = #result.data
+
       return responses.send_HTTP_OK(result)
-    end,
-
-    DELETE = function(self, dao_factory)
-      if not self.params.name then
-        return responses.send_HTTP_BAD_REQUEST("Missing node \"name\"")
-      end
-
-      local _, err = singletons.serf:invoke_signal("force-leave", self.params.name)
-      if err then
-        return responses.send_HTTP_BAD_REQUEST(err)
-      end
-
-      return responses.send_HTTP_OK()
     end,
 
     POST = function(self, dao_factory)
@@ -52,6 +92,34 @@ return {
       end
 
       return responses.send_HTTP_OK()
+    end
+  },
+
+  ["/cluster/nodes/:node_name"] = {
+    before = function(self, dao_factory, helpers)
+      local members, err = get_members({name = self.params.node_name})
+      if err then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+
+      if #members == 1 then
+        self.node = members[1]
+      else
+        return helpers.responses.send_HTTP_NOT_FOUND()
+      end
+    end,
+
+    GET = function(self, dao_factory, helpers)
+      return responses.send_HTTP_OK(self.node)
+    end,
+
+    DELETE = function(self, dao_factory)
+      local _, err = singletons.serf:invoke_signal("force-leave", self.node.name)
+      if err then
+        return responses.send_HTTP_BAD_REQUEST(err)
+      end
+
+      return responses.send_HTTP_NO_CONTENT()
     end
   },
 
@@ -89,6 +157,10 @@ return {
 
       -- Trigger event in the node
       singletons.events:publish(message_t.type, message_t)
+
+      -- Increment counter
+      increment(cache.event_key(), 1)
+      increment(cache.event_key(message_t.type or OTHER), 1)
 
       return responses.send_HTTP_OK()
     end
