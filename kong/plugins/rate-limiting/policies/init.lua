@@ -56,14 +56,16 @@ return {
         ngx_log(ngx.ERR, "[rate-limiting] cluster policy: could not increment ",
                           db.name, " counter: ", err)
       end
+
+      return ok, err
     end,
     usage = function(conf, api_id, identifier, current_timestamp, name)
       local db = singletons.dao.db
-      local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
+      local row, err = policy_cluster[db.name].find(db, api_id, identifier,
                                                      current_timestamp, name)
-      if not rows then return nil, err end
+      if err then return nil, err end
 
-      return rows and rows.value or 0
+      return row and row.value or 0
     end
   },
   ["redis"] = {

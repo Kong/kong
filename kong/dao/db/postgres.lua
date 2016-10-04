@@ -65,6 +65,7 @@ function _M:init_worker()
   if not ok then
     log(ERR, "could not create TTL timer: ", err)
   end
+  return true
 end
 
 --- TTL utils

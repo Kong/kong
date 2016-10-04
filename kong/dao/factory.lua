@@ -3,7 +3,6 @@ local utils = require "kong.tools.utils"
 local ModelFactory = require "kong.dao.model_factory"
 
 local CORE_MODELS = {"apis", "consumers", "plugins", "nodes"}
-local _db
 
 -- returns db errors as strings, including the initial `nil`
 local function ret_error_string(db_name, res, err)
@@ -73,87 +72,103 @@ local function load_daos(self, schemas, constraints, events_handler)
   end
 
   for m_name, schema in pairs(schemas) do
-    self.daos[m_name] = DAO(_db, ModelFactory(schema), schema, constraints[m_name], events_handler)
+    self.daos[m_name] = DAO(self.db, ModelFactory(schema), schema, constraints[m_name], events_handler)
   end
 end
 
 function _M.new(kong_config, events_handler)
-  local factory = {
+  local self = {
     db_type = kong_config.database,
     daos = {},
+    additional_tables = {},
     kong_config = kong_config,
     plugin_names = kong_config.plugins or {}
   }
 
-  local DB = require("kong.dao.db."..factory.db_type)
+  local DB = require("kong.dao.db."..self.db_type)
   local db, err = DB.new(kong_config)
-  if not db then return ret_error_string(factory.db_type, nil, err) end
+  if not db then return ret_error_string(self.db_type, nil, err) end
 
-  _db = db -- avoid setting a previous upvalue to `nil` in case `DB.new()` fails
+  self.db = db
 
   local schemas = {}
   for _, m_name in ipairs(CORE_MODELS) do
     schemas[m_name] = require("kong.dao.schemas."..m_name)
   end
 
-  for plugin_name in pairs(factory.plugin_names) do
-    local has_dao, plugin_daos = utils.load_module_if_exists("kong.plugins."..plugin_name..".dao."..factory.db_type)
-    if has_dao then
-      for k, v in pairs(plugin_daos) do
-        factory.daos[k] = v(kong_config)
-      end
-    end
-
+  for plugin_name in pairs(self.plugin_names) do
     local has_schema, plugin_schemas = utils.load_module_if_exists("kong.plugins."..plugin_name..".daos")
     if has_schema then
-      for k, v in pairs(plugin_schemas) do
-        schemas[k] = v
+      if plugin_schemas.tables then
+        for _, v in ipairs(plugin_schemas.tables) do
+          table.insert(self.additional_tables, v)
+        end
+      else
+        for k, v in pairs(plugin_schemas) do
+          schemas[k] = v
+        end
       end
     end
   end
 
   local constraints = build_constraints(schemas)
-  load_daos(factory, schemas, constraints, events_handler)
+  load_daos(self, schemas, constraints, events_handler)
 
-  return setmetatable(factory, _M)
+  return setmetatable(self, _M)
 end
 
 function _M:init()
-  return _db:init()
+  return self.db:init()
+end
+
+function _M:init_worker()
+  return self.db:init_worker()
 end
 
 -- Migrations
 
 function _M:infos()
-  return _db:infos()
+  return self.db:infos()
 end
 
 function _M:drop_schema()
   for _, dao in pairs(self.daos) do
-    _db:drop_table(dao.table)
+    self.db:drop_table(dao.table)
   end
 
-  if _db.additional_tables then
-    for _, v in ipairs(_db.additional_tables) do
-      _db:drop_table(v)
+  if self.additional_tables then
+    for _, v in ipairs(self.additional_tables) do
+      self.db:drop_table(v)
     end
   end
 
-  _db:drop_table("schema_migrations")
+  if self.db.additional_tables then
+    for _, v in ipairs(self.db.additional_tables) do
+      self.db:drop_table(v)
+    end
+  end
+
+  self.db:drop_table("schema_migrations")
 end
 
 function _M:truncate_table(dao_name)
-  _db:truncate_table(self.daos[dao_name].table)
+  self.db:truncate_table(self.daos[dao_name].table)
 end
 
 function _M:truncate_tables()
   for _, dao in pairs(self.daos) do
-    _db:truncate_table(dao.table)
+    self.db:truncate_table(dao.table)
   end
 
-  if _db.additional_tables then
-    for _, v in ipairs(_db.additional_tables) do
-      _db:truncate_table(v)
+  if self.db.additional_tables then
+    for _, v in ipairs(self.db.additional_tables) do
+      self.db:truncate_table(v)
+    end
+  end
+
+  if self.additional_tables then
+    for _, v in ipairs(self.additional_tables) do
+      self.db:truncate_table(v)
     end
   end
 end
@@ -174,8 +189,8 @@ function _M:migrations_modules()
 end
 
 function _M:current_migrations()
-  local rows, err = _db:current_migrations()
-  if err then return ret_error_string(_db.name, nil, err) end
+  local rows, err = self.db:current_migrations()
+  if err then return ret_error_string(self.db.name, nil, err) end
 
   local cur_migrations = {}
   for _, row in ipairs(rows) do
@@ -196,16 +211,16 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
 
   if #to_run > 0 and on_migrate then
     -- we have some migrations to run
-    on_migrate(identifier, _db:infos())
+    on_migrate(identifier, self.db:infos())
   end
 
   for _, migration in ipairs(to_run) do
     local err
     local mig_type = type(migration.up)
     if mig_type == "string" then
-      err = _db:queries(migration.up)
+      err = self.db:queries(migration.up)
     elseif mig_type == "function" then
-      err = migration.up(_db, self.kong_config, self)
+      err = migration.up(self.db, self.kong_config, self)
     end
 
     if err then
@@ -213,13 +228,13 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     end
 
     -- record success
-    local ok, err = _db:record_migration(identifier, migration.name)
+    local ok, err = self.db:record_migration(identifier, migration.name)
     if not ok then
       return nil, string.format("Error recording migration %s: %s", migration.name, err)
     end
 
     if on_success then
-      on_success(identifier, migration.name, _db:infos())
+      on_success(identifier, migration.name, self.db:infos())
     end
 end
 
@@ -248,15 +263,15 @@ function _M:run_migrations(on_migrate, on_success)
 
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then return ret_error_string(_db.name, nil, err) end
+  if err then return ret_error_string(self.db.name, nil, err) end
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then return ret_error_string(_db.name, nil, err) end
+  if not ok then return ret_error_string(self.db.name, nil, err) end
 
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
       local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then return ret_error_string(_db.name, nil, err)
+      if not ok then return ret_error_string(self.db.name, nil, err)
       else
         migrations_ran = migrations_ran + n_ran
       end

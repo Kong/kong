@@ -50,8 +50,9 @@ return {
         db.cassandra.timestamp(periods[period]),
         period,
       })
-      if not rows then return nil, err
-      elseif #rows > 0 then return rows[1] end
+      if not rows then       return nil, err
+      elseif #rows <= 1 then return rows[1]
+      else                   return nil, "bad rows result" end
     end,
   },
   ["postgres"] = {

@@ -143,7 +143,10 @@ function Kong.init_worker()
 
   core.init_worker.before()
 
-  singletons.dao:init_worker()
+  local ok, err = singletons.dao:init_worker()
+  if not ok then
+    ngx.log(ngx.ERR, "could not init DB: ", err)
+  end
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()

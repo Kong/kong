@@ -73,7 +73,7 @@ function _M.new(kong_config)
   self.query_options = query_opts
   self.cluster_options = cluster_options
 
-  if ngx.RESTY_CLI then
+  if ngx.IS_CLI then
     -- we must manually call our init phase (usually called from `init_by_lua`)
     -- to refresh the cluster.
     local ok, err = self:init()
@@ -159,8 +159,7 @@ function _M:query(query, args, options, schema, no_keyspace)
   local opts = self:clone_query_options(options)
   local coordinator_opts = {}
   if no_keyspace then
-    -- defaults to the system keyspace, always present
-    coordinator_opts.keyspace = "system"
+    coordinator_opts.no_keyspace = true
   end
 
   local res, err = self.cluster:execute(query, args, opts, coordinator_opts)
@@ -427,7 +426,7 @@ function _M:update(table_name, schema, constraints, filter_keys, values, nils, f
   if full then
     for col in pairs(nils) do
       sets[#sets + 1] = col.." = ?"
-      args[#args + 1] = cassandra.unset
+      args[#args + 1] = cassandra.null
     end
   end
 
