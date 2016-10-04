@@ -35,6 +35,7 @@ local function check_ordered_limits(limit_value)
 end
 
 return {
+  no_backup = true,
   fields = {
     header_name = { type = "string", default = "x-kong-limit" },
     limit_by = { type = "string", enum = {"consumer", "credential", "ip"}, default = "consumer" },

@@ -23,7 +23,8 @@ local cmds = {
   migrations = true,
   cluster = true,
   version = true,
-  roar = true
+  roar = true,
+  backup = true
 }
 
 for k in pairs(cmds) do
