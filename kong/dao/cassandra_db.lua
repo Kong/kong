@@ -6,7 +6,7 @@ local uuid = utils.uuid
 
 local cassandra
 
-if ngx.RESTY_CLI then
+if ngx.IS_CLI then
   local ngx_stub = _G.ngx
   _G.ngx = nil
   cassandra = require "cassandra"
