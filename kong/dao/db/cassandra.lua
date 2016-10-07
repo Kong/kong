@@ -44,8 +44,15 @@ function _M.new(kong_config)
     connect_timeout = kong_config.cassandra_timeout,
     read_timeout = kong_config.cassandra_timeout,
     ssl = kong_config.cassandra_ssl,
-    verify = kong_config.cassandra_ssl_verify
+    verify = kong_config.cassandra_ssl_verify,
+    lock_timeout = 30,
+    silent = ngx.IS_CLI
   }
+
+  if ngx.IS_CLI then
+    local policy = require("resty.cassandra.policies.reconnection.const")
+    cluster_options.reconn_policy = policy.new(100)
+  end
 
   --
   -- cluster options from Kong config
