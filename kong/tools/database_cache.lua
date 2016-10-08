@@ -115,7 +115,7 @@ function _M.acls_key(consumer_id)
 end
 
 function _M.ssl_data(api_id)
-  return CACHE_KEYS.SSL..":"..api_id
+  return CACHE_KEYS.SSL..(api_id and ":"..api_id or "")
 end
 
 function _M.bot_detection_key(key)
