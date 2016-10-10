@@ -261,5 +261,8 @@ build = {
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
     ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
     ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua",
+
+    ["kong.plugins.piwik-log.handler"] = "kong/plugins/piwik-log/handler.lua",
+    ["kong.plugins.piwik-log.schema"] = "kong/plugins/piwik-log/schema.lua",
   }
 }
