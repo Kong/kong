@@ -30,5 +30,9 @@ describe("Database cache", function()
   it("returns a valid requests cache key", function()
     assert.are.equal("requests", cache.requests_key())
   end)
+  
+  it("returns a valid LDAPAuthcredentials cache key", function()
+    assert.are.equal("ldap_credentials_0c704b70-3f30-49ad-9418-3968e53c8d98:username", cache.ldap_credential_key("0c704b70-3f30-49ad-9418-3968e53c8d98", "username"))
+  end)
 
 end)
