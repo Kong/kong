@@ -28,9 +28,9 @@ local function generate_post_payload(method, content_type, parsed_url, body)
     method:upper(), url, parsed_url.host, content_type, #body)
 
   if parsed_url.userinfo then
-		local auth_header = string.format(
-		  "Authorization: Basic %s\r\n",
-		  ngx.encode_base64(parsed_url.userinfo))
+    local auth_header = string.format(
+      "Authorization: Basic %s\r\n",
+      ngx.encode_base64(parsed_url.userinfo))
     headers = headers .. auth_header
   end
 
