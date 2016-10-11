@@ -61,10 +61,6 @@ return {
       else
         ngx.var.upstream_host = upstream_host
       end
---local x = balancer_address.balancer
---balancer_address.balancer = nil
---print(require("pl.pretty").write(balancer_address))
---balancer_address.balancer = x
       if not ok then
         ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
         return ngx.exit(500)
@@ -82,7 +78,6 @@ return {
       -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
       -- directive in kong.yml.
       ngx.var.upstream_url = upstream_url
-print(require("pl.pretty").write({upstream_url = ngx.var.upstream_url, upstream_host = ngx.var.upstream_host}))
 
       local now = get_now()
       ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
