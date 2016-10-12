@@ -1,4 +1,4 @@
-#!/usr/bin/env resty -c 65535
+#!/usr/bin/env resty
 
 -- a flag to detect whether our modules (especially kong.core.globalpatches)
 -- are running under resty-cli or in a real ngx_lua, runtime environment.
