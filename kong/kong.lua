@@ -24,7 +24,7 @@
 -- |[[    ]]|
 -- ==========
 
-require "kong.core.globalpatches"
+require("kong.core.globalpatches")()
 
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"

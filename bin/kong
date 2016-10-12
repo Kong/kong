@@ -1,15 +1,7 @@
 #!/usr/bin/env resty
 
--- a flag to detect whether our modules (especially kong.core.globalpatches)
--- are running under resty-cli or in a real ngx_lua, runtime environment.
-ngx.RESTY_CLI = true
-
--- require global patches, to enable dns resolution by the internal client
--- initializing the dns client is done in `./kong/conf_loader.lua` 
-require "kong.core.globalpatches"
-
-if ngx ~= nil then
-  ngx.exit = function()end
-end
+require("kong.core.globalpatches")({
+  cli = true
+})
 
 require("kong.cmd.init")(arg)
