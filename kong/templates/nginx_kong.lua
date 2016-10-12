@@ -63,7 +63,7 @@ upstream kong_upstream {
     balancer_by_lua_block {
         kong.balancer()
     }
-    keepalive 60;
+    keepalive ${{NGINX_KEEPALIVE}};
 }
 
 server {

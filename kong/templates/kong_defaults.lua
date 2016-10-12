@@ -14,6 +14,7 @@ mem_cache_size = 128m
 ssl = on
 ssl_cert = NONE
 ssl_cert_key = NONE
+nginx_keepalive = 60
 
 database = postgres
 pg_host = 127.0.0.1
