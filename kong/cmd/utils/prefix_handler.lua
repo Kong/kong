@@ -225,8 +225,8 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   log.verbose("saving serf shell script handler to %s", kong_config.serf_event)
   -- setting serf admin ip
   local admin_ip = kong_config.admin_ip
-  if kong_config.admin_ip == '0.0.0.0' then
-    admin_ip = '127.0.0.1';
+  if kong_config.admin_ip == "0.0.0.0" then
+    admin_ip = "127.0.0.1";
   end
   -- saving serf script handler
   local script = fmt(script_template, admin_ip, kong_config.admin_port, resty_bin)
