@@ -12,6 +12,7 @@ local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
 local resolve = require("kong.core.resolver").execute
 local constants = require "kong.constants"
+local responses = require "kong.tools.responses"
 local certificate = require "kong.core.certificate"
 local balancer_execute = require("kong.core.balancer").execute
 
@@ -45,20 +46,19 @@ return {
         upstream = upstream_table,                       -- original parsed upstream url from the resolver
         type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
         tries = 0,                                       -- retry counter
-        ip = nil,                                        -- final target IP address
+    --  ip = nil,                                        -- final target IP address
         port = upstream_table.port,                      -- final target port
         retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
         -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
-        failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
-        -- in case of balancer
-        balancer = nil,                                  -- the balancer object
+    --  failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
+    --  balancer = nil,                                  -- the balancer object, in case of a balancer
       }
       ngx.ctx.balancer_address = balancer_address
       ngx.var.upstream_host = upstream_host
       local ok, err = balancer_execute(balancer_address)
       if not ok then
         ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
-        return ngx.exit(500)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.

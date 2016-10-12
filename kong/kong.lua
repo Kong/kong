@@ -180,7 +180,7 @@ function Kong.balancer()
     local ok, err = balancer_execute(addr)
     if not ok then
       ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
-      return ngx.exit(500)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
   else
     -- first try, so set the max number of retries
@@ -193,8 +193,9 @@ function Kong.balancer()
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
   if not ok then
-    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
-    return ngx.exit(500)
+    ngx.log(ngx.ERR, "failed to set the current peer (address:'",
+      tostring(addr.ip),"' port:",tostring(addr.port),"): ", tostring(err))
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 end
 
