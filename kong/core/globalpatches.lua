@@ -10,7 +10,7 @@ return function(options)
 
 
 
-  do  -- patch the nginx exit method when running under the cli
+  do  -- disable the nginx exit method when running under the cli
 
     if options.cli then
       ngx.IS_CLI = true
@@ -24,14 +24,8 @@ return function(options)
   do -- patch luassert when running in the Busted test enviornment
     
     if options.rbusted then
-      -- patch luassert's 'assert' because very often we use the Lua idiom:
-      -- local res = assert(some_method())
-      -- in our tests.
-      -- luassert's 'assert' would error out in case the assertion fails, and
-      -- if 'some_method()' returns a third return value because we attempt to
-      -- perform arithmetic (+1) to the 'level' argument of 'assert'.
-      -- This error would often supersed the actual error (arg #2) and be painful
-      -- to debug.
+      -- patch luassert's 'assert' to fix the 'third' argument problem
+      -- see https://github.com/Olivine-Labs/luassert/pull/141
       local assert = require "luassert.assert"
       local assert_mt = getmetatable(assert)
       if assert_mt then
@@ -151,42 +145,5 @@ return function(options)
   
   end
   
-  
-  --[[ no longer needed, since pulling 0.9.2?
 
-  do -- Cassandra cache-shm patch
-
-    --- Patch cassandra driver.
-    -- The cache module depends on an `shm` which isn't available on the `resty` cli.
-    -- in non-nginx Lua it uses a stub. So for the cli make it think it's non-nginx.
-    if options.cli then
-      local old_ngx = _G.ngx
-      _G.ngx = nil
-      require "cassandra.cache"
-      _G.ngx = old_ngx
-    end
-  end
-
-
-
-  do -- cassandra resty-lock patch
-    
-    --- stub for resty.lock module which isn't available in the `resty` cli because it
-    -- requires an `shm`.
-    if options.cli then
-      package.loaded["resty.lock"] = {
-          new = function()
-            return {
-              lock = function(self, key)
-                return 0   -- cli is single threaded, so a lock always succeeds
-              end,
-              unlock = function(self, key)
-                return 1   -- same as above, always succeeds
-              end
-            }
-          end,
-        }
-    end
-  end
-  --]]
 end
