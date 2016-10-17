@@ -41,6 +41,10 @@ function _M.rawget(key)
   return cache:get(key)
 end
 
+function _M.rawadd(key, value, exptime)
+  return cache:add(key, value, exptime)
+end
+
 function _M.get(key)
   local value, flags = _M.rawget(key)
   if value then

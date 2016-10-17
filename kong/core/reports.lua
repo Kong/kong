@@ -4,7 +4,6 @@ local cache = require "kong.tools.database_cache"
 local utils = require "kong.tools.utils"
 local pl_utils = require "pl.utils"
 local pl_stringx = require "pl.stringx"
-local resty_lock = require "resty.lock"
 local singletons = require "kong.singletons"
 local constants = require "kong.constants"
 local concat = table.concat
@@ -12,8 +11,10 @@ local udp_sock = ngx.socket.udp
 
 local ping_handler, system_infos
 local enabled = false
-local ping_interval = 3600
 local unique_str = utils.random_string()
+
+local PING_INTERVAL = 3600
+local KEY = "events:reports"
 
 --------
 -- utils
@@ -21,6 +22,10 @@ local unique_str = utils.random_string()
 
 local function log_error(...)
   ngx.log(ngx.WARN, "[reports] ", ...)
+end
+
+local function log_debug(...)
+  ngx.log(ngx.DEBUG, "[reports] ", ...)
 end
 
 local function get_system_infos()
@@ -97,8 +102,20 @@ end
 -- ping handler
 ---------------
 
+local function get_lock()
+  -- the lock is held for the whole interval to prevent multiple
+  -- worker processes from sending the test request simultaneously.
+  -- here we substract the lock expiration time by 1ms to prevent
+  -- a race condition with the next timer event.
+  local ok, err = cache.rawadd(KEY, true, PING_INTERVAL - 0.001)
+  if not ok then
+    return nil, err
+  end
+  return true
+end
+
 local function create_ping_timer()
-  local ok, err = ngx.timer.at(ping_interval, ping_handler)
+  local ok, err = ngx.timer.at(PING_INTERVAL, ping_handler)
   if not ok then
     log_error("failed to create ping timer: ", err)
   end
@@ -107,25 +124,19 @@ end
 ping_handler = function(premature)
   if premature then return end
 
-  local lock, err = resty_lock:new("reports_locks", {
-    exptime = ping_interval - 0.001
-  })
-  if not lock then
-    log_error("could not create lock: ", err)
-    return
-  end
-
-  local elapsed, err = lock:lock("ping")
-  if not elapsed then
-    log_error("failed to acquire ping lock: ", err)
-  elseif elapsed == 0 then
+  local ok, err = get_lock()
+  if ok then
+    log_debug("flushing")
+    local requests = cache.get(cache.requests_key()) or 0
     send {
       signal = "ping",
-      requests = cache.get(cache.requests_key()) or 0,
+      requests = requests,
       unique_id = unique_str,
       database = singletons.configuration.database
     }
-    cache.rawset(cache.requests_key(), 0)
+    cache.rawset(cache.requests_key(), -requests)
+  elseif err ~= "exists" then
+    log_error(err)
   end
 
   create_ping_timer()
