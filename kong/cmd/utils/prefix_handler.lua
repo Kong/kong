@@ -223,7 +223,13 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   if not resty_bin then return nil, err end
 
   log.verbose("saving serf shell script handler to %s", kong_config.serf_event)
-  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port, resty_bin)
+  -- setting serf admin ip
+  local admin_ip = kong_config.admin_ip
+  if kong_config.admin_ip == "0.0.0.0" then
+    admin_ip = "127.0.0.1"
+  end
+  -- saving serf script handler
+  local script = fmt(script_template, admin_ip, kong_config.admin_port, resty_bin)
   pl_file.write(kong_config.serf_event, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
   if not ok then return nil, stderr end

@@ -1,5 +1,16 @@
 ## [Unreleased][unreleased]
 
+## [0.9.3] - 2016/10/07
+
+### Added
+
+- Added support for Serf 0.8. [#1693](https://github.com/Mashape/kong/pull/1693)
+
+### Fixed
+
+- Properly invalidate global plugins. 
+  [#1723](https://github.com/Mashape/kong/pull/1723)
+
 ## [0.9.2] - 2016/09/20
 
 ### Fixed
@@ -744,7 +755,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.2...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.3...next
+[0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
 [0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/mashape/kong/compare/0.8.3...0.9.0
