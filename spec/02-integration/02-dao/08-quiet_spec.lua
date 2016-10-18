@@ -11,7 +11,7 @@ helpers.for_each_dao(function(kong_config)
   describe("Quiet with #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = Factory(kong_config, events)
+      factory = Factory.new(kong_config, events)
       assert(factory:run_migrations())
 
       factory:truncate_tables()

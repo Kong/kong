@@ -37,7 +37,8 @@ local function execute(args)
     assert(nginx_signals.stop(conf))
   end
 
-  assert(serf_signals.stop(conf, DAOFactory(conf)))
+  local dao = assert(DAOFactory.new(conf))
+  assert(serf_signals.stop(conf, dao))
 
   if conf.dnsmasq then
     assert(dnsmasq_signals.stop(conf))

@@ -6,7 +6,7 @@ helpers.for_each_dao(function(kong_config)
   describe("TTL with #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       assert(factory:run_migrations())
 
       factory:truncate_tables()
@@ -68,8 +68,8 @@ helpers.for_each_dao(function(kong_config)
 
     if kong_config.database == "postgres" then
       it("clears old entities", function()
-        local DB = require "kong.dao.postgres_db"
-        local _db = DB(kong_config)
+        local DB = require "kong.dao.db.postgres"
+        local _db = DB.new(kong_config)
 
         for i = 1, 4 do
           local _, err = factory.apis:insert({
