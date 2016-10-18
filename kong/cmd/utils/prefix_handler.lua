@@ -110,7 +110,8 @@ local function gen_default_ssl_cert(kong_config, admin)
   end
 
   if not pl_path.exists(ssl_cert) and not pl_path.exists(ssl_cert_key) then
-    log.verbose("generating "..(admin and "admin" or "default").." SSL certificate and key")
+    log.verbose("generating %s SSL certificate and key",
+                     admin and "admin" or "default")
 
     local passphrase = utils.random_string()
     local commands = {
@@ -129,7 +130,8 @@ local function gen_default_ssl_cert(kong_config, admin)
       end
     end
   else
-    log.verbose((admin and "admin" or "default").." SSL certificate found at %s", ssl_cert)
+    log.verbose("%s SSL certificate found at %s",
+                     admin and "admin" or "default", ssl_cert)
   end
 
   return true
