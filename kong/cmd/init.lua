@@ -1,6 +1,10 @@
+require("kong.core.globalpatches")({cli = true})
+
 local pl_app = require "pl.lapp"
 local log = require "kong.cmd.utils.log"
 local meta = require "kong.meta"
+
+local prng_seed = math.randomseed()
 
 local options = [[
  --v         verbose
@@ -81,6 +85,7 @@ return function(args)
   log.debug("ngx_lua: %s", ngx.config.ngx_lua_version)
   log.debug("nginx: %s", ngx.config.nginx_version)
   log.debug("Lua: %s", jit and jit.version or _VERSION)
+  log.debug("PRNG seed: %d", prng_seed)
 
   xpcall(function() cmd_exec(args) end, function(err)
     if not (args.v or args.vv) then

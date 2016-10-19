@@ -14,6 +14,8 @@ local uuid = require "resty.jit-uuid"
 local pl_stringx = require "pl.stringx"
 
 local C          = ffi.C
+local ffi_new    = ffi.new
+local ffi_str    = ffi.string
 local fmt        = string.format
 local type       = type
 local pairs      = pairs
@@ -27,7 +29,17 @@ local find       = string.find
 local gsub       = string.gsub
 
 ffi.cdef[[
+typedef unsigned char u_char;
+
 int gethostname(char *name, size_t len);
+
+int RAND_bytes(u_char *buf, int num);
+
+unsigned long ERR_get_error(void);
+void ERR_load_crypto_strings(void);
+void ERR_free_strings(void);
+
+const char *ERR_reason_error_string(unsigned long e);
 ]]
 
 local _M = {}
@@ -38,11 +50,11 @@ function _M.get_hostname()
   local result
   local SIZE = 128
 
-  local buf = ffi.new("unsigned char[?]", SIZE)
+  local buf = ffi_new("unsigned char[?]", SIZE)
   local res = C.gethostname(buf, SIZE)
 
   if res == 0 then
-    local hostname = ffi.string(buf, SIZE)
+    local hostname = ffi_str(buf, SIZE)
     result = gsub(hostname, "%z+$", "")
   else
     local f = io.popen("/bin/hostname")
@@ -52,6 +64,32 @@ function _M.get_hostname()
   end
 
   return result
+end
+
+do
+  local bytes_buf_t = ffi.typeof "char[?]"
+
+  function _M.get_rand_bytes(n_bytes)
+    local buf = ffi_new(bytes_buf_t, n_bytes)
+
+    if C.RAND_bytes(buf, n_bytes) == 0 then
+      -- get error code
+      local err_code = C.ERR_get_error()
+      if err_code == 0 then
+        return nil, "could not get SSL error code from the queue"
+      end
+
+      -- get human-readable error string
+      C.ERR_load_crypto_strings()
+      local err = C.ERR_reason_error_string(err_code)
+      C.ERR_free_strings()
+
+      return nil, "could not get random bytes (" ..
+                  "reason:" .. ffi_str(err) .. ") "
+    end
+
+    return ffi_str(buf, n_bytes)
+  end
 end
 
 local v4_uuid = uuid.generate_v4
