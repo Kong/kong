@@ -7,11 +7,8 @@ helpers.for_each_dao(function(kong_config)
   describe("Model migrations with DB: #"..kong_config.database, function()
     local factory
     setup(function()
-      local f = assert(Factory.new(kong_config))
-      f:drop_schema()
-    end)
-    before_each(function()
       factory = assert(Factory.new(kong_config))
+      factory:drop_schema()
     end)
 
     describe("current_migrations()", function()
@@ -21,13 +18,14 @@ helpers.for_each_dao(function(kong_config)
         assert.same({}, cur_migrations)
       end)
       if kong_config.database == "cassandra" then
+        -- Postgres wouldn't be able to connect to a non-existing
+        -- database at all, so we only test this for Cassandra.
         it("returns empty migrations on non-existing Cassandra keyspace", function()
           local invalid_conf = utils.shallow_copy(kong_config)
           invalid_conf.cassandra_keyspace = "_inexistent_"
 
           local xfactory = assert(Factory.new(invalid_conf))
-          local cur_migrations, err = xfactory:current_migrations()
-          assert.is_nil(err)
+          local cur_migrations = assert(xfactory:current_migrations())
           assert.same({}, cur_migrations)
         end)
       end
@@ -46,14 +44,13 @@ helpers.for_each_dao(function(kong_config)
     -- Integration behavior.
     -- Must run in order.
     describe("[INTEGRATION]", function()
-      local n_ids = 0
+      local total_migrations = 0
       local flatten_migrations = {}
       setup(function()
-        factory:drop_schema()
         for identifier, migs in pairs(factory:migrations_modules()) do
-          n_ids = n_ids + 1
+          total_migrations = total_migrations + 1
           for _, mig in ipairs(migs) do
-            flatten_migrations[#flatten_migrations + 1] = {
+            flatten_migrations[#flatten_migrations+1] = {
               identifier = identifier,
               name = mig.name
             }
@@ -64,11 +61,9 @@ helpers.for_each_dao(function(kong_config)
         local on_migration = spy.new(function() end)
         local on_success = spy.new(function() end)
 
-        local ok, err = factory:run_migrations(on_migration, on_success)
-        assert.falsy(err)
-        assert.True(ok)
+        assert(factory:run_migrations(on_migration, on_success))
 
-        assert.spy(on_migration).was_called(n_ids)
+        assert.spy(on_migration).was_called(total_migrations)
         assert.spy(on_success).was_called(#flatten_migrations)
 
         for _, mig in ipairs(flatten_migrations) do
@@ -77,19 +72,16 @@ helpers.for_each_dao(function(kong_config)
         end
       end)
       it("should return the migrations recorded as executed", function()
-        local cur_migrations, err = factory:current_migrations()
-        assert.falsy(err)
+        local cur_migrations = assert(factory:current_migrations())
 
-        assert.truthy(next(cur_migrations))
+        assert(next(cur_migrations), "no migrations were executed")
         assert.is_table(cur_migrations.core)
       end)
       it("should not run any migration on subsequent run", function()
         local on_migration = spy.new(function() end)
         local on_success = spy.new(function() end)
 
-        local ok, err = factory:run_migrations()
-        assert.falsy(err)
-        assert.True(ok)
+        assert(factory:run_migrations())
 
         assert.spy(on_migration).was_not_called()
         assert.spy(on_success).was_not_called()
@@ -98,20 +90,13 @@ helpers.for_each_dao(function(kong_config)
 
     describe("errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
-        local pg_port = kong_config.pg_port
-        local cassandra_port = kong_config.cassandra_port
-        local cassandra_timeout = kong_config.cassandra_timeout
-        finally(function()
-          kong_config.pg_port = pg_port
-          kong_config.cassandra_port = cassandra_port
-          kong_config.cassandra_timeout = cassandra_timeout
-        end)
-        kong_config.pg_port = 3333
-        kong_config.cassandra_port = 3333
-        kong_config.cassandra_timeout = 1000
+        local invalid_conf = utils.shallow_copy(kong_config)
+        invalid_conf.pg_port = 3333
+        invalid_conf.cassandra_port = 3333
+        invalid_conf.cassandra_timeout = 1000
 
         assert.error_matches(function()
-          local fact = assert(Factory.new(kong_config))
+          local fact = assert(Factory.new(invalid_conf))
           assert(fact:run_migrations())
         end, "["..kong_config.database.." error]", nil, true)
       end)
