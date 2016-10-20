@@ -18,8 +18,9 @@ local function execute(args)
 
   -- load <PREFIX>/kong.conf containing running node's config
   local conf = assert(conf_loader(default_conf.kong_conf))
+  local dao = assert(DAOFactory.new(conf))
   assert(nginx_signals.stop(conf))
-  assert(serf_signals.stop(conf, DAOFactory(conf)))
+  assert(serf_signals.stop(conf, dao))
   if conf.dnsmasq then
     assert(dnsmasq_signals.stop(conf))
   end

@@ -13,6 +13,113 @@ return function(options)
       local socket = require(namespace .. ".socket")
       socket.force_luasocket(ngx.get_phase(), true)
     end
+
+    do
+      -- ngx.shared.DICT proxy
+      -- https://github.com/bsm/fakengx/blob/master/fakengx.lua
+      -- with minor fixes and addtions such as exptime
+      --
+      -- See https://github.com/openresty/resty-cli/pull/12
+      -- for a definitive solution ot using shms in CLI
+      local SharedDict = {}
+      local function set(data, key, value)
+        data[key] = {
+          value = value,
+          info = {expired = false}
+        }
+      end
+      function SharedDict:new()
+        return setmetatable({data = {}}, {__index = self})
+      end
+      function SharedDict:get(key)
+        return self.data[key] and self.data[key].value, nil
+      end
+      function SharedDict:set(key, value)
+        set(self.data, key, value)
+        return true, nil, false
+      end
+      SharedDict.safe_set = SharedDict.set
+      function SharedDict:add(key, value, exptime)
+        if self.data[key] ~= nil then
+          return false, "exists", false
+        end
+
+        if exptime then
+          ngx.timer.at(exptime, function()
+            self.data[key] = nil
+          end)
+        end
+
+        set(self.data, key, value)
+        return true, nil, false
+      end
+      function SharedDict:replace(key, value)
+        if self.data[key] == nil then
+          return false, "not found", false
+        end
+        set(self.data, key, value)
+        return true, nil, false
+      end
+      function SharedDict:delete(key)
+        self.data[key] = nil
+        return true
+      end
+      function SharedDict:incr(key, value)
+        if not self.data[key] then
+          return nil, "not found"
+        elseif type(self.data[key].value) ~= "number" then
+          return nil, "not a number"
+        end
+        self.data[key].value = self.data[key].value + value
+        return self.data[key].value, nil
+      end
+      function SharedDict:flush_all()
+        for _, item in pairs(self.data) do
+          item.info.expired = true
+        end
+      end
+      function SharedDict:flush_expired(n)
+        local data = self.data
+        local flushed = 0
+
+        for key, item in pairs(self.data) do
+          if item.info.expired then
+            data[key] = nil
+            flushed = flushed + 1
+            if n and flushed == n then
+              break
+            end
+          end
+        end
+        self.data = data
+        return flushed
+      end
+      function SharedDict:get_keys(n)
+        n = n or 1024
+        local i = 0
+        local keys = {}
+        for k in pairs(self.data) do
+          keys[#keys+1] = k
+          i = i + 1
+          if n ~= 0 and i == n then
+            break
+          end
+        end
+        return keys
+      end
+
+      -- hack
+      _G.ngx.shared = setmetatable({}, {
+        __index = function(self, key)
+          local shm = rawget(self, key)
+          if not shm then
+            shm = SharedDict:new()
+            rawset(self, key, SharedDict:new())
+          end
+          return shm
+        end
+      })
+    end
   end
 
   if options.rbusted then
@@ -93,6 +200,5 @@ return function(options)
         return seed
       end
     end
-
   end
 end

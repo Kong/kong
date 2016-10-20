@@ -106,7 +106,7 @@ describe("kong start/stop", function()
     -- it in its resolver directive. As such and until supported by resty-cli,
     -- we must force the use of LuaSocket in our CLI to resolve localhost.
     it("resolves cassandra hostname", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+      assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
         database = "cassandra"
       }))

@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
+local policy_cluster = require "kong.plugins.rate-limiting.policies.cluster"
 local ngx_log = ngx.log
 
 local pairs = pairs
@@ -48,17 +49,23 @@ return {
   },
   ["cluster"] = {
     increment = function(conf, api_id, identifier, current_timestamp, value)
-      local _, stmt_err = singletons.dao.ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value)
-      if stmt_err then
-        ngx_log(ngx.ERR, "failed to increment: ", tostring(stmt_err))
+      local db = singletons.dao.db
+      local ok, err = policy_cluster[db.name].increment(db, api_id, identifier,
+                                                        current_timestamp, value)
+      if not ok then
+        ngx_log(ngx.ERR, "[rate-limiting] cluster policy: could not increment ",
+                          db.name, " counter: ", err)
       end
+
+      return ok, err
     end,
     usage = function(conf, api_id, identifier, current_timestamp, name)
-      local current_metric, err = singletons.dao.ratelimiting_metrics:find(api_id, identifier, current_timestamp, name)
-      if err then
-        return nil, err
-      end
-      return current_metric and current_metric.value or 0
+      local db = singletons.dao.db
+      local row, err = policy_cluster[db.name].find(db, api_id, identifier,
+                                                     current_timestamp, name)
+      if err then return nil, err end
+
+      return row and row.value or 0
     end
   },
   ["redis"] = {

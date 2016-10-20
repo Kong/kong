@@ -4,4 +4,6 @@ require("kong.core.globalpatches")({
   cli = true
 })
 
+package.path = "?/init.lua;"..package.path
+
 require("kong.cmd.init")(arg)
