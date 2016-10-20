@@ -16,16 +16,11 @@ local unique_str = utils.random_string()
 local PING_INTERVAL = 3600
 local KEY = "events:reports"
 
---------
--- utils
---------
+local ngx_log = ngx.log
+local ERR = ngx.ERR
 
-local function log_error(...)
-  ngx.log(ngx.WARN, "[reports] ", ...)
-end
-
-local function log_debug(...)
-  ngx.log(ngx.DEBUG, "[reports] ", ...)
+local function log(lvl, ...)
+  ngx_log(lvl, "[cluster] ", ...)
 end
 
 local function get_system_infos()
@@ -81,7 +76,7 @@ local function send(t, host, port)
   local sock = udp_sock()
   local ok, err = sock:setpeername(host, port)
   if not ok then
-    log_error("could not set peer name for UDP socket: ", err)
+    log(ERR, "could not set peer name for UDP socket: ", err)
     return
   end
 
@@ -89,12 +84,12 @@ local function send(t, host, port)
 
   ok, err = sock:send("<14>"..msg) -- syslog facility code 'log alert'
   if not ok then
-    log_error("could not send data: ", err)
+    log(ERR, "could not send data: ", err)
   end
 
   ok, err = sock:close()
   if not ok then
-    log_error("could not close socket: ", err)
+    log(ERR, "could not close socket: ", err)
   end
 end
 
@@ -107,17 +102,13 @@ local function get_lock()
   -- worker processes from sending the test request simultaneously.
   -- here we substract the lock expiration time by 1ms to prevent
   -- a race condition with the next timer event.
-  local ok, err = cache.rawadd(KEY, true, PING_INTERVAL - 0.001)
-  if not ok then
-    return nil, err
-  end
-  return true
+  return cache.rawadd(KEY, true, PING_INTERVAL - 0.001)
 end
 
 local function create_ping_timer()
   local ok, err = ngx.timer.at(PING_INTERVAL, ping_handler)
   if not ok then
-    log_error("failed to create ping timer: ", err)
+    log(ERR, "failed to create ping timer: ", err)
   end
 end
 
@@ -126,7 +117,6 @@ ping_handler = function(premature)
 
   local ok, err = get_lock()
   if ok then
-    log_debug("flushing")
     local requests = cache.get(cache.requests_key()) or 0
     send {
       signal = "ping",
@@ -136,7 +126,7 @@ ping_handler = function(premature)
     }
     cache.rawset(cache.requests_key(), -requests)
   elseif err ~= "exists" then
-    log_error(err)
+    log(ERR, err)
   end
 
   create_ping_timer()
