@@ -76,7 +76,7 @@ describe("Plugins triggering", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   it("checks global configuration without credentials", function()

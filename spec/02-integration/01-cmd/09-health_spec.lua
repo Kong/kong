@@ -4,9 +4,6 @@ describe("kong health", function()
   setup(function()
     helpers.prepare_prefix()
   end)
-  teardown(function()
-    helpers.clean_prefix()
-  end)
   after_each(function()
     helpers.kill_all()
   end)
@@ -17,20 +14,24 @@ describe("kong health", function()
   end)
   it("succeeds when Kong is running with custom --prefix", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    helpers.wait_until_running(
+      helpers.test_conf.nginx_pid,
+      helpers.test_conf.serf_pid
+    )
 
     local _, _, stdout = assert(helpers.kong_exec("health --prefix "..helpers.test_conf.prefix))
     assert.matches("serf%.-running", stdout)
     assert.matches("nginx%.-running", stdout)
     assert.not_matches("dnsmasq.*running", stdout)
-    assert.matches("Kong is healthy at "..helpers.test_conf.prefix, stdout, nil, true)
+    assert.matches("Kong is healthy at " .. helpers.test_conf.prefix, stdout, nil, true)
   end)
   it("fails when Kong is not running", function()
-    local ok, stderr = helpers.kong_exec("health --prefix "..helpers.test_conf.prefix)
+    local ok, stderr = helpers.kong_exec("health --prefix " .. helpers.test_conf.prefix)
     assert.False(ok)
     assert.matches("Kong is not running at "..helpers.test_conf.prefix, stderr, nil, true)
   end)
   it("fails when a service is not running", function()
-    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    assert(helpers.kong_exec("start --conf " .. helpers.test_conf_path))
     helpers.execute("pkill serf")
 
     local ok, stderr = helpers.kong_exec("health --prefix "..helpers.test_conf.prefix)
@@ -39,6 +40,10 @@ describe("kong health", function()
   end)
   it("checks dnsmasq if enabled", function()
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
+    helpers.wait_until_running(
+      helpers.test_conf.nginx_pid,
+      helpers.test_conf.serf_pid
+    )
 
     local ok, stderr = helpers.kong_exec("health --prefix "..helpers.test_conf.prefix, {
       dnsmasq = true,

@@ -1,33 +1,29 @@
-local helpers = require "spec.02-integration.02-dao.helpers"
+local helpers = require "spec.helpers"
 local Events = require "kong.core.events"
-local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
-
-local events = Events()
 
 local API_ID = "0cd4a0d3-2e41-4b51-945a-eb06adbe8d2e"
 
-helpers.for_each_dao(function(kong_config)
-  describe("Quiet with #"..kong_config.database, function()
+for conf, database in helpers.for_each_db() do
+  describe("Quiet with #" .. conf.database, function()
+    local events = Events()
     local factory
-    setup(function()
-      factory = Factory.new(kong_config, events)
-      assert(factory:run_migrations())
 
-      factory:truncate_tables()
+    setup(function()
+      factory = Factory.new(conf, events)
+      assert(factory:run_migrations())
     end)
-    after_each(function()
+    before_each(function()
       factory:truncate_tables()
     end)
 
     local do_insert = function(quiet)
-      local api, err = factory.apis:insert({
+      local api = assert(factory.apis:insert({
         id = API_ID,
         name = "mockbin",
         request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }, {ttl = 1, quiet = quiet})
-      assert.falsy(err)
+      }, {ttl = 1, quiet = quiet}))
       assert.equal(API_ID, api.id)
     end
 
@@ -42,7 +38,7 @@ helpers.for_each_dao(function(kong_config)
 
         do_insert()
 
-        spec_helpers.wait_until(function()
+        helpers.wait_until(function()
           return received
         end)
       end)
@@ -58,7 +54,7 @@ helpers.for_each_dao(function(kong_config)
         do_insert(true)
 
         assert.has_error(function()
-          spec_helpers.wait_until(function()
+          helpers.wait_until(function()
             return received
           end)
         end)
@@ -71,12 +67,10 @@ helpers.for_each_dao(function(kong_config)
       end)
 
       local do_update = function(quiet)
-        local api, err = factory.apis:update({id = API_ID}, {
+        local api = assert(factory.apis:update({id = API_ID}, {
           id = API_ID,
           name = "mockbin2"
-        }, {quiet = quiet})
-
-        assert.falsy(err)
+        }, {quiet = quiet}))
         assert.equal(API_ID, api.id)
       end
 
@@ -90,7 +84,7 @@ helpers.for_each_dao(function(kong_config)
 
         do_update()
 
-        spec_helpers.wait_until(function()
+        helpers.wait_until(function()
           return received
         end)
       end)
@@ -106,7 +100,7 @@ helpers.for_each_dao(function(kong_config)
         do_update(true)
 
         assert.has_error(function()
-          spec_helpers.wait_until(function()
+          helpers.wait_until(function()
             return received
           end)
         end)
@@ -119,8 +113,7 @@ helpers.for_each_dao(function(kong_config)
       end)
 
       local do_update = function(quiet)
-        local api, err = factory.apis:delete({id = API_ID}, {quiet = quiet})
-        assert.falsy(err)
+        local api = assert(factory.apis:delete({id = API_ID}, {quiet = quiet}))
         assert.equal(API_ID, api.id)
       end
 
@@ -134,7 +127,7 @@ helpers.for_each_dao(function(kong_config)
 
         do_update()
 
-        spec_helpers.wait_until(function()
+        helpers.wait_until(function()
           return received
         end)
       end)
@@ -150,11 +143,11 @@ helpers.for_each_dao(function(kong_config)
         do_update(true)
 
         assert.has_error(function()
-          spec_helpers.wait_until(function()
+          helpers.wait_until(function()
             return received
           end)
         end)
       end)
     end)
   end)
-end)
+end

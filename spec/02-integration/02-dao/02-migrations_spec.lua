@@ -1,13 +1,12 @@
-local helpers = require "spec.02-integration.02-dao.helpers"
+local helpers = require "spec.helpers"
+local Factory = require "kong.dao.factory"
 local utils = require "kong.tools.utils"
 
-local Factory = require "kong.dao.factory"
-
-helpers.for_each_dao(function(kong_config)
-  describe("Model migrations with DB: #"..kong_config.database, function()
+for conf, database in helpers.for_each_db() do
+  describe("Model migrations with DB: #"..database, function()
     local factory
     setup(function()
-      factory = assert(Factory.new(kong_config))
+      factory = assert(Factory.new(conf))
       factory:drop_schema()
     end)
 
@@ -17,11 +16,11 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.same({}, cur_migrations)
       end)
-      if kong_config.database == "cassandra" then
+      if database == "cassandra" then
         -- Postgres wouldn't be able to connect to a non-existing
         -- database at all, so we only test this for Cassandra.
         it("returns empty migrations on non-existing Cassandra keyspace", function()
-          local invalid_conf = utils.shallow_copy(kong_config)
+          local invalid_conf = utils.shallow_copy(conf)
           invalid_conf.cassandra_keyspace = "_inexistent_"
 
           local xfactory = assert(Factory.new(invalid_conf))
@@ -90,7 +89,7 @@ helpers.for_each_dao(function(kong_config)
 
     describe("errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
-        local invalid_conf = utils.shallow_copy(kong_config)
+        local invalid_conf = utils.shallow_copy(conf)
         invalid_conf.pg_port = 3333
         invalid_conf.cassandra_port = 3333
         invalid_conf.cassandra_timeout = 1000
@@ -98,8 +97,8 @@ helpers.for_each_dao(function(kong_config)
         assert.error_matches(function()
           local fact = assert(Factory.new(invalid_conf))
           assert(fact:run_migrations())
-        end, "["..kong_config.database.." error]", nil, true)
+        end, "["..database.." error]", nil, true)
       end)
     end)
   end)
-end)
+end
