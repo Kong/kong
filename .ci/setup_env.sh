@@ -1,5 +1,4 @@
 set -e
-set -x
 
 #---------
 # Download
@@ -90,8 +89,6 @@ export SERF_PATH=$SERF_INSTALL/serf # for our test instance (not in default bin/
 export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS_INSTALL/bin:$SERF_INSTALL
 
 eval `luarocks path`
-
-luarocks purge --tree=$LUAROCKS_INSTALL
 
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
