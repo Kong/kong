@@ -22,7 +22,7 @@ for conf, database in helpers.for_each_db() do
 
       local consumer = assert(factory.consumers:insert {username = "bob"})
 
-      local key_auth, err = assert(factory.plugins:insert {
+      local key_auth = assert(factory.plugins:insert {
         name = "key-auth", api_id = api.id
       })
 

@@ -9,7 +9,7 @@ describe("Plugin: acl (API)", function()
   end)
   teardown(function()
     if admin_client then admin_client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("/consumers/:consumer/acls/", function()

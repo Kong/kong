@@ -24,7 +24,7 @@ for conf, database in helpers.for_each_db() do
       ngx.sleep(1)
 
       helpers.wait_until(function()
-        row, err = factory.apis:find {id = api.id}
+        local row, err = factory.apis:find {id = api.id}
         assert.falsy(err)
         return row == nil
       end, 1)
@@ -49,7 +49,7 @@ for conf, database in helpers.for_each_db() do
       ngx.sleep(1)
 
       helpers.wait_until(function()
-        row, err = factory.apis:find {id = api.id}
+        local row, err = factory.apis:find {id = api.id}
         assert.falsy(err)
         return row == nil
       end, 1)

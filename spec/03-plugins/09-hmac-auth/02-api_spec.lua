@@ -11,7 +11,7 @@ describe("Plugin: hmac-auth (API)", function()
 
   teardown(function()
     if client then client:close() end
-    assert(helpers.stop_kong())
+    helpers.kill_all()
     helpers.clean_prefix()
   end)
 
