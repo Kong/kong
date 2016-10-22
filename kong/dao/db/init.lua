@@ -17,7 +17,10 @@ function _M.new_db(name)
     delete              = function() error('delete() not implemented') end,
     queries             = function() error('queries() not implemented') end,
     drop_table          = function() error('drop_table() not implemented') end,
+    drop_schema         = function() error('drop_schema() not implemented') end,
     truncate_table      = function() error('truncate_table() not implemented') end,
+    begin_migrations    = function() end,
+    end_migrations      = function() end,
     current_migrations  = function() error('current_migrations() not implemented') end,
     record_migration    = function() error('record_migration() not implemented') end,
     clone_query_options = function(self, options)

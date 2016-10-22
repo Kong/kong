@@ -43,7 +43,7 @@ describe("Plugin: udp-log (log)", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   it("logs proper latencies", function()

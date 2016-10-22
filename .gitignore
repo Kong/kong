@@ -4,11 +4,9 @@
 .project
 .idea
 
+# kong test suite
 servroot*
-
-# kong
-nginx_tmp/
-kong*.yml
+kong.conf.tests
 
 # luacov
 luacov.*

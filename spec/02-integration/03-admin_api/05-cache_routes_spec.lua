@@ -14,7 +14,7 @@ describe("Admin API", function()
       client:close()
       proxy_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("/cache/{key}", function()

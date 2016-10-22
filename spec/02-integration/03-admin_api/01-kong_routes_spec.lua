@@ -11,7 +11,7 @@ describe("Admin API", function()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("Kong routes", function()

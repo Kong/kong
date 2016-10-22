@@ -1,11 +1,11 @@
-local helpers = require "spec.02-integration.02-dao.helpers"
+local helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 
-helpers.for_each_dao(function(kong_config)
-  describe("Real use-cases with DB: #"..kong_config.database, function()
+for conf, database in helpers.for_each_db() do
+  describe("Real use-cases with DB: #" .. database, function()
     local factory
     setup(function()
-      factory = assert(Factory.new(kong_config))
+      factory = assert(Factory.new(conf))
       assert(factory:run_migrations())
 
       factory:truncate_tables()
@@ -15,100 +15,84 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     it("retrieves plugins for plugins_iterator", function()
-      local api, err = factory.apis:insert {
+      local api = assert(factory.apis:insert {
         name = "mockbin", request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }
-      assert.falsy(err)
+      })
 
-      local consumer, err = factory.consumers:insert {username = "bob"}
-      assert.falsy(err)
+      local consumer = assert(factory.consumers:insert {username = "bob"})
 
-      local key_auth, err = factory.plugins:insert {
+      local key_auth = assert(factory.plugins:insert {
         name = "key-auth", api_id = api.id
-      }
-      assert.falsy(err)
+      })
 
-      local _, err = factory.plugins:insert {
+      assert(factory.plugins:insert {
         name = "rate-limiting", api_id = api.id,
         config = {minute = 1}
-      }
-      assert.falsy(err)
+      })
 
-      local rate_limiting_for_consumer, err = factory.plugins:insert {
+      local rate_limiting_for_consumer = assert(factory.plugins:insert {
         name = "rate-limiting", api_id = api.id, consumer_id = consumer.id,
         config = {minute = 1}
-      }
-      assert.falsy(err)
+      })
 
       -- Retrieval
-      local rows, err = factory.plugins:find_all {
+      local rows = assert(factory.plugins:find_all {
         name = "key-auth",
         api_id = api.id
-      }
-      assert.falsy(err)
+      })
       assert.equal(1, #rows)
       assert.same(key_auth, rows[1])
 
-      --
-      rows, err = factory.plugins:find_all {
+      rows = assert(factory.plugins:find_all {
         name = "rate-limiting",
         api_id = api.id
-      }
-      assert.falsy(err)
+      })
       assert.equal(2, #rows)
 
-      --
-      rows, err = factory.plugins:find_all {
+      rows = assert(factory.plugins:find_all {
         name = "rate-limiting",
         api_id = api.id,
         consumer_id = consumer.id
-      }
-      assert.falsy(err)
+      })
       assert.equal(1, #rows)
       assert.same(rate_limiting_for_consumer, rows[1])
     end)
 
     it("update a plugin config", function()
-      local api, err = factory.apis:insert {
+      local api = assert(factory.apis:insert {
         name = "mockbin", request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }
-      assert.falsy(err)
+      })
 
-      local key_auth, err = factory.plugins:insert {
+      local key_auth = assert(factory.plugins:insert {
         name = "key-auth", api_id = api.id
-      }
-      assert.falsy(err)
+      })
 
-      local updated_key_auth, err = factory.plugins:update({
+      local updated_key_auth = assert(factory.plugins:update({
         config = {key_names = {"key_updated"}}
-      }, key_auth)
-      assert.falsy(err)
+      }, key_auth))
       assert.same({"key_updated"}, updated_key_auth.config.key_names)
     end)
 
     it("does not override plugin config if partial update", function()
-      local api, err = factory.apis:insert {
+      local api = assert(factory.apis:insert {
         name = "mockbin", request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }
-      assert.falsy(err)
+      })
 
-      local key_auth, err = factory.plugins:insert {
+      local key_auth = assert(factory.plugins:insert {
         name = "key-auth", api_id = api.id,
         config = {
           hide_credentials = true
         }
-      }
-      assert.falsy(err)
+      })
 
-      local updated_key_auth, err = factory.plugins:update({
+      local updated_key_auth = assert(factory.plugins:update({
         config = {key_names = {"key_set_null_test_updated"}}
-      }, key_auth)
-      assert.falsy(err)
+      }, key_auth))
       assert.same({"key_set_null_test_updated"}, updated_key_auth.config.key_names)
       assert.True(updated_key_auth.config.hide_credentials)
     end)
   end)
-end)
+end

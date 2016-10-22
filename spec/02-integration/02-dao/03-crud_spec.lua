@@ -1,26 +1,31 @@
-local function raw_table(state, arguments)
-  local tbl = arguments[1]
-  if not pcall(assert.falsy, getmetatable(tbl)) then
-    return false
-  end
-  for _, v in ipairs({"ROWS", "VOID"}) do
-    if tbl.type == v then
+local helpers = require "spec.helpers"
+local Factory = require "kong.dao.factory"
+
+do
+  local say = require "say"
+
+  local function raw_table(state, arguments)
+    local tbl = arguments[1]
+    if not pcall(assert.falsy, getmetatable(tbl)) then
       return false
     end
+    for _, v in ipairs({"ROWS", "VOID"}) do
+      if tbl.type == v then
+        return false
+      end
+    end
+    if tbl.meta ~= nil then
+      return false
+    end
+    return true
   end
-  if tbl.meta ~= nil then
-    return false
-  end
-  return true
+
+  say:set("assertion.raw_table.positive", "Expected %s\nto be a raw table")
+  say:set("assertion.raw_table.negative", "Expected %s\nto not be a raw_table")
+  assert:register("assertion", "raw_table", raw_table,
+                  "assertion.raw_table.positive",
+                  "assertion.raw_table.negative")
 end
-
-local say = require "say"
-say:set("assertion.raw_table.positive", "Expected %s\nto be a raw table")
-say:set("assertion.raw_table.negative", "Expected %s\nto not be a raw_table")
-assert:register("assertion", "raw_table", raw_table, "assertion.raw_table.positive", "assertion.raw_table.negative")
-
-local helpers = require "spec.02-integration.02-dao.helpers"
-local Factory = require "kong.dao.factory"
 
 local api_tbl = {
   name = "mockbin",
@@ -30,11 +35,11 @@ local api_tbl = {
   upstream_url = "https://mockbin.com"
 }
 
-helpers.for_each_dao(function(kong_config)
-  describe("Model (CRUD) with DB: #"..kong_config.database, function()
+for conf, database in helpers.for_each_db() do
+  describe("Model (CRUD) with DB: #" .. database, function()
     local factory, apis, oauth2_credentials
     setup(function()
-      factory = assert(Factory.new(kong_config))
+      factory = assert(Factory.new(conf))
       apis = factory.apis
 
       -- DAO used for testing arrays
@@ -694,23 +699,23 @@ helpers.for_each_dao(function(kong_config)
 
     describe("errors", function()
       it("returns errors prefixed by the DB type in __tostring()", function()
-        local pg_port = kong_config.pg_port
-        local cassandra_port = kong_config.cassandra_port
-        local cassandra_timeout = kong_config.cassandra_timeout
+        local pg_port = conf.pg_port
+        local cassandra_port = conf.cassandra_port
+        local cassandra_timeout = conf.cassandra_timeout
         finally(function()
-          kong_config.pg_port = pg_port
-          kong_config.cassandra_port = cassandra_port
-          kong_config.cassandra_timeout = cassandra_timeout
+          conf.pg_port = pg_port
+          conf.cassandra_port = cassandra_port
+          conf.cassandra_timeout = cassandra_timeout
         end)
-        kong_config.pg_port = 3333
-        kong_config.cassandra_port = 3333
-        kong_config.cassandra_timeout = 1000
+        conf.pg_port = 3333
+        conf.cassandra_port = 3333
+        conf.cassandra_timeout = 1000
 
         assert.error_matches(function()
-          local fact = assert(Factory.new(kong_config))
+          local fact = assert(Factory.new(conf))
           assert(fact.apis:find_all())
-        end, "["..kong_config.database.." error]", nil, true)
+        end, "["..database.." error]", nil, true)
       end)
     end)
   end) -- describe
-end) -- for each
+end

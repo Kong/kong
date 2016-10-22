@@ -12,7 +12,7 @@ describe("Plugin: basic-auth (API)", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("/apis/:api/plugins/", function()

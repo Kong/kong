@@ -17,7 +17,7 @@ describe("Real IP proxying", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   it("X-Forwarded-* request headers", function()
