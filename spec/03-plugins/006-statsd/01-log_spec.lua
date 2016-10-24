@@ -102,7 +102,7 @@ describe("Plugin: statsd (log)", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   it("logs over UDP with default metrics", function()

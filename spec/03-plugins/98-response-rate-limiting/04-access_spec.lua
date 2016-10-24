@@ -44,6 +44,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
   describe("#ci Plugin: response-ratelimiting (access) with policy: "..policy, function()
     setup(function()
       flush_redis()
+      helpers.dao:drop_schema()
+      assert(helpers.dao:run_migrations())
       assert(helpers.start_kong())
 
       local consumer1 = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
@@ -187,7 +189,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     end)
 
     teardown(function()
-      helpers.kill_all()
+      helpers.stop_kong()
     end)
 
     local client, admin_client
@@ -427,7 +429,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         before_each(function()
           helpers.kill_all()
-          assert(helpers.start_kong())
+          helpers.dao:drop_schema()
+          assert(helpers.dao:run_migrations())
 
           local api1 = assert(helpers.dao.apis:insert {
             request_host = "failtest1.com",
@@ -462,6 +465,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
               limits = {video = {minute = 6}}
             }
           })
+
+          assert(helpers.start_kong())
         end)
 
         teardown(function()
@@ -530,7 +535,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe("Expirations", function()
       local api
       setup(function()
-        helpers.kill_all()
+        helpers.stop_kong()
+        helpers.dao:drop_schema()
+        assert(helpers.dao:run_migrations())
         assert(helpers.start_kong())
 
         api = assert(helpers.dao.apis:insert {

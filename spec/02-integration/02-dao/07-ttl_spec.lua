@@ -1,94 +1,114 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec.02-integration.02-dao.helpers"
+local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 
-for conf, database in helpers.for_each_db() do
-  describe("TTL with #" .. database, function()
+helpers.for_each_dao(function(kong_config)
+  describe("TTL with #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = assert(Factory.new(conf))
+      factory = assert(Factory.new(kong_config))
       assert(factory:run_migrations())
+
+      factory:truncate_tables()
     end)
-    before_each(function()
+    after_each(function()
       factory:truncate_tables()
     end)
 
     it("on insert", function()
-      local api = assert(factory.apis:insert({
+      local api, err = factory.apis:insert({
         name = "mockbin",
         request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }, {ttl = 1}))
+      }, {ttl = 1})
+      assert.falsy(err)
 
-      assert(factory.apis:find {id = api.id})
+      local row, err = factory.apis:find {id = api.id}
+      assert.falsy(err)
+      assert.truthy(row)
 
       ngx.sleep(1)
 
-      helpers.wait_until(function()
-        local row, err = factory.apis:find {id = api.id}
+      spec_helpers.wait_until(function()
+        row, err = factory.apis:find {id = api.id}
         assert.falsy(err)
         return row == nil
       end, 1)
     end)
 
     it("on update", function()
-      local api = assert(factory.apis:insert({
+      local api, err = factory.apis:insert({
         name = "mockbin",
         request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }, {ttl = 1}))
+      }, {ttl = 1})
+      assert.falsy(err)
 
-      assert(factory.apis:find {id = api.id})
+      local row, err = factory.apis:find {id = api.id}
+      assert.falsy(err)
+      assert.truthy(row)
 
       -- Updating the TTL to a higher value
-      assert(factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 2}))
+      factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 2})
 
       ngx.sleep(1)
 
-      assert(factory.apis:find {id = api.id})
+      row, err = factory.apis:find {id = api.id}
+      assert.falsy(err)
+      assert.truthy(row)
 
       ngx.sleep(1)
 
-      helpers.wait_until(function()
-        local row, err = factory.apis:find {id = api.id}
+      spec_helpers.wait_until(function()
+        row, err = factory.apis:find {id = api.id}
         assert.falsy(err)
         return row == nil
       end, 1)
     end)
 
-    if database == "postgres" then
+    if kong_config.database == "postgres" then
       it("clears old entities", function()
         local DB = require "kong.dao.db.postgres"
-        local _db = DB.new(conf)
+        local _db = DB.new(kong_config)
 
         for i = 1, 4 do
-          assert(factory.apis:insert({
+          local _, err = factory.apis:insert({
             request_host = "mockbin"..i..".com",
             upstream_url = "http://mockbin.com"
-          }, {ttl = 1}))
+          }, {ttl = 1})
+          assert.falsy(err)
         end
 
-        assert(factory.apis:insert({
+        local _, err = factory.apis:insert({
           request_host = "mockbin-longttl.com",
           upstream_url = "http://mockbin.com"
-        }, {ttl = 3}))
+        }, {ttl = 3})
+        assert.falsy(err)
 
-        local res = assert(_db:query("SELECT COUNT(*) FROM apis"))
+        local res, err = _db:query("SELECT COUNT(*) FROM apis")
+        assert.falsy(err)
         assert.equal(5, res[1].count)
 
-        res = assert(_db:query("SELECT COUNT(*) FROM ttls"))
+        res, err = _db:query("SELECT COUNT(*) FROM ttls")
+        assert.falsy(err)
         assert.truthy(res[1].count >= 5)
 
         ngx.sleep(2)
 
-        assert(_db:clear_expired_ttl())
+        local ok, err = _db:clear_expired_ttl()
+        assert.falsy(err)
+        assert.truthy(ok)
 
-        helpers.wait_until(function()
-          local res_apis = assert(_db:query("SELECT COUNT(*) FROM apis"))
-          local res_ttls = assert(_db:query("SELECT COUNT(*) FROM ttls"))
+        spec_helpers.wait_until(function()
+          local res_apis, err = _db:query("SELECT COUNT(*) FROM apis")
+          assert.falsy(err)
+
+          local res_ttls, err = _db:query("SELECT COUNT(*) FROM ttls")
+          assert.falsy(err)
 
           return res_apis[1].count == 1 and res_ttls[1].count == 1
         end, 1)
       end)
     end
   end)
-end
+end)

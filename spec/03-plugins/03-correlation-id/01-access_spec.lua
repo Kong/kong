@@ -58,7 +58,7 @@ describe("Plugin: correlation-id (access)", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("uuid-worker generator", function()

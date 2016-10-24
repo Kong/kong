@@ -1,5 +1,4 @@
 set -e
-set -x
 
 #---------
 # Download
@@ -91,10 +90,12 @@ export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS
 
 eval `luarocks path`
 
+luarocks purge --tree=$LUAROCKS_INSTALL
+
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
-if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]] && [[ "$KONG_DATABASE" == "cassandra" ]] ; then
+if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
   pip install --user PyYAML six
   git clone https://github.com/pcmanus/ccm.git
   pushd ccm

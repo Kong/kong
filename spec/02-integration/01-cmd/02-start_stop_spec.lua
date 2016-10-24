@@ -7,6 +7,9 @@ describe("kong start/stop", function()
   after_each(function()
     helpers.kill_all()
   end)
+  teardown(function()
+    helpers.clean_prefix()
+  end)
 
   it("start help", function()
     local _, stderr = helpers.kong_exec "start --help"
@@ -17,8 +20,8 @@ describe("kong start/stop", function()
     assert.not_equal("", stderr)
   end)
   pending("start/stop gracefully with default conf/prefix", function()
-    -- we don't want the migrations to be ran on the default
-    -- keyspace/database, so let's override just these settings.
+    -- don't want to force migrations to be run on default
+    -- keyspace/database
     assert(helpers.kong_exec("start", {
       database = helpers.test_conf.database,
       pg_database = helpers.test_conf.pg_database,
@@ -36,6 +39,7 @@ describe("kong start/stop", function()
   end)
   it("creates prefix directory if it doesn't exist", function()
     finally(function()
+      helpers.kill_all("foobar")
       pcall(helpers.dir.rmtree, "foobar")
     end)
 
@@ -118,12 +122,16 @@ describe("kong start/stop", function()
   describe("Serf", function()
     it("starts Serf agent daemon", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
-      assert(helpers.kill.is_running(helpers.test_conf.serf_pid))
+
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
+      assert(helpers.execute(cmd))
     end)
     it("recovers from expired serf.pid file", function()
       assert(helpers.execute("touch "..helpers.test_conf.serf_pid)) -- dumb pid
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
-      assert(helpers.kill.is_running(helpers.test_conf.serf_pid))
+
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1", helpers.test_conf.serf_pid)
+      assert(helpers.execute(cmd))
     end)
     it("dumps PID in prefix", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
@@ -140,7 +148,10 @@ describe("kong start/stop", function()
         dns_resolver = ""
       }))
 
-      assert(helpers.kill.is_running(helpers.test_conf.dnsmasq_pid))
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
+                                helpers.test_conf.dnsmasq_pid)
+      local _, code = helpers.utils.executeex(cmd)
+      assert.equal(0, code)
     end)
     it("recovers from expired dnsmasq.pid file", function()
       assert(helpers.execute("touch "..helpers.test_conf.serf_pid)) -- dumb pid
@@ -149,7 +160,10 @@ describe("kong start/stop", function()
         dns_resolver = ""
       }))
 
-      assert(helpers.kill.is_running(helpers.test_conf.dnsmasq_pid))
+      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
+                                helpers.test_conf.serf_pid)
+      local _, code = helpers.utils.executeex(cmd)
+      assert.equal(0, code)
     end)
     it("dumps PID in prefix", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
@@ -212,6 +226,8 @@ describe("kong start/stop", function()
       assert.falsy(kill.is_running(helpers.test_conf.serf_pid))
     end)
     it("should not stop Kong if already running in prefix", function()
+      local kill = require "kong.cmd.utils.kill"
+
       assert(helpers.kong_exec("start --prefix "..helpers.test_conf.prefix, {
         pg_database = helpers.test_conf.pg_database
       }))
@@ -221,7 +237,8 @@ describe("kong start/stop", function()
       })
       assert.False(ok)
       assert.matches("Kong is already running in "..helpers.test_conf.prefix, stderr, nil, true)
-      assert(helpers.kill.is_running(helpers.test_conf.nginx_pid))
+
+      assert(kill.is_running(helpers.test_conf.nginx_pid))
     end)
   end)
 end)

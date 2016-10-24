@@ -57,7 +57,7 @@ describe("#ci Plugin: syslog (log)", function()
     platform = pl_stringx.strip(stdout)
   end)
   teardown(function()
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   before_each(function()

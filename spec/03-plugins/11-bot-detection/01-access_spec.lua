@@ -45,7 +45,7 @@ describe("Plugin: bot-detection (access)", function()
     })
   end)
   teardown(function()
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   before_each(function()

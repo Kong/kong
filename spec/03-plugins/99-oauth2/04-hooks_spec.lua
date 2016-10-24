@@ -14,7 +14,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       admin_client:close()
       proxy_ssl_client:close()
     end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   before_each(function()

@@ -31,16 +31,32 @@ _M.dao_insert_values = {
 function _M.new(kong_config)
   local self = _M.super.new()
 
+  local query_opts = {
+    consistency = cassandra.consistencies[kong_config.cassandra_consistency:lower()],
+    prepared = true
+  }
+
   local cluster_options = {
     shm = "cassandra",
     contact_points = kong_config.cassandra_contact_points,
     default_port = kong_config.cassandra_port,
     keyspace = kong_config.cassandra_keyspace,
-    timeout_connect = kong_config.cassandra_timeout,
-    timeout_read = kong_config.cassandra_timeout,
+    connect_timeout = kong_config.cassandra_timeout,
+    read_timeout = kong_config.cassandra_timeout,
     ssl = kong_config.cassandra_ssl,
-    verify = kong_config.cassandra_ssl_verify
+    verify = kong_config.cassandra_ssl_verify,
+    lock_timeout = 30,
+    silent = ngx.IS_CLI
   }
+
+  if ngx.IS_CLI then
+    local policy = require("resty.cassandra.policies.reconnection.const")
+    cluster_options.reconn_policy = policy.new(100)
+  end
+
+  --
+  -- cluster options from Kong config
+  --
 
   if kong_config.cassandra_username and kong_config.cassandra_password then
     cluster_options.auth = cassandra.auth_providers.plain_text(
@@ -48,6 +64,7 @@ function _M.new(kong_config)
       kong_config.cassandra_password
     )
   end
+
   if kong_config.cassandra_lb_policy == "RoundRobin" then
     local policy = require("resty.cassandra.policies.lb.rr")
     cluster_options.lb_policy = policy.new()
@@ -56,24 +73,12 @@ function _M.new(kong_config)
     cluster_options.lb_policy = policy.new(kong_config.cassandra_local_cluster)
   end
 
-  if ngx.IS_CLI then
-    local reconn_policy = require("resty.cassandra.policies.reconnection.const")
-    local retry_policy = require('resty.cassandra.policies.retry.simple')
-    cluster_options.reconn_policy = reconn_policy.new(1000)
-    cluster_options.retry_policy = retry_policy.new(1)
-    cluster_options.silent = true
-    cluster_options.lock_timeout = 30
-  end
-
   local cluster, err = Cluster.new(cluster_options)
   if not cluster then return nil, err end
 
   self.cluster = cluster
+  self.query_options = query_opts
   self.cluster_options = cluster_options
-  self.query_options = {
-    consistency = cassandra.consistencies[kong_config.cassandra_consistency:lower()],
-    prepared = true
-  }
 
   if ngx.IS_CLI then
     -- we must manually call our init phase (usually called from `init_by_lua`)
@@ -480,11 +485,11 @@ end
 --- Migrations
 -- @section migrations
 
-function _M:queries(queries)
+function _M:queries(queries, no_keyspace)
   for _, query in ipairs(utils.split(queries, ";")) do
     query = utils.strip(query)
     if query ~= "" then
-      local res, err = self:query(query)
+      local res, err = self:query(query, nil, nil, nil, no_keyspace)
       if not res then return err end
     end
   end
@@ -500,20 +505,6 @@ function _M:truncate_table(table_name)
   local res, err = self:query("TRUNCATE "..table_name)
   if not res then return nil, err end
   return true
-end
-
-function _M:drop_schema()
-  local res, err = self:query("DROP KEYSPACE "..self.cluster_options.keyspace)
-  if not res then return nil, err end
-  return true
-end
-
-function _M:begin_migrations()
-  self.query_options.prepared = false
-end
-
-function _M:end_migarations()
-  self.query_options.prepared = true
 end
 
 function _M:current_migrations()
@@ -544,7 +535,7 @@ function _M:current_migrations()
   -- Check if keyspace exists
   local rows, err = self:query(q_keyspace_exists, {
     self.cluster_options.keyspace
-  }, nil, nil, true)
+  }, {prepared = false}, nil, true)
   if not rows then       return nil, err
   elseif #rows == 0 then return {} end
 
@@ -552,10 +543,12 @@ function _M:current_migrations()
   rows, err = self:query(q_migrations_table_exists, {
     self.cluster_options.keyspace,
     "schema_migrations"
-  })
+  }, {prepared = false})
   if not rows then return nil, err
   elseif rows[1] and rows[1].count > 0 then
-    return self:query("SELECT * FROM schema_migrations")
+    return self:query("SELECT * FROM schema_migrations", nil, {
+      prepared = false
+    })
   else return {} end
 end
 
@@ -564,10 +557,7 @@ function _M:record_migration(id, name)
     UPDATE schema_migrations
     SET migrations = migrations + ?
     WHERE id = ?
-  ]], {
-    cassandra.list({name}),
-    id
-  })
+  ]], {cassandra.list({name}), id})
   if not res then return nil, err end
   return true
 end
