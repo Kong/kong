@@ -872,6 +872,7 @@ end
 
 local function kill_all()
   exec("pkill nginx; pkill dnsmasq; pkill serf")
+  pcall(pl_dir.rmtree, conf.prefix)
 end
 
 ----------

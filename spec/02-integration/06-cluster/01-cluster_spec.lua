@@ -55,7 +55,7 @@ describe("Cluster", function()
   end)
   teardown(function()
     for _, conf in pairs(NODES) do
-      pcall(helpers.dir.rmtree, conf.proxy)
+      pcall(helpers.dir.rmtree, conf.prefix)
     end
   end)
 
