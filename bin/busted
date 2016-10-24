@@ -5,5 +5,7 @@ require("kong.core.globalpatches")({
   rbusted = true
 })
 
+package.path = "?/init.lua;"..package.path
+
 -- Busted command-line runner
 require 'busted.runner'({ standalone = false })

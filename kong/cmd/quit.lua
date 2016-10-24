@@ -36,7 +36,8 @@ local function execute(args)
     assert(nginx_signals.stop(conf))
   end
 
-  assert(serf_signals.stop(conf, DAOFactory(conf)))
+  local dao = assert(DAOFactory.new(conf))
+  assert(serf_signals.stop(conf, dao))
 
   log("Kong stopped (gracefully)")
 end

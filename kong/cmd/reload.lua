@@ -21,7 +21,9 @@ local function execute(args)
     prefix = args.prefix
   }))
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-  assert(serf_signals.start(conf, DAOFactory(conf)))
+
+  local dao = assert(DAOFactory.new(conf))
+  assert(serf_signals.start(conf, dao))
   assert(nginx_signals.reload(conf))
   log("Kong reloaded")
 end

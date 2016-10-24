@@ -4,71 +4,67 @@ describe("kong reload", function()
   setup(function()
     helpers.prepare_prefix()
   end)
-  teardown(function()
-    helpers.clean_prefix()
-  end)
   after_each(function()
     helpers.kill_all()
   end)
 
-  it("send a 'reload' signal to a running Nginx master process", function()
+  it("sends a 'reload' signal to a running Nginx master process", function()
     assert(helpers.start_kong())
-    ngx.sleep(1)
+    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    local original_nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
+                                      "no nginx master PID")
 
-    local nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
-
-    -- kong_exec uses test conf too, so same prefix
     assert(helpers.kong_exec("reload --prefix "..helpers.test_conf.prefix))
-    ngx.sleep(1)
+    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    local reloaded_nginx_pid = helpers.file.read(helpers.test_conf.nginx_pid)
 
     -- same master PID
-    assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
+    assert.equal(original_nginx_pid, reloaded_nginx_pid)
   end)
   it("reloads from a --conf argument", function()
     assert(helpers.start_kong {
       proxy_listen = "0.0.0.0:9002"
     })
+    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    local original_nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
+                                      "no nginx master PID")
 
-    -- http_client errors out if cannot connect
-    local client = helpers.http_client("0.0.0.0", 9002, 5000)
+    -- http_client throws an error if it cannot connect
+    local client = helpers.http_client("0.0.0.0", 9002)
     client:close()
-
-    ngx.sleep(1)
-
-    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
-                             "no nginx master PID")
 
     assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path, {
       proxy_listen = "0.0.0.0:9000"
     }))
-
-    ngx.sleep(1)
+    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    local reloaded_nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid),
+                                      "no nginx master PID")
 
     -- same master PID
-    assert.equal(nginx_pid, helpers.file.read(helpers.test_conf.nginx_pid))
+    assert.equal(original_nginx_pid, reloaded_nginx_pid)
 
     -- new proxy port
-    client = helpers.http_client("0.0.0.0", 9000, 5000)
+    client = helpers.http_client("0.0.0.0", 9000)
     client:close()
   end)
-  it("accepts a custom nginx template", function()
+  it("accepts a custom nginx template and reloads Kong with it", function()
     assert(helpers.start_kong {
       proxy_listen = "0.0.0.0:9002"
     })
+    helpers.wait_until_running(helpers.test_conf.nginx_pid)
 
-    -- http_client errors out if cannot connect
-    local client = helpers.http_client("0.0.0.0", 9002, 5000)
+    -- http_client throws an error if it cannot connect
+    local client = helpers.http_client("0.0.0.0", 9002)
     client:close()
 
-    ngx.sleep(1)
+    assert(helpers.kong_exec(
+      "reload --conf " .. helpers.test_conf_path .. " " ..
+      "--nginx-conf spec/fixtures/custom_nginx.template"
+    ))
+    helpers.wait_until_running(helpers.test_conf.nginx_pid)
 
-    assert(helpers.kong_exec("reload --conf "..helpers.test_conf_path
-           .." --nginx-conf spec/fixtures/custom_nginx.template"))
-
-    ngx.sleep(1)
-
-    -- new server
-    client = helpers.http_client("0.0.0.0", 9999, 5000)
+    -- new server in this nginx config
+    client = helpers.http_client("0.0.0.0", 9999)
     local res = assert(client:send {
       path = "/custom_server_path"
     })

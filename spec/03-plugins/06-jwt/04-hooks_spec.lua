@@ -16,7 +16,7 @@ describe("Plugin: jwt (hooks)", function()
       admin_client:close()
       proxy_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   before_each(function()

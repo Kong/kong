@@ -38,7 +38,7 @@ describe("Plugin: response-transformer (filter)", function()
     })
   end)
   teardown(function()
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   before_each(function()
