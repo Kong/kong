@@ -28,7 +28,7 @@ dependencies = {
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.4",
-  "dns == 0.2.0",
+  "dns == 0.2.1",
 }
 build = {
   type = "builtin",
