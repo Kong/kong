@@ -4,6 +4,9 @@ describe("kong restart", function()
   setup(function()
     helpers.prepare_prefix()
   end)
+  teardown(function()
+    helpers.clean_prefix()
+  end)
   after_each(function()
     helpers.kill_all()
   end)
@@ -14,7 +17,6 @@ describe("kong restart", function()
   end)
   it("restarts if not running", function()
     assert(helpers.kong_exec("restart --conf "..helpers.test_conf_path))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
   end)
   it("restarts if already running from --conf", function()
     local env = {
@@ -23,48 +25,50 @@ describe("kong restart", function()
     }
 
     assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, env))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
-
-    local serf_pid = assert(helpers.file.read(helpers.test_conf.serf_pid), "no serf pid")
-    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid), "no nginx pid")
-    local dnsmasq_pid = assert(helpers.file.read(helpers.test_conf.dnsmasq_pid), "no dnsmasq pid")
+    ngx.sleep(1)
+    local serf_pid = assert(helpers.file.read(helpers.test_conf.serf_pid))
+    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid))
+    local dnsmasq_pid = assert(helpers.file.read(helpers.test_conf.dnsmasq_pid))
 
     assert(helpers.kong_exec("restart --conf "..helpers.test_conf_path, env))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
-
+    ngx.sleep(1)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.nginx_pid)), nginx_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.serf_pid)), serf_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.dnsmasq_pid)), dnsmasq_pid)
   end)
   it("restarts if already running from --prefix", function()
-    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+    local env = {
       dnsmasq = true,
-      dns_resolver = ""
-    }))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
-    local serf_pid = assert(helpers.file.read(helpers.test_conf.serf_pid), "no serf pid")
-    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid), "no nginx pid")
-    local dnsmasq_pid = assert(helpers.file.read(helpers.test_conf.dnsmasq_pid), "no dnsmasq pid")
+      dns_resolver = "",
+      pg_database = helpers.test_conf.pg_database
+    }
 
-    assert(helpers.kong_exec("restart --prefix "..helpers.test_conf.prefix))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, env))
+    ngx.sleep(1)
+    local serf_pid = assert(helpers.file.read(helpers.test_conf.serf_pid))
+    local nginx_pid = assert(helpers.file.read(helpers.test_conf.nginx_pid))
+    local dnsmasq_pid = assert(helpers.file.read(helpers.test_conf.dnsmasq_pid))
 
+    assert(helpers.kong_exec("restart --prefix "..helpers.test_conf.prefix, env))
+    ngx.sleep(1)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.nginx_pid)), nginx_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.serf_pid)), serf_pid)
     assert.is_not.equal(assert(helpers.file.read(helpers.test_conf.dnsmasq_pid)), dnsmasq_pid)
   end)
   it("accepts a custom nginx template", function()
-    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    local env = {
+      pg_database = helpers.test_conf.pg_database
+    }
 
-    assert(helpers.kong_exec(
-      "restart --prefix " .. helpers.test_conf.prefix .. " " ..
-      "--nginx-conf spec/fixtures/custom_nginx.template"
-    ))
-    helpers.wait_until_running(helpers.test_conf.nginx_pid)
+    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, env))
+    ngx.sleep(1)
 
-    -- new server in this nginx config
-    local client = helpers.http_client("0.0.0.0", 9999)
+    assert(helpers.kong_exec("restart --prefix "..helpers.test_conf.prefix
+           .." --nginx-conf spec/fixtures/custom_nginx.template", env))
+    ngx.sleep(1)
+
+    -- new server
+    local client = helpers.http_client("0.0.0.0", 9999, 5000)
     local res = assert(client:send {
       path = "/custom_server_path"
     })

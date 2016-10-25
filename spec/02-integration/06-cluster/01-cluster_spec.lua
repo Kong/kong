@@ -1,6 +1,8 @@
 local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
+local pl_tablex = require "pl.tablex"
+local pl_stringx = require "pl.stringx"
 local conf_loader = require "kong.conf_loader"
 
 local CLIENT_TIMEOUT = 5000
@@ -40,9 +42,6 @@ for k, v in pairs(NODES) do
 end
 
 describe("Cluster", function()
-  setup(function()
-    helpers.dao:truncate_tables()
-  end)
   before_each(function()
     for _, v in pairs(NODES) do
       helpers.prepare_prefix(v.prefix)
@@ -50,12 +49,7 @@ describe("Cluster", function()
   end)
   after_each(function()
     for _, v in pairs(NODES) do
-      helpers.kill_all(v.prefix)
-    end
-  end)
-  teardown(function()
-    for _, conf in pairs(NODES) do
-      pcall(helpers.dir.rmtree, conf.prefix)
+      helpers.stop_kong(v.prefix)
     end
   end)
 
@@ -87,7 +81,7 @@ describe("Cluster", function()
     end)
 
     it("should register the node on startup with the advertised address", function()
-      local conf = helpers.tablex.deepcopy(NODES.servroot1)
+      local conf = pl_tablex.deepcopy(NODES.servroot1)
       conf.cluster_advertise = "5.5.5.5:1234"
 
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, conf))
@@ -225,7 +219,7 @@ describe("Cluster", function()
         path = "/cache/"..cache.all_apis_by_dict_key()
       })
       local body = cjson.decode(assert.res_status(200, res))
-      assert.equal(1, helpers.tablex.size(body.by_dns))
+      assert.equal(1, pl_tablex.size(body.by_dns))
       assert.is_table(body.by_dns["test.com"])
 
       -- Starting second node
@@ -308,7 +302,7 @@ describe("Cluster", function()
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
-        assert.equal(1, helpers.tablex.size(body.by_dns))
+        assert.equal(1, pl_tablex.size(body.by_dns))
       end
 
       -- The cluster status is "active" for all three nodes
@@ -323,7 +317,7 @@ describe("Cluster", function()
         api_client:close()
         for _, v in ipairs(body.data) do
           assert.equal("alive", v.status)
-          if not node_name and helpers.stringx.split(v.address, ":")[2] == helpers.stringx.split(NODES.servroot2.cluster_listen, ":")[2] then
+          if not node_name and pl_stringx.split(v.address, ":")[2] == pl_stringx.split(NODES.servroot2.cluster_listen, ":")[2] then
             node_name = v.name
           end
         end

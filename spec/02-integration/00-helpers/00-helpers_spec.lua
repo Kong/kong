@@ -5,9 +5,7 @@ describe("helpers: assertions and modifiers", function()
   local client
 
   setup(function()
-    helpers.dao:truncate_tables()
-
-    assert(helpers.start_kong())
+    assert(helpers.dao:run_migrations())
     assert(helpers.dao.apis:insert {
       request_host = "mockbin.com",
       upstream_url = "http://mockbin.com"
@@ -16,9 +14,12 @@ describe("helpers: assertions and modifiers", function()
       request_host = "httpbin.org",
       upstream_url = "http://httpbin.org"
     })
+
+    helpers.prepare_prefix()
+    assert(helpers.start_kong())
   end)
   teardown(function()
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   before_each(function()

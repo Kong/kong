@@ -1,6 +1,11 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
+local pl_tablex = require "pl.tablex"
+local pl_utils = require "pl.utils"
+local pl_path = require "pl.path"
+local pl_file = require "pl.file"
+local pl_stringx = require "pl.stringx"
 
 describe("Core Hooks", function()
   describe("Global", function()
@@ -28,7 +33,7 @@ describe("Core Hooks", function()
           client:close()
           api_client:close()
         end
-        helpers.kill_all()
+        helpers.stop_kong()
       end)
 
       it("should invalidate a global plugin when deleting", function()
@@ -84,6 +89,9 @@ describe("Core Hooks", function()
       local client, api_client
       local plugin, consumer
 
+      setup(function()
+         helpers.dao:truncate_tables()
+      end)
       before_each(function()
         helpers.start_kong()
         client = helpers.proxy_client()
@@ -118,7 +126,7 @@ describe("Core Hooks", function()
           client:close()
           api_client:close()
         end
-        helpers.kill_all()
+        helpers.stop_kong()
       end)
 
       it("should invalidate a global plugin when deleting", function()
@@ -257,7 +265,7 @@ describe("Core Hooks", function()
         client:close()
         api_client:close()
       end
-      helpers.kill_all()
+      helpers.stop_kong()
     end)
 
     describe("Plugin entity invalidation", function()
@@ -725,7 +733,7 @@ describe("Core Hooks", function()
         })
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal("http://mockbin.org", body.by_dns["hooks1.com"].upstream_url)
-        assert.equal(3, helpers.tablex.size(body.by_dns))
+        assert.equal(3, pl_tablex.size(body.by_dns))
       end)
 
       it("should invalidate ALL_APIS_BY_DICT when deleting an API", function()
@@ -781,7 +789,7 @@ describe("Core Hooks", function()
           path = "/cache/"..cache.all_apis_by_dict_key()
         })
         local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(2, helpers.tablex.size(body.by_dns))
+        assert.equal(2, pl_tablex.size(body.by_dns))
       end)
     end)
 
@@ -795,7 +803,7 @@ describe("Core Hooks", function()
       end
 
       local function is_running(pid_path)
-
+        if not pl_path.exists(pid_path) then return nil end
         local code = kill(pid_path, "-0")
         return code == 0
       end
@@ -815,7 +823,7 @@ describe("Core Hooks", function()
                     LOG_FILE, PID_FILE)
 
         -- start Serf agent
-        local ok = helpers.utils.execute(cmd)
+        local ok = pl_utils.execute(cmd)
         if not ok then return error("Cannot start Serf") end
 
         -- ensure started (just an improved version of previous Serf service)
@@ -830,10 +838,10 @@ describe("Core Hooks", function()
 
         if not started then
           -- time to get latest error log from serf.log
-          local logs = helpers.file.read(LOG_FILE)
-          local tlogs = helpers.stringx.split(logs, "\n")
+          local logs = pl_file.read(LOG_FILE)
+          local tlogs = pl_stringx.split(logs, "\n")
           local err = string.gsub(tlogs[#tlogs-1], "==> ", "")
-          err = helpers.stringx.strip(err)
+          err = pl_stringx.strip(err)
           error("could not start Serf:\n  "..err)
         end
 

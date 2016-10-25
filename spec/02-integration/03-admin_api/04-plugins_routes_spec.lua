@@ -9,7 +9,7 @@ describe("Admin API", function()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("/plugins/enabled", function()

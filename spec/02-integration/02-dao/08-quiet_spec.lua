@@ -1,29 +1,33 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec.02-integration.02-dao.helpers"
 local Events = require "kong.core.events"
+local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
+
+local events = Events()
 
 local API_ID = "0cd4a0d3-2e41-4b51-945a-eb06adbe8d2e"
 
-for conf, database in helpers.for_each_db() do
-  describe("Quiet with #" .. conf.database, function()
-    local events = Events()
+helpers.for_each_dao(function(kong_config)
+  describe("Quiet with #"..kong_config.database, function()
     local factory
-
     setup(function()
-      factory = Factory.new(conf, events)
+      factory = Factory.new(kong_config, events)
       assert(factory:run_migrations())
+
+      factory:truncate_tables()
     end)
-    before_each(function()
+    after_each(function()
       factory:truncate_tables()
     end)
 
     local do_insert = function(quiet)
-      local api = assert(factory.apis:insert({
+      local api, err = factory.apis:insert({
         id = API_ID,
         name = "mockbin",
         request_host = "mockbin.com",
         upstream_url = "http://mockbin.com"
-      }, {ttl = 1, quiet = quiet}))
+      }, {ttl = 1, quiet = quiet})
+      assert.falsy(err)
       assert.equal(API_ID, api.id)
     end
 
@@ -38,7 +42,7 @@ for conf, database in helpers.for_each_db() do
 
         do_insert()
 
-        helpers.wait_until(function()
+        spec_helpers.wait_until(function()
           return received
         end)
       end)
@@ -54,7 +58,7 @@ for conf, database in helpers.for_each_db() do
         do_insert(true)
 
         assert.has_error(function()
-          helpers.wait_until(function()
+          spec_helpers.wait_until(function()
             return received
           end)
         end)
@@ -67,10 +71,12 @@ for conf, database in helpers.for_each_db() do
       end)
 
       local do_update = function(quiet)
-        local api = assert(factory.apis:update({id = API_ID}, {
+        local api, err = factory.apis:update({id = API_ID}, {
           id = API_ID,
           name = "mockbin2"
-        }, {quiet = quiet}))
+        }, {quiet = quiet})
+
+        assert.falsy(err)
         assert.equal(API_ID, api.id)
       end
 
@@ -84,7 +90,7 @@ for conf, database in helpers.for_each_db() do
 
         do_update()
 
-        helpers.wait_until(function()
+        spec_helpers.wait_until(function()
           return received
         end)
       end)
@@ -100,7 +106,7 @@ for conf, database in helpers.for_each_db() do
         do_update(true)
 
         assert.has_error(function()
-          helpers.wait_until(function()
+          spec_helpers.wait_until(function()
             return received
           end)
         end)
@@ -113,7 +119,8 @@ for conf, database in helpers.for_each_db() do
       end)
 
       local do_update = function(quiet)
-        local api = assert(factory.apis:delete({id = API_ID}, {quiet = quiet}))
+        local api, err = factory.apis:delete({id = API_ID}, {quiet = quiet})
+        assert.falsy(err)
         assert.equal(API_ID, api.id)
       end
 
@@ -127,7 +134,7 @@ for conf, database in helpers.for_each_db() do
 
         do_update()
 
-        helpers.wait_until(function()
+        spec_helpers.wait_until(function()
           return received
         end)
       end)
@@ -143,11 +150,11 @@ for conf, database in helpers.for_each_db() do
         do_update(true)
 
         assert.has_error(function()
-          helpers.wait_until(function()
+          spec_helpers.wait_until(function()
             return received
           end)
         end)
       end)
     end)
   end)
-end
+end)

@@ -1,10 +1,10 @@
-local helpers = require "spec.helpers"
+local helpers = require "spec.02-integration.02-dao.helpers"
 local Factory = require "kong.dao.factory"
 
-for conf, database in helpers.for_each_db() do
-  describe("Plugins DAOs with DB: #" .. database, function()
+helpers.for_each_dao(function(kong_config)
+  describe("Plugins DAOs with DB: #"..kong_config.database, function()
     it("load plugins DAOs", function()
-      local factory = assert(Factory.new(conf))
+      local factory = assert(Factory.new(kong_config))
       assert.truthy(factory.keyauth_credentials)
       assert.truthy(factory.basicauth_credentials)
       assert.truthy(factory.acls)
@@ -18,7 +18,7 @@ for conf, database in helpers.for_each_db() do
     describe("plugins migrations", function()
       local factory
       setup(function()
-        factory = assert(Factory.new(conf))
+        factory = assert(Factory.new(kong_config))
       end)
       it("migrations_modules()", function()
         local migrations = factory:migrations_modules()
@@ -33,4 +33,4 @@ for conf, database in helpers.for_each_db() do
       end)
     end)
   end)
-end
+end)

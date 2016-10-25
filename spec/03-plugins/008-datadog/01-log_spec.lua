@@ -42,12 +42,12 @@ describe("Plugin: datadog (log)", function()
           status_count = {"T2:V2,T3:V3,T4"},
           latency = {"T2:V2:V3,T4"},
         }
-      }
+      }  
     })
   end)
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   it("logs metrics over UDP", function()
@@ -121,7 +121,7 @@ describe("Plugin: datadog (log)", function()
     assert.contains("kong.datadog2_com.request.count:1|c", gauges)
     assert.contains("kong.datadog2_com.request.status.200:1|c", gauges)
   end)
-
+  
   it("logs metrics with tags", function()
     local thread = threads.new({
       function()

@@ -39,7 +39,7 @@ describe("Plugin: hmac-auth (hooks)", function()
       client_proxy:close()
       client_admin:close()
     end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   local function hmac_sha1_binary(secret, data)

@@ -65,7 +65,7 @@ describe("Plugin: cors (access)", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("HTTP method: OPTIONS", function()

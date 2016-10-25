@@ -46,7 +46,7 @@ describe("Plugin: ssl (access)", function()
       client:close()
       client_ssl:close()
     end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("only_https", function()

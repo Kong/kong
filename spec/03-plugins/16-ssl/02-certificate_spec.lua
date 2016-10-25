@@ -59,7 +59,7 @@ describe("Plugin: ssl (certificate)", function()
     })
   end)
   teardown(function()
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   it("returns default cert when requesting other APIs", function()

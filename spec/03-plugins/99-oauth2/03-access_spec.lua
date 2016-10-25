@@ -144,7 +144,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       proxy_client:close()
       proxy_ssl_client:close()
     end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   local function provision_code()

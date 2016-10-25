@@ -11,7 +11,7 @@ describe("Plugin: oauth (API)", function()
   end)
   teardown(function()
     if admin_client then admin_client:close() end
-    assert(helpers.kill_all())
+    assert(helpers.stop_kong())
     helpers.clean_prefix()
   end)
 
