@@ -10,7 +10,7 @@ describe("Plugin: response-transformer (API)", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("POST", function()

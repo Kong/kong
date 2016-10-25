@@ -39,7 +39,7 @@ describe("Plugin: tcp-log (log)", function()
   end)
   teardown(function()
     if client then client:close() end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   it("logs to TCP", function()

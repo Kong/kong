@@ -74,7 +74,7 @@ describe("Plugin: ip-restriction (access)", function()
       client:close()
       admin_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("blacklist", function()

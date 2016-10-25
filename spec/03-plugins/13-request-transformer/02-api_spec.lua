@@ -13,7 +13,7 @@ describe("Plugin: request-transformer (API)", function()
     if admin_client then
       admin_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   describe("POST", function()
@@ -41,7 +41,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         assert.response(res).has.status(201)
@@ -63,7 +63,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         local body = assert.response(res).has.status(400)
@@ -82,7 +82,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         local body = assert.response(res).has.status(400)
@@ -101,7 +101,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         local body = assert.response(res).has.status(400)

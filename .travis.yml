@@ -20,26 +20,28 @@ addons:
 env:
   global:
     - SERF=0.7.0
-    - LUAROCKS=2.4.0
+    - LUAROCKS=2.4.1
     - OPENSSL=1.0.2h
     - CASSANDRA=2.2.8
-    - OPENRESTY_BASE=1.9.15.1
-    - OPENRESTY_LATEST=1.11.2.1
-    - OPENRESTY=$OPENRESTY_BASE
+    - OPENRESTY=1.11.2.1
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
   matrix:
     - TEST_SUITE=lint
     - TEST_SUITE=unit
     - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_BASE
+      KONG_DATABASE=postgres
     - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_BASE
+      KONG_DATABASE=postgres
     - TEST_SUITE=integration
-      OPENRESTY=$OPENRESTY_LATEST
+      KONG_DATABASE=cassandra
+    - TEST_SUITE=plugins
+      KONG_DATABASE=cassandra
+    - TEST_SUITE=integration
+      KONG_DATABASE=cassandra
       CASSANDRA=3.9
     - TEST_SUITE=plugins
-      OPENRESTY=$OPENRESTY_LATEST
+      KONG_DATABASE=cassandra
       CASSANDRA=3.9
 
 before_install:

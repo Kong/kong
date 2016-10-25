@@ -42,10 +42,7 @@ end
 for i, policy in ipairs({"local", "cluster", "redis"}) do
   describe("#ci Plugin: rate-limiting (access) with policy: "..policy, function()
     setup(function()
-      helpers.kill_all()
       flush_redis()
-      helpers.dao:drop_schema()
-      assert(helpers.dao:run_migrations())
       assert(helpers.start_kong())
 
       local consumer1 = assert(helpers.dao.consumers:insert {
@@ -161,7 +158,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
     end)
     teardown(function()
-      helpers.stop_kong()
+      helpers.kill_all()
     end)
 
     local client, admin_client
@@ -189,8 +186,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
           assert.res_status(200, res)
-          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
-          assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
         end
 
         -- Additonal request, while limit is 6/minute
@@ -202,7 +199,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           }
         })
         local body = assert.res_status(429, res)
-        assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
+        assert.equal([[{"message":"API rate limit exceeded"}]], body)
       end)
 
       it("handles multiple limits", function()
@@ -223,10 +220,10 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
           assert.res_status(200, res)
-          assert.are.same(limits.minute, tonumber(res.headers["x-ratelimit-limit-minute"]))
-          assert.are.same(limits.minute - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
-          assert.are.same(limits.hour, tonumber(res.headers["x-ratelimit-limit-hour"]))
-          assert.are.same(limits.hour - i, tonumber(res.headers["x-ratelimit-remaining-hour"]))
+          assert.same(limits.minute, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.same(limits.minute - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.same(limits.hour, tonumber(res.headers["x-ratelimit-limit-hour"]))
+          assert.same(limits.hour - i, tonumber(res.headers["x-ratelimit-remaining-hour"]))
         end
 
         local res = assert(client:send {
@@ -237,9 +234,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           }
         })
         local body = assert.res_status(429, res)
-        assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
-        assert.are.equal(2, tonumber(res.headers["x-ratelimit-remaining-hour"]))
-        assert.are.equal(0, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+        assert.equal([[{"message":"API rate limit exceeded"}]], body)
+        assert.equal(2, tonumber(res.headers["x-ratelimit-remaining-hour"]))
+        assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-minute"]))
       end)
     end)
     describe("With authentication", function()
@@ -257,8 +254,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+            assert.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
           -- Third query, while limit is 2/minute
@@ -270,7 +267,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           local body = assert.res_status(429, res)
-          assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
+          assert.equal([[{"message":"API rate limit exceeded"}]], body)
 
           -- Using a different key of the same consumer works
           local res = assert(client:send {
@@ -297,8 +294,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             assert.res_status(200, res)
-            assert.are.same(8, tonumber(res.headers["x-ratelimit-limit-minute"]))
-            assert.are.same(8 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+            assert.same(8, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.same(8 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
           local res = assert(client:send {
@@ -309,7 +306,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           local body = assert.res_status(429, res)
-          assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
+          assert.equal([[{"message":"API rate limit exceeded"}]], body)
         end)
         it("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
           for i = 1, 6 do
@@ -324,8 +321,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
             assert.res_status(200, res)
-            assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
-            assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+            assert.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+            assert.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
           local res = assert(client:send {
@@ -336,7 +333,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           local body = assert.res_status(429, res)
-          assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
+          assert.equal([[{"message":"API rate limit exceeded"}]], body)
         end)
       end)
     end)
@@ -346,8 +343,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         before_each(function()
           helpers.kill_all()
-          helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
+          assert(helpers.start_kong())
 
           local api1 = assert(helpers.dao.apis:insert {
             request_host = "failtest1.com",
@@ -368,14 +364,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             api_id = api2.id,
             config = { minute = 6, fault_tolerant = true }
           })
-
-          assert(helpers.start_kong())
-        end)
-
-        teardown(function()
-          helpers.kill_all()
-          helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
         end)
 
         it("does not work if an error occurs", function()
@@ -387,8 +375,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
-          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
-          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
           -- Simulate an error on the database
           assert(helpers.dao.db:drop_table("ratelimiting_metrics"))
@@ -402,7 +390,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           local body = assert.res_status(500, res)
-          assert.are.equal([[{"message":"An unexpected error occurred"}]], body)
+          assert.equal([[{"message":"An unexpected error occurred"}]], body)
         end)
         it("keeps working if an error occurs", function()
           local res = assert(helpers.proxy_client():send {
@@ -413,8 +401,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             }
           })
           assert.res_status(200, res)
-          assert.are.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
-          assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
+          assert.same(6, tonumber(res.headers["x-ratelimit-limit-minute"]))
+          assert.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
           -- Simulate an error on the database
           assert(helpers.dao.db:drop_table("ratelimiting_metrics"))
@@ -437,9 +425,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe("Expirations", function()
       local api
       setup(function()
-        helpers.stop_kong()
-        helpers.dao:drop_schema()
-        assert(helpers.dao:run_migrations())
+        helpers.kill_all()
         assert(helpers.start_kong())
 
         api = assert(helpers.dao.apis:insert {

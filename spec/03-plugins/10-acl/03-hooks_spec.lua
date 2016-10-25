@@ -13,7 +13,7 @@ describe("Plugin: ACL (hooks)", function()
       admin_client:close()
       proxy_client:close()
     end
-    helpers.stop_kong()
+    helpers.kill_all()
   end)
 
   local consumer1, acl1
