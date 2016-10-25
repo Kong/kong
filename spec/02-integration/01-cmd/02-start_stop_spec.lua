@@ -154,14 +154,14 @@ describe("kong start/stop", function()
       assert.equal(0, code)
     end)
     it("recovers from expired dnsmasq.pid file", function()
-      assert(helpers.execute("touch "..helpers.test_conf.serf_pid)) -- dumb pid
+      assert(helpers.execute("touch "..helpers.test_conf.dnsmasq_pid)) -- dumb pid
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
         dnsmasq = true,
         dns_resolver = ""
       }))
 
       local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
-                                helpers.test_conf.serf_pid)
+                                helpers.test_conf.dnsmasq_pid)
       local _, code = helpers.utils.executeex(cmd)
       assert.equal(0, code)
     end)
