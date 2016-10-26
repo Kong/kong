@@ -9,6 +9,7 @@ describe("Configuration loader", function()
     assert.equal("0.0.0.0:8001", conf.admin_listen)
     assert.equal("0.0.0.0:8000", conf.proxy_listen)
     assert.equal("0.0.0.0:8443", conf.proxy_listen_ssl)
+    assert.equal("0.0.0.0/0", conf.proxy_set_real_ip_from)
     assert.is_nil(conf.ssl_cert) -- check placeholder value
     assert.is_nil(conf.ssl_cert_key)
     assert.is_nil(getmetatable(conf))
