@@ -1,3 +1,4 @@
+local singletons = require "kong.singletons"
 local resty_lock = require "resty.lock"
 local cjson = require "cjson"
 local cache = ngx.shared.cache
@@ -91,19 +92,24 @@ function _M.get_or_set(key, cb)
   local value = _M.get(key)
   if value then return value end
 
-  local lock, err = resty_lock:new("cache_locks", {
-    exptime = 10,
-    timeout = 5
-  })
-  if not lock then
-    ngx_log(ngx.ERR, "could not create lock: ", err)
-    return
-  end
+  local disable_locks = singletons.configuration.disable_cache_locks
+  local lock, err
 
-  -- The value is missing, acquire a lock
-  local elapsed, err = lock:lock(key)
-  if not elapsed then
-    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+  if not disable_locks then
+    lock, err = resty_lock:new("cache_locks", {
+      exptime = 10,
+      timeout = 5
+    })
+    if not lock then
+      ngx_log(ngx.ERR, "could not create lock: ", err)
+      return
+    end
+
+    -- The value is missing, acquire a lock
+    local elapsed, err = lock:lock(key)
+    if not elapsed then
+      ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+    end
   end
 
   -- Lock acquired. Since in the meantime another worker may have
@@ -120,9 +126,11 @@ function _M.get_or_set(key, cb)
     end
   end
 
-  local ok, err = lock:unlock()
-  if not ok and err then
-    ngx_log(ngx.ERR, "failed to unlock: ", err)
+  if not disable_locks then
+    local ok, err = lock:unlock()
+    if not ok and err then
+      ngx_log(ngx.ERR, "failed to unlock: ", err)
+    end
   end
 
   return value

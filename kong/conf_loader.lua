@@ -90,7 +90,8 @@ local CONF_INFERENCES = {
   nginx_optimizations = {typ = "boolean"},
 
   lua_code_cache = {typ = "ngx_boolean"},
-  lua_ssl_verify_depth = {typ = "number"}
+  lua_ssl_verify_depth = {typ = "number"},
+  disable_cache_locks = {typ = "boolean"}
 }
 
 -- List of settings whose values must not be printed when
