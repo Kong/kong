@@ -12,6 +12,7 @@ describe("Plugin: request-transformer (access)", function()
     local api4 = assert(helpers.dao.apis:insert {request_host = "test4.com", upstream_url = "http://mockbin.com"})
     local api5 = assert(helpers.dao.apis:insert {request_host = "test5.com", upstream_url = "http://mockbin.com"})
     local api6 = assert(helpers.dao.apis:insert {request_host = "test6.com", upstream_url = "http://mockbin.com"})
+    local api7 = assert(helpers.dao.apis:insert {request_host = "test7.com", upstream_url = "http://mockbin.com"})
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -86,6 +87,17 @@ describe("Plugin: request-transformer (access)", function()
           headers = {"h1:v1", "h1:v2", "h2:v1",},
           querystring = {"q1:v1", "q1:v2", "q2:v1"},
           body = {"p1:v1", "p1:v2", "p2:value:1"}     -- payload containing a colon
+        }
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api7.id,
+      name = "request-transformer",
+      config = {
+        rename = {
+          headers = {"x-to-rename:x-is-renamed"},
+          querystring = {"originalparam:renamedparam"},
+          body = {"originalparam:renamedparam"}
         }
       }
     })
@@ -238,6 +250,298 @@ describe("Plugin: request-transformer (access)", function()
       assert.request(r).has.no.queryparam("q1")
       local value = assert.request(r).has.queryparam("q2")
       assert.equals("v2", value)
+    end)
+  end)
+
+  describe("rename", function()
+    it("specified header", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test7.com",
+          ["x-to-rename"] = "true",
+          ["x-another-header"] = "true"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-rename")
+      assert.request(r).has.header("x-is-renamed")
+      assert.request(r).has.header("x-another-header")
+    end)
+    it("does not add as new header if header does not exist", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        body = {},
+        headers = {
+          host = "test7.com",
+          ["x-a-header"] = "true",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("renamedparam")
+      local h_a_header = assert.request(r).has.header("x-a-header")
+      assert.equals("true", h_a_header)
+    end)
+    it("specified parameters in url encoded body on POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          originalparam = "yes",
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.formparam("originalparam")
+      local value = assert.request(r).has.formparam("renamedparam")
+      assert.equals("yes", value)
+    end)
+    it("does not add as new parameter in url encoded body if parameter does not exist on POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["x-a-header"] = "true",
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.request(r).has.no.formparam("renamedparam")
+      local value = assert.request(r).has.formparam("x-a-header")
+      assert.equals("true", value)
+    end)
+    it("parameters from JSON body in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["originalparam"] = "yes",
+          ["nottorename"] = "yes"
+        },
+        headers = {
+          host = "test7.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_nil(json["originalparam"])
+      assert.is_not_nil(json["renamedparam"])
+      assert.equals("yes", json["renamedparam"])
+      assert.equals("yes", json["nottorename"])
+    end)
+    it("does not fail if JSON body is malformed in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = "malformed json body",
+        headers = {
+          host = "test7.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("malformed json body", json.postData.text)
+    end)
+    it("parameters on multipart POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["originalparam"] = "yes",
+          ["nottorename"] = "yes"
+        },
+        headers = {
+          ["Content-Type"] = "multipart/form-data",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.postData.params["originalparam"])
+      assert.is_not_nil(json.postData.params["renamedparam"])
+      assert.equals("yes", json.postData.params["renamedparam"])
+      assert.equals("yes", json.postData.params["nottorename"])
+    end)
+    it("queryString on GET if it exists", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          originalparam = "true",
+          nottorename = "true",
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.queryparam("originalparam")
+      local value1 = assert.request(r).has.queryparam("renamedparam")
+      assert.equals("true", value1)
+      local value2 = assert.request(r).has.queryparam("nottorename")
+      assert.equals("true", value2)
+    end)
+  end)
+
+  describe("rename", function()
+    it("specified header", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "test7.com",
+          ["x-to-rename"] = "true",
+          ["x-another-header"] = "true"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("x-to-rename")
+      assert.request(r).has.header("x-is-renamed")
+      assert.request(r).has.header("x-another-header")
+    end)
+    it("does not add as new header if header does not exist", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        body = {},
+        headers = {
+          host = "test7.com",
+          ["x-a-header"] = "true",
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.header("renamedparam")
+      local h_a_header = assert.request(r).has.header("x-a-header")
+      assert.equals("true", h_a_header)
+    end)
+    it("specified parameters in url encoded body on POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          originalparam = "yes",
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.formparam("originalparam")
+      local value = assert.request(r).has.formparam("renamedparam")
+      assert.equals("yes", value)
+    end)
+    it("does not add as new parameter in url encoded body if parameter does not exist on POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["x-a-header"] = "true",
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.request(r).has.no.formparam("renamedparam")
+      local value = assert.request(r).has.formparam("x-a-header")
+      assert.equals("true", value)
+    end)
+    it("parameters from JSON body in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["originalparam"] = "yes",
+          ["nottorename"] = "yes"
+        },
+        headers = {
+          host = "test7.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      local json = assert.request(r).has.jsonbody()
+      assert.is_nil(json["originalparam"])
+      assert.is_not_nil(json["renamedparam"])
+      assert.equals("yes", json["renamedparam"])
+      assert.equals("yes", json["nottorename"])
+    end)
+    it("does not fail if JSON body is malformed in POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = "malformed json body",
+        headers = {
+          host = "test7.com",
+          ["content-type"] = "application/json"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equals("malformed json body", json.postData.text)
+    end)
+    it("parameters on multipart POST", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request",
+        body = {
+          ["originalparam"] = "yes",
+          ["nottorename"] = "yes"
+        },
+        headers = {
+          ["Content-Type"] = "multipart/form-data",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.is_nil(json.postData.params["originalparam"])
+      assert.is_not_nil(json.postData.params["renamedparam"])
+      assert.equals("yes", json.postData.params["renamedparam"])
+      assert.equals("yes", json.postData.params["nottorename"])
+    end)
+    it("queryString on GET if it exists", function()
+      local r = assert( client:send {
+        method = "GET",
+        path = "/request",
+        query = {
+          originalparam = "true",
+          nottorename = "true",
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      assert.response(r).has.jsonbody()
+      assert.request(r).has.no.queryparam("originalparam")
+      local value1 = assert.request(r).has.queryparam("renamedparam")
+      assert.equals("true", value1)
+      local value2 = assert.request(r).has.queryparam("nottorename")
+      assert.equals("true", value2)
     end)
   end)
 
