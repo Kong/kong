@@ -92,7 +92,7 @@ function _M.get_or_set(key, cb)
   local value = _M.get(key)
   if value then return value end
 
-  local disable_locks = singletons.configuration.disable_cache_locks
+  local disable_locks = singletons.configuration and singletons.configuration.disable_cache_locks
   local lock, err
 
   if not disable_locks then
