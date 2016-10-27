@@ -9,11 +9,11 @@ helpers.for_each_dao(function(kong_config)
     setup(function()
       -- some `setup` functions also use `factory` and they run before the `before_each` chain
       -- hence we need to set it here, and again in `before_each`.
-      factory = assert(Factory.new(conf))
+      factory = assert(Factory.new(kong_config))
       factory:drop_schema()
     end)
     before_each(function()
-      factory = assert(Factory.new(conf))
+      factory = assert(Factory.new(kong_config))
     end)
 
     describe("current_migrations()", function()
