@@ -7,8 +7,23 @@ CorsHandler.PRIORITY = 2000
 
 local OPTIONS = "OPTIONS"
 
+local function host_in_domain(domain, conf)
+  for i, d in ipairs(conf.origin_domains) do
+    if string.match(domain, '[%.|//]'..d..'$') then
+      return true
+    end
+  end
+  return false
+end
+
 local function configure_origin(ngx, conf)
-  if conf.origin == nil then
+  local origin = ngx.req.get_headers()["origin"] or nil
+  if conf.origin_domains ~= nil then
+   if origin ~= nil and host_in_domain(origin, conf) then
+      ngx.header["Access-Control-Allow-Origin"] = origin
+      ngx.header["Vary"] = "Origin"
+    end
+  elseif conf.origin == nil then
     ngx.header["Access-Control-Allow-Origin"] = "*"
   else
     ngx.header["Access-Control-Allow-Origin"] = conf.origin
