@@ -91,7 +91,7 @@ function _M.new(kong_config)
 end
 
 local function extract_major(release_version)
-  return match(release_version, "^(%d+)%.%d+%.?%d*$")
+  return match(release_version, "^(%d+)%.%d")
 end
 
 local function cluster_release_version(peers)
@@ -105,6 +105,10 @@ local function cluster_release_version(peers)
     end
 
     local major_version = extract_major(release_version)
+    if not major_version then
+      return nil, 'failed to extract major version for peer '..peers[i].host..
+                  ' version: '..tostring(peers[i].release_version)
+    end
     if i == 1 then
       first_release_version = major_version
     elseif major_version ~= first_release_version then
