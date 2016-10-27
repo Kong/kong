@@ -1,4 +1,4 @@
-#!/usr/bin/env resty -c 65535
+#!/usr/bin/env resty
 
 require("kong.core.globalpatches")({
   cli = true,
