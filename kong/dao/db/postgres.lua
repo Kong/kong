@@ -485,16 +485,6 @@ function _M:truncate_table(table_name)
   return true
 end
 
-function _M:drop_schema()
-  local res, err = self:query("DROP SCHEMA public CASCADE")
-  if not res then return nil, err end
-
-  res, err = self:query("CREATE SCHEMA public")
-  if not res then return nil, err end
-
-  return true
-end
-
 function _M:current_migrations()
   -- check if schema_migrations table exists
   local rows, err = self:query "SELECT to_regclass('schema_migrations')"

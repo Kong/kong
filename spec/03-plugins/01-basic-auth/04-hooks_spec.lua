@@ -14,7 +14,7 @@ describe("Plugin: basic-auth (hooks)", function()
       admin_client:close()
       proxy_client:close()
     end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   before_each(function()

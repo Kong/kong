@@ -132,21 +132,30 @@ function _M:infos()
 end
 
 function _M:drop_schema()
-  self.db:begin_migrations()
-  local ok, err = self.db:drop_schema()
-  self.db:end_migrations()
-  return ok, err
+  for _, dao in pairs(self.daos) do
+    self.db:drop_table(dao.table)
+  end
+
+  if self.additional_tables then
+    for _, v in ipairs(self.additional_tables) do
+      self.db:drop_table(v)
+    end
+  end
+
+  if self.db.additional_tables then
+    for _, v in ipairs(self.db.additional_tables) do
+      self.db:drop_table(v)
+    end
+  end
+
+  self.db:drop_table("schema_migrations")
 end
 
 function _M:truncate_table(dao_name)
-  self.db:begin_migrations()
   self.db:truncate_table(self.daos[dao_name].table)
-  self.db:end_migrations()
 end
 
 function _M:truncate_tables()
-  self.db:begin_migrations()
-
   for _, dao in pairs(self.daos) do
     self.db:truncate_table(dao.table)
   end
@@ -162,8 +171,6 @@ function _M:truncate_tables()
       self.db:truncate_table(v)
     end
   end
-
-  self.db:end_migrations()
 end
 
 function _M:migrations_modules()
@@ -252,36 +259,24 @@ function _M:run_migrations(on_migrate, on_success)
 
   local log = require "kong.cmd.utils.log"
 
-  self.db:begin_migrations()
-
   log.verbose("running datastore migrations")
 
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then
-    self.db:end_migrations()
-    return ret_error_string(self.db.name, nil, err)
-  end
+  if err then return ret_error_string(self.db.name, nil, err) end
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
-  if not ok then
-    self.db:end_migrations()
-    return ret_error_string(self.db.name, nil, err)
-  end
+  if not ok then return ret_error_string(self.db.name, nil, err) end
 
   for identifier in pairs(migrations_modules) do
     if identifier ~= "core" then
       local ok, err, n_ran = migrate(self, identifier, migrations_modules, cur_migrations, on_migrate, on_success)
-      if not ok then
-        self.db:end_migrations()
-        return ret_error_string(self.db.name, nil, err)
+      if not ok then return ret_error_string(self.db.name, nil, err)
       else
         migrations_ran = migrations_ran + n_ran
       end
     end
   end
-
-  self.db:end_migrations()
 
   if migrations_ran > 0 then
     log("%d migrations ran", migrations_ran)

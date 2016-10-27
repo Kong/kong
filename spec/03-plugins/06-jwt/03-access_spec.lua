@@ -53,7 +53,7 @@ describe("Plugin: jwt (access)", function()
   teardown(function()
     if proxy_client then proxy_client:close() end
     if admin_client then admin_client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("refusals", function()

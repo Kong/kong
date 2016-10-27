@@ -77,7 +77,7 @@ describe("Resolver", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   it("404 if can't find API to proxy", function()

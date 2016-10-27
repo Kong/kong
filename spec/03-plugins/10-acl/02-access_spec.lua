@@ -182,7 +182,7 @@ describe("Plugin: ACL (access)", function()
     api_client:close()
   end)
   teardown(function()
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("Simple lists", function()

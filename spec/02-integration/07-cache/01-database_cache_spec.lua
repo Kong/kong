@@ -30,7 +30,7 @@ describe("Resolver", function()
   end)
   teardown(function()
     if admin_client then admin_client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   it("avoids dog-pile effect", function()

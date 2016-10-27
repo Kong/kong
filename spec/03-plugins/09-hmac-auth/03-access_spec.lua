@@ -39,7 +39,7 @@ describe("Plugin: hmac-auth (access)", function()
 
   teardown(function()
     if client then client:close() end
-    helpers.kill_all()
+    helpers.stop_kong()
   end)
 
   describe("HMAC Authentication", function()
