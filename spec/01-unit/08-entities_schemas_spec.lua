@@ -274,7 +274,7 @@ describe("Entities Schemas", function()
           local t = {request_host = "mydomain.com", upstream_url = "http://mockbin.com", name = "mockbin", retries = v}
           local valid, errors = validate_entity(t, api_schema)
           assert.False(valid)
-          assert.equal("retries must be a integer, from 0 to 32767", errors.retries)
+          assert.equal("retries must be an integer, from 0 to 32767", errors.retries)
         end
       end)
     end)
