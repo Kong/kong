@@ -133,7 +133,6 @@ server {
                 ngx.exit(204)
             end
 
-            ngx.log(ngx.DEBUG, 'Loading Admin API endpoints')
             require('lapis').serve('kong.api')
         }
     }
