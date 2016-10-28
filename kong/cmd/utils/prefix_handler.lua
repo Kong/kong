@@ -16,7 +16,7 @@ local constants = require "kong.constants"
 local fmt = string.format
 
 -- script from old services.serf module
-local script_template = [[
+local event_script_template = [[
 #!/bin/sh
 
 PAYLOAD=`cat` # Read from stdin
@@ -39,6 +39,27 @@ client:request { \
 }"
 
 %s -e "$CMD"
+]]
+
+local stop_script_template = [[
+#!/bin/sh
+
+CMD="\
+local conf_loader = require 'kong.conf_loader' \
+local DAOFactory = require 'kong.dao.factory' \
+local Serf = require 'kong.serf' \
+local conf = assert(conf_loader('%s')) \
+local dao = DAOFactory(conf) \
+Serf.new(conf, dao):leave() \
+"
+
+%s -e "$CMD"
+]]
+
+local start_template = [[
+#!/usr/bin/env bash
+
+(trap ' trap - EXIT ERR; kill -0 ${!} 1>/dev/null 2>&1 && kill ${!}; %s; exit;' EXIT QUIT INT STOP TERM ERR; %s; wait) & disown
 ]]
 
 local resty_bin_name = "resty"
@@ -214,18 +235,43 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   if not ok then return nil, stderr end
 
   log.verbose("saving serf identifier to %s", kong_config.serf_node_id)
-  if not pl_path.exists(kong_config.serf_node_id) then
-    local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
-    pl_file.write(kong_config.serf_node_id, id)
-  end
+  local id = utils.get_hostname().."_"..kong_config.cluster_listen.."_"..utils.random_string()
+  pl_file.write(kong_config.serf_node_id, id)
 
   local resty_bin, err = find_resty_bin()
   if not resty_bin then return nil, err end
 
-  log.verbose("saving serf shell script handler to %s", kong_config.serf_event)
-  local script = fmt(script_template, "127.0.0.1", kong_config.admin_port, resty_bin)
+  log.verbose("saving serf shell event handler to %s", kong_config.serf_event)
+  local script = fmt(event_script_template, "127.0.0.1", kong_config.admin_port, resty_bin)
   pl_file.write(kong_config.serf_event, script)
   local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_event)
+  if not ok then return nil, stderr end
+
+  log.verbose("saving serf shell stop handler to %s", kong_config.serf_stop)
+  local script = fmt(stop_script_template, kong_config.kong_conf, resty_bin)
+  pl_file.write(kong_config.serf_stop, script)
+  local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_stop)
+  if not ok then return nil, stderr end
+
+  log.verbose("saving serf shell start handler to %s", kong_config.serf_start)
+  local args = setmetatable({
+    ["-bind"] = kong_config.cluster_listen,
+    ["-rpc-addr"] = kong_config.cluster_listen_rpc,
+    ["-advertise"] = kong_config.cluster_advertise,
+    ["-encrypt"] = kong_config.cluster_encrypt_key,
+    ["-log-level"] = "err",
+    ["-profile"] = kong_config.cluster_profile,
+    ["-node"] = id,
+    ["-event-handler"] = "member-join,member-leave,member-failed,"
+                       .."member-update,member-reap,user:"
+                       .."kong="..kong_config.serf_event
+  }, require("kong.serf").args_mt)
+  local cmd = fmt("nohup %s agent %s > %s 2>&1 & echo ${!} > %s",
+                            kong_config.serf_path, tostring(args),
+                            kong_config.serf_log, kong_config.serf_pid)
+  local script = fmt(start_template, kong_config.serf_stop, cmd)
+  pl_file.write(kong_config.serf_start, script)
+  local ok, _, _, stderr = pl_utils.executeex("chmod +x "..kong_config.serf_start)
   if not ok then return nil, stderr end
 
   -- generate default SSL certs if needed

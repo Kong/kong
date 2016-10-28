@@ -12,7 +12,6 @@ local meta = require "kong.meta"
 local version = require "version"
 local fmt = string.format
 
-local serf_event_name = "kong"
 local serf_version_pattern = "^Serf v([%d%.]+)"
 local serf_compatible = version.set(unpack(meta._DEPENDENCIES.serf))
 local start_timeout = 5
@@ -52,27 +51,9 @@ function _M.start(kong_config, dao)
   if not ok then return nil, err end
 
   local serf = Serf.new(kong_config, dao)
-  local args = setmetatable({
-    ["-bind"] = kong_config.cluster_listen,
-    ["-rpc-addr"] = kong_config.cluster_listen_rpc,
-    ["-advertise"] = kong_config.cluster_advertise,
-    ["-encrypt"] = kong_config.cluster_encrypt_key,
-    ["-log-level"] = "err",
-    ["-profile"] = kong_config.cluster_profile,
-    ["-node"] = serf.node_name,
-    ["-event-handler"] = "member-join,member-leave,member-failed,"
-                       .."member-update,member-reap,user:"
-                       ..serf_event_name.."="..kong_config.serf_event
-  }, Serf.args_mt)
 
-  local cmd = string.format("nohup %s agent %s > %s 2>&1 & echo $! > %s",
-                            kong_config.serf_path, tostring(args),
-                            kong_config.serf_log, kong_config.serf_pid)
-
-  log.debug("starting serf agent: %s", cmd)
-
-  -- start Serf agent
-  local ok = pl_utils.execute(cmd)
+  log.debug("starting serf agent: %s", kong_config.serf_start)
+  local ok = pl_utils.execute("/bin/bash "..kong_config.serf_start) -- bash required for traps
   if not ok then return nil end
 
   log.verbose("waiting for serf agent to be running")

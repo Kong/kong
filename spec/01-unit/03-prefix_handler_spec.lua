@@ -214,7 +214,7 @@ describe("NGINX conf compiler", function()
       local identifier = helpers.file.read(tmp_config.serf_node_id)
       assert.is_string(identifier)
     end)
-    it("preserves Serf identifier if already exists", function()
+    it("does not preserve Serf identifier if already exists", function()
       -- prepare twice
       assert(prefix_handler.prepare_prefix(tmp_config))
       local identifier_1 = helpers.file.read(tmp_config.serf_node_id)
@@ -222,7 +222,7 @@ describe("NGINX conf compiler", function()
       assert(prefix_handler.prepare_prefix(tmp_config))
       local identifier_2 = helpers.file.read(tmp_config.serf_node_id)
 
-      assert.equal(identifier_1, identifier_2)
+      assert.not_equal(identifier_1, identifier_2)
     end)
 
     describe("ssl", function()

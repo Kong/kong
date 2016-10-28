@@ -20,6 +20,8 @@ local PREFIX_PATHS = {
   serf_pid = {"pids", "serf.pid"},
   serf_log = {"logs", "serf.log"},
   serf_event = {"serf", "serf_event.sh"},
+  serf_start = {"serf", "serf_start.sh"},
+  serf_stop = {"serf", "serf_stop.sh"},
   serf_node_id = {"serf", "serf.id"}
   ;
   nginx_pid = {"pids", "nginx.pid"},
