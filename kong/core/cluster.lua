@@ -1,109 +1,137 @@
-local cache = require "kong.tools.database_cache"
 local singletons = require "kong.singletons"
 
-local KEEPALIVE_INTERVAL = 30
-local KEEPALIVE_KEY = "events:keepalive"
-local ASYNC_AUTOJOIN_INTERVAL = 3
-local ASYNC_AUTOJOIN_RETRIES = 20 -- Try for max a minute (3s * 20)
-local ASYNC_AUTOJOIN_KEY = "events:autojoin"
 
+local timer_at = ngx.timer.at
 local ngx_log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
+
+
+local KEEPALIVE_INTERVAL = 30
+local KEEPALIVE_KEY = "events:keepalive"
+local AUTOJOIN_INTERVAL = 3
+local AUTOJOIN_KEY = "events:autojoin"
+local AUTOJOIN_MAX_RETRIES = 20 -- Try for max a minute (3s * 20)
+local AUTOJOIN_MAX_RETRIES_KEY = "autojoin_retries"
+
+
+local kong_dict = ngx.shared.kong
+
 
 local function log(lvl, ...)
   ngx_log(lvl, "[cluster] ", ...)
 end
 
-local function get_lock(key, interval)
-  -- the lock is held for the whole interval to prevent multiple
-  -- worker processes from sending the test request simultaneously.
-  -- here we substract the lock expiration time by 1ms to prevent
-  -- a race condition with the next timer event.
-  return cache.rawadd(key, true, interval - 0.001)
+
+-- Hold a lock for the whole interval (exptime) to prevent multiple
+-- worker processes from sending the test request simultaneously.
+-- Other workers do not need to wait until this lock is released,
+-- and can ignore the event, knowing another worker is handling it.
+-- We substract 1ms to the exp time to prevent a race condition
+-- with the next timer event.
+local function get_lock(key, exptime)
+  local ok, err = kong_dict:safe_add(key, true, exptime - 0.001)
+  if not ok and err ~= "exists" then
+    log(ERR, "could not get lock from 'kong' shm: ", err)
+  end
+
+  return ok
 end
 
-local function create_timer(at, cb)
-  local ok, err = ngx.timer.at(at, cb)
+
+local function create_timer(...)
+  local ok, err = timer_at(...)
   if not ok then
-    log(ERR, "failed to create timer: ", err)
+    log(ERR, "could not create timer: ", err)
   end
 end
 
-local function async_autojoin(premature)
-  if premature then return end
+
+local function autojoin_handler(premature)
+  if premature then
+    return
+  end
+
+  if not get_lock(AUTOJOIN_KEY, AUTOJOIN_INTERVAL) then
+    return
+  end
 
   -- If this node is the only node in the cluster, but other nodes are present, then try to join them
   -- This usually happens when two nodes are started very fast, and the first node didn't write his
   -- information into the datastore yet. When the second node starts up, there is nothing to join yet.
-  local ok, err = get_lock(ASYNC_AUTOJOIN_KEY, ASYNC_AUTOJOIN_INTERVAL)
-  if ok then
-    log(DEBUG, "auto-joining")
-    -- If the current member count on this node's cluster is 1, but there are more than 1 active nodes in
-    -- the DAO, then try to join them
-    local count, err = singletons.dao.nodes:count()
-    if err then
-      log(ERR, err)
-    elseif count > 1 then
-      local members, err = singletons.serf:members()
-      if err then
-        log(ERR, err)
-      elseif #members < 2 then
-        -- Trigger auto-join
-        local _, err = singletons.serf:autojoin()
-        if err then
-          log(ERR, err)
-        end
-      else
-        return -- The node is already in the cluster and no need to continue
-      end
-    end
+  log(DEBUG, "auto-joining")
 
-    -- Create retries counter key if it doesn't exist
-    if not cache.get(cache.autojoin_retries_key()) then
-      cache.rawset(cache.autojoin_retries_key(), 0)
-    end
-
-    local autojoin_retries = cache.incr(cache.autojoin_retries_key(), 1) -- Increment retries counter
-    if (autojoin_retries < ASYNC_AUTOJOIN_RETRIES) then
-      create_timer(ASYNC_AUTOJOIN_INTERVAL, async_autojoin)
-    end
-  elseif err ~= "exists" then
+  -- If the current member count on this node's cluster is 1, but there are more than 1 active nodes in
+  -- the DAO, then try to join them
+  local count, err = singletons.dao.nodes:count()
+  if err then
     log(ERR, err)
-  end
-end
 
-local function send_keepalive(premature)
-  if premature then return end
-
-  local ok, err = get_lock(KEEPALIVE_KEY, KEEPALIVE_INTERVAL)
-  if ok then
-    log(DEBUG, "sending keepalive")
-    local nodes, err = singletons.dao.nodes:find_all {
-      name = singletons.serf.node_name
-    }
+  elseif count > 1 then
+    local members, err = singletons.serf:members()
     if err then
       log(ERR, err)
-    elseif #nodes == 1 then
-      local node = nodes[1]
-      local _, err = singletons.dao.nodes:update(node, node, {
-        ttl = singletons.configuration.cluster_ttl_on_failure, 
-        quiet = true
-      })
+
+    elseif #members < 2 then
+      -- Trigger auto-join
+      local _, err = singletons.serf:autojoin()
       if err then
         log(ERR, err)
       end
+
+    else
+      return -- The node is already in the cluster and no need to continue
     end
-  elseif err ~= "exists" then
-    log(ERR, err)
   end
 
-  create_timer(KEEPALIVE_INTERVAL, send_keepalive)
+  local n_retries, err = kong_dict:incr(AUTOJOIN_MAX_RETRIES_KEY, 1, 0)
+  if err then
+    log(ERR, "could not increment number of auto-join retries in 'kong' ",
+             "shm: ", err)
+    return
+  end
+
+  if n_retries < AUTOJOIN_MAX_RETRIES then
+    create_timer(AUTOJOIN_INTERVAL, autojoin_handler)
+  end
 end
+
+
+local function keepalive_handler(premature)
+  if premature then
+    return
+  end
+
+  if not get_lock(KEEPALIVE_KEY, KEEPALIVE_INTERVAL) then
+    return
+  end
+
+  log(DEBUG, "sending keepalive event to datastore")
+
+  local nodes, err = singletons.dao.nodes:find_all {
+    name = singletons.serf.node_name
+  }
+  if err then
+    log(ERR, "could not retrieve nodes from datastore: ", err)
+
+  elseif #nodes == 1 then
+    local node = nodes[1]
+    local _, err = singletons.dao.nodes:update(node, node, {
+      ttl = singletons.configuration.cluster_ttl_on_failure,
+      quiet = true
+    })
+    if err then
+      log(ERR, "could not update node in datastore:", err)
+    end
+  end
+
+  create_timer(KEEPALIVE_INTERVAL, keepalive_handler)
+end
+
 
 return {
   init_worker = function()
-    create_timer(KEEPALIVE_INTERVAL, send_keepalive)
-    create_timer(ASYNC_AUTOJOIN_INTERVAL, async_autojoin) -- Only execute one time
+    create_timer(KEEPALIVE_INTERVAL, keepalive_handler)
+    create_timer(AUTOJOIN_INTERVAL, autojoin_handler)
   end
 }
