@@ -1,6 +1,7 @@
 local utils = require "kong.tools.utils"
 local singletons = require "kong.singletons"
 
+local sub = string.sub
 local find = string.find
 local pairs = pairs
 local ipairs = ipairs
@@ -14,19 +15,40 @@ local lua_version = jit and jit.version or _VERSION
 return {
   ["/"] = {
     GET = function(self, dao, helpers)
-      local rows, err = dao.plugins:find_all()
-      if err then
-        return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      end
-
-      local m = {}
-      for _, row in ipairs(rows) do
-        m[row.name] = true
-      end
-
       local distinct_plugins = {}
-      for plugin_name in pairs(m) do
-        distinct_plugins[#distinct_plugins + 1] = plugin_name
+      local prng_seeds = {}
+
+      do
+        local rows, err = dao.plugins:find_all()
+        if err then
+          return helpers.responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+        end
+
+        local map = {}
+        for _, row in ipairs(rows) do
+          if not map[row.name] then
+            distinct_plugins[#distinct_plugins+1] = row.name
+          end
+          map[row.name] = true
+        end
+      end
+
+      do
+        local kong_shm = ngx.shared.kong
+        local shm_prefix = "pid: "
+        local keys, err = kong_shm:get_keys()
+        if not keys then
+          ngx.log(ngx.ERR, "could not get kong shm keys: ", err)
+        else
+          for i = 1, #keys do
+            if sub(keys[i], 1, #shm_prefix) == shm_prefix then
+              prng_seeds[keys[i]], err = kong_shm:get(keys[i])
+              if err then
+                ngx.log(ngx.ERR, "could not get PRNG seed from kong shm")
+              end
+            end
+          end
+        end
       end
 
       return helpers.responses.send_HTTP_OK {
@@ -42,7 +64,8 @@ return {
           enabled_in_cluster = distinct_plugins
         },
         lua_version = lua_version,
-        configuration = singletons.configuration
+        configuration = singletons.configuration,
+        prng_seeds = prng_seeds,
       }
     end
   },

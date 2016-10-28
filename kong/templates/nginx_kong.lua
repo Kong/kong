@@ -34,6 +34,7 @@ lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
+lua_shared_dict kong 4m;
 lua_shared_dict cache ${{MEM_CACHE_SIZE}};
 lua_shared_dict reports_locks 100k;
 lua_shared_dict cluster_locks 100k;
