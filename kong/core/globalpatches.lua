@@ -8,19 +8,31 @@ return function(options)
     _VERSION = meta._VERSION
   }
 
+  if options.cli then
+    ngx.IS_CLI = true
+    ngx.exit = function() end
+  end
 
 
-  do
+
+  do  -- verify loading sequence, just as a precaution
+
+    for _, mod in ipairs( { 
+        "cassandra.socket", 
+        "pgmoon.socket",
+        "ngx.semaphore",
+      }) do
+      assert(package.loaded[mod] == nil, "Module '"..mod..
+           "' should only be loaded after the global patches")
+    end
+
+  end
+
+
+
+  do  -- implement a Lua based shm, for; cli (and hence rbusted)
 
     if options.cli then
-      ngx.IS_CLI = true
-      
-      
-      -- disable the nginx exit method when running under the cli
-      ngx.exit = function() end
-      
-      
-      
       -- ngx.shared.DICT proxy
       -- https://github.com/bsm/fakengx/blob/master/fakengx.lua
       -- with minor fixes and addtions such as exptime
@@ -67,7 +79,9 @@ return function(options)
         return true, nil, false
       end
       function SharedDict:delete(key)
-        self.data[key] = nil
+        if self.data[key] ~= nil then
+          self.data[key] = nil
+        end
         return true
       end
       function SharedDict:incr(key, value)
@@ -131,7 +145,7 @@ return function(options)
 
 
 
-  do -- patch luassert when running in the Busted test enviornment
+  do -- patch luassert when running in the Busted test environment
     
     if options.rbusted then
       -- patch luassert's 'assert' to fix the 'third' argument problem
@@ -156,7 +170,7 @@ return function(options)
   
   
   
-  do -- randomseeding patch
+  do -- randomseeding patch, for; cli, rbusted and Kong
 
     local randomseed = math.randomseed
     local seed
@@ -199,7 +213,61 @@ return function(options)
 
 
 
-  do -- cosockets connect patch for dns resolution
+  do  -- pure lua semaphore patch, for; rbusted
+
+    if options.rbusted then
+      -- when testing, busted will cleanup the global environment for test
+      -- insulation. This includes the `ffi` module. Because the dns module
+      -- is loaded ahead of busted, it (and its dependencies) become part
+      -- of the global environment that busted does NOT cleanup.
+      -- The semaphore library depends on the ffi, and hence prevents it
+      -- from being GCed. The result is that reloading other libraries will
+      -- generate `attempt to redefine` errors when the ffi stuff is defined
+      -- (because they weren't GCed).
+      -- __NOTE__: though it works for now, it remains a bad idea to recycle
+      -- the ffi module as it is c-based and will result in unpredictable
+      -- segfaults. At the cost of reduced test insulation the busted option
+      -- `--no-auto-insulation` could/should be used.
+      package.loaded["ngx.semaphore"] = {
+        new = function(n)
+          return {
+            resources = n or 0,
+            waiting = 0,
+            post = function(self, n)
+              self.resources = self.resources + (n or 1)
+            end,
+            wait = function(self, timeout) -- timeout = seconds
+              if self.resources > 0 then
+                self.resources = self.resources - 1
+                return true
+              end
+              self.waiting = self.waiting + 1
+              local expire = ngx.now() + timeout
+              while expire > ngx.now() do
+                ngx.sleep(0.001)
+                if self.resources > 0 then
+                  self.resources = self.resources - 1
+                  self.waiting = self.waiting - 1
+                  return true
+                end
+              end
+              self.waiting = self.waiting - 1
+              return nil, "timeout"
+            end,
+            count = function(self)
+              if self.resources > 0 then return self.resources end
+              return -self.waiting
+            end
+          }
+        end
+      }
+    end
+
+  end
+
+
+
+  do -- cosockets connect patch for dns resolution, for; cli, rbusted and Kong
 
     --- Patch the TCP connect method such that all connections will be resolved
     -- first by the internal DNS resolver. 
@@ -236,7 +304,7 @@ return function(options)
 
 
 
-  do -- patch for LuaSocket tcp sockets, block usage in cli.
+  do -- patch for LuaSocket tcp sockets, block usage in cli (and hence rbusted).
 
     if options.cli then
       local socket = require "socket"
@@ -244,16 +312,9 @@ return function(options)
         error("should not be using this")
       end
     end
-  
+
   end
 
 
-
-  do -- patch cassandra driver to use the cosockets anyway, as we've patched them above already
-
-    require("cassandra.socket")  --just pre-loading the module will do
-  
-  end
-  
 
 end
