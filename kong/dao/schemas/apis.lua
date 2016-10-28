@@ -147,7 +147,7 @@ end
 local function check_retries(retries)
   -- Postgres 'smallint' size, 2 bytes
   if (retries < 0) or (math.floor(retries) ~= retries) or (retries > 32767) then
-    return false, "retries must be a integer, from 0 to 32767"
+    return false, "retries must be an integer, from 0 to 32767"
   end
   return true
 end

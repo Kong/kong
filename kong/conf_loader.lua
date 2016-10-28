@@ -13,8 +13,8 @@ local log = require "kong.cmd.utils.log"
 local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
 
 local DEFAULT_PATHS = {
-  "/etc/kong.conf",
-  "/etc/kong/kong.conf"
+  "/etc/kong/kong.conf",
+  "/etc/kong.conf"
 }
 
 local PREFIX_PATHS = {
@@ -56,6 +56,7 @@ local CONF_INFERENCES = {
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
+  nginx_keepalive = {typ = "number"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -64,14 +65,16 @@ local CONF_INFERENCES = {
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
-  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
-  cassandra_repl_factor = {typ = "number"},
-  cassandra_data_centers = {typ = "array"},
-  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
-                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
   cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
+  cassandra_consistency = {enum = {"ALL", "EACH_QUORUM", "QUORUM", "LOCAL_QUORUM", "ONE",
+                                   "TWO", "THREE", "LOCAL_ONE"}}, -- no ANY: this is R/W
+  cassandra_lb_policy = {enum = {"RoundRobin", "DCAwareRoundRobin"}},
+  cassandra_local_datacenter = {typ = "string"},
+  cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
+  cassandra_repl_factor = {typ = "number"},
+  cassandra_data_centers = {typ = "array"},
 
   cluster_profile = {enum = {"local", "lan", "wan"}},
   cluster_ttl_on_failure = {typ = "number"},
@@ -161,6 +164,12 @@ local function check_and_infer(conf)
   ---------------------
   -- custom validations
   ---------------------
+
+  if conf.cassandra_lb_policy == "DCAwareRoundRobin" and
+     not conf.cassandra_local_datacenter then
+     errors[#errors+1] = "must specify 'cassandra_local_datacenter' when "..
+                        "DCAwareRoundRobin policy is in use"
+  end
 
   if conf.ssl then
     if conf.ssl_cert and not conf.ssl_cert_key then
@@ -266,8 +275,9 @@ local function load(path, custom_conf)
   if path and not pl_path.exists(path) then
     -- file conf has been specified and must exist
     return nil, "no file at: "..path
-  else
-    -- try to look for a conf, but no big deal if none
+  elseif not path then
+    -- try to look for a conf in default locations, but no big
+    -- deal if none is found: we will use our defaults.
     for _, default_path in ipairs(DEFAULT_PATHS) do
       if pl_path.exists(default_path) then
         path = default_path
@@ -383,6 +393,9 @@ end
 
 return setmetatable({
   load = load,
+  add_default_path = function(path)
+    DEFAULT_PATHS[#DEFAULT_PATHS+1] = path
+  end,
   remove_sensitive = function(conf)
     local purged_conf = tablex.deepcopy(conf)
     for k in pairs(CONF_SENSITIVE) do

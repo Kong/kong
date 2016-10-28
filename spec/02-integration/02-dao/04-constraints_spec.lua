@@ -19,7 +19,7 @@ helpers.for_each_dao(function(kong_config)
     local plugin_fixture, api_fixture
     local factory, apis, plugins
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       apis = factory.apis
       plugins = factory.plugins
       assert(factory:run_migrations())

@@ -1,9 +1,8 @@
 local dns_client
 
 --- Load and setup the DNS client according to the provided configuration.
--- Will clear the cache if called multiple times.
 -- @param conf (table) Kong configuration
--- @return the initialized `dns.client` module, or nil+error if it was already initialized
+-- @return the initialized `dns.client` module, or an error
 local setup_client = function(conf)
   if not dns_client then 
     dns_client = require "dns.client"
@@ -23,11 +22,11 @@ local setup_client = function(conf)
     
   local opts = {
     hosts = hosts,
-    resolv_conf = nil,
-    nameservers = servers,
-    retrans = 5,
-    timeout = 2000,
-    no_recurse = false,
+    resolv_conf = nil,     -- defaults to system resolv.conf
+    nameservers = servers, -- provided list or taken from resolv.conf
+    retrans = nil,         -- taken from system resolv.conf; attempts
+    timeout = nil,         -- taken from system resolv.conf; timeout
+    bad_ttl = nil,         -- ttl in seconds for bad dns responses (empty/error)
   }
   
   assert(dns_client.init(opts))

@@ -2,6 +2,7 @@ local singletons = require "kong.singletons"
 local timestamp = require "kong.tools.timestamp"
 local cache = require "kong.tools.database_cache"
 local redis = require "resty.redis"
+local policy_cluster = require "kong.plugins.response-ratelimiting.policies.cluster"
 local ngx_log = ngx.log
 
 local pairs = pairs
@@ -32,7 +33,7 @@ return {
 
         local _, err = cache.incr(cache_key, value)
         if err then
-          ngx_log("[rate-limiting] could not increment counter for period '"..period.."': "..tostring(err))
+          ngx_log("[response-ratelimiting] could not increment counter for period '"..period.."': "..tostring(err))
         end
       end
     end,
@@ -48,17 +49,25 @@ return {
   },
   ["cluster"] = {
     increment = function(conf, api_id, identifier, current_timestamp, value, name)
-      local _, stmt_err = singletons.dao.response_ratelimiting_metrics:increment(api_id, identifier, current_timestamp, value, name)
-      if stmt_err then
-        ngx_log(ngx.ERR, tostring(stmt_err))
+      local db = singletons.dao.db
+      local ok, err = policy_cluster[db.name].increment(db, api_id, identifier,
+                                                        current_timestamp, value,
+                                                        name)
+      if not ok then
+        ngx_log(ngx.ERR, "[response-ratelimiting] cluster policy: could not increment ",
+                          db.name, " counter: ", err)
       end
+
+      return ok, err
     end,
     usage = function(conf, api_id, identifier, current_timestamp, period, name)
-      local current_metric, err = singletons.dao.response_ratelimiting_metrics:find(api_id, identifier, current_timestamp, period, name)
-      if err then
-        return nil, err
-      end
-      return current_metric and current_metric.value or 0
+      local db = singletons.dao.db
+      local rows, err = policy_cluster[db.name].find(db, api_id, identifier,
+                                                     current_timestamp, period,
+                                                     name)
+      if err then return nil, err end
+
+      return rows and rows.value or 0
     end
   },
   ["redis"] = {
@@ -93,7 +102,7 @@ return {
         if not exists or exists == 0 then
           red:expire(cache_key, EXPIRATIONS[period])
         end
-        
+
         local _, err = red:commit_pipeline()
         if err then
           ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)

@@ -24,13 +24,14 @@
 -- |[[    ]]|
 -- ==========
 
-require "kong.core.globalpatches"
+require("kong.core.globalpatches")()
 
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
+local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
 local ngx_balancer = require "ngx.balancer"
@@ -126,7 +127,8 @@ function Kong.init()
   local config = assert(conf_loader(conf_path))
 
   local events = Events() -- retrieve node plugins
-  local dao = DAOFactory(config, events) -- instanciate long-lived DAO
+  local dao = assert(DAOFactory.new(config, events)) -- instanciate long-lived DAO
+  assert(dao:init())
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
@@ -149,7 +151,10 @@ function Kong.init_worker()
 
   core.init_worker.before()
 
-  singletons.dao:init() -- Executes any initialization by the DB
+  local ok, err = singletons.dao:init_worker()
+  if not ok then
+    ngx.log(ngx.ERR, "could not init DB: ", err)
+  end
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
     plugin.handler:init_worker()
@@ -180,7 +185,7 @@ function Kong.balancer()
     local ok, err = balancer_execute(addr)
     if not ok then
       ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
-      return ngx.exit(500)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
     end
   else
     -- first try, so set the max number of retries
@@ -193,8 +198,9 @@ function Kong.balancer()
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
   if not ok then
-    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
-    return ngx.exit(500)
+    ngx.log(ngx.ERR, "failed to set the current peer (address:'",
+      tostring(addr.ip),"' port:",tostring(addr.port),"): ", tostring(err))
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 end
 

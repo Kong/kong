@@ -391,8 +391,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
           -- Simulate an error on the database
-          local err = helpers.dao.ratelimiting_metrics:drop_table(helpers.dao.ratelimiting_metrics.table)
-          assert.falsy(err)
+          assert(helpers.dao.db:drop_table("ratelimiting_metrics"))
 
           -- Make another request
           local res = assert(helpers.proxy_client():send {
@@ -418,8 +417,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
           -- Simulate an error on the database
-          local err = helpers.dao.ratelimiting_metrics:drop_table(helpers.dao.ratelimiting_metrics.table)
-          assert.falsy(err)
+          assert(helpers.dao.db:drop_table("ratelimiting_metrics"))
 
           -- Make another request
           local res = assert(helpers.proxy_client():send {

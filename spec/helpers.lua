@@ -25,7 +25,7 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 -- Conf and DAO
 ---------------
 local conf = assert(conf_loader(TEST_CONF_PATH))
-local dao = DAOFactory(conf)
+local dao = assert(DAOFactory.new(conf))
 -- make sure migrations are up-to-date
 --assert(dao:run_migrations())
 
@@ -837,6 +837,8 @@ return {
   proxy_ssl_client = proxy_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
+  
+  -- miscellaneous
   intercept = intercept,
 
   start_kong = function(env)

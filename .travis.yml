@@ -1,9 +1,9 @@
 sudo: false
 
-language: c
+language: java
 
-compiler:
-  - gcc
+jdk:
+  - oraclejdk8
 
 notifications:
   email: false
@@ -22,7 +22,7 @@ env:
     - SERF=0.7.0
     - LUAROCKS=2.4.0
     - OPENSSL=1.0.2h
-    - CASSANDRA=2.2.7
+    - CASSANDRA=2.2.8
     - OPENRESTY_BASE=1.9.15.1
     - OPENRESTY_LATEST=1.11.2.1
     - OPENRESTY=$OPENRESTY_BASE
@@ -37,8 +37,10 @@ env:
       OPENRESTY=$OPENRESTY_BASE
     - TEST_SUITE=integration
       OPENRESTY=$OPENRESTY_LATEST
+      CASSANDRA=3.9
     - TEST_SUITE=plugins
       OPENRESTY=$OPENRESTY_LATEST
+      CASSANDRA=3.9
 
 before_install:
   - source .ci/setup_env.sh

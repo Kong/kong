@@ -1,7 +1,7 @@
 local version = setmetatable({
   major = 0,
   minor = 9,
-  patch = 2,
+  patch = 3,
   pre_release = nil
 }, {
   __tostring = function(t)
@@ -19,7 +19,7 @@ return {
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
     nginx = {"1.9.15.1", "1.11.2.1"},
-    serf = {"0.7.0", "0.7.0"},
+    serf = {"0.7.0", "0.8.0"},
     --resty = {}, -- not version dependent for now
   }
 }

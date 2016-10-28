@@ -102,16 +102,13 @@ describe("kong start/stop", function()
   end)
 
   describe("/etc/hosts resolving in CLI", function()
-    -- dnsmasq is not yet started at this point and resty-cli does not include
-    -- it in its resolver directive. As such and until supported by resty-cli,
-    -- we must force the use of LuaSocket in our CLI to resolve localhost.
-    it("resolves cassandra hostname", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+    it("resolves #cassandra hostname", function()
+      assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
     end)
-    it("resolves postgres hostname", function()
+    it("resolves #postgres hostname", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
         pg_host = "localhost",
         database = "postgres"
@@ -180,10 +177,7 @@ describe("kong start/stop", function()
         thread:join()
       end)
 
-      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path, {
-        dnsmasq = true,
-        dns_resolver = ""
-      })
+      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path)
       assert.False(ok)
       assert.matches("Address already in use", err, nil, true)
 

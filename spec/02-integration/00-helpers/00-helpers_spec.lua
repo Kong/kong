@@ -36,7 +36,7 @@ describe("helpers: assertions and modifiers", function()
         helpers.wait_until(function()
           i = i + 1
           return i > 1
-        end, 1)
+        end, 3)
       end)
     end)
     it("errors out after delay", function()

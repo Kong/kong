@@ -45,7 +45,9 @@ function SharedDict:replace(key, value)
 end
 
 function SharedDict:delete(key)
-  self.data[key] = nil
+  if self.data[key] ~= nil then
+    self.data[key] = nil
+  end
 end
 
 function SharedDict:incr(key, value)

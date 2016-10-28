@@ -1,14 +1,11 @@
-#!/usr/bin/env resty -c 65535
+#!/usr/bin/env resty
 
--- a flag to detect whether our modules (especially kong.core.globalpatches)
--- are running under resty-cli or in a real ngx_lua, runtime environment.
-ngx.RESTY_CLI = true
+require("kong.core.globalpatches")({
+  cli = true,
+  rbusted = true
+})
 
-require "kong.core.globalpatches"
-
-if ngx ~= nil then
-  ngx.exit = function() end
-end
+package.path = "?/init.lua;"..package.path
 
 -- Busted command-line runner
 require 'busted.runner'({ standalone = false })

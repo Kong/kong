@@ -12,6 +12,7 @@ local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
 local resolve = require("kong.core.resolver").execute
 local constants = require "kong.constants"
+local responses = require "kong.tools.responses"
 local certificate = require "kong.core.certificate"
 local balancer_execute = require("kong.core.balancer").execute
 
@@ -42,17 +43,17 @@ return {
       ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
       
       balancer_address = {
-        upstream = upstream_table,                       -- original parsed upstream url from the resolver
+        upstream = upstream_table,                       -- original parsed upstream url from the Kong api resolver/router
         type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
         tries = 0,                                       -- retry counter
-        ip = nil,                                        -- final target IP address
+    --  ip = nil,                                        -- final target IP address
         port = upstream_table.port,                      -- final target port
         retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
         -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
-        failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
+    --  failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
         -- in case of ring-balancer
-        balancer = nil,                                  -- the balancer object
-        hostname = nil,                                  -- the hostname that belongs to the ip address returned by the balancer
+    --  balancer = nil,                                  -- the balancer object
+    --  hostname = nil,                                  -- the hostname that belongs to the ip address returned by the balancer
       }
       ngx.ctx.balancer_address = balancer_address
       local ok, err = balancer_execute(balancer_address)
@@ -63,7 +64,7 @@ return {
       end
       if not ok then
         ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
-        return ngx.exit(500)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.

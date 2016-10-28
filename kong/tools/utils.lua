@@ -87,7 +87,7 @@ function _M.is_valid_uuid(str)
   return re_find(str, uuid_regex, 'ioj') ~= nil
 end
 
--- function below is more acurate, but invalidates previously accepted uuids and hence causes 
+-- function below is more acurate, but invalidates previously accepted uuids and hence causes
 -- trouble with existing data during migrations.
 -- see: https://github.com/thibaultcha/lua-resty-jit-uuid/issues/8
 -- function _M.is_valid_uuid(str)
