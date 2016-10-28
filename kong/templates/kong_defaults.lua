@@ -7,6 +7,7 @@ anonymous_reports = on
 proxy_listen = 0.0.0.0:8000
 proxy_listen_ssl = 0.0.0.0:8443
 admin_listen = 0.0.0.0:8001
+admin_listen_ssl = 0.0.0.0:8444
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
@@ -14,6 +15,9 @@ mem_cache_size = 128m
 ssl = on
 ssl_cert = NONE
 ssl_cert_key = NONE
+admin_ssl = on
+admin_ssl_cert = NONE
+admin_ssl_cert_key = NONE
 
 database = postgres
 pg_host = 127.0.0.1

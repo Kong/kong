@@ -115,6 +115,13 @@ server {
     client_max_body_size 10m;
     client_body_buffer_size 10m;
 
+> if admin_ssl then
+    listen ${{ADMIN_LISTEN_SSL}} ssl;
+    ssl_certificate ${{ADMIN_SSL_CERT}};
+    ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+> end
+
     location / {
         default_type application/json;
         content_by_lua_block {
