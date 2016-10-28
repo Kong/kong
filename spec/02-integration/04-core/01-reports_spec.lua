@@ -10,7 +10,7 @@ describe("reports", function()
     it("sends report over UDP", function()
       local thread = helpers.udp_server(8189)
 
-      reports.send({
+      reports.send("stub", {
         hello = "world",
         foo = "bar"
       }, "127.0.0.1", 8189)
@@ -21,10 +21,11 @@ describe("reports", function()
       res = res:sub(5)
       assert.matches("cores=%d+", res)
       assert.matches("uname=[%w]+", res)
-      assert.matches("version="..meta._VERSION, res)
+      assert.matches("version=" .. meta._VERSION, res, nil, true)
       assert.matches("hostname=[%w]+", res)
-      assert.matches("foo=bar", res)
-      assert.matches("hello=world", res)
+      assert.matches("foo=bar", res, nil, true)
+      assert.matches("hello=world", res, nil, true)
+      assert.matches("signal=stub", res, nil, true)
     end)
     it("doesn't send if not enabled", function()
       reports.toggle(false)
