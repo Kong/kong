@@ -12,6 +12,9 @@ describe("NGINX conf compiler", function()
       ssl = true,
       ssl_cert = "spec/fixtures/kong_spec.crt",
       ssl_cert_key = "spec/fixtures/kong_spec.key",
+      admin_ssl = true,
+      admin_ssl_cert = "spec/fixtures/kong_spec.crt",
+      admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
     }))
     before_each(function()
       helpers.dir.makepath("ssl_tmp")
@@ -19,18 +22,35 @@ describe("NGINX conf compiler", function()
     after_each(function()
       pcall(helpers.dir.rmtree, "ssl_tmp")
     end)
-    it("auto-generates SSL certificate and key", function()
-      assert(prefix_handler.gen_default_ssl_cert(conf))
-      assert(exists(conf.ssl_cert_default))
-      assert(exists(conf.ssl_cert_key_default))
+    describe("proxy", function()
+      it("auto-generates SSL certificate and key", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf))
+        assert(exists(conf.ssl_cert_default))
+        assert(exists(conf.ssl_cert_key_default))
+      end)
+      it("does not re-generate if they already exist", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf))
+        local cer = helpers.file.read(conf.ssl_cert_default)
+        local key = helpers.file.read(conf.ssl_cert_key_default)
+        assert(prefix_handler.gen_default_ssl_cert(conf))
+        assert.equal(cer, helpers.file.read(conf.ssl_cert_default))
+        assert.equal(key, helpers.file.read(conf.ssl_cert_key_default))
+      end)
     end)
-    it("does not re-generate if they already exist", function()
-      assert(prefix_handler.gen_default_ssl_cert(conf))
-      local cer = helpers.file.read(conf.ssl_cert_default)
-      local key = helpers.file.read(conf.ssl_cert_key_default)
-      assert(prefix_handler.gen_default_ssl_cert(conf))
-      assert.equal(cer, helpers.file.read(conf.ssl_cert_default))
-      assert.equal(key, helpers.file.read(conf.ssl_cert_key_default))
+    describe("admin", function()
+      it("auto-generates SSL certificate and key", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, true))
+        assert(exists(conf.admin_ssl_cert_default))
+        assert(exists(conf.admin_ssl_cert_key_default))
+      end)
+      it("does not re-generate if they already exist", function()
+        assert(prefix_handler.gen_default_ssl_cert(conf, true))
+        local cer = helpers.file.read(conf.admin_ssl_cert_default)
+        local key = helpers.file.read(conf.admin_ssl_cert_key_default)
+        assert(prefix_handler.gen_default_ssl_cert(conf, true))
+        assert.equal(cer, helpers.file.read(conf.admin_ssl_cert_default))
+        assert.equal(key, helpers.file.read(conf.admin_ssl_cert_key_default))
+      end)
     end)
   end)
 
@@ -60,7 +80,8 @@ describe("NGINX conf compiler", function()
     end)
     it("disables SSL", function()
       local conf = assert(conf_loader(helpers.test_conf_path, {
-        ssl = false
+        ssl = false,
+        admin_ssl = false
       }))
       local kong_nginx_conf = prefix_handler.compile_kong_conf(conf)
       assert.not_matches("listen %d+%.%d+%.%d+%.%d+:%d+ ssl;", kong_nginx_conf)
@@ -229,7 +250,8 @@ describe("NGINX conf compiler", function()
       it("does not create SSL dir if disabled", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
-          ssl = false
+          ssl = false,
+          admin_ssl = false
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -241,6 +263,9 @@ describe("NGINX conf compiler", function()
           ssl = true,
           ssl_cert = "spec/fixtures/kong_spec.crt",
           ssl_cert_key = "spec/fixtures/kong_spec.key",
+          admin_ssl = true,
+          admin_ssl_cert = "spec/fixtures/kong_spec.crt",
+          admin_ssl_cert_key = "spec/fixtures/kong_spec.key",
         })
 
         assert(prefix_handler.prepare_prefix(conf))
@@ -249,13 +274,16 @@ describe("NGINX conf compiler", function()
       it("generates default SSL cert", function()
         local conf = conf_loader(nil, {
           prefix = tmp_config.prefix,
-          ssl = true
+          ssl = true,
+          admin_ssl = true
         })
 
         assert(prefix_handler.prepare_prefix(conf))
         assert.truthy(exists(join(conf.prefix, "ssl")))
         assert.truthy(exists(conf.ssl_cert_default))
         assert.truthy(exists(conf.ssl_cert_key_default))
+        assert.truthy(exists(conf.admin_ssl_cert_default))
+        assert.truthy(exists(conf.admin_ssl_cert_key_default))
       end)
     end)
 

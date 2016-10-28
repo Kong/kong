@@ -33,6 +33,7 @@ lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
+lua_shared_dict kong 4m;
 lua_shared_dict cache ${{MEM_CACHE_SIZE}};
 lua_shared_dict reports_locks 100k;
 lua_shared_dict cluster_locks 100k;
@@ -123,6 +124,13 @@ server {
 
     client_max_body_size 10m;
     client_body_buffer_size 10m;
+
+> if admin_ssl then
+    listen ${{ADMIN_LISTEN_SSL}} ssl;
+    ssl_certificate ${{ADMIN_SSL_CERT}};
+    ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+> end
 
     location / {
         default_type application/json;
