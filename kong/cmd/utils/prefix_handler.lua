@@ -45,6 +45,11 @@ local stop_script_template = [[
 #!/bin/sh
 
 CMD="\
+ngx.RESTY_CLI = true \
+for _, namespace in ipairs({'cassandra', 'pgmoon-mashape'}) do \
+  local socket = require(namespace .. '.socket') \
+  socket.force_luasocket(ngx.get_phase(), true) \
+end \
 local conf_loader = require 'kong.conf_loader' \
 local DAOFactory = require 'kong.dao.factory' \
 local Serf = require 'kong.serf' \
