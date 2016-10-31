@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
+--local cjson = require "cjson"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -71,10 +71,31 @@ describe("Admin API", function()
           assert.are.equal(99, json.weight)
         end
       end)
-      
-      pending("upstream_id + timestamp combo must be unique", function()
+      it("cleans up old target entries", function()
+        -- count to 12; 10 old ones, 1 active one, and then nr 12 to
+        -- trigger the cleanup
+        for i = 1, 12 do
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/"..upstream_name.."/targets/",
+            body = {
+              target = "mashape.com:123",
+              weight = 99,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          assert.response(res).has.status(201)
+        end
+        local history = assert(helpers.dao.targets:find_all {
+          upstream_id = upstream.id,
+        })
+        -- there should be 2 left; 1 from the cleanup, and the final one 
+        -- inserted that triggered the cleanup
+        assert.equal(2, #history)
       end)
-    
+      
       describe("errors", function()
         it("handles malformed JSON body", function()
           local res = assert(client:request {

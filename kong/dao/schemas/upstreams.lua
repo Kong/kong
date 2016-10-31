@@ -81,7 +81,6 @@ return {
         return false, Errors.schema("size mismatch between 'slots' and 'orderlist'")
       end
       -- No list given, regenerate order array
---TODO: check if it is safe to update data here!
       local t = {}
       for i = 1, config.slots do
         t[i] = {
