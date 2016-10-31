@@ -34,15 +34,18 @@ local function load_targets_into_memory(upstream_id)
     return nil, err
   end
   
-  -- split `target` field into `name` and `port`
+  -- some raw data updates
   for _, target in ipairs(target_history) do
+    -- split `target` field into `name` and `port`
     local port
     target.name, port = string.match(target.target, "^(.-):(%d+)$")
     target.port = tonumber(port)
+    -- need exact order, so order by created time and uuid
+    target.order = target.created_at..":"..target.id
   end
   
-  -- order by 'created_at'
-  table.sort(target_history, function(a,b) return a.created_at<b.created_at end)
+  -- order by time
+  table.sort(target_history, function(a,b) return a.order<b.order end)
 
   return target_history
 end
@@ -65,7 +68,7 @@ local function apply_history(rb, history, start)
       name = target.name,
       port = target.port,
       weight = target.weight,
-      created_at = target.created_at,
+      order = target.order,
     }
   end
   
@@ -89,7 +92,7 @@ local function new_ring_balancer(upstream, history)
       name = first.name,
       port = first.port,
       weight = first.weight,
-      created_at = first.created_at,
+      order = first.order,
   }}
   
   -- replay history of lb transactions
@@ -119,7 +122,8 @@ local get_balancer = function(target)
   local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
     function() return load_targets_into_memory(upstream.id) end)
   if err or #targets_history == 0 then  -- 'no targets' equals 'no upstream', so exit as well
-    return nil, err
+    return nil, err or (#targets_history == 0 
+           and "no targets defined for upstream '"..target.upstream.host.."'")
   end
 
   local balancer = balancers[upstream.name]
@@ -131,13 +135,13 @@ local get_balancer = function(target)
     balancers[upstream.name] = balancer
 
   elseif #balancer.targets_history ~= #targets_history or 
-         balancer.targets_history[#balancer.targets_history].created_at ~= targets_history[#targets_history].created_at then
+         balancer.targets_history[#balancer.targets_history].order ~= targets_history[#targets_history].order then
     -- last entries in history don't match, so we must do some updates.
     
     -- compare balancer history with db-loaded history
     local ok = true
     for i = 1, #balancer.targets_history do
-      if balancer.targets_history[i].created_at ~= targets_history[i].created_at then
+      if balancer.targets_history[i].order ~= targets_history[i].order then
         ok = false
         break
       end
@@ -146,7 +150,7 @@ local get_balancer = function(target)
       -- history is the same, so we only need to add new entries
       apply_history(balancer, targets_history, #balancer.targets_history + 1)
     else
-      -- history not the same, so a cleanup was done, need to recreate from scratch
+      -- history not the same. Need to recreate from scratch
       balancer, err = new_ring_balancer(upstream, targets_history)
       if err then return balancer, err end
 
@@ -255,4 +259,5 @@ end
 return { 
   execute = execute,
   load_upstreams_into_memory = load_upstreams_into_memory,  -- exported for test purposes
+  load_targets_into_memory = load_targets_into_memory,      -- exported for test purposes
 }

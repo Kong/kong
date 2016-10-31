@@ -197,7 +197,7 @@ return {
         weight int,
         upstream_id uuid,
         created_at timestamp,
-        PRIMARY KEY ((id), created_at)
+        PRIMARY KEY (id)
       );
       CREATE INDEX IF NOT EXISTS ON targets(upstream_id);
     ]],

@@ -2,34 +2,81 @@ describe("Balancer", function()
   local old_ngx = _G.ngx
   local singletons, resolver
   local UPSTREAMS_FIXTURES
+  local TARGETS_FIXTURES
+  local uuid = require("kong.tools.utils").uuid
 
+  
   setup(function()
-    --[[local stubbed_ngx = {
-      header = {},
-      shared = require "spec.fixtures.shm-stub",
-      say = function() end,  -- not required as stub, but to prevent outputting to stdout
-      req = {
-        get_headers = function() return {} end,
-        set_header = function() return {} end,
-      }
-    }
-    _G.ngx = setmetatable(stubbed_ngx, {__index = old_ngx})
---]]
     balancer = require "kong.core.balancer"
     singletons = require "kong.singletons"
-    singletons.dao = {
-      upstreams = {
-        find_all = function()
-          return UPSTREAMS_FIXTURES
-        end
-      }
+    singletons.dao = {}
+    singletons.dao.upstreams = {
+      find_all = function(self)
+        return UPSTREAMS_FIXTURES
+      end
     }
 
     UPSTREAMS_FIXTURES = {
-      {name = "mashape", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
-      {name = "kong",    slots = 10, orderlist = {10,9,8,7,6,5,4,3,2,1} },
-      {name = "gelato",  slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20} },
-      {name = "galileo", slots = 10, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
+      {id = "a", name = "mashape", slots = 10, orderlist = {1,2,3,4,5,6,7,8,9,10} },
+      {id = "b", name = "kong",    slots = 10, orderlist = {10,9,8,7,6,5,4,3,2,1} },
+      {id = "c", name = "gelato",  slots = 20, orderlist = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20} },
+      {id = "d", name = "galileo", slots = 20, orderlist = {20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1} },
+    }
+    
+    singletons.dao.targets = {
+      find_all = function(self, match_on)
+        local ret = {}
+        for _, rec in ipairs(TARGETS_FIXTURES) do
+          for key, val in pairs(match_on or {}) do
+            if rec[key] ~= val then
+              rec = nil
+              break
+            end
+          end
+          if rec then table.insert(ret, rec) end
+        end
+        return ret
+      end
+    }
+
+    TARGETS_FIXTURES = {
+      -- 1st upstream; a
+      {
+        id = "a1",
+        created_at = "003",
+        upstream_id = "a",
+        target = "mashape.com:80",
+        weight = 10,
+      },
+      {
+        id = "a2",
+        created_at = "002",
+        upstream_id = "a",
+        target = "mashape.com:80",
+        weight = 10,
+      },
+      {
+        id = "a3",
+        created_at = "001",
+        upstream_id = "a",
+        target = "mashape.com:80",
+        weight = 10,
+      },
+      {
+        id = "a4",
+        created_at = "002",  -- same timestamp as "a2"
+        upstream_id = "a",
+        target = "mashape.com:80",
+        weight = 10,
+      },
+      -- 2nd upstream; b
+      {
+        id = "b1",
+        created_at = "003",
+        upstream_id = "b",
+        target = "mashape.com:80",
+        weight = 10,
+      },
     }
   end)
 
@@ -39,36 +86,28 @@ describe("Balancer", function()
       upstreams_dics = balancer.load_upstreams_into_memory()
     end)
 
-    it("should retrieve all upstreams in datastore", function()
+    it("restrieves all upstreams as a dictionary", function()
       assert.equal("table", type(upstreams_dics))
-      assert.truthy(upstreams_dics.by_dns)
-      assert.truthy(apis_dics.request_path_arr)
-      assert.truthy(apis_dics.wildcard_dns_arr)
-    end)
-    it("should return a dictionary of APIs by request_host", function()
-      assert.equal("table", type(apis_dics.by_dns["mockbin.com"]))
-      assert.equal("table", type(apis_dics.by_dns["mockbin-auth.com"]))
-    end)
-    it("should return an array of APIs by request_path", function()
-      assert.equal("table", type(apis_dics.request_path_arr))
-      assert.equal(7, #apis_dics.request_path_arr)
-      for _, item in ipairs(apis_dics.request_path_arr) do
-        assert.truthy(item.strip_request_path_pattern)
-        assert.truthy(item.request_path)
-        assert.truthy(item.api)
+      for i, u in ipairs(UPSTREAMS_FIXTURES) do
+        assert.is.table(upstreams_dics[u.name])
       end
-      assert.equal("/strip%-me", apis_dics.request_path_arr[1].strip_request_path_pattern)
-      assert.equal("/strip", apis_dics.request_path_arr[2].strip_request_path_pattern)
     end)
-    it("should return an array of APIs with wildcard request_host", function()
-      assert.equal("table", type(apis_dics.wildcard_dns_arr))
-      assert.equal(2, #apis_dics.wildcard_dns_arr)
-      for _, item in ipairs(apis_dics.wildcard_dns_arr) do
-        assert.truthy(item.api)
-        assert.truthy(item.pattern)
-      end
-      assert.equal("^.+%.wildcard%.com$", apis_dics.wildcard_dns_arr[1].pattern)
-      assert.equal("^wildcard%..+$", apis_dics.wildcard_dns_arr[2].pattern)
+  end)
+
+  describe("load_targets_into_memory()", function()
+    local targets
+    local upstream
+    setup(function()
+      upstream = "a"
+      targets = balancer.load_targets_into_memory(upstream)
+    end)
+
+    it("retrieves all targets per upstream, ordered", function()
+      assert.equal(4, #targets)
+      assert(targets[1].id == "a3")
+      assert(targets[2].id == "a2")
+      assert(targets[3].id == "a4")
+      assert(targets[4].id == "a1")
     end)
   end)
 end)

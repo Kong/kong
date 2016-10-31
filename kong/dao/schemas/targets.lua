@@ -36,7 +36,7 @@ return {
       required = true,
     },
     weight = {
-      -- weight in the laodbalancer algorithm.
+      -- weight in the loadbalancer algorithm.
       -- to disable an entry, set the weight to 0
       type = "number",
       default = default_weight,
