@@ -68,8 +68,7 @@ local function authenticate(conf, given_credentials)
   if given_username == nil then
     return false
   end
-
-  local credential = cache.get_or_set(cache.ldap_credential_key(given_username), function()
+  local credential = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), function()
     ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: "..conf.ldap_host..":"..conf.ldap_port)
 
     local ok, err = ldap_authenticate(given_username, given_password, conf)

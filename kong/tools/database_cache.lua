@@ -29,12 +29,12 @@ function _M.rawset(key, value, exptime)
   return cache:set(key, value, exptime or 0)
 end
 
-function _M.set(key, value)
+function _M.set(key, value, exptime)
   if value then
     value = cjson.encode(value)
   end
 
-  return _M.rawset(key, value)
+  return _M.rawset(key, value, exptime)
 end
 
 function _M.rawget(key)
@@ -106,8 +106,8 @@ function _M.jwtauth_credential_key(secret)
   return CACHE_KEYS.JWTAUTH_CREDENTIAL..":"..secret
 end
 
-function _M.ldap_credential_key(username)
-  return CACHE_KEYS.LDAP_CREDENTIAL.."/"..username
+function _M.ldap_credential_key(api_id, username)
+  return CACHE_KEYS.LDAP_CREDENTIAL.."_"..api_id..":"..username
 end
 
 function _M.acls_key(consumer_id)
@@ -126,7 +126,7 @@ function _M.all_apis_by_dict_key()
   return CACHE_KEYS.ALL_APIS_BY_DIC
 end
 
-function _M.get_or_set(key, cb)
+function _M.get_or_set(key, cb, exptime)
   -- Try to get the value from the cache
   local value = _M.get(key)
   if value then return value end
@@ -153,7 +153,7 @@ function _M.get_or_set(key, cb)
     -- Get from closure
     value = cb()
     if value then
-      local ok, err = _M.set(key, value)
+      local ok, err = _M.set(key, value, exptime)
       if not ok then
         ngx_log(ngx.ERR, err)
       end
