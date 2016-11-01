@@ -27,8 +27,4 @@ describe("Database cache", function()
     assert.are.equal("jwtauth_credentials:hello", cache.jwtauth_credential_key("hello"))
   end)
 
-  it("returns a valid requests cache key", function()
-    assert.are.equal("requests", cache.requests_key())
-  end)
-
 end)
