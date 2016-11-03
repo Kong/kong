@@ -1,5 +1,18 @@
 ## [Unreleased][unreleased]
 
+## [0.9.4] - 2016/11/02
+
+### Fixed
+
+- Fixed the random string generator that was causing some problems, especially
+  in Serf for clustering. [#1754](https://github.com/Mashape/kong/pull/1754)
+- Seed random number generator in CLI. 
+  [#1641](https://github.com/Mashape/kong/pull/1641)
+- Reducing log noise in the Admin API. 
+  [#1781](https://github.com/Mashape/kong/pull/1781)
+- Fixed the reports lock implementation that was generating a periodic error 
+  message. [#1783](https://github.com/Mashape/kong/pull/1783)
+
 ## [0.9.3] - 2016/10/07
 
 ### Added
@@ -755,7 +768,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.3...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.4...next
+[0.9.3]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
 [0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
 [0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
