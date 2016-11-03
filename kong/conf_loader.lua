@@ -96,7 +96,7 @@ local CONF_INFERENCES = {
   nginx_optimizations = {typ = "boolean"},
 
   lua_code_cache = {typ = "ngx_boolean"},
-  lua_ssl_verify_depth = {typ = "number"}
+  lua_ssl_verify_depth = {typ = "number"},
 }
 
 -- List of settings whose values must not be printed when
@@ -360,7 +360,7 @@ local function load(path, custom_conf)
   do
     local custom_plugins = {}
     for i = 1, #conf.custom_plugins do
-      local plugin_name = conf.custom_plugins[i]
+      local plugin_name = pl_stringx.strip(conf.custom_plugins[i])
       custom_plugins[plugin_name] = true
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)

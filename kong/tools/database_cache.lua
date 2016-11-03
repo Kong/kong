@@ -22,42 +22,112 @@ local CACHE_KEYS = {
 
 local _M = {}
 
-function _M.rawset(key, value, exptime)
+-- Shared Dictionary
+
+function _M.sh_set(key, value, exptime)
   return cache:set(key, value, exptime or 0)
 end
 
-function _M.set(key, value)
-  if value then
-    value = cjson.encode(value)
-  end
-
-  return _M.rawset(key, value)
-end
-
-function _M.rawget(key)
-  return cache:get(key)
-end
-
-function _M.get(key)
-  local value, flags = _M.rawget(key)
-  if value then
-    value = cjson.decode(value)
-  end
-  return value, flags
-end
-
-function _M.incr(key, value)
+function _M.sh_incr(key, value)
   return cache:incr(key, value)
 end
 
-function _M.delete(key)
+function _M.sh_get(key, value)
+  return cache:get(key, value)
+end
+
+function _M.sh_delete(key)
   cache:delete(key)
 end
 
-function _M.delete_all()
+function _M.sh_delete_all()
   cache:flush_all() -- This does not free up the memory, only marks the items as expired
   cache:flush_expired() -- This does actually remove the elements from the memory
 end
+
+-- Local Memory
+
+local DATA = {}
+
+function _M.set(key, value)
+  DATA[key] = value
+
+  -- Save into Shared Dictionary
+  local _, err = _M.sh_set(key, cjson.encode(value))
+  if err then return nil, err end
+
+  return true
+end
+
+function _M.get(key)
+  local value = DATA[key]
+  
+  -- Get from Shared Dictionary
+  if value == nil then
+    value = _M.sh_get(key)
+    if value ~= nil then 
+      value = cjson.decode(value) 
+    end
+  end
+
+  return value
+end
+
+function _M.delete(key)
+  DATA[key] = nil
+  _M.sh_delete(key)
+end
+
+function _M.delete_all()
+  DATA = {}
+  _M.sh_delete_all()
+end
+
+function _M.get_or_set(key, cb)
+  -- Try to get the value from the cache
+  local value = _M.get(key)
+  if value then return value end
+
+  local lock, err = resty_lock:new("cache_locks", {
+    exptime = 10,
+    timeout = 5
+  })
+  if not lock then
+    ngx_log(ngx.ERR, "could not create lock: ", err)
+    return
+  end
+
+  -- The value is missing, acquire a lock
+  local elapsed, err = lock:lock(key)
+  if not elapsed then
+    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+    return
+  end
+
+  -- Lock acquired. Since in the meantime another worker may have
+  -- populated the value we have to check again
+  value = _M.get(key)
+  if not value then
+    -- Get from closure
+    value = cb()
+    if value then
+      local ok, err = _M.set(key, value)
+      if not ok then
+        ngx_log(ngx.ERR, err)
+        return
+      end
+    end
+  end
+
+  local ok, err = lock:unlock()
+  if not ok and err then
+    ngx_log(ngx.ERR, "failed to unlock: ", err)
+  end
+
+  return value
+end
+
+-- Utility Functions
 
 function _M.api_key(host)
   return CACHE_KEYS.APIS..":"..host
@@ -113,48 +183,6 @@ end
 
 function _M.all_apis_by_dict_key()
   return CACHE_KEYS.ALL_APIS_BY_DIC
-end
-
-function _M.get_or_set(key, cb)
-  -- Try to get the value from the cache
-  local value = _M.get(key)
-  if value then return value end
-
-  local lock, err = resty_lock:new("cache_locks", {
-    exptime = 10,
-    timeout = 5
-  })
-  if not lock then
-    ngx_log(ngx.ERR, "could not create lock: ", err)
-    return
-  end
-
-  -- The value is missing, acquire a lock
-  local elapsed, err = lock:lock(key)
-  if not elapsed then
-    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
-  end
-
-  -- Lock acquired. Since in the meantime another worker may have
-  -- populated the value we have to check again
-  value = _M.get(key)
-  if not value then
-    -- Get from closure
-    value = cb()
-    if value then
-      local ok, err = _M.set(key, value)
-      if not ok then
-        ngx_log(ngx.ERR, err)
-      end
-    end
-  end
-
-  local ok, err = lock:unlock()
-  if not ok and err then
-    ngx_log(ngx.ERR, "failed to unlock: ", err)
-  end
-
-  return value
 end
 
 return _M

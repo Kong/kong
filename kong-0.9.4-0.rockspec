@@ -27,7 +27,8 @@ dependencies = {
   "lua-resty-iputils == 0.2.1",
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
-  "lua_pack == 1.0.4"
+  "lua_pack == 1.0.4",
+  "lua-resty-worker-events == 0.3.0"
 }
 build = {
   type = "builtin",
