@@ -769,7 +769,7 @@ First version running with Cassandra.
 - Database migrations (using `db.lua`).
 
 [unreleased]: https://github.com/mashape/kong/compare/0.9.4...next
-[0.9.3]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
+[0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
 [0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
 [0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
