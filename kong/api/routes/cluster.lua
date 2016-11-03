@@ -64,9 +64,9 @@ return {
       -- The type is always upper case
       if not message_t or not message_t.type then
         return responses.send_HTTP_BAD_REQUEST()
-      else
-        message_t.type = string_upper(message_t.type)
       end
+      
+      message_t.type = string_upper(message_t.type)
 
       -- If it's an update, load the new entity too so it's available in the hooks
       if message_t.type == singletons.events.TYPES.ENTITY_UPDATED then

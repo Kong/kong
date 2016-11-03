@@ -1,4 +1,3 @@
-local singletons = require "kong.singletons"
 local resty_lock = require "resty.lock"
 local cjson = require "cjson"
 local cache = ngx.shared.cache
@@ -16,9 +15,6 @@ local CACHE_KEYS = {
   OAUTH2_TOKEN = "oauth2_token",
   ACLS = "acls",
   SSL = "ssl",
-  REQUESTS = "requests",
-  AUTOJOIN_RETRIES = "autojoin_retries",
-  TIMERS = "timers",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
   LDAP_CREDENTIAL = "ldap_credentials",
   BOT_DETECTION = "bot_detection"
@@ -92,24 +88,20 @@ function _M.get_or_set(key, cb)
   local value = _M.get(key)
   if value then return value end
 
-  local disable_locks = singletons.configuration and singletons.configuration.disable_cache_locks
-  local lock, err
+  local lock, err = resty_lock:new("cache_locks", {
+    exptime = 10,
+    timeout = 5
+  })
+  if not lock then
+    ngx_log(ngx.ERR, "could not create lock: ", err)
+    return
+  end
 
-  if not disable_locks then
-    lock, err = resty_lock:new("cache_locks", {
-      exptime = 10,
-      timeout = 5
-    })
-    if not lock then
-      ngx_log(ngx.ERR, "could not create lock: ", err)
-      return
-    end
-
-    -- The value is missing, acquire a lock
-    local elapsed, err = lock:lock(key)
-    if not elapsed then
-      ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
-    end
+  -- The value is missing, acquire a lock
+  local elapsed, err = lock:lock(key)
+  if not elapsed then
+    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+    return
   end
 
   -- Lock acquired. Since in the meantime another worker may have
@@ -122,29 +114,20 @@ function _M.get_or_set(key, cb)
       local ok, err = _M.set(key, value)
       if not ok then
         ngx_log(ngx.ERR, err)
+        return
       end
     end
   end
 
-  if not disable_locks then
-    local ok, err = lock:unlock()
-    if not ok and err then
-      ngx_log(ngx.ERR, "failed to unlock: ", err)
-    end
+  local ok, err = lock:unlock()
+  if not ok and err then
+    ngx_log(ngx.ERR, "failed to unlock: ", err)
   end
 
   return value
 end
 
 -- Utility Functions
-
-function _M.requests_key()
-  return CACHE_KEYS.REQUESTS
-end
-
-function _M.autojoin_retries_key()
-  return CACHE_KEYS.AUTOJOIN_RETRIES
-end
 
 function _M.api_key(host)
   return CACHE_KEYS.APIS..":"..host
