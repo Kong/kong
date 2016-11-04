@@ -15,21 +15,6 @@ return function(options)
 
 
 
-  do  -- verify loading sequence, just as a precaution
-
-    for _, mod in ipairs( { 
-        "cassandra.socket", 
-        "pgmoon.socket",
-        "ngx.semaphore",
-      }) do
-      assert(package.loaded[mod] == nil, "Module '"..mod..
-           "' should only be loaded after the global patches")
-    end
-
-  end
-
-
-
   do  -- implement a Lua based shm, for; cli (and hence rbusted)
 
     if options.cli then
@@ -172,41 +157,110 @@ return function(options)
   
   do -- randomseeding patch, for; cli, rbusted and Kong
 
-    local randomseed = math.randomseed
-    local seed
+    if options.rbusted then
+      
+      -- we need this version because we cannot hit the ffi, same issue
+      -- as with the semaphore patch
+      -- only used for running tests
+      local randomseed = math.randomseed
+      local seed
 
-    --- Seeds the random generator, use with care.
-    -- Once - properly - seeded, this method is replaced with a stub
-    -- one. This is to enforce best-practises for seeding in ngx_lua,
-    -- and prevents third-party modules from overriding our correct seed
-    -- (many modules make a wrong usage of `math.randomseed()` by calling
-    -- it multiple times or do not use unique seed for Nginx workers).
-    --
-    -- This patched method will create a unique seed per worker process,
-    -- using a combination of both time and the worker's pid.
-    -- luacheck: globals math
-    _G.math.randomseed = function()
-      if not seed then
-        -- If we're in runtime nginx, we have multiple workers so we _only_
-        -- accept seeding when in the 'init_worker' phase.
-        -- That is because that phase is the earliest one before the
-        -- workers have a chance to process business logic, and because
-        -- if we'd do that in the 'init' phase, the Lua VM is not forked
-        -- yet and all workers would end-up using the same seed.
-        if not options.cli and ngx.get_phase() ~= "init_worker" then
-          ngx.log(ngx.ERR, debug.traceback("math.randomseed() must be called in init_worker"))
+      --- Seeds the random generator, use with care.
+      -- Once - properly - seeded, this method is replaced with a stub
+      -- one. This is to enforce best-practises for seeding in ngx_lua,
+      -- and prevents third-party modules from overriding our correct seed
+      -- (many modules make a wrong usage of `math.randomseed()` by calling
+      -- it multiple times or do not use unique seed for Nginx workers).
+      --
+      -- This patched method will create a unique seed per worker process,
+      -- using a combination of both time and the worker's pid.
+      -- luacheck: globals math
+      _G.math.randomseed = function()
+        if not seed then
+          -- If we're in runtime nginx, we have multiple workers so we _only_
+          -- accept seeding when in the 'init_worker' phase.
+          -- That is because that phase is the earliest one before the
+          -- workers have a chance to process business logic, and because
+          -- if we'd do that in the 'init' phase, the Lua VM is not forked
+          -- yet and all workers would end-up using the same seed.
+          if not options.cli and ngx.get_phase() ~= "init_worker" then
+            ngx.log(ngx.ERR, debug.traceback("math.randomseed() must be called in init_worker"))
+          end
+
+          seed = ngx.time() + ngx.worker.pid()
+          ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ", ngx.worker.id(),
+                             " (pid: ", ngx.worker.pid(), ")")
+          randomseed(seed)
+        else
+          ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
+                             "already seeded with ", seed)
         end
 
-        seed = ngx.time() + ngx.worker.pid()
-        ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ", ngx.worker.id(),
-                           " (pid: ", ngx.worker.pid(), ")")
-        randomseed(seed)
-      else
-        ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                           "already seeded with ", seed)
+        return seed
       end
 
-      return seed
+    else
+
+      -- this version of the randomseeding patch is required for 
+      -- production, but doesn't work in tests, due to the ffi dependency
+      local util = require "kong.tools.utils"
+      local seed
+      local randomseed = math.randomseed
+
+      _G.math.randomseed = function()
+        if not seed then
+          if not options.cli and ngx.get_phase() ~= "init_worker" then
+            ngx.log(ngx.WARN, "math.randomseed() must be called in init_worker ",
+                              "context\n", debug.traceback('', 2)) -- nil [message] arg doesn't work with level
+          end
+
+          local bytes, err = util.get_rand_bytes(8)
+          if bytes then
+            ngx.log(ngx.DEBUG, "seeding PRNG from OpenSSL RAND_bytes()")
+
+            local t = {}
+            for i = 1, #bytes do
+              local byte = string.byte(bytes, i)
+              t[#t+1] = byte
+            end
+            local str = table.concat(t)
+            if #str > 12 then
+              -- truncate the final number to prevent integer overflow,
+              -- since math.randomseed() could get cast to a platform-specific
+              -- integer with a different size and get truncated, hence, lose
+              -- randomness.
+              -- double-precision floating point should be able to represent numbers
+              -- without rounding with up to 15/16 digits but let's use 12 of them.
+              str = string.sub(str, 1, 12)
+            end
+            seed = tonumber(str)
+          else
+            ngx.log(ngx.ERR, "could not seed from OpenSSL RAND_bytes, seeding ",
+                             "PRNG with time and worker pid instead (this can ",
+                             "result to duplicated seeds): ", err)
+
+            seed = ngx.now()*1000 + ngx.worker.pid()
+          end
+
+          ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ",
+                              ngx.worker.id())
+
+          if ngx.shared.kong then
+            local ok, err = ngx.shared.kong:safe_set("pid: " .. ngx.worker.pid(), seed)
+            if not ok then
+              ngx.log(ngx.WARN, "could not store PRNG seed in kong shm: ", err)
+            end
+          end
+
+          randomseed(seed)
+        else
+          ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
+                             "already seeded with: ", seed, "\n",
+                              debug.traceback('', 2)) -- nil [message] arg doesn't work with level
+        end
+
+        return seed
+      end
     end
 
   end

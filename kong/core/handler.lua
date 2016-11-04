@@ -57,14 +57,14 @@ return {
       }
       ngx.ctx.balancer_address = balancer_address
       local ok, err = balancer_execute(balancer_address)
+      if not ok then
+        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
       if balancer_address.hostname and not ngx.ctx.api.preserve_host then
         ngx.var.upstream_host = balancer_address.hostname
       else
         ngx.var.upstream_host = upstream_host
-      end
-      if not ok then
-        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
