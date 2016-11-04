@@ -29,6 +29,7 @@ dependencies = {
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.4",
   "dns == 0.2.1",
+  "lua-resty-worker-events == 0.3.0",
 }
 build = {
   type = "builtin",

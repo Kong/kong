@@ -90,8 +90,6 @@ export PATH=$PATH:$OPENRESTY_INSTALL/nginx/sbin:$OPENRESTY_INSTALL/bin:$LUAROCKS
 
 eval `luarocks path`
 
-luarocks purge --tree=$LUAROCKS_INSTALL
-
 # -------------------------------------
 # Install ccm & setup Cassandra cluster
 # -------------------------------------

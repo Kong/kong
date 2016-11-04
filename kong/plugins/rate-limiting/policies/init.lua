@@ -27,11 +27,11 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, period)
-        if not cache.rawget(cache_key) then
-          cache.rawset(cache_key, 0, EXPIRATIONS[period])
+        if not cache.sh_get(cache_key) then
+          cache.sh_set(cache_key, 0, EXPIRATIONS[period])
         end
 
-        local _, err = cache.incr(cache_key, value)
+        local _, err = cache.sh_incr(cache_key, value)
         if err then
           ngx_log("[rate-limiting] could not increment counter for period '"..period.."': "..tostring(err))
         end
@@ -40,7 +40,7 @@ return {
     usage = function(conf, api_id, identifier, current_timestamp, name)
       local periods = timestamp.get_timestamps(current_timestamp)
       local cache_key = get_local_key(api_id, identifier, periods[name], name)
-      local current_metric, err = cache.rawget(cache_key)
+      local current_metric, err = cache.sh_get(cache_key)
       if err then
         return nil, err
       end
