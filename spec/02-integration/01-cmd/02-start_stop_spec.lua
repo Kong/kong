@@ -102,16 +102,13 @@ describe("kong start/stop", function()
   end)
 
   describe("/etc/hosts resolving in CLI", function()
-    -- dnsmasq is not yet started at this point and resty-cli does not include
-    -- it in its resolver directive. As such and until supported by resty-cli,
-    -- we must force the use of LuaSocket in our CLI to resolve localhost.
-    it("resolves cassandra hostname", function()
+    it("resolves #cassandra hostname", function()
       assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
     end)
-    it("resolves postgres hostname", function()
+    it("resolves #postgres hostname", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
         pg_host = "localhost",
         database = "postgres"
@@ -138,41 +135,6 @@ describe("kong start/stop", function()
       assert.truthy(helpers.path.exists(helpers.test_conf.serf_pid))
       assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
       assert.False(helpers.path.exists(helpers.test_conf.serf_pid))
-    end)
-  end)
-
-  describe("dnsmasq", function()
-    it("starts dnsmasq daemon", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
-        dnsmasq = true,
-        dns_resolver = ""
-      }))
-
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
-                                helpers.test_conf.dnsmasq_pid)
-      local _, code = helpers.utils.executeex(cmd)
-      assert.equal(0, code)
-    end)
-    it("recovers from expired dnsmasq.pid file", function()
-      assert(helpers.execute("touch "..helpers.test_conf.dnsmasq_pid)) -- dumb pid
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
-        dnsmasq = true,
-        dns_resolver = ""
-      }))
-
-      local cmd = string.format("kill -0 `cat %s` >/dev/null 2>&1",
-                                helpers.test_conf.dnsmasq_pid)
-      local _, code = helpers.utils.executeex(cmd)
-      assert.equal(0, code)
-    end)
-    it("dumps PID in prefix", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
-        dnsmasq = true,
-        dns_resolver = ""
-      }))
-      assert.truthy(helpers.path.exists(helpers.test_conf.dnsmasq_pid))
-      assert(helpers.kong_exec("stop --prefix "..helpers.test_conf.prefix))
-      assert.False(helpers.path.exists(helpers.test_conf.dnsmasq_pid))
     end)
   end)
 
@@ -215,14 +177,10 @@ describe("kong start/stop", function()
         thread:join()
       end)
 
-      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path, {
-        dnsmasq = true,
-        dns_resolver = ""
-      })
+      local ok, err = helpers.kong_exec("start --conf "..helpers.test_conf_path)
       assert.False(ok)
       assert.matches("Address already in use", err, nil, true)
 
-      assert.falsy(kill.is_running(helpers.test_conf.dnsmasq_pid))
       assert.falsy(kill.is_running(helpers.test_conf.serf_pid))
     end)
     it("should not stop Kong if already running in prefix", function()

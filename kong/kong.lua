@@ -26,16 +26,23 @@
 
 require("kong.core.globalpatches")()
 
+local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
 local utils = require "kong.tools.utils"
 local Events = require "kong.core.events"
+local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
 local DAOFactory = require "kong.dao.factory"
+local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
+local balancer_execute = require("kong.core.balancer").execute
 
 local ipairs = ipairs
+local get_last_failure = ngx_balancer.get_last_failure
+local set_current_peer = ngx_balancer.set_current_peer
+local set_more_tries = ngx_balancer.set_more_tries
 
 local function attach_hooks(events, hooks)
   for k, v in pairs(hooks) do
@@ -126,6 +133,7 @@ function Kong.init()
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
+  singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)
   singletons.dao = dao
@@ -181,6 +189,41 @@ function Kong.ssl_certificate()
 
   for plugin, plugin_conf in plugins_iterator(singletons.loaded_plugins, true) do
     plugin.handler:certificate(plugin_conf)
+  end
+end
+
+function Kong.balancer()
+  local addr = ngx.ctx.balancer_address
+  addr.tries = addr.tries + 1
+  if addr.tries > 1 then  
+    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- in the ACCESS context and hence has less limitations than this BALANCER context
+    -- where the retries are executed
+    
+    -- record failure data
+    addr.failures = addr.failures or {}
+    local state, code = get_last_failure()
+    addr.failures[addr.tries-1] = { name = state, code = code }
+    
+    local ok, err = balancer_execute(addr)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    end
+  else
+    -- first try, so set the max number of retries
+    local retries = addr.retries
+    if retries > 0 then
+      set_more_tries(retries)
+    end
+  end
+  
+  -- set the targets as resolved
+  local ok, err = set_current_peer(addr.ip, addr.port)
+  if not ok then
+    ngx.log(ngx.ERR, "failed to set the current peer (address:'",
+      tostring(addr.ip),"' port:",tostring(addr.port),"): ", tostring(err))
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
   end
 end
 

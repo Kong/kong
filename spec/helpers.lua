@@ -34,6 +34,21 @@ local dao = assert(DAOFactory.new(conf))
 -----------------
 local resty_http_proxy_mt = {}
 
+local pack = function(...) return { n = select("#", ...), ... } end
+local unpack = function(t) return unpack(t, 1, t.n) end
+
+--- Prints all returned parameters.
+-- Simple debugging aid.
+-- @usage -- modify
+-- local a,b = some_func(c,d)
+-- -- into
+-- local a,b = intercept(some_func(c,d))
+local function intercept(...)
+  local args = pack(...)
+  print(require("pl.pretty").write(args))
+  return unpack(args)
+end
+
 -- Case insensitive lookup function, returns the value and the original key. Or
 -- if not found nil and the search key
 -- @usage -- sample usage
@@ -822,6 +837,9 @@ return {
   proxy_ssl_client = proxy_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
+  
+  -- miscellaneous
+  intercept = intercept,
 
   start_kong = function(env)
     env = env or {}
@@ -851,7 +869,6 @@ return {
 
     -- kill kong_tests.conf services
     for _, pid_path in ipairs {running_conf.nginx_pid,
-                               running_conf.dnsmasq_pid,
                                running_conf.serf_pid} do
       if pl_path.exists(pid_path) then
         kill.kill(pid_path, "-TERM")

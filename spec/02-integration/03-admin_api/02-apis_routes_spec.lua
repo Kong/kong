@@ -46,6 +46,7 @@ describe("Admin API", function()
           assert.is_nil(json.request_path)
           assert.False(json.preserve_host)
           assert.False(json.strip_request_path)
+          assert.equals(5, json.retries)
         end
       end)
       describe("errors", function()
@@ -134,7 +135,8 @@ describe("Admin API", function()
               name = "my-api",
               request_host = "my.api.com",
               upstream_url = "http://my-api.com",
-              created_at = 1461276890000
+              created_at = 1461276890000,
+              retries = 0,
             },
             headers = {["Content-Type"] = content_type}
           })
@@ -148,6 +150,7 @@ describe("Admin API", function()
           assert.is_nil(json.request_path)
           assert.False(json.preserve_host)
           assert.False(json.strip_request_path)
+          assert.equals(0, json.retries)
         end
       end)
       it_content_types("replaces if exists", function(content_type)
@@ -173,7 +176,8 @@ describe("Admin API", function()
               name = "my-new-api",
               request_host = "my-new-api.com",
               upstream_url = "http://my-api.com",
-              created_at = json.created_at
+              created_at = json.created_at,
+              retries = 99,
             },
             headers = {["Content-Type"] = content_type}
           })
@@ -184,6 +188,7 @@ describe("Admin API", function()
           assert.equal(json.upstream_url, updated_json.upstream_url)
           assert.equal(json.id, updated_json.id)
           assert.equal(json.created_at, updated_json.created_at)
+          assert.equal(99, updated_json.retries)
         end
       end)
       describe("errors", function()

@@ -11,6 +11,7 @@ admin_listen_ssl = 0.0.0.0:8444
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
+nginx_keepalive = 60
 mem_cache_size = 128m
 ssl = on
 ssl_cert = NONE
@@ -49,9 +50,8 @@ cluster_encrypt_key = NONE
 cluster_profile = wan
 cluster_ttl_on_failure = 3600
 
-dnsmasq = on
-dnsmasq_port = 8053
 dns_resolver = NONE
+dns_hostsfile = /etc/hosts
 
 lua_code_cache = on
 lua_ssl_trusted_certificate = NONE
