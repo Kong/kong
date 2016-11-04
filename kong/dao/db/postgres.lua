@@ -1,4 +1,4 @@
-local pgmoon = require "pgmoon-mashape"
+local pgmoon = require "pgmoon"
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 local cjson = require "cjson"
