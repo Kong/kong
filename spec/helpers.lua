@@ -547,7 +547,7 @@ local function res_status(state, args)
     table.insert(args, 1, res.status)
     table.insert(args, 1, expected)
     args.n = 3
-    return true, {pl_stringx.strip(body)}
+    return true, {output}
   end
 end
 say:set("assertion.res_status.negative", [[
@@ -838,6 +838,9 @@ return {
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   
+  -- miscellaneous
+  intercept = intercept,
+
   -- miscellaneous
   intercept = intercept,
 
