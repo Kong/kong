@@ -245,7 +245,7 @@ return function(options)
           ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ",
                               ngx.worker.id())
 
-          if ngx.shared.kong then
+          if not options.cli then
             local ok, err = ngx.shared.kong:safe_set("pid: " .. ngx.worker.pid(), seed)
             if not ok then
               ngx.log(ngx.WARN, "could not store PRNG seed in kong shm: ", err)
