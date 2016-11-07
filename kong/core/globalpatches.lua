@@ -323,22 +323,24 @@ return function(options)
 
   do -- cosockets connect patch for dns resolution, for; cli, rbusted and Kong
 
-    --- Patch the TCP connect method such that all connections will be resolved
-    -- first by the internal DNS resolver. 
+    local string_sub = string.sub
+    --- Patch the TCP connect and UDP setpeername methods such that all
+    -- connections will be resolved first by the internal DNS resolver.
     -- STEP 1: load code that should not be using the patched versions
     require "resty.dns.resolver"  -- will cache TCP and UDP functions
     -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
     local toip
     -- STEP 3: store original unpatched versions
     local old_tcp = ngx.socket.tcp
+    local old_udp = ngx.socket.udp
     -- STEP 4: patch globals
     _G.ngx.socket.tcp = function(...)
       local sock = old_tcp(...)
       local old_connect = sock.connect
-      
+
       sock.connect = function(s, host, port, sock_opts)
         local target_ip, target_port = toip(host, port)
-        if not target_ip then 
+        if not target_ip then
           return nil, "[toip() name lookup failed]:"..tostring(target_port)
         else
           -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
@@ -351,6 +353,24 @@ return function(options)
       end
       return sock
     end
+    _G.ngx.socket.udp = function(...)
+      local sock = old_udp(...)
+      local old_setpeername = sock.setpeername
+
+      sock.setpeername = function(s, host, port)
+        local target_ip, target_port
+        if string_sub(host, 1, 5) == "unix:" then
+          target_ip = host  -- unix domain socket, so just maintain the named values
+        else
+          target_ip, target_port = toip(host, port)
+          if not target_ip then
+            return nil, "[toip() name lookup failed]:"..tostring(target_port)
+          end
+        end
+        return old_setpeername(s, target_ip, target_port)
+      end
+      return sock
+    end
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
     toip = require("dns.client").toip  -- this will load utils and penlight modules for example
 
@@ -358,13 +378,12 @@ return function(options)
 
 
 
-  do -- patch for LuaSocket tcp sockets, block usage in cli (and hence rbusted).
+  do -- patch for LuaSocket tcp/udp sockets, block usage in cli (and hence rbusted).
 
     if options.cli then
       local socket = require "socket"
-      socket.tcp = function(...)
-        error("should not be using this")
-      end
+      socket.tcp = function(...) error("Please use ngx tcp cosockets instead of LuaSocket") end
+      socket.udp = function(...) error("Please use ngx udp cosockets instead of LuaSocket") end
     end
 
   end
