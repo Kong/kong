@@ -238,13 +238,13 @@ describe("Configuration loader", function()
       local conf, err = conf_loader(nil, {
         dns_resolver = "[::1]:53"
       })
-      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port", err)
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port, got '[::1]:53'", err)
       assert.is_nil(conf)
 
       local conf, err = conf_loader(nil, {
         dns_resolver = "1.2.3.4:53;4.3.2.1" -- ; as separator
       })
-      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port", err)
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port, got '1.2.3.4:53;4.3.2.1'", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {

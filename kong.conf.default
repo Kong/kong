@@ -109,7 +109,7 @@
                                  # to the SSL key for the `admin_listen_ssl`
                                  # address.
 
-#nginx_keepalive = 60            # Sets the maximum number of idle keepalive 
+#upstream_keepalive = 60         # Sets the maximum number of idle keepalive 
                                  # connections to upstream servers that are 
                                  # preserved in the cache of each worker 
                                  # process. When this number is exceeded, the 
