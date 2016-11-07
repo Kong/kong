@@ -21,9 +21,9 @@ env:
   global:
     - SERF=0.7.0
     - LUAROCKS=2.4.0
-    - OPENSSL=1.0.2h
+    - OPENSSL=1.0.2j
     - CASSANDRA=2.2.7
-    - OPENRESTY=1.9.15.1
+    - OPENRESTY=1.11.2.1
     - DOWNLOAD_CACHE=$HOME/download-cache
     - INSTALL_CACHE=$HOME/install-cache
   matrix:
