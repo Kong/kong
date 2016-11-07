@@ -162,59 +162,6 @@ local get_balancer = function(target)
 end
 
 
-local first_try_balancer = function(target)
-  local b = target.balancer
-  local hashValue = nil  -- TODO: implement, nil does simple round-robin
-  
-  local ip, port, hostname = b:getPeer(hashValue, false)
-  if not ip then 
-    return ip, port
-  end
-  target.ip = ip
-  target.port = port
-  target.hostname = hostname
-  return true
-end
-
-local retry_balancer = function(target)
-  local b = target.balancer
-  local hashValue = nil  -- TODO: implement, nil does simple round-robin
-  
-  local ip, port, hostname = b:getPeer(hashValue, true)
-  if not ip then 
-    return ip, port
-  end
-  target.ip = ip
-  target.port = port
-  target.hostname = hostname
-  return true
-end
-
---===========================================================
--- simple DNS based resolution
---===========================================================
-
-local first_try_dns = function(target)
-  local ip, port = toip(target.upstream.host, target.upstream.port, false)
-  if not ip then
-    return nil, port
-  end
-  target.ip = ip
-  target.port = port
-  return true
-end
-
-local retry_dns = function(target)
-  local ip, port = toip(target.upstream.host, target.upstream.port, true)
-  if type(ip) ~= "string" then
-    return nil, port
-  end
-  target.ip = ip
-  target.port = port
-  return true
-end
-
-
 --===========================================================
 -- Main entry point when resolving
 --===========================================================
@@ -227,32 +174,55 @@ end
 -- @param target the data structure as defined in `core.access.before` where it is created
 -- @return true on success, nil+error otherwise
 local function execute(target)
+  local upstream = target.upstream
+  
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
-    target.ip = target.upstream.host
-    target.port = target.upstream.port or 80
+    target.ip = upstream.host
+    target.port = upstream.port or 80
     return true
   end
   
   -- when tries == 0 it runs before the `balancer` context (in the `access` context),
   -- when tries >= 2 then it performs a retry in the `balancer` context
-  if target.tries == 0 then
+  local dns_cache_only = target.tries ~= 0
+  local balancer
+  if dns_cache_only then
+    -- retry, so balancer is already set if there was one
+    balancer = target.balancer
+  else
     local err
     -- first try, so try and find a matching balancer/upstream object
-    target.balancer, err = get_balancer(target)
-    if err then return nil, err end
+    balancer, err = get_balancer(target)
+    if err then -- check on err, `nil` without `err` means we do dns resolution
+      return nil, err
+    end
 
-    if target.balancer then
-      return first_try_balancer(target)
-    else
-      return first_try_dns(target)
+    -- store for retries
+    target.balancer = balancer
+  end
+  
+  if balancer then
+    -- have to invoke the ring-balancer
+    local hashValue = nil  -- TODO: implement, nil does simple round-robin
+    
+    local ip, port, hostname = balancer:getPeer(hashValue, dns_cache_only)
+    if not ip then 
+      return ip, port
     end
+    target.ip = ip
+    target.port = port
+    target.hostname = hostname
+    return true
   else
-    if target.balancer then
-      return retry_balancer(target)
-    else
-      return retry_dns(target)
+    -- have to do a regular DNS lookup
+    local ip, port = toip(upstream.host, upstream.port, dns_cache_only)
+    if not ip then
+      return nil, port
     end
+    target.ip = ip
+    target.port = port
+    return true
   end
 end
 
