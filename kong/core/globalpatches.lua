@@ -372,7 +372,7 @@ return function(options)
       return sock
     end
     -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
-    toip = require("dns.client").toip  -- this will load utils and penlight modules for example
+    toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
 
   end
 

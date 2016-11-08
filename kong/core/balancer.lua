@@ -1,7 +1,7 @@
 local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
-local dns_client = require "dns.client"  -- due to startup/require order, cannot use the one from 'singletons' here
-local ring_balancer = require "dns.balancer"
+local dns_client = require "resty.dns.client"  -- due to startup/require order, cannot use the one from 'singletons' here
+local ring_balancer = require "resty.dns.balancer"
 local toip = dns_client.toip
 
 --===========================================================

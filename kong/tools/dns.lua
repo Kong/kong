@@ -2,10 +2,10 @@ local dns_client
 
 --- Load and setup the DNS client according to the provided configuration.
 -- @param conf (table) Kong configuration
--- @return the initialized `dns.client` module, or an error
+-- @return the initialized `resty.dns.client` module, or an error
 local setup_client = function(conf)
   if not dns_client then 
-    dns_client = require "dns.client"
+    dns_client = require "resty.dns.client"
   end
 
   conf = conf or {}
@@ -22,11 +22,11 @@ local setup_client = function(conf)
     
   local opts = {
     hosts = hosts,
-    resolv_conf = nil,     -- defaults to system resolv.conf
+    resolvConf = nil,      -- defaults to system resolv.conf
     nameservers = servers, -- provided list or taken from resolv.conf
     retrans = nil,         -- taken from system resolv.conf; attempts
     timeout = nil,         -- taken from system resolv.conf; timeout
-    bad_ttl = nil,         -- ttl in seconds for bad dns responses (empty/error)
+    badTtl = nil,          -- ttl in seconds for bad dns responses (empty/error)
   }
   
   assert(dns_client.init(opts))
