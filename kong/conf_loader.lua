@@ -26,6 +26,7 @@ local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
   nginx_acc_logs = {"logs", "access.log"},
+  nginx_admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
