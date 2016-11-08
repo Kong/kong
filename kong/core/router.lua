@@ -1,6 +1,9 @@
+local url = require "socket.url"
 local bit = require "bit"
 
 
+local re_find = ngx.re.find
+local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
@@ -9,7 +12,9 @@ local pairs = pairs
 local type = type
 local band = bit.band
 local bor = bit.bor
+local ERR = ngx.ERR
 local new_tab
+local log
 
 
 do
@@ -17,6 +22,14 @@ do
   ok, new_tab = pcall(require, "table.new")
   if not ok then
     new_tab = function(narr, nrec) return {} end
+  end
+end
+
+
+do
+  local ngx_log = ngx.log
+  log = function(lvl, ...)
+    ngx_log(lvl, "[router] ", ...)
   end
 end
 
@@ -33,7 +46,7 @@ local DEFAULT_NREC = 4
 
 local CATEGORIES = {
   PLAIN_HOST   = 0x01,
-  PLAIN_URI    = 0x02,
+  URI          = 0x02,
   PLAIN_METHOD = 0x04,
 }
 local CATEGORIES_PRIORITIES
@@ -44,7 +57,7 @@ local PLAIN_CATEGORIES_LIST
 do
   --- list of existing plain categories
 
-  PLAIN_CATEGORIES_LIST = new_tab(3, 0)
+  PLAIN_CATEGORIES_LIST = new_tab(4, 0)
 
   for _, category in pairs(CATEGORIES) do
     PLAIN_CATEGORIES_LIST[#PLAIN_CATEGORIES_LIST + 1] = category
@@ -53,14 +66,14 @@ do
   --- array of existing categories, ordered by priority
 
   CATEGORIES_PRIORITIES = {
-    bor(CATEGORIES.PLAIN_HOST, CATEGORIES.PLAIN_URI, CATEGORIES.PLAIN_METHOD)
-    ;
-    bor(CATEGORIES.PLAIN_HOST, CATEGORIES.PLAIN_URI),
+    bor(CATEGORIES.PLAIN_HOST, CATEGORIES.URI, CATEGORIES.PLAIN_METHOD),
+
+    bor(CATEGORIES.PLAIN_HOST, CATEGORIES.URI),
     bor(CATEGORIES.PLAIN_HOST, CATEGORIES.PLAIN_METHOD),
-    bor(CATEGORIES.PLAIN_URI, CATEGORIES.PLAIN_METHOD)
-    ;
+    bor(CATEGORIES.PLAIN_METHOD, CATEGORIES.URI),
+
     CATEGORIES.PLAIN_HOST,
-    CATEGORIES.PLAIN_URI,
+    CATEGORIES.URI,
     CATEGORIES.PLAIN_METHOD,
   }
 
@@ -79,40 +92,38 @@ do
   -- @section indexers
 
   local indexers = {
-    [CATEGORIES.PLAIN_HOST] = function(indexed_apis_category, indexes, api_t)
+    [CATEGORIES.PLAIN_HOST] = function(category, indexes, api_t)
       for host_value in pairs(api_t.hosts) do
 
         indexes.hosts[host_value] = true
 
-        if not indexed_apis_category.hosts[host_value] then
-          indexed_apis_category.hosts[host_value] = new_tab(DEFAULT_NARR, 0)
+        if not category.hosts[host_value] then
+          category.hosts[host_value] = new_tab(DEFAULT_NARR, 0)
         end
 
-        insert(indexed_apis_category.hosts[host_value], api_t)
+        insert(category.hosts[host_value], api_t)
       end
     end,
-    [CATEGORIES.PLAIN_URI] = function(indexed_apis_category, indexes, api_t)
+    [CATEGORIES.URI] = function(category, indexes, api_t)
       for uri in pairs(api_t.uris) do
-
-        indexes.uris[uri] = true
-
-        if not indexed_apis_category.uris[uri] then
-          indexed_apis_category.uris[uri] = new_tab(DEFAULT_NARR, 0)
+        if not category.uris[uri] then
+          category.uris[uri] = new_tab(DEFAULT_NARR, 0)
         end
 
-        insert(indexed_apis_category.uris[uri], api_t)
+        insert(category.uris[uri], api_t)
+        insert(category.uris_prefix_regex, api_t)
       end
     end,
-    [CATEGORIES.PLAIN_METHOD] = function(indexed_apis_category, indexes, api_t)
+    [CATEGORIES.PLAIN_METHOD] = function(category, indexes, api_t)
       for method in pairs(api_t.methods) do
 
         indexes.methods[method] = true
 
-        if not indexed_apis_category.methods[method] then
-          indexed_apis_category.methods[method] = new_tab(DEFAULT_NARR, 0)
+        if not category.methods[method] then
+          category.methods[method] = new_tab(DEFAULT_NARR, 0)
         end
 
-        insert(indexed_apis_category.methods[method], api_t)
+        insert(category.methods[method], api_t)
       end
     end,
   }
@@ -152,8 +163,13 @@ do
       local host = headers["Host"] or headers["host"]
       return category.hosts[host]
     end,
-    [CATEGORIES.PLAIN_URI] = function(category, _, uri)
-      return category.uris[uri]
+    [CATEGORIES.URI] = function(category, _, uri)
+      local candidates = category.uris[uri]
+      if candidates then
+        return candidates
+      end
+
+      return category.uris_prefix_regex
     end,
     [CATEGORIES.PLAIN_METHOD] = function(category, method)
       return category.methods[method]
@@ -172,7 +188,7 @@ do
       local reducers_set = new_tab(DEFAULT_NARR, 0)
 
       for _, category in ipairs(PLAIN_CATEGORIES_LIST) do
-        if band(bit_category, category) ~= 0 then
+        if band(bit_category, category) ~= 0 and reducers[category] then
           reducers_set[#reducers_set + 1] = reducers[category]
         end
       end
@@ -207,8 +223,24 @@ do
       local host = headers["Host"] or headers["host"]
       return api_t.hosts[host]
     end,
-    [CATEGORIES.PLAIN_URI] = function(api_t, _, uri)
-      return api_t.uris[uri]
+    [CATEGORIES.URI] = function(api_t, _, uri)
+      if api_t.uris[uri] then
+        api_t.strip_uri_regex = nil
+        return true
+      end
+
+      for i = 1, #api_t.uris_prefix_regex do
+        local from, _, err = re_find(uri, api_t.uris_prefix_regex[i], "oj")
+        if err then
+          log(ERR, "could not search for uri prefix: ", err)
+          return
+        end
+
+        if from then
+          api_t.strip_uri_regex = api_t.uris_prefix_regex_strip[i]
+          return true
+        end
+      end
     end,
     [CATEGORIES.PLAIN_METHOD] = function(api_t, method)
       return api_t.methods[method]
@@ -257,25 +289,30 @@ local _M = {}
 
 local function marshall_api(api)
   local bit_category = 0x00
-  local api_t = new_tab(0, 4)
+  local api_t = new_tab(0, 8)
   api_t.api = api
+  api_t.strip_uri = api.strip_uri
 
   if api.uris then
     if type(api.uris) ~= "table" then
       return nil, nil, "uris field must be a table"
     end
 
-    -- plain uris matching
+    bit_category = bor(bit_category, CATEGORIES.URI)
 
-    bit_category = bor(bit_category, CATEGORIES.PLAIN_URI)
     api_t.uris = new_tab(0, #api.uris)
+    api_t.uris_prefix_regex = new_tab(#api.uris, 0)
+    api_t.uris_prefix_regex_strip = new_tab(#api.uris, 0)
 
-    for _, uri in ipairs(api.uris) do
+    for i, uri in ipairs(api.uris) do
       api_t.uris[uri] = true
+      api_t.uris_prefix_regex[i] = "^" .. uri
+      api_t.uris_prefix_regex_strip[i] = "^" .. uri .. "/(.*)"
     end
 
   else
     api_t.uris = empty_t
+    api_t.uris_prefix_regex = empty_t
   end
 
 
@@ -334,6 +371,24 @@ local function marshall_api(api)
   end
 
 
+  if api.upstream_url then
+    local parsed = url.parse(api.upstream_url)
+
+    api_t.upstream_scheme = parsed.scheme
+    api_t.upstream_host = parsed.host
+    api_t.upstream_port = parsed.port
+
+    if not api_t.upstream_port then
+      if parsed.scheme == "https" then
+        api_t.upstream_port = 443
+
+      else
+        api_t.upstream_port = 80
+      end
+    end
+  end
+
+
   return api_t, bit_category
 end
 
@@ -344,23 +399,24 @@ local function new(apis)
   end
 
 
-  local self         = new_tab(0, 1)
+  local self         = new_tab(0, 2)
   local indexes      = new_tab(0, 3)
   local indexed_apis = new_tab(0, #CATEGORIES)
+  local grab_headers = false
 
 
   do
     -- index APIs
     local n_apis    = #apis
     indexes.hosts   = new_tab(0, n_apis)
-    indexes.uris    = new_tab(0, n_apis)
     indexes.methods = new_tab(0, n_apis)
 
     for _, bit_category in ipairs(CATEGORIES_PRIORITIES) do
       indexed_apis[bit_category] = {
-        hosts   = new_tab(0, DEFAULT_NREC),
-        uris    = new_tab(0, DEFAULT_NREC),
-        methods = new_tab(0, DEFAULT_NREC),
+        hosts             = new_tab(0, DEFAULT_NREC),
+        uris              = new_tab(0, DEFAULT_NREC),
+        uris_prefix_regex = new_tab(DEFAULT_NARR, 0),
+        methods           = new_tab(0, DEFAULT_NREC),
       }
     end
 
@@ -372,10 +428,12 @@ local function new(apis)
 
       index(bit_category, indexed_apis, indexes, api_t)
     end
+
+    grab_headers = #indexes.hosts > 0
   end
 
 
-  function self.exec(method, uri, headers)
+  local function select_api(method, uri, headers)
     if type(method) ~= "string" then
       return error("arg #1 method must be a string", 2)
 
@@ -389,8 +447,10 @@ local function new(apis)
     method = upper(method)
 
     -- categorize potential matches for this request
+    -- all incoming requests are automatically categorized
+    -- as URI by default
 
-    local req_bit_category = 0x00
+    local req_bit_category = CATEGORIES.URI
 
     do
       local host = headers["Host"] or headers["host"]
@@ -398,20 +458,11 @@ local function new(apis)
         req_bit_category = bor(req_bit_category, CATEGORIES.PLAIN_HOST)
       end
 
-      if indexes.uris[uri] then
-        req_bit_category = bor(req_bit_category, CATEGORIES.PLAIN_URI)
-      end
-
       if indexes.methods[method] then
         req_bit_category = bor(req_bit_category, CATEGORIES.PLAIN_METHOD)
       end
 
       --print("highest potential category: ", req_bit_category)
-    end
-
-    if req_bit_category == 0x00 then
-      -- no match in any category
-      return
     end
 
     -- retrieve highest potential category
@@ -428,13 +479,42 @@ local function new(apis)
       if reduced then
         for i = 1, #reduced do
           if match(bit_category, reduced[i], method, uri, headers) then
-            return reduced[i].api
+            return reduced[i]
           end
         end
       end
 
       cat_idx = cat_idx + 1
     end
+  end
+
+
+  self.select = select_api
+
+
+  function self.exec(ngx)
+    local method = ngx.req.get_method()
+    local uri = ngx.var.uri
+    local headers
+
+    if grab_headers then
+      headers = ngx.req.get_headers()
+
+    else
+      headers = empty_t
+    end
+
+    local api_t = select_api(method, uri, headers)
+    if not api_t then
+      return nil
+    end
+
+    if api_t.strip_uri and api_t.strip_uri_regex then
+      local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "oj")
+      ngx.req.set_uri(stripped_uri)
+    end
+
+    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, api_t.upstream_port
   end
 
 

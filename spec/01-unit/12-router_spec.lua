@@ -1,5 +1,7 @@
 local Router = require "kong.core.router"
 
+--do return end
+
 local function reload_router()
   package.loaded["kong.core.router"] = nil
   Router = require "kong.core.router"
@@ -76,60 +78,68 @@ describe("Router", function()
     end)
   end)
 
-  describe("exec()", function()
+  describe("select()", function()
     local router = assert(Router.new(use_case))
 
     it("[host]", function()
       -- host
-      local api = router.exec("GET", "/", { ["host"] = "domain-1.org" })
-      assert.same(use_case[1], api)
+      local api_t = router.select("GET", "/", { ["host"] = "domain-1.org" })
+      assert.same(use_case[1], api_t.api)
     end)
 
     it("[uri]", function()
       -- uri
-      local api = router.exec("GET", "/my-api", {})
-      assert.same(use_case[3], api)
+      local api_t = router.select("GET", "/my-api", {})
+      assert.same(use_case[3], api_t.api)
     end)
 
     it("[method]", function()
       -- method
-      local api = router.exec("TRACE", "/", {})
-      assert.same(use_case[2], api)
+      local api_t = router.select("TRACE", "/", {})
+      assert.same(use_case[2], api_t.api)
     end)
 
     it("[host + uri]", function()
       -- host + uri
-      local api = router.exec("GET", "/api-4", { ["host"] = "domain-1.org" })
-      assert.same(use_case[4], api)
+      local api_t = router.select("GET", "/api-4", { ["host"] = "domain-1.org" })
+      assert.same(use_case[4], api_t.api)
     end)
 
     it("[host + method]", function()
       -- host + method
-      local api = router.exec("POST", "/", { ["host"] = "domain-1.org" })
-      assert.same(use_case[5], api)
+      local api_t = router.select("POST", "/", { ["host"] = "domain-1.org" })
+      assert.same(use_case[5], api_t.api)
     end)
 
     it("[uri + method]", function()
       -- uri + method
-      local api = router.exec("PUT", "/api-6", {})
-      assert.same(use_case[6], api)
+      local api_t = router.select("PUT", "/api-6", {})
+      assert.same(use_case[6], api_t.api)
     end)
 
     it("[host + uri + method]", function()
       -- uri + method
-      local api = router.exec("PUT", "/my-api-uri", { ["host"] = "domain-with-uri-2.org" })
-      assert.same(use_case[7], api)
+      local api_t = router.select("PUT", "/my-api-uri", { ["host"] = "domain-with-uri-2.org" })
+      assert.same(use_case[7], api_t.api)
+    end)
+
+    describe("[uri] as a prefix", function()
+      it("matches when given [uri] is in request URI prefix", function()
+        -- uri prefix
+        local api_t = router.select("GET", "/my-api/some/path", {})
+        assert.same(use_case[3], api_t.api)
+      end)
     end)
 
     describe("edge-cases", function()
       it("[host] and [uri] have higher priority than [method]", function()
         -- host
-        local api = router.exec("TRACE", "/", { ["host"] = "domain-2.org" })
-        assert.same(use_case[1], api)
+        local api_t = router.select("TRACE", "/", { ["host"] = "domain-2.org" })
+        assert.same(use_case[1], api_t.api)
 
         -- uri
-        local api = router.exec("TRACE", "/my-api", {})
-        assert.same(use_case[3], api)
+        local api_t = router.select("TRACE", "/my-api", {})
+        assert.same(use_case[3], api_t.api)
       end)
 
       describe("root / [uri]", function()
@@ -146,8 +156,8 @@ describe("Router", function()
 
         it(function()
           local router = assert(Router.new(use_case))
-          local api = router.exec("GET", "/", {})
-          assert.same(use_case[#use_case], api)
+          local api_t = router.select("GET", "/", {})
+          assert.same(use_case[#use_case], api_t.api)
         end)
       end)
 
@@ -187,58 +197,36 @@ describe("Router", function()
 
         it(function()
           local router = assert(Router.new(use_case))
-          local api = router.exec("GET", "/my-target-uri", { ["host"] = "domain.org" })
-          assert.same(use_case[#use_case], api)
+          local api_t = router.select("GET", "/my-target-uri", { ["host"] = "domain.org" })
+          assert.same(use_case[#use_case], api_t.api)
         end)
       end)
     end)
 
     describe("misses", function()
       it("invalid [host]", function()
-        assert.is_nil(router.exec("GET", "/", { ["host"] = "domain-3.org" }))
+        assert.is_nil(router.select("GET", "/", { ["host"] = "domain-3.org" }))
       end)
 
       it("invalid host in [host + uri]", function()
-        assert.is_nil(router.exec("GET", "/api-4", { ["host"] = "domain-3.org" }))
+        assert.is_nil(router.select("GET", "/api-4", { ["host"] = "domain-3.org" }))
       end)
 
       it("invalid host in [host + method]", function()
-        assert.is_nil(router.exec("GET", "/", { ["host"] = "domain-3.org" }))
+        assert.is_nil(router.select("GET", "/", { ["host"] = "domain-3.org" }))
       end)
 
       it("invalid method in [host + uri + method]", function()
-        assert.is_nil(router.exec("GET", "/my-api-uri", { ["host"] = "domain-with-uri-2.org" }))
+        assert.is_nil(router.select("GET", "/some-uri", { ["host"] = "domain-with-uri-2.org" }))
       end)
 
       it("invalid uri in [host + uri + method]", function()
-        assert.is_nil(router.exec("PUT", "/my-api-uri-foo", { ["host"] = "domain-with-uri-2.org" }))
-      end)
-    end)
-
-    pending("stripped uris", function()
-      local router
-      local use_case_apis = {
-        {
-          name = "api-1",
-          uris = { "/my-api", "/this-api" },
-          strip_uris = { "/my-api" },
-        },
-        -- don't strip this API's matching URI
-        {
-          name = "api-1",
-          methods = { "POST" },
-          uris = { "/my-api", "/this-api" },
-        },
-      }
-
-      setup(function()
-        router = assert(Router.new(use_case_apis))
+        assert.is_nil(router.select("PUT", "/some-uri-foo", { ["host"] = "domain-with-uri-2.org" }))
       end)
 
-      it("strips the specified uris from the given uri if matching", function()
-        local api = router.exec("GET", "/my-api", {})
-        assert.same(use_case_apis[1], api)
-
+      it("does not match when given [uri] is in URI but not in prefix", function()
+        local api_t = router.select("GET", "/some-other-prefix/my-api", {})
+        assert.is_nil(api_t)
       end)
     end)
 
@@ -273,8 +261,8 @@ describe("Router", function()
         end)
 
         it("takes < 1ms", function()
-          local api = router.exec("GET", "/", { ["host"] = target_domain })
-          assert.same(benchmark_use_cases[#benchmark_use_cases], api)
+          local api_t = router.select("GET", "/", { ["host"] = target_domain })
+          assert.same(benchmark_use_cases[#benchmark_use_cases], api_t.api)
         end)
       end)
 
@@ -317,8 +305,8 @@ describe("Router", function()
         end)
 
         it("takes < 1ms", function()
-          local api = router.exec("POST", target_uri, { ["host"] = target_domain })
-          assert.same(benchmark_use_cases[#benchmark_use_cases], api)
+          local api_t = router.select("POST", target_uri, { ["host"] = target_domain })
+          assert.same(benchmark_use_cases[#benchmark_use_cases], api_t.api)
         end)
       end)
 
@@ -347,7 +335,7 @@ describe("Router", function()
           -- different URI
           benchmark_use_cases[n] = {
             name = "api-" .. n,
-            uris = { "/my-real-api"},
+            uris = { "/my-real-api" },
             headers = {
               ["host"] = { "domain.org" },
             },
@@ -359,8 +347,8 @@ describe("Router", function()
         end)
 
         it("takes < 1ms", function()
-          local api = router.exec("GET", target_uri, { ["host"] = target_domain })
-          assert.same(benchmark_use_cases[#benchmark_use_cases], api)
+          local api_t = router.select("GET", target_uri, { ["host"] = target_domain })
+          assert.same(benchmark_use_cases[#benchmark_use_cases], api_t.api)
         end)
       end)
     end)
@@ -368,16 +356,90 @@ describe("Router", function()
     describe("[errors]", function()
       it("enforces args types", function()
         assert.error_matches(function()
-          router.exec()
+          router.select()
         end, "arg #1 method must be a string", nil, true)
 
         assert.error_matches(function()
-          router.exec("GET")
+          router.select("GET")
         end, "arg #2 uri must be a string", nil, true)
 
         assert.error_matches(function()
-          router.exec("GET", "/")
+          router.select("GET", "/")
         end, "arg #3 headers must be a table", nil, true)
+      end)
+    end)
+  end)
+
+  describe("exec()", function()
+    it("returns api/host/path", function()
+
+    end)
+
+    describe("stripped uris", function()
+      local router
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api", "/this-api" },
+          strip_uri = true
+        },
+        -- don't strip this API's matching URI
+        {
+          name = "api-1",
+          methods = { "POST" },
+          uris = { "/my-api", "/this-api" },
+        },
+      }
+
+      local function mock_ngx(method, uri, headers)
+        local _ngx
+        _ngx = {
+          re = ngx.re,
+          var = {
+            uri = uri
+          },
+          req = {
+            set_uri = function(uri)
+              _ngx.var.uri = uri
+            end,
+            get_method = function()
+              return method
+            end,
+            get_headers = function()
+              return headers
+            end
+          }
+        }
+
+        return _ngx
+      end
+
+      setup(function()
+        router = assert(Router.new(use_case_apis))
+      end)
+
+      it("strips the specified uris from the given uri if matching", function()
+        local _ngx = mock_ngx("GET", "/my-api/hello/world", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/hello/world", _ngx.var.uri)
+      end)
+
+      it("doesn't strip if matched URI is plain (not a prefix)", function()
+        local _ngx = mock_ngx("GET", "/my-api", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/my-api", _ngx.var.uri)
+      end)
+
+      it("doesn't strip if 'strip_uri' is not enabled", function()
+        local _ngx = mock_ngx("POST", "/my-api/hello/world", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[2], api)
+        assert.equal("/my-api/hello/world", _ngx.var.uri)
       end)
     end)
   end)

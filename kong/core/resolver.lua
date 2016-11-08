@@ -196,12 +196,12 @@ function _M.execute(request_uri, request_headers)
       -- so we need to insert one
       uri = "/"..uri
     end
-    
+
     ngx.req.set_header(HEADERS_FORWARDED_PREFIX, api.request_path)
   end
 
   upstream_url = upstream_url..uri
-  local upstream_table = url.parse(upstream_url)  
+  local upstream_table = url.parse(upstream_url)
   upstream_table.port = upstream_table.port or DEFAULT_PORTS[upstream_table.scheme] or DEFAULT_PORTS.http
 
   local upstream_host
@@ -211,6 +211,10 @@ function _M.execute(request_uri, request_headers)
   if not upstream_host then
     upstream_host = utils.format_host(upstream_table)
   end
+
+  -- http(s)://kong_upstream
+  -- host
+  -- port
 
   return api, upstream_table.scheme.."://kong_upstream"..upstream_table.path, upstream_host, upstream_table
 end
