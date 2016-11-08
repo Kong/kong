@@ -69,6 +69,19 @@ describe("Admin API", function()
         assert.is_string(json.configuration.pg_password)
         assert.not_equal("hide_me", json.configuration.pg_password)
       end)
+      it("returns PRNG seeds", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/",
+        })
+        local body = assert.response(res).has.status(200)
+        local json = cjson.decode(body)
+        assert.is_table(json.prng_seeds)
+        for k, v in pairs(json.prng_seeds) do
+          assert.matches("pid: %d+", k)
+          assert.matches("%d+", k)
+        end
+      end)
     end)
   end)
 

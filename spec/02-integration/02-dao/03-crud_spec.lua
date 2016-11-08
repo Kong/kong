@@ -34,7 +34,7 @@ helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #"..kong_config.database, function()
     local factory, apis, oauth2_credentials
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       apis = factory.apis
 
       -- DAO used for testing arrays
@@ -706,11 +706,10 @@ helpers.for_each_dao(function(kong_config)
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 
-        local fact = Factory(kong_config)
-
-        local apis, err = fact.apis:find_all()
-        assert.matches("["..kong_config.database.." error]", err, nil, true)
-        assert.is_nil(apis)
+        assert.error_matches(function()
+          local fact = assert(Factory.new(kong_config))
+          assert(fact.apis:find_all())
+        end, "["..kong_config.database.." error]", nil, true)
       end)
     end)
   end) -- describe

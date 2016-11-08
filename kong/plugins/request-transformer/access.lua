@@ -10,6 +10,7 @@ local req_read_body = ngx.req.read_body
 local req_set_body_data = ngx.req.set_body_data
 local req_get_body_data = ngx.req.get_body_data
 local req_clear_header = ngx.req.clear_header
+local req_set_method = ngx.req.set_method
 local encode_args = ngx.encode_args
 local ngx_decode_args = ngx.decode_args
 local type = type
@@ -303,7 +304,33 @@ local function transform_body(conf)
   end
 end
 
+local function transform_method(conf)
+  if conf.http_method then
+    req_set_method(ngx["HTTP_"..conf.http_method:upper()])
+    if conf.http_method == "GET" or conf.http_method == "HEAD" or conf.http_method == "TRACE" then
+      local content_type_value = req_get_headers()[CONTENT_TYPE]
+      local content_type = get_content_type(content_type_value)
+      if content_type == ENCODED then
+        -- Also put the body into querystring
+
+        -- Read the body
+        req_read_body()
+        local body = req_get_body_data()
+        local parameters = decode_args(body)
+
+        -- Append to querystring
+        local querystring = req_get_uri_args()
+        for name, value in pairs(parameters) do
+          querystring[name] = value
+        end
+        req_set_uri_args(querystring)
+      end
+    end
+  end
+end
+
 function _M.execute(conf)
+  transform_method(conf)
   transform_body(conf)
   transform_headers(conf)
   transform_querystrings(conf)

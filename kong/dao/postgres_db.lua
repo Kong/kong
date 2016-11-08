@@ -281,6 +281,8 @@ end
 
 -- Delete old expired TTL entities
 function PostgresDB:clear_expired_ttl()
+  ngx.log(ngx.DEBUG, "clearing expired TTLs")
+
   local query = "SELECT * FROM ttls WHERE expire_at < CURRENT_TIMESTAMP(0) at time zone 'utc'"
   local res, err = self:query(query)
   if err then
