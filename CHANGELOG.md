@@ -1,5 +1,16 @@
 ## [Unreleased][unreleased]
 
+## [0.9.5] - 2016/11/07
+
+### Changed
+
+- Dropping support for OpenResty 1.9.15.1 in favor of 1.11.2.1
+  [#1797](https://github.com/Mashape/kong/pull/1797)
+
+### Fixed
+
+- Fixed an error (introduced in 0.9.4) in the auto-clustering event
+
 ## [0.9.4] - 2016/11/02
 
 ### Fixed
@@ -768,7 +779,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.4...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.5...next
+[0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
 [0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
 [0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
 [0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
