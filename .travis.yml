@@ -21,7 +21,7 @@ env:
   global:
     - SERF=0.7.0
     - LUAROCKS=2.4.0
-    - OPENSSL=1.0.2h
+    - OPENSSL=1.0.2j
     - CASSANDRA=2.2.8
     - OPENRESTY_BASE=1.9.15.1
     - OPENRESTY_LATEST=1.11.2.1

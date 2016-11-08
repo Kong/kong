@@ -26,6 +26,7 @@ local PREFIX_PATHS = {
   nginx_pid = {"pids", "nginx.pid"},
   nginx_err_logs = {"logs", "error.log"},
   nginx_acc_logs = {"logs", "access.log"},
+  nginx_admin_acc_logs = {"logs", "admin_access.log"},
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
@@ -61,7 +62,7 @@ local CONF_INFERENCES = {
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
-  nginx_keepalive = {typ = "number"},
+  upstream_keepalive = {typ = "number"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -211,8 +212,8 @@ local function check_and_infer(conf)
     for _, server in ipairs(conf.dns_resolver) do
       local dns = utils.normalize_ip(server)
       if (not dns) or (dns.type ~= "ipv4") then
-        errors[#errors+1] = "dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port"
-        break -- one error is enough
+        errors[#errors+1] = "dns_resolver must be a comma separated list in "..
+                            "the form of IPv4 or IPv4:port, got '"..server.."'"
       end
     end
   end

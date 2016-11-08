@@ -93,6 +93,7 @@ describe("Configuration loader", function()
     assert.equal("/usr/local/kong/pids/nginx.pid", conf.nginx_pid)
     assert.equal("/usr/local/kong/logs/error.log", conf.nginx_err_logs)
     assert.equal("/usr/local/kong/logs/access.log", conf.nginx_acc_logs)
+    assert.equal("/usr/local/kong/logs/admin_access.log", conf.nginx_admin_acc_logs)
     assert.equal("/usr/local/kong/nginx.conf", conf.nginx_conf)
     assert.equal("/usr/local/kong/nginx-kong.conf", conf.nginx_kong_conf)
     assert.equal("/usr/local/kong/kong.conf", conf.kong_conf)
@@ -238,13 +239,13 @@ describe("Configuration loader", function()
       local conf, err = conf_loader(nil, {
         dns_resolver = "[::1]:53"
       })
-      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port", err)
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port, got '[::1]:53'", err)
       assert.is_nil(conf)
 
       local conf, err = conf_loader(nil, {
         dns_resolver = "1.2.3.4:53;4.3.2.1" -- ; as separator
       })
-      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port", err)
+      assert.equal("dns_resolver must be a comma separated list in the form of IPv4 or IPv4:port, got '1.2.3.4:53;4.3.2.1'", err)
       assert.is_nil(conf)
 
       conf, err = conf_loader(nil, {
