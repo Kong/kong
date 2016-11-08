@@ -1,4 +1,4 @@
-local dns_client = require "dns.client"
+local dns_client = require "resty.dns.client"
 
 local toip = dns_client.toip
 
