@@ -70,7 +70,7 @@ end
 
 local function execute(args)
   local conf = assert(conf_loader(args.conf))
-  local dao = DAOFactory(conf, conf.plugins)
+  local dao = assert(DAOFactory.new(conf, conf.plugins))
 
   if args.command == "create" then
     -- Calculate amount of data to backup
@@ -162,7 +162,6 @@ local function execute(args)
     if args.y or confirm("Are you sure? This operation is irreversible") then
       local ordered_daos = order_daos(dao.daos) -- Calculate dependency tree
       for _, v in ipairs(ordered_daos) do
-        print(v)
         local dao = dao.daos[v]
         if not utils.table_contains(EXCLUDE, v) and (not dao.schema or (dao.schema and not dao.schema.no_backup)) then
           local file_path = pl_path.join(folder_path, v)
