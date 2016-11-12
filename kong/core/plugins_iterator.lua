@@ -11,7 +11,7 @@ local empty = pl_tablex.readonly {}
 -- @param[type=string] api_id ID of the API being proxied.
 -- @param[type=string] consumer_id ID of the Consumer making the request (if any).
 -- @param[type=stirng] plugin_name Name of the plugin being tested for.
--- @treturn table Plugin retrieved from the cache or database.
+-- @return table Plugin retrieved from the cache or database.
 local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
   local plugin = cache.get_or_set(cache_key, function()
@@ -47,7 +47,7 @@ end
 -- @param[type=boolean] access_or_cert_ctx Tells if the context
 -- is access_by_lua_block. We don't use `ngx.get_phase()` simply because we can
 -- avoid it.
--- @treturn function iterator
+-- @return function iterator
 local function iter_plugins_for_req(loaded_plugins, access_or_cert_ctx)
   local ctx = ngx.ctx
 

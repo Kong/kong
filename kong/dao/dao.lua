@@ -107,8 +107,8 @@ end
 -- Insert a given Lua table as a row in the related table.
 -- @param[type=table] tbl Table to insert as a row.
 -- @param[type=table] options Options to use for this insertion. (`ttl`: Time-to-live for this row, in seconds, `quiet`: does not send event)
--- @treturn table res A table representing the insert row (with fields created during the insertion).
--- @treturn table err If an error occured, a table describing the issue.
+-- @return table res A table representing the insert row (with fields created during the insertion).
+-- @return table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
   options = options or {}
   check_arg(tbl, 1, "table")
@@ -139,8 +139,8 @@ end
 --- Find a row.
 -- Find a row by its given, mandatory primary key. All other fields are ignored.
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
--- @treturn table row The row, or nil if none could be found.
--- @treturn table err If an error occured, a table describing the issue.
+-- @return table row The row, or nil if none could be found.
+-- @return table err If an error occured, a table describing the issue.
 function DAO:find(tbl)
   check_arg(tbl, 1, "table")
   check_utf8(tbl, 1)
@@ -161,8 +161,8 @@ end
 --- Find all rows.
 -- Find all rows in the table, eventually matching the values in the given fields.
 -- @param[type=table] tbl (optional) A table containing the fields and values to search for.
--- @treturn rows An array of rows.
--- @treturn table err If an error occured, a table describing the issue.
+-- @return rows An array of rows.
+-- @return table err If an error occured, a table describing the issue.
 function DAO:find_all(tbl)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -183,8 +183,8 @@ end
 -- @param[type=table] tbl (optional) A table containing the fields and values to filter for.
 -- @param page_offset Offset at which to resume pagination.
 -- @param page_size Size of the page to retrieve (number of rows).
--- @treturn table rows An array of rows.
--- @treturn table err If an error occured, a table describing the issue.
+-- @return table rows An array of rows.
+-- @return table err If an error occured, a table describing the issue.
 function DAO:find_page(tbl, page_offset, page_size)
    if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -207,8 +207,8 @@ end
 --- Count the number of rows.
 -- Count the number of rows matching the given values.
 -- @param[type=table] tbl (optional) A table containing the fields and values to filter for.
--- @treturn number count The total count of rows matching the given filter, or total count of rows if no filter was given.
--- @treturn table err If an error occured, a table describing the issue.
+-- @return number count The total count of rows matching the given filter, or total count of rows if no filter was given.
+-- @return table err If an error occured, a table describing the issue.
 function DAO:count(tbl)
   if tbl ~= nil then
     check_arg(tbl, 1, "table")
@@ -256,8 +256,8 @@ end
 -- @param[type=table] tbl A table containing the new values for this row.
 -- @param[type=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
 -- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity, `quiet`: does not send event).
--- @treturn table res A table representing the updated entity.
--- @treturn table err If an error occured, a table describing the issue.
+-- @return table res A table representing the updated entity.
+-- @return table err If an error occured, a table describing the issue.
 function DAO:update(tbl, filter_keys, options)
   options = options or {}
   check_arg(tbl, 1, "table")
@@ -311,8 +311,8 @@ end
 -- leverages "FOREIGN KEY" constraints, but for others such as Cassandra, such operations are executed
 -- manually.
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
--- @treturn table row A table representing the deleted row
--- @treturn table err If an error occured, a table describing the issue.
+-- @return table row A table representing the deleted row
+-- @return table err If an error occured, a table describing the issue.
 function DAO:delete(tbl, options)
   options = options or {}
   check_arg(tbl, 1, "table")
