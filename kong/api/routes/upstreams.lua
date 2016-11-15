@@ -44,48 +44,54 @@ return {
     end,
 
     POST = function(self, dao_factory, helpers)
-      -- cleaning up history, we do not care about errors, as another
-      -- node might clean up at the same time. We're deleting by id, so that
-      -- should not matter.
-      local target_history, err = dao_factory.targets:find_all(
+      local cleanup_factor = 10 -- when to cleanup; invalid-entries > (valid-ones * cleanup_factor)
+      
+      --cleaning up history, check if its necessary...
+      local target_history = dao_factory.targets:find_all(
             { upstream_id = self.params.upstream_id })
-      if target_history then
+      if target_history then --ignoring errors here, will be caught when posting below
         -- sort the targets
         for _,target in ipairs(target_history) do
           target.order = target.created_at..":"..target.id
         end
-        table.sort(target_history, function(a,b) return a.order<b.order end)
+        -- sort table in reverse order
+        table.sort(target_history, function(a,b) return a.order>b.order end)
         -- do clean up
         local cleaned = {} 
         local delete = {}
-        for i = #target_history, 1 , -1 do
-          local entry = target_history[i]
-          local delete_it
+        for _, entry in ipairs(target_history) do
           if cleaned[entry.target] then
             -- we got a newer entry for this target than this, so this one can go
-            delete_it = true
+            delete[#delete+1] = entry
           else
             -- haven't got this one, so this is the last one for this target
             cleaned[entry.target] = true
+            cleaned[#cleaned+1] = entry
             if entry.weight == 0 then
-              delete_it = true
+              delete[#delete+1] = entry
             end
-          end
-          if delete_it then
-            delete[#delete+1] = entry
           end
         end
         
         -- do we need to cleanup?
         -- either nothing left, or when 10x more outdated than active entries
         if (#cleaned == 0 and #delete > 0) or
-           (#delete >= (math.max(#cleaned,1)*10)) then
--- TODO: make sure we're not sending update events, one event at the end, based on the
--- post of the new entry should suffice
+           (#delete >= (math.max(#cleaned,1)*cleanup_factor)) then
+          ngx.log(ngx.WARN, "Starting cleanup of target table for upstream "..tostring(self.params.upstream_id))
+          local cnt = 0
           for _, entry in ipairs(delete) do
-            -- ignoring errors here, deleting by id, so should not matter
-            local ok, err = dao_factory.targets:delete({ id = entry.id })
+            -- not sending update events, one event at the end, based on the
+            -- post of the new entry should suffice to reload only once
+            dao_factory.targets:delete(
+              { id = entry.id }, 
+              { quiet = true }
+            )
+            -- ignoring errors here, deleted by id, so should not matter
+            -- in case another kong-node does the same cleanup simultaneously
+            cnt = cnt + 1 
           end
+          ngx.log(ngx.WARN, "Finished cleanup of target table for upstream "..
+            tostring(self.params.upstream_id).." removed "..tostring(cnt).." target entries")
         end
       end
       

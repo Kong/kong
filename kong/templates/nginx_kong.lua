@@ -142,7 +142,12 @@ server {
                 ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
                 ngx.exit(204)
             end
-
+            if not _G.old_randomseed then
+                _G.old_randomseed = math.randomseed
+                math.randomseed = function()
+                    ngx.log(ngx.WARN, 'Lapis illegally called randomseed')
+                end
+            end
             require('lapis').serve('kong.api')
         }
     }

@@ -9,9 +9,6 @@ local toip = dns_client.toip
 --===========================================================
 local balancers = {}  -- table holding our balancer objects, indexed by upstream name
 
--- TODO: review caching strategy, multiple large slots lists might take a lot of time deserializing
--- upon every request. Same for targets list. Check how to do it more efficient.
-
 local function load_upstreams_into_memory()
   local upstreams, err = singletons.dao.upstreams:find_all()
   if err then
@@ -64,7 +61,7 @@ local function apply_history(rb, history, start)
     else
       assert(rb:removeHost(target.name, target.port))
     end
-    rb.targets_history[i] = {
+    rb.__targets_history[i] = {
       name = target.name,
       port = target.port,
       weight = target.weight,
@@ -88,7 +85,7 @@ local function new_ring_balancer(upstream, history)
   
   -- NOTE: we're inserting a foreign entity in the balancer, to keep track of
   -- target-history changes!
-  b.targets_history = {{ 
+  b.__targets_history = {{ 
       name = first.name,
       port = first.port,
       weight = first.weight,
@@ -134,21 +131,21 @@ local get_balancer = function(target)
 
     balancers[upstream.name] = balancer
 
-  elseif #balancer.targets_history ~= #targets_history or 
-         balancer.targets_history[#balancer.targets_history].order ~= targets_history[#targets_history].order then
+  elseif #balancer.__targets_history ~= #targets_history or 
+         balancer.__targets_history[#balancer.__targets_history].order ~= targets_history[#targets_history].order then
     -- last entries in history don't match, so we must do some updates.
     
     -- compare balancer history with db-loaded history
     local ok = true
-    for i = 1, #balancer.targets_history do
-      if balancer.targets_history[i].order ~= targets_history[i].order then
+    for i = 1, #balancer.__targets_history do
+      if balancer.__targets_history[i].order ~= targets_history[i].order then
         ok = false
         break
       end
     end
     if ok then
       -- history is the same, so we only need to add new entries
-      apply_history(balancer, targets_history, #balancer.targets_history + 1)
+      apply_history(balancer, targets_history, #balancer.__targets_history + 1)
     else
       -- history not the same. Need to recreate from scratch
       balancer, err = new_ring_balancer(upstream, targets_history)

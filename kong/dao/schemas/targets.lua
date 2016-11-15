@@ -59,6 +59,11 @@ return {
     return true
   end,
   marshall_event = function(self, t)
-    return { id = t.id }
+    -- when sending cluster events, we must include the upstream id, as the 
+    -- upstream cache needs to be invalidated, not the target itself.
+    return {
+      id = t.id,
+      upstream_id = t.upstream_id,
+    }
   end
 }

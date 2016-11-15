@@ -19,6 +19,10 @@ local function invalidate(message_t)
   elseif message_t.collection == "plugins" then
     -- Handles both the update and the delete
     invalidate_plugin(message_t.old_entity and message_t.old_entity or message_t.entity)
+  elseif message_t.collection == "targets" then
+    -- targets only have 'post' events for new entries, deleting is done
+    -- quietly
+    cache.delete(cache.targets_key(message_t.entity.upstream_id))
   end
 end
 
