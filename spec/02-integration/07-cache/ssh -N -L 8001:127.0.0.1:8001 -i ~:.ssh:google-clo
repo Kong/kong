@@ -1,1 +1,0 @@
-ssh -N -L 8001:127.0.0.1:8001 -i ~/.ssh/google-cloud marco@104.154.231.251

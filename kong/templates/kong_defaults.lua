@@ -11,7 +11,6 @@ admin_listen_ssl = 0.0.0.0:8444
 nginx_worker_processes = auto
 nginx_optimizations = on
 nginx_daemon = on
-nginx_keepalive = 60
 mem_cache_size = 128m
 ssl = on
 ssl_cert = NONE
@@ -19,6 +18,7 @@ ssl_cert_key = NONE
 admin_ssl = on
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
+upstream_keepalive = 60
 
 database = postgres
 pg_host = 127.0.0.1
