@@ -1,4 +1,15 @@
+local ran_before
+
 return function(options)
+
+  if ran_before then
+    ngx.log(ngx.WARN, debug.traceback("attempt to re-run the globalpatches", 2))
+    return
+  end
+  ngx.log(ngx.DEBUG, "installing the globalpatches")
+  ran_before = true
+
+
 
   options = options or {}
   local meta = require "kong.meta"
@@ -163,7 +174,7 @@ return function(options)
       -- as with the semaphore patch
       -- only used for running tests
       local randomseed = math.randomseed
-      local seed
+      local seeds = {}
 
       --- Seeds the random generator, use with care.
       -- Once - properly - seeded, this method is replaced with a stub
@@ -176,6 +187,7 @@ return function(options)
       -- using a combination of both time and the worker's pid.
       -- luacheck: globals math
       _G.math.randomseed = function()
+        local seed = seeds[ngx.worker.pid()]
         if not seed then
           -- If we're in runtime nginx, we have multiple workers so we _only_
           -- accept seeding when in the 'init_worker' phase.
@@ -184,16 +196,18 @@ return function(options)
           -- if we'd do that in the 'init' phase, the Lua VM is not forked
           -- yet and all workers would end-up using the same seed.
           if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.ERR, debug.traceback("math.randomseed() must be called in init_worker"))
+            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+                "called in init_worker context", 2))
           end
 
           seed = ngx.time() + ngx.worker.pid()
           ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ", ngx.worker.id(),
                              " (pid: ", ngx.worker.pid(), ")")
           randomseed(seed)
+          seeds[ngx.worker.pid()] = seed
         else
-          ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                             "already seeded with ", seed)
+          ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
+              "generator, but already seeded with: "..tostring(seed), 2))
         end
 
         return seed
@@ -204,14 +218,15 @@ return function(options)
       -- this version of the randomseeding patch is required for 
       -- production, but doesn't work in tests, due to the ffi dependency
       local util = require "kong.tools.utils"
-      local seed
+      local seeds = {}
       local randomseed = math.randomseed
 
       _G.math.randomseed = function()
+        local seed = seeds[ngx.worker.pid()]
         if not seed then
           if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.WARN, "math.randomseed() must be called in init_worker ",
-                              "context\n", debug.traceback('', 2)) -- nil [message] arg doesn't work with level
+            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+                "called in init_worker context", 2))
           end
 
           local bytes, err = util.get_rand_bytes(8)
@@ -253,10 +268,10 @@ return function(options)
           end
 
           randomseed(seed)
+          seeds[ngx.worker.pid()] = seed
         else
-          ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                             "already seeded with: ", seed, "\n",
-                              debug.traceback('', 2)) -- nil [message] arg doesn't work with level
+          ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
+              "generator, but already seeded with: "..tostring(seed), 2))
         end
 
         return seed
