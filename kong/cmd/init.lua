@@ -1,5 +1,3 @@
-require("kong.core.globalpatches")({cli = true})
-
 local prng_seed = math.randomseed()
 
 local pl_app = require "pl.lapp"
