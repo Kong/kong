@@ -142,12 +142,6 @@ server {
                 ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'
                 ngx.exit(204)
             end
-            if not _G.old_randomseed then
-                _G.old_randomseed = math.randomseed
-                math.randomseed = function()
-                    ngx.log(ngx.WARN, 'attempt to seed the random generator was blocked')
-                end
-            end
 
             require('lapis').serve('kong.api')
         }

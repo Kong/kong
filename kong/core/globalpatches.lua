@@ -1,4 +1,16 @@
+local ran_before
+
 return function(options)
+
+  if ran_before then
+    ngx.log(ngx.WARN, debug.traceback("attempt to re-run the globalpatches"))
+    return
+  else
+    ngx.log(ngx.DEBUG, "installing the globalpatches")
+    ran_before = true
+  end
+
+
 
   options = options or {}
   local meta = require "kong.meta"
@@ -185,7 +197,7 @@ return function(options)
           -- if we'd do that in the 'init' phase, the Lua VM is not forked
           -- yet and all workers would end-up using the same seed.
           if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.ERR, debug.traceback("math.randomseed() must be called in init_worker"))
+            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be called in init_worker"))
           end
 
           seed = ngx.time() + ngx.worker.pid()
