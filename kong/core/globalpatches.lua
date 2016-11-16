@@ -5,10 +5,9 @@ return function(options)
   if ran_before then
     ngx.log(ngx.WARN, debug.traceback("attempt to re-run the globalpatches"))
     return
-  else
-    ngx.log(ngx.DEBUG, "installing the globalpatches")
-    ran_before = true
   end
+  ngx.log(ngx.DEBUG, "installing the globalpatches")
+  ran_before = true
 
 
 
