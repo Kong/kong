@@ -1,4 +1,15 @@
+local ran_before
+
 return function(options)
+
+  if ran_before then
+    ngx.log(ngx.WARN, debug.traceback("attempt to re-run the globalpatches", 2))
+    return
+  end
+  ngx.log(ngx.DEBUG, "installing the globalpatches")
+  ran_before = true
+
+
 
   options = options or {}
   local meta = require "kong.meta"
@@ -185,7 +196,8 @@ return function(options)
           -- if we'd do that in the 'init' phase, the Lua VM is not forked
           -- yet and all workers would end-up using the same seed.
           if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.ERR, debug.traceback("math.randomseed() must be called in init_worker"))
+            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+                "called in init_worker context", 2))
           end
 
           seed = ngx.time() + ngx.worker.pid()
@@ -194,8 +206,8 @@ return function(options)
           randomseed(seed)
           seeds[ngx.worker.pid()] = seed
         else
-          ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                             "already seeded with ", seed)
+          ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
+              "generator, but already seeded with: "..tostring(seed), 2))
         end
 
         return seed
@@ -213,8 +225,8 @@ return function(options)
         local seed = seeds[ngx.worker.pid()]
         if not seed then
           if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.WARN, "math.randomseed() must be called in init_worker ",
-                              "context\n", debug.traceback('', 2)) -- nil [message] arg doesn't work with level
+            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+                "called in init_worker context", 2))
           end
 
           local bytes, err = util.get_rand_bytes(8)
@@ -258,9 +270,8 @@ return function(options)
           randomseed(seed)
           seeds[ngx.worker.pid()] = seed
         else
-          ngx.log(ngx.DEBUG, "attempt to seed random number generator, but ",
-                             "already seeded with: ", seed, "\n",
-                              debug.traceback('', 2)) -- nil [message] arg doesn't work with level
+          ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
+              "generator, but already seeded with: "..tostring(seed), 2))
         end
 
         return seed
