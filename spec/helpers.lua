@@ -837,9 +837,6 @@ return {
   proxy_ssl_client = proxy_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
-  
-  -- miscellaneous
-  intercept = intercept,
 
   -- miscellaneous
   intercept = intercept,
