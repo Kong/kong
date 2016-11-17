@@ -121,10 +121,10 @@ return {
 
       if balancer_address.hostname and not ngx.ctx.api.preserve_host then
         ngx.var.upstream_host = balancer_address.hostname
+
       else
         ngx.var.upstream_host = upstream_host
       end
-
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
