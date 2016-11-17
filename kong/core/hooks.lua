@@ -25,9 +25,10 @@ local function invalidate(message_t)
     -- that instead of the target
     cache.delete(cache.targets_key(message_t.entity.upstream_id))
   elseif message_t.collection == "upstreams" then
-    --we invalidate both our list, and the individual upstream
+    --we invalidate the list, the individual upstream, and its target history
     cache.delete(cache.upstreams_dict_key())
     cache.delete(cache.upstream_key(message_t.entity.id))
+    cache.delete(cache.targets_key(message_t.entity.id))
   end
 end
 
