@@ -24,10 +24,7 @@ local alg_sign = {
   ["HS256"] = function(data, key) return crypto.hmac.digest("sha256", data, key, true) end,
   --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
   --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
-  ["RS256"] = function(data, key)
-    local pkeyPrivate = crypto.pkey.from_pem(key, true)
-    return crypto.sign('sha256', data, pkeyPrivate)
-  end,
+  ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end,
   ["ES256"] = function(data, key)
     local pkeyPrivate = crypto.pkey.from_pem(key, true)
     local signature = crypto.sign('sha256', data, pkeyPrivate)
