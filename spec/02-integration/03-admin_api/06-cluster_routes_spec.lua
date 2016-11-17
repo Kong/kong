@@ -5,11 +5,16 @@ describe("Admin API", function()
   local client
   setup(function()
     assert(helpers.start_kong())
-    client = helpers.admin_client()
   end)
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+  end)
+  before_each(function()
+    client = helpers.admin_client()
+  end)
+  after_each(function()
+    if client then client:close() end
   end)
 
   describe("/cluster", function()
@@ -116,12 +121,20 @@ describe("Admin API", function()
 
   describe("/cluster/events", function()
     describe("POST", function()
-      it("posts a new event", function()
-        -- old test simply converted
+      it("fails with an invalid event", function()
         local res = assert(client:send {
           method = "POST",
           path = "/cluster/events",
           body = {},
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.res_status(400, res)
+      end)
+      it("posts a new event", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/cluster/events",
+          body = { type = "hello" },
           headers = {["Content-Type"] = "application/json"}
         })
         assert.res_status(200, res)

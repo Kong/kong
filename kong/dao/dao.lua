@@ -46,9 +46,13 @@ local function check_utf8(tbl, arg_n)
   end
 end
 
-local function ret_error(db_type, res, err, ...)
+local function ret_error(db_name, res, err, ...)
   if type(err) == "table" then
-    err.db_type = db_type
+    err.db_name = db_name
+  elseif type(err) == "string" then
+    local e = Errors.db(err)
+    e.db_name = db_name
+    err = tostring(e)
   end
 
   return res, err, ...
@@ -102,16 +106,18 @@ end
 --- Insert a row.
 -- Insert a given Lua table as a row in the related table.
 -- @param[type=table] tbl Table to insert as a row.
--- @param[type=table] options Options to use for this insertion. (`ttl`: Time-to-live for this row, in seconds)
+-- @param[type=table] options Options to use for this insertion. (`ttl`: Time-to-live for this row, in seconds, `quiet`: does not send event)
 -- @treturn table res A table representing the insert row (with fields created during the insertion).
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:insert(tbl, options)
+  options = options or {}
   check_arg(tbl, 1, "table")
+  check_arg(options, 2, "table")
 
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self}
   if not ok then
-    return ret_error(self.db.db_type, nil, err)
+    return ret_error(self.db.name, nil, err)
   end
 
   for col, field in pairs(model.__schema.fields) do
@@ -124,10 +130,10 @@ function DAO:insert(tbl, options)
   end
 
   local res, err = self.db:insert(self.table, self.schema, model, self.constraints, options)
-  if not err then
+  if not err and not options.quiet then
     event(self, event_types.ENTITY_CREATED, self.table, self.schema, res)
   end
-  return ret_error(self.db.db_type, res, err)
+  return ret_error(self.db.name, res, err)
 end
 
 --- Find a row.
@@ -146,10 +152,10 @@ function DAO:find(tbl)
 
   local primary_keys, _, _, err = model:extract_keys()
   if err then
-    return ret_error(self.db.db_type, nil, Errors.schema(err))
+    return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
-  return ret_error(self.db.db_type, self.db:find(self.table, self.schema, primary_keys))
+  return ret_error(self.db.name, self.db:find(self.table, self.schema, primary_keys))
 end
 
 --- Find all rows.
@@ -165,11 +171,11 @@ function DAO:find_all(tbl)
 
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
-      return ret_error(self.db.db_type, nil, Errors.schema(err))
+      return ret_error(self.db.name, nil, Errors.schema(err))
     end
   end
 
-  return ret_error(self.db.db_type, self.db:find_all(self.table, tbl, self.schema))
+  return ret_error(self.db.name, self.db:find_all(self.table, tbl, self.schema))
 end
 
 --- Find a paginated set of rows.
@@ -185,7 +191,7 @@ function DAO:find_page(tbl, page_offset, page_size)
     check_not_empty(tbl, 1)
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
-      return ret_error(self.db.db_type, nil, Errors.schema(err))
+      return ret_error(self.db.name, nil, Errors.schema(err))
     end
   end
 
@@ -195,7 +201,7 @@ function DAO:find_page(tbl, page_offset, page_size)
 
   check_arg(page_size, 3, "number")
 
-  return ret_error(self.db.db_type, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
+  return ret_error(self.db.name, self.db:find_page(self.table, tbl, page_offset, page_size, self.schema))
 end
 
 --- Count the number of rows.
@@ -209,7 +215,7 @@ function DAO:count(tbl)
     check_not_empty(tbl, 1)
     local ok, err = schemas_validation.is_schema_subset(tbl, self.schema)
     if not ok then
-      return ret_error(self.db.db_type, nil, Errors.schema(err))
+      return ret_error(self.db.name, nil, Errors.schema(err))
     end
   end
 
@@ -217,7 +223,7 @@ function DAO:count(tbl)
     tbl = nil
   end
 
-  return ret_error(self.db.db_type, self.db:count(self.table, tbl, self.schema))
+  return ret_error(self.db.name, self.db:count(self.table, tbl, self.schema))
 end
 
 local function fix(old, new, schema)
@@ -249,15 +255,16 @@ end
 -- with the one specified in `tbl` at once.
 -- @param[type=table] tbl A table containing the new values for this row.
 -- @param[type=table] filter_keys A table which must contain the primary key(s) to select the row to be updated.
--- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity).
+-- @param[type=table] options Options to use for this update. (`full`: performs a full update of the entity, `quiet`: does not send event).
 -- @treturn table res A table representing the updated entity.
 -- @treturn table err If an error occured, a table describing the issue.
 function DAO:update(tbl, filter_keys, options)
+  options = options or {}
   check_arg(tbl, 1, "table")
   check_not_empty(tbl, 1)
   check_arg(filter_keys, 2, "table")
   check_not_empty(filter_keys, 2)
-  options = options or {}
+  check_arg(options, 3, "table")
 
   for k, v in pairs(filter_keys) do
     if tbl[k] == nil then
@@ -268,17 +275,17 @@ function DAO:update(tbl, filter_keys, options)
   local model = self.model_mt(tbl)
   local ok, err = model:validate {dao = self, update = true, full_update = options.full}
   if not ok then
-    return ret_error(self.db.db_type, nil, err)
+    return ret_error(self.db.name, nil, err)
   end
 
   local primary_keys, values, nils, err = model:extract_keys()
   if err then
-    return ret_error(self.db.db_type, nil, Errors.schema(err))
+    return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
   local old, err = self.db:find(self.table, self.schema, primary_keys)
   if err then
-    return ret_error(self.db.db_type, nil, err)
+    return ret_error(self.db.name, nil, err)
   elseif old == nil then
     return
   end
@@ -289,9 +296,11 @@ function DAO:update(tbl, filter_keys, options)
 
   local res, err = self.db:update(self.table, self.schema, self.constraints, primary_keys, values, nils, options.full, model, options)
   if err then
-    return ret_error(self.db.db_type, nil, err)
+    return ret_error(self.db.name, nil, err)
   elseif res then
-    event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
+    if not options.quiet then
+      event(self, event_types.ENTITY_UPDATED, self.table, self.schema, old)
+    end
     return setmetatable(res, nil)
   end
 end
@@ -304,8 +313,10 @@ end
 -- @param[type=table] tbl A table containing the primary key field(s) for this row.
 -- @treturn table row A table representing the deleted row
 -- @treturn table err If an error occured, a table describing the issue.
-function DAO:delete(tbl)
+function DAO:delete(tbl, options)
+  options = options or {}
   check_arg(tbl, 1, "table")
+  check_arg(options, 2, "table")
 
   local model = self.model_mt(tbl)
   if not model:has_primary_keys() then
@@ -314,7 +325,7 @@ function DAO:delete(tbl)
 
   local primary_keys, _, _, err = model:extract_keys()
   if err then
-    return ret_error(self.db.db_type, nil, Errors.schema(err))
+    return ret_error(self.db.name, nil, Errors.schema(err))
   end
 
   -- Find associated entities
@@ -324,7 +335,7 @@ function DAO:delete(tbl)
       local f_fetch_keys = {[cascade.f_col] = tbl[cascade.col]}
       local rows, err = self.db:find_all(cascade.table, f_fetch_keys, cascade.schema)
       if err then
-        return ret_error(self.db.db_type, nil, err)
+        return ret_error(self.db.name, nil, err)
       end
       associated_entites[cascade.table] = {
         schema = cascade.schema,
@@ -334,7 +345,7 @@ function DAO:delete(tbl)
   end
 
   local row, err = self.db:delete(self.table, self.schema, primary_keys, self.constraints)
-  if not err and row ~= nil then
+  if not err and row ~= nil and not options.quiet then
     event(self, event_types.ENTITY_DELETED, self.table, self.schema, row)
 
     -- Also propagate the deletion for the associated entities
@@ -344,11 +355,11 @@ function DAO:delete(tbl)
       end
     end
   end
-  return ret_error(self.db.db_type, row, err)
+  return ret_error(self.db.name, row, err)
 end
 
 function DAO:truncate()
-  return ret_error(self.db.db_type, self.db:truncate_table(self.table))
+  return ret_error(self.db.name, self.db:truncate_table(self.table))
 end
 
 return DAO

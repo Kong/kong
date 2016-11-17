@@ -1,9 +1,7 @@
 return [[
-resolver ${{DNS_RESOLVER}} ipv6=off;
 charset UTF-8;
 
 error_log logs/error.log ${{LOG_LEVEL}};
-access_log logs/access.log;
 
 > if anonymous_reports then
 ${{SYSLOG_REPORTS}}
@@ -34,13 +32,11 @@ lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
+lua_shared_dict kong 4m;
 lua_shared_dict cache ${{MEM_CACHE_SIZE}};
-lua_shared_dict reports_locks 100k;
-lua_shared_dict cluster_locks 100k;
-lua_shared_dict cluster_autojoin_locks 100k;
 lua_shared_dict cache_locks 100k;
-lua_shared_dict cassandra 1m;
-lua_shared_dict cassandra_prepared 5m;
+lua_shared_dict process_events 1m;
+lua_shared_dict cassandra 5m;
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then
 lua_ssl_trusted_certificate '${{LUA_SSL_TRUSTED_CERTIFICATE}}';
@@ -57,11 +53,23 @@ init_worker_by_lua_block {
     kong.init_worker()
 }
 
+proxy_next_upstream_tries 999;
+    
+upstream kong_upstream {
+    server 0.0.0.1;
+    balancer_by_lua_block {
+        kong.balancer()
+    }
+    keepalive ${{UPSTREAM_KEEPALIVE}};
+}
+
 server {
     server_name kong;
     listen ${{PROXY_LISTEN}};
     error_page 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
+
+    access_log logs/access.log;
 
 > if ssl then
     listen ${{PROXY_LISTEN_SSL}} ssl;
@@ -113,8 +121,17 @@ server {
     server_name kong_admin;
     listen ${{ADMIN_LISTEN}};
 
+    access_log logs/admin_access.log;
+
     client_max_body_size 10m;
     client_body_buffer_size 10m;
+
+> if admin_ssl then
+    listen ${{ADMIN_LISTEN_SSL}} ssl;
+    ssl_certificate ${{ADMIN_SSL_CERT}};
+    ssl_certificate_key ${{ADMIN_SSL_CERT_KEY}};
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+> end
 
     location / {
         default_type application/json;
@@ -126,7 +143,6 @@ server {
                 ngx.exit(204)
             end
 
-            ngx.log(ngx.DEBUG, 'Loading Admin API endpoints')
             require('lapis').serve('kong.api')
         }
     }
