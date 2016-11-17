@@ -183,8 +183,12 @@ function _M.bot_detection_key(key)
   return CACHE_KEYS.BOT_DETECTION..":"..key
 end
 
-function _M.upstreams_key()
+function _M.upstreams_dict_key()
   return CACHE_KEYS.UPSTREAMS
+end
+
+function _M.upstream_key(upstream_id)
+  return CACHE_KEYS.UPSTREAMS..":"..upstream_id
 end
 
 function _M.targets_key(upstream_id)

@@ -20,9 +20,14 @@ local function invalidate(message_t)
     -- Handles both the update and the delete
     invalidate_plugin(message_t.old_entity and message_t.old_entity or message_t.entity)
   elseif message_t.collection == "targets" then
-    -- targets only have 'post' events for new entries, deleting is done
-    -- quietly
+    -- targets only append new entries, we're not changing anything
+    -- but we need to reload the related upstreams target-history, so invalidate
+    -- that instead of the target
     cache.delete(cache.targets_key(message_t.entity.upstream_id))
+  elseif message_t.collection == "upstreams" then
+    --we invalidate both our list, and the individual upstream
+    cache.delete(cache.upstreams_dict_key())
+    cache.delete(cache.upstream_key(message_t.entity.id))
   end
 end
 

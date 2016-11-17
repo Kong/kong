@@ -1,29 +1,97 @@
-local singletons = require "kong.singletons"
 local cache = require "kong.tools.database_cache"
+local pl_tablex = require "pl.tablex"
+local singletons = require "kong.singletons"
 local dns_client = require "resty.dns.client"  -- due to startup/require order, cannot use the one from 'singletons' here
 local ring_balancer = require "resty.dns.balancer"
+
 local toip = dns_client.toip
+
+local empty = pl_tablex.readonly {}
 
 --===========================================================
 -- Ring-balancer based resolution
 --===========================================================
 local balancers = {}  -- table holding our balancer objects, indexed by upstream name
 
-local function load_upstreams_into_memory()
+-- caching logic;
+-- we retain 3 entities;
+-- 1) list of upstreams, to be invalidated on any upstream change
+-- 2) individual upstreams, to be invalidated on individual basis
+-- 3) target history for an upstream, invalidated when;
+--    a) along with the upstream it belongs to
+--    b) upon any target change for the upstream (can only add entries)
+-- Distinction between 1 and 2 makes it possible to invalidate individual
+-- upstreams, instead of all at once forcing to rebuild all balancers
+
+-- Implements a simple dictionary with all upstream-ids indexed
+-- by their name. 
+local function load_upstreams_dict_into_memory()
   local upstreams, err = singletons.dao.upstreams:find_all()
   if err then
     return nil, err
   end
   
-  -- build a dictionary, indexed by the upstreams name
-  local upstream_dic = {}
+  -- build a dictionary, indexed by the upstream name
+  local upstreams_dict = {}
   for _, up in ipairs(upstreams) do
-    upstream_dic[up.name] = up
+    upstreams_dict[up.name] = up.id
   end
-  
-  return upstream_dic
+
+  -- check whether any of our existing balancers has been deleted
+  for upstream_name in pairs(balancers) do
+    if not upstreams_dict[upstream_name] then
+      -- this one was deleted, so also clear the balancer object
+      balancers[upstream_name] = nil
+    end
+  end
+
+  return upstreams_dict
 end
 
+-- loads a single upstream entity
+local function load_upstream_into_memory(upstream_id)
+  local upstream, err = singletons.dao.upstreams:find {id = upstream_id}
+  if not upstream then
+    return nil, err
+  end
+  
+  upstream = upstream[1]  -- searched by id, so only 1 row in the returned set
+  
+  -- because we're reloading the upstream, it was updated, so we must also
+  -- re-created the balancer
+  balancers[upstream.name] = nil
+  
+  local b, err = ring_balancer.new({
+      wheelsize = upstream.slots,
+      order = upstream.orderlist,
+      dns = dns_client,
+    })
+  if not b then return b, err end
+  
+  -- NOTE: we're inserting a foreign entity in the balancer, to keep track of
+  -- target-history changes!
+  b.__targets_history = {} 
+  balancers[upstream.name] = b
+
+  return upstream
+end
+
+-- finds and returns an upstream entity. This functions covers
+-- caching, invalidation, db access, et al.
+-- @return upstream table, or `false` if not found, or nil+error
+local function get_upstream(upstream_name)
+  local upstreams_dict, err = cache.get_or_set(cache.upstreams_dict_key(), load_upstreams_dict_into_memory)
+  if err then
+    return nil, err
+  end
+
+  local upstream_id = upstreams_dict[upstream_name]
+  if not upstream_id then return false end -- no upstream by this name
+  
+  return cache.get_or_set(cache.upstream_key(upstream_id), load_upstream_into_memory)
+end
+
+-- loads the target history for an upstream
 -- @param upstream_id Upstream uuid for which to load the target history
 local function load_targets_into_memory(upstream_id)
   local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
@@ -72,86 +140,67 @@ local function apply_history(rb, history, start)
   return true
 end
 
--- creates a new ring balancer.
-local function new_ring_balancer(upstream, history)
-  local first = history[1]
-  local b, err = ring_balancer.new({
-      hosts = { first },   -- just insert the initial host, remainder sequentially later
-      wheelsize = upstream.slots,
-      dns = dns_client,
-      order = upstream.orderlist,
-    })
-  if not b then return b, err end
-  
-  -- NOTE: we're inserting a foreign entity in the balancer, to keep track of
-  -- target-history changes!
-  b.__targets_history = {{ 
-      name = first.name,
-      port = first.port,
-      weight = first.weight,
-      order = first.order,
-  }}
-  
-  -- replay history of lb transactions
-  apply_history(b, history, 2)
-  
-  return b
-end
-
 -- looks up a balancer for the target.
 -- @param target the table with the target details
--- @return balancer if found, or nil if not found, or nil+error on error
+-- @return balancer if found, or `false` if not found, or nil+error on error
 local get_balancer = function(target)
   -- NOTE: only called upon first lookup, so `cache_only` limitations do not apply here
+  local hostname = target.upstream.host
   
   -- first go and find the upstream object, from cache or the db
-  local upstreams_dic, err = cache.get_or_set(cache.upstreams_key(), load_upstreams_into_memory)
+  local upstream, err = get_upstream(hostname)
   if err then
-    return nil, err
-  end
-  
-  local upstream = upstreams_dic[target.upstream.host]
-  if not upstream then
-    return nil   -- there is no upstream by this name, so must be regular name, return and try dns 
+    return nil, err  -- there was an error
+  elseif upstream == false then
+    return false     -- no upstream by this name
   end
   
   -- we've got the upstream, now fetch its targets, from cache or the db
   local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
     function() return load_targets_into_memory(upstream.id) end)
-  if err or #targets_history == 0 then  -- 'no targets' equals 'no upstream', so exit as well
-    return nil, err or (#targets_history == 0 
-           and "no targets defined for upstream '"..target.upstream.host.."'")
+
+  if err then
+    return nil, err
+  elseif #targets_history == 0 then 
+    -- 'no targets' equals 'no upstream', so exit as well
+    return nil, "no targets defined for upstream '"..hostname.."'"
   end
 
-  local balancer = balancers[upstream.name]
-  if not balancer then
-    -- create a new ring balancer
-    balancer, err = new_ring_balancer(upstream, targets_history)
-    if err then return balancer, err end
-
-    balancers[upstream.name] = balancer
-
-  elseif #balancer.__targets_history ~= #targets_history or 
-         balancer.__targets_history[#balancer.__targets_history].order ~= targets_history[#targets_history].order then
+  local balancer = balancers[upstream.name] -- always exists, created upon fetching upstream
+  
+  -- check history state
+  local __size = #balancer.__targets_history
+  local size = #targets_history
+  if __size ~= size or 
+    balancer.__targets_history[__size].order ~= targets_history[size].order then
     -- last entries in history don't match, so we must do some updates.
     
     -- compare balancer history with db-loaded history
-    local ok = true
-    for i = 1, #balancer.__targets_history do
-      if balancer.__targets_history[i].order ~= targets_history[i].order then
-        ok = false
+    local last_equal_index = 0  -- last index where history is the same
+    for i, entry in ipairs(balancer.__targets_history) do
+      if entry.order ~= (targets_history[i] or empty).order then
+        last_equal_index = i - 1
         break
       end
     end
-    if ok then
-      -- history is the same, so we only need to add new entries
-      apply_history(balancer, targets_history, #balancer.__targets_history + 1)
-    else
-      -- history not the same. Need to recreate from scratch
-      balancer, err = new_ring_balancer(upstream, targets_history)
-      if err then return balancer, err end
 
-      balancers[upstream.name] = balancer
+    if last_equal_index == __size then
+      -- history is the same, so we only need to add new entries
+      apply_history(balancer, targets_history, last_equal_index + 1)
+    else
+      -- history not the same.
+      -- TODO: ideally we would undo the last ones until we're equal again
+      -- and can replay changes, but not supported by ring-balancer yet.
+      -- for now; create a new balancer from scratch
+      local balancer, err = ring_balancer.new({
+          wheelsize = upstream.slots,
+          order = upstream.orderlist,
+          dns = dns_client,
+        })
+      if not balancer then return balancer, err end
+      balancers[upstream.name] = balancer  -- overwrite our existing one
+      
+      apply_history(balancer, targets_history, 1)
     end
   end
   
@@ -225,6 +274,7 @@ end
 
 return { 
   execute = execute,
-  load_upstreams_into_memory = load_upstreams_into_memory,  -- exported for test purposes
-  load_targets_into_memory = load_targets_into_memory,      -- exported for test purposes
+  _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory,  -- exported for test purposes
+  _load_upstream_into_memory = load_upstream_into_memory,  -- exported for test purposes
+  _load_targets_into_memory = load_targets_into_memory,      -- exported for test purposes
 }
