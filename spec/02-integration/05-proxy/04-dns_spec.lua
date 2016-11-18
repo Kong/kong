@@ -34,7 +34,7 @@ local function bad_tcp_server(port, duration, ...)
   return thread:start(...)
 end
 
-describe("Core DNS", function()
+describe("DNS", function()
   describe("retries", function()
     
     local retries = 3
