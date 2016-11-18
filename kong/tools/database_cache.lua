@@ -83,7 +83,14 @@ function _M.delete_all()
   _M.sh_delete_all()
 end
 
-function _M.get_or_set(key, cb)
+-- Retrieves a piece of data from the cache or loads it.
+-- @param key the key under which to retrieve the data from the cache
+-- @param cb callback function. If no data is found under `key`, then the callback
+-- is called with the additional parameters. The result from the callback is
+-- then stored in the cache, and returned.
+-- @param ... the additional parameters passed to `cb`
+-- @return the (newly) cached value
+function _M.get_or_set(key, cb, ...)
   -- Try to get the value from the cache
   local value = _M.get(key)
   if value then return value end
@@ -109,7 +116,7 @@ function _M.get_or_set(key, cb)
   value = _M.get(key)
   if not value then
     -- Get from closure
-    value = cb()
+    value = cb(...)
     if value then
       local ok, err = _M.set(key, value)
       if not ok then

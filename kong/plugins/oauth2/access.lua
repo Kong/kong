@@ -69,19 +69,19 @@ local function generate_token(conf, credential, authenticated_userid, scope, sta
   }
 end
 
+local function load_credentials(client_id)
+  local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  
+  return credentials[1]
+end
+
 local function get_redirect_uri(client_id)
   local client
   if client_id then
-    client = cache.get_or_set(cache.oauth2_credential_key(client_id), function()
-      local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
-      local result
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif #credentials > 0 then
-        result = credentials[1]
-      end
-      return result
-    end)
+    client = cache.get_or_set(cache.oauth2_credential_key(client_id), load_credentials, client_id)
   end
   return client and client.redirect_uri or nil, client
 end
@@ -356,19 +356,18 @@ local function issue_token(conf)
   })
 end
 
+local function load_token(access_token)
+  local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return credentials[1]
+end
+
 local function retrieve_token(access_token)
   local token
   if access_token then
-    token = cache.get_or_set(cache.oauth2_token_key(access_token), function()
-      local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
-      local result
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif #credentials > 0 then
-        result = credentials[1]
-      end
-      return result
-    end)
+    token = cache.get_or_set(cache.oauth2_token_key(access_token), load_token, access_token)
   end
   return token
 end
@@ -413,6 +412,22 @@ local function parse_access_token(conf)
   return result
 end
 
+local function load_token_credential(token)
+  local result, err = singletons.dao.oauth2_credentials:find {id = token.credential_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return result
+end
+
+local function load_consumer_credential(credential)
+  local result, err = singletons.dao.consumers:find {id = credential.consumer_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return result
+end
+
 function _M.execute(conf)
   -- Check if the API has a request_path and if it's being invoked with the path resolver
   local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
@@ -447,22 +462,10 @@ function _M.execute(conf)
   end
 
   -- Retrive the credential from the token
-  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), function()
-    local result, err = singletons.dao.oauth2_credentials:find {id = token.credential_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return result
-  end)
+  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), load_token_credential, token)
 
   -- Retrive the consumer from the credential
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = singletons.dao.consumers:find {id = credential.consumer_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return result
-  end)
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), load_consumer_credential, credential)
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)

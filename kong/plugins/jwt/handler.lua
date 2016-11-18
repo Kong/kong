@@ -49,6 +49,22 @@ function JwtHandler:new()
   JwtHandler.super.new(self, "jwt")
 end
 
+local function load_credential(jwt_secret_key)
+  local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+  return rows[1]
+end
+
+local function load_consumer(jwt_secret)
+  local consumer, err = singletons.dao.consumers:find {id = jwt_secret.consumer_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return consumer
+end
+
 function JwtHandler:access(conf)
   JwtHandler.super.access(self)
   local token, err = retrieve_token(ngx.req, conf)
@@ -81,14 +97,7 @@ function JwtHandler:access(conf)
   end
 
   -- Retrieve the secret
-  local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), function()
-    local rows, err = singletons.dao.jwt_secrets:find_all {key = jwt_secret_key}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
-    elseif #rows > 0 then
-      return rows[1]
-    end
-  end)
+  local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), load_credential, jwt_secret_key)
 
   if not jwt_secret then
     return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.key_claim_name.."'")
@@ -122,13 +131,7 @@ function JwtHandler:access(conf)
   end
 
   -- Retrieve the consumer
-  local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), function()
-    local consumer, err = singletons.dao.consumers:find {id = jwt_secret.consumer_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return consumer
-  end)
+  local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), load_consumer, jwt_secret)
 
   -- However this should not happen
   if not consumer then
