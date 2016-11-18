@@ -85,7 +85,9 @@ function _M.delete_all()
   _M.sh_delete_all()
 end
 
-function _M.get_or_set(key, cb)
+-- TODO: added additional arguments so we don't have to create closures on a hot-code path.
+-- TODO: update all uses of this function to NOT use closures anymore
+function _M.get_or_set(key, cb, cb_arg)
   -- Try to get the value from the cache
   local value = _M.get(key)
   if value then return value end
@@ -111,7 +113,7 @@ function _M.get_or_set(key, cb)
   value = _M.get(key)
   if not value then
     -- Get from closure
-    value = cb()
+    value = cb(cb_arg)
     if value then
       local ok, err = _M.set(key, value)
       if not ok then
