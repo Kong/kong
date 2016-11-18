@@ -58,8 +58,9 @@ return {
       ngx.ctx.balancer_address = balancer_address
       local ok, err = balancer_execute(balancer_address)
       if not ok then
-        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
+          "dns/balancer resolve for '"..balancer_address.upstream.host..
+          "' with; "..tostring(err))
       end
       if balancer_address.hostname and not ngx.ctx.api.preserve_host then
         ngx.var.upstream_host = balancer_address.hostname
