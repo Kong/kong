@@ -69,7 +69,45 @@ describe("Core DNS", function()
           host = "retries.com"
         }
       }
-      assert.equals(502, r.status)
+      assert.response(r).has.status(502)
+
+      -- Getting back the TCP server count of the tries
+      local ok, tries = thread:join()
+      assert.True(ok)
+      assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
+
+    end)
+  end)
+  describe("upstream resolve failure", function()
+    
+    local client
+    
+    setup(function()
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
+
+      assert(helpers.dao.apis:insert {
+        name = "tests-retries",
+        request_host = "retries.com",
+        upstream_url = "http://now.this.does.not/exist",
+      })
+    end)
+
+    teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("fails with proper error", function()
+      -- make a request to it
+      local r = client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "retries.com"
+        }
+      }
+      assert.response(r).has.status(-1)
 
       -- Getting back the TCP server count of the tries
       local ok, tries = thread:join()
