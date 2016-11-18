@@ -63,11 +63,6 @@ upstream kong_upstream {
     keepalive ${{UPSTREAM_KEEPALIVE}};
 }
 
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    '' close;
-}
-
 server {
     server_name kong;
     listen ${{PROXY_LISTEN}};
@@ -89,6 +84,7 @@ server {
     location / {
         set $upstream_host nil;
         set $upstream_url nil;
+        set $upstream_connection nil;
 
         access_by_lua_block {
             kong.access()
@@ -100,7 +96,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $upstream_host;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection $upstream_connection;
         proxy_pass_header Server;
         proxy_pass $upstream_url;
 
