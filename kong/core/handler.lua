@@ -60,10 +60,6 @@ return {
         ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
         return responses.send_HTTP_INTERNAL_SERVER_ERROR()
       end
-
-      -- Websocket
-      local is_upgrade = ngx.var.http_connection and ngx.var.http_connection:lower() == "upgrade"
-      ngx.var.upstream_connection = is_upgrade and "upgrade" or "keep-alive"
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
