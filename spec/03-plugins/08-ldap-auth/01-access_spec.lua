@@ -16,6 +16,11 @@ describe("Plugin: ldap-auth (access)", function()
       request_host = "ldap2.com",
       upstream_url = "http://mockbin.com"
     })
+    local api3 = assert(helpers.dao.apis:insert {
+      name = "test-ldap3",
+      request_host = "ldap3.com",
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -38,6 +43,18 @@ describe("Plugin: ldap-auth (access)", function()
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
         hide_credentials = true
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api3.id,
+      name = "ldap-auth",
+      config = {
+        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid",
+        anonymous = true
       }
     })
   end)
@@ -152,6 +169,7 @@ describe("Plugin: ldap-auth (access)", function()
     assert.response(r).has.status(200)
     local value = assert.request(r).has.header("x-credential-username")
     assert.are.equal("einstein", value)
+    assert.request(r).has_not.header("x-anonymous-username")
   end)
   it("authorization fails if credential does has no password encoded in get request", function()
     local r = assert(client:send {
@@ -235,5 +253,36 @@ describe("Plugin: ldap-auth (access)", function()
       end
     end
     assert.equals(200, r.status)
+  end)
+
+  describe("config.anonymous", function()
+    it("works with right credentials and anonymous", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "ldap3.com",
+          authorization = "ldap "..ngx.encode_base64("einstein:password")
+        }
+      })
+      assert.response(r).has.status(200)
+
+      local value = assert.request(r).has.header("x-credential-username")
+      assert.are.equal("einstein", value)
+      assert.request(r).has_not.header("x-anonymous-username")
+    end)
+    it("works with wrong credentials and anonymous", function()
+       local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "ldap3.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("x-anonymous-consumer")
+      assert.are.equal("true", value)
+      assert.request(r).has_not.header("x-consumer-username")
+    end)
   end)
 end)
