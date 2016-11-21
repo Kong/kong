@@ -145,9 +145,9 @@ return {
     ]]
   },
   {
-    -- This is a 2 step migration; first create the extra column, using a cql 
+    -- This is a 2 step migration; first create the extra column, using a cql
     -- statement and following iterate over the entries to insert default values.
-    
+
     -- Step 1) create extra column
     name = "2016-09-05-212515_retries_step_1",
     up = [[
@@ -168,7 +168,7 @@ return {
 
       for _, row in ipairs(rows) do
         if not row.retries then  -- only if retries is not set already
-          -- we do not specify default values explicitly, as they will be 
+          -- we do not specify default values explicitly, as they will be
           -- taken from the schema automatically by the dao.
           local _, err = dao.apis:update(row, { id = row.id }, {full = true})
           if err then
@@ -177,7 +177,7 @@ return {
         end
       end
     end,
-    down = nil, 
+    down = nil,
   },
   {
     name = "2016-09-16-141423_upstreams",
@@ -186,7 +186,7 @@ return {
     -- will now be created in millisecond precision. The existing entries will
     -- remain in second precision, but new ones (for ALL entities!) will be
     -- in millisecond precision.
-    -- This differs from the Postgres one where only the new entities (upstreams 
+    -- This differs from the Postgres one where only the new entities (upstreams
     -- and targets) will get millisecond precision.
     up = [[
       CREATE TABLE IF NOT EXISTS upstreams(
@@ -213,5 +213,62 @@ return {
       DROP TABLE targets;
     ]],
   },
-}
+  {
+    name = "2016-11-11-151900_new_apis_router_1",
+    up = [[
+      ALTER TABLE apis ADD hosts text;
+      ALTER TABLE apis ADD uris text;
+      ALTER TABLE apis ADD methods text;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP headers;
+      ALTER TABLE apis DROP uris;
+      ALTER TABLE apis DROP methods;
+    ]]
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_2",
+    up = function(_, _, dao)
+      -- create request_headers and request_uris
+      -- with one entry each: the current request_host
+      -- and the current request_path
+      local rows, err = dao.apis:find_all() -- fetch all rows
+      if err then
+        return err
+      end
 
+      for _, row in ipairs(rows) do
+        row.hosts = { row.request_host }
+        row.uris = { row.request_path }
+
+        local _, err = dao.apis:update(row, { id = row.id }, { full = true })
+        if err then
+          return err
+        end
+      end
+    end,
+    down = function(_, _, dao)
+      -- re insert request_host and request_path from
+      -- the first element of request_headers and
+      -- request_uris
+
+    end
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_3",
+    up = [[
+      DROP INDEX apis_request_host_idx;
+      DROP INDEX apis_request_path_idx;
+
+      ALTER TABLE apis DROP request_host;
+      ALTER TABLE apis DROP request_path;
+    ]],
+    down = [[
+      ALTER TABLE apis ADD request_host text;
+      ALTER TABLE apis ADD request_path text;
+
+      CREATE INDEX IF NOT EXISTS ON apis(request_host);
+      CREATE INDEX IF NOT EXISTS ON apis(request_path);
+    ]]
+  },
+}
