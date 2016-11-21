@@ -27,7 +27,8 @@ lint:
 						--globals 'ngx' \
 						--globals 'assert' \
 						--no-redefined \
-						--no-unused-args
+						--no-unused-args \
+						--ignore 6..
 
 test:
 	@$(TEST_CMD) spec/01-unit
