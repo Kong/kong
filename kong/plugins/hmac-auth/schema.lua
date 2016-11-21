@@ -9,6 +9,7 @@ return {
   no_consumer = true,
   fields = {
     hide_credentials = { type = "boolean", default = false },
-    clock_skew = { type = "number", default = 300, func = check_clock_skew_positive }
+    clock_skew = { type = "number", default = 300, func = check_clock_skew_positive },
+    anonymous = {type = "boolean", default = false}
   }
 }
