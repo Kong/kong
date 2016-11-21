@@ -24,14 +24,8 @@ local function check_hosts_uris_methods(api_t)
   for _, name in ipairs(required_properties) do
     local v = api_t[name]
 
-    if v ~= nil then
-      if type(v) ~= "table" then
-        return false, "not an array"
-      end
-
-      if #v > 0 then
-        ok = true
-      end
+    if v ~= nil and #v > 0 then
+      ok = true
     end
   end
 
@@ -81,6 +75,10 @@ local function check_host(host)
 end
 
 local function check_hosts(hosts, api_t)
+  if type(hosts) ~= "table" then
+    return false, "not an array"
+  end
+
   local ok, err = check_hosts_uris_methods(api_t)
   if not ok then
     return false, err
@@ -132,6 +130,10 @@ local function check_uri(uri)
 end
 
 local function check_uris(uris, api_t)
+  if type(uris) ~= "table" then
+    return false, "not an array"
+  end
+
   local ok, err = check_hosts_uris_methods(api_t)
   if not ok then
     return false, err
@@ -166,6 +168,10 @@ local function check_method(method)
 end
 
 local function check_methods(methods, api_t)
+  if type(methods) ~= "table" then
+    return false, "not an array"
+  end
+
   local ok, err = check_hosts_uris_methods(api_t)
   if not ok then
     return false, err
