@@ -80,7 +80,7 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential = cache.get_or_set(cache.ldap_credential_key(given_username), 
+  local credential = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), 
       conf.cache_ttl, load_credential, given_username, given_password, conf)
 
   return credential and credential.password == given_password, credential

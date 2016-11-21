@@ -175,8 +175,8 @@ function _M.jwtauth_credential_key(secret)
   return CACHE_KEYS.JWTAUTH_CREDENTIAL..":"..secret
 end
 
-function _M.ldap_credential_key(username)
-  return CACHE_KEYS.LDAP_CREDENTIAL.."/"..username
+function _M.ldap_credential_key(api_id, username)
+  return CACHE_KEYS.LDAP_CREDENTIAL.."_"..api_id..":"..username
 end
 
 function _M.acls_key(consumer_id)
