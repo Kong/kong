@@ -179,7 +179,6 @@ return {
     end,
     down = nil,
   },
-  ---[==[
   {
     name = "2016-11-11-151900_new_apis_router_1",
     up = [[
@@ -238,6 +237,5 @@ return {
       CREATE INDEX IF NOT EXISTS ON apis(request_path);
     ]]
   },
-  --]==]
 }
 

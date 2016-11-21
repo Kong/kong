@@ -223,8 +223,6 @@ return {
     id = {type = "id", dao_insert_value = true, required = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},
     name = {type = "string", unique = true, required = true, func = check_name},
-    --request_host = {type = "string", unique = true, func = check_request_host},
-    --request_path = {type = "string", unique = true, func = check_request_path},
 
     hosts = {type = "array", default = {}, func = check_hosts},
     uris = {type = "array", default = {}, func = check_uris},
