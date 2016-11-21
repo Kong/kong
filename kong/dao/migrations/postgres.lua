@@ -145,10 +145,10 @@ return {
   {
     name = "2016-09-05-212515_retries",
     up = [[
-      DO $$ 
+      DO $$
       BEGIN
         ALTER TABLE apis ADD COLUMN retries smallint NOT NULL DEFAULT 5;
-      EXCEPTION WHEN duplicate_column THEN 
+      EXCEPTION WHEN duplicate_column THEN
           -- Do nothing, accept existing state
       END$$;
     ]],
@@ -193,5 +193,76 @@ return {
       DROP TABLE upstreams;
       DROP TABLE targets;
     ]],
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_1",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE apis ADD hosts text;
+        ALTER TABLE apis ADD uris text;
+        ALTER TABLE apis ADD methods text;
+      EXCEPTION WHEN duplicate_column THEN
+
+      END$$;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP headers;
+      ALTER TABLE apis DROP uris;
+      ALTER TABLE apis DROP methods;
+    ]]
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_2",
+    up = function(_, _, dao)
+      -- create request_headers and request_uris
+      -- with one entry each: the current request_host
+      -- and the current request_path
+      -- We use a raw SQL query because we removed the
+      -- request_host/request_path fields in the API schema,
+      -- hence the Postgres DAO won't include them in the
+      -- retrieved rows.
+      local rows, err = dao.db:query([[
+        SELECT * FROM apis;
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        local fields_to_update = {
+          hosts = { row.request_host },
+          uris = { row.request_path },
+        }
+
+        local _, err = dao.apis:update(fields_to_update, { id = row.id })
+        if err then
+          return err
+        end
+      end
+    end,
+    down = function(_, _, dao)
+      -- re insert request_host and request_path from
+      -- the first element of request_headers and
+      -- request_uris
+
+    end
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_3",
+    up = [[
+      DROP INDEX apis_request_host_idx;
+      DROP INDEX apis_request_path_idx;
+
+      ALTER TABLE apis DROP request_host;
+      ALTER TABLE apis DROP request_path;
+    ]],
+    down = [[
+      ALTER TABLE apis ADD request_host text;
+      ALTER TABLE apis ADD request_path text;
+
+      CREATE INDEX IF NOT EXISTS ON apis(request_host);
+      CREATE INDEX IF NOT EXISTS ON apis(request_path);
+    ]]
   },
 }
