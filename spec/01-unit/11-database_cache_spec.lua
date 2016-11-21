@@ -41,7 +41,7 @@ describe("Database cache", function()
       cache.delete_all()
     end)
   
-    it("stores entries in the 1st and 2nd level cache", function()
+    it("stores scalar entries in the 1st and 2nd level cache", function()
       -- make sure the caches are empty
       assert.is.Nil(cache.get(key))
       assert.is.Nil(cache.sh_get(key))
@@ -50,6 +50,18 @@ describe("Database cache", function()
       -- verify it was set
       assert.are.equal(val, cache.get(key)) -- table based unique equality
       assert.are.same(val, json.decode((cache.sh_get(key)))) -- similarity only
+    end)
+
+    it("stores scalar entries in the 1st and 2nd level cache", function()
+      val = 15
+      -- make sure the caches are empty
+      assert.is.Nil(cache.get(key))
+      assert.is.Nil(cache.sh_get(key))
+      -- set a value
+      assert(cache.set(key, val, nil))
+      -- verify it was set
+      assert.are.equal(val, cache.get(key))
+      assert.are.equal(val, json.decode((cache.sh_get(key))))
     end)
 
     it("stores 2nd level entries in the 1st level cache", function()

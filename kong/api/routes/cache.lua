@@ -12,7 +12,7 @@ return {
   ["/cache/:key"] = {
     GET = function(self, dao_factory)
       if self.params.key then
-        local cached_item = cache.get(self.params.key)
+        local cached_item = cache.sh_get(self.params.key)
         if cached_item then
           return responses.send_HTTP_OK(cached_item)
         end
