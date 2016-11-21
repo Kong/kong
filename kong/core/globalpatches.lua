@@ -136,13 +136,13 @@ return function(options)
         end
       })
     end
-  
+
   end
 
 
 
   do -- patch luassert when running in the Busted test environment
-    
+
     if options.rbusted then
       -- patch luassert's 'assert' to fix the 'third' argument problem
       -- see https://github.com/Olivine-Labs/luassert/pull/141
@@ -163,13 +163,13 @@ return function(options)
     end
 
   end
-  
-  
-  
+
+
+
   do -- randomseeding patch, for; cli, rbusted and Kong
 
     if options.rbusted then
-      
+
       -- we need this version because we cannot hit the ffi, same issue
       -- as with the semaphore patch
       -- only used for running tests
@@ -215,7 +215,7 @@ return function(options)
 
     else
 
-      -- this version of the randomseeding patch is required for 
+      -- this version of the randomseeding patch is required for
       -- production, but doesn't work in tests, due to the ffi dependency
       local util = require "kong.tools.utils"
       local seeds = {}
@@ -335,74 +335,67 @@ return function(options)
   end
 
 
-
   do -- cosockets connect patch for dns resolution, for; cli, rbusted and Kong
-
-    local string_sub = string.sub
-    --- Patch the TCP connect and UDP setpeername methods such that all
-    -- connections will be resolved first by the internal DNS resolver.
-    -- STEP 1: load code that should not be using the patched versions
-    require "resty.dns.resolver"  -- will cache TCP and UDP functions
-    -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
-    local toip
-    -- STEP 3: store original unpatched versions
-    local old_tcp = ngx.socket.tcp
-    local old_udp = ngx.socket.udp
-    -- STEP 4: patch globals
-    _G.ngx.socket.tcp = function(...)
-      local sock = old_tcp(...)
-      local old_connect = sock.connect
-
-      sock.connect = function(s, host, port, sock_opts)
-        local target_ip, target_port = toip(host, port)
-        if not target_ip then
-          return nil, "[toip() name lookup failed]:"..tostring(target_port)
-        else
-          -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
-          if not sock_opts then
-            return old_connect(s, target_ip, target_port)
-          else
-            return old_connect(s, target_ip, target_port, sock_opts)
-          end
-        end
+    if options.cli then
+      -- Because the CLI runs in `xpcall`, we cannot use yielding cosockets.
+      -- Hence, we need to stick to luasocket when using cassandra or pgmoon
+      -- in the CLI.
+      for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
+        local socket = require(namespace .. ".socket")
+        socket.force_luasocket(ngx.get_phase(), true)
       end
-      return sock
-    end
-    _G.ngx.socket.udp = function(...)
-      local sock = old_udp(...)
-      local old_setpeername = sock.setpeername
 
-      sock.setpeername = function(s, host, port)
-        local target_ip, target_port
-        if string_sub(host, 1, 5) == "unix:" then
-          target_ip = host  -- unix domain socket, so just maintain the named values
-        else
-          target_ip, target_port = toip(host, port)
+    else
+      local string_sub = string.sub
+      --- Patch the TCP connect and UDP setpeername methods such that all
+      -- connections will be resolved first by the internal DNS resolver.
+      -- STEP 1: load code that should not be using the patched versions
+      require "resty.dns.resolver"  -- will cache TCP and UDP functions
+      -- STEP 2: forward declaration of locals to hold stuff loaded AFTER patching
+      local toip
+      -- STEP 3: store original unpatched versions
+      local old_tcp = ngx.socket.tcp
+      local old_udp = ngx.socket.udp
+      -- STEP 4: patch globals
+      _G.ngx.socket.tcp = function(...)
+        local sock = old_tcp(...)
+        local old_connect = sock.connect
+
+        sock.connect = function(s, host, port, sock_opts)
+          local target_ip, target_port = toip(host, port)
           if not target_ip then
             return nil, "[toip() name lookup failed]:"..tostring(target_port)
+          else
+            -- need to do the extra check here: https://github.com/openresty/lua-nginx-module/issues/860
+            if not sock_opts then
+              return old_connect(s, target_ip, target_port)
+            else
+              return old_connect(s, target_ip, target_port, sock_opts)
+            end
           end
         end
-        return old_setpeername(s, target_ip, target_port)
+        return sock
       end
-      return sock
+      _G.ngx.socket.udp = function(...)
+        local sock = old_udp(...)
+        local old_setpeername = sock.setpeername
+
+        sock.setpeername = function(s, host, port)
+          local target_ip, target_port
+          if string_sub(host, 1, 5) == "unix:" then
+            target_ip = host  -- unix domain socket, so just maintain the named values
+          else
+            target_ip, target_port = toip(host, port)
+            if not target_ip then
+              return nil, "[toip() name lookup failed]:"..tostring(target_port)
+            end
+          end
+          return old_setpeername(s, target_ip, target_port)
+        end
+        return sock
+      end
+      -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
+      toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
     end
-    -- STEP 5: load code that should be using the patched versions, if any (because of dependency chain)
-    toip = require("resty.dns.client").toip  -- this will load utils and penlight modules for example
-
   end
-
-
-
-  do -- patch for LuaSocket tcp/udp sockets, block usage in cli (and hence rbusted).
-
-    if options.cli then
-      local socket = require "socket"
-      socket.tcp = function(...) error("Please use ngx tcp cosockets instead of LuaSocket") end
-      socket.udp = function(...) error("Please use ngx udp cosockets instead of LuaSocket") end
-    end
-
-  end
-
-
-
 end
