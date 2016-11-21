@@ -75,7 +75,7 @@ local function load_credential_from_db(username)
   if not username then return end
   
   return cache.get_or_set(cache.basicauth_credential_key(username),
-                          load_credential_into_memory, username)
+                          nil, load_credential_into_memory, username)
 end
 
 local function load_consumer_into_memory(credential)
@@ -110,8 +110,8 @@ function _M.execute(conf)
   end
 
   -- Retrieve consumer
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), 
-                                    load_consumer_into_memory, credential)
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+                                    nil, load_consumer_into_memory, credential)
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)

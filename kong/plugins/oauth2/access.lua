@@ -81,7 +81,8 @@ end
 local function get_redirect_uri(client_id)
   local client
   if client_id then
-    client = cache.get_or_set(cache.oauth2_credential_key(client_id), load_credentials, client_id)
+    client = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
+                              load_credentials, client_id)
   end
   return client and client.redirect_uri or nil, client
 end
@@ -367,7 +368,8 @@ end
 local function retrieve_token(access_token)
   local token
   if access_token then
-    token = cache.get_or_set(cache.oauth2_token_key(access_token), load_token, access_token)
+    token = cache.get_or_set(cache.oauth2_token_key(access_token), nil, 
+                             load_token, access_token)
   end
   return token
 end
@@ -462,10 +464,12 @@ function _M.execute(conf)
   end
 
   -- Retrive the credential from the token
-  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), load_token_credential, token)
+  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id),
+                                      nil, load_token_credential, token)
 
   -- Retrive the consumer from the credential
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), load_consumer_credential, credential)
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+                                    nil, load_consumer_credential, credential)
 
   ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)

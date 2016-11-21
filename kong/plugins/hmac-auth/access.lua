@@ -114,8 +114,8 @@ end
 local function load_credential(username)
   local credential
   if username then
-    credential = cache.get_or_set(cache.hmacauth_credential_key(username), 
-                                  load_credential_into_memory, username)
+    credential = cache.get_or_set(cache.hmacauth_credential_key(username),
+                                  nil, load_credential_into_memory, username)
   end
   return credential
 end
@@ -180,7 +180,7 @@ function _M.execute(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-                                    load_consumer_into_memory, credential)
+                                    nil, load_consumer_into_memory, credential)
 
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)

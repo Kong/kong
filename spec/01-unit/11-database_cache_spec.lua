@@ -27,4 +27,8 @@ describe("Database cache", function()
     assert.are.equal("jwtauth_credentials:hello", cache.jwtauth_credential_key("hello"))
   end)
 
+  it("returns a valid LDAPAuthcredentials cache key", function()
+    assert.are.equal("ldap_credentials_0c704b70-3f30-49ad-9418-3968e53c8d98:username", cache.ldap_credential_key("0c704b70-3f30-49ad-9418-3968e53c8d98", "username"))
+  end)
+
 end)

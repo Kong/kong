@@ -82,7 +82,8 @@ function KeyAuthHandler:access(conf)
   end
 
   -- retrieve our consumer linked to this API key
-  local credential = cache.get_or_set(cache.keyauth_credential_key(key), load_credential, key)
+  local credential = cache.get_or_set(cache.keyauth_credential_key(key),
+                                      nil, load_credential, key)
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
   if not credential then
@@ -94,7 +95,8 @@ function KeyAuthHandler:access(conf)
   -----------------------------------------
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), load_consumer, credential)
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+                                    nil, load_consumer, credential)
 
   set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
   set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)

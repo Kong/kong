@@ -85,12 +85,15 @@ end
 
 -- Retrieves a piece of data from the cache or loads it.
 -- @param key the key under which to retrieve the data from the cache
+-- @param ttl time-to-live for the entry (in seconds)
 -- @param cb callback function. If no data is found under `key`, then the callback
 -- is called with the additional parameters. The result from the callback is
 -- then stored in the cache, and returned.
 -- @param ... the additional parameters passed to `cb`
 -- @return the (newly) cached value
-function _M.get_or_set(key, cb, ...)
+function _M.get_or_set(key, ttl, cb, ...)
+-- TODO: implement the ttl!
+
   -- Try to get the value from the cache
   local value = _M.get(key)
   if value then return value end

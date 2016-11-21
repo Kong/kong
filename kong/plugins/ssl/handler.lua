@@ -25,7 +25,7 @@ function SSLHandler:certificate(conf)
   local ssl = require "ngx.ssl"
   ssl.clear_certs()
 
-  local data = cache.get_or_set(cache.ssl_data(ngx.ctx.api.id), decode, conf)
+  local data = cache.get_or_set(cache.ssl_data(ngx.ctx.api.id), nil, decode, conf)
 
   local ok, err = ssl.set_der_cert(data.cert_der)
   if not ok then

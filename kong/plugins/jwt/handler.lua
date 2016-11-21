@@ -97,7 +97,8 @@ function JwtHandler:access(conf)
   end
 
   -- Retrieve the secret
-  local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key), load_credential, jwt_secret_key)
+  local jwt_secret = cache.get_or_set(cache.jwtauth_credential_key(jwt_secret_key),
+                                      nil, load_credential, jwt_secret_key)
 
   if not jwt_secret then
     return responses.send_HTTP_FORBIDDEN("No credentials found for given '"..conf.key_claim_name.."'")
@@ -131,7 +132,8 @@ function JwtHandler:access(conf)
   end
 
   -- Retrieve the consumer
-  local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key), load_consumer, jwt_secret)
+  local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key),
+                                    nil, load_consumer, jwt_secret)
 
   -- However this should not happen
   if not consumer then

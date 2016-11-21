@@ -37,7 +37,7 @@ function ACLHandler:access(conf)
   end
 
   -- Retrieve ACL
-  local acls = cache.get_or_set(cache.acls_key(consumer_id),
+  local acls = cache.get_or_set(cache.acls_key(consumer_id), nil,
                                 load_acls_into_memory, consumer_id)
 
   if not acls then acls = {} end

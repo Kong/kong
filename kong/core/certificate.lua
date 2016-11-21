@@ -18,7 +18,7 @@ local function find_api(hosts)
   for _, host in ipairs(hosts) do
     local sanitized_host = utils.split(host, ":")[1]
 
-    retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host),
+    retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host), nil,
                                           load_api_into_memory, sanitized_host)
 
     if err or retrieved_api then
