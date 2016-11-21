@@ -26,7 +26,7 @@ return function(options)
 
 
 
-  do  -- implement a Lua based shm, for; cli (and hence rbusted)
+  do  -- implement a Lua based shm for: cli (and hence rbusted)
 
     if options.cli then
       -- ngx.shared.DICT proxy
@@ -166,7 +166,7 @@ return function(options)
 
 
 
-  do -- randomseeding patch, for; cli, rbusted and Kong
+  do -- randomseeding patch for: cli, rbusted and OpenResty
 
     if options.rbusted then
 
@@ -282,7 +282,7 @@ return function(options)
 
 
 
-  do  -- pure lua semaphore patch, for; rbusted
+  do  -- pure lua semaphore patch for: rbusted
 
     if options.rbusted then
       -- when testing, busted will cleanup the global environment for test
@@ -335,7 +335,7 @@ return function(options)
   end
 
 
-  do -- cosockets connect patch for dns resolution, for; cli, rbusted and Kong
+  do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
     if options.cli then
       -- Because the CLI runs in `xpcall`, we cannot use yielding cosockets.
       -- Hence, we need to stick to luasocket when using cassandra or pgmoon
