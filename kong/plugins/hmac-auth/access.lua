@@ -103,7 +103,7 @@ local function validate_signature(request, hmac_params, headers)
   end
 end
 
-function load_credential_into_memory(username)
+local function load_credential_into_memory(username)
   local keys, err = singletons.dao.hmacauth_credentials:find_all { username = username }
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
