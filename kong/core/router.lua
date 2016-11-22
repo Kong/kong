@@ -512,15 +512,23 @@ local function new(apis)
       headers = empty_t
     end
 
+
     local api_t = select_api(method, uri, headers)
     if not api_t then
       return nil
     end
 
+
     if api_t.strip_uri and api_t.strip_uri_regex then
       local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "oj")
       ngx.req.set_uri(stripped_uri)
     end
+
+
+    if ngx.var.http_kong_debug then
+      ngx.header["Kong-Api-Name"] = api_t.api.name
+    end
+
 
     return api_t.api, api_t.upstream_scheme, api_t.upstream_host, api_t.upstream_port
   end
