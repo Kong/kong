@@ -392,8 +392,35 @@ describe("Router", function()
       return _ngx
     end
 
-    it("returns api/host/path", function()
+    it("returns api/scheme/host/port", function()
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api" },
+          upstream_url = "http://httpbin.org",
+        },
+        {
+          name = "api-2",
+          uris = { "/my-api-2" },
+          upstream_url = "https://httpbin.org",
+        }
+      }
 
+      local router = assert(Router.new(use_case_apis))
+
+      local _ngx = mock_ngx("GET", "/my-api", {})
+      local api, upstream_scheme, upstream_host, upstream_port = router.exec(_ngx)
+      assert.same(use_case_apis[1], api)
+      assert.equal("http", upstream_scheme)
+      assert.equal("httpbin.org", upstream_host)
+      assert.equal(80, upstream_port)
+
+      local _ngx = mock_ngx("GET", "/my-api-2", {})
+      api, upstream_scheme, upstream_host, upstream_port = router.exec(_ngx)
+      assert.same(use_case_apis[2], api)
+      assert.equal("https", upstream_scheme)
+      assert.equal("httpbin.org", upstream_host)
+      assert.equal(443, upstream_port)
     end)
 
     describe("grab_headers", function()
