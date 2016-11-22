@@ -480,7 +480,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
+            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
+            query = { cache = "shm" },
           })
           local body = assert.res_status(200, res)
           assert.equal([[{"message":1}]], body)
@@ -505,7 +506,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute")
+            path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
+            query = { cache = "shm" },
           })
           assert.res_status(404, res)
         end
