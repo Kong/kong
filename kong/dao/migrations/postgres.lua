@@ -207,9 +207,9 @@ return {
       END$$;
     ]],
     down = [[
-      ALTER TABLE apis DROP headers;
-      ALTER TABLE apis DROP uris;
-      ALTER TABLE apis DROP methods;
+      ALTER TABLE apis DROP COLUMN IF EXISTS headers;
+      ALTER TABLE apis DROP COLUMN IF EXISTS uris;
+      ALTER TABLE apis DROP COLUMN IF EXISTS methods;
     ]]
   },
   {
@@ -251,11 +251,11 @@ return {
   {
     name = "2016-11-11-151900_new_apis_router_3",
     up = [[
-      DROP INDEX apis_request_host_idx;
-      DROP INDEX apis_request_path_idx;
+      DROP INDEX IF EXISTS apis_request_host_idx;
+      DROP INDEX IF EXISTS apis_request_path_idx;
 
-      ALTER TABLE apis DROP request_host;
-      ALTER TABLE apis DROP request_path;
+      ALTER TABLE apis DROP COLUMN IF EXISTS request_host;
+      ALTER TABLE apis DROP COLUMN IF EXISTS request_path;
     ]],
     down = [[
       ALTER TABLE apis ADD request_host text;
