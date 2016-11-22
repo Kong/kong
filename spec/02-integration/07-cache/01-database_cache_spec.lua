@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 describe("Resolver", function()
   local admin_client

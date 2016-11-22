@@ -100,7 +100,7 @@ describe("Database cache", function()
               value = val,
               ___expire_ttl = ngx.now() + 0.1,
             }), 0.1)
-      local entry = assert(cache.get(key)) -- should populate 1st level, including ttl setting
+      assert(cache.get(key)) -- should populate 1st level, including ttl setting
       cache.sh_delete(key) -- delete from 2nd level, as these tests are using a fake lua-version-shm anyway
       -- wait for expiring
       ngx.sleep(0.2)

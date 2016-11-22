@@ -86,7 +86,7 @@ function _M.get(key)
     else
       -- value with expired ttl, delete it
       DATA[key] = nil
-      value = nil
+      -- value = nil  -- commented out because it triggers a linter error
     end
   end
   
