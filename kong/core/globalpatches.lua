@@ -346,6 +346,11 @@ return function(options)
       end
 
     else
+      for _, namespace in ipairs({"cassandra", "pgmoon-mashape"}) do
+        local socket = require(namespace .. ".socket")
+        socket.force_luasocket("init_worker", true)
+      end
+
       local string_sub = string.sub
       --- Patch the TCP connect and UDP setpeername methods such that all
       -- connections will be resolved first by the internal DNS resolver.

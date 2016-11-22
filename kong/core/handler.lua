@@ -10,11 +10,14 @@
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
-local resolve = require("kong.core.resolver").execute
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
+local singletons = require "kong.singletons"
 local certificate = require "kong.core.certificate"
 local balancer_execute = require("kong.core.balancer").execute
+
+local Router = require "kong.core.router"
+local router
 
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
@@ -23,12 +26,44 @@ local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
+local function build_router()
+  local apis, err = singletons.dao.apis:find_all()
+  if err then
+    ngx.log(ngx.CRIT, "[router] could not load APIs: ", err)
+    return
+  end
+
+  for i = 1, #apis do
+    -- alias since the router expects 'headers'
+    -- as a map
+    apis[i].headers = { host = apis[i].hosts }
+  end
+
+  router, err = Router.new(apis)
+  if not router then
+    ngx.log(ngx.CRIT, "[router] could not create router: ", err)
+    return
+  end
+end
+
 -- in the table below the `before` and `after` is to indicate when they run; before or after the plugins
 return {
   init_worker = {
     before = function()
       reports.init_worker()
       cluster.init_worker()
+
+      build_router()
+
+      local worker_events = require "resty.worker.events"
+
+      worker_events.register(function(data, event, source, pid)
+        if data and data.collection == "apis" then
+          --local inspect = require "inspect"
+          --print("CHANGE IN APIS DATA: ", source, inspect(event), inspect(source), inspect(data))
+          build_router()
+        end
+      end)
     end
   },
   certificate = {
@@ -38,24 +73,33 @@ return {
   },
   access = {
     before = function()
-      ngx.ctx.KONG_ACCESS_START = get_now()
-      local upstream_host, balancer_address, upstream_table
-      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
-      
-      balancer_address = {
-        upstream = upstream_table,                       -- original parsed upstream url from the Kong api resolver/router
-        type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
-        tries = 0,                                       -- retry counter
-    --  ip = nil,                                        -- final target IP address
-        port = upstream_table.port,                      -- final target port
-        retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
-        -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
-    --  failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
-        -- in case of ring-balancer
-    --  balancer = nil,                                  -- the balancer object
-    --  hostname = nil,                                  -- the hostname that belongs to the ip address returned by the balancer
+      local ctx = ngx.ctx
+      local var = ngx.var
+
+      ctx.KONG_ACCESS_START = get_now()
+
+      local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
+      if not api then
+        ngx.say("no API found")
+        return ngx.exit(404)
+      end
+
+      local balancer_address = {
+        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
+        host                 = upstream_host,  -- supposed target host
+        port                 = upstream_port,  -- final target port
+        tries                = 0,              -- retry counter
+        retries              = api.retries,    -- number of retries for the balancer
+        --  ip               = nil,            -- final target IP address
+        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
+        -- balancer          = nil,            -- the balancer object, in case of a balancer
       }
-      ngx.ctx.balancer_address = balancer_address
+
+      var.upstream_scheme = upstream_scheme
+      var.upstream_host = upstream_host
+
+      ctx.api = api
+      ctx.balancer_address = balancer_address
 
       local ok, err = balancer_execute(balancer_address)
       if not ok then
@@ -73,23 +117,14 @@ return {
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
-      -- Append any querystring parameters modified during plugins execution
-      local upstream_url = ngx.ctx.upstream_url
-      local uri_args = ngx.req.get_uri_args()
-      if next(uri_args) then
-        upstream_url = upstream_url.."?"..utils.encode_args(uri_args)
-      end
-
-      -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
-      -- directive in kong.yml.
-      ngx.var.upstream_url = upstream_url
+      local ctx = ngx.ctx
 
       local now = get_now()
-      ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
-      ngx.ctx.KONG_ACCESS_ENDED_AT = now
+      ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
+      ctx.KONG_ACCESS_ENDED_AT = now
       -- time spent in Kong before sending the reqeust to upstream
-      ngx.ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
-      ngx.ctx.KONG_PROXIED = true
+      ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXIED = true
     end
   },
   header_filter = {

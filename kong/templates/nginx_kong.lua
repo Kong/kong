@@ -54,7 +54,7 @@ init_worker_by_lua_block {
 }
 
 proxy_next_upstream_tries 999;
-    
+
 upstream kong_upstream {
     server 0.0.0.1;
     balancer_by_lua_block {
@@ -93,7 +93,7 @@ server {
 
     location / {
         set $upstream_host nil;
-        set $upstream_url nil;
+        set $upstream_scheme nil;
 
         access_by_lua_block {
             kong.access()
@@ -107,7 +107,7 @@ server {
         proxy_set_header Upgrade $upstream_upgrade;
         proxy_set_header Connection $upstream_connection;
         proxy_pass_header Server;
-        proxy_pass $upstream_url;
+        proxy_pass $upstream_scheme://kong_upstream;
 
         header_filter_by_lua_block {
             kong.header_filter()

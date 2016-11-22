@@ -150,27 +150,27 @@ function Kong.init_worker()
   -- seeds.
   math.randomseed()
 
-  core.init_worker.before()
+  -- init DAO
 
   local ok, err = singletons.dao:init_worker()
   if not ok then
-    ngx.log(ngx.ERR, "could not init DB: ", err)
+    ngx.log(ngx.CRIT, "could not init DB: ", err)
+    return
   end
 
-  for _, plugin in ipairs(singletons.loaded_plugins) do
-    plugin.handler:init_worker()
-  end
+  -- init inter-worker events
 
-  local ev = require "resty.worker.events"
+  local worker_events = require "resty.worker.events"
+
   local handler = function(data, event, source, pid)
     if source and source == constants.CACHE.CLUSTER then
       singletons.events:publish(event, data)
     end
   end
 
-  ev.register(handler)
+  worker_events.register(handler)
 
-  local ok, err = ev.configure {
+  local ok, err = worker_events.configure {
     shm = "process_events", -- defined by "lua_shared_dict"
     timeout = 5,            -- life time of event data in shm
     interval = 1,           -- poll interval (seconds)
@@ -179,8 +179,16 @@ function Kong.init_worker()
     wait_max = 0.5,         -- max wait time before discarding event
   }
   if not ok then
-    ngx.log(ngx.ERR, "failed to start event system: ", err)
+    ngx.log(ngx.CRIT, "could not start inter-worker events: ", err)
     return
+  end
+
+  core.init_worker.before()
+
+  -- run plugins init_worker context
+
+  for _, plugin in ipairs(singletons.loaded_plugins) do
+    plugin.handler:init_worker()
   end
 end
 
@@ -195,16 +203,16 @@ end
 function Kong.balancer()
   local addr = ngx.ctx.balancer_address
   addr.tries = addr.tries + 1
-  if addr.tries > 1 then  
+  if addr.tries > 1 then
     -- only call balancer on retry, first one is done in `core.access.before` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
-    
+
     -- record failure data
     addr.failures = addr.failures or {}
     local state, code = get_last_failure()
     addr.failures[addr.tries-1] = { name = state, code = code }
-    
+
     local ok, err = balancer_execute(addr)
     if not ok then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retry the "..
@@ -218,7 +226,7 @@ function Kong.balancer()
       set_more_tries(retries)
     end
   end
-  
+
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
   if not ok then
