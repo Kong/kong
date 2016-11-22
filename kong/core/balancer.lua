@@ -17,7 +17,7 @@ local retry_balancer = function(target)
 end
 
 local first_try_dns = function(target)
-  local ip, port = toip(target.upstream.host, target.upstream.port, false)
+  local ip, port = toip(target.host, target.port, false)
   if not ip then
     return nil, port
   end
@@ -27,7 +27,7 @@ local first_try_dns = function(target)
 end
 
 local retry_dns = function(target)
-  local ip, port = toip(target.upstream.host, target.upstream.port, true)
+  local ip, port = toip(target.host, target.port, true)
   if type(ip) ~= "string" then
     return nil, port
   end
@@ -39,7 +39,7 @@ end
 
 -- Resolves the target structure in-place (fields `ip` and `port`).
 --
--- If the hostname matches an 'upstream' pool, then it must be balanced in that 
+-- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool provides it.
 --
 -- @param target the data structure as defined in `core.access.before` where it is created
@@ -47,11 +47,11 @@ end
 local function execute(target)
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
-    target.ip = target.upstream.host
-    target.port = target.upstream.port or 80
+    target.ip = target.host
+    target.port = target.port or 80
     return true
   end
-  
+
   -- when tries == 0 it runs before the `balancer` context (in the `access` context),
   -- when tries >= 2 then it performs a retry in the `balancer` context
   if target.tries == 0 then
@@ -74,6 +74,6 @@ local function execute(target)
   end
 end
 
-return { 
+return {
   execute = execute,
 }
