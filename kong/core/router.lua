@@ -298,16 +298,18 @@ local function marshall_api(api)
       return nil, nil, "uris field must be a table"
     end
 
-    bit_category = bor(bit_category, CATEGORIES.URI)
+    if #api.uris > 0 then
+      bit_category = bor(bit_category, CATEGORIES.URI)
 
-    api_t.uris = new_tab(0, #api.uris)
-    api_t.uris_prefix_regex = new_tab(#api.uris, 0)
-    api_t.uris_prefix_regex_strip = new_tab(#api.uris, 0)
+      api_t.uris = new_tab(0, #api.uris)
+      api_t.uris_prefix_regex = new_tab(#api.uris, 0)
+      api_t.uris_prefix_regex_strip = new_tab(#api.uris, 0)
 
-    for i, uri in ipairs(api.uris) do
-      api_t.uris[uri] = true
-      api_t.uris_prefix_regex[i] = "^" .. uri
-      api_t.uris_prefix_regex_strip[i] = "^" .. uri .. "/(.*)"
+      for i, uri in ipairs(api.uris) do
+        api_t.uris[uri] = true
+        api_t.uris_prefix_regex[i] = "^" .. uri
+        api_t.uris_prefix_regex_strip[i] = "^" .. uri .. "/(.*)"
+      end
     end
 
   else
@@ -335,11 +337,13 @@ local function marshall_api(api)
       return nil, nil, "host field must be a table"
     end
 
-    bit_category = bor(bit_category, CATEGORIES.PLAIN_HOST)
-    api_t.hosts = new_tab(0, #host_values)
+    if #host_values > 0 then
+      bit_category = bor(bit_category, CATEGORIES.PLAIN_HOST)
+      api_t.hosts = new_tab(0, #host_values)
 
-    for _, host_value in ipairs(host_values) do
-      api_t.hosts[host_value] = true
+      for _, host_value in ipairs(host_values) do
+        api_t.hosts[host_value] = true
+      end
     end
 
   else
@@ -354,11 +358,13 @@ local function marshall_api(api)
 
     -- plain methods matching
 
-    bit_category = bor(bit_category, CATEGORIES.PLAIN_METHOD)
-    api_t.methods = new_tab(0, #api.methods)
+    if #api.methods > 0 then
+      bit_category = bor(bit_category, CATEGORIES.PLAIN_METHOD)
+      api_t.methods = new_tab(0, #api.methods)
 
-    for _, method in ipairs(api.methods) do
-      api_t.methods[upper(method)] = true
+      for _, method in ipairs(api.methods) do
+        api_t.methods[upper(method)] = true
+      end
     end
 
   else
@@ -429,7 +435,7 @@ local function new(apis)
       index(bit_category, indexed_apis, indexes, api_t)
     end
 
-    grab_headers = #indexes.hosts > 0
+    grab_headers = next(indexes.hosts) ~= nil
   end
 
 
@@ -496,6 +502,8 @@ local function new(apis)
     local method = ngx.req.get_method()
     local uri = ngx.var.uri
     local headers
+
+    --print("grab headers: ", grab_headers)
 
     if grab_headers then
       headers = ngx.req.get_headers()

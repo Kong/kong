@@ -1,7 +1,5 @@
 local Router = require "kong.core.router"
 
---do return end
-
 local function reload_router()
   package.loaded["kong.core.router"] = nil
   Router = require "kong.core.router"
@@ -371,8 +369,70 @@ describe("Router", function()
   end)
 
   describe("exec()", function()
+    local function mock_ngx(method, uri, headers)
+      local _ngx
+      _ngx = {
+        re = ngx.re,
+        var = {
+          uri = uri
+        },
+        req = {
+          set_uri = function(uri)
+            _ngx.var.uri = uri
+          end,
+          get_method = function()
+            return method
+          end,
+          get_headers = function()
+            return headers
+          end
+        }
+      }
+
+      return _ngx
+    end
+
     it("returns api/host/path", function()
 
+    end)
+
+    describe("grab_headers", function()
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api" },
+        }
+      }
+
+      it("does not read request headers if not required", function()
+        local _ngx = mock_ngx("GET", "/my-api", {})
+        spy.on(_ngx.req, "get_headers")
+
+        local router = assert(Router.new(use_case_apis))
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.spy(_ngx.req.get_headers).was.not_called()
+      end)
+
+      it("reads request headers if required", function()
+        table.insert(use_case_apis, {
+          name = "api-2",
+          uris = { "/my-api" },
+          headers = {
+            host = { "my-api.com" },
+          }
+        })
+
+        local _ngx = mock_ngx("GET", "/my-api", { host = "my-api.com" })
+        spy.on(_ngx.req, "get_headers")
+
+        local router = assert(Router.new(use_case_apis))
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[2], api)
+        assert.spy(_ngx.req.get_headers).was.called(1)
+      end)
     end)
 
     describe("stripped uris", function()
@@ -390,29 +450,6 @@ describe("Router", function()
           uris = { "/my-api", "/this-api" },
         },
       }
-
-      local function mock_ngx(method, uri, headers)
-        local _ngx
-        _ngx = {
-          re = ngx.re,
-          var = {
-            uri = uri
-          },
-          req = {
-            set_uri = function(uri)
-              _ngx.var.uri = uri
-            end,
-            get_method = function()
-              return method
-            end,
-            get_headers = function()
-              return headers
-            end
-          }
-        }
-
-        return _ngx
-      end
 
       setup(function()
         router = assert(Router.new(use_case_apis))
