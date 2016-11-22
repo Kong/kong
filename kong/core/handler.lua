@@ -80,8 +80,7 @@ return {
 
       local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
       if not api then
-        ngx.say("no API found")
-        return ngx.exit(404)
+        return responses.send_HTTP_NOT_FOUND("no API found")
       end
 
       local balancer_address = {

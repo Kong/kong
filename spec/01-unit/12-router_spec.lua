@@ -157,6 +157,21 @@ describe("Router", function()
           local api_t = router.select("GET", "/", {})
           assert.same(use_case[#use_case], api_t.api)
         end)
+
+        it("does not superseds another API", function()
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/my-api", {})
+          assert.same(use_case[3], api_t.api)
+
+          local api_t = router.select("GET", "/my-api/hello/world", {})
+          assert.same(use_case[3], api_t.api)
+        end)
+
+        it("acts as a catch-all", function()
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/foobar/baz", {})
+          assert.same(use_case[#use_case], api_t.api)
+        end)
       end)
 
       describe("multiple APIs of same category with conflicting values", function()
