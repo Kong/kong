@@ -1,5 +1,6 @@
 local resty_lock = require "resty.lock"
-local cjson = require "cjson"
+local json_encode = require("cjson.safe").encode
+local json_decode = require("cjson.safe").decode
 local cache = ngx.shared.cache
 local ngx_log = ngx.log
 local gettime = ngx.now
@@ -65,7 +66,7 @@ function _M.set(key, value, exptime)
   DATA[key] = value
 
   -- Save into Shared Dictionary
-  local _, err = _M.sh_set(key, cjson.encode(value), exptime)
+  local _, err = _M.sh_set(key, json_encode(value), exptime)
   if err then return nil, err end
 
   return true
@@ -83,31 +84,27 @@ function _M.get(key)
     elseif value[TTL_EXPIRE_KEY] >= now then
       -- found ttl-based value, within ttl
       return value.value
-    else
-      -- value with expired ttl, delete it
-      DATA[key] = nil
-      -- value = nil  -- commented out because it triggers a linter error
     end
+    -- value with expired ttl, delete it
+    DATA[key] = nil
   end
   
   -- nothing found yet, get it from Shared Dictionary
   value = _M.sh_get(key)
-  if not value then
+  if value == nil then
     -- nothing found
     return nil
-  else
-    value = cjson.decode(value)
-    DATA[key] = value  -- store in memory, so we don't need to deserialize next time
-
-    if type(value) ~= "table" or not value[TTL_EXPIRE_KEY] then
-      -- found non-ttl value, just return it
-      return value
-    else
-      -- found ttl-based value, no need to check ttl, we assume shm did that,
-      -- worst-case on next request it will immediately be expired again
-      return value.value
-    end  
   end
+  value = json_decode(value)
+  DATA[key] = value  -- store in memory, so we don't need to deserialize next time
+
+  if type(value) ~= "table" or not value[TTL_EXPIRE_KEY] then
+    -- found non-ttl value, just return it
+    return value
+  end
+  -- found ttl-based value, no need to check ttl, we assume shm did that,
+  -- worst-case on next request it will immediately be expired again
+  return value.value
 end
 
 function _M.delete(key)
@@ -132,7 +129,7 @@ function _M.get_or_set(key, ttl, cb, ...)
 
   -- Try to get the value from the cache
   local value = _M.get(key)
-  if value then return value end
+  if value ~= nil then return value end
 
   local lock, err = resty_lock:new("cache_locks", {
     exptime = 10,
@@ -153,10 +150,10 @@ function _M.get_or_set(key, ttl, cb, ...)
   -- Lock acquired. Since in the meantime another worker may have
   -- populated the value we have to check again
   value = _M.get(key)
-  if not value then
+  if value == nil then
     -- Get from closure
     value = cb(...)
-    if value then
+    if value ~= nil then
       local ok, err = _M.set(key, value, ttl)
       if not ok then
         ngx_log(ngx.ERR, err)
