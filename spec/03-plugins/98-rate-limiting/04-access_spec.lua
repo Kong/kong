@@ -432,6 +432,58 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.falsy(res.headers["x-ratelimit-remaining-minute"])
         end)
       end)
+
+    elseif policy == "redis" then
+      describe("Fault tolerancy", function()
+
+        before_each(function()
+          local api1 = assert(helpers.dao.apis:insert {
+            request_host = "failtest3.com",
+            upstream_url = "http://mockbin.com"
+          })
+          assert(helpers.dao.plugins:insert {
+            name = "rate-limiting",
+            api_id = api1.id,
+            config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = false }
+          })
+
+          local api2 = assert(helpers.dao.apis:insert {
+            request_host = "failtest4.com",
+            upstream_url = "http://mockbin.com"
+          })
+          assert(helpers.dao.plugins:insert {
+            name = "rate-limiting",
+            api_id = api2.id,
+            config = { minute = 6, policy = policy, redis_host = "5.5.5.5", fault_tolerant = true }
+          })
+        end)
+
+        it("does not work if an error occurs", function()
+          -- Make another request
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200/",
+            headers = {
+              ["Host"] = "failtest3.com"
+            }
+          })
+          local body = assert.res_status(500, res)
+          assert.are.equal([[{"message":"An unexpected error occurred"}]], body)
+        end)
+        it("keeps working if an error occurs", function()
+          -- Make another request
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200/",
+            headers = {
+              ["Host"] = "failtest4.com"
+            }
+          })
+          assert.res_status(200, res)
+          assert.falsy(res.headers["x-ratelimit-limit-minute"])
+          assert.falsy(res.headers["x-ratelimit-remaining-minute"])
+        end)
+      end)
     end
 
     describe("Expirations", function()
