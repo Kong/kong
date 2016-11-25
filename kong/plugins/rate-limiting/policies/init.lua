@@ -70,19 +70,29 @@ return {
   },
   ["redis"] = {
     increment = function(conf, api_id, identifier, current_timestamp, value)
+      local pool = { pool = api_id .. ":" .. conf.redis_host .. ":" ..
+                    conf.redis_port .. ":" .. conf.redis_database }
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = red:connect(conf.redis_host, conf.redis_port)
+      local ok, err = red:connect(conf.redis_host, conf.redis_port, pool)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
-        return
+        return nil, err
       end
 
       if conf.redis_password and conf.redis_password ~= "" then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
-          return
+          return nil, err
+        end
+      end
+
+      if conf.redis_database ~= nil and conf.redis_database > 0 then
+        local ok, err = red:select(conf.redis_database)
+        if not ok then
+          ngx_log(ngx.ERR, "failed to change Redis database: ", err)
+          return nil, err
         end
       end
 
@@ -92,7 +102,7 @@ return {
         local exists, err = red:exists(cache_key)
         if err then
           ngx_log(ngx.ERR, "failed to query Redis: ", err)
-          return
+          return nil, err
         end
 
         red:init_pipeline((not exists or exists == 0) and 2 or 1)
@@ -104,30 +114,40 @@ return {
         local _, err = red:commit_pipeline()
         if err then
           ngx_log(ngx.ERR, "failed to commit pipeline in Redis: ", err)
-          return
+          return nil, err
         end
       end
 
       local ok, err = red:set_keepalive(10000, 100)
       if not ok then
         ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
-        return
+        return nil, err
       end
     end,
     usage = function(conf, api_id, identifier, current_timestamp, name)
+      local pool = { pool = api_id .. ":" .. conf.redis_host .. ":" ..
+                    conf.redis_port .. ":" .. conf.redis_database }
       local red = redis:new()
       red:set_timeout(conf.redis_timeout)
-      local ok, err = red:connect(conf.redis_host, conf.redis_port)
+      local ok, err = red:connect(conf.redis_host, conf.redis_port, pool)
       if not ok then
         ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
-        return
+        return nil, err
       end
 
       if conf.redis_password and conf.redis_password ~= "" then
         local ok, err = red:auth(conf.redis_password)
         if not ok then
           ngx_log(ngx.ERR, "failed to connect to Redis: ", err)
-          return
+          return nil, err
+        end
+      end
+
+      if conf.redis_database ~= nil and conf.redis_database > 0 then
+        local ok, err = red:select(conf.redis_database)
+        if not ok then
+          ngx_log(ngx.ERR, "failed to change Redis database: ", err)
+          return nil, err
         end
       end
 
@@ -135,6 +155,12 @@ return {
       local cache_key = get_local_key(api_id, identifier, periods[name], name)
       local current_metric, err = red:get(cache_key)
       if err then
+        return nil, err
+      end
+
+      local ok, err = red:set_keepalive(10000, 100)
+      if not ok then
+        ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
         return nil, err
       end
 
