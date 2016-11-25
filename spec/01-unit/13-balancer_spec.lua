@@ -1,9 +1,8 @@
 describe("Balancer", function()
-  local old_ngx = _G.ngx
-  local singletons, resolver
+  local singletons, balancer
   local UPSTREAMS_FIXTURES
   local TARGETS_FIXTURES
-  local uuid = require("kong.tools.utils").uuid
+  --local uuid = require("kong.tools.utils").uuid
 
   
   setup(function()
@@ -80,17 +79,19 @@ describe("Balancer", function()
     }
   end)
 
-  describe("load_upstreams_into_memory()", function()
-    local upstreams_dics
+  describe("load_upstreams_dict_into_memory()", function()
+    local upstreams_dict
     setup(function()
-      upstreams_dics = balancer.load_upstreams_into_memory()
+      upstreams_dict = balancer._load_upstreams_dict_into_memory()
     end)
 
-    it("restrieves all upstreams as a dictionary", function()
-      assert.equal("table", type(upstreams_dics))
-      for i, u in ipairs(UPSTREAMS_FIXTURES) do
-        assert.is.table(upstreams_dics[u.name])
+    it("retrieves all upstreams as a dictionary", function()
+      assert.is.table(upstreams_dict)
+      for _, u in ipairs(UPSTREAMS_FIXTURES) do
+        assert.equal(upstreams_dict[u.name], u.id)
+        upstreams_dict[u.name] = nil -- remove each match
       end
+      assert.is.Nil(next(upstreams_dict)) -- should be empty now
     end)
   end)
 
@@ -99,7 +100,7 @@ describe("Balancer", function()
     local upstream
     setup(function()
       upstream = "a"
-      targets = balancer.load_targets_into_memory(upstream)
+      targets = balancer._load_targets_into_memory(upstream)
     end)
 
     it("retrieves all targets per upstream, ordered", function()
