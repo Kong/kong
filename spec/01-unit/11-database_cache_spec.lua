@@ -1,4 +1,5 @@
 local cache = require "kong.tools.database_cache"
+local json = require "cjson"
 
 describe("Database cache", function()
 
@@ -27,4 +28,84 @@ describe("Database cache", function()
     assert.are.equal("jwtauth_credentials:hello", cache.jwtauth_credential_key("hello"))
   end)
 
+  it("returns a valid LDAPAuthcredentials cache key", function()
+    assert.are.equal("ldap_credentials_0c704b70-3f30-49ad-9418-3968e53c8d98:username", cache.ldap_credential_key("0c704b70-3f30-49ad-9418-3968e53c8d98", "username"))
+  end)
+
+  describe("multi-level cache", function()
+    
+    local key = "my_cache_key"
+    local val = { sentinel = {} }
+
+    after_each(function()
+      cache.delete_all()
+    end)
+  
+    it("stores scalar entries in the 1st and 2nd level cache", function()
+      -- make sure the caches are empty
+      assert.is.Nil(cache.get(key))
+      assert.is.Nil(cache.sh_get(key))
+      -- set a value
+      assert(cache.set(key, val, nil))
+      -- verify it was set
+      assert.are.equal(val, cache.get(key)) -- table based unique equality
+      assert.are.same(val, json.decode((cache.sh_get(key)))) -- similarity only
+    end)
+
+    it("stores scalar entries in the 1st and 2nd level cache", function()
+      val = 15
+      -- make sure the caches are empty
+      assert.is.Nil(cache.get(key))
+      assert.is.Nil(cache.sh_get(key))
+      -- set a value
+      assert(cache.set(key, val, nil))
+      -- verify it was set
+      assert.are.equal(val, cache.get(key))
+      assert.are.equal(val, json.decode((cache.sh_get(key))))
+    end)
+
+    it("stores 2nd level entries in the 1st level cache", function()
+      -- make sure the caches are empty
+      assert.is.Nil(cache.get(key))
+      assert.is.Nil(cache.sh_get(key))
+      -- set a value in 2nd level
+      assert(cache.sh_set(key, json.encode(val)))
+      -- verify it was set
+      local entry = cache.get(key)  -- should populate 1st level
+      assert.are.same(val, entry) -- deserialized, so similarity only
+      -- now if we get it again, it comes from 1st level, and hence 
+      -- should have unique equality
+      assert.are.equal(entry, cache.get(key))
+    end)
+  
+    it("expires properly on given ttl", function()
+      -- make sure the caches are empty
+      assert.is.Nil(cache.get(key))
+      assert.is.Nil(cache.sh_get(key))
+      -- set a value, and wait for expiring
+      assert(cache.set(key, val, 0.1))
+      cache.sh_delete(key) -- delete from 2nd level, as these tests are using a fake lua-version-shm anyway
+      assert(cache.get(key))
+      ngx.sleep(0.2)
+      -- verify
+      assert.is.Nil(cache.get(key))
+    end)
+    
+    it("expires properly on ttl in 1st level, provided by 2nd level", function()
+      -- make sure the caches are empty
+      assert.is.Nil(cache.get(key))
+      assert.is.Nil(cache.sh_get(key))
+      -- set a value, with a ttl in 2nd level
+      cache.sh_set(key, json.encode({
+              value = val,
+              ___expire_ttl = ngx.now() + 0.1,
+            }), 0.1)
+      assert(cache.get(key)) -- should populate 1st level, including ttl setting
+      cache.sh_delete(key) -- delete from 2nd level, as these tests are using a fake lua-version-shm anyway
+      -- wait for expiring
+      ngx.sleep(0.2)
+      -- verify
+      assert.is.Nil(cache.get(key))
+    end)
+  end)
 end)

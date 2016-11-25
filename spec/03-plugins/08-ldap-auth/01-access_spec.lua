@@ -2,7 +2,7 @@ local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 
 describe("Plugin: ldap-auth (access)", function()
-  local client
+  local client, client_admin, api2, plugin2
   setup(function()
     assert(helpers.start_kong())
 
@@ -11,7 +11,7 @@ describe("Plugin: ldap-auth (access)", function()
       request_host = "ldap.com",
       upstream_url = "http://mockbin.com"
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    api2 = assert(helpers.dao.apis:insert {
       name = "test-ldap2",
       request_host = "ldap2.com",
       upstream_url = "http://mockbin.com"
@@ -33,7 +33,7 @@ describe("Plugin: ldap-auth (access)", function()
         attribute = "uid"
       }
     })
-    assert(helpers.dao.plugins:insert {
+    plugin2 = assert(helpers.dao.plugins:insert {
       api_id = api2.id,
       name = "ldap-auth",
       config = {
@@ -42,7 +42,8 @@ describe("Plugin: ldap-auth (access)", function()
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
-        hide_credentials = true
+        hide_credentials = true,
+        cache_ttl = 2,
       }
     })
     assert(helpers.dao.plugins:insert {
@@ -64,6 +65,7 @@ describe("Plugin: ldap-auth (access)", function()
 
   before_each(function()
     client = helpers.proxy_client()
+    client_admin = helpers.admin_client()
   end)
   after_each(function()
     if client then client:close() end
@@ -234,25 +236,35 @@ describe("Plugin: ldap-auth (access)", function()
       method = "GET",
       path = "/request",
       headers = {
-        host = "ldap.com",
+        host = "ldap2.com",
         authorization = "ldap "..ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
 
     -- Check that cache is populated
-    local cache_key = cache.ldap_credential_key("einstein")
-    local exists = true
-    while(exists) do
-      local r = assert(client:send {
+    local cache_key = cache.ldap_credential_key(api2.id , "einstein")
+    helpers.wait_until(function()
+      local res = assert(client_admin:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/cache/"..cache_key
       })
-      if r.status ~= 200 then
-        exists = false
-      end
-    end
-    assert.equals(200, r.status)
+      res:read_body()
+      return res.status == 200
+    end)
+    
+    -- Check that cache is invalidated
+    helpers.wait_until(function()
+      local res = client_admin:send {
+        method = "GET",
+        path = "/cache/"..cache_key
+      }
+      res:read_body()
+      --if res.status ~= 404 then
+      --  ngx.sleep( plugin2.config.cache_ttl / 5 )
+      --end
+      return res.status == 404
+    end, plugin2.config.cache_ttl + 10)
   end)
 
   describe("config.anonymous", function()

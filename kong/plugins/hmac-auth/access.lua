@@ -103,19 +103,19 @@ local function validate_signature(request, hmac_params, headers)
   end
 end
 
+local function load_credential_into_memory(username)
+  local keys, err = singletons.dao.hmacauth_credentials:find_all { username = username }
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return keys[1]
+end
+
 local function load_credential(username)
   local credential
   if username then
-      credential = cache.get_or_set(cache.hmacauth_credential_key(username), function()
-      local keys, err = singletons.dao.hmacauth_credentials:find_all { username = username }
-      local result
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif #keys > 0 then
-        result = keys[1]
-      end
-      return result
-    end)
+    credential = cache.get_or_set(cache.hmacauth_credential_key(username),
+                                  nil, load_credential_into_memory, username)
   end
   return credential
 end
@@ -136,6 +136,14 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
     return false
   end
   return true
+end
+
+local function load_consumer_into_memory(credential)
+  local result, err = singletons.dao.consumers:find {id = credential.consumer_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return result
 end
 
 local function do_authentication(conf)
@@ -171,13 +179,8 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = singletons.dao.consumers:find {id = credential.consumer_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return result
-  end)
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+                                    nil, load_consumer_into_memory, credential)
 
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
