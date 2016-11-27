@@ -672,7 +672,7 @@ describe("Core Hooks", function()
     describe("Upstreams entity", function()
       local upstream
       
-      setup(function()
+      before_each(function()
         assert(helpers.dao.apis:insert {
           request_host = "hooks2.com",
           upstream_url = "http://mybalancer"
@@ -686,15 +686,130 @@ describe("Core Hooks", function()
           weight = 10,
         })
       end)
-      pending("invalidates the upstream-list when adding an upstream", function()
+      it("invalidates the upstream-list when adding an upstream", function()
+        -- Making a request to populate the cache with the upstreams
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+        -- validate that the cache is populated
+        get_cache(cache.upstreams_dict_key(upstream.id))
+        -- add an upstream
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/upstreams",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = {
+            name = "my2nd.upstream",
+          },
+        })
+        assert.response(res).has.status(201)
+        -- wait for invalidation of the cache
+        wait_for_invalidation(cache.upstreams_dict_key(upstream.id), 3)
       end)
-      pending("invalidates the upstream-list when updating an upstream", function()
+      it("invalidates the upstream-list when updating an upstream", function()
+        -- Making a request to populate the cache with the upstreams
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+        -- validate that the cache is populated
+        get_cache(cache.upstreams_dict_key(upstream.id))
+        -- patch the upstream
+        local res = assert(api_client:send {
+          method = "PATCH",
+          path = "/upstreams/"..upstream.id,
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = {
+            slots = 10,
+            orderlist = { 1,2,3,4,5,6,7,8,9,10 }
+          },
+        })
+        assert.response(res).has.status(200)
+        -- wait for invalidation of the cache
+        wait_for_invalidation(cache.upstreams_dict_key(upstream.id), 3)
       end)
-      pending("invalidates the upstream-list when deleting an upstream", function()
+      it("invalidates the upstream-list when deleting an upstream", function()
+        -- Making a request to populate the cache with the upstreams
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+        -- validate that the cache is populated
+        get_cache(cache.upstreams_dict_key(upstream.id))
+        -- delete the upstream
+        local res = assert(api_client:send {
+          method = "DELETE",
+          path = "/upstreams/mybalancer",
+        })
+        assert.response(res).has.status(204)
+        -- wait for invalidation of the cache
+        wait_for_invalidation(cache.upstreams_dict_key(upstream.id), 3)
       end)
-      pending("invalidates an upstream when updating an upstream", function()
+      it("invalidates an upstream when updating an upstream", function()
+        -- Making a request to populate the cache with the upstream
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+        -- validate that the cache is populated
+        get_cache(cache.upstream_key(upstream.id))
+        -- patch the upstream
+        local res = assert(api_client:send {
+          method = "PATCH",
+          path = "/upstreams/"..upstream.id,
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = {
+            slots = 10,
+            orderlist = { 1,2,3,4,5,6,7,8,9,10 }
+          },
+        })
+        assert.response(res).has.status(200)
+        -- wait for invalidation of the cache
+        wait_for_invalidation(cache.upstream_key(upstream.id), 3)
       end)
-      pending("invalidates an upstream when deleting an upstream", function()
+      it("invalidates an upstream when deleting an upstream", function()
+        -- Making a request to populate the cache with the upstream
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+        -- validate that the cache is populated
+        get_cache(cache.upstream_key(upstream.id))
+        -- delete the upstream
+        local res = assert(api_client:send {
+          method = "DELETE",
+          path = "/upstreams/mybalancer",
+        })
+        assert.response(res).has.status(204)
+        -- wait for invalidation of the cache
+        wait_for_invalidation(cache.upstream_key(upstream.id), 3)
       end)
       it("invalidates the target-history when updating an upstream", function()
         -- Making a request to populate target history for upstream
