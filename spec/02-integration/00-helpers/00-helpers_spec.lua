@@ -7,11 +7,13 @@ describe("helpers: assertions and modifiers", function()
   setup(function()
     assert(helpers.dao:run_migrations())
     assert(helpers.dao.apis:insert {
-      request_host = "mockbin.com",
+      name = "mockbin",
+      hosts = { "mockbin.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.apis:insert {
-      request_host = "httpbin.org",
+      name = "httpbin",
+      hosts = { "httpbin.org" },
       upstream_url = "http://httpbin.org"
     })
 

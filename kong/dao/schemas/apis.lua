@@ -27,6 +27,15 @@ local function check_hosts_uris_methods(api_t)
     if v ~= nil and #v > 0 then
       ok = true
     end
+
+    if v ~= nil then
+      if type(v) ~= "table" then
+        return false, "not an array"
+
+      elseif #v > 0 then
+        ok = true
+      end
+    end
   end
 
   if not ok then
@@ -75,19 +84,17 @@ local function check_host(host)
 end
 
 local function check_hosts(hosts, api_t)
-  if type(hosts) ~= "table" then
-    return false, "not an array"
-  end
-
   local ok, err = check_hosts_uris_methods(api_t)
   if not ok then
     return false, err
   end
 
-  for i, host in ipairs(hosts) do
-    local ok, err = check_host(host)
-    if not ok then
-      return false, "host with value '" .. host .. "' is invalid: " .. err
+  if hosts then
+    for i, host in ipairs(hosts) do
+      local ok, err = check_host(host)
+      if not ok then
+        return false, "host with value '" .. host .. "' is invalid: " .. err
+      end
     end
   end
 
@@ -130,23 +137,21 @@ local function check_uri(uri)
 end
 
 local function check_uris(uris, api_t)
-  if type(uris) ~= "table" then
-    return false, "not an array"
-  end
-
   local ok, err = check_hosts_uris_methods(api_t)
   if not ok then
     return false, err
   end
 
-  for i, uri in ipairs(uris) do
-    local ok, err, trimed_uri = check_uri(uri, api_t.uris)
-    if not ok then
-      return false, "uri with value '" .. uri .. "' is invalid: " .. err
-    end
+  if uris then
+    for i, uri in ipairs(uris) do
+      local ok, err, trimed_uri = check_uri(uri, api_t.uris)
+      if not ok then
+        return false, "uri with value '" .. uri .. "' is invalid: " .. err
+      end
 
-    if trimed_uri then
-      api_t.uris[i] = trimed_uri
+      if trimed_uri then
+        api_t.uris[i] = trimed_uri
+      end
     end
   end
 
@@ -168,19 +173,17 @@ local function check_method(method)
 end
 
 local function check_methods(methods, api_t)
-  if type(methods) ~= "table" then
-    return false, "not an array"
-  end
-
   local ok, err = check_hosts_uris_methods(api_t)
   if not ok then
     return false, err
   end
 
-  for i, method in ipairs(methods) do
-    local ok, err = check_method(method)
-    if not ok then
-      return false, "method with value '" .. method .. "' is invalid: " .. err
+  if methods then
+    for i, method in ipairs(methods) do
+      local ok, err = check_method(method)
+      if not ok then
+        return false, "method with value '" .. method .. "' is invalid: " .. err
+      end
     end
   end
 
@@ -224,11 +227,11 @@ return {
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},
     name = {type = "string", unique = true, required = true, func = check_name},
 
-    hosts = {type = "array", default = {}, func = check_hosts},
-    uris = {type = "array", default = {}, func = check_uris},
-    methods = {type = "array", default = {}, func = check_methods},
+    hosts = {type = "array", func = check_hosts},
+    uris = {type = "array", func = check_uris},
+    methods = {type = "array", func = check_methods},
+    strip_uri = {type = "boolean", default = true},
 
-    strip_request_path = {type = "boolean", default = false},
     upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
     preserve_host = {type = "boolean", default = false},
     retries = {type = "number", default = 5, func = check_retries},

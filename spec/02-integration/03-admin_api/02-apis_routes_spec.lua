@@ -45,7 +45,7 @@ describe("Admin API", function()
           assert.is_string(json.id)
           assert.is_nil(json.request_path)
           assert.False(json.preserve_host)
-          assert.False(json.strip_request_path)
+          assert.True(json.strip_uri)
           assert.equals(5, json.retries)
         end
       end)
@@ -177,7 +177,7 @@ describe("Admin API", function()
           assert.is_string(json.id)
           assert.is_nil(json.paths)
           assert.False(json.preserve_host)
-          assert.False(json.strip_request_path)
+          assert.True(json.strip_uri)
           assert.equals(0, json.retries)
         end
       end)
@@ -508,19 +508,19 @@ describe("Admin API", function()
             assert.same(json, in_db)
           end
         end)
-        it_content_types("updates strip_request_path if not previously set", function(content_type)
+        it_content_types("updates strip_uri if not previously set", function(content_type)
           return function()
             local res = assert(client:send {
               method = "PATCH",
               path = "/apis/"..api.id,
               body = {
-                strip_request_path = true
+                strip_uri = true
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.True(json.strip_request_path)
+            assert.True(json.strip_uri)
             assert.equal(api.id, json.id)
 
             local in_db = assert(helpers.dao.apis:find {id = api.id})

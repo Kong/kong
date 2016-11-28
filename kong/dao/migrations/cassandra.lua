@@ -219,11 +219,13 @@ return {
       ALTER TABLE apis ADD hosts text;
       ALTER TABLE apis ADD uris text;
       ALTER TABLE apis ADD methods text;
+      ALTER TABLE apis ADD strip_uri boolean;
     ]],
     down = [[
       ALTER TABLE apis DROP headers;
       ALTER TABLE apis DROP uris;
       ALTER TABLE apis DROP methods;
+      ALTER TABLE apis DROP strip_uri;
     ]]
   },
   {
@@ -240,6 +242,7 @@ return {
       for _, row in ipairs(rows) do
         row.hosts = { row.request_host }
         row.uris = { row.request_path }
+        row.strip_uri = row.strip_request_path
 
         local _, err = dao.apis:update(row, { id = row.id }, { full = true })
         if err then
@@ -262,10 +265,12 @@ return {
 
       ALTER TABLE apis DROP request_host;
       ALTER TABLE apis DROP request_path;
+      ALTER TABLE apis DROP strip_request_path;
     ]],
     down = [[
       ALTER TABLE apis ADD request_host text;
       ALTER TABLE apis ADD request_path text;
+      ALTER TABLE apis ADD strip_request_path boolean;
 
       CREATE INDEX IF NOT EXISTS ON apis(request_host);
       CREATE INDEX IF NOT EXISTS ON apis(request_path);

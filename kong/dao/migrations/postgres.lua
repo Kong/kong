@@ -202,6 +202,7 @@ return {
         ALTER TABLE apis ADD hosts text;
         ALTER TABLE apis ADD uris text;
         ALTER TABLE apis ADD methods text;
+        ALTER TABLE apis ADD strip_uri boolean;
       EXCEPTION WHEN duplicate_column THEN
 
       END$$;
@@ -210,6 +211,7 @@ return {
       ALTER TABLE apis DROP COLUMN IF EXISTS headers;
       ALTER TABLE apis DROP COLUMN IF EXISTS uris;
       ALTER TABLE apis DROP COLUMN IF EXISTS methods;
+      ALTER TABLE apis DROP COLUMN IF EXISTS strip_uri;
     ]]
   },
   {
@@ -233,6 +235,7 @@ return {
         local fields_to_update = {
           hosts = { row.request_host },
           uris = { row.request_path },
+          strip_uri = row.strip_request_path,
         }
 
         local _, err = dao.apis:update(fields_to_update, { id = row.id })
@@ -256,10 +259,12 @@ return {
 
       ALTER TABLE apis DROP COLUMN IF EXISTS request_host;
       ALTER TABLE apis DROP COLUMN IF EXISTS request_path;
+      ALTER TABLE apis DROP COLUMN IF EXISTS strip_request_path;
     ]],
     down = [[
       ALTER TABLE apis ADD request_host text;
       ALTER TABLE apis ADD request_path text;
+      ALTER TABLE apis ADD strip_request_path boolean;
 
       CREATE INDEX IF NOT EXISTS ON apis(request_host);
       CREATE INDEX IF NOT EXISTS ON apis(request_path);
