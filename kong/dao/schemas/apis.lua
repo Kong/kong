@@ -1,5 +1,6 @@
 local url = require "socket.url"
 local utils = require "kong.tools.utils"
+local Errors = require "kong.dao.errors"
 
 local sub = string.sub
 local match = string.match
@@ -11,35 +12,6 @@ local function validate_upstream_url_protocol(value)
     if not (parsed_url.scheme == "http" or parsed_url.scheme == "https") then
       return false, "Supported protocols are HTTP and HTTPS"
     end
-  end
-
-  return true
-end
-
-local required_properties = { "uris", "hosts", "methods" }
-
-local function check_hosts_uris_methods(api_t)
-  local ok
-
-  for _, name in ipairs(required_properties) do
-    local v = api_t[name]
-
-    if v ~= nil and #v > 0 then
-      ok = true
-    end
-
-    if v ~= nil then
-      if type(v) ~= "table" then
-        return false, "not an array"
-
-      elseif #v > 0 then
-        ok = true
-      end
-    end
-  end
-
-  if not ok then
-    return false, "at least one of 'hosts', 'uris' or 'methods' must be specified"
   end
 
   return true
@@ -84,11 +56,6 @@ local function check_host(host)
 end
 
 local function check_hosts(hosts, api_t)
-  local ok, err = check_hosts_uris_methods(api_t)
-  if not ok then
-    return false, err
-  end
-
   if hosts then
     for i, host in ipairs(hosts) do
       local ok, err = check_host(host)
@@ -137,11 +104,6 @@ local function check_uri(uri)
 end
 
 local function check_uris(uris, api_t)
-  local ok, err = check_hosts_uris_methods(api_t)
-  if not ok then
-    return false, err
-  end
-
   if uris then
     for i, uri in ipairs(uris) do
       local ok, err, trimed_uri = check_uri(uri, api_t.uris)
@@ -173,11 +135,6 @@ local function check_method(method)
 end
 
 local function check_methods(methods, api_t)
-  local ok, err = check_hosts_uris_methods(api_t)
-  if not ok then
-    return false, err
-  end
-
   if methods then
     for i, method in ipairs(methods) do
       local ok, err = check_method(method)
@@ -238,5 +195,27 @@ return {
   },
   marshall_event = function(self, t)
     return { id = t.id }
+  end,
+  self_check = function(schema, api_t, dao, is_update)
+    if is_update then
+      return true
+    end
+
+    local ok
+
+    for _, name in ipairs({"uris", "hosts", "methods" }) do
+      local v = api_t[name]
+
+      if v ~= nil and #v > 0 then
+        ok = true
+        break
+      end
+    end
+
+    if not ok then
+      return false, Errors.schema "at least one of 'hosts', 'uris' or 'methods' must be specified"
+    end
+
+    return true
   end
 }
