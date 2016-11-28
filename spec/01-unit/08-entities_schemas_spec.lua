@@ -519,16 +519,14 @@ describe("Entities Schemas", function()
     end)
 
     it("should complain if no [hosts] or [uris] or [methods]", function()
-      local ok, errors = validate_entity({
+      local ok, errors, self_err = validate_entity({
         name = "httpbin",
         upstream_url = "http://httpbin.org",
       }, api_schema)
+
       assert.is_false(ok)
-      assert.same({
-        hosts = "at least one of 'hosts', 'uris' or 'methods' must be specified",
-        uris = "at least one of 'hosts', 'uris' or 'methods' must be specified",
-        methods = "at least one of 'hosts', 'uris' or 'methods' must be specified",
-      }, errors)
+      assert.is_nil(errors)
+      assert.equal("at least one of 'hosts', 'uris' or 'methods' must be specified", tostring(self_err))
     end)
   end)
 

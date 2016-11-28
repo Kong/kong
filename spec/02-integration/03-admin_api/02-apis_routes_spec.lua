@@ -95,12 +95,11 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"methods":"at least one of 'hosts', 'uris' or ]]
-                      ..[['methods' must be specified","uris":"at least one ]]
-                      ..[[of 'hosts', 'uris' or 'methods' must be specified",]]
-                      ..[["hosts":"at least one of 'hosts', 'uris' or ]]
-                      ..[['methods' must be specified","name":"name is ]]
-                      ..[[required","upstream_url":"upstream_url is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({
+              name = "name is required",
+              upstream_url = "upstream_url is required"
+            }, json)
 
             -- Invalid parameter
             res = assert(client:send {
@@ -230,12 +229,11 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"methods":"at least one of 'hosts', 'uris' or ]]
-                      ..[['methods' must be specified","uris":"at least one ]]
-                      ..[[of 'hosts', 'uris' or 'methods' must be specified",]]
-                      ..[["hosts":"at least one of 'hosts', 'uris' or ]]
-                      ..[['methods' must be specified","name":"name is ]]
-                      ..[[required","upstream_url":"upstream_url is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({
+              name = "name is required",
+              upstream_url = "upstream_url is required"
+            }, json)
 
             -- Invalid parameter
             res = assert(client:send {
