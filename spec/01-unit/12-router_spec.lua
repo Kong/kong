@@ -142,35 +142,35 @@ describe("Router", function()
 
       describe("root / [uri]", function()
         setup(function()
-          table.insert(use_case, {
+          table.insert(use_case, 1, {
             name = "api-root-uri",
             uris = {"/"},
           })
         end)
 
         teardown(function()
-          table.remove(use_case)
+          table.remove(use_case, 1)
         end)
 
         it(function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/", {})
-          assert.same(use_case[#use_case], api_t.api)
+          assert.same(use_case[1], api_t.api)
         end)
 
         it("does not superseds another API", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/my-api", {})
-          assert.same(use_case[3], api_t.api)
+          assert.same(use_case[4], api_t.api)
 
           local api_t = router.select("GET", "/my-api/hello/world", {})
-          assert.same(use_case[3], api_t.api)
+          assert.same(use_case[4], api_t.api)
         end)
 
         it("acts as a catch-all", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/foobar/baz", {})
-          assert.same(use_case[#use_case], api_t.api)
+          assert.same(use_case[1], api_t.api)
         end)
       end)
 
@@ -518,6 +518,24 @@ describe("Router", function()
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[2], api)
+        assert.equal("/my-api/hello/world", _ngx.var.uri)
+      end)
+
+      it("does not strips root / URI", function()
+        local use_case_apis = {
+          {
+            name = "root-uri",
+            uris = { "/" },
+            strip_uri = true,
+          }
+        }
+
+        local router = assert(Router.new(use_case_apis))
+
+        local _ngx = mock_ngx("POST", "/my-api/hello/world", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
         assert.equal("/my-api/hello/world", _ngx.var.uri)
       end)
     end)

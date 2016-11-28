@@ -10,8 +10,11 @@ local lower = string.lower
 local ipairs = ipairs
 local pairs = pairs
 local type = type
+local sort = table.sort
+local next = next
 local band = bit.band
 local bor = bit.bor
+local max = math.max
 local ERR = ngx.ERR
 local new_tab
 local log
@@ -433,6 +436,26 @@ local function new(apis)
       end
 
       index(bit_category, indexed_apis, indexes, api_t)
+    end
+
+    -- sort APIs by URI length to make "/" the latest, catch-all
+    -- route
+
+    for bit_category, index in pairs(indexed_apis) do
+      sort(index.uris_prefix_regex, function(api_t_a, api_t_b)
+        local longest_uri_a = 0
+        local longest_uri_b = 0
+
+        for i = 1, #api_t_a.uris_prefix_regex do
+          longest_uri_a = max(longest_uri_a, #api_t_a.uris_prefix_regex[i])
+        end
+
+        for i = 1, #api_t_a.uris_prefix_regex do
+          longest_uri_b = max(longest_uri_b, #api_t_b.uris_prefix_regex[i])
+        end
+
+        return longest_uri_a > longest_uri_b
+      end)
     end
 
     grab_headers = next(indexes.hosts) ~= nil
