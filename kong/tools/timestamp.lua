@@ -43,9 +43,10 @@ end
 -- @param now (optional) Time to generate timestamps from, if omitted current UTC time will be used
 -- @return Timestamp table containing fields/precisions; second, minute, hour, day, month, year
 local function get_timestamps(now)
-  local timetable = get_timetable(now) -- reduced to second precision
+  local timetable = get_timetable(now)
   local stamps = {}
   
+  timetable.sec = math_floor(timetable.sec)   -- reduce to second precision
   stamps.second = timetable:timestamp() * 1000
 
   timetable.sec = 0
