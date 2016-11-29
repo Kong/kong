@@ -26,7 +26,7 @@ describe("Timestamp", function()
     assert.truthy(timestamps.year)
   end)
 
-  it("should get timestamps table when no timestamp is provided", function()
+  it("should get timestamps table when the timestamp is provided", function()
     local timestamps = timestamp.get_timestamps(timestamp.get_utc())
     assert.truthy(timestamps)
     assert.are.same(6, table_size(timestamps))
