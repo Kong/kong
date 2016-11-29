@@ -6,6 +6,12 @@
 
 - Resolve support for PostgreSQL SSL connections.
   [#1720](https://github.com/Mashape/kong/issues/1720)
+- Ensure `kong start` honors the `--conf` flag is a config file already exists
+  at one of the default locations (`/etc/kong.conf`, `/etc/kong/kong.conf`).
+  [#1681](https://github.com/Mashape/kong/pull/1681)
+- Obfuscate sensitive properties from the `/` Admin API route which returns
+  the current node's configuration.
+  [#1650](https://github.com/Mashape/kong/pull/1650)
 
 ## [0.9.5] - 2016/11/07
 
