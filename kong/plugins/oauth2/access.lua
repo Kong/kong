@@ -87,14 +87,24 @@ local function get_redirect_uri(client_id)
 end
 
 local function retrieve_parameters()
+  local request_method = ngx.req.get_method()
+
+  -- ignore body as request method states there should not be one
+  if request_method == "GET" or request_method == "HEAD" then
+    return ngx.req.get_uri_args()
+  end
+
   ngx.req.read_body()
+
   -- OAuth2 parameters could be in both the querystring or body
   local body_parameters
   local content_type = req_get_headers()[CONTENT_TYPE]
   if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
   elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
-    body_parameters = json.decode(ngx.req.get_body_data())
+    local body = ngx.req.get_body_data()
+    if body == nil then body = "{}" end
+    body_parameters = json.decode(body)
   else
     body_parameters = ngx.req.get_post_args()
   end
