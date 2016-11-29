@@ -36,7 +36,9 @@ local function build_router()
   for i = 1, #apis do
     -- alias since the router expects 'headers'
     -- as a map
-    apis[i].headers = { host = apis[i].hosts }
+    if apis[i].hosts then
+      apis[i].headers = { host = apis[i].hosts }
+    end
   end
 
   router, err = Router.new(apis)
