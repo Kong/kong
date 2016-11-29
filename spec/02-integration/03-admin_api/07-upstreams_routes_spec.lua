@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
-local slots_default, slots_min, slots_max = 100, 10, 2^16
+local slots_default, slots_max = 100, 2^16
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -180,7 +179,7 @@ describe("Admin API", function()
 --TODO: line below disables the test for urlencoded, because the orderlist array isn't passed/received properly
 if content_type == "application/x-www-form-urlencoded" then return end
             -- non-integers
-            res = assert(client:send {
+            local res = assert(client:send {
               method = "POST",
               path = "/upstreams",
               body = {
@@ -190,7 +189,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
               },
               headers = {["Content-Type"] = content_type}
             })
-            body = assert.res_status(400, res)
+            local body = assert.res_status(400, res)
             assert.equal([[{"message":"invalid orderlist"}]], body)
             -- non-consecutive
             res = assert(client:send {
@@ -263,7 +262,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
             },
             headers = {["Content-Type"] = content_type}
           })
-          local body = assert.response(res).has.status(201)
+          assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
           assert.equal("my-upstream", json.name)
           assert.is_number(json.created_at)
@@ -285,7 +284,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
             },
             headers = {["Content-Type"] = content_type}
           })
-          local body = assert.response(res).has.status(201)
+          assert.response(res).has.status(201)
           local json = assert.response(res).has.jsonbody()
 
           res = assert(client:send {
@@ -299,7 +298,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
             },
             headers = {["Content-Type"] = content_type}
           })
-          local body = assert.response(res).has.status(200)
+          assert.response(res).has.status(200)
           local updated_json = assert.response(res).has.jsonbody()
           assert.equal("my-new-upstream", updated_json.name)
           assert.equal(123, updated_json.slots)
@@ -347,7 +346,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
                 },
                 headers = {["Content-Type"] = content_type}
               })
-              local body = assert.response(res).has.status(201)
+              assert.response(res).has.status(201)
               local json = assert.response(res).has.jsonbody()
 
               res = assert(client:send {
@@ -359,7 +358,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
                 },
                 headers = {["Content-Type"] = content_type}
               })
-              body = assert.response(res).has.status(409)
+              local body = assert.response(res).has.status(409)
               assert.equal([[{"name":"already exists with value 'my-upstream'"}]], body)
             end
         end)
@@ -400,7 +399,7 @@ if content_type == "application/x-www-form-urlencoded" then return end
             path = "/upstreams",
             query = {size = 3, offset = offset}
           })
-          local body = assert.response(res).has.status(200)
+          assert.response(res).has.status(200)
           local json = assert.response(res).has.jsonbody()
           assert.equal(10, json.total)
 

@@ -50,7 +50,7 @@ return {
     end
 
     -- check the target
-    local p, err = utils.normalize_ip(config.target)
+    local p = utils.normalize_ip(config.target)
     if not p then
       return false, Errors.schema("Invalid target; not a valid hostname or ip address")
     end

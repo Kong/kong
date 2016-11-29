@@ -895,7 +895,7 @@ describe("Core Hooks", function()
         -- wait for invalidation of the cache
         helpers.wait_for_invalidation(cache.targets_key(upstream.id))
         -- Making another request to re-populate target history
-        local res = assert(client:send {
+        assert(client:send {
           method = "GET",
           path = "/status/200",
           headers = {

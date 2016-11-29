@@ -72,14 +72,14 @@ end
 
 describe("Ring-balancer", function()
   describe("Balancing", function()
-    local client, api_client, api, upstream, target1, target2
+    local client, api_client, upstream, target1, target2
     
     before_each(function()
       helpers.start_kong()
       client = helpers.proxy_client()
       api_client = helpers.admin_client()
 
-      api = assert(helpers.dao.apis:insert {
+      assert(helpers.dao.apis:insert {
         request_host = "balancer.test",
         upstream_url = "http://service.xyz.v1/path",
       })

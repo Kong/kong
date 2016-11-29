@@ -487,9 +487,9 @@ describe("Entities Schemas", function()
     end)
 
     it("should require (optional) slots in a valid range", function()
-      local valid, errors, check
+      local valid, errors, check, _
       local data = { name = "valid.host.name" }
-      valid, errors, check = validate_entity(data, upstreams_schema)
+      valid, _, _ = validate_entity(data, upstreams_schema)
       assert.True(valid)
       assert.equal(slots_default, data.slots)
 
