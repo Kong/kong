@@ -1,5 +1,6 @@
 local cache = require "kong.tools.database_cache"
 local pl_tablex = require "pl.tablex"
+local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local dns_client = require "resty.dns.client"  -- due to startup/require order, cannot use the one from 'singletons' here
 local ring_balancer = require "resty.dns.balancer"
@@ -162,9 +163,6 @@ local get_balancer = function(target)
 
   if err then
     return nil, err
-  elseif #targets_history == 0 then 
-    -- 'no targets' equals 'no upstream', so exit as well
-    return nil, "no targets defined for upstream '"..hostname.."'"
   end
 
   local balancer = balancers[upstream.name] -- always exists, created upon fetching upstream
@@ -193,12 +191,13 @@ local get_balancer = function(target)
       -- TODO: ideally we would undo the last ones until we're equal again
       -- and can replay changes, but not supported by ring-balancer yet.
       -- for now; create a new balancer from scratch
-      local balancer, err = ring_balancer.new({
+      balancer, err = ring_balancer.new({
           wheelsize = upstream.slots,
           order = upstream.orderlist,
           dns = dns_client,
         })
       if not balancer then return balancer, err end
+      balancer.__targets_history = {}
       balancers[upstream.name] = balancer  -- overwrite our existing one
       
       apply_history(balancer, targets_history, 1)
@@ -254,8 +253,13 @@ local function execute(target)
     local hashValue = nil  -- TODO: implement, nil does simple round-robin
     
     local ip, port, hostname = balancer:getPeer(hashValue, dns_cache_only)
-    if not ip then 
-      return ip, port
+    if not ip then
+      if port == "No peers are available" then
+        -- in this case a "503 service unavailable", others will be a 500.
+        ngx.log(ngx.ERR, "Failure to get a peer from the ring-balancer '",upstream.host,"'; ",port)
+        return responses.send(503)
+      end
+      return nil, port -- some other error
     end
     target.ip = ip
     target.port = port

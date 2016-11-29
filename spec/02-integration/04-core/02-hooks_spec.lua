@@ -19,18 +19,6 @@ local function get_cache(key)
   return assert.response(r).has.jsonbody()
 end
 
-local function wait_for_invalidation(key, timeout)
-  helpers.wait_until(function()
-    local res = assert(api_client:send {
-      method = "GET",
-      path = "/cache/"..key,
-      headers = {}
-    })
-    res:read_body()
-    return res.status == 404
-  end, timeout)
-end
-
 describe("Core Hooks", function()
   describe("Global", function()
     describe("Global Plugin entity invalidation on API", function()
@@ -83,7 +71,7 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        wait_for_invalidation(cache.plugin_key("rate-limiting", nil, nil), 3)
+        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", nil, nil))
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -165,7 +153,7 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        wait_for_invalidation(cache.plugin_key("rate-limiting", nil, consumer.id), 3)
+        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", nil, consumer.id))
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -294,7 +282,7 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        wait_for_invalidation(cache.plugin_key("basic-auth", api2.id, nil), 3)
+        helpers.wait_for_invalidation(cache.plugin_key("basic-auth", api2.id, nil))
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -331,7 +319,7 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        wait_for_invalidation(cache.plugin_key("rate-limiting", api3.id, consumer.id), 3)
+        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", api3.id, consumer.id))
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -376,7 +364,7 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for cache to be invalidated
-        wait_for_invalidation(cache.plugin_key("rate-limiting", api3.id, consumer.id), 3)
+        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", api3.id, consumer.id))
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -430,7 +418,7 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for cache to be invalidated
-        wait_for_invalidation(cache.plugin_key("basic-auth", api2.id, nil), 3)
+        helpers.wait_for_invalidation(cache.plugin_key("basic-auth", api2.id, nil))
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -468,10 +456,10 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for consumer be invalidated
-        wait_for_invalidation(cache.consumer_key(consumer.id), 3)
+        helpers.wait_for_invalidation(cache.consumer_key(consumer.id))
 
         -- Wait for Basic Auth credential to be invalidated
-        wait_for_invalidation(cache.basicauth_credential_key("user123"), 3)
+        helpers.wait_for_invalidation(cache.basicauth_credential_key("user123"))
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -514,7 +502,7 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for consumer be invalidated
-        wait_for_invalidation(cache.consumer_key(consumer.id),3)
+        helpers.wait_for_invalidation(cache.consumer_key(consumer.id),3)
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -563,7 +551,7 @@ describe("Core Hooks", function()
         assert.res_status(201, res)
 
         -- Wait for consumer be invalidated
-        wait_for_invalidation(cache.all_apis_by_dict_key(), 3)
+        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -610,7 +598,7 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for consumer be invalidated
-        wait_for_invalidation(cache.all_apis_by_dict_key(), 3)
+        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -651,7 +639,7 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for consumer be invalidated
-        wait_for_invalidation(cache.all_apis_by_dict_key(), 3)
+        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -711,7 +699,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(201)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.upstreams_dict_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.upstreams_dict_key(upstream.id))
       end)
       it("invalidates the upstream-list when updating an upstream", function()
         -- Making a request to populate the cache with the upstreams
@@ -739,7 +727,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(200)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.upstreams_dict_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.upstreams_dict_key(upstream.id))
       end)
       it("invalidates the upstream-list when deleting an upstream", function()
         -- Making a request to populate the cache with the upstreams
@@ -760,7 +748,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(204)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.upstreams_dict_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.upstreams_dict_key(upstream.id))
       end)
       it("invalidates an upstream when updating an upstream", function()
         -- Making a request to populate the cache with the upstream
@@ -788,7 +776,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(200)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.upstream_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.upstream_key(upstream.id))
       end)
       it("invalidates an upstream when deleting an upstream", function()
         -- Making a request to populate the cache with the upstream
@@ -809,7 +797,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(204)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.upstream_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.upstream_key(upstream.id))
       end)
       it("invalidates the target-history when updating an upstream", function()
         -- Making a request to populate target history for upstream
@@ -837,7 +825,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(200)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.targets_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
       end)
       it("invalidates the target-history when deleting an upstream", function()
         -- Making a request to populate target history for upstream
@@ -858,7 +846,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(204)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.targets_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
       end)
     end)
 
@@ -905,7 +893,7 @@ describe("Core Hooks", function()
         })
         assert.response(res).has.status(201)
         -- wait for invalidation of the cache
-        wait_for_invalidation(cache.targets_key(upstream.id), 3)
+        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
         -- Making another request to re-populate target history
         local res = assert(client:send {
           method = "GET",
