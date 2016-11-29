@@ -8,6 +8,7 @@
 local json = require "cjson"
 local utils = require "kong.tools.utils"
 local crypto = require "crypto"
+local asn_sequence = require "kong.plugins.jwt.asn_sequence"
 
 local error = error
 local type = type
@@ -23,7 +24,18 @@ local alg_sign = {
   ["HS256"] = function(data, key) return crypto.hmac.digest("sha256", data, key, true) end,
   --["HS384"] = function(data, key) return crypto.hmac.digest("sha384", data, key, true) end,
   --["HS512"] = function(data, key) return crypto.hmac.digest("sha512", data, key, true) end
-  ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end
+  ["RS256"] = function(data, key) return crypto.sign('sha256', data, crypto.pkey.from_pem(key, true)) end,
+  ["ES256"] = function(data, key)
+    local pkeyPrivate = crypto.pkey.from_pem(key, true)
+    local signature = crypto.sign('sha256', data, pkeyPrivate)
+
+    local derSequence = asn_sequence.parse_simple_sequence(signature)
+    local r = asn_sequence.unsign_integer(derSequence[1], 32)
+    local s = asn_sequence.unsign_integer(derSequence[2], 32)
+    assert(#r == 32)
+    assert(#s == 32)
+    return r .. s
+  end
 }
 
 --- Supported algorithms for verifying tokens.
@@ -32,8 +44,17 @@ local alg_verify = {
   --["HS384"] = function(data, signature, key) return signature == alg_sign["HS384"](data, key) end,
   --["HS512"] = function(data, signature, key) return signature == alg_sign["HS512"](data, key) end
   ["RS256"] = function(data, signature, key)
-    local pkey = assert(crypto.pkey.from_pem(key),"Consumer Public Key is Invalid")
+    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
     return crypto.verify('sha256', data, signature, pkey)
+  end,
+  ["ES256"] = function(data, signature, key)
+    local pkey = assert(crypto.pkey.from_pem(key), "Consumer Public Key is Invalid")
+    assert(#signature == 64, "Signature must be 64 bytes.")
+    local asn = {}
+    asn[1] = asn_sequence.resign_integer(string.sub(signature, 1, 32))
+    asn[2] = asn_sequence.resign_integer(string.sub(signature, 33, 64))
+    local signatureAsn = asn_sequence.create_simple_sequence(asn)
+    return crypto.verify('sha256', data, signatureAsn, pkey)
   end
 }
 
