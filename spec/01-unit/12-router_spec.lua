@@ -152,7 +152,7 @@ describe("Router", function()
           table.remove(use_case, 1)
         end)
 
-        it(function()
+        it("routes with GET /", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/", {})
           assert.same(use_case[1], api_t.api)
@@ -183,7 +183,7 @@ describe("Router", function()
         setup(function()
           -- all those APIs are of the same category:
           -- [host + uri]
-          for i = 1, n - 1 do
+          for _ = 1, n - 1 do
             table.insert(use_case, {
               name = "api [host + uri]",
               uris = { "/my-uri" },
@@ -203,7 +203,7 @@ describe("Router", function()
         end)
 
         teardown(function()
-          for i = 1, n do
+          for _ = 1, n do
             table.remove(use_case)
           end
         end)
