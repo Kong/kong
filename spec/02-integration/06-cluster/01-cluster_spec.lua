@@ -180,7 +180,7 @@ describe("Cluster", function()
     end)
   end)
 
-  describe("Cache purges", function()
+  pending("Cache purges", function()
     it("must purge cache on all nodes on member-join", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
       -- Wait for first node to be registered
@@ -197,7 +197,8 @@ describe("Cluster", function()
           ["Content-Type"] = "application/json"
         },
         body = {
-          request_host = "test.com",
+          name = "test",
+          hosts = { "test.com" },
           upstream_url = "http://mockbin.org"
         }
       })
@@ -273,7 +274,8 @@ describe("Cluster", function()
           ["Content-Type"] = "application/json"
         },
         body = {
-          request_host = "test.com",
+          name = "test",
+          hosts = { "test.com" },
           upstream_url = "http://mockbin.org"
         }
       })

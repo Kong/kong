@@ -9,8 +9,8 @@ describe("Real IP proxying", function()
 
     assert(helpers.dao.apis:insert {
       name = "mockbin",
-      request_path = "/mockbin",
-      strip_request_path = true,
+      uris = { "/mockbin" },
+      strip_uri = true,
       upstream_url = "http://mockbin.com"
     })
   end)

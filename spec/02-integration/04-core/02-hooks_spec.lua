@@ -14,12 +14,9 @@ describe("Core Hooks", function()
       local plugin
 
       before_each(function()
-        helpers.start_kong()
-        client = helpers.proxy_client()
-        api_client = helpers.admin_client()
-
         assert(helpers.dao.apis:insert {
-          request_host = "hooks1.com",
+          name = "hooks1",
+          hosts = { "hooks1.com" },
           upstream_url = "http://mockbin.com"
         })
 
@@ -27,6 +24,10 @@ describe("Core Hooks", function()
           name = "rate-limiting",
           config = { minute = 10 }
         })
+
+        helpers.start_kong()
+        client = helpers.proxy_client()
+        api_client = helpers.admin_client()
       end)
       after_each(function()
         if client and api_client then
@@ -93,12 +94,9 @@ describe("Core Hooks", function()
          helpers.dao:truncate_tables()
       end)
       before_each(function()
-        helpers.start_kong()
-        client = helpers.proxy_client()
-        api_client = helpers.admin_client()
-
         assert(helpers.dao.apis:insert {
-          request_host = "hooks1.com",
+          name = "hook1",
+          hosts = { "hooks1.com" },
           upstream_url = "http://mockbin.com"
         })
 
@@ -120,6 +118,10 @@ describe("Core Hooks", function()
           consumer_id = consumer.id,
           config = { minute = 10 }
         })
+
+        helpers.start_kong()
+        client = helpers.proxy_client()
+        api_client = helpers.admin_client()
       end)
       after_each(function()
         if client and api_client then
@@ -207,10 +209,6 @@ describe("Core Hooks", function()
     local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
 
     before_each(function()
-      helpers.start_kong()
-      client = helpers.proxy_client()
-      api_client = helpers.admin_client()
-
       consumer = assert(helpers.dao.consumers:insert {
         username = "consumer1"
       })
@@ -221,12 +219,14 @@ describe("Core Hooks", function()
       })
 
       api1 = assert(helpers.dao.apis:insert {
-        request_host = "hooks1.com",
+        name = "hook1",
+        hosts = { "hooks1.com" },
         upstream_url = "http://mockbin.com"
       })
 
       api2 = assert(helpers.dao.apis:insert {
-        request_host = "hooks-consumer.com",
+        name = "hook2",
+        hosts = { "hooks-consumer.com" },
         upstream_url = "http://mockbin.com"
       })
       basic_auth2 = assert(helpers.dao.plugins:insert {
@@ -236,7 +236,8 @@ describe("Core Hooks", function()
       })
 
       api3 = assert(helpers.dao.apis:insert {
-        request_host = "hooks-plugins.com",
+        name = "hook3",
+        hosts = { "hooks-plugins.com" },
         upstream_url = "http://mockbin.com"
       })
       assert(helpers.dao.plugins:insert {
@@ -259,6 +260,10 @@ describe("Core Hooks", function()
           minute = 3
         }
       })
+
+      helpers.start_kong()
+      client = helpers.proxy_client()
+      api_client = helpers.admin_client()
     end)
     after_each(function()
       if client and api_client then
@@ -608,7 +613,7 @@ describe("Core Hooks", function()
       end)
     end)
 
-    describe("API entity invalidation", function()
+    pending("API entity invalidation", function()
       it("should invalidate ALL_APIS_BY_DICT when adding a new API", function()
         -- Making a request to populate ALL_APIS_BY_DICT
         local res = assert(client:send {
@@ -635,7 +640,7 @@ describe("Core Hooks", function()
             ["Content-Type"] = "application/json"
           },
           body = cjson.encode({
-            request_host = "dynamic-hooks.com",
+            hosts = { "dynamic-hooks.com" },
             upstream_url = "http://mockbin.org"
           })
         })
