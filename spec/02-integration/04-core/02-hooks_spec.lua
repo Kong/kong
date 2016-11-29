@@ -1,16 +1,15 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
-local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 
-local api_client
+local api_client, client
 
 -- cache entry inserted as a sentinel whenever a db lookup returns nothing
-local db_miss_sentinel = { null = true } 
+local db_miss_sentinel = { null = true }
 
 local function get_cache(key)
   local r = assert(api_client:send {
@@ -25,17 +24,14 @@ end
 describe("Core Hooks", function()
   describe("Global", function()
     describe("Plugin entity invalidation on API", function()
-      local client
       local plugin
 
       before_each(function()
         helpers.dao:truncate_tables()
-        helpers.start_kong()
-        client = helpers.proxy_client()
-        api_client = helpers.admin_client()
 
         assert(helpers.dao.apis:insert {
-          request_host = "hooks1.com",
+          name = "hooks1",
+          hosts = { "hooks1.com" },
           upstream_url = "http://mockbin.com"
         })
 
@@ -45,15 +41,34 @@ describe("Core Hooks", function()
         })
 
         assert(helpers.dao.apis:insert {
-          request_host = "hooks2.com",
+          name = "hooks2",
+          hosts = { "hooks2.com" },
           upstream_url = "http://mockbin.com"
         })
+
+        assert(helpers.dao.apis:insert {
+          name = "hooks3",
+          hosts = { "hooks3.com" },
+          upstream_url = "http://mockbin.com"
+        })
+
+        assert(helpers.dao.apis:insert {
+          name = "hooks4",
+          hosts = { "hooks4.com" },
+          upstream_url = "http://mockbin.com"
+        })
+
+        helpers.start_kong()
+        client = helpers.proxy_client()
+        api_client = helpers.admin_client()
       end)
+
       after_each(function()
         if client and api_client then
           client:close()
           api_client:close()
         end
+
         helpers.stop_kong()
       end)
 
@@ -61,7 +76,7 @@ describe("Core Hooks", function()
         -- on a db-miss a sentinel value is inserted in the cache to prevent
         -- too many db lookups. This sentinel value should be invalidated when
         -- adding a plugin.
-        
+
         -- Making a request to populate the cache
         local res = assert(client:send {
           method = "GET",
@@ -145,22 +160,9 @@ describe("Core Hooks", function()
     end)
 
     describe("Global Plugin entity invalidation on Consumer", function()
-      local client
       local plugin, consumer
 
-      setup(function()
-         helpers.dao:truncate_tables()
-      end)
       before_each(function()
-        helpers.start_kong()
-        client = helpers.proxy_client()
-        api_client = helpers.admin_client()
-
-        assert(helpers.dao.apis:insert {
-          request_host = "hooks1.com",
-          upstream_url = "http://mockbin.com"
-        })
-
         assert(helpers.dao.plugins:insert {
           name = "key-auth",
           config = {}
@@ -169,6 +171,7 @@ describe("Core Hooks", function()
         consumer = assert(helpers.dao.consumers:insert {
           username = "test"
         })
+
         assert(helpers.dao.keyauth_credentials:insert {
           key = "kong",
           consumer_id = consumer.id
@@ -179,13 +182,8 @@ describe("Core Hooks", function()
           consumer_id = consumer.id,
           config = { minute = 10 }
         })
-      end)
-      after_each(function()
-        if client and api_client then
-          client:close()
-          api_client:close()
-        end
-        helpers.stop_kong()
+
+        assert(helpers.reload_kong())
       end)
 
       it("should invalidate a global plugin when deleting", function()
@@ -251,30 +249,24 @@ describe("Core Hooks", function()
   end)
 
   describe("Other", function()
-    local client
-    local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
+    local consumer, api2, basic_auth2, api3, rate_limiting_consumer
 
     before_each(function()
-      helpers.start_kong()
-      client = helpers.proxy_client()
-      api_client = helpers.admin_client()
+      helpers.dao:truncate_tables()
 
       consumer = assert(helpers.dao.consumers:insert {
-        username = "consumer1"
+        username = "consumer12"
       })
+
       assert(helpers.dao.basicauth_credentials:insert {
         username = "user123",
         password = "pass123",
         consumer_id = consumer.id
       })
 
-      api1 = assert(helpers.dao.apis:insert {
-        request_host = "hooks1.com",
-        upstream_url = "http://mockbin.com"
-      })
-
       api2 = assert(helpers.dao.apis:insert {
-        request_host = "hooks-consumer.com",
+        name = "hooks-consumer",
+        hosts = { "hooks-consumer.com" },
         upstream_url = "http://mockbin.com"
       })
       basic_auth2 = assert(helpers.dao.plugins:insert {
@@ -284,7 +276,8 @@ describe("Core Hooks", function()
       })
 
       api3 = assert(helpers.dao.apis:insert {
-        request_host = "hooks-plugins.com",
+        name = "hooks-plugins",
+        hosts = { "hooks-plugins.com" },
         upstream_url = "http://mockbin.com"
       })
       assert(helpers.dao.plugins:insert {
@@ -307,13 +300,6 @@ describe("Core Hooks", function()
           minute = 3
         }
       })
-    end)
-    after_each(function()
-      if client and api_client then
-        client:close()
-        api_client:close()
-      end
-      helpers.stop_kong()
     end)
 
     describe("Plugin entity invalidation", function()
@@ -580,166 +566,34 @@ describe("Core Hooks", function()
       end)
     end)
 
-    describe("API entity invalidation", function()
-      it("should invalidate ALL_APIS_BY_DICT when adding a new API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        get_cache(cache.all_apis_by_dict_key())
-
-        -- Adding a new API
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/apis/",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            request_host = "dynamic-hooks.com",
-            upstream_url = "http://mockbin.org"
-          })
-        })
-        assert.res_status(201, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.is_table(body.by_dns["hooks1.com"])
-        assert.is_table(body.by_dns["dynamic-hooks.com"])
-      end)
-
-      it("should invalidate ALL_APIS_BY_DICT when updating an API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
-
-        -- Update API
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/apis/"..api1.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            upstream_url = "http://mockbin.org"
-          })
-        })
-        assert.res_status(200, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated with updated value
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal("http://mockbin.org", body.by_dns["hooks1.com"].upstream_url)
-        assert.equal(3, pl_tablex.size(body.by_dns))
-      end)
-
-      it("should invalidate ALL_APIS_BY_DICT when deleting an API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
-
-        -- Deleting the API
-        local res = assert(api_client:send {
-          method = "DELETE",
-          path = "/apis/"..api1.id
-        })
-        assert.res_status(204, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(404, res)
-
-        -- Make sure the cache is populated with zero APIs
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal(2, pl_tablex.size(body.by_dns))
-      end)
-    end)
-
     describe("Upstreams entity", function()
       local upstream
-      
+
       before_each(function()
         assert(helpers.dao.apis:insert {
-          request_host = "hooks2.com",
+          name = "hooks3",
+          hosts = { "hooks3.com" },
           upstream_url = "http://mybalancer"
         })
+
         upstream = assert(helpers.dao.upstreams:insert {
           name = "mybalancer",
         })
+
         assert(helpers.dao.targets:insert {
           upstream_id = upstream.id,
           target = "mockbin.com:80",
           weight = 10,
         })
       end)
+
       it("invalidates the upstream-list when adding an upstream", function()
         -- Making a request to populate the cache with the upstreams
         local res = assert(client:send {
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -766,7 +620,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -794,7 +648,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -815,7 +669,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -843,7 +697,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -864,7 +718,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -892,7 +746,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks3.com"
           }
         })
         assert.response(res).has.status(200)
@@ -911,10 +765,13 @@ describe("Core Hooks", function()
 
     describe("Targets entity", function()
       local upstream
-      
+
       setup(function()
+        helpers.dao:truncate_tables()
+
         assert(helpers.dao.apis:insert {
-          request_host = "hooks2.com",
+          name = "hooks4",
+          hosts = { "hooks4.com" },
           upstream_url = "http://mybalancer"
         })
         upstream = assert(helpers.dao.upstreams:insert {
@@ -925,6 +782,11 @@ describe("Core Hooks", function()
           target = "mockbin.com:80",
           weight = 10,
         })
+
+        helpers.stop_kong()
+        helpers.start_kong()
+        client = helpers.proxy_client()
+        api_client = helpers.admin_client()
       end)
       it("invalidates the target-history when adding a target", function()
         -- Making a request to populate target history for upstream
@@ -932,7 +794,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks4.com"
           }
         })
         assert.response(res).has.status(200)
@@ -958,7 +820,7 @@ describe("Core Hooks", function()
           method = "GET",
           path = "/status/200",
           headers = {
-            ["Host"] = "hooks2.com"
+            ["Host"] = "hooks4.com"
           }
         })
         -- validate that the cache is populated
@@ -968,7 +830,7 @@ describe("Core Hooks", function()
         assert.equal(5, body[2].weight)   -- new weight value
       end)
     end)
-    
+
     describe("Serf events", function()
       local PID_FILE = "/tmp/serf_test.pid"
       local LOG_FILE = "/tmp/serf_test.log"

@@ -36,17 +36,17 @@ end
 
 describe("DNS", function()
   describe("retries", function()
-    
+
     local retries = 3
     local client
-    
+
     setup(function()
       assert(helpers.start_kong())
       client = helpers.proxy_client()
 
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
-        request_host = "retries.com",
+        hosts = { "retries.com" },
         upstream_url = "http://127.0.0.1:"..TCP_PORT,
         retries = retries,
       })
@@ -60,7 +60,7 @@ describe("DNS", function()
     it("validates the number of retries", function()
       -- setup a bad server
       local thread = bad_tcp_server(TCP_PORT, 1)
-      
+
       -- make a request to it
       local r = client:send {
         method = "GET",
