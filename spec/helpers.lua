@@ -350,19 +350,6 @@ end
 local say = require "say"
 local luassert = require "luassert.assert"
 
--- wrap assert and create a new kong-assert state table for each call
-local old_assert = assert
-local kong_state
-assert = function(...)
-  kong_state = {}
-  return old_assert(...)
-end
-
--- tricky part: the assertions below, should not reset the `kong_state`
--- inserted above. Hence we shadow the global assert (patched one) with a local
--- assert (unpatched) to prevent this.
-local assert = old_assert
-
 --- Generic modifier "response".
 -- Will set a "response" value in the assertion state, so following
 -- assertions will operate on the value set.
@@ -380,8 +367,8 @@ local function modifier_response(state, arguments, level)
   assert(type(res) == "table" and type(res.read_body) == "function",
          "response modifier requires a response object as argument, got: "..tostring(res))
 
-  kong_state.kong_response = res
-  kong_state.kong_request = nil
+  rawset(state, "kong_response", res)
+  rawset(state, "kong_request", nil)
 
   return state
 end
@@ -421,8 +408,8 @@ local function modifier_request(state, arguments, level)
            "Could not determine the response to be from either mockbin.com or httpbin.org")
   end
 
-  kong_state.kong_request = body
-  kong_state.kong_response = nil
+  rawset(state, "kong_request", body)
+  rawset(state, "kong_response", nil)
 
   return state
 end
@@ -498,12 +485,12 @@ luassert:register("assertion", "contains", contains,
 -- local body = assert.has.status(200, res)             -- or alternativly
 -- local body = assert.response(res).has.status(200)    -- does the same
 local function res_status(state, args)
-  assert(not kong_state.kong_request,
+  assert(not rawget(state, "kong_request"),
          "Cannot check statuscode against a request object,"
        .." only against a response object")
 
   local expected = args[1]
-  local res = args[2] or kong_state.kong_response
+  local res = args[2] or rawget(state, "kong_response")
 
   assert(type(expected) == "number",
          "Expected response code must be a number value. Got: "..tostring(expected))
@@ -583,12 +570,12 @@ luassert:register("assertion", "res_status", res_status,
 -- local res = assert(client:send { .. your request params here .. })
 -- local json_table = assert.response(res).has.jsonbody()
 local function jsonbody(state, args)
-  assert(args[1] == nil and kong_state.kong_request or kong_state.kong_response,
+  assert(args[1] == nil and rawget(state, "kong_request") or rawget(state, "kong_response"),
          "the `jsonbody` assertion does not take parameters. "..
          "Use the `response`/`require` modifiers to set the target to operate on")
 
-  if kong_state.kong_response then
-    local body = kong_state.kong_response:read_body()
+  if rawget(state, "kong_response") then
+    local body = rawget(state, "kong_response"):read_body()
     local json, err = cjson.decode(body)
     if not json then
       table.insert(args, 1, "Error decoding: "..tostring(err).."\nResponse body:"..body)
@@ -597,10 +584,10 @@ local function jsonbody(state, args)
     end
     return true, {json}
   else
-    assert(kong_state.kong_request.postData, "No post data found in the request. Only mockbin.com is supported!")
-    local json, err = cjson.decode(kong_state.kong_request.postData.text)
+    assert(rawget(state, "kong_request").postData, "No post data found in the request. Only mockbin.com is supported!")
+    local json, err = cjson.decode(rawget(state, "kong_request").postData.text)
     if not json then
-      table.insert(args, 1, "Error decoding: "..tostring(err).."\nRequest body:"..kong_state.kong_request.postData.text)
+      table.insert(args, 1, "Error decoding: "..tostring(err).."\nRequest body:"..rawget(state, "kong_request").postData.text)
       args.n = 1
       return false
     end
@@ -628,7 +615,7 @@ luassert:register("assertion", "jsonbody", jsonbody,
 -- @return value of the header
 local function res_header(state, args)
   local header = args[1]
-  local res = args[2] or kong_state.kong_request or kong_state.kong_response
+  local res = args[2] or rawget(state, "kong_request") or rawget(state, "kong_response")
   assert(type(res) == "table" and type(res.headers) == "table",
          "'header' assertion input does not contain a 'headers' subtable")
   local value = lookup(res.headers, header)
@@ -664,7 +651,7 @@ luassert:register("assertion", "header", res_header,
 -- @return value of the parameter
 local function req_query_param(state, args)
   local param = args[1]
-  local req = kong_state.kong_request
+  local req = rawget(state, "kong_request")
   assert(req, "'queryparam' assertion only works with a request object")
   local params
   if type(req.queryString) == "table" then
@@ -710,7 +697,7 @@ luassert:register("assertion", "queryparam", req_query_param,
 -- @return value of the parameter
 local function req_form_param(state, args)
   local param = args[1]
-  local req = kong_state.kong_request
+  local req = rawget(state, "kong_request")
   assert(req, "'formparam' assertion can only be used with a mockbin/httpbin request object")
 
   local value

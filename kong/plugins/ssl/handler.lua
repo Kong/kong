@@ -13,18 +13,19 @@ function SSLHandler:new()
   SSLHandler.super.new(self, "ssl")
 end
 
+local function decode(conf)
+  return {
+    cert_der = ngx.decode_base64(conf._cert_der_cache),
+    key_der = ngx.decode_base64(conf._key_der_cache),
+  }
+end
+  
 function SSLHandler:certificate(conf)
   SSLHandler.super.certificate(self)
   local ssl = require "ngx.ssl"
   ssl.clear_certs()
 
-  local data = cache.get_or_set(cache.ssl_data(ngx.ctx.api.id), function()
-    local result = {
-      cert_der = ngx.decode_base64(conf._cert_der_cache),
-      key_der = ngx.decode_base64(conf._key_der_cache)
-    }
-    return result
-  end)
+  local data = cache.get_or_set(cache.ssl_data(ngx.ctx.api.id), nil, decode, conf)
 
   local ok, err = ssl.set_der_cert(data.cert_der)
   if not ok then

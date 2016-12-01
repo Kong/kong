@@ -263,7 +263,7 @@ function _M:run_migrations(on_migrate, on_success)
 
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
-  if err then return ret_error_string(self.db.name, nil, err) end
+  if err then return nil, err end
 
   local ok, err, migrations_ran = migrate(self, "core", migrations_modules, cur_migrations, on_migrate, on_success)
   if not ok then return ret_error_string(self.db.name, nil, err) end
