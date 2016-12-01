@@ -228,7 +228,10 @@ do
     end,
     [CATEGORIES.URI] = function(api_t, _, uri)
       if api_t.uris[uri] then
-        api_t.strip_uri_regex = nil
+        if api_t.strip_uri then
+          api_t.strip_uri_regex = api_t.uris_prefix_regex_strip[uri]
+        end
+
         return true
       end
 
@@ -240,7 +243,10 @@ do
         end
 
         if from then
-          api_t.strip_uri_regex = api_t.uris_prefix_regex_strip[i]
+          if api_t.strip_uri then
+            api_t.strip_uri_regex = api_t.uris_prefix_regex_strip[i]
+          end
+
           return true
         end
       end
@@ -310,8 +316,11 @@ local function marshall_api(api)
 
       for i, uri in ipairs(api.uris) do
         api_t.uris[uri] = true
-        api_t.uris_prefix_regex[i] = "^" .. uri
-        api_t.uris_prefix_regex_strip[i] = "^" .. uri .. "/(.*)"
+
+        local escaped_uri = uri:gsub("/", "\\/")
+        api_t.uris_prefix_regex[i] = "^" .. escaped_uri
+        api_t.uris_prefix_regex_strip[i] = "^" .. escaped_uri .. "\\/?(.*)"
+        api_t.uris_prefix_regex_strip[uri] = api_t.uris_prefix_regex_strip[i]
       end
     end
 
@@ -441,7 +450,7 @@ local function new(apis)
     -- sort APIs by URI length to make "/" the latest, catch-all
     -- route
 
-    for bit_category, index in pairs(indexed_apis) do
+    for _, index in pairs(indexed_apis) do
       sort(index.uris_prefix_regex, function(api_t_a, api_t_b)
         local longest_uri_a = 0
         local longest_uri_b = 0
@@ -542,7 +551,7 @@ local function new(apis)
     end
 
 
-    if api_t.strip_uri and api_t.strip_uri_regex then
+    if api_t.strip_uri_regex then
       local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "oj")
       ngx.req.set_uri(stripped_uri)
     end
