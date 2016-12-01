@@ -604,8 +604,7 @@ helpers.for_each_dao(function(kong_config)
           assert.same(api_fixture, api)
         end)
         it("check schema", function()
-          api_fixture.uris = nil
-          api_fixture.hosts = nil
+          api_fixture.name = nil
 
           local api, err = apis:update(api_fixture, api_fixture, {full = true})
           assert.truthy(err)
