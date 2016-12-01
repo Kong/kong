@@ -505,12 +505,12 @@ describe("Router", function()
         assert.equal("/hello/world", _ngx.var.uri)
       end)
 
-      it("doesn't strip if matched URI is plain (not a prefix)", function()
+      it("strips if matched URI is plain (not a prefix)", function()
         local _ngx = mock_ngx("GET", "/my-api", {})
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.equal("/my-api", _ngx.var.uri)
+        assert.equal("/", _ngx.var.uri)
       end)
 
       it("doesn't strip if 'strip_uri' is not enabled", function()
