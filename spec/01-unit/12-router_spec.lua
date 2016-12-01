@@ -438,6 +438,31 @@ describe("Router", function()
       assert.equal(443, upstream_port)
     end)
 
+    it("parses upstream_url port", function()
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api" },
+          upstream_url = "http://httpbin.org:8080",
+        },
+        {
+          name = "api-2",
+          uris = { "/my-api-2" },
+          upstream_url = "https://httpbin.org:8443",
+        }
+      }
+
+      local router = assert(Router.new(use_case_apis))
+
+      local _ngx = mock_ngx("GET", "/my-api", {})
+      local upstream_port = select(4, router.exec(_ngx))
+      assert.equal(8080, upstream_port)
+
+      local _ngx = mock_ngx("GET", "/my-api-2", {})
+      upstream_port = select(4, router.exec(_ngx))
+      assert.equal(8443, upstream_port)
+    end)
+
     describe("grab_headers", function()
       local use_case_apis = {
         {

@@ -7,6 +7,7 @@ local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
+local tonumber = tonumber
 local ipairs = ipairs
 local pairs = pairs
 local type = type
@@ -394,7 +395,7 @@ local function marshall_api(api)
 
     api_t.upstream_scheme = parsed.scheme
     api_t.upstream_host = parsed.host
-    api_t.upstream_port = parsed.port
+    api_t.upstream_port = tonumber(parsed.port)
 
     if not api_t.upstream_port then
       if parsed.scheme == "https" then

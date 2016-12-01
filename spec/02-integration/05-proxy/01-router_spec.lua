@@ -66,6 +66,7 @@ describe("Router", function()
           upstream_url = "http://httpbin.org",
           methods = { "POST", "PUT" },
           uris = { "/post", "/put" },
+          strip_uri = false,
         }
       }
 
@@ -109,6 +110,91 @@ describe("Router", function()
 
       assert.response(res).has_status(200)
       assert.equal("api-1", res.headers["kong-api-name"])
+    end)
+  end)
+
+  describe("invalidation", function()
+    local admin_client
+
+    setup(function()
+      helpers.dao:truncate_tables()
+      assert(helpers.start_kong())
+
+      admin_client = helpers.admin_client()
+    end)
+
+    teardown(function()
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
+    end)
+
+    it("updates itself when updating APIs from the Admin API", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          host = "api.com"
+        }
+      })
+      local body = assert.response(res).has_status(404)
+      local json = cjson.decode(body)
+      assert.matches("^kong/", res.headers.server)
+      assert.equal("no API found", json.message)
+
+      local admin_res = assert(admin_client:send {
+        method = "POST",
+        path = "/apis",
+        body = {
+          name = "my-api",
+          upstream_url = "http://httpbin.org",
+          hosts = "api.com",
+        },
+        headers = { ["Content-Type"] = "application/json" },
+      })
+      assert.response(admin_res).has_status(201)
+
+      ngx.sleep(1)
+
+      res = assert(client:send {
+        method = "GET",
+        headers = {
+          host = "api.com"
+        }
+      })
+      assert.response(res).has_status(200)
+
+      admin_res = assert(admin_client:send {
+        method = "PATCH",
+        path = "/apis/my-api",
+        body = {
+          hosts = "api.com,foo.com",
+          uris = "/foo",
+          strip_uri = true,
+        },
+        headers = { ["Content-Type"] = "application/json" },
+      })
+      assert.response(admin_res).has_status(200)
+
+      ngx.sleep(1)
+
+      res = assert(client:send {
+        method = "GET",
+        headers = {
+          host = "foo.com"
+        }
+      })
+      assert.response(res).has_status(404)
+
+      res = assert(client:send {
+        method = "GET",
+        path = "/foo",
+        headers = {
+          host = "foo.com"
+        }
+      })
+      assert.response(res).has_status(200)
     end)
   end)
 
