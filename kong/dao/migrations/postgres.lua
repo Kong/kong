@@ -158,13 +158,17 @@ return {
   },
   {
     name = "2016-09-16-141423_upstreams",
+    -- Note on the timestamps below; these use a precision of milliseconds
+    -- this differs from the other tables above, as they only use second precision
+    -- The Cassandra timestamps are created in Lua code, and have hence ALL at
+    -- the same time been updated to millisecond precision.
     up = [[
       CREATE TABLE IF NOT EXISTS upstreams(
         id uuid PRIMARY KEY,
         name text UNIQUE,
         slots int NOT NULL,
         orderlist text NOT NULL,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
       );
       DO $$
       BEGIN
@@ -177,7 +181,7 @@ return {
         target text NOT NULL,
         weight int NOT NULL,
         upstream_id uuid REFERENCES upstreams(id) ON DELETE CASCADE,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
       );
       DO $$
       BEGIN
