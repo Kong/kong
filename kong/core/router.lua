@@ -1,4 +1,4 @@
---local lrucache = require "resty.lrucache"
+local lrucache = require "resty.lrucache"
 local url = require "socket.url"
 local bit = require "bit"
 
@@ -9,6 +9,7 @@ local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
+local fmt = string.format
 local tonumber = tonumber
 local ipairs = ipairs
 local pairs = pairs
@@ -38,12 +39,14 @@ do
 end
 
 
+local MATCH_LRUCACHE_SIZE = 200
+
+
 local MATCH_RULES = {
   HOST            = 0x01,
   URI             = 0x02,
   METHOD          = 0x04,
 }
-
 
 local CATEGORIES = {
   bor(MATCH_RULES.HOST, MATCH_RULES.URI, MATCH_RULES.METHOD),
@@ -54,7 +57,6 @@ local CATEGORIES = {
   MATCH_RULES.URI,
   MATCH_RULES.METHOD,
 }
-
 
 local CATEGORIES_LOOKUP = {}
 for i = 1, #CATEGORIES do
@@ -444,6 +446,9 @@ function _M.new(apis)
   local wildcard_hosts = {}
 
 
+  local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
+
+
   -- index APIs
 
 
@@ -491,6 +496,13 @@ function _M.new(apis)
     method = upper(method)
 
 
+    local cache_key = fmt("%s:%s:%s", method, uri, host)
+    local api_t_from_cache = cache:get(cache_key)
+    if api_t_from_cache then
+      return api_t_from_cache
+    end
+
+
     if indexes.plain_hosts[host] then
       req_category = bor(req_category, MATCH_RULES.HOST)
     end
@@ -517,6 +529,7 @@ function _M.new(apis)
         if candidates then
           for i = 1, #candidates do
             if match_api(candidates[i], method, uri, host) then
+              cache:set(cache_key, candidates[i])
               return candidates[i]
             end
           end
@@ -539,9 +552,10 @@ function _M.new(apis)
         return
       end
 
+      -- our URI matches this API's URI as a prefix
+      -- let's test all of its other conditions
       if from and match_api(uris_prefixes[i].api_t, method, uri, host) then
-        -- our URI matches this API's URI as a prefix
-        -- let's test all of its other conditions
+        cache:set(cache_key, uris_prefixes[i].api_t)
         return uris_prefixes[i].api_t
       end
     end
@@ -558,6 +572,7 @@ function _M.new(apis)
       end
 
       if m and match_api(wildcard_hosts[i].api_t, method, uri, host) then
+        cache:set(cache_key, wildcard_hosts[i].api_t)
         return wildcard_hosts[i].api_t
       end
     end
@@ -591,7 +606,7 @@ function _M.new(apis)
 
 
     if api_t.strip_uri_regex then
-      local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "oj")
+      local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
       api_t.strip_uri_regex = nil
       ngx.req.set_uri(stripped_uri)
     end
