@@ -6,6 +6,9 @@ local dns_client = require "resty.dns.client"  -- due to startup/require order, 
 local ring_balancer = require "resty.dns.balancer"
 
 local toip = dns_client.toip
+local ngx_log = ngx.log
+local ngx_ERR = ngx.ERR
+local ngx_DEBUG = ngx.DEBUG
 
 local empty = pl_tablex.readonly {}
 
@@ -27,6 +30,7 @@ local balancers = {}  -- table holding our balancer objects, indexed by upstream
 -- Implements a simple dictionary with all upstream-ids indexed
 -- by their name. 
 local function load_upstreams_dict_into_memory()
+  ngx_log(ngx_DEBUG, "fetching all upstreams")
   local upstreams, err = singletons.dao.upstreams:find_all()
   if err then
     return nil, err
@@ -51,7 +55,7 @@ end
 
 -- loads a single upstream entity
 local function load_upstream_into_memory(upstream_id)
-  ngx.log(ngx.WARN, "loading: ",tostring(upstream_id))
+  ngx_log(ngx_DEBUG, "fetching upstream: ",tostring(name)," ",tostring(upstream_id))
   local upstream, err = singletons.dao.upstreams:find_all {id = upstream_id}
   if not upstream then
     return nil, err
@@ -97,6 +101,7 @@ end
 -- loads the target history for an upstream
 -- @param upstream_id Upstream uuid for which to load the target history
 local function load_targets_into_memory(upstream_id)
+  ngx_log(ngx_DEBUG, "fetching targets for upstream: ",tostring(upstream_id))
   local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
   if err then
     return nil, err
@@ -114,7 +119,9 @@ local function load_targets_into_memory(upstream_id)
   
   -- order by time
   table.sort(target_history, function(a,b) return a.order<b.order end)
-
+--for i, t in ipairs(target_history) do
+--  ngx_log(ngx_DEBUG, i, t.order)
+--end
   return target_history
 end
 
@@ -257,7 +264,7 @@ local function execute(target)
     if not ip then
       if port == "No peers are available" then
         -- in this case a "503 service unavailable", others will be a 500.
-        ngx.log(ngx.ERR, "Failure to get a peer from the ring-balancer '",upstream.host,"'; ",port)
+        ngx_log(ngx_ERR, "Failure to get a peer from the ring-balancer '",upstream.host,"'; ",port)
         return responses.send(503)
       end
       return nil, port -- some other error

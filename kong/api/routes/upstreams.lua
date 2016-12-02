@@ -46,7 +46,7 @@ return {
     POST = function(self, dao_factory, helpers)
       local cleanup_factor = 10 -- when to cleanup; invalid-entries > (valid-ones * cleanup_factor)
       
-      --cleaning up history, check if its necessary...
+      --cleaning up history, check if it's necessary...
       local target_history = dao_factory.targets:find_all(
             { upstream_id = self.params.upstream_id })
       if target_history then --ignoring errors here, will be caught when posting below

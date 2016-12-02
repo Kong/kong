@@ -203,7 +203,7 @@ local function get_select_fields(schema)
   local fields = {}
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" then
-      fields[#fields+1] = fmt("extract(epoch from %s)::bigint*1000 as %s", k, k)
+      fields[#fields+1] = fmt("(extract(epoch from %s)*1000)::bigint as %s", k, k)
     else
       fields[#fields+1] = '"' .. k .. '"'
     end

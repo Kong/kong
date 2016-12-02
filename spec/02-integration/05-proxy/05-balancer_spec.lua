@@ -70,355 +70,379 @@ local function http_server(timeout, count, port, ...)
   return thread:start(...)
 end
 
-describe("Ring-balancer", function()
-  describe("Balancing", function()
-    local client, api_client, upstream, target1, target2
+for _, current_db in ipairs( { "postgres", "cassandra" } ) do
+
+  describe("Ring-balancer #"..current_db, function()
     
-    before_each(function()
-      helpers.start_kong()
-      client = helpers.proxy_client()
-      api_client = helpers.admin_client()
+    local config_db
+    setup(function()
+      config_db = helpers.test_conf.database
+      helpers.test_conf.database = current_db
+    end)
+    teardown(function()
+      helpers.test_conf.database = config_db
+      config_db = nil
+    end)
+  
+    describe("Balancing", function()
+      local client, api_client, upstream, target1, target2
+      
+      before_each(function()
+        helpers.start_kong()
+        client = helpers.proxy_client()
+        api_client = helpers.admin_client()
 
-      assert(helpers.dao.apis:insert {
-        request_host = "balancer.test",
-        upstream_url = "http://service.xyz.v1/path",
-      })
-      upstream = assert(helpers.dao.upstreams:insert {
-        name = "service.xyz.v1",
-        slots = 10,
-      })
-      target1 = assert(helpers.dao.targets:insert {
-        target = "127.0.0.1:"..PORT,
-        weight = 10,
-        upstream_id = upstream.id,
-      })
-      target2 = assert(helpers.dao.targets:insert {
-        target = "127.0.0.1:"..(PORT+1),
-        weight = 10,
-        upstream_id = upstream.id,
-      })
-    end)
+        assert(helpers.dao.apis:insert {
+          request_host = "balancer.test",
+          upstream_url = "http://service.xyz.v1/path",
+        })
+        upstream = assert(helpers.dao.upstreams:insert {
+          name = "service.xyz.v1",
+          slots = 10,
+        })
+        target1 = assert(helpers.dao.targets:insert {
+          target = "127.0.0.1:"..PORT,
+          weight = 10,
+          upstream_id = upstream.id,
+        })
+        target2 = assert(helpers.dao.targets:insert {
+          target = "127.0.0.1:"..(PORT+1),
+          weight = 10,
+          upstream_id = upstream.id,
+        })
+      end)
 
-    after_each(function()
-      if client and api_client then
-        client:close()
-        api_client:close()
-      end
-      helpers.stop_kong()
-    end)
+      after_each(function()
+        if client and api_client then
+          client:close()
+          api_client:close()
+        end
+        helpers.stop_kong()
+      end)
 
-    it("over multiple targets", function()
-      local timeout = 10
-      local requests = upstream.slots * 2 -- go round the balancer twice
-      
-      -- setup target servers
-      local server1 = http_server(timeout, requests/2, PORT)
-      local server2 = http_server(timeout, requests/2, PORT+1)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
+      it("over multiple targets", function()
+        local timeout = 10
+        local requests = upstream.slots * 2 -- go round the balancer twice
+        
+        -- setup target servers
+        local server1 = http_server(timeout, requests/2, PORT)
+        local server2 = http_server(timeout, requests/2, PORT+1)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        local _, count1 = server1:join()
+        local _, count2 = server2:join()
+        
+        -- verify
+        assert.are.equal(requests/2, count1)
+        assert.are.equal(requests/2, count2)
+      end)
+      it("adding a target", function()
+        local timeout = 10
+        local requests = upstream.slots * 2 -- go round the balancer twice
+        
+        -- setup target servers
+        local server1 = http_server(timeout, requests/2, PORT)
+        local server2 = http_server(timeout, requests/2, PORT+1)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        local _, count1 = server1:join()
+        local _, count2 = server2:join()
+        
+        -- verify
+        assert.are.equal(requests/2, count1)
+        assert.are.equal(requests/2, count2)
+        
+        -- add a new target 3
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/upstreams/"..upstream.name.."/targets",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },        
+          body = {
+            target = "127.0.0.1:"..(PORT+2),
+            weight = target1.weight/2 ,  -- shift proportions from 50/50 to 40/40/20
+          },
+        })
+        assert.response(res).has.status(201)
+        
+        -- wait for the change to become effective
+        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
+        
+        -- now go and hit the same balancer again
+        -----------------------------------------
+        
+        -- setup target servers
+        server1 = http_server(timeout, requests * 0.4, PORT)
+        server2 = http_server(timeout, requests * 0.4, PORT+1)
+        local server3 = http_server(timeout, requests * 0.2, PORT+2)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        _, count1 = server1:join()
+        _, count2 = server2:join()
+        local _, count3 = server3:join()
+        
+        -- verify
+        assert.are.equal(requests * 0.4, count1)
+        assert.are.equal(requests * 0.4, count2)
+        assert.are.equal(requests * 0.2, count3)
+      end)
+      it("removing a target", function()
+        local timeout = 10
+        local requests = upstream.slots * 2 -- go round the balancer twice
+        
+        -- setup target servers
+        local server1 = http_server(timeout, requests/2, PORT)
+        local server2 = http_server(timeout, requests/2, PORT+1)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        local _, count1 = server1:join()
+        local _, count2 = server2:join()
+        
+        -- verify
+        assert.are.equal(requests/2, count1)
+        assert.are.equal(requests/2, count2)
+        
+        -- modify weight for target 2, set to 0
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/upstreams/"..upstream.name.."/targets",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },        
+          body = {
+            target = target2.target,
+            weight = 0,   -- disable this target
+          },
+        })
+        assert.response(res).has.status(201)
+        
+        -- wait for the change to become effective
+        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
+        
+        -- now go and hit the same balancer again
+        -----------------------------------------
+        
+        -- setup target servers
+        server1 = http_server(timeout, requests, PORT)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        _, count1 = server1:join()
+        
+        -- verify all requests hit server 1
+        assert.are.equal(requests, count1)
+      end)
+      it("modifying target weight", function()
+        local timeout = 10
+        local requests = upstream.slots * 2 -- go round the balancer twice
+        
+        -- setup target servers
+        local server1 = http_server(timeout, requests/2, PORT)
+        local server2 = http_server(timeout, requests/2, PORT+1)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        local _, count1 = server1:join()
+        local _, count2 = server2:join()
+        
+        -- verify
+        assert.are.equal(requests/2, count1)
+        assert.are.equal(requests/2, count2)
+        
+        -- modify weight for target 2
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/upstreams/"..target2.upstream_id.."/targets",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },        
+          body = {
+            target = target2.target,
+            weight = target1.weight * 1.5,   -- shift proportions from 50/50 to 40/60
+          },
+        })
+        assert.response(res).has.status(201)
+        
+        -- wait for the change to become effective
+        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
+        
+        -- now go and hit the same balancer again
+        -----------------------------------------
+        
+        -- setup target servers
+        server1 = http_server(timeout, requests * 0.4, PORT)
+        server2 = http_server(timeout, requests * 0.6, PORT+1)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        _, count1 = server1:join()
+        _, count2 = server2:join()
+        
+        -- verify
+        assert.are.equal(requests * 0.4, count1)
+        assert.are.equal(requests * 0.6, count2)
+      end)
+      it("#only failure due to no targets", function()
+        local timeout = 10
+        local requests = upstream.slots * 2 -- go round the balancer twice
+        
+        -- setup target servers
+        local server1 = http_server(timeout, requests/2, PORT)
+        local server2 = http_server(timeout, requests/2, PORT+1)
+        
+        -- Go hit them with our test requests
+        for _ = 1, requests do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/",
+            headers = {
+              ["Host"] = "balancer.test"
+            }
+          })
+          assert.response(res).has.status(200)
+        end
+        
+        -- collect server results; hitcount
+        local _, count1 = server1:join()
+        local _, count2 = server2:join()
+        
+        -- verify
+        assert.are.equal(requests/2, count1)
+        assert.are.equal(requests/2, count2)
+
+        -- modify weight for both targets, set to 0
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/upstreams/"..upstream.name.."/targets",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },        
+          body = {
+            target = target1.target,
+            weight = 0,   -- disable this target
+          },
+        })
+        assert.response(res).has.status(201)
+print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+        res = assert(api_client:send {
+          method = "POST",
+          path = "/upstreams/"..upstream.name.."/targets",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },        
+          body = {
+            target = target2.target,
+            weight = 0,   -- disable this target
+          },
+        })
+        assert.response(res).has.status(201)
+print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+res = assert(api_client:send {
+  method = "GET",
+  path = "/upstreams/"..upstream.name.."/targets",
+})
+print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+        
+        -- wait for the change to become effective
+        helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
+        
+        -- now go and hit the same balancer again
+        -----------------------------------------
+        
+        res = assert(client:send {
           method = "GET",
           path = "/",
           headers = {
             ["Host"] = "balancer.test"
           }
         })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      local _, count1 = server1:join()
-      local _, count2 = server2:join()
-      
-      -- verify
-      assert.are.equal(requests/2, count1)
-      assert.are.equal(requests/2, count2)
-    end)
-    it("adding a target", function()
-      local timeout = 10
-      local requests = upstream.slots * 2 -- go round the balancer twice
-      
-      -- setup target servers
-      local server1 = http_server(timeout, requests/2, PORT)
-      local server2 = http_server(timeout, requests/2, PORT+1)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      local _, count1 = server1:join()
-      local _, count2 = server2:join()
-      
-      -- verify
-      assert.are.equal(requests/2, count1)
-      assert.are.equal(requests/2, count2)
-      
-      -- add a new target 3
-      local res = assert(api_client:send {
-        method = "POST",
-        path = "/upstreams/"..upstream.name.."/targets",
-        headers = {
-          ["Content-Type"] = "application/json"
-        },        
-        body = {
-          target = "127.0.0.1:"..(PORT+2),
-          weight = target1.weight/2 ,  -- shift proportions from 50/50 to 40/40/20
-        },
-      })
-      assert.response(res).has.status(201)
-      
-      -- wait for the change to become effective
-      helpers.wait_for_invalidation(cache.targets_key(upstream.id))
-      
-      -- now go and hit the same balancer again
-      -----------------------------------------
-      
-      -- setup target servers
-      server1 = http_server(timeout, requests * 0.4, PORT)
-      server2 = http_server(timeout, requests * 0.4, PORT+1)
-      local server3 = http_server(timeout, requests * 0.2, PORT+2)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      _, count1 = server1:join()
-      _, count2 = server2:join()
-      local _, count3 = server3:join()
-      
-      -- verify
-      assert.are.equal(requests * 0.4, count1)
-      assert.are.equal(requests * 0.4, count2)
-      assert.are.equal(requests * 0.2, count3)
-    end)
-    it("removing a target", function()
-      local timeout = 10
-      local requests = upstream.slots * 2 -- go round the balancer twice
-      
-      -- setup target servers
-      local server1 = http_server(timeout, requests/2, PORT)
-      local server2 = http_server(timeout, requests/2, PORT+1)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      local _, count1 = server1:join()
-      local _, count2 = server2:join()
-      
-      -- verify
-      assert.are.equal(requests/2, count1)
-      assert.are.equal(requests/2, count2)
-      
-      -- modify weight for target 2, set to 0
-      local res = assert(api_client:send {
-        method = "POST",
-        path = "/upstreams/"..upstream.name.."/targets",
-        headers = {
-          ["Content-Type"] = "application/json"
-        },        
-        body = {
-          target = target2.target,
-          weight = 0,   -- disable this target
-        },
-      })
-      assert.response(res).has.status(201)
-      
-      -- wait for the change to become effective
-      helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
-      
-      -- now go and hit the same balancer again
-      -----------------------------------------
-      
-      -- setup target servers
-      server1 = http_server(timeout, requests, PORT)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      _, count1 = server1:join()
-      
-      -- verify all requests hit server 1
-      assert.are.equal(requests, count1)
-    end)
-    it("modifying target weight", function()
-      local timeout = 10
-      local requests = upstream.slots * 2 -- go round the balancer twice
-      
-      -- setup target servers
-      local server1 = http_server(timeout, requests/2, PORT)
-      local server2 = http_server(timeout, requests/2, PORT+1)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      local _, count1 = server1:join()
-      local _, count2 = server2:join()
-      
-      -- verify
-      assert.are.equal(requests/2, count1)
-      assert.are.equal(requests/2, count2)
-      
-      -- modify weight for target 2
-      local res = assert(api_client:send {
-        method = "POST",
-        path = "/upstreams/"..target2.upstream_id.."/targets",
-        headers = {
-          ["Content-Type"] = "application/json"
-        },        
-        body = {
-          target = target2.target,
-          weight = target1.weight * 1.5,   -- shift proportions from 50/50 to 40/60
-        },
-      })
-      assert.response(res).has.status(201)
-      
-      -- wait for the change to become effective
-      helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
-      
-      -- now go and hit the same balancer again
-      -----------------------------------------
-      
-      -- setup target servers
-      server1 = http_server(timeout, requests * 0.4, PORT)
-      server2 = http_server(timeout, requests * 0.6, PORT+1)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      _, count1 = server1:join()
-      _, count2 = server2:join()
-      
-      -- verify
-      assert.are.equal(requests * 0.4, count1)
-      assert.are.equal(requests * 0.6, count2)
-    end)
-    it("failure due to no targets", function()
-      local timeout = 10
-      local requests = upstream.slots * 2 -- go round the balancer twice
-      
-      -- setup target servers
-      local server1 = http_server(timeout, requests/2, PORT)
-      local server2 = http_server(timeout, requests/2, PORT+1)
-      
-      -- Go hit them with our test requests
-      for _ = 1, requests do
-        local res = assert(client:send {
-          method = "GET",
-          path = "/",
-          headers = {
-            ["Host"] = "balancer.test"
-          }
-        })
-        assert.response(res).has.status(200)
-      end
-      
-      -- collect server results; hitcount
-      local _, count1 = server1:join()
-      local _, count2 = server2:join()
-      
-      -- verify
-      assert.are.equal(requests/2, count1)
-      assert.are.equal(requests/2, count2)
---ngx.sleep(2)
-      -- modify weight for both targets, set to 0
-      local res = assert(api_client:send {
-        method = "POST",
-        path = "/upstreams/"..upstream.name.."/targets",
-        headers = {
-          ["Content-Type"] = "application/json"
-        },        
-        body = {
-          target = target1.target,
-          weight = 0,   -- disable this target
-        },
-      })
-      assert.response(res).has.status(201)
-      res = assert(api_client:send {
-        method = "POST",
-        path = "/upstreams/"..upstream.name.."/targets",
-        headers = {
-          ["Content-Type"] = "application/json"
-        },        
-        body = {
-          target = target2.target,
-          weight = 0,   -- disable this target
-        },
-      })
-      assert.response(res).has.status(201)
-      
-      -- wait for the change to become effective
-      helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
-      
-      -- now go and hit the same balancer again
-      -----------------------------------------
-      
-      res = assert(client:send {
-        method = "GET",
-        path = "/",
-        headers = {
-          ["Host"] = "balancer.test"
-        }
-      })
-      assert.response(res).has.status(503)
+
+        assert.response(res).has.status(503)
+      end)
     end)
   end)
-end)
+
+end -- for 'database type'
+
