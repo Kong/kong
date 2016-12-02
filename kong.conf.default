@@ -228,10 +228,10 @@
                                  # TCP and UDP on this address.
                                  # Only IPv4 addresses are supported.
 
-#cluster_listen_rpc = 127.0.0.1:7373  # Address and port used by this node to
-                                      # communicate with the cluster.
-                                      # Only contains TCP traffic over the
-                                      # local network.
+#cluster_listen_rpc = 127.0.0.1:7373  # Address and port used to communicate
+                                      # with the cluster through the agent
+                                      # running on this node. Only contains
+                                      # TCP traffic local to this node.
 
 #cluster_advertise =             # By default, the `cluster_listen` address
                                  # is advertised over the cluster.
