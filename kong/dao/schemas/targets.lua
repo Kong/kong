@@ -32,7 +32,6 @@ return {
     target = {
       -- in 'hostname:port' format, if omitted default port will be inserted
       type = "string",
-      unique = true, 
       required = true,
     },
     weight = {

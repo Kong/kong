@@ -405,7 +405,7 @@ for _, current_db in ipairs( { "postgres", "cassandra" } ) do
           },
         })
         assert.response(res).has.status(201)
-print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+--print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
         res = assert(api_client:send {
           method = "POST",
           path = "/upstreams/"..upstream.name.."/targets",
@@ -418,13 +418,13 @@ print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
           },
         })
         assert.response(res).has.status(201)
-print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
-res = assert(api_client:send {
-  method = "GET",
-  path = "/upstreams/"..upstream.name.."/targets",
-})
-print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
-        
+--print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+--res = assert(api_client:send {
+--  method = "GET",
+--  path = "/upstreams/"..upstream.name.."/targets",
+--})
+--print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+
         -- wait for the change to become effective
         helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
         
@@ -438,7 +438,7 @@ print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
             ["Host"] = "balancer.test"
           }
         })
-
+ngx.sleep(60)
         assert.response(res).has.status(503)
       end)
     end)
