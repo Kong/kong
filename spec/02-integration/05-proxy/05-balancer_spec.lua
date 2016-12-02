@@ -3,6 +3,7 @@
 
 local helpers = require "spec.helpers"
 local cache = require "kong.tools.database_cache"
+local dao_helpers = require "spec.02-integration.02-dao.helpers"
 local PORT = 21000
 
 
@@ -70,17 +71,18 @@ local function http_server(timeout, count, port, ...)
   return thread:start(...)
 end
 
-for _, current_db in ipairs( { "postgres", "cassandra" } ) do
+dao_helpers.for_each_dao(function(kong_config)
 
-  describe("Ring-balancer #"..current_db, function()
+  describe("Ring-balancer #"..kong_config.database, function()
     
     local config_db
     setup(function()
       config_db = helpers.test_conf.database
-      helpers.test_conf.database = current_db
+      helpers.test_conf.database = kong_config.database
+assert.same(helpers.test_conf, kong_config)
     end)
     teardown(function()
-      helpers.test_conf.database = config_db
+      helpers.test_conf.database = kong_config.database
       config_db = nil
     end)
   
@@ -364,7 +366,7 @@ for _, current_db in ipairs( { "postgres", "cassandra" } ) do
         assert.are.equal(requests * 0.4, count1)
         assert.are.equal(requests * 0.6, count2)
       end)
-      it("#only failure due to no targets", function()
+      it("failure due to no targets", function()
         local timeout = 10
         local requests = upstream.slots * 2 -- go round the balancer twice
         
@@ -438,11 +440,11 @@ for _, current_db in ipairs( { "postgres", "cassandra" } ) do
             ["Host"] = "balancer.test"
           }
         })
-ngx.sleep(60)
+ngx.sleep(30)
         assert.response(res).has.status(503)
       end)
     end)
   end)
 
-end -- for 'database type'
+end) -- for 'database type'
 
