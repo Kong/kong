@@ -482,18 +482,20 @@ function _M.new(apis)
   local function find_api(method, uri, headers)
     if type(method) ~= "string" then
       return error("arg #1 method must be a string", 2)
-
-    elseif type(uri) ~= "string" then
+    end
+    if type(uri) ~= "string" then
       return error("arg #2 uri must be a string", 2)
-
-    elseif type(headers) ~= "table" then
+    end
+    if type(headers) ~= "table" then
       return error("arg #3 headers must be a table", 2)
     end
 
 
-    local req_category = 0x00
     local host = headers["Host"] or headers["host"]
     method = upper(method)
+
+
+    -- cache checking
 
 
     local cache_key = fmt("%s:%s:%s", method, uri, host)
@@ -503,43 +505,50 @@ function _M.new(apis)
     end
 
 
-    if indexes.plain_hosts[host] then
-      req_category = bor(req_category, MATCH_RULES.HOST)
-    end
+    do
+      -- plain match checking
 
-    if indexes.plain_uris[uri] then
-      req_category = bor(req_category, MATCH_RULES.URI)
-    end
+      local req_category = 0x00
 
-    if indexes.methods[method] then
-      req_category = bor(req_category, MATCH_RULES.METHOD)
-    end
+      if indexes.plain_hosts[host] then
+        req_category = bor(req_category, MATCH_RULES.HOST)
+      end
 
-    --print("highest potential category: ", req_category)
+      if indexes.plain_uris[uri] then
+        req_category = bor(req_category, MATCH_RULES.URI)
+      end
 
-    if req_category ~= 0x00 then
-      -- we might have a match from our indexes of plain
-      -- hosts/URIs/methods
-      local category_idx = CATEGORIES_LOOKUP[req_category]
+      if indexes.methods[method] then
+        req_category = bor(req_category, MATCH_RULES.METHOD)
+      end
 
-      while category_idx <= #CATEGORIES_LOOKUP do
-        local bit_category = CATEGORIES[category_idx]
+      --print("highest potential category: ", req_category)
 
-        local candidates = reduce(categories, bit_category, method, uri, host)
-        if candidates then
-          for i = 1, #candidates do
-            if match_api(candidates[i], method, uri, host) then
-              cache:set(cache_key, candidates[i])
-              return candidates[i]
+      if req_category ~= 0x00 then
+        -- we might have a match from our indexes of plain
+        -- hosts/URIs/methods
+        local category_idx = CATEGORIES_LOOKUP[req_category]
+
+        while category_idx <= #CATEGORIES_LOOKUP do
+          local bit_category = CATEGORIES[category_idx]
+
+          local candidates = reduce(categories, bit_category, method, uri, host)
+          if candidates then
+            for i = 1, #candidates do
+              if match_api(candidates[i], method, uri, host) then
+                cache:set(cache_key, candidates[i])
+                return candidates[i]
+              end
             end
           end
-        end
 
-        category_idx = category_idx + 1
+          category_idx = category_idx + 1
+        end
       end
     end
 
 
+    -- URI prefix checking
     -- no API seemed to belong to any of those recorded in our
     -- fast-indexed category lookups, we now want to test for
     -- wildcard hosts and prefix URIs
@@ -561,7 +570,7 @@ function _M.new(apis)
     end
 
 
-    -- it seems we now need to check if the request contains a wildcard host
+    -- wildcard host checking
 
 
     for i = 1, #wildcard_hosts do
@@ -576,6 +585,9 @@ function _M.new(apis)
         return wildcard_hosts[i].api_t
       end
     end
+
+
+    -- no match :'(
   end
 
 
