@@ -351,7 +351,7 @@ describe("Ring-balancer", function()
       assert.are.equal(requests * 0.4, count1)
       assert.are.equal(requests * 0.6, count2)
     end)
-    it("#only failure due to no targets", function()
+    it("failure due to no targets", function()
       local timeout = 10
       local requests = upstream.slots * 2 -- go round the balancer twice
       

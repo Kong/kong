@@ -82,7 +82,8 @@ end
 -- caching, invalidation, db access, et al.
 -- @return upstream table, or `false` if not found, or nil+error
 local function get_upstream(upstream_name)
-  local upstreams_dict, err = cache.get_or_set(cache.upstreams_dict_key(), load_upstreams_dict_into_memory)
+  local upstreams_dict, err = cache.get_or_set(cache.upstreams_dict_key(), 
+                                        nil, load_upstreams_dict_into_memory)
   if err then
     return nil, err
   end
@@ -90,7 +91,7 @@ local function get_upstream(upstream_name)
   local upstream_id = upstreams_dict[upstream_name]
   if not upstream_id then return false end -- no upstream by this name
   
-  return cache.get_or_set(cache.upstream_key(upstream_id), load_upstream_into_memory, upstream_id)
+  return cache.get_or_set(cache.upstream_key(upstream_id), nil, load_upstream_into_memory, upstream_id)
 end
 
 -- loads the target history for an upstream
@@ -159,7 +160,7 @@ local get_balancer = function(target)
   
   -- we've got the upstream, now fetch its targets, from cache or the db
   local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
-                               load_targets_into_memory, upstream.id)
+                               nil, load_targets_into_memory, upstream.id)
 
   if err then
     return nil, err
