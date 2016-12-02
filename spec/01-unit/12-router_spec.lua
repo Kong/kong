@@ -658,7 +658,7 @@ describe("Router", function()
         },
         -- don't strip this API's matching URI
         {
-          name = "api-1",
+          name = "api-2",
           methods = { "POST" },
           uris = { "/my-api", "/this-api" },
         },
