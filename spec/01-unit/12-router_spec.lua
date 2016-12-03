@@ -336,12 +336,12 @@ describe("Router", function()
           end
 
           table.insert(use_case, {
-              name = "target api",
-              uris = { "/my-target-uri" },
-              headers = {
-                ["host"] = { "domain.org" },
-              },
-            })
+            name = "target api",
+            uris = { "/my-target-uri" },
+            headers = {
+              ["host"] = { "domain.org" },
+            },
+          })
         end)
 
         teardown(function()
@@ -350,7 +350,7 @@ describe("Router", function()
           end
         end)
 
-        it(function()
+        it("matches correct API", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/my-target-uri", { ["host"] = "domain.org" })
           assert.truthy(api_t)
