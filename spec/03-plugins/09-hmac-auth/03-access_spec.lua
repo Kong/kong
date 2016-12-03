@@ -10,12 +10,11 @@ local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 
 describe("Plugin: hmac-auth (access)", function()
   local client, consumer, credential
-  setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
 
+  setup(function()
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "hmacauth.com",
+      name = "api-1",
+      hosts = { "hmacauth.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -27,17 +26,18 @@ describe("Plugin: hmac-auth (access)", function()
     })
 
     consumer = assert(helpers.dao.consumers:insert {
-        username = "bob",
-        custom_id = "1234"
+      username = "bob",
+      custom_id = "1234"
     })
     credential = assert(helpers.dao["hmacauth_credentials"]:insert {
-        username = "bob",
-        secret = "secret",
-        consumer_id = consumer.id
+      username = "bob",
+      secret = "secret",
+      consumer_id = consumer.id
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "hmacauth2.com",
+      name = "api-2",
+      hosts = { "hmacauth2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -48,6 +48,9 @@ describe("Plugin: hmac-auth (access)", function()
         clock_skew = 3000
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()

@@ -5,10 +5,9 @@ describe("Plugin: ssl (access)", function()
   local client, client_ssl
 
   setup(function()
-    assert(helpers.start_kong())
-
     local api = assert(helpers.dao.apis:insert {
-      request_host = "ssl2.com",
+      name = "api-1",
+      hosts = { "ssl2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -22,7 +21,8 @@ describe("Plugin: ssl (access)", function()
     })
 
     api = assert(helpers.dao.apis:insert {
-      request_host = "ssl4.com",
+      name = "api-4",
+      hosts = { "ssl4.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -36,6 +36,7 @@ describe("Plugin: ssl (access)", function()
       }
     })
 
+    assert(helpers.start_kong())
     client = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_port))
     client_ssl = assert(helpers.http_client("127.0.0.1", helpers.test_conf.proxy_ssl_port))
     client_ssl:ssl_handshake()
@@ -46,6 +47,7 @@ describe("Plugin: ssl (access)", function()
       client:close()
       client_ssl:close()
     end
+
     helpers.stop_kong()
   end)
 

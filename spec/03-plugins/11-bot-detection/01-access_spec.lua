@@ -6,18 +6,19 @@ local FACEBOOK = "facebookexternalhit/1.1"  -- matches a known bot in `rules.lua
 describe("Plugin: bot-detection (access)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "bot.com",
+      name = "api-1",
+      hosts = { "bot.com" },
       upstream_url = "http://mockbin.com"
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "bot2.com",
+      name = "api-2",
+      hosts = { "bot2.com" },
       upstream_url = "http://mockbin.com"
     })
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "bot3.com",
+      name = "api-3",
+      hosts = { "bot3.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -43,7 +44,10 @@ describe("Plugin: bot-detection (access)", function()
         whitelist = FACEBOOK
       }
     })
+
+    assert(helpers.start_kong())
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -51,6 +55,7 @@ describe("Plugin: bot-detection (access)", function()
   before_each(function()
     client = helpers.proxy_client()
   end)
+
   after_each(function()
     if client then client:close() end
   end)

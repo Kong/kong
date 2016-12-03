@@ -14,11 +14,10 @@ describe("Plugin hooks: ssl", function()
 
   before_each(function()
     helpers.dao:truncate_tables()
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
 
     api = assert(helpers.dao.apis:insert {
-      request_host = "ssl1.com",
+      name = "api-1",
+      hosts = { "ssl1.com" },
       upstream_url = "http://mockbin.com"
     })
     plugin = assert(helpers.dao.plugins:insert {
@@ -29,11 +28,16 @@ describe("Plugin hooks: ssl", function()
         key = ssl_fixtures.key
       }
     })
+
+    assert(helpers.start_kong())
+    admin_client = helpers.admin_client()
   end)
+
   after_each(function()
     if admin_client then
       admin_client:close()
     end
+
     helpers.stop_kong()
   end)
 
