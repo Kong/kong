@@ -5,12 +5,11 @@ local MB = 2^20
 
 describe("Plugin: request-size-limiting (access)", function()
   local client
-  setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
 
+  setup(function()
     local api = assert(helpers.dao.apis:insert {
-      request_host = "limit.com",
+      name = "limit.com",
+      hosts = { "limit.com" },
       upstream_url = "http://mockbin.com/"
     })
     assert(helpers.dao.plugins:insert {
@@ -20,7 +19,11 @@ describe("Plugin: request-size-limiting (access)", function()
         allowed_payload_size = TEST_SIZE
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
+
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()

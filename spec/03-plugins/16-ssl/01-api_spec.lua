@@ -4,26 +4,27 @@ local cjson = require "cjson"
 
 describe("Plugin: basic-auth (API)", function()
   local admin_client
-  setup(function()
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
-  end)
-  teardown(function()
-    if admin_client then
-      admin_client:close()
-    end
-    helpers.stop_kong()
-  end)
 
   describe("/apis/:api/plugins/", function()
-    setup(function()
+    before_each(function()
       assert(helpers.dao.apis:insert {
-        request_host = "mockbin.com",
+        name = "mockbin.com",
+        hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       })
+
+      assert(helpers.start_kong())
+      admin_client = helpers.admin_client()
     end)
+
     after_each(function()
       helpers.dao:truncate_table("plugins")
+
+      if admin_client then
+        admin_client:close()
+      end
+
+      helpers.stop_kong()
     end)
 
     describe("POST", function()
@@ -40,6 +41,7 @@ describe("Plugin: basic-auth (API)", function()
             ["Content-Type"] = "application/json"
           }
         })
+
         local body = assert.res_status(201, res)
         local json = cjson.decode(body)
         assert.equal(ssl_fixtures.cert, json.config.cert)

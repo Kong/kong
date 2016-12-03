@@ -52,7 +52,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       flush_redis()
       helpers.dao:drop_schema()
       assert(helpers.dao:run_migrations())
-      assert(helpers.start_kong())
 
       local consumer1 = assert(helpers.dao.consumers:insert {
         custom_id = "provider_123"
@@ -75,7 +74,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api1 = assert(helpers.dao.apis:insert {
-        request_host = "test1.com",
+        name = "api-1",
+        hosts = { "test1.com" },
         upstream_url = "http://mockbin.com"
       })
       assert(helpers.dao.plugins:insert {
@@ -93,7 +93,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api2 = assert(helpers.dao.apis:insert {
-        request_host = "test2.com",
+        name = "api-2",
+        hosts = { "test2.com" },
         upstream_url = "http://mockbin.com"
       })
       assert(helpers.dao.plugins:insert {
@@ -112,7 +113,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api3 = assert(helpers.dao.apis:insert {
-        request_host = "test3.com",
+        name = "api-3",
+        hosts = { "test3.com" },
         upstream_url = "http://mockbin.com"
       })
       assert(helpers.dao.plugins:insert {
@@ -149,7 +151,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api4 = assert(helpers.dao.apis:insert {
-        request_host = "test4.com",
+        name = "api-4",
+        hosts = { "test4.com" },
         upstream_url = "http://mockbin.com"
       })
       assert(helpers.dao.plugins:insert {
@@ -170,7 +173,10 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_database = REDIS_DATABASE
         }
       })
+
+      assert(helpers.start_kong())
     end)
+
     teardown(function()
       helpers.stop_kong()
     end)
@@ -181,6 +187,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
+
     after_each(function()
       if client then client:close() end
       if admin_client then admin_client:close() end
@@ -361,7 +368,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert(helpers.dao:run_migrations())
 
           local api1 = assert(helpers.dao.apis:insert {
-            request_host = "failtest1.com",
+            name = "failtest1_com",
+            hosts = { "failtest1.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -371,7 +379,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            request_host = "failtest2.com",
+            name = "failtest2_com",
+            hosts = { "failtest2.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -449,7 +458,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         before_each(function()
           local api1 = assert(helpers.dao.apis:insert {
-            request_host = "failtest3.com",
+            name = "failtest3_com",
+            hosts = { "failtest3.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -459,7 +469,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            request_host = "failtest4.com",
+            name = "failtest4_com",
+            hosts = { "failtest4.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -503,10 +514,10 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         helpers.stop_kong()
         helpers.dao:drop_schema()
         assert(helpers.dao:run_migrations())
-        assert(helpers.start_kong())
 
         api = assert(helpers.dao.apis:insert {
-          request_host = "expire1.com",
+          name = "expire1_com",
+          hosts = { "expire1.com" },
           upstream_url = "http://mockbin.com"
         })
         assert(helpers.dao.plugins:insert {
@@ -522,6 +533,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             redis_database = REDIS_DATABASE
           }
         })
+
+        assert(helpers.start_kong())
       end)
 
       it("expires a counter", function()

@@ -11,13 +11,9 @@ end
 
 describe("Plugin: ssl (certificate)", function()
   setup(function()
-    assert(helpers.start_kong {
-      ssl_cert = "", -- trigger cert auto-gen
-      ssl_cert_key = ""
-    })
-
     local api = assert(helpers.dao.apis:insert {
-      request_host = "ssl1.com",
+      name = "ssl1_com",
+      hosts = { "ssl1.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -30,7 +26,8 @@ describe("Plugin: ssl (certificate)", function()
     })
 
     api = assert(helpers.dao.apis:insert {
-      request_host = "ssl2.com",
+      name = "api-2",
+      hosts = { "ssl2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -44,7 +41,8 @@ describe("Plugin: ssl (certificate)", function()
     })
 
     api = assert(helpers.dao.apis:insert {
-      request_host = "ssl4.com",
+      name = "api-4",
+      hosts = { "ssl4.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -57,7 +55,13 @@ describe("Plugin: ssl (certificate)", function()
         accept_http_if_already_terminated = true
       }
     })
+
+    assert(helpers.start_kong {
+      ssl_cert = "", -- trigger cert auto-gen
+      ssl_cert_key = ""
+    })
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -72,7 +76,8 @@ describe("Plugin: ssl (certificate)", function()
   end)
   it("can upload SSL cert with curl multipart", function()
     local api = assert(helpers.dao.apis:insert {
-      request_host = "ssl3.com",
+      name = "api-3",
+      hosts = { "ssl3.com" },
       upstream_url = "http://mockbin.com"
     })
 

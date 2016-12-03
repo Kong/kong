@@ -4,23 +4,12 @@ local cjson = require "cjson"
 
 describe("Plugin: key-auth (hooks)", function()
   local admin_client, proxy_client
-  setup(function()
-    assert(helpers.start_kong())
-    proxy_client = helpers.proxy_client()
-    admin_client = helpers.admin_client()
-  end)
-  teardown(function()
-    if admin_client and proxy_client then
-      admin_client:close()
-      proxy_client:close()
-    end
-    helpers.stop_kong()
-  end)
 
   before_each(function()
     helpers.dao:truncate_tables()
     local api = assert(helpers.dao.apis:insert {
-      request_host = "key-auth.com",
+      name = "api-1",
+      hosts = { "key-auth.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -35,6 +24,18 @@ describe("Plugin: key-auth (hooks)", function()
       key = "kong",
       consumer_id = consumer.id
     })
+
+    assert(helpers.start_kong())
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+  end)
+
+  after_each(function()
+    if admin_client and proxy_client then
+      admin_client:close()
+      proxy_client:close()
+    end
+    helpers.stop_kong()
   end)
 
   it("invalidates credentials when the Consumer is deleted", function()
