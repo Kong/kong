@@ -36,6 +36,55 @@ describe("Core Hooks", function()
         helpers.stop_kong()
       end)
 
+      it("should properly load a plugin added later", function()
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks1.com"
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Make sure the cache is not populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        assert.res_status(404, res)
+
+        -- Add plugin
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/plugins/",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = cjson.encode({
+            name = "basic-auth"
+          })
+        })
+        assert.res_status(204, res)
+
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks1.com"
+          }
+        })
+        assert.res_status(401, res)
+
+        -- Make sure the cache is populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        assert.res_status(200, res)
+      end)
+
       it("should invalidate a global plugin when deleting", function()
         -- Making a request to populate the cache
         local res = assert(client:send {
@@ -322,7 +371,7 @@ describe("Core Hooks", function()
         })
         assert.res_status(200, res)
       end)
-      
+
       it("should invalidate a plugin when deleting", function()
         -- Making a request to populate the cache
         local res = assert(client:send {
