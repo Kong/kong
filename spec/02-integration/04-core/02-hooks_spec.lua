@@ -204,7 +204,7 @@ describe("Core Hooks", function()
 
   describe("Other", function()
     local client, api_client
-    local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
+    local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer, api4
 
     before_each(function()
       helpers.start_kong()
@@ -259,6 +259,11 @@ describe("Core Hooks", function()
           minute = 3
         }
       })
+
+      api4 = assert(helpers.dao.apis:insert {
+        request_host = "hooks4.com",
+        upstream_url = "http://mockbin.com"
+      })
     end)
     after_each(function()
       if client and api_client then
@@ -269,6 +274,55 @@ describe("Core Hooks", function()
     end)
 
     describe("Plugin entity invalidation", function()
+      it("should properly load a plugin added later", function()
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks4.com"
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Make sure the cache is not populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", api4.id, nil)
+        })
+        assert.res_status(404, res)
+
+        -- Add plugin
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/apis/"..api4.id.."/plugins/",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = cjson.encode({
+            name = "basic-auth"
+          })
+        })
+        assert.res_status(204, res)
+
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks4.com"
+          }
+        })
+        assert.res_status(401, res)
+
+        -- Make sure the cache is populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", api4.id, nil)
+        })
+        assert.res_status(200, res)
+      end)
+      
       it("should invalidate a plugin when deleting", function()
         -- Making a request to populate the cache
         local res = assert(client:send {
