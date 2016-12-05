@@ -4,19 +4,22 @@ local singletons = require "kong.singletons"
 
 local _M = {}
 
+local function load_api_into_memory(sanitized_host)
+  local apis, err = singletons.dao.apis:find_all {request_host = sanitized_host}
+  if err then
+    return nil, err
+  elseif apis and #apis == 1 then
+    return apis[1]
+  end
+end
+
 local function find_api(hosts)
   local retrieved_api, err
   for _, host in ipairs(hosts) do
     local sanitized_host = utils.split(host, ":")[1]
 
-    retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host), function()
-      local apis, err = singletons.dao.apis:find_all {request_host = sanitized_host}
-      if err then
-        return nil, err
-      elseif apis and #apis == 1 then
-        return apis[1]
-      end
-    end)
+    retrieved_api, err = cache.get_or_set(cache.api_key(sanitized_host), nil,
+                                          load_api_into_memory, sanitized_host)
 
     if err or retrieved_api then
       return retrieved_api, err

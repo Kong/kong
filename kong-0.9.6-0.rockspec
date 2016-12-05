@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.9.1-0"
+version = "0.9.6-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.9.1"
+  tag = "0.9.6"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -17,17 +17,19 @@ dependencies = {
   "mediator_lua == 1.1.2",
   "lua-resty-http == 0.08",
   "lua-resty-jit-uuid == 0.0.5",
-  "multipart == 0.3",
+  "multipart == 0.4",
   "version == 0.2",
   "lapis == 1.5.1",
-  "lua-cassandra == 0.5.3",
-  "pgmoon-mashape == 2.0.0",
+  "lua-cassandra == dev-0",
+  "pgmoon-mashape == 2.0.1",
   "luatz == 0.3",
   "lua_system_constants == 0.1.1",
   "lua-resty-iputils == 0.2.1",
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
-  "lua_pack == 1.0.4"
+  "lua_pack == 1.0.4",
+  "lua-resty-dns-client == 0.3.0",
+  "lua-resty-worker-events == 0.3.0",
 }
 build = {
   type = "builtin",
@@ -45,8 +47,8 @@ build = {
 
     ["kong.vendor.classic"] = "kong/vendor/classic.lua",
 
+    ["kong.cmd"] = "kong/cmd/init.lua",
     ["kong.cmd.roar"] = "kong/cmd/roar.lua",
-    ["kong.cmd.init"] = "kong/cmd/init.lua",
     ["kong.cmd.stop"] = "kong/cmd/stop.lua",
     ["kong.cmd.quit"] = "kong/cmd/quit.lua",
     ["kong.cmd.start"] = "kong/cmd/start.lua",
@@ -63,9 +65,8 @@ build = {
     ["kong.cmd.utils.serf_signals"] = "kong/cmd/utils/serf_signals.lua",
     ["kong.cmd.utils.nginx_signals"] = "kong/cmd/utils/nginx_signals.lua",
     ["kong.cmd.utils.prefix_handler"] = "kong/cmd/utils/prefix_handler.lua",
-    ["kong.cmd.utils.dnsmasq_signals"] = "kong/cmd/utils/dnsmasq_signals.lua",
 
-    ["kong.api.init"] = "kong/api/init.lua",
+    ["kong.api"] = "kong/api/init.lua",
     ["kong.api.api_helpers"] = "kong/api/api_helpers.lua",
     ["kong.api.crud_helpers"] = "kong/api/crud_helpers.lua",
     ["kong.api.routes.kong"] = "kong/api/routes/kong.lua",
@@ -75,6 +76,7 @@ build = {
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
 
+    ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.printable"] = "kong/tools/printable.lua",
     ["kong.tools.responses"] = "kong/tools/responses.lua",
@@ -91,6 +93,7 @@ build = {
     ["kong.core.events"] = "kong/core/events.lua",
     ["kong.core.error_handlers"] = "kong/core/error_handlers.lua",
     ["kong.core.globalpatches"] = "kong/core/globalpatches.lua",
+    ["kong.core.balancer"] = "kong/core/balancer.lua",
 
     ["kong.dao.errors"] = "kong/dao/errors.lua",
     ["kong.dao.schemas_validation"] = "kong/dao/schemas_validation.lua",
@@ -98,9 +101,9 @@ build = {
     ["kong.dao.schemas.nodes"] = "kong/dao/schemas/nodes.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
-    ["kong.dao.base_db"] = "kong/dao/base_db.lua",
-    ["kong.dao.cassandra_db"] = "kong/dao/cassandra_db.lua",
-    ["kong.dao.postgres_db"] = "kong/dao/postgres_db.lua",
+    ["kong.dao.db"] = "kong/dao/db/init.lua",
+    ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
+    ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
     ["kong.dao.dao"] = "kong/dao/dao.lua",
     ["kong.dao.factory"] = "kong/dao/factory.lua",
     ["kong.dao.model_factory"] = "kong/dao/model_factory.lua",
@@ -166,9 +169,9 @@ build = {
     ["kong.plugins.rate-limiting.migrations.postgres"] = "kong/plugins/rate-limiting/migrations/postgres.lua",
     ["kong.plugins.rate-limiting.handler"] = "kong/plugins/rate-limiting/handler.lua",
     ["kong.plugins.rate-limiting.schema"] = "kong/plugins/rate-limiting/schema.lua",
-    ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies.lua",
-    ["kong.plugins.rate-limiting.dao.cassandra"] = "kong/plugins/rate-limiting/dao/cassandra.lua",
-    ["kong.plugins.rate-limiting.dao.postgres"] = "kong/plugins/rate-limiting/dao/postgres.lua",
+    ["kong.plugins.rate-limiting.daos"] = "kong/plugins/rate-limiting/daos.lua",
+    ["kong.plugins.rate-limiting.policies"] = "kong/plugins/rate-limiting/policies/init.lua",
+    ["kong.plugins.rate-limiting.policies.cluster"] = "kong/plugins/rate-limiting/policies/cluster.lua",
 
     ["kong.plugins.response-ratelimiting.migrations.cassandra"] = "kong/plugins/response-ratelimiting/migrations/cassandra.lua",
     ["kong.plugins.response-ratelimiting.migrations.postgres"] = "kong/plugins/response-ratelimiting/migrations/postgres.lua",
@@ -177,9 +180,9 @@ build = {
     ["kong.plugins.response-ratelimiting.header_filter"] = "kong/plugins/response-ratelimiting/header_filter.lua",
     ["kong.plugins.response-ratelimiting.log"] = "kong/plugins/response-ratelimiting/log.lua",
     ["kong.plugins.response-ratelimiting.schema"] = "kong/plugins/response-ratelimiting/schema.lua",
-    ["kong.plugins.response-ratelimiting.policies"] = "kong/plugins/response-ratelimiting/policies.lua",
-    ["kong.plugins.response-ratelimiting.dao.cassandra"] = "kong/plugins/response-ratelimiting/dao/cassandra.lua",
-    ["kong.plugins.response-ratelimiting.dao.postgres"] = "kong/plugins/response-ratelimiting/dao/postgres.lua",
+    ["kong.plugins.response-ratelimiting.daos"] = "kong/plugins/response-ratelimiting/daos.lua",
+    ["kong.plugins.response-ratelimiting.policies"] = "kong/plugins/response-ratelimiting/policies/init.lua",
+    ["kong.plugins.response-ratelimiting.policies.cluster"] = "kong/plugins/response-ratelimiting/policies/cluster.lua",
 
     ["kong.plugins.request-size-limiting.handler"] = "kong/plugins/request-size-limiting/handler.lua",
     ["kong.plugins.request-size-limiting.schema"] = "kong/plugins/request-size-limiting/schema.lua",

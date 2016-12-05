@@ -18,6 +18,14 @@ function ACLHandler:new()
   ACLHandler.super.new(self, "acl")
 end
 
+local function load_acls_into_memory(consumer_id)
+  local results, err = singletons.dao.acls:find_all {consumer_id = consumer_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return results
+end
+
 function ACLHandler:access(conf)
   ACLHandler.super.access(self)
 
@@ -29,13 +37,8 @@ function ACLHandler:access(conf)
   end
 
   -- Retrieve ACL
-  local acls = cache.get_or_set(cache.acls_key(consumer_id), function()
-    local results, err = singletons.dao.acls:find_all {consumer_id = consumer_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return results
-  end)
+  local acls = cache.get_or_set(cache.acls_key(consumer_id), nil,
+                                load_acls_into_memory, consumer_id)
 
   if not acls then acls = {} end
 

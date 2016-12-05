@@ -34,7 +34,7 @@ helpers.for_each_dao(function(kong_config)
   describe("Model (CRUD) with DB: #"..kong_config.database, function()
     local factory, apis, oauth2_credentials
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       apis = factory.apis
 
       -- DAO used for testing arrays
@@ -105,7 +105,7 @@ helpers.for_each_dao(function(kong_config)
         assert.truthy(api.id)
         assert.False(api.preserve_host)
         assert.is_number(api.created_at)
-        assert.equal(13, string.len(tostring(api.created_at))) -- Make sure the timestamp has millisecond precision when returned
+        assert.equal(13, #tostring(api.created_at)) -- Make sure the timestamp has millisecond precision when returned
       end)
       it("respect UNIQUE fields", function()
         local api, err = apis:insert(api_tbl)
@@ -488,7 +488,7 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.same(api_fixture, api)
         assert.is_number(api.created_at)
-        assert.equal(13, string.len(tostring(api.created_at))) -- Make sure the timestamp has millisecond precision when returned
+        assert.equal(13, #tostring(api.created_at)) -- Make sure the timestamp has millisecond precision when returned
       end)
       it("update with arbitrary filtering keys", function()
         api_fixture.name = "updated"
@@ -706,11 +706,10 @@ helpers.for_each_dao(function(kong_config)
         kong_config.cassandra_port = 3333
         kong_config.cassandra_timeout = 1000
 
-        local fact = Factory(kong_config)
-
-        local apis, err = fact.apis:find_all()
-        assert.matches("["..kong_config.database.." error]", err, nil, true)
-        assert.is_nil(apis)
+        assert.error_matches(function()
+          local fact = assert(Factory.new(kong_config))
+          assert(fact.apis:find_all())
+        end, "["..kong_config.database.." error]", nil, true)
       end)
     end)
   end) -- describe

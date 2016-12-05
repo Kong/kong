@@ -113,5 +113,11 @@ return {
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP credential_id;
     ]]
+  },
+  {
+    name = "2016-09-19-oauth2_code_index",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(credential_id);
+    ]]
   }
 }

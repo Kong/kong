@@ -138,6 +138,24 @@ describe("#ci Plugin: oauth2 (access)", function()
         accept_http_if_already_terminated = true
       }
     })
+
+    local api7 = assert(helpers.dao.apis:insert {
+      request_host = "oauth2_7.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api7.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        anonymous = true
+      }
+    })
   end)
   teardown(function()
     if proxy_client and proxy_ssl_client then
@@ -203,7 +221,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
         assert.are.equal("no-store", res.headers["cache-control"])
         assert.are.equal("no-cache", res.headers["pragma"])
       end)
@@ -474,7 +492,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("returns success with a path", function()
         local res = assert(proxy_ssl_client:send {
@@ -816,7 +834,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("fails when setting authenticated_userid and invalid provision_key", function()
         local res = assert(proxy_ssl_client:send {
@@ -836,7 +854,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("returns success", function()
         local res = assert(proxy_ssl_client:send {
@@ -1097,7 +1115,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("fails when no provision key is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1115,7 +1133,7 @@ describe("#ci Plugin: oauth2 (access)", function()
           }
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"error_description":"Invalid Kong provision_key","error":"invalid_provision_key"}]], body)
+        assert.equal([[{"error_description":"Invalid provision_key","error":"invalid_provision_key"}]], body)
       end)
       it("fails when no authenticated user id is being sent", function()
         local res = assert(proxy_ssl_client:send {
@@ -1515,6 +1533,39 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.are.equal(consumer.username, body.headers["x-consumer-username"])
       assert.are.equal("userid123", body.headers["x-authenticated-userid"])
       assert.are.equal("email", body.headers["x-authenticated-scope"])
+      assert.is_nil(body.headers["x-anonymous-consumer"])
+    end)
+    it("works with right credentials and anonymous", function()
+      local token = provision_token()
+
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          ["Host"] = "oauth2_7.com",
+          Authorization = "bearer "..token.access_token
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+
+      local consumer = helpers.dao.consumers:find_all({username = "bob"})[1]
+      assert.are.equal(consumer.id, body.headers["x-consumer-id"])
+      assert.are.equal(consumer.username, body.headers["x-consumer-username"])
+      assert.are.equal("userid123", body.headers["x-authenticated-userid"])
+      assert.are.equal("email", body.headers["x-authenticated-scope"])
+      assert.is_nil(body.headers["x-anonymous-consumer"])
+    end)
+    it("works with wrong credentials and anonymous", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          ["Host"] = "oauth2_7.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.is_nil(body.headers["x-consumer-username"])
+      assert.are.equal("true", body.headers["x-anonymous-consumer"])
     end)
   end)
 

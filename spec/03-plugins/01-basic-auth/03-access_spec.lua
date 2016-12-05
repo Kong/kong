@@ -42,6 +42,18 @@ describe("Plugin: basic-auth (access)", function()
       password = "password123",
       consumer_id = consumer.id
     })
+
+    local api3 = assert(helpers.dao.apis:insert {
+      request_host = "basic-auth3.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "basic-auth",
+      api_id = api3.id,
+      config = {
+        anonymous = true
+      }
+    })
   end)
   teardown(function()
     if client then client:close() end
@@ -136,13 +148,14 @@ describe("Plugin: basic-auth (access)", function()
     it("authenticates valid credentials in Authorization", function()
       local res = assert(client:send {
         method = "GET",
-        path = "/status/200",
+        path = "/request",
         headers = {
           ["Authorization"] = "Basic dXNlcjEyMzpwYXNzd29yZDEyMw==",
           ["Host"] = "basic-auth1.com"
         }
       })
-      assert.res_status(200, res)
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal('bob', body.headers["x-consumer-username"])
     end)
     it("returns 403 for valid Base64 encoding", function()
       local res = assert(client:send {
@@ -212,6 +225,34 @@ describe("Plugin: basic-auth (access)", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.is_nil(json.headers.authorization)
+    end)
+  end)
+
+  describe("config.anonymous", function()
+    it("works with right credentials and anonymous", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Authorization"] = "Basic dXNlcjEyMzpwYXNzd29yZDEyMw==",
+          ["Host"] = "basic-auth3.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal('bob', body.headers["x-consumer-username"])
+      assert.is_nil(body.headers["x-anonymous-consumer"])
+    end)
+    it("works with wrong credentials and anonymous", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "basic-auth3.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal('true', body.headers["x-anonymous-consumer"])
+      assert.is_nil(body.headers["x-consumer-username"])
     end)
   end)
 end)

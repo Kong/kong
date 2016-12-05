@@ -10,8 +10,19 @@ local function check_for_value(value)
   return true
 end
 
+local function check_method(value)
+  if not value then return true end
+  local method = value:upper()
+  local ngx_method = ngx["HTTP_"..method]
+  if not ngx_method then
+    return false, method.." is not supported"
+  end
+  return true
+end
+
 return {
   fields = {
+    http_method = {type = "string", func = check_method},
     remove = {
       type = "table",
       schema = {

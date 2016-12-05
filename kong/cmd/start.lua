@@ -1,9 +1,9 @@
-local dnsmasq_signals = require "kong.cmd.utils.dnsmasq_signals"
 local prefix_handler = require "kong.cmd.utils.prefix_handler"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local serf_signals = require "kong.cmd.utils.serf_signals"
 local conf_loader = require "kong.conf_loader"
 local DAOFactory = require "kong.dao.factory"
+local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 
 local function execute(args)
@@ -11,29 +11,26 @@ local function execute(args)
     prefix = args.prefix
   }))
 
-  local dao = DAOFactory(conf)
+  assert(not kill.is_running(conf.nginx_pid),
+         "Kong is already running in "..conf.prefix)
+
   local err
+  local dao = assert(DAOFactory.new(conf))
   xpcall(function()
-    assert(dao:run_migrations())
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-    if conf.dnsmasq then
-      assert(dnsmasq_signals.start(conf))
-    end
+    assert(dao:run_migrations())
     assert(serf_signals.start(conf, dao))
     assert(nginx_signals.start(conf))
     log("Kong started")
   end, function(e)
-    log.verbose("could not start Kong, stopping services")
-    nginx_signals.stop(conf)
-    serf_signals.stop(conf, dao)
-    if conf.dnsmasq then
-      dnsmasq_signals.stop(conf)
-    end
     err = e -- cannot throw from this function
-    log.verbose("stopped services")
   end)
 
   if err then
+    log.verbose("could not start Kong, stopping services")
+    pcall(nginx_signals.stop(conf))
+    pcall(serf_signals.stop(conf, dao))
+    log.verbose("stopped services")
     error(err) -- report to main error handler
   end
 end

@@ -143,5 +143,41 @@ return {
     down = [[
       ALTER TABLE nodes WITH default_time_to_live = 3600;
     ]]
+  },
+  {
+    -- This is a 2 step migration; first create the extra column, using a cql 
+    -- statement and following iterate over the entries to insert default values.
+    
+    -- Step 1) create extra column
+    name = "2016-09-05-212515_retries_step_1",
+    up = [[
+      ALTER TABLE apis ADD retries int;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP retries;
+    ]]
+  },
+  {
+    -- Step 2) insert default values
+    name = "2016-09-05-212515_retries_step_2",
+    up = function(_, _, dao)
+      local rows, err = dao.apis:find_all() -- fetch all rows
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if not row.retries then  -- only if retries is not set already
+          -- we do not specify default values explicitly, as they will be 
+          -- taken from the schema automatically by the dao.
+          local _, err = dao.apis:update(row, { id = row.id }, {full = true})
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = nil, 
   }
 }
+

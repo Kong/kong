@@ -488,8 +488,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
           -- Simulate an error on the database
-          local err = helpers.dao.response_ratelimiting_metrics:drop_table(helpers.dao.response_ratelimiting_metrics.table)
-          assert.falsy(err)
+          assert(helpers.dao.db:drop_table("response_ratelimiting_metrics"))
 
           -- Make another request
           local res = assert(helpers.proxy_client():send {
@@ -516,8 +515,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
           -- Simulate an error on the database
-          local err = helpers.dao.response_ratelimiting_metrics:drop_table(helpers.dao.response_ratelimiting_metrics.table)
-          assert.falsy(err)
+          assert(helpers.dao.db:drop_table("response_ratelimiting_metrics"))
 
           -- Make another request
           local res = assert(helpers.proxy_client():send {
@@ -530,6 +528,68 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.res_status(200, res)
           assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
           assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
+        end)
+      end)
+
+    elseif policy == "redis" then
+      describe("Fault tolerancy", function()
+
+        before_each(function()
+          local api1 = assert(helpers.dao.apis:insert {
+            request_host = "failtest3.com",
+            upstream_url = "http://mockbin.com"
+          })
+          assert(helpers.dao.plugins:insert {
+            name = "response-ratelimiting",
+            api_id = api1.id,
+            config = {
+              fault_tolerant = false,
+              policy = policy,
+              redis_host = "5.5.5.5",
+              limits = {video = {minute = 6}}
+            }
+          })
+
+          local api2 = assert(helpers.dao.apis:insert {
+            request_host = "failtest4.com",
+            upstream_url = "http://mockbin.com"
+          })
+          assert(helpers.dao.plugins:insert {
+            name = "response-ratelimiting",
+            api_id = api2.id,
+            config = {
+              fault_tolerant = true,
+              policy = policy,
+              redis_host = "5.5.5.5",
+              limits = {video = {minute = 6}}
+            }
+          })
+        end)
+
+        it("does not work if an error occurs", function()
+          -- Make another request
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200/",
+            headers = {
+              ["Host"] = "failtest3.com"
+            }
+          })
+          local body = assert.res_status(500, res)
+          assert.are.equal([[{"message":"An unexpected error occurred"}]], body)
+        end)
+        it("keeps working if an error occurs", function()
+          -- Make another request
+          local res = assert(helpers.proxy_client():send {
+            method = "GET",
+            path = "/status/200/",
+            headers = {
+              ["Host"] = "failtest4.com"
+            }
+          })
+          assert.res_status(200, res)
+          assert.falsy(res.headers["x-ratelimit-limit-video-minute"])
+          assert.falsy(res.headers["x-ratelimit-remaining-video-minute"])
         end)
       end)
     end
@@ -580,7 +640,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute")
+            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
+            query = { cache = "shm" },
           })
           local body = assert.res_status(200, res)
           assert.equal([[{"message":1}]], body)
@@ -605,7 +666,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         if policy == "local" then
           local res = assert(admin_client:send {
             method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute")
+            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
+            query = { cache = "shm" },
           })
           assert.res_status(404, res)
         end

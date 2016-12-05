@@ -11,7 +11,9 @@ local singletons = require "kong.singletons"
 
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
+local ngx_set_header = ngx.req.set_header
 local check_https = utils.check_https
+
 
 local _M = {}
 
@@ -69,19 +71,19 @@ local function generate_token(conf, credential, authenticated_userid, scope, sta
   }
 end
 
+local function load_oauth2_credential_by_client_id_into_memory(client_id)
+  local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return credentials[1]
+end
+
 local function get_redirect_uri(client_id)
   local client
   if client_id then
-    client = cache.get_or_set(cache.oauth2_credential_key(client_id), function()
-      local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
-      local result
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif #credentials > 0 then
-        result = credentials[1]
-      end
-      return result
-    end)
+    client = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
+                   load_oauth2_credential_by_client_id_into_memory, client_id)
   end
   return client and client.redirect_uri or nil, client
 end
@@ -132,7 +134,7 @@ local function authorize(conf)
     response_params = {[ERROR] = "access_denied", error_description = err or "You must use HTTPS"}
   else
     if conf.provision_key ~= parameters.provision_key then
-      response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+      response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
     elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
       response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
     else
@@ -236,7 +238,7 @@ local function retrieve_client_credentials(parameters)
       return
     end
 
-    if m and table.getn(m) > 0 then
+    if m and next(m) then
       local decoded_basic = ngx.decode_base64(m[1])
       if decoded_basic then
         local basic_parts = utils.split(decoded_basic, ":")
@@ -306,7 +308,7 @@ local function issue_token(conf)
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
         -- Only check the provision_key if the authenticated_userid is being set
         if parameters.authenticated_userid and conf.provision_key ~= parameters.provision_key then
-          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
         else
           -- Check scopes
           local ok, scopes = retrieve_scopes(parameters, conf)
@@ -319,7 +321,7 @@ local function issue_token(conf)
       elseif grant_type == GRANT_PASSWORD then
         -- Check that it comes from the right client
         if conf.provision_key ~= parameters.provision_key then
-          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid Kong provision_key"}
+          response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
         elseif not parameters.authenticated_userid or utils.strip(parameters.authenticated_userid) == "" then
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
         else
@@ -356,19 +358,19 @@ local function issue_token(conf)
   })
 end
 
+local function load_token_into_memory(access_token)
+  local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return credentials[1]
+end
+
 local function retrieve_token(access_token)
   local token
   if access_token then
-    token = cache.get_or_set(cache.oauth2_token_key(access_token), function()
-      local credentials, err = singletons.dao.oauth2_tokens:find_all { access_token = access_token }
-      local result
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif #credentials > 0 then
-        result = credentials[1]
-      end
-      return result
-    end)
+    token = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
+                             load_token_into_memory, access_token)
   end
   return token
 end
@@ -404,13 +406,68 @@ local function parse_access_token(conf)
         parameters = ngx.req.get_post_args()
         parameters[ACCESS_TOKEN] = nil
         local encoded_args = ngx.encode_args(parameters)
-        ngx.req.set_header(CONTENT_LENGTH, string.len(encoded_args))
+        ngx.req.set_header(CONTENT_LENGTH, #encoded_args)
         ngx.req.set_body_data(encoded_args)
       end
     end
   end
 
   return result
+end
+
+local function load_oauth2_credential_into_memory(credential_id)
+  local result, err = singletons.dao.oauth2_credentials:find {id = credential_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return result
+end
+
+local function load_consumer_into_memory(consumer_id)
+  local result, err = singletons.dao.consumers:find {id = consumer_id}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return result
+end
+
+local function do_authentication(conf)
+  local accessToken = parse_access_token(conf);
+  if not accessToken then
+    return false, {status = 401, message = {[ERROR] = "invalid_request", error_description = "The access token is missing"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service"'}}
+  end
+
+  local token = retrieve_token(accessToken)
+  if not token then
+    return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+  end
+
+  -- Check expiration date
+  if token.expires_in > 0 then -- zero means the token never expires
+    local now = timestamp.get_utc()
+    if now - token.created_at > (token.expires_in * 1000) then
+      return false, {status = 401, message = {[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, headers = {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'}}
+    end
+  end
+
+  -- Retrieve the credential from the token
+  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
+                        nil, load_oauth2_credential_into_memory, token.credential_id)
+
+  -- Retrieve the consumer from the credential
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+    nil, load_consumer_into_memory, credential.consumer_id)
+
+  ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx_set_header("x-authenticated-scope", token.scope)
+  ngx_set_header("x-authenticated-userid", token.authenticated_userid)
+  ngx.ctx.authenticated_credential = credential
+  ngx.ctx.authenticated_consumer = consumer
+
+  return true
 end
 
 function _M.execute(conf)
@@ -428,49 +485,14 @@ function _M.execute(conf)
     end
   end
 
-  local accessToken = parse_access_token(conf);
-  if not accessToken then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_request", error_description = "The access token is missing"}, {["WWW-Authenticate"] = 'Bearer realm="service"'})
-  end
-
-  local token = retrieve_token(accessToken)
-  if not token then
-    return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
-  end
-
-  -- Check expiration date
-  if token.expires_in > 0 then -- zero means the token never expires
-    local now = timestamp.get_utc()
-    if now - token.created_at > (token.expires_in * 1000) then
-      return responses.send_HTTP_UNAUTHORIZED({[ERROR] = "invalid_token", error_description = "The access token is invalid or has expired"}, {["WWW-Authenticate"] = 'Bearer realm="service" error="invalid_token" error_description="The access token is invalid or has expired"'})
+  local ok, err = do_authentication(conf)
+  if not ok then
+    if conf.anonymous then
+      ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    else
+      return responses.send(err.status, err.message, err.headers)
     end
   end
-
-  -- Retrive the credential from the token
-  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), function()
-    local result, err = singletons.dao.oauth2_credentials:find {id = token.credential_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return result
-  end)
-
-  -- Retrive the consumer from the credential
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = singletons.dao.consumers:find {id = credential.consumer_id}
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return result
-  end)
-
-  ngx.req.set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx.req.set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx.req.set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx.req.set_header("x-authenticated-scope", token.scope)
-  ngx.req.set_header("x-authenticated-userid", token.authenticated_userid)
-  ngx.ctx.authenticated_credential = credential
-  ngx.ctx.authenticated_consumer = consumer
 end
 
 return _M

@@ -13,6 +13,8 @@ describe("Plugin: request-transformer (access)", function()
     local api5 = assert(helpers.dao.apis:insert {request_host = "test5.com", upstream_url = "http://mockbin.com"})
     local api6 = assert(helpers.dao.apis:insert {request_host = "test6.com", upstream_url = "http://mockbin.com"})
     local api7 = assert(helpers.dao.apis:insert {request_host = "test7.com", upstream_url = "http://mockbin.com"})
+    local api8 = assert(helpers.dao.apis:insert {request_host = "test8.com", upstream_url = "http://mockbin.com"})
+    local api9 = assert(helpers.dao.apis:insert {request_host = "test9.com", upstream_url = "http://mockbin.com"})
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -94,6 +96,20 @@ describe("Plugin: request-transformer (access)", function()
       api_id = api7.id,
       name = "request-transformer",
       config = {
+        http_method = "POST"
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api8.id,
+      name = "request-transformer",
+      config = {
+        http_method = "GET"
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api9.id,
+      name = "request-transformer",
+      config = {
         rename = {
           headers = {"x-to-rename:x-is-renamed"},
           querystring = {"originalparam:renamedparam"},
@@ -113,6 +129,41 @@ describe("Plugin: request-transformer (access)", function()
     if client then client:close() end
   end)
 
+  describe("http method", function()
+    it("changes the HTTP method from GET to POST", function()
+      local r = assert(client:send {
+        method = "GET",
+        path = "/request?hello=world&name=marco",
+        headers = {
+          host = "test7.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equal("POST", json.method)
+      assert.equal("world", json.queryString.hello)
+      assert.equal("marco", json.queryString.name)
+    end)
+    it("changes the HTTP method from POST to GET", function()
+      local r = assert(client:send {
+        method = "POST",
+        path = "/request?hello=world",
+        body = {
+          name = "marco"
+        },
+        headers = {
+          ["Content-Type"] = "application/x-www-form-urlencoded",
+          host = "test8.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local json = assert.response(r).has.jsonbody()
+      assert.equal("GET", json.method)
+      assert.equal("marco", json.postData.params.name)
+      assert.equal("world", json.queryString.hello)
+      assert.equal("marco", json.queryString.name)
+    end)
+  end)
   describe("remove", function()
     it("specified header", function()
       local r = assert(client:send {
@@ -259,7 +310,7 @@ describe("Plugin: request-transformer (access)", function()
         method = "GET",
         path = "/request",
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["x-to-rename"] = "true",
           ["x-another-header"] = "true"
         }
@@ -276,7 +327,7 @@ describe("Plugin: request-transformer (access)", function()
         path = "/request",
         body = {},
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["x-a-header"] = "true",
         }
       })
@@ -295,7 +346,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -313,7 +364,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -330,7 +381,7 @@ describe("Plugin: request-transformer (access)", function()
           ["nottorename"] = "yes"
         },
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["content-type"] = "application/json"
         }
       })
@@ -348,7 +399,7 @@ describe("Plugin: request-transformer (access)", function()
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["content-type"] = "application/json"
         }
       })
@@ -366,7 +417,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -386,7 +437,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -405,7 +456,7 @@ describe("Plugin: request-transformer (access)", function()
         method = "GET",
         path = "/request",
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["x-to-rename"] = "true",
           ["x-another-header"] = "true"
         }
@@ -422,7 +473,7 @@ describe("Plugin: request-transformer (access)", function()
         path = "/request",
         body = {},
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["x-a-header"] = "true",
         }
       })
@@ -441,7 +492,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -459,7 +510,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -476,7 +527,7 @@ describe("Plugin: request-transformer (access)", function()
           ["nottorename"] = "yes"
         },
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["content-type"] = "application/json"
         }
       })
@@ -494,7 +545,7 @@ describe("Plugin: request-transformer (access)", function()
         path = "/request",
         body = "malformed json body",
         headers = {
-          host = "test7.com",
+          host = "test9.com",
           ["content-type"] = "application/json"
         }
       })
@@ -512,7 +563,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "multipart/form-data",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)
@@ -532,7 +583,7 @@ describe("Plugin: request-transformer (access)", function()
         },
         headers = {
           ["Content-Type"] = "application/x-www-form-urlencoded",
-          host = "test7.com"
+          host = "test9.com"
         }
       })
       assert.response(r).has.status(200)

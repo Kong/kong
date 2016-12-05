@@ -8,6 +8,7 @@ return {
   no_consumer = true,
   fields = {
     key_names = {required = true, type = "array", default = default_key_names},
-    hide_credentials = {type = "boolean", default = false}
+    hide_credentials = {type = "boolean", default = false},
+    anonymous = {type = "boolean", default = false}
   }
 }

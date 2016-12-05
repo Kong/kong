@@ -10,9 +10,11 @@
 local utils = require "kong.tools.utils"
 local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
-local resolver = require "kong.core.resolver"
+local resolve = require("kong.core.resolver").execute
 local constants = require "kong.constants"
+local responses = require "kong.tools.responses"
 local certificate = require "kong.core.certificate"
+local balancer_execute = require("kong.core.balancer").execute
 
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
@@ -37,7 +39,27 @@ return {
   access = {
     before = function()
       ngx.ctx.KONG_ACCESS_START = get_now()
-      ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
+      local upstream_host, balancer_address, upstream_table
+      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
+      
+      balancer_address = {
+        upstream = upstream_table,                       -- original parsed upstream url from the resolver
+        type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
+        tries = 0,                                       -- retry counter
+    --  ip = nil,                                        -- final target IP address
+        port = upstream_table.port,                      -- final target port
+        retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
+        -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
+    --  failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
+    --  balancer = nil,                                  -- the balancer object, in case of a balancer
+      }
+      ngx.ctx.balancer_address = balancer_address
+      ngx.var.upstream_host = upstream_host
+      local ok, err = balancer_execute(balancer_address)
+      if not ok then
+        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()

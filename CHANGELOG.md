@@ -1,5 +1,88 @@
 ## [Unreleased][unreleased]
 
+## [0.9.6] - 2016/11/29
+
+### Fixed
+
+- Resolve support for PostgreSQL SSL connections.
+  [#1720](https://github.com/Mashape/kong/issues/1720)
+- Ensure `kong start` honors the `--conf` flag is a config file already exists
+  at one of the default locations (`/etc/kong.conf`, `/etc/kong/kong.conf`).
+  [#1681](https://github.com/Mashape/kong/pull/1681)
+- Obfuscate sensitive properties from the `/` Admin API route which returns
+  the current node's configuration.
+  [#1650](https://github.com/Mashape/kong/pull/1650)
+
+## [0.9.5] - 2016/11/07
+
+### Changed
+
+- Dropping support for OpenResty 1.9.15.1 in favor of 1.11.2.1
+  [#1797](https://github.com/Mashape/kong/pull/1797)
+
+### Fixed
+
+- Fixed an error (introduced in 0.9.4) in the auto-clustering event
+
+## [0.9.4] - 2016/11/02
+
+### Fixed
+
+- Fixed the random string generator that was causing some problems, especially
+  in Serf for clustering. [#1754](https://github.com/Mashape/kong/pull/1754)
+- Seed random number generator in CLI.
+  [#1641](https://github.com/Mashape/kong/pull/1641)
+- Reducing log noise in the Admin API.
+  [#1781](https://github.com/Mashape/kong/pull/1781)
+- Fixed the reports lock implementation that was generating a periodic error
+  message. [#1783](https://github.com/Mashape/kong/pull/1783)
+
+## [0.9.3] - 2016/10/07
+
+### Added
+
+- Added support for Serf 0.8. [#1693](https://github.com/Mashape/kong/pull/1693)
+
+### Fixed
+
+- Properly invalidate global plugins.
+  [#1723](https://github.com/Mashape/kong/pull/1723)
+
+## [0.9.2] - 2016/09/20
+
+### Fixed
+
+- Correctly report migrations errors. This was caused by an error being thrown
+  from the error handler, and superseding the actual error. [#1605]
+  (https://github.com/Mashape/kong/pull/1605)
+- Prevent Kong from silently failing to start. This would be caused by an
+  erroneous error handler. [28f5d10]
+  (https://github.com/Mashape/kong/commit/28f5d10)
+- Only report a random number generator seeding error when it is not already
+  seeded. [#1613](https://github.com/Mashape/kong/pull/1613)
+- Reduce intra-cluster noise by not propagating keepalive requests events.
+  [#1660](https://github.com/Mashape/kong/pull/1660)
+- Admin API:
+  - Obfuscates sensitive configuration settings from the `/` route.
+    [#1650](https://github.com/Mashape/kong/pull/1650)
+- CLI:
+  - Prevent a failed `kong start` to stop an already running Kong node.
+    [#1645](https://github.com/Mashape/kong/pull/1645)
+  - Remove unset configuration placeholders from the nginx configuration
+    template. This would occur when no Internet connection would be
+    available and would cause Kong to compile an erroneous nginx config.
+    [#1606](https://github.com/Mashape/kong/pull/1606)
+  - Properly count the number of executed migrations.
+    [#1649](https://github.com/Mashape/kong/pull/1649)
+- Plugins:
+  - OAuth2: remove the "Kong" mentions in missing `provision_key` error
+    messages. [#1633](https://github.com/Mashape/kong/pull/1633)
+  - OAuth2: allow to correctly delete applications when using Cassandra.
+    [#1659](https://github.com/Mashape/kong/pull/1659)
+  - galileo: provide a default `bodySize` value when `log_bodies=true` but the
+    current request/response has no body.
+    [#1657](https://github.com/Mashape/kong/pull/1657)
+
 ## [0.9.1] - 2016/09/02
 
 ### Added
@@ -709,7 +792,12 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.1...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.6...next
+[0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
+[0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
+[0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
+[0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
+[0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/mashape/kong/compare/0.8.3...0.9.0
 [0.8.3]: https://github.com/mashape/kong/compare/0.8.2...0.8.3
