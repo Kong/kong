@@ -23,17 +23,17 @@ local function execute(args)
     assert(nginx_signals.start(conf))
     log("Kong started")
   end, function(e)
+    err = e or "" -- cannot throw from this function
+  end)
+
+  if err then
     log.verbose("could not start Kong, stopping services")
     pcall(nginx_signals.stop(conf))
     pcall(serf_signals.stop(conf, dao))
     if conf.dnsmasq then
       pcall(dnsmasq_signals.stop(conf))
     end
-    err = e -- cannot throw from this function
     log.verbose("stopped services")
-  end)
-
-  if err then
     error(err) -- report to main error handler
   end
 end
