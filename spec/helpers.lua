@@ -747,6 +747,7 @@ luassert:register("assertion", "formparam", req_form_param,
 local function exec(...)
   local ok, _, stdout, stderr = pl_utils.executeex(...)
   if not ok then
+    print("STDOUT: ", stdout)
     stdout = nil -- don't return 3rd value if fail because of busted's `assert`
   end
   return ok, stderr, stdout
@@ -824,7 +825,7 @@ return {
   proxy_ssl_client = proxy_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
-  
+
   -- miscellaneous
   intercept = intercept,
 
@@ -833,7 +834,7 @@ return {
     local ok, err = prepare_prefix(env.prefix)
     if not ok then return nil, err end
 
-    return kong_exec("start --conf "..TEST_CONF_PATH, env)
+    return kong_exec("start --vv --conf "..TEST_CONF_PATH, env)
   end,
   stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix

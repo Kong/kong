@@ -1,7 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
-describe("helpers: assertions and modifiers", function()
+describe("#o helpers: assertions and modifiers", function()
   local client
 
   setup(function()

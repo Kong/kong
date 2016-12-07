@@ -1,6 +1,6 @@
 set -e
 
-export BUSTED_ARGS="-o gtest -v --exclude-tags=ci"
+export BUSTED_ARGS="-o gtest -v --tags=o --exclude-tags=ci"
 export TEST_CMD="KONG_SERF_PATH=$SERF_PATH bin/busted $BUSTED_ARGS"
 
 if [ "$TEST_SUITE" == "lint" ]; then
