@@ -395,6 +395,8 @@ local function load(path, custom_conf)
   end
 
   -- load absolute paths
+  print("conf.prefix: ", conf.prefix)
+  print("abspath of prefix: ", pl_path.abspath(conf.prefix))
   conf.prefix = pl_path.abspath(conf.prefix)
 
   if conf.ssl_cert and conf.ssl_cert_key then
@@ -409,7 +411,9 @@ local function load(path, custom_conf)
 
   -- attach prefix files paths
   for property, t_path in pairs(PREFIX_PATHS) do
+    print("unpack: ", unpack(t_path))
     conf[property] = pl_path.join(conf.prefix, unpack(t_path))
+    print("join: ", conf[property])
   end
 
   log.verbose("prefix in use: %s", conf.prefix)
@@ -417,7 +421,7 @@ local function load(path, custom_conf)
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
-  
+
   return setmetatable(conf, nil) -- remove Map mt
 end
 

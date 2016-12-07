@@ -19,6 +19,8 @@ Serf.args_mt = {
 }
 
 function Serf.new(kong_config, dao)
+  print("serf_node_id_path: ", kong_config.serf_node_id)
+  print("serf_node_id: ", pl_file.read(kong_config.serf_node_id))
   return setmetatable({
     node_name = pl_file.read(kong_config.serf_node_id),
     config = kong_config,
