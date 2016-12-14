@@ -5,10 +5,10 @@
 local Errors = require "kong.dao.errors"
 local utils = require "kong.tools.utils"
 
-local default_port = 8000
-local default_weight = 100
-local weight_min, weight_max = 0, 1000
-local weight_msg = "weight must be from "..weight_min.." to "..weight_max
+local DEFAULT_PORT = 8000
+local DEFAULT_WEIGHT = 100
+local WEIGHT_MIN, WEIGHT_MAX = 0, 1000
+local WEIGHT_MSG = "weight must be from "..WEIGHT_MIN.." to "..WEIGHT_MAX
 
 return {
   table = "targets",
@@ -38,14 +38,14 @@ return {
       -- weight in the loadbalancer algorithm.
       -- to disable an entry, set the weight to 0
       type = "number",
-      default = default_weight,
+      default = DEFAULT_WEIGHT,
     },
   },
   self_check = function(schema, config, dao, is_updating)
     
     -- check weight
-    if config.weight < weight_min or config.weight > weight_max then
-      return false, Errors.schema(weight_msg)
+    if config.weight < WEIGHT_MIN or config.weight > WEIGHT_MAX then
+      return false, Errors.schema(WEIGHT_MSG)
     end
 
     -- check the target
@@ -53,7 +53,7 @@ return {
     if not p then
       return false, Errors.schema("Invalid target; not a valid hostname or ip address")
     end
-    config.target = utils.format_host(p, default_port)
+    config.target = utils.format_host(p, DEFAULT_PORT)
 
     return true
   end,

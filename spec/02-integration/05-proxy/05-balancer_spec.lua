@@ -79,10 +79,9 @@ dao_helpers.for_each_dao(function(kong_config)
     setup(function()
       config_db = helpers.test_conf.database
       helpers.test_conf.database = kong_config.database
-assert.same(helpers.test_conf, kong_config)
     end)
     teardown(function()
-      helpers.test_conf.database = kong_config.database
+      helpers.test_conf.database = config_db
       config_db = nil
     end)
   

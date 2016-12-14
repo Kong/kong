@@ -181,6 +181,13 @@ return {
   },
   {
     name = "2016-09-16-141423_upstreams",
+    -- Note on the timestamps;
+    -- The Cassandra timestamps are created in Lua code, and hence ALL entities
+    -- will now be created in millisecond precision. The existing entries will
+    -- remain in second precision, but new ones (for ALL entities!) will be
+    -- in millisecond precision.
+    -- This differs from the Postgres one where only the new entities (upstreams 
+    -- and targets) will get millisecond precision.
     up = [[
       CREATE TABLE IF NOT EXISTS upstreams(
         id uuid,

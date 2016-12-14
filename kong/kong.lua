@@ -209,7 +209,7 @@ function Kong.balancer()
     if not ok then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retry the "..
         "dns/balancer resolver for '"..addr.upstream.host..
-        "' with; "..tostring(err))
+        "' with: "..tostring(err))
     end
   else
     -- first try, so set the max number of retries

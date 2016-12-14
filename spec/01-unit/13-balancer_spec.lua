@@ -91,7 +91,7 @@ describe("Balancer", function()
         assert.equal(upstreams_dict[u.name], u.id)
         upstreams_dict[u.name] = nil -- remove each match
       end
-      assert.is.Nil(next(upstreams_dict)) -- should be empty now
+      assert.is_nil(next(upstreams_dict)) -- should be empty now
     end)
   end)
 

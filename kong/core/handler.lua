@@ -56,17 +56,20 @@ return {
     --  hostname = nil,                                  -- the hostname that belongs to the ip address returned by the balancer
       }
       ngx.ctx.balancer_address = balancer_address
+
       local ok, err = balancer_execute(balancer_address)
       if not ok then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
           "dns/balancer resolve for '"..balancer_address.upstream.host..
-          "' with; "..tostring(err))
+          "' with: "..tostring(err))
       end
+
       if balancer_address.hostname and not ngx.ctx.api.preserve_host then
         ngx.var.upstream_host = balancer_address.hostname
       else
         ngx.var.upstream_host = upstream_host
       end
+
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()

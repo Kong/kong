@@ -159,9 +159,8 @@ return {
   {
     name = "2016-09-16-141423_upstreams",
     -- Note on the timestamps below; these use a precision of milliseconds
-    -- this differs from the other tables above, as they only use second precision
-    -- The Cassandra timestamps are created in Lua code, and have hence ALL at
-    -- the same time been updated to millisecond precision.
+    -- this differs from the other tables above, as they only use second precision.
+    -- This differs from the change to the Cassandra entities.
     up = [[
       CREATE TABLE IF NOT EXISTS upstreams(
         id uuid PRIMARY KEY,

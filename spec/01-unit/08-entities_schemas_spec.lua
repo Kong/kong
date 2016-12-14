@@ -28,7 +28,7 @@ describe("Entities Schemas", function()
   describe("APIs", function()
     it("should refuse an empty object", function()
       local valid, errors = validate_entity({}, api_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.truthy(errors)
     end)
 
@@ -38,7 +38,7 @@ describe("Entities Schemas", function()
           local t = {name = name, upstream_url = "http://mockbin.com", request_host = "mockbin.com"}
 
           local valid, errors = validate_entity(t, api_schema)
-          assert.False(valid)
+          assert.is_false(valid)
           assert.truthy(errors)
           assert.equal("name must only contain alphanumeric and '., -, _, ~' characters", errors.name)
         end
@@ -52,7 +52,7 @@ describe("Entities Schemas", function()
           request_host = "mockbin.com",
           upstream_url = "asdasd"
         }, api_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.equal("upstream_url is not a url", errors.upstream_url)
       end)
       it("should return error with wrong upstream_url protocol", function()
@@ -61,7 +61,7 @@ describe("Entities Schemas", function()
           request_host = "mockbin.com",
           upstream_url = "wot://mockbin.com/"
         }, api_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
       end)
       it("should validate with upper case protocol", function()
@@ -71,7 +71,7 @@ describe("Entities Schemas", function()
           upstream_url = "HTTP://mockbin.com/world"
         }, api_schema)
         assert.falsy(errors)
-        assert.True(valid)
+        assert.is_true(valid)
       end)
     end)
 
@@ -80,7 +80,7 @@ describe("Entities Schemas", function()
         local t = {request_host = "", upstream_url = "http://mockbin.com", name = "mockbin"}
 
         local valid, errors = validate_entity(t, api_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
         assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
       end)
@@ -95,7 +95,7 @@ describe("Entities Schemas", function()
           local valid, errors = validate_entity(t, api_schema)
           assert.equal("Invalid value: "..v, (errors and errors.request_host or ""))
           assert.falsy(errors.request_path)
-          assert.False(valid)
+          assert.is_false(valid)
         end
       end)
       it("should accept valid request_host", function()
@@ -113,7 +113,7 @@ describe("Entities Schemas", function()
           local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.falsy(errors)
-          assert.True(valid)
+          assert.is_true(valid)
         end
       end)
       it("should accept valid wildcard request_host", function()
@@ -123,7 +123,7 @@ describe("Entities Schemas", function()
           local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.falsy(errors)
-          assert.True(valid)
+          assert.is_true(valid)
         end
       end)
       it("should refuse request_host with more than one wildcard", function()
@@ -134,7 +134,7 @@ describe("Entities Schemas", function()
         }
 
         local valid, errors = validate_entity(api_t, api_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.equal("Only one wildcard is allowed: *.mockbin.*", errors.request_host)
       end)
       it("should refuse invalid wildcard request_host placement", function()
@@ -144,7 +144,7 @@ describe("Entities Schemas", function()
           local t = {request_host = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.equal("Invalid wildcard placement: "..v, (errors and errors.request_host or ""))
-          assert.False(valid)
+          assert.is_false(valid)
         end
       end)
       it("should refuse invalid wildcard request_host", function()
@@ -159,7 +159,7 @@ describe("Entities Schemas", function()
           local valid, errors = validate_entity(t, api_schema)
           assert.equal("Invalid value: "..v, (errors and errors.request_host or ""))
           assert.falsy(errors.request_path)
-          assert.False(valid)
+          assert.is_false(valid)
         end
       end)
     end)
@@ -169,7 +169,7 @@ describe("Entities Schemas", function()
         local t = {request_path = "", upstream_url = "http://mockbin.com"}
 
         local valid, errors = validate_entity(t, api_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
         assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
       end)
@@ -179,7 +179,7 @@ describe("Entities Schemas", function()
         for _, v in ipairs(invalids) do
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
-          assert.False(valid)
+          assert.is_false(valid)
           assert.equal("must only contain alphanumeric and '., -, _, ~, /, %' characters", errors.request_path)
         end
       end)
@@ -190,7 +190,7 @@ describe("Entities Schemas", function()
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.falsy(errors)
-          assert.True(valid)
+          assert.is_true(valid)
         end
       end)
       it("should not accept bad %-encoded characters", function()
@@ -206,7 +206,7 @@ describe("Entities Schemas", function()
         for i, v in ipairs(invalids) do
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
-          assert.False(valid)
+          assert.is_false(valid)
           assert.equal("must use proper encoding; '"..errstr[i].."' is invalid", errors.request_path)
         end
       end)
@@ -216,7 +216,7 @@ describe("Entities Schemas", function()
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
           assert.falsy(errors)
-          assert.True(valid)
+          assert.is_true(valid)
         end
       end)
       it("should not accept without prefix slash", function()
@@ -225,7 +225,7 @@ describe("Entities Schemas", function()
         for _, v in ipairs(invalids) do
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
-          assert.False(valid)
+          assert.is_false(valid)
           assert.equal("must be prefixed with slash: '"..v.."'", errors.request_path)
         end
       end)
@@ -236,7 +236,7 @@ describe("Entities Schemas", function()
           upstream_url = "http://mockbin.com"
         }, api_schema)
         assert.falsy(errors)
-        assert.True(valid)
+        assert.is_true(valid)
       end)
       it("should not accept invalid URI", function()
         local invalids = {"//status", "/status//123", "/status/123//"}
@@ -244,7 +244,7 @@ describe("Entities Schemas", function()
         for _, v in ipairs(invalids) do
           local t = {request_path = v, upstream_url = "http://mockbin.com", name = "mockbin"}
           local valid, errors = validate_entity(t, api_schema)
-          assert.False(valid)
+          assert.is_false(valid)
           assert.equal("invalid: '"..v.."'", errors.request_path)
         end
       end)
@@ -256,7 +256,7 @@ describe("Entities Schemas", function()
           local valid, errors = validate_entity(t, api_schema)
           assert.falsy(errors)
           assert.equal(string.sub(v, 1, -2), t.request_path)
-          assert.True(valid)
+          assert.is_true(valid)
         end
       end)
     end)
@@ -268,7 +268,7 @@ describe("Entities Schemas", function()
           local t = {request_host = "mydomain.com", upstream_url = "http://mockbin.com", name = "mockbin", retries = v}
           local valid, errors = validate_entity(t, api_schema)
           assert.falsy(errors)
-          assert.True(valid)
+          assert.is_true(valid)
         end
       end)
       it("rejects invalid values", function()
@@ -276,7 +276,7 @@ describe("Entities Schemas", function()
         for _, v in ipairs(valids) do
           local t = {request_host = "mydomain.com", upstream_url = "http://mockbin.com", name = "mockbin", retries = v}
           local valid, errors = validate_entity(t, api_schema)
-          assert.False(valid)
+          assert.is_false(valid)
           assert.equal("retries must be an integer, from 0 to 32767", errors.retries)
         end
       end)
@@ -288,14 +288,14 @@ describe("Entities Schemas", function()
         upstream_url = "http://mockbin.com"
       }, api_schema)
       assert.falsy(errors)
-      assert.True(valid)
+      assert.is_true(valid)
     end)
 
     it("should complain if missing request_host and request_path", function()
       local valid, errors = validate_entity({
         name = "mockbin"
       }, api_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_path)
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
 
@@ -303,7 +303,7 @@ describe("Entities Schemas", function()
         name = "mockbin",
         request_path = true
       }, api_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("request_path is not a string", errors.request_path)
       assert.equal("At least a 'request_host' or a 'request_path' must be specified", errors.request_host)
     end)
@@ -313,7 +313,7 @@ describe("Entities Schemas", function()
 
       local valid, errors = validate_entity(t, api_schema)
       assert.falsy(errors)
-      assert.True(valid)
+      assert.is_true(valid)
       assert.equal("mockbin.com", t.name)
     end)
 
@@ -322,7 +322,7 @@ describe("Entities Schemas", function()
 
       local valid, errors = validate_entity(t, api_schema)
       assert.falsy(errors)
-      assert.True(valid)
+      assert.is_true(valid)
       assert.equal("mockbin", t.name)
     end)
 
@@ -330,14 +330,14 @@ describe("Entities Schemas", function()
       local t = {upstream_url = "http://mockbin.com", request_host = "mockbin.com"}
 
       local valid, errors = validate_entity(t, api_schema)
-      assert.True(valid)
+      assert.is_true(valid)
       assert.falsy(errors)
       assert.equal("mockbin.com", t.name)
 
       t = {upstream_url = "http://mockbin.com", request_path = "/mockbin/status"}
 
       valid, errors = validate_entity(t, api_schema)
-      assert.True(valid)
+      assert.is_true(valid)
       assert.falsy(errors)
       assert.equal("mockbin-status", t.name)
     end)
@@ -350,17 +350,17 @@ describe("Entities Schemas", function()
   describe("Consumers", function()
     it("should require a `custom_id` or `username`", function()
       local valid, errors = validate_entity({}, consumer_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.username)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
 
       valid, errors = validate_entity({ username = "" }, consumer_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.username)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
 
       valid, errors = validate_entity({ username = true }, consumer_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("username is not a string", errors.username)
       assert.equal("At least a 'custom_id' or a 'username' must be specified", errors.custom_id)
     end)
@@ -380,20 +380,20 @@ describe("Entities Schemas", function()
 
     it("should not validate if the plugin doesn't exist (not installed)", function()
       local valid, errors = validate_entity({name = "world domination"}, plugins_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("Plugin \"world domination\" not found", errors.config)
     end)
     it("should validate a plugin configuration's `config` field", function()
       -- Success
       local plugin = {name = "key-auth", api_id = "stub", config = {key_names = {"x-kong-key"}}}
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
-      assert.True(valid)
+      assert.is_true(valid)
 
       -- Failure
       plugin = {name = "rate-limiting", api_id = "stub", config = { second = "hello" }}
 
       local valid, errors = validate_entity(plugin, plugins_schema, {dao = dao_stub})
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("second is not a number", errors["config.second"])
     end)
     it("should have an empty config if none is specified and if the config schema does not have default", function()
@@ -401,7 +401,7 @@ describe("Entities Schemas", function()
       local plugin = {name = "key-auth", api_id = "stub"}
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
       assert.same({key_names = {"apikey"}, hide_credentials = false, anonymous = false}, plugin.config)
-      assert.True(valid)
+      assert.is_true(valid)
     end)
     it("should be valid if no value is specified for a subfield and if the config schema has default as empty array", function()
       -- Insert response-transformer, whose default config has no default values, and should be empty
@@ -425,7 +425,7 @@ describe("Entities Schemas", function()
           json = {}
         }
       }, plugin2.config)
-      assert.True(valid)
+      assert.is_true(valid)
     end)
 
     describe("self_check", function()
@@ -442,11 +442,11 @@ describe("Entities Schemas", function()
         end
 
         local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.equal("No consumer can be configured for that plugin", err.message)
 
         valid, err = validate_entity({name = "stub", api_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
-        assert.True(valid)
+        assert.is_true(valid)
         assert.falsy(err)
       end)
     end)
@@ -462,35 +462,35 @@ describe("Entities Schemas", function()
     it("should require a valid `name` and no port", function()
       local valid, errors, check
       valid, errors = validate_entity({}, upstreams_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal("name is required", errors.name)
 
       valid, errors, check = validate_entity({ name = "123.123.123.123" }, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.equal("Invalid name; no ip addresses allowed", check.message)
 
       valid, errors, check = validate_entity({ name = "\\\\bad\\\\////name////" }, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.equal("Invalid name; must be a valid hostname", check.message)
       
       valid, errors, check = validate_entity({ name = "name:80" }, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.equal("Invalid name; no port allowed", check.message)
       
       valid, errors, check = validate_entity({ name = "valid.host.name" }, upstreams_schema)
-      assert.True(valid)
-      assert.Nil(errors)
-      assert.Nil(check)
+      assert.is_true(valid)
+      assert.is_nil(errors)
+      assert.is_nil(check)
     end)
 
     it("should require (optional) slots in a valid range", function()
       local valid, errors, check, _
       local data = { name = "valid.host.name" }
       valid, _, _ = validate_entity(data, upstreams_schema)
-      assert.True(valid)
+      assert.is_true(valid)
       assert.equal(slots_default, data.slots)
 
       local bad_slots = { -1, slots_min - 1, slots_max + 1 }
@@ -500,8 +500,8 @@ describe("Entities Schemas", function()
           slots = slots,
         }
         valid, errors, check = validate_entity(data, upstreams_schema)
-        assert.False(valid)
-        assert.Nil(errors)
+        assert.is_false(valid)
+        assert.is_nil(errors)
         assert.equal("number of slots must be between "..slots_min.." and "..slots_max, check.message)
       end
       
@@ -512,9 +512,9 @@ describe("Entities Schemas", function()
           slots = slots,
         }
         valid, errors, check = validate_entity(data, upstreams_schema)
-        assert.True(valid)
-        assert.Nil(errors)
-        assert.Nil(check)
+        assert.is_true(valid)
+        assert.is_nil(errors)
+        assert.is_nil(check)
       end
     end)
   
@@ -547,9 +547,9 @@ describe("Entities Schemas", function()
           slots = math.random(slots_min, slots_max)
         }
         valid, errors, check = validate_entity(data, upstreams_schema)
-        assert.True(valid)
-        assert.Nil(errors)
-        assert.Nil(check)
+        assert.is_true(valid)
+        assert.is_nil(errors)
+        assert.is_nil(check)
         validate_order(data.orderlist, data.slots)
       end
 
@@ -560,9 +560,9 @@ describe("Entities Schemas", function()
         orderlist = utils.shallow_copy(lst)
       }
       valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.True(valid)
-      assert.Nil(errors)
-      assert.Nil(check)
+      assert.is_true(valid)
+      assert.is_nil(errors)
+      assert.is_nil(check)
       assert.same(lst, data.orderlist)
     
       data = { 
@@ -571,8 +571,8 @@ describe("Entities Schemas", function()
         orderlist = { 9,7,5,3,1,2,4,6,8 }   -- too short (9)
       }
       valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
 
       data = { 
@@ -581,8 +581,8 @@ describe("Entities Schemas", function()
         orderlist = { 9,7,5,3,1,2,4,6,8,10,11 }   -- too long (11)
       }
       valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.are.equal("size mismatch between 'slots' and 'orderlist'",check.message)
 
       data = { 
@@ -591,8 +591,8 @@ describe("Entities Schemas", function()
         orderlist = { 9,7,5,3,1,2,4,6,8,8 }   -- a double value (2x 8, no 10)
       }
       valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.are.equal("invalid orderlist",check.message)
 
       data = { 
@@ -601,8 +601,8 @@ describe("Entities Schemas", function()
         orderlist = { 9,7,5,3,1,2,4,6,8,11 }   -- a hole (10 missing)
       }
       valid, errors, check = validate_entity(data, upstreams_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.are.equal("invalid orderlist",check.message)
     end)
 
@@ -620,21 +620,21 @@ describe("Entities Schemas", function()
       local valid, errors, check
 
       valid, errors, check = validate_entity({}, targets_schema)
-      assert.False(valid)
+      assert.is_false(valid)
       assert.equal(errors.target, "target is required")
       assert.is_nil(check)
 
       local names = { "valid.name", "valid.name:8080", "12.34.56.78", "1.2.3.4:123" }
       for _, name in ipairs(names) do
         valid, errors, check = validate_entity({ target = name }, targets_schema)
-        assert.True(valid)
+        assert.is_true(valid)
         assert.is_nil(errors)
         assert.is_nil(check)
       end
 
       valid, errors, check = validate_entity({ target = "\\\\bad\\\\////name////" }, targets_schema)
-      assert.False(valid)
-      assert.Nil(errors)
+      assert.is_false(valid)
+      assert.is_nil(errors)
       assert.equal("Invalid target; not a valid hostname or ip address", check.message)
 
     end)
@@ -648,7 +648,7 @@ describe("Entities Schemas", function()
       for i, name in ipairs(names_in) do
         local data = { target = name }
         valid, errors, check = validate_entity(data, targets_schema)
-        assert.True(valid)
+        assert.is_true(valid)
         assert.is_nil(errors)
         assert.is_nil(check)
         assert.equal(names_out[i], data.target)
@@ -661,7 +661,7 @@ describe("Entities Schemas", function()
       weights = { -10, weight_min - 1, weight_max + 1 }
       for _, weight in ipairs(weights) do
         valid, errors, check = validate_entity({ target = "1.2.3.4", weight = weight }, targets_schema)
-        assert.False(valid)
+        assert.is_false(valid)
         assert.is_nil(errors)
         assert.equal("weight must be from "..weight_min.." to "..weight_max, check.message)
       end
@@ -669,7 +669,7 @@ describe("Entities Schemas", function()
       weights = { weight_min, weight_default, weight_max }
       for _, weight in ipairs(weights) do
         valid, errors, check = validate_entity({ target = "1.2.3.4", weight = weight }, targets_schema)
-        assert.True(valid)
+        assert.is_true(valid)
         assert.is_nil(errors)
         assert.is_nil(check)
       end
@@ -683,7 +683,7 @@ describe("Entities Schemas", function()
       local valid, errors = validate_entity(t, api_schema, {
         update = true
       })
-      assert.False(valid)
+      assert.is_false(valid)
       assert.same({
         request_host = "At least a 'request_host' or a 'request_path' must be specified"
       }, errors)
