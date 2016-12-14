@@ -58,7 +58,9 @@ local function load_upstream_into_memory(upstream_id)
   log(DEBUG, "fetching upstream: ", tostring(upstream_id))
 
   local upstream, err = singletons.dao.upstreams:find_all {id = upstream_id}
-  if not upstream then return nil, err end
+  if not upstream then
+    return nil, err
+  end
   
   upstream = upstream[1]  -- searched by id, so only 1 row in the returned set
   
