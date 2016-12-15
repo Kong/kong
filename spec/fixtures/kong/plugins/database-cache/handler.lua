@@ -19,15 +19,17 @@ function DatabaseCacheHandler:init_worker()
   cache.sh_set(LOOKUPS, 0)
 end
 
+local cb = function()
+  cache.sh_incr(LOOKUPS, 1)
+  -- Adds some delay
+  ngx.sleep(tonumber(ngx.req.get_uri_args().sleep))
+  return true
+end
+
 function DatabaseCacheHandler:access(conf)
   DatabaseCacheHandler.super.access(self)
 
-  cache.get_or_set("pile_effect", function()
-    cache.sh_incr(LOOKUPS, 1)
-    -- Adds some delay
-    ngx.sleep(tonumber(ngx.req.get_uri_args().sleep))
-    return true
-  end)
+  cache.get_or_set("pile_effect", nil, cb)
 
   cache.sh_incr(INVOCATIONS, 1)
 end

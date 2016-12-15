@@ -36,6 +36,18 @@ describe("Plugin: key-auth (access)", function()
       key = "kong",
       consumer_id = consumer1.id
     })
+
+    local api3 = assert(helpers.dao.apis:insert {
+      request_host = "key-auth3.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api3.id,
+      config = {
+        anonymous = true
+      }
+    })
   end)
   teardown(function()
     if client then client:close() end
@@ -141,6 +153,7 @@ describe("Plugin: key-auth (access)", function()
       local json = cjson.decode(body)
       assert.is_string(json.headers["x-consumer-id"])
       assert.equal("bob", json.headers["x-consumer-username"])
+      assert.is_nil(json.headers["x-anonymous-consumer"])
     end)
   end)
 
@@ -170,6 +183,33 @@ describe("Plugin: key-auth (access)", function()
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
       assert.is_nil(json.headers.apikey)
+    end)
+  end)
+
+  describe("config.anonymous", function()
+    it("works with right credentials and anonymous", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request?apikey=kong",
+        headers = {
+          ["Host"] = "key-auth3.com",
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal('bob', body.headers["x-consumer-username"])
+      assert.is_nil(body.headers["x-anonymous-consumer"])
+    end)
+    it("works with wrong credentials and anonymous", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "key-auth3.com"
+        }
+      })
+      local body = cjson.decode(assert.res_status(200, res))
+      assert.equal('true', body.headers["x-anonymous-consumer"])
+      assert.is_nil(body.headers["x-consumer-username"])
     end)
   end)
 end)
