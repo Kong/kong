@@ -1,4 +1,4 @@
-# API Gateway & Microservice Management [![Build Status][badge-travis-image]][badge-travis-url]
+# Secure, Manage & Extend Serverless and Microservice APIs [![Build Status][badge-travis-image]][badge-travis-url]
 [![][kong-logo]][kong-url]
 
 Kong is a scalable, open source API Layer *(also known as an API Gateway, or
