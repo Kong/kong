@@ -153,7 +153,44 @@ describe("#ci Plugin: oauth2 (access)", function()
         provision_key = "provision123",
         token_expiration = 5,
         enable_implicit_grant = true,
-        anonymous = true
+        anonymous = true,
+        global_credentials = false
+      }
+    })
+
+    local api8 = assert(helpers.dao.apis:insert {
+      request_host = "oauth2_8.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api8.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = true
+      }
+    })
+
+    local api9 = assert(helpers.dao.apis:insert {
+      request_host = "oauth2_9.com",
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api9.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = true
       }
     })
   end)
@@ -1599,6 +1636,77 @@ describe("#ci Plugin: oauth2 (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_nil(body.headers["x-consumer-username"])
       assert.are.equal("true", body.headers["x-anonymous-consumer"])
+    end)
+    describe("Global Credentials", function()
+      it("does not access two different APIs that are not sharing global credentials", function()
+        local token = provision_token("oauth2_8.com")
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_8.com",
+            Authorization = "bearer "..token.access_token
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2.com",
+            Authorization = "bearer "..token.access_token
+          }
+        })
+        local body = cjson.decode(assert.res_status(401, res))
+      end)
+      it("does not access two different APIs that are not sharing global credentials 2", function()
+        local token = provision_token("oauth2.com")
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_8.com",
+            Authorization = "bearer "..token.access_token
+          }
+        })
+        local body = cjson.decode(assert.res_status(401, res))
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2.com",
+            Authorization = "bearer "..token.access_token
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+      end)
+      it("access two different APIs that are sharing global credentials", function()
+        local token = provision_token("oauth2_8.com")
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_8.com",
+            Authorization = "bearer "..token.access_token
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+
+        local res = assert(proxy_ssl_client:send {
+          method = "POST",
+          path = "/request",
+          headers = {
+            ["Host"] = "oauth2_9.com",
+            Authorization = "bearer "..token.access_token
+          }
+        })
+        local body = cjson.decode(assert.res_status(200, res))
+      end)
     end)
   end)
 

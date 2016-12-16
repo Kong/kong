@@ -94,15 +94,27 @@ return {
   {
     name = "2016-08-24-oauth2_api_id",
     up = [[
-      DELETE FROM oauth2_authorization_codes;
       ALTER TABLE oauth2_authorization_codes ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
-
-      DELETE FROM oauth2_tokens;
       ALTER TABLE oauth2_tokens ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
     ]],
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP api_id;
       ALTER TABLE oauth2_tokens DROP api_id;
     ]]
+  },
+  {
+    name = "2016-12-15-set_global_credentials",
+    up = function(_, _, dao)
+      local rows, err = dao.plugins:find_all({name = "oauth2"})
+      if err then return err end
+      
+      for i = 1, #rows do
+        local row = rows[i]
+        row.config.global_credentials = true
+
+        local _, err = dao.plugins:update(row, row)
+        if err then return err end
+      end
+    end
   }
 }
