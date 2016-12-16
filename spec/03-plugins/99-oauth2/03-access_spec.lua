@@ -1649,7 +1649,7 @@ describe("#ci Plugin: oauth2 (access)", function()
             Authorization = "bearer "..token.access_token
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        assert.res_status(200, res)
 
         local res = assert(proxy_ssl_client:send {
           method = "POST",
@@ -1659,7 +1659,7 @@ describe("#ci Plugin: oauth2 (access)", function()
             Authorization = "bearer "..token.access_token
           }
         })
-        local body = cjson.decode(assert.res_status(401, res))
+        assert.res_status(401, res)
       end)
       it("does not access two different APIs that are not sharing global credentials 2", function()
         local token = provision_token("oauth2.com")
@@ -1672,7 +1672,7 @@ describe("#ci Plugin: oauth2 (access)", function()
             Authorization = "bearer "..token.access_token
           }
         })
-        local body = cjson.decode(assert.res_status(401, res))
+        assert.res_status(401, res)
 
         local res = assert(proxy_ssl_client:send {
           method = "POST",
@@ -1682,7 +1682,7 @@ describe("#ci Plugin: oauth2 (access)", function()
             Authorization = "bearer "..token.access_token
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        assert.res_status(200, res)
       end)
       it("access two different APIs that are sharing global credentials", function()
         local token = provision_token("oauth2_8.com")
@@ -1695,7 +1695,7 @@ describe("#ci Plugin: oauth2 (access)", function()
             Authorization = "bearer "..token.access_token
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        assert.res_status(200, res)
 
         local res = assert(proxy_ssl_client:send {
           method = "POST",
@@ -1705,7 +1705,7 @@ describe("#ci Plugin: oauth2 (access)", function()
             Authorization = "bearer "..token.access_token
           }
         })
-        local body = cjson.decode(assert.res_status(200, res))
+        assert.res_status(200, res)
       end)
     end)
   end)
