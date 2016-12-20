@@ -13,7 +13,7 @@ local cluster = require "kong.core.cluster"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
-local certificate = require "kong.core.certificate"
+local certificate = require "kong.core.certificate2"
 local balancer_execute = require("kong.core.balancer").execute
 
 local Router = require "kong.core.router"
@@ -70,7 +70,7 @@ return {
   },
   certificate = {
     before = function()
-      ngx.ctx.api = certificate.execute()
+      certificate.execute()
     end
   },
   access = {

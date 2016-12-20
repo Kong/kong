@@ -10,5 +10,10 @@ return {
       dao_insert_value = true,
       required = true,
     },
-  }
+  },
+  marshall_event = function(_, t)
+    return {
+      name = t.name
+    }
+  end,
 }

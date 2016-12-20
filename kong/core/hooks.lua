@@ -19,6 +19,15 @@ local function invalidate(message_t)
   elseif message_t.collection == "plugins" then
     -- Handles both the update and the delete
     invalidate_plugin(message_t.old_entity and message_t.old_entity or message_t.entity)
+  elseif message_t.collection == "ssl_certificates" then
+    local snis = message_t.entity.snis
+    if type(snis) == "table" then
+      for i = 1, #snis do
+        cache.delete("certificate." .. snis[i])
+      end
+    end
+  elseif message_t.collection == "ssl_servers_names" then
+    cache.delete("certificate." .. message_t.entity.name)
   end
 end
 
