@@ -66,22 +66,27 @@ local function validate_credentials(credential, given_password)
   return credential.password == digest
 end
 
-local function load_credential_from_db(username)
-  local credential
-  if username then
-    credential = cache.get_or_set(cache.basicauth_credential_key(username), function()
-      local credentials, err = singletons.dao.basicauth_credentials:find_all {username = username}
-      local result
-      if err then
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-      elseif #credentials > 0 then
-        result = credentials[1]
-      end
-      return result
-    end)
+local function load_credential_into_memory(username)
+  local credentials, err = singletons.dao.basicauth_credentials:find_all {username = username}
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
+  return credentials[1]
+end
 
-  return credential
+local function load_credential_from_db(username)
+  if not username then return end
+  
+  return cache.get_or_set(cache.basicauth_credential_key(username),
+                          nil, load_credential_into_memory, username)
+end
+
+local function load_consumer_into_memory(credential)
+  local result, err = singletons.dao.consumers:find { id = credential.consumer_id }
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  return result
 end
 
 local function do_authentication(conf)
@@ -109,13 +114,8 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id), function()
-    local result, err = singletons.dao.consumers:find { id = credential.consumer_id }
-    if err then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-    end
-    return result
-  end)
+  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+                                    nil, load_consumer_into_memory, credential)
 
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
   ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)

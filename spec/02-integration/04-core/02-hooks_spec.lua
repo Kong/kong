@@ -316,6 +316,69 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
       end)
 
+      it("should invalidate a plugin when updating", function()
+        -- Consuming the API without any authorization
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks-consumer.com"
+          }
+        })
+        assert.res_status(401, res)
+
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks-consumer.com",
+            ["Authorization"] = "Basic dXNlcjEyMzpwYXNzMTIz"
+          }
+        })
+        assert.res_status(200, res)
+
+        -- Make sure the cache is populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
+        })
+        assert.res_status(200, res)
+
+        -- Update plugin
+        local res = assert(api_client:send {
+          method = "PATCH",
+          path = "/apis/"..api2.id.."/plugins/"..basic_auth2.id,
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = cjson.encode({
+            enabled = false
+          })
+        })
+        assert.res_status(200, res)
+
+        -- Wait for cache to be invalidated
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
+
+        -- Consuming the API again without any authorization
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks-consumer.com"
+          }
+        })
+        assert.res_status(200, res)
+      end)
+
       it("should invalidate a consumer-specific plugin when deleting", function()
         -- Making a request to populate the cache
         local res = assert(client:send {
@@ -420,69 +483,6 @@ describe("Core Hooks", function()
         })
         assert.res_status(200, res)
         assert.equal(10, tonumber(res.headers["x-ratelimit-limit-minute"]))
-      end)
-
-      it("should invalidate a plugin when updating", function()
-        -- Consuming the API without any authorization
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks-consumer.com"
-          }
-        })
-        assert.res_status(401, res)
-
-        -- Making a request to populate the cache
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks-consumer.com",
-            ["Authorization"] = "Basic dXNlcjEyMzpwYXNzMTIz"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
-        })
-        assert.res_status(200, res)
-
-        -- Update plugin
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/apis/"..api2.id.."/plugins/"..basic_auth2.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            enabled = false
-          })
-        })
-        assert.res_status(200, res)
-
-        -- Wait for cache to be invalidated
-        helpers.wait_until(function()
-          local res = assert(api_client:send {
-            method = "GET",
-            path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
-          })
-          res:read_body()
-          return res.status == 404
-        end, 3)
-
-        -- Consuming the API again without any authorization
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks-consumer.com"
-          }
-        })
-        assert.res_status(200, res)
       end)
     end)
 

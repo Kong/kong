@@ -18,7 +18,7 @@ local PROXY_AUTHORIZATION = "proxy-authorization"
 
 local _M = {}
 
-local function retrieve_credentials(authorization_header_value, conf)
+local function retrieve_credentials(authorization_header_value)
   local username, password
   if authorization_header_value then
     local cred = match(authorization_header_value, "%s*[ldap|LDAP]%s+(.*)")
@@ -33,35 +33,46 @@ end
 
 local function ldap_authenticate(given_username, given_password, conf)
   local is_authenticated
-  local error, suppressed_err, ok
+  local err, suppressed_err, ok
   local who = conf.attribute.."="..given_username..","..conf.base_dn
 
   local sock = ngx_socket_tcp()
   sock:settimeout(conf.timeout)
-  ok, error = sock:connect(conf.ldap_host, conf.ldap_port)
+  ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
   if not ok then
-    ngx_log(ngx_error, "[ldap-auth] failed to connect to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", error)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(error)
+    ngx_log(ngx_error, "[ldap-auth] failed to connect to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", err)
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
   if conf.start_tls then
-    local success, error = ldap.start_tls(sock)
+    local success, err = ldap.start_tls(sock)
     if not success then
-      return false, error
+      return false, err
     end
-    local _, error = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
-    if error ~= nil then
-      return false, "failed to do SSL handshake with "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ".. error
+    local _, err = sock:sslhandshake(true, conf.ldap_host, conf.verify_ldap_host)
+    if err ~= nil then
+      return false, "failed to do SSL handshake with "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ".. err
     end
   end
 
-  is_authenticated, error = ldap.bind_request(sock, who, given_password)
+  is_authenticated, err = ldap.bind_request(sock, who, given_password)
 
   ok, suppressed_err = sock:setkeepalive(conf.keepalive)
   if not ok then
     ngx_log(ngx_error, "[ldap-auth] failed to keepalive to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", suppressed_err)
   end
-  return is_authenticated, error
+  return is_authenticated, err
+end
+
+local function load_credential(given_username, given_password, conf)
+  ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: "..conf.ldap_host..":"..conf.ldap_port)
+
+  local ok, err = ldap_authenticate(given_username, given_password, conf)
+  if err ~= nil then ngx_log(ngx_error, err) end
+  if not ok then
+    return nil
+  end
+  return {username = given_username, password = given_password}
 end
 
 local function authenticate(conf, given_credentials)
@@ -70,16 +81,8 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential = cache.get_or_set(cache.ldap_credential_key(given_username), function()
-    ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: "..conf.ldap_host..":"..conf.ldap_port)
-
-    local ok, err = ldap_authenticate(given_username, given_password, conf)
-    if err ~= nil then ngx_log(ngx_error, err) end
-    if not ok then
-      return nil
-    end
-    return {username = given_username, password = given_password}
-  end, conf.cache_ttl)
+  local credential = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), 
+      conf.cache_ttl, load_credential, given_username, given_password, conf)
 
   return credential and credential.password == given_password, credential
 end
