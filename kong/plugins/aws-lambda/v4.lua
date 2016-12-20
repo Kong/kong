@@ -202,7 +202,7 @@ local function prepare_awsv4_request(tbl)
     .. ", SignedHeaders=" .. signed_headers
     .. ", Signature=" .. signature
   if add_auth_header then
-    headers.authorization = authorization
+    headers.Authorization = authorization
   end
 
   local target = path or canonicalURI
