@@ -270,4 +270,25 @@ return {
       CREATE INDEX IF NOT EXISTS ON apis(request_path);
     ]]
   },
+  {
+    name = "2016-12-14-172100_move_ssl_certs_to_core",
+    up = [[
+      CREATE TABLE ssl_certificates(
+        id uuid PRIMARY KEY,
+        cert text ,
+        key text ,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      CREATE TABLE ssl_servers_names(
+        name text PRIMARY KEY,
+        ssl_certificate_id uuid REFERENCES ssl_certificates(id) ON DELETE CASCADE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+    ]],
+    down = [[
+      DROP TABLE ssl_certificates;
+      DROP TABLE ssl_servers_names;
+    ]]
+  },
 }

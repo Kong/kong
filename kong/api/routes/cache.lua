@@ -1,5 +1,6 @@
 local responses = require "kong.tools.responses"
 local cache = require "kong.tools.database_cache"
+local cjson = require "cjson.safe"
 
 -- Create a table of functions per cache type
 local caches
@@ -57,8 +58,13 @@ return {
     GET = function(self, dao_factory)
       if self.params.key then
         local cached_item = caches[self.params.cache]("get", self.params.key)
-        if cached_item then
-          return responses.send_HTTP_OK(cached_item)
+        if cached_item ~= nil then
+          local encoded, err = cjson.encode(cached_item)
+          if not encoded then
+            ngx.log(ngx.ERR, "[admin] could not encode cached value: ", err)
+          end
+
+          return responses.send_HTTP_OK(encoded)
         end
       end
 

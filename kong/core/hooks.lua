@@ -31,6 +31,17 @@ local function invalidate(message_t)
     cache.delete(cache.upstream_key(message_t.entity.id))
     cache.delete(cache.targets_key(message_t.entity.id))
     balancer.invalidate_balancer(message_t.entity.name)
+  elseif message_t.collection == "ssl_certificates" then
+    if message_t.old_entity then
+      local snis = message_t.old_entity.snis
+      if type(snis) == "table" then
+        for i = 1, #snis do
+          cache.delete("certificate." .. snis[i])
+        end
+      end
+    end
+  elseif message_t.collection == "ssl_servers_names" then
+    cache.delete("certificate." .. message_t.entity.name)
   end
 end
 

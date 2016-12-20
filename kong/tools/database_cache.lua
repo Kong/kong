@@ -57,7 +57,7 @@ local DATA = {}
 
 function _M.set(key, value, exptime)
   exptime = exptime or 0
-  
+
   if exptime ~= 0 then
     value = {
       value = value,
@@ -76,7 +76,7 @@ end
 
 function _M.get(key)
   local now = gettime()
-  
+
   -- check local memory, and verify ttl
   local value = DATA[key]
   if value ~= nil then
@@ -90,7 +90,7 @@ function _M.get(key)
     -- value with expired ttl, delete it
     DATA[key] = nil
   end
-  
+
   -- nothing found yet, get it from Shared Dictionary
   value = _M.sh_get(key)
   if value == nil then
@@ -154,7 +154,11 @@ function _M.get_or_set(key, ttl, cb, ...)
   value = _M.get(key)
   if value == nil then
     -- Get from closure
-    value = cb(...)
+    value, err = cb(...)
+    if err then
+      return nil, err
+    end
+
     if value ~= nil then
       local ok, err = _M.set(key, value, ttl)
       if not ok then
