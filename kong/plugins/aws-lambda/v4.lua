@@ -137,7 +137,7 @@ local function prepare_awsv4_request(tbl)
   }
   local add_auth_header = true
   for k, v in pairs(req_headers) do
-    k = k:gsub("%f[^%z-]%w", string.lower) -- convert to standard header title case
+    k = k:gsub("%f[^%z-]%w", string.upper) -- convert to standard header title case
     if k == "Authorization" then
       add_auth_header = false
     elseif v == false then -- don't allow a default value for this header
@@ -155,7 +155,7 @@ local function prepare_awsv4_request(tbl)
     for name, value in pairs(headers) do
       if value then -- ignore headers with 'false', they are used to override defaults
         i = i + 1
-        local name_lower = name
+        local name_lower = name:lower()
         signed_headers[i] = name_lower
         if canonical_headers[name_lower] ~= nil then
           return nil, "header collision"
