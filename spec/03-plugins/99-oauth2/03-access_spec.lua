@@ -1456,6 +1456,18 @@ describe("#ci Plugin: oauth2 (access)", function()
   end)
 
   describe("Making a request", function()
+    it("fails when no access_token is being sent in an application/json body", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/request",
+        headers = {
+          ["Host"] = "oauth2.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal([[{"error_description":"The access token is missing","error":"invalid_request"}]], body)
+    end)
     it("works when a correct access_token is being sent in the querystring", function()
       local token = provision_token()
 
