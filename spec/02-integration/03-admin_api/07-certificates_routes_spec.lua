@@ -1,4 +1,4 @@
-local ssl_fixtures = require "spec.03-plugins.16-ssl.fixtures"
+local ssl_fixtures = require "spec.fixtures.ssl"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
