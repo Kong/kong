@@ -1,4 +1,5 @@
-local ssl_fixtures = require "spec.03-plugins.16-ssl.fixtures"
+local ssl_fixtures = require "spec.fixtures.ssl"
+local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 
 
@@ -128,7 +129,7 @@ end)
 
 describe("SSL certificates and SNIs invalidations", function()
   local admin_client
-  local CACHE_KEY = "certificate.ssl1.com"
+  local CACHE_KEY = cache.certificate_key("ssl1.com")
 
   before_each(function()
     helpers.dao:truncate_tables()
@@ -154,7 +155,7 @@ describe("SSL certificates and SNIs invalidations", function()
   end)
 
   after_each(function()
-    helpers.stop_kong(nil, true)
+    helpers.stop_kong()
   end)
 
   it("DELETE", function()

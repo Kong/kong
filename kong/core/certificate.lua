@@ -91,7 +91,7 @@ function _M.execute()
   --if not cert_and_key then
     -- miss
     -- check shm cache
-    cert_and_key, err = cache.get_or_set("certificate." .. sni, nil,
+    cert_and_key, err = cache.get_or_set(cache.certificate_key(sni), nil,
                                          find_certificate, sni)
     if not cert_and_key then
       log(ERR, err)

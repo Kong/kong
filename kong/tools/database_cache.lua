@@ -11,6 +11,7 @@ local CACHE_KEYS = {
   APIS = "apis",
   CONSUMERS = "consumers",
   PLUGINS = "plugins",
+  CERTIFICATES = "certificates",
   BASICAUTH_CREDENTIAL = "basicauth_credentials",
   HMACAUTH_CREDENTIAL = "hmacauth_credentials",
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
@@ -188,6 +189,10 @@ end
 
 function _M.plugin_key(name, api_id, consumer_id)
   return CACHE_KEYS.PLUGINS..":"..name..(api_id and ":"..api_id or "")..(consumer_id and ":"..consumer_id or "")
+end
+
+function _M.certificate_key(sni)
+  return CACHE_KEYS.CERTIFICATES .. ":" .. sni
 end
 
 function _M.basicauth_credential_key(username)
