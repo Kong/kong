@@ -1,5 +1,18 @@
 ## [Unreleased][unreleased]
 
+## [0.9.6] - 2016/11/29
+
+### Fixed
+
+- Resolve support for PostgreSQL SSL connections.
+  [#1720](https://github.com/Mashape/kong/issues/1720)
+- Ensure `kong start` honors the `--conf` flag is a config file already exists
+  at one of the default locations (`/etc/kong.conf`, `/etc/kong/kong.conf`).
+  [#1681](https://github.com/Mashape/kong/pull/1681)
+- Obfuscate sensitive properties from the `/` Admin API route which returns
+  the current node's configuration.
+  [#1650](https://github.com/Mashape/kong/pull/1650)
+
 ## [0.9.5] - 2016/11/07
 
 ### Changed
@@ -17,11 +30,11 @@
 
 - Fixed the random string generator that was causing some problems, especially
   in Serf for clustering. [#1754](https://github.com/Mashape/kong/pull/1754)
-- Seed random number generator in CLI. 
+- Seed random number generator in CLI.
   [#1641](https://github.com/Mashape/kong/pull/1641)
-- Reducing log noise in the Admin API. 
+- Reducing log noise in the Admin API.
   [#1781](https://github.com/Mashape/kong/pull/1781)
-- Fixed the reports lock implementation that was generating a periodic error 
+- Fixed the reports lock implementation that was generating a periodic error
   message. [#1783](https://github.com/Mashape/kong/pull/1783)
 
 ## [0.9.3] - 2016/10/07
@@ -32,7 +45,7 @@
 
 ### Fixed
 
-- Properly invalidate global plugins. 
+- Properly invalidate global plugins.
   [#1723](https://github.com/Mashape/kong/pull/1723)
 
 ## [0.9.2] - 2016/09/20
@@ -779,7 +792,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.5...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.6...next
+[0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
 [0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
 [0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
 [0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3

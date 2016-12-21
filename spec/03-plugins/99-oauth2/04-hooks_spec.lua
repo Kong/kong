@@ -97,16 +97,18 @@ describe("#ci Plugin: oauth2 (hooks)", function()
           ["Content-Type"] = "application/json"
         }
       })
-      assert.res_status(200, res)
+      assert.response(res).has.status(200)
 
       -- Check that cache is populated
       local cache_key = cache.oauth2_credential_key("clientid123")
       local res = assert(admin_client:send {
         method = "GET",
         path = "/cache/"..cache_key,
-        headers = {}
+        headers = {},
+        query = { cache = "lua" },
       })
-      local credential = cjson.decode(assert.res_status(200, res))
+      assert.response(res).has.status(200)
+      local credential = assert.response(res).has.jsonbody()
 
       -- Delete OAuth2 credential (which triggers invalidation)
       local res = assert(admin_client:send {
@@ -114,7 +116,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         path = "/consumers/bob/oauth2/"..credential.id,
         headers = {}
       })
-      assert.res_status(204, res)
+      assert.response(res).has.status(204)
 
       -- ensure cache is invalidated
       helpers.wait_until(function()
@@ -137,7 +139,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
           ["Content-Type"] = "application/json"
         }
       })
-      assert.res_status(400, res)
+      assert.response(res).has.status(400)
     end)
 
     it("should invalidate when OAuth2 Credential entity is updated", function()

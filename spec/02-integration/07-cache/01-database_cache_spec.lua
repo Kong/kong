@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 describe("Resolver", function()
   local admin_client
@@ -53,19 +52,22 @@ describe("Resolver", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/invocations"
+        path = "/cache/invocations",
+        query = { cache = "shm" },
       })
-      local body = assert.res_status(200, res)
-      return cjson.decode(body).message == 3
+      assert.response(res).has.status(200)
+      return 3 == assert.response(res).has.jsonbody()["message"]
     end, 10)
 
     -- Invocation are 3, but lookups should be 1
     local res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/lookups"
+      path = "/cache/lookups",
+      query = { cache = "shm" },
     })
-    local body = assert.res_status(200, res)
-    assert.equal(1, cjson.decode(body).message)
+    assert.response(res).has.status(200)
+    local json = assert.response(res).has.jsonbody()
+    assert.equal(1, json.message)
 
     ngx.sleep(1) -- block to allow timers requests to finish
   end)
