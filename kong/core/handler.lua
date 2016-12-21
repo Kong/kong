@@ -85,6 +85,12 @@ return {
         return responses.send_HTTP_NOT_FOUND("no API found")
       end
 
+      if api.https_only and not utils.check_https(api.http_if_terminated) then
+        ngx.header["connection"] = "Upgrade"
+        ngx.header["upgrade"]    = "TLS/1.0, HTTP/1.1"
+        return responses.send(426, "Please use HTTPS protocol")
+      end
+
       local balancer_address = {
         type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
         host                 = upstream_host,  -- supposed target host
