@@ -91,10 +91,11 @@ local function retrieve_parameters()
   -- OAuth2 parameters could be in both the querystring or body
   local body_parameters
   local content_type = req_get_headers()[CONTENT_TYPE]
-  if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
-    body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
-  elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
-    body_parameters = json.decode(ngx.req.get_body_data())
+  local body_data = ngx.req.get_body_data()
+  if content_type and body_data and string_find(content_type:lower(), "multipart/form-data", nil, true) then
+    body_parameters = Multipart(body_data, content_type):get_all()
+  elseif content_type and body_data and string_find(content_type:lower(), "application/json", nil, true) then
+    body_parameters = json.decode(body_data)
   else
     body_parameters = ngx.req.get_post_args()
   end
