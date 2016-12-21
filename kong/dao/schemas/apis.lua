@@ -188,6 +188,8 @@ return {
     uris = {type = "array", func = check_uris},
     methods = {type = "array", func = check_methods},
     strip_uri = {type = "boolean", default = true},
+    https_only = {type = "boolean", default = false},
+    http_if_terminated = {type = "boolean", default = true},
 
     upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
     preserve_host = {type = "boolean", default = false},

@@ -294,12 +294,18 @@ return {
       );
 
       CREATE INDEX IF NOT EXISTS ON ssl_servers_names(ssl_certificate_id);
+
+      ALTER TABLE apis ADD https_only boolean;
+      ALTER TABLE apis ADD http_if_terminated boolean;
     ]],
     down = [[
       DROP INDEX ssl_servers_names_ssl_certificate_idx;
 
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
+
+      ALTER TABLE apis DROP https_only;
+      ALTER TABLE apis DROP http_if_terminated;
     ]]
   }
 }

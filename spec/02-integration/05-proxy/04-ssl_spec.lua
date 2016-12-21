@@ -13,7 +13,7 @@ end
 
 
 describe("SSL", function()
-  local admin_client
+  local admin_client, client
 
   setup(function()
     helpers.dao:truncate_tables()
@@ -22,11 +22,22 @@ describe("SSL", function()
       name = "api-1",
       hosts = { "example.com", "ssl1.com" },
       upstream_url = "http://httpbin.org",
+      https_only = true,
+      http_if_terminated = true,
+    })
+
+    assert(helpers.dao.apis:insert {
+      name = "api-2",
+      hosts = { "ssl2.com" },
+      upstream_url = "http://httpbin.org",
+      https_only = true,
+      http_if_terminated = false,
     })
 
     assert(helpers.start_kong())
 
     admin_client = helpers.admin_client()
+    client = helpers.proxy_client()
 
     assert(admin_client:send {
       method = "POST",
@@ -61,11 +72,61 @@ describe("SSL", function()
 
   describe("https_only", function()
 
+    it("blocks request without HTTPS", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          ["Host"] = "example.com",
+        }
+      })
+
+      local body = assert.res_status(426, res)
+      assert.equal([[{"message":"Please use HTTPS protocol"}]], body)
+      assert.contains("Upgrade", res.headers.connection)
+      assert.equal("TLS/1.0, HTTP/1.1", res.headers.upgrade)
+    end)
+
+    it("blocks request with HTTPS in x-forwarded-proto but no http_if_already_terminated", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          Host = "ssl2.com",
+          ["x-forwarded-proto"] = "https"
+        }
+      })
+      assert.res_status(426, res)
+    end)
+
+    it("allows requests with x-forwarded-proto and http_if_terminated", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/status/200",
+        headers = {
+          Host = "example.com",
+          ["x-forwarded-proto"] = "https",
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("blocks with invalid x-forwarded-proto but http_if_terminated", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          Host = "example.com",
+          ["x-forwarded-proto"] = "httpsa"
+        }
+      })
+      assert.res_status(426, res)
+    end)
   end)
 
 end)
 
-describe("#o SSL certificates and SNIs invalidations", function()
+describe("SSL certificates and SNIs invalidations", function()
   local admin_client
   local CACHE_KEY = "certificate.ssl1.com"
 

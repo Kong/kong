@@ -285,10 +285,16 @@ return {
         ssl_certificate_id uuid REFERENCES ssl_certificates(id) ON DELETE CASCADE,
         created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
       );
+
+      ALTER TABLE apis ADD https_only boolean;
+      ALTER TABLE apis ADD http_if_terminated boolean;
     ]],
     down = [[
       DROP TABLE ssl_certificates;
       DROP TABLE ssl_servers_names;
+
+      ALTER TABLE apis DROP COLUMN IF EXISTS https_only;
+      ALTER TABLE apis DROP COLUMN IF EXISTS http_if_terminated;
     ]]
   },
 }
