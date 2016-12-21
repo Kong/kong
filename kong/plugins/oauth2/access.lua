@@ -1,5 +1,5 @@
 local url = require "socket.url"
-local json = require "cjson"
+local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
 local pl_stringx = require "pl.stringx"
@@ -91,12 +91,13 @@ end
 local function retrieve_parameters()
   ngx.req.read_body()
   -- OAuth2 parameters could be in both the querystring or body
-  local body_parameters
+  local body_parameters, err
   local content_type = req_get_headers()[CONTENT_TYPE]
   if content_type and string_find(content_type:lower(), "multipart/form-data", nil, true) then
     body_parameters = Multipart(ngx.req.get_body_data(), content_type):get_all()
   elseif content_type and string_find(content_type:lower(), "application/json", nil, true) then
-    body_parameters = json.decode(ngx.req.get_body_data())
+    body_parameters, err = cjson.decode(ngx.req.get_body_data())
+    if err then body_parameters = {} end
   else
     body_parameters = ngx.req.get_post_args()
   end
