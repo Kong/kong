@@ -4,10 +4,7 @@ local BaseDB = require "kong.dao.base_db"
 local utils = require "kong.tools.utils"
 local uuid = utils.uuid
 
-local ngx_stub = _G.ngx
-_G.ngx = nil
 local cassandra = require "cassandra"
-_G.ngx = ngx_stub
 
 local CassandraDB = BaseDB:extend()
 
