@@ -8,7 +8,7 @@ local ngx_log = ngx.log
 local ERR     = ngx.ERR
 --local INFO    = ngx.INFO
 local DEBUG   = ngx.DEBUG
-local ssl_certs_cache
+--local ssl_certs_cache
 
 
 local function log(lvl, ...)
