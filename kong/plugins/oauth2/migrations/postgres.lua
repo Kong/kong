@@ -82,6 +82,42 @@ return {
     ]]
   },
   {
+    name = "2016-04-14-283949_serialize_redirect_uri",
+    up = function(_, _, factory)
+      local schema = factory.oauth2_credentials.schema
+      schema.fields.redirect_uri.type = "string"
+      local json = require "cjson"
+      local apps, err = factory.oauth2_credentials.db:find_all('oauth2_credentials', nil, schema);
+      if err then
+        return err
+      end
+      for _, app in ipairs(apps) do
+        local redirect_uri = {};
+        redirect_uri[1] = app.redirect_uri
+        local redirect_uri_str = json.encode(redirect_uri)
+        local req = "UPDATE oauth2_credentials SET redirect_uri='"..redirect_uri_str.."' WHERE id='"..app.id.."'"
+        local _, err = factory.oauth2_credentials.db:queries(req)
+        if err then
+          return err
+        end
+      end
+    end,
+    down = function(_,_,factory)
+      local apps, err = factory.oauth2_credentials:find_all()
+      if err then
+        return err
+      end
+      for _, app in ipairs(apps) do
+        local redirect_uri = app.redirect_uri[1]
+        local req = "UPDATE oauth2_credentials SET redirect_uri='"..redirect_uri.."' WHERE id='"..app.id.."'"
+        local _, err = factory.oauth2_credentials.db:queries(req)
+        if err then
+          return err
+        end
+      end
+    end
+  },
+  {
     name = "2016-07-15-oauth2_code_credential_id",
     up = [[
       DELETE FROM oauth2_authorization_codes;
