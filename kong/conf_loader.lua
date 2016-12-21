@@ -335,7 +335,6 @@ local function load(path, custom_conf)
       custom_plugins[plugin_name] = true
     end
     conf.plugins = tablex.merge(constants.PLUGINS_AVAILABLE, custom_plugins, true)
-    conf.custom_plugins = nil
     setmetatable(conf.plugins, nil) -- remove Map mt
   end
 
