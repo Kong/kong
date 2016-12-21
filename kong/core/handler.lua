@@ -8,23 +8,25 @@
 -- In the `access_by_lua` phase, it is responsible for retrieving the API being proxied by
 -- a Consumer. Then it is responsible for loading the plugins to execute on this request.
 local utils = require "kong.tools.utils"
+local Router = require "kong.core.router"
 local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
 local constants = require "kong.constants"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
-local certificate = require "kong.core.certificate2"
+local certificate = require "kong.core.certificate"
 local balancer_execute = require("kong.core.balancer").execute
 
-local Router = require "kong.core.router"
-local router
 
+local router
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
+
 
 local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
+
 
 local function build_router()
   local apis, err = singletons.dao.apis:find_all()
@@ -47,6 +49,7 @@ local function build_router()
     return
   end
 end
+
 
 -- in the table below the `before` and `after` is to indicate when they run; before or after the plugins
 return {

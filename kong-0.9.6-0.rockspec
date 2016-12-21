@@ -75,6 +75,8 @@ build = {
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
+    ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
+    ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
@@ -102,6 +104,8 @@ build = {
     ["kong.dao.schemas.nodes"] = "kong/dao/schemas/nodes.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
+    ["kong.dao.schemas.ssl_certificates"] = "kong/dao/schemas/ssl_certificates.lua",
+    ["kong.dao.schemas.ssl_servers_names"] = "kong/dao/schemas/ssl_servers_names.lua",
     ["kong.dao.db"] = "kong/dao/db/init.lua",
     ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
     ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
@@ -201,10 +205,6 @@ build = {
 
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
-
-    ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
-    ["kong.plugins.ssl.hooks"] = "kong/plugins/ssl/hooks.lua",
-    ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
 
     ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",
     ["kong.plugins.ip-restriction.schema"] = "kong/plugins/ip-restriction/schema.lua",
