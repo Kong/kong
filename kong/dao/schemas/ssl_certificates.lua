@@ -30,7 +30,7 @@ return {
     }
 
     for i = 1, #rows do
-      table.insert(entity.snis, rows[1].name)
+      table.insert(entity.snis, rows[i].name)
     end
 
     return entity
