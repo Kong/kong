@@ -1,4 +1,9 @@
 local error = error
+local string_sub = string.sub
+local string_byte = string.byte
+local string_char = string.char
+local table_sort = table.sort
+local table_insert = table.insert
 
 local _M = {}
 _M.__index = _M
@@ -9,9 +14,9 @@ function _M.create_simple_sequence(input)
   end
   local sortTable = {}
   for pair in pairs(input) do
-    table.insert(sortTable, pair)
+    table_insert(sortTable, pair)
   end
-  table.sort(sortTable)
+  table_sort(sortTable)
   local numbers = ""
   for i,n in ipairs(sortTable) do
     if type(n) ~= "number"
@@ -25,12 +30,12 @@ function _M.create_simple_sequence(input)
     if length > 0x7F then
       error("Mult-byte lengths are not supported")
     end
-    numbers = numbers .. "\x02" .. string.char(length) .. number
+    numbers = numbers .. "\x02" .. string_char(length) .. number
   end
   if #numbers > 0x7F
     then error("Multi-byte lengths are not supported")
   end
-  return "\x30" .. string.char(#numbers) .. numbers
+  return "\x30" .. string_char(#numbers) .. numbers
 end
 
 function _M.parse_simple_sequence(input)
@@ -39,10 +44,10 @@ function _M.parse_simple_sequence(input)
   elseif #input == 0 then
     error("Argument #1 must not be empty", 2)
   end
-  if string.byte(input, 1) ~= 0x30 then
+  if string_byte(input, 1) ~= 0x30 then
     error("Argument #1 is not a sequence")
   end
-  local length = string.byte(input, 2)
+  local length = string_byte(input, 2)
   if length == nil then
     error("Sequence is incomplete")
   elseif length > 0x7F then
@@ -61,17 +66,17 @@ function _M.parse_simple_sequence(input)
     elseif counter > 0xFF then
       error("Sequence is too long")
     end
-    local chunk = string.sub(input, position)
-    if string.byte(chunk, 1) ~= 0x2 then
+    local chunk = string_sub(input, position)
+    if string_byte(chunk, 1) ~= 0x2 then
       error("Sequence did not contain integers")
     end
-    local integerLength = string.byte(chunk, 2)
+    local integerLength = string_byte(chunk, 2)
     if integerLength > 0x7F then
       error("Multi-byte lengths are not supported.")
     elseif integerLength > #chunk-2 then
       error("Integer is longer than remaining length")
     end
-    local integer = string.sub(chunk, 3, integerLength+2)
+    local integer = string_sub(chunk, 3, integerLength+2)
     seq[counter] = integer
     position = position + integerLength + 2
     counter = counter + 1
@@ -85,10 +90,10 @@ function _M.unsign_integer(input, len)
   elseif #input == 0 then
     error("Argument #1 must not be empty", 2)
   end
-  if string.byte(input) ~= 0 and #input > len then
+  if string_byte(input) ~= 0 and #input > len then
     error("Cannot unsign integer to length.", 2)
-  elseif string.byte(input) == 0 and #input == len+1 then
-    return string.sub(input, 2)
+  elseif string_byte(input) == 0 and #input == len+1 then
+    return string_sub(input, 2)
   end
   if #input == len then
     return input
@@ -102,17 +107,19 @@ function _M.unsign_integer(input, len)
   end
 end
 
+-- @param input (string) 32 characters, format to be validated before calling
 function _M.resign_integer(input)
-  if type(input) ~= "string"
-    then error("Argument #1 must be string", 2)
+  if type(input) ~= "string" then 
+    error("Argument #1 must be string", 2)
   end
-  if string.byte(input) > 0x7F then
+  if string_byte(input) > 0x7F then
     input = "\x00" .. input
   end
   while true do
-    if string.byte(input) == 0 and string.byte(input, 2) <= 0x7F then
-      input = string.sub(input, 2)
-    else break
+    if string_byte(input) == 0 and string_byte(input, 2) <= 0x7F then
+      input = string_sub(input, 2, -1)
+    else
+      break
     end
   end
   return input
