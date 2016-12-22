@@ -1,5 +1,25 @@
 ## [Unreleased][unreleased]
 
+## [0.9.7] - 2016/12/21
+
+### Fixed
+
+- Fixed a performance issue in Cassandra by removing an old workaround that was
+  forcing Cassandra to use LuaSocket instead of cosockets.
+  [#1916](https://github.com/Mashape/kong/pull/1916)
+- Fixed an issue that was causing a recursive attempt to stop Kong's services
+  when an error was occurring.
+  [#1877](https://github.com/Mashape/kong/pull/1877)
+- Custom plugins are now properly loaded again.
+  [#1910](https://github.com/Mashape/kong/pull/1910)
+- Plugins:
+  - Galileo: properly encode empty arrays.
+    [#1909](https://github.com/Mashape/kong/pull/1909)
+  - OAuth 2: implements a missing Postgres migration for `redirect_uri` in
+    every OAuth 2 credential. [#1911](https://github.com/Mashape/kong/pull/1911)
+  - OAuth 2: safely parse the request body even when no data has been sent.
+    [#1915](https://github.com/Mashape/kong/pull/1915)
+
 ## [0.9.6] - 2016/11/29
 
 ### Fixed
@@ -792,7 +812,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.6...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.7...next
+[0.9.7]: https://github.com/mashape/kong/compare/0.9.6...0.9.7
 [0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
 [0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
 [0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
