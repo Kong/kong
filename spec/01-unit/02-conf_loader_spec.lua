@@ -67,7 +67,6 @@ describe("Configuration loader", function()
     local conf = assert(conf_loader(nil, {
       custom_plugins = " hello-world ,   another-one  "  
     }))
-    assert.is_nil(conf.custom_plugins)
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["another-one"])
   end)
