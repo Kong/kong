@@ -1,6 +1,7 @@
 local events = require "kong.core.events"
 local cache = require "kong.tools.database_cache"
 local utils = require "kong.tools.utils"
+local balancer = require "kong.core.balancer"
 local singletons = require "kong.singletons"
 local pl_stringx = require "pl.stringx"
 
@@ -29,6 +30,7 @@ local function invalidate(message_t)
     cache.delete(cache.upstreams_dict_key())
     cache.delete(cache.upstream_key(message_t.entity.id))
     cache.delete(cache.targets_key(message_t.entity.id))
+    balancer.invalidate_balancer(message_t.entity.name)
   end
 end
 
