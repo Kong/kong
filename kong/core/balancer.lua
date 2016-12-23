@@ -193,8 +193,9 @@ local get_balancer = function(target)
   local __size = #balancer.__targets_history
   local size = #targets_history
 
-  if __size ~= size or 
-    balancer.__targets_history[__size].order ~= targets_history[size].order then
+  if __size ~= size or
+    (balancer.__targets_history[__size] or EMPTY_T).order ~=
+    (targets_history[size] or EMPTY_T).order then
     -- last entries in history don't match, so we must do some updates.
 
     -- compare balancer history with db-loaded history

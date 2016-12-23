@@ -365,7 +365,7 @@ dao_helpers.for_each_dao(function(kong_config)
         assert.are.equal(requests * 0.4, count1)
         assert.are.equal(requests * 0.6, count2)
       end)
-      it("failure due to no targets", function()
+      it("failure due to targets all 0 weight", function()
         local timeout = 10
         local requests = upstream.slots * 2 -- go round the balancer twice
         
@@ -406,7 +406,7 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
---print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
+
         res = assert(api_client:send {
           method = "POST",
           path = "/upstreams/"..upstream.name.."/targets",
@@ -419,12 +419,6 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
---print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
---res = assert(api_client:send {
---  method = "GET",
---  path = "/upstreams/"..upstream.name.."/targets",
---})
---print(require("pl.pretty").write(assert.response(res).has.jsonbody()))
 
         -- wait for the change to become effective
         helpers.wait_for_invalidation(cache.targets_key(target2.upstream_id))
@@ -439,11 +433,32 @@ dao_helpers.for_each_dao(function(kong_config)
             ["Host"] = "balancer.test"
           }
         })
-ngx.sleep(30)
+
+        assert.response(res).has.status(503)
+      end)
+      it("failure due to no targets", function()
+        -- insert additional api + upstream with no targets
+        assert(helpers.dao.apis:insert {
+          request_host = "balancer.test2",
+          upstream_url = "http://service.xyz.v2/path",
+        })
+        upstream = assert(helpers.dao.upstreams:insert {
+          name = "service.xyz.v2",
+          slots = 10,
+        })
+
+        -- Go hit it with a request
+        local res = assert(client:send {
+          method = "GET",
+          path = "/",
+          headers = {
+            ["Host"] = "balancer.test2"
+          }
+        })
+
         assert.response(res).has.status(503)
       end)
     end)
   end)
 
 end) -- for 'database type'
-
