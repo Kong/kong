@@ -82,7 +82,17 @@ return {
     ]]
   },
   {
-    name = "2016-04-14-283949_serialize_redirect_uri",
+    name = "2016-07-15-oauth2_code_credential_id",
+    up = [[
+      DELETE FROM oauth2_authorization_codes;
+      ALTER TABLE oauth2_authorization_codes ADD COLUMN credential_id uuid REFERENCES oauth2_credentials (id) ON DELETE CASCADE;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_authorization_codes DROP COLUMN credential_id;
+    ]]
+  },
+  {
+    name = "2016-12-22-283949_serialize_redirect_uri",
     up = function(_, _, factory)
       local schema = factory.oauth2_credentials.schema
       schema.fields.redirect_uri.type = "string"
@@ -116,15 +126,5 @@ return {
         end
       end
     end
-  },
-  {
-    name = "2016-07-15-oauth2_code_credential_id",
-    up = [[
-      DELETE FROM oauth2_authorization_codes;
-      ALTER TABLE oauth2_authorization_codes ADD COLUMN credential_id uuid REFERENCES oauth2_credentials (id) ON DELETE CASCADE;
-    ]],
-    down = [[
-      ALTER TABLE oauth2_authorization_codes DROP COLUMN credential_id;
-    ]]
   }
 }
