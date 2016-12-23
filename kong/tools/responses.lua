@@ -18,7 +18,7 @@
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
 
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
 --local server_header = _KONG._NAME.."/".._KONG._VERSION
@@ -95,7 +95,7 @@ local function send_response(status_code)
   -- @see https://github.com/openresty/lua-nginx-module
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
-  return function(content, headers, raw_body)
+  return function(content, headers)
     if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       if content then
         ngx.log(ngx.ERR, tostring(content))
@@ -116,12 +116,15 @@ local function send_response(status_code)
       content = response_default_content[status_code](content)
     end
 
-    if raw_body then
-      ngx.say(content)
-    elseif type(content) == "table" then
-      ngx.say(cjson.encode(content))
-    elseif content then
-      ngx.say(cjson.encode {message = content})
+    local encoded, err
+    if content then
+      encoded, err = cjson.encode(type(content) == "table" and content or
+                                  {message = content})
+      if not encoded then
+        ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+      end
+
+      ngx.say(encoded)
     end
 
     return ngx.exit(status_code)
@@ -145,16 +148,15 @@ local closure_cache = {}
 -- @param[type=number] status_code HTTP status code to send
 -- @param body A string or table which will be the body of the sent response. If table, the response will be encoded as a JSON object. If string, the response will be a JSON object and the string will be contained in the `message` property.
 -- @param[type=table] headers Response headers to send.
--- @param[type=boolean] raw_body Sent as it is if set to true.
 -- @return ngx.exit (Exit current context)
-function _M.send(status_code, body, headers, raw_body)
+function _M.send(status_code, body, headers)
   local res = closure_cache[status_code]
   if not res then
     res = send_response(status_code)
     closure_cache[status_code] = res
   end
 
-  return res(body, headers, raw_body)
+  return res(body, headers)
 end
 
 return _M

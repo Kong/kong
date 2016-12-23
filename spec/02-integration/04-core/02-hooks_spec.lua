@@ -249,6 +249,7 @@ describe("Core Hooks", function()
   end)
 
   describe("Other", function()
+    local client, api_client
     local consumer, api2, basic_auth2, api3, rate_limiting_consumer
 
     before_each(function()
@@ -262,6 +263,12 @@ describe("Core Hooks", function()
         username = "user123",
         password = "pass123",
         consumer_id = consumer.id
+      })
+
+      assert(helpers.dao.apis:insert {
+        name = "hook1",
+        hosts = { "hooks1.com" },
+        upstream_url = "http://mockbin.com"
       })
 
       api2 = assert(helpers.dao.apis:insert {

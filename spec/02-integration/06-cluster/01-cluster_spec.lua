@@ -1,5 +1,4 @@
 local cjson = require "cjson"
-local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
 local pl_tablex = require "pl.tablex"
 local pl_stringx = require "pl.stringx"
@@ -16,7 +15,9 @@ local NODES = {
     admin_listen = "0.0.0.0:9001",
     cluster_listen = "0.0.0.0:9946",
     cluster_listen_rpc = "0.0.0.0:9373",
-    cluster_profile = "local"
+    cluster_profile = "local",
+    custom_plugins = "first-request",
+    lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
   },
   servroot2 = {
     prefix = "servroot2",
@@ -26,7 +27,9 @@ local NODES = {
     admin_listen = "0.0.0.0:10001",
     cluster_listen = "0.0.0.0:10946",
     cluster_listen_rpc = "0.0.0.0:10373",
-    cluster_profile = "local"
+    cluster_profile = "local",
+    custom_plugins = "first-request",
+    lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
   },
   servroot3 = {
     prefix = "servroot3",
@@ -36,7 +39,9 @@ local NODES = {
     admin_listen = "0.0.0.0:20001",
     cluster_listen = "0.0.0.0:20946",
     cluster_listen_rpc = "0.0.0.0:20373",
-    cluster_profile = "local"
+    cluster_profile = "local",
+    custom_plugins = "first-request",
+    lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
   }
 }
 
@@ -180,7 +185,7 @@ describe("Cluster", function()
     end)
   end)
 
-  pending("Cache purges", function()
+  describe("Cache purges", function()
     it("must purge cache on all nodes on member-join", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
       -- Wait for first node to be registered
@@ -203,6 +208,18 @@ describe("Cluster", function()
         }
       })
       assert.res_status(201, res)
+      -- adding the first-request plugin
+      local res = assert(api_client:send {
+        method = "POST",
+        path = "/apis/test/plugins/",
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          name = "first-request"
+        }
+      })
+      assert.res_status(201, res)
 
       ngx.sleep(5) -- Wait for invalidation of API creation to propagate
 
@@ -220,11 +237,10 @@ describe("Cluster", function()
       -- Checking the element in the cache
       local res = assert(api_client:send {
         method = "GET",
-        path = "/cache/"..cache.all_apis_by_dict_key()
+        path = "/cache/requested"
       })
       local body = cjson.decode(assert.res_status(200, res))
-      assert.equal(1, pl_tablex.size(body.by_dns))
-      assert.is_table(body.by_dns["test.com"])
+      assert.True(body.requested)
 
       -- Starting second node
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
@@ -240,7 +256,7 @@ describe("Cluster", function()
         helpers.wait_until(function()
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key()
+            path = "/cache/requested"
           })
           res:read_body()
           return res.status == 404
@@ -280,6 +296,18 @@ describe("Cluster", function()
         }
       })
       assert.res_status(201, res)
+      -- adding the first-request plugin
+      local res = assert(api_client:send {
+        method = "POST",
+        path = "/apis/test/plugins/",
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          name = "first-request"
+        }
+      })
+      assert.res_status(201, res)
       api_client:close()
 
       ngx.sleep(5) -- Wait for invalidation of API creation to propagate
@@ -303,11 +331,11 @@ describe("Cluster", function()
         local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
         local res = assert(api_client:send {
           method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key()
+          path = "/cache/requested"
         })
         local body = cjson.decode(assert.res_status(200, res))
         api_client:close()
-        assert.equal(1, pl_tablex.size(body.by_dns))
+        assert.True(body.requested)
       end
 
       -- The cluster status is "active" for all three nodes
@@ -387,7 +415,7 @@ describe("Cluster", function()
           local api_client = helpers.http_client("127.0.0.1", v.admin_port, CLIENT_TIMEOUT)
           local res = assert(api_client:send {
             method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key()
+            path = "/cache/requested"
           })
           api_client:close()
           return res.status == 404
