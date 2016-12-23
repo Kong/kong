@@ -1,7 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local cache = require "kong.tools.database_cache"
-local pl_tablex = require "pl.tablex"
 local pl_utils = require "pl.utils"
 local pl_path = require "pl.path"
 local pl_file = require "pl.file"
@@ -206,7 +205,7 @@ describe("Core Hooks", function()
 
   describe("Other", function()
     local client, api_client
-    local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
+    local consumer, api2, basic_auth2, api3, rate_limiting_consumer
 
     before_each(function()
       consumer = assert(helpers.dao.consumers:insert {
@@ -218,7 +217,7 @@ describe("Core Hooks", function()
         consumer_id = consumer.id
       })
 
-      api1 = assert(helpers.dao.apis:insert {
+      assert(helpers.dao.apis:insert {
         name = "hook1",
         hosts = { "hooks1.com" },
         upstream_url = "http://mockbin.com"
@@ -610,191 +609,6 @@ describe("Core Hooks", function()
         })
         local body = assert.res_status(200, res)
         assert.equal("updated_consumer", cjson.decode(body).username)
-      end)
-    end)
-
-    pending("API entity invalidation", function()
-      it("should invalidate ALL_APIS_BY_DICT when adding a new API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key()
-        })
-        assert.res_status(200, res)
-
-        -- Adding a new API
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/apis/",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            hosts = { "dynamic-hooks.com" },
-            upstream_url = "http://mockbin.org"
-          })
-        })
-        assert.res_status(201, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_until(function()
-          local res = assert(api_client:send {
-            method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
-            headers = {}
-          })
-          res:read_body()
-          return res.status == 404
-        end, 3)
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key()
-        })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.is_table(body.by_dns["hooks1.com"])
-        assert.is_table(body.by_dns["dynamic-hooks.com"])
-      end)
-
-      it("should invalidate ALL_APIS_BY_DICT when updating an API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key()
-        })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
-
-        -- Update API
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/apis/"..api1.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            upstream_url = "http://mockbin.org"
-          })
-        })
-        assert.res_status(200, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_until(function()
-          local res = assert(api_client:send {
-            method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
-            headers = {}
-          })
-          res:read_body()
-          return res.status == 404
-        end, 3)
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated with updated value
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key(),
-          headers = {}
-        })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("http://mockbin.org", body.by_dns["hooks1.com"].upstream_url)
-        assert.equal(3, pl_tablex.size(body.by_dns))
-      end)
-
-      it("should invalidate ALL_APIS_BY_DICT when deleting an API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key()
-        })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
-
-        -- Deleting the API
-        local res = assert(api_client:send {
-          method = "DELETE",
-          path = "/apis/"..api1.id
-        })
-        assert.res_status(204, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_until(function()
-          local res = assert(api_client:send {
-            method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
-            headers = {}
-          })
-          res:read_body()
-          return res.status == 404
-        end, 3)
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(404, res)
-
-        -- Make sure the cache is populated with zero APIs
-        local res = assert(api_client:send {
-          method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key()
-        })
-        local body = cjson.decode(assert.res_status(200, res))
-        assert.equal(2, pl_tablex.size(body.by_dns))
       end)
     end)
 

@@ -1,5 +1,4 @@
 local helpers = require "spec.helpers"
-local cache = require "kong.tools.database_cache"
 local cjson = require "cjson"
 
 local current_cache
@@ -17,7 +16,10 @@ end
 describe("Admin API", function()
   local client, proxy_client
   setup(function()
-    assert(helpers.start_kong())
+    assert(helpers.start_kong({
+      custom_plugins = "first-request",
+      lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
+    }))
     client = helpers.admin_client()
     proxy_client = helpers.proxy_client(2000)
   end)
@@ -36,6 +38,17 @@ describe("Admin API", function()
         hosts = { "cache.com" },
         upstream_url = "http://mockbin.com"
       })
+      local res = assert(client:send {
+        method = "POST",
+        path = "/apis/api-cache/plugins/",
+        headers = {
+          ["Content-Type"] = "application/json"
+        },
+        body = {
+          name = "first-request"
+        }
+      })
+      assert.res_status(201, res)
     end)
 
     describe("GET", function()
@@ -47,7 +60,7 @@ describe("Admin API", function()
         })
         assert.response(res).has.status(404)
       end)
-      pending("retrieves a cached entity", function()
+      it("retrieves a cached entity", function()
         -- populate cache
         local res = assert(proxy_client:send {
           method = "GET",
@@ -59,7 +72,7 @@ describe("Admin API", function()
 
         res = assert(client:send {
           method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key(),
+          path = "/cache/requested",
           query = { cache = current_cache },
         })
         assert.response(res).has.status(200)
@@ -68,12 +81,12 @@ describe("Admin API", function()
           -- in this case the entry is jsonified (string type) and hence send as a "message" entry
           json = cjson.decode(json.message)
         end
-        assert.is_table(json.by_dns)
+        assert.True(json.requested)
       end)
     end)
 
     describe("DELETE", function()
-      pending("purges cached entity", function()
+      it("purges cached entity", function()
         -- populate cache
         local res = assert(proxy_client:send {
           method = "GET",
@@ -85,7 +98,7 @@ describe("Admin API", function()
 
         res = assert(client:send {
           method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key(),
+          path = "/cache/requested",
           query = { cache = current_cache },
         })
         assert.response(res).has.status(200)
@@ -93,14 +106,14 @@ describe("Admin API", function()
         -- delete cache
         res = assert(client:send {
           method = "DELETE",
-          path = "/cache/"..cache.all_apis_by_dict_key(),
+          path = "/cache/requested",
           query = { cache = current_cache },
         })
         assert.response(res).has.status(204)
 
         res = assert(client:send {
           method = "GET",
-          path = "/cache/"..cache.all_apis_by_dict_key(),
+          path = "/cache/requested",
           query = { cache = current_cache },
         })
         assert.response(res).has.status(404)
@@ -109,7 +122,7 @@ describe("Admin API", function()
 
     describe("/cache/", function()
       describe("DELETE", function()
-        pending("purges all entities", function()
+        it("purges all entities", function()
            -- populate cache
           local res = assert(proxy_client:send {
             method = "GET",
@@ -121,7 +134,7 @@ describe("Admin API", function()
 
           res = assert(client:send {
             method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
+            path = "/cache/requested",
             query = { cache = current_cache },
           })
           assert.response(res).has.status(200)
@@ -136,7 +149,7 @@ describe("Admin API", function()
 
           res = assert(client:send {
             method = "GET",
-            path = "/cache/"..cache.all_apis_by_dict_key(),
+            path = "/cache/requested",
             query = { cache = current_cache },
           })
           assert.response(res).has.status(404)
