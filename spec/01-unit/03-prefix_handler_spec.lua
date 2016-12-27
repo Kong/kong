@@ -224,6 +224,18 @@ describe("NGINX conf compiler", function()
       local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_conf))
       assert.same(conf, in_prefix_kong_conf)
     end)
+    it("writes custom plugins in Kong conf", function()
+      local conf = assert(conf_loader(nil, {
+        custom_plugins = { "foo", "bar" },
+        prefix = tmp_config.prefix
+      }))
+
+      assert(prefix_handler.prepare_prefix(conf))
+
+      local in_prefix_kong_conf = assert(conf_loader(tmp_config.kong_conf))
+      assert.True(in_prefix_kong_conf.plugins.foo)
+      assert.True(in_prefix_kong_conf.plugins.bar)
+    end)
     it("dumps Serf script", function()
       assert(prefix_handler.prepare_prefix(tmp_config))
 
