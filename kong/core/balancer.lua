@@ -81,7 +81,9 @@ local function get_upstream(upstream_name)
   end
 
   local upstream_id = upstreams_dict[upstream_name]
-  if not upstream_id then return false end -- no upstream by this name
+  if not upstream_id then
+    return false -- no upstream by this name
+  end
   
   return cache.get_or_set(cache.upstream_key(upstream_id), nil,
                           load_upstream_into_memory, upstream_id)

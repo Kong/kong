@@ -406,6 +406,7 @@ dao_helpers.for_each_dao(function(kong_config)
           },
         })
         assert.response(res).has.status(201)
+
         res = assert(api_client:send {
           method = "POST",
           path = "/upstreams/"..upstream.name.."/targets",
