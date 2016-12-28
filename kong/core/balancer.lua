@@ -66,7 +66,7 @@ local function load_upstream_into_memory(upstream_id)
   if not upstream then
     return nil, err
   end
-  
+
   return upstream[1]  -- searched by id, so only 1 row in the returned set
 end
 
