@@ -140,8 +140,7 @@ return {
       local rows, err = dao.plugins:find_all({name = "oauth2"})
       if err then return err end
       
-      for i = 1, #rows do
-        local row = rows[i]
+      for _, row in ipairs(rows) do
         row.config.global_credentials = true
 
         local _, err = dao.plugins:update(row, row)
