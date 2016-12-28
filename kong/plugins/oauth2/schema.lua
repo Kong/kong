@@ -28,7 +28,8 @@ return {
     enable_password_grant = { required = true, type = "boolean", default = false },
     hide_credentials = { type = "boolean", default = false },
     accept_http_if_already_terminated = { required = false, type = "boolean", default = false },
-    anonymous = {type = "boolean", default = false}
+    anonymous = {type = "boolean", default = false},
+    global_credentials = {type = "boolean", default = false}
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.enable_authorization_code and not plugin_t.enable_implicit_grant

@@ -53,6 +53,11 @@ local function load_upstreams_dict_into_memory()
   return upstreams_dict
 end
 
+-- delete a balancer object from our internal cache
+local function invalidate_balancer(upstream_name)
+  balancers[upstream_name] = nil
+end
+
 -- loads a single upstream entity
 local function load_upstream_into_memory(upstream_id)
   log(DEBUG, "fetching upstream: ", tostring(upstream_id))
@@ -62,25 +67,7 @@ local function load_upstream_into_memory(upstream_id)
     return nil, err
   end
   
-  upstream = upstream[1]  -- searched by id, so only 1 row in the returned set
-  
-  -- because we're reloading the upstream, it was updated, so we must also
-  -- re-created the balancer
-  balancers[upstream.name] = nil
-  
-  local b, err = ring_balancer.new({
-      wheelsize = upstream.slots,
-      order = upstream.orderlist,
-      dns = dns_client,
-    })
-  if not b then return b, err end
-  
-  -- NOTE: we're inserting a foreign entity in the balancer, to keep track of
-  -- target-history changes!
-  b.__targets_history = {} 
-  balancers[upstream.name] = b
-
-  return upstream
+  return upstream[1]  -- searched by id, so only 1 row in the returned set
 end
 
 -- finds and returns an upstream entity. This functions covers
@@ -116,11 +103,11 @@ local function load_targets_into_memory(upstream_id)
     target.port = tonumber(port)
 
     -- need exact order, so create sort-key by created-time and uuid
-    target.order = target.created_at..":"..target.id
+    target.order = target.created_at .. ":" .. target.id
   end
 
   table.sort(target_history, function(a,b) 
-    return a.order<b.order
+    return a.order < b.order
   end)
 
   return target_history
@@ -162,14 +149,15 @@ local get_balancer = function(target)
   
   -- first go and find the upstream object, from cache or the db
   local upstream, err = get_upstream(hostname)
-  if err then
-    return nil, err             -- there was an error
-  end
 
   if upstream == false then
     return false                -- no upstream by this name
   end
-  
+
+  if err then
+    return nil, err             -- there was an error
+  end
+
   -- we've got the upstream, now fetch its targets, from cache or the db
   local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
                                nil, load_targets_into_memory, upstream.id)
@@ -177,17 +165,35 @@ local get_balancer = function(target)
     return nil, err
   end
 
-  local balancer = balancers[upstream.name] -- always exists, created upon fetching upstream
-  
+  local balancer = balancers[upstream.name]
+  if not balancer then
+    -- no balancer yet (or invalidated) so create a new one
+    balancer, err = ring_balancer.new({
+        wheelsize = upstream.slots,
+        order = upstream.orderlist,
+        dns = dns_client,
+      })
+
+    if not balancer then
+      return balancer, err
+    end
+
+    -- NOTE: we're inserting a foreign entity in the balancer, to keep track of
+    -- target-history changes!
+    balancer.__targets_history = {}
+    balancers[upstream.name] = balancer
+  end
+
   -- check history state
   -- NOTE: in the code below variables are similarly named, but the
   -- ones with `__`-prefixed, are the ones on the `balancer` object, and the
-  -- regular ones are the ones we just fetched and are comparing against
+  -- regular ones are the ones we just fetched and are comparing against.
   local __size = #balancer.__targets_history
   local size = #targets_history
 
-  if __size ~= size or 
-    balancer.__targets_history[__size].order ~= targets_history[size].order then
+  if __size ~= size or
+    (balancer.__targets_history[__size] or EMPTY_T).order ~=
+    (targets_history[size] or EMPTY_T).order then
     -- last entries in history don't match, so we must do some updates.
 
     -- compare balancer history with db-loaded history
@@ -302,6 +308,7 @@ end
 
 return { 
   execute = execute,
+  invalidate_balancer = invalidate_balancer,
  
   -- ones below are exported for test purposes
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory,
