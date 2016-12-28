@@ -268,5 +268,9 @@ build = {
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
     ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
     ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua",
+
+    ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
+    ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
+    ["kong.plugins.aws-lambda.v4"] = "kong/plugins/aws-lambda/v4.lua",
   }
 }
