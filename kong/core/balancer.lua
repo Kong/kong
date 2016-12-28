@@ -66,7 +66,7 @@ local function load_upstream_into_memory(upstream_id)
   if not upstream then
     return nil, err
   end
-
+  
   return upstream[1]  -- searched by id, so only 1 row in the returned set
 end
 
@@ -84,7 +84,7 @@ local function get_upstream(upstream_name)
   if not upstream_id then
     return false -- no upstream by this name
   end
-  
+
   return cache.get_or_set(cache.upstream_key(upstream_id), nil,
                           load_upstream_into_memory, upstream_id)
 end
