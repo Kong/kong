@@ -207,8 +207,9 @@ function Kong.balancer()
     
     local ok, err = balancer_execute(addr)
     if not ok then
-      ngx.log(ngx.ERR, "failed to retry the balancer/resolver: ", err)
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retry the "..
+        "dns/balancer resolver for '"..addr.upstream.host..
+        "' with: "..tostring(err))
     end
   else
     -- first try, so set the max number of retries

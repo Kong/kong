@@ -2,7 +2,7 @@ local DAO = require "kong.dao.dao"
 local utils = require "kong.tools.utils"
 local ModelFactory = require "kong.dao.model_factory"
 
-local CORE_MODELS = {"apis", "consumers", "plugins", "nodes"}
+local CORE_MODELS = {"apis", "consumers", "plugins", "nodes", "upstreams", "targets"}
 
 -- returns db errors as strings, including the initial `nil`
 local function ret_error_string(db_name, res, err)

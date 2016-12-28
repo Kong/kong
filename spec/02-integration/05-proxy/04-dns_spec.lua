@@ -34,7 +34,7 @@ local function bad_tcp_server(port, duration, ...)
   return thread:start(...)
 end
 
-describe("Core DNS", function()
+describe("DNS", function()
   describe("retries", function()
     
     local retries = 3
@@ -69,13 +69,44 @@ describe("Core DNS", function()
           host = "retries.com"
         }
       }
-      assert.equals(502, r.status)
+      assert.response(r).has.status(502)
 
       -- Getting back the TCP server count of the tries
       local ok, tries = thread:join()
       assert.True(ok)
       assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
 
+    end)
+  end)
+  describe("upstream resolve failure", function()
+    
+    local client
+    
+    setup(function()
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
+
+      assert(helpers.dao.apis:insert {
+        name = "tests-retries",
+        request_host = "retries.com",
+        upstream_url = "http://now.this.does.not/exist",
+      })
+    end)
+
+    teardown(function()
+      if client then client:close() end
+      helpers.stop_kong()
+    end)
+
+    it("fails with 500", function()
+      local r = client:send {
+        method = "GET",
+        path = "/",
+        headers = {
+          host = "retries.com"
+        }
+      }
+      assert.response(r).has.status(500)
     end)
   end)
 end)

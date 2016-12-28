@@ -21,7 +21,9 @@ local CACHE_KEYS = {
   SSL = "ssl",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
   LDAP_CREDENTIAL = "ldap_credentials",
-  BOT_DETECTION = "bot_detection"
+  BOT_DETECTION = "bot_detection",
+  UPSTREAMS = "upstreams",
+  TARGETS = "targets",
 }
 
 local _M = {}
@@ -222,6 +224,18 @@ end
 
 function _M.bot_detection_key(key)
   return CACHE_KEYS.BOT_DETECTION..":"..key
+end
+
+function _M.upstreams_dict_key()
+  return CACHE_KEYS.UPSTREAMS
+end
+
+function _M.upstream_key(upstream_id)
+  return CACHE_KEYS.UPSTREAMS..":"..upstream_id
+end
+
+function _M.targets_key(upstream_id)
+  return CACHE_KEYS.TARGETS..":"..upstream_id
 end
 
 function _M.all_apis_by_dict_key()

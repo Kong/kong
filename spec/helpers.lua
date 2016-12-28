@@ -794,6 +794,25 @@ local function clean_prefix(prefix)
   end
 end
 
+--- Waits for invalidation of a cached key by polling the mgt-api
+-- and waiting for a 404 response.
+-- @name wait_for_invalidation
+-- @param key the cache-key to check
+-- @param timeout (optional) in seconds, defaults to 10.
+local function wait_for_invalidation(key, timeout)
+  local api_client = admin_client()
+  timeout = timeout or 10
+  wait_until(function()
+    local res = assert(api_client:send {
+      method = "GET",
+      path = "/cache/"..key,
+      headers = {}
+    })
+    res:read_body()
+    return res.status == 404
+  end, timeout)
+end
+
 ----------
 -- Exposed
 ----------
@@ -824,6 +843,7 @@ return {
   proxy_ssl_client = proxy_ssl_client,
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
+  wait_for_invalidation = wait_for_invalidation,
   
   -- miscellaneous
   intercept = intercept,

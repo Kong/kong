@@ -43,7 +43,7 @@ return {
       ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
       
       balancer_address = {
-        upstream = upstream_table,                       -- original parsed upstream url from the resolver
+        upstream = upstream_table,                       -- original parsed upstream url from the Kong api resolver/router
         type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
         tries = 0,                                       -- retry counter
     --  ip = nil,                                        -- final target IP address
@@ -51,15 +51,25 @@ return {
         retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
         -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
     --  failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
-    --  balancer = nil,                                  -- the balancer object, in case of a balancer
+        -- in case of ring-balancer
+    --  balancer = nil,                                  -- the balancer object
+    --  hostname = nil,                                  -- the hostname that belongs to the ip address returned by the balancer
       }
       ngx.ctx.balancer_address = balancer_address
-      ngx.var.upstream_host = upstream_host
+
       local ok, err = balancer_execute(balancer_address)
       if not ok then
-        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
+          "dns/balancer resolve for '"..balancer_address.upstream.host..
+          "' with: "..tostring(err))
       end
+
+      if balancer_address.hostname and not ngx.ctx.api.preserve_host then
+        ngx.var.upstream_host = balancer_address.hostname
+      else
+        ngx.var.upstream_host = upstream_host
+      end
+
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
