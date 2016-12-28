@@ -307,5 +307,39 @@ return {
       ALTER TABLE apis DROP https_only;
       ALTER TABLE apis DROP http_if_terminated;
     ]]
-  }
+  },
+  {
+    name = "2016-09-16-141423_upstreams",
+    -- Note on the timestamps;
+    -- The Cassandra timestamps are created in Lua code, and hence ALL entities
+    -- will now be created in millisecond precision. The existing entries will
+    -- remain in second precision, but new ones (for ALL entities!) will be
+    -- in millisecond precision.
+    -- This differs from the Postgres one where only the new entities (upstreams
+    -- and targets) will get millisecond precision.
+    up = [[
+      CREATE TABLE IF NOT EXISTS upstreams(
+        id uuid,
+        name text,
+        slots int,
+        orderlist text,
+        created_at timestamp,
+        PRIMARY KEY (id)
+      );
+      CREATE INDEX IF NOT EXISTS ON upstreams(name);
+      CREATE TABLE IF NOT EXISTS targets(
+        id uuid,
+        target text,
+        weight int,
+        upstream_id uuid,
+        created_at timestamp,
+        PRIMARY KEY (id)
+      );
+      CREATE INDEX IF NOT EXISTS ON targets(upstream_id);
+    ]],
+    down = [[
+      DROP TABLE upstreams;
+      DROP TABLE targets;
+    ]],
+  },
 }
