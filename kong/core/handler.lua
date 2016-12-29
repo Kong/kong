@@ -78,26 +78,6 @@ return {
   },
   access = {
     before = function()
-<<<<<<< HEAD
-      ngx.ctx.KONG_ACCESS_START = get_now()
-      local upstream_host, balancer_address, upstream_table
-      ngx.ctx.api, ngx.ctx.upstream_url, upstream_host, upstream_table = resolve(ngx.var.request_uri, ngx.req.get_headers())
-      
-      balancer_address = {
-        upstream = upstream_table,                       -- original parsed upstream url from the Kong api resolver/router
-        type = utils.hostname_type(upstream_table.host), -- the type of `upstream.host`; ipv4, ipv6 or name
-        tries = 0,                                       -- retry counter
-    --  ip = nil,                                        -- final target IP address
-        port = upstream_table.port,                      -- final target port
-        retries = ngx.ctx.api.retries,                   -- number of retries for the balancer
-        -- health data, see https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md#get_last_failure
-    --  failures = nil,                                  -- for each failure an entry { name = "...", code = xx }
-        -- in case of ring-balancer
-    --  balancer = nil,                                  -- the balancer object
-    --  hostname = nil,                                  -- the hostname that belongs to the ip address returned by the balancer
-      }
-      ngx.ctx.balancer_address = balancer_address
-=======
       local ctx = ngx.ctx
       local var = ngx.var
 
@@ -116,14 +96,15 @@ return {
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
+        type                 = utils.hostname_type(upstream_host),  -- hostname type: 'ipv4', 'ipv6' or 'name'
         host                 = upstream_host,  -- supposed target host
         port                 = upstream_port,  -- final target port
         tries                = 0,              -- retry counter
-        retries              = api.retries,    -- number of retries for the balancer
-        --  ip               = nil,            -- final target IP address
-        -- failures          = nil,            -- for each failure an entry { name                                                = "...", code = xx }
+        retries              = api.retries,    -- configured number of retries
+        -- ip                = nil,            -- final target IP address
+        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
+        -- hostname          = nil,            -- the hostname that belongs to the ip address returned by the balancer
       }
 
       var.upstream_scheme = upstream_scheme
@@ -131,7 +112,6 @@ return {
 
       ctx.api = api
       ctx.balancer_address = balancer_address
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
 
       local ok, err = balancer_execute(balancer_address)
       if not ok then
