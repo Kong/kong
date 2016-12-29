@@ -6,38 +6,31 @@ local singletons = require "kong.singletons"
 local pl_stringx = require "pl.stringx"
 
 local function invalidate(message_t)
-  if message_t.collection == "consumers" then
-    cache.delete(cache.consumer_key(message_t.entity.id))
-
-  elseif message_t.collection == "plugins" then
-    -- Handles both the update and the delete
-<<<<<<< HEAD
-    invalidate_plugin(message_t.old_entity and message_t.old_entity or message_t.entity)
-  elseif message_t.collection == "targets" then
+  -- put 'targets' first as it is likely to get the most frequent updates
+  if message_t.collection == "targets" then
     -- targets only append new entries, we're not changing anything
     -- but we need to reload the related upstreams target-history, so invalidate
     -- that instead of the target
     cache.delete(cache.targets_key(message_t.entity.upstream_id))
+
+  elseif message_t.collection == "consumers" then
+    cache.delete(cache.consumer_key(message_t.entity.id))
+
+  elseif message_t.collection == "plugins" then
+    -- Handles both the update and the delete
+    local entity = message_t.old_entity or message_t.entity
+    cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))
+
   elseif message_t.collection == "upstreams" then
     --we invalidate the list, the individual upstream, and its target history
     cache.delete(cache.upstreams_dict_key())
     cache.delete(cache.upstream_key(message_t.entity.id))
     cache.delete(cache.targets_key(message_t.entity.id))
     balancer.invalidate_balancer(message_t.entity.name)
-=======
-    local entity = message_t.old_entity
-    if not entity then
-      entity = message_t.entity
-    end
-
-    cache.delete(cache.plugin_key(entity.name, entity.api_id, entity.consumer_id))
 
   elseif message_t.collection == "ssl_certificates" then
     -- Handles both the update and the delete
-    local entity = message_t.old_entity
-    if not entity then
-      entity = message_t.entity
-    end
+    local entity = message_t.old_entity or message_t.entity
 
     if type(entity.snis) == "table" then
       for i = 1, #entity.snis do
@@ -47,7 +40,7 @@ local function invalidate(message_t)
 
   elseif message_t.collection == "ssl_servers_names" then
     cache.delete(cache.certificate_key(message_t.entity.name))
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
+
   end
 end
 
