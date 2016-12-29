@@ -177,7 +177,6 @@ return {
         end
       end
     end,
-<<<<<<< HEAD
     down = nil, 
   },
   {
@@ -213,9 +212,6 @@ return {
       DROP TABLE upstreams;
       DROP TABLE targets;
     ]],
-  },
-=======
-    down = nil,
   },
   {
     name = "2016-11-11-151900_new_apis_router_1",
@@ -311,7 +307,6 @@ return {
       ALTER TABLE apis DROP https_only;
       ALTER TABLE apis DROP http_if_terminated;
     ]]
-  }
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
+  },
 }
 

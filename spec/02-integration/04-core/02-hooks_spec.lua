@@ -6,36 +6,16 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 
-local api_client
-
 -- cache entry inserted as a sentinel whenever a db lookup returns nothing
-local db_miss_sentinel = { null = true } 
-
-local function get_cache(key)
-  local r = assert(api_client:send {
-    method = "GET",
-    path = "/cache/"..key,
-    headers = {}
-  })
-  assert.response(r).has.status(200)
-  return assert.response(r).has.jsonbody()
-end
+local DB_MISS_SENTINEL = { null = true } 
 
 describe("Core Hooks", function()
   describe("Global", function()
-    describe("Plugin entity invalidation on API", function()
-      local client
+    describe("Global Plugin entity invalidation on API", function()
+      local client, api_client
       local plugin
 
       before_each(function()
-<<<<<<< HEAD
-        helpers.dao:truncate_tables()
-        helpers.start_kong()
-        client = helpers.proxy_client()
-        api_client = helpers.admin_client()
-
-=======
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
         assert(helpers.dao.apis:insert {
           name = "hooks1",
           hosts = { "hooks1.com" },
@@ -47,16 +27,15 @@ describe("Core Hooks", function()
           config = { minute = 10 }
         })
 
-<<<<<<< HEAD
         assert(helpers.dao.apis:insert {
-          request_host = "hooks2.com",
+          name = "hooks2",
+          hosts = { "hooks2.com" },
           upstream_url = "http://mockbin.com"
         })
-=======
+
         helpers.start_kong()
         client = helpers.proxy_client()
         api_client = helpers.admin_client()
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
       end)
       after_each(function()
         if client and api_client then
@@ -70,7 +49,7 @@ describe("Core Hooks", function()
         -- on a db-miss a sentinel value is inserted in the cache to prevent
         -- too many db lookups. This sentinel value should be invalidated when
         -- adding a plugin.
-        
+
         -- Making a request to populate the cache
         local res = assert(client:send {
           method = "GET",
@@ -82,8 +61,12 @@ describe("Core Hooks", function()
         assert.response(res).has.status(200)
 
         -- Make sure the cache is not populated
-        local entry = get_cache(cache.plugin_key("basic-auth", nil, nil))
-        assert.same(db_miss_sentinel, entry)  -- db-miss sentinel value
+        local r = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        assert.response(r).has.status(200)
+        assert.same(DB_MISS_SENTINEL, assert.response(r).has.jsonbody())  -- db-miss sentinel value
 
         -- Add plugin
         local res = assert(api_client:send {
@@ -110,7 +93,12 @@ describe("Core Hooks", function()
         assert.response(res).has.status(401) -- in effect plugin, so failure
 
         -- Make sure the cache is populated
-        local entry = get_cache(cache.plugin_key("basic-auth", nil, nil))
+        local r = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        assert.response(r).has.status(200)
+        local entry = assert.response(r).has.jsonbody()
         assert.is_true(entry.enabled)
         assert.is.same("basic-auth", entry.name)
       end)
@@ -128,7 +116,11 @@ describe("Core Hooks", function()
         assert.is_string(res.headers["X-RateLimit-Limit-minute"])
 
         -- Make sure the cache is populated
-        get_cache(cache.plugin_key("rate-limiting", nil, nil))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("rate-limiting", nil, nil)
+        })
+        assert.res_status(200, res)
 
         -- Delete plugin
         local res = assert(api_client:send {
@@ -138,7 +130,14 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", nil, nil))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("rate-limiting", nil, nil)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -154,7 +153,7 @@ describe("Core Hooks", function()
     end)
 
     describe("Global Plugin entity invalidation on Consumer", function()
-      local client
+      local client, api_client
       local plugin, consumer
 
       setup(function()
@@ -211,7 +210,11 @@ describe("Core Hooks", function()
         assert.is_string(res.headers["X-RateLimit-Limit-minute"])
 
         -- Make sure the cache is populated
-        get_cache(cache.plugin_key("rate-limiting", nil, consumer.id))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("rate-limiting", nil, consumer.id)
+        })
+        assert.res_status(200, res)
 
         -- Delete plugin
         local res = assert(api_client:send {
@@ -221,7 +224,14 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", nil, consumer.id))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("rate-limiting", nil, consumer.id)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -261,13 +271,8 @@ describe("Core Hooks", function()
   end)
 
   describe("Other", function()
-<<<<<<< HEAD
-    local client
-    local consumer, api1, api2, basic_auth2, api3, rate_limiting_consumer
-=======
     local client, api_client
     local consumer, api2, basic_auth2, api3, rate_limiting_consumer
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
 
     before_each(function()
       consumer = assert(helpers.dao.consumers:insert {
@@ -348,7 +353,11 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Make sure the cache is populated
-        get_cache(cache.plugin_key("basic-auth", api2.id, nil))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
+        })
+        assert.res_status(200, res)
 
         -- Delete plugin
         local res = assert(api_client:send {
@@ -358,7 +367,14 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_for_invalidation(cache.plugin_key("basic-auth", api2.id, nil))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -394,7 +410,11 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Make sure the cache is populated
-        get_cache(cache.plugin_key("basic-auth", api2.id, nil))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
+        })
+        assert.res_status(200, res)
 
         -- Update plugin
         local res = assert(api_client:send {
@@ -410,7 +430,14 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_for_invalidation(cache.plugin_key("basic-auth", api2.id, nil))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("basic-auth", api2.id, nil)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again without any authorization
         local res = assert(client:send {
@@ -437,7 +464,11 @@ describe("Core Hooks", function()
         assert.equal(3, tonumber(res.headers["x-ratelimit-limit-minute"]))
 
         -- Make sure the cache is populated
-        get_cache(cache.plugin_key("rate-limiting", api3.id, consumer.id))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
+        })
+        assert.res_status(200, res)
 
         -- Delete plugin
         local res = assert(api_client:send {
@@ -447,7 +478,14 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", api3.id, consumer.id))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -476,7 +514,11 @@ describe("Core Hooks", function()
         assert.equal(3, tonumber(res.headers["x-ratelimit-limit-minute"]))
 
         -- Make sure the cache is populated
-        get_cache(cache.plugin_key("rate-limiting", api3.id, consumer.id))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
+        })
+        assert.res_status(200, res)
 
         -- Update plugin
         local res = assert(api_client:send {
@@ -492,7 +534,14 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for cache to be invalidated
-        helpers.wait_for_invalidation(cache.plugin_key("rate-limiting", api3.id, consumer.id))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("rate-limiting", api3.id, consumer.id)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -506,7 +555,6 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
         assert.equal(10, tonumber(res.headers["x-ratelimit-limit-minute"]))
       end)
-
     end)
 
     describe("Consumer entity invalidation", function()
@@ -523,7 +571,11 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Make sure the cache is populated
-        get_cache(cache.consumer_key(consumer.id))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.consumer_key(consumer.id)
+        })
+        assert.res_status(200, res)
 
         -- Delete consumer
         local res = assert(api_client:send {
@@ -533,10 +585,24 @@ describe("Core Hooks", function()
         assert.res_status(204, res)
 
         -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.consumer_key(consumer.id))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.consumer_key(consumer.id)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Wait for Basic Auth credential to be invalidated
-        helpers.wait_for_invalidation(cache.basicauth_credential_key("user123"))
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.basicauth_credential_key("user123")
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -563,7 +629,11 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Make sure the cache is populated
-        get_cache(cache.consumer_key(consumer.id))
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.consumer_key(consumer.id)
+        })
+        assert.res_status(200, res)
 
         -- Update consumer
         local res = assert(api_client:send {
@@ -579,7 +649,14 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.consumer_key(consumer.id),3)
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.consumer_key(consumer.id)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Consuming the API again
         local res = assert(client:send {
@@ -593,403 +670,15 @@ describe("Core Hooks", function()
         assert.res_status(200, res)
 
         -- Making sure the cache is updated
-        local body = get_cache(cache.consumer_key(consumer.id))
-        assert.equal("updated_consumer", body.username)
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.consumer_key(consumer.id)
+        })
+        local body = assert.res_status(200, res)
+        assert.equal("updated_consumer", cjson.decode(body).username)
       end)
     end)
 
-<<<<<<< HEAD
-    describe("API entity invalidation", function()
-      it("should invalidate ALL_APIS_BY_DICT when adding a new API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        get_cache(cache.all_apis_by_dict_key())
-
-        -- Adding a new API
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/apis/",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            request_host = "dynamic-hooks.com",
-            upstream_url = "http://mockbin.org"
-          })
-        })
-        assert.res_status(201, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.is_table(body.by_dns["hooks1.com"])
-        assert.is_table(body.by_dns["dynamic-hooks.com"])
-      end)
-
-      it("should invalidate ALL_APIS_BY_DICT when updating an API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
-
-        -- Update API
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/apis/"..api1.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = cjson.encode({
-            upstream_url = "http://mockbin.org"
-          })
-        })
-        assert.res_status(200, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated with updated value
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal("http://mockbin.org", body.by_dns["hooks1.com"].upstream_url)
-        assert.equal(3, pl_tablex.size(body.by_dns))
-      end)
-
-      it("should invalidate ALL_APIS_BY_DICT when deleting an API", function()
-        -- Making a request to populate ALL_APIS_BY_DICT
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(200, res)
-
-        -- Make sure the cache is populated
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal("http://mockbin.com", body.by_dns["hooks1.com"].upstream_url)
-
-        -- Deleting the API
-        local res = assert(api_client:send {
-          method = "DELETE",
-          path = "/apis/"..api1.id
-        })
-        assert.res_status(204, res)
-
-        -- Wait for consumer be invalidated
-        helpers.wait_for_invalidation(cache.all_apis_by_dict_key())
-
-        -- Consuming the API again
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks1.com"
-          }
-        })
-        assert.res_status(404, res)
-
-        -- Make sure the cache is populated with zero APIs
-        local body = get_cache(cache.all_apis_by_dict_key())
-        assert.equal(2, pl_tablex.size(body.by_dns))
-      end)
-    end)
-
-    describe("Upstreams entity", function()
-      local upstream
-      
-      before_each(function()
-        assert(helpers.dao.apis:insert {
-          request_host = "hooks2.com",
-          upstream_url = "http://mybalancer"
-        })
-        upstream = assert(helpers.dao.upstreams:insert {
-          name = "mybalancer",
-        })
-        assert(helpers.dao.targets:insert {
-          upstream_id = upstream.id,
-          target = "mockbin.com:80",
-          weight = 10,
-        })
-      end)
-      it("invalidates the upstream-list when adding an upstream", function()
-        -- Making a request to populate the cache with the upstreams
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.upstreams_dict_key(upstream.id))
-        -- add an upstream
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/upstreams",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            name = "my2nd.upstream",
-          },
-        })
-        assert.response(res).has.status(201)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.upstreams_dict_key(upstream.id))
-      end)
-      it("invalidates the upstream-list when updating an upstream", function()
-        -- Making a request to populate the cache with the upstreams
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.upstreams_dict_key(upstream.id))
-        -- patch the upstream
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/upstreams/"..upstream.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            slots = 10,
-            orderlist = { 1,2,3,4,5,6,7,8,9,10 }
-          },
-        })
-        assert.response(res).has.status(200)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.upstreams_dict_key(upstream.id))
-      end)
-      it("invalidates the upstream-list when deleting an upstream", function()
-        -- Making a request to populate the cache with the upstreams
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.upstreams_dict_key(upstream.id))
-        -- delete the upstream
-        local res = assert(api_client:send {
-          method = "DELETE",
-          path = "/upstreams/mybalancer",
-        })
-        assert.response(res).has.status(204)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.upstreams_dict_key(upstream.id))
-      end)
-      it("invalidates an upstream when updating an upstream", function()
-        -- Making a request to populate the cache with the upstream
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.upstream_key(upstream.id))
-        -- patch the upstream
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/upstreams/"..upstream.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            slots = 10,
-            orderlist = { 1,2,3,4,5,6,7,8,9,10 }
-          },
-        })
-        assert.response(res).has.status(200)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.upstream_key(upstream.id))
-      end)
-      it("invalidates an upstream when deleting an upstream", function()
-        -- Making a request to populate the cache with the upstream
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.upstream_key(upstream.id))
-        -- delete the upstream
-        local res = assert(api_client:send {
-          method = "DELETE",
-          path = "/upstreams/mybalancer",
-        })
-        assert.response(res).has.status(204)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.upstream_key(upstream.id))
-      end)
-      it("invalidates the target-history when updating an upstream", function()
-        -- Making a request to populate target history for upstream
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.targets_key(upstream.id))
-        -- patch the upstream
-        local res = assert(api_client:send {
-          method = "PATCH",
-          path = "/upstreams/"..upstream.id,
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            slots = 10,
-            orderlist = { 1,2,3,4,5,6,7,8,9,10 }
-          },
-        })
-        assert.response(res).has.status(200)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
-      end)
-      it("invalidates the target-history when deleting an upstream", function()
-        -- Making a request to populate target history for upstream
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.targets_key(upstream.id))
-        -- delete the upstream
-        local res = assert(api_client:send {
-          method = "DELETE",
-          path = "/upstreams/mybalancer",
-        })
-        assert.response(res).has.status(204)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
-      end)
-    end)
-
-    describe("Targets entity", function()
-      local upstream
-      
-      setup(function()
-        assert(helpers.dao.apis:insert {
-          request_host = "hooks2.com",
-          upstream_url = "http://mybalancer"
-        })
-        upstream = assert(helpers.dao.upstreams:insert {
-          name = "mybalancer",
-        })
-        assert(helpers.dao.targets:insert {
-          upstream_id = upstream.id,
-          target = "mockbin.com:80",
-          weight = 10,
-        })
-      end)
-      it("invalidates the target-history when adding a target", function()
-        -- Making a request to populate target history for upstream
-        local res = assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        assert.response(res).has.status(200)
-        -- validate that the cache is populated
-        get_cache(cache.targets_key(upstream.id))
-        -- Adding a new target
-        local res = assert(api_client:send {
-          method = "POST",
-          path = "/upstreams/mybalancer/targets",
-          headers = {
-            ["Content-Type"] = "application/json"
-          },
-          body = {
-            target = "mockbin.com:80",
-            weight = 5,
-          }
-        })
-        assert.response(res).has.status(201)
-        -- wait for invalidation of the cache
-        helpers.wait_for_invalidation(cache.targets_key(upstream.id))
-        -- Making another request to re-populate target history
-        assert(client:send {
-          method = "GET",
-          path = "/status/200",
-          headers = {
-            ["Host"] = "hooks2.com"
-          }
-        })
-        -- validate that the cache is populated
-        local body = get_cache(cache.targets_key(upstream.id))
-        -- check contents
-        assert.equal(10, body[1].weight)  -- initial weight value
-        assert.equal(5, body[2].weight)   -- new weight value
-      end)
-    end)
-    
-=======
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
     describe("Serf events", function()
       local PID_FILE = "/tmp/serf_test.pid"
       local LOG_FILE = "/tmp/serf_test.log"

@@ -157,7 +157,6 @@ return {
     ]]
   },
   {
-<<<<<<< HEAD
     name = "2016-09-16-141423_upstreams",
     -- Note on the timestamps below; these use a precision of milliseconds
     -- this differs from the other tables above, as they only use second precision.
@@ -194,7 +193,8 @@ return {
       DROP TABLE upstreams;
       DROP TABLE targets;
     ]],
-=======
+  },
+  {
     name = "2016-11-11-151900_new_apis_router_1",
     up = [[
       DO $$
@@ -296,6 +296,5 @@ return {
       ALTER TABLE apis DROP COLUMN IF EXISTS https_only;
       ALTER TABLE apis DROP COLUMN IF EXISTS http_if_terminated;
     ]]
->>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
   },
 }
