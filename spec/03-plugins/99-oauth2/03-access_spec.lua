@@ -5,10 +5,6 @@ describe("#ci Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
   setup(function()
-    assert(helpers.start_kong())
-    proxy_client = helpers.proxy_client()
-    proxy_ssl_client = helpers.proxy_ssl_client()
-
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
@@ -35,7 +31,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2.com",
+      name = "api-1",
+      hosts = { "oauth2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -52,8 +49,9 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "mockbin-path.com",
-      request_path = "/somepath/",
+      name = "api-2",
+      hosts = { "mockbin-path.com" },
+      uris = { "/somepath/" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -70,7 +68,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_3.com",
+      name = "api-3",
+      hosts = { "oauth2_3.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -88,7 +87,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_4.com",
+      name = "api-4",
+      hosts = { "oauth2_4.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -105,7 +105,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api5 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_5.com",
+      name = "api-5",
+      hosts = { "oauth2_5.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -122,7 +123,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api6 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_6.com",
+      name = "api-6",
+      hosts = { "oauth2_6.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -140,7 +142,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api7 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_7.com",
+      name = "api-7",
+      hosts = { "oauth2_7.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -193,6 +196,10 @@ describe("#ci Plugin: oauth2 (access)", function()
         global_credentials = true
       }
     })
+
+    assert(helpers.start_kong())
+    proxy_client = helpers.proxy_client()
+    proxy_ssl_client = helpers.proxy_ssl_client()
   end)
   teardown(function()
     if proxy_client and proxy_ssl_client then

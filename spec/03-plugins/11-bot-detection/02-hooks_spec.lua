@@ -2,11 +2,11 @@ local helpers = require "spec.helpers"
 
 describe("Plugin: bot-detection (hooks)", function()
   local plugin, proxy_client, admin_client
-  setup(function()
-    assert(helpers.start_kong())
 
+  setup(function()
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "bot.com",
+      name = "bot.com",
+      hosts = { "bot.com" },
       upstream_url = "http://mockbin.com"
     })
     plugin = assert(helpers.dao.plugins:insert {
@@ -14,7 +14,10 @@ describe("Plugin: bot-detection (hooks)", function()
       name = "bot-detection",
       config = {},
     })
+
+    assert(helpers.start_kong())
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -23,6 +26,7 @@ describe("Plugin: bot-detection (hooks)", function()
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
+
   after_each(function()
     if proxy_client then proxy_client:close() end
     if admin_client then admin_client:close() end

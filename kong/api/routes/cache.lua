@@ -57,7 +57,7 @@ return {
     GET = function(self, dao_factory)
       if self.params.key then
         local cached_item = caches[self.params.cache]("get", self.params.key)
-        if cached_item then
+        if cached_item ~= nil then
           return responses.send_HTTP_OK(cached_item)
         end
       end

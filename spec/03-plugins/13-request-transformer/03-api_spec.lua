@@ -2,17 +2,12 @@ local helpers = require "spec.helpers"
 
 describe("Plugin: request-transformer (API)", function()
   local admin_client
-  setup(function()
-    helpers.kill_all()
-    helpers.prepare_prefix()
 
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
-  end)
   teardown(function()
     if admin_client then
       admin_client:close()
     end
+
     helpers.stop_kong()
   end)
 
@@ -20,9 +15,12 @@ describe("Plugin: request-transformer (API)", function()
     setup(function()
       assert(helpers.dao.apis:insert {
         name = "test",
-        request_host = "test1.com",
+        hosts = { "test1.com" },
         upstream_url = "http://mockbin.com"
       })
+
+      assert(helpers.start_kong())
+      admin_client = helpers.admin_client()
     end)
 
     describe("validate config parameters", function()
@@ -41,7 +39,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         assert.response(res).has.status(201)
@@ -63,7 +61,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         local body = assert.response(res).has.status(400)
@@ -82,7 +80,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         local body = assert.response(res).has.status(400)
@@ -101,7 +99,7 @@ describe("Plugin: request-transformer (API)", function()
             },
           },
           headers = {
-            ["Content-Type"] = "application/json", 
+            ["Content-Type"] = "application/json",
           },
         })
         local body = assert.response(res).has.status(400)

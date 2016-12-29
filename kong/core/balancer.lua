@@ -89,6 +89,7 @@ local function get_upstream(upstream_name)
                           load_upstream_into_memory, upstream_id)
 end
 
+<<<<<<< HEAD
 -- loads the target history for an upstream
 -- @param upstream_id Upstream uuid for which to load the target history
 local function load_targets_into_memory(upstream_id)
@@ -106,6 +107,12 @@ local function load_targets_into_memory(upstream_id)
 
     -- need exact order, so create sort-key by created-time and uuid
     target.order = target.created_at .. ":" .. target.id
+=======
+local first_try_dns = function(target)
+  local ip, port = toip(target.host, target.port, false)
+  if not ip then
+    return nil, port
+>>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
   end
 
   table.sort(target_history, function(a,b) 
@@ -115,6 +122,7 @@ local function load_targets_into_memory(upstream_id)
   return target_history
 end
 
+<<<<<<< HEAD
 -- applies the history of lb transactions from index `start` forward
 -- @param rb ring-balancer object
 -- @param history list of targets/transactions to be applied
@@ -137,6 +145,12 @@ local function apply_history(rb, history, start)
       weight = target.weight,
       order = target.order,
     }
+=======
+local retry_dns = function(target)
+  local ip, port = toip(target.host, target.port, true)
+  if type(ip) ~= "string" then
+    return nil, port
+>>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
   end
 
   return true
@@ -239,7 +253,7 @@ end
 
 -- Resolves the target structure in-place (fields `ip` and `port`).
 --
--- If the hostname matches an 'upstream' pool, then it must be balanced in that 
+-- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool provides it.
 --
 -- @param target the data structure as defined in `core.access.before` where it is created
@@ -249,8 +263,13 @@ local function execute(target)
 
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
+<<<<<<< HEAD
     target.ip = upstream.host
     target.port = upstream.port or 80  -- TODO: remove this fallback value
+=======
+    target.ip = target.host
+    target.port = target.port or 80
+>>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
     return true
   end
 
@@ -308,8 +327,9 @@ local function execute(target)
   return true
 end
 
-return { 
+return {
   execute = execute,
+<<<<<<< HEAD
   invalidate_balancer = invalidate_balancer,
  
   -- ones below are exported for test purposes
@@ -317,3 +337,6 @@ return {
   _load_upstream_into_memory = load_upstream_into_memory,
   _load_targets_into_memory = load_targets_into_memory,
 }
+=======
+}
+>>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9

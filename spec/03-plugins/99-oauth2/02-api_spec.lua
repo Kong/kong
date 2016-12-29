@@ -429,7 +429,7 @@ describe("Plugin: oauth (API)", function()
 
     describe("GET", function()
       setup(function()
-        for i = 1, 3 do
+        for _ = 1, 3 do
           assert(helpers.dao.oauth2_tokens:insert {
             credential_id = oauth2_credential.id,
             api_id = api.id,

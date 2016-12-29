@@ -3,9 +3,6 @@ local helpers = require "spec.helpers"
 describe("Plugins triggering", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -23,7 +20,8 @@ describe("Plugins triggering", function()
 
     -- Global configuration
     assert(helpers.dao.apis:insert {
-      request_host = "global1.com",
+      name = "global1",
+      hosts = { "global1.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -39,7 +37,8 @@ describe("Plugins triggering", function()
 
     -- API Specific Configuration
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "api1.com",
+      name = "api1",
+      hosts = { "api1.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -61,7 +60,8 @@ describe("Plugins triggering", function()
 
     -- API and Consumer Configuration
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "api2.com",
+      name = "api2",
+      hosts = { "api2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -72,6 +72,9 @@ describe("Plugins triggering", function()
         hour = 4,
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()

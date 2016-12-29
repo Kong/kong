@@ -18,7 +18,7 @@
 --    -- Raw send() helper:
 --    return responses.send(418, "This is a teapot")
 
-local cjson = require "cjson"
+local cjson = require "cjson.safe"
 local meta = require "kong.meta"
 
 --local server_header = _KONG._NAME.."/".._KONG._VERSION
@@ -116,12 +116,24 @@ local function send_response(status_code)
       content = response_default_content[status_code](content)
     end
 
+<<<<<<< HEAD
     if raw_body then
       ngx.say(content)
     elseif type(content) == "table" then
       ngx.say(cjson.encode(content))
     elseif content then
       ngx.say(cjson.encode {message = content})
+=======
+    local encoded, err
+    if content then
+      encoded, err = cjson.encode(type(content) == "table" and content or 
+                                  {message = content})
+      if not encoded then
+        ngx.log(ngx.ERR, "[admin] could not encode value: ", err)
+      end
+
+      ngx.say(encoded)
+>>>>>>> bd6a3e1a17e020add5ee34bdbbdd0bdbb055cda9
     end
 
     return ngx.exit(status_code)
