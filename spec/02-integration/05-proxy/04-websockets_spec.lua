@@ -7,8 +7,9 @@ describe("Websockets", function()
     assert(helpers.start_kong())
 
     assert(helpers.dao.apis:insert {
-      request_path = "/ws",
-      strip_request_path = true,
+      name = "ws",
+      uris = { "/ws"},
+      strip_uri = true,
       upstream_url = "http://sockb.in"
     })
   end)
