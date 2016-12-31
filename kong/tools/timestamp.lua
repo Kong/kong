@@ -5,56 +5,71 @@
 -- @module kong.tools.timestamp
 
 local luatz = require "luatz"
-local _M = {}
+local tz_time = luatz.time
+local tt_from_timestamp = luatz.timetable.new_from_timestamp
+local tt = luatz.timetable.new
+local math_floor = math.floor
 
 --- Current UTC time
--- @return UTC time
-function _M.get_utc()
-  return math.floor(luatz.time()) * 1000
+-- @return UTC time in milliseconds since epoch, but with SECOND precision.
+local function get_utc()
+  return math_floor(tz_time()) * 1000
 end
 
-function _M.get_timetable(now)
-  local timestamp = now and now or _M.get_utc()
-  if #tostring(timestamp) == 13 then
-    timestamp = timestamp / 1000
+--- Current UTC time
+-- @return UTC time in milliseconds since epoch.
+local function get_utc_ms()
+  return tz_time() * 1000
+end
+
+-- setup a validation value, any value above this is assumed to be in MS 
+-- instead of S (a year value beyond the year 20000), it assumes current times
+-- as in 2016 and later.
+local ms_check = tt(20000 , 1 , 1 , 0 , 0 , 0):timestamp()
+
+-- Returns a time-table.
+-- @param now (optional) time to generate the time-table from. If omitted
+-- current utc will be used. It can be specified either in seconds or 
+-- milliseconds, it will be converted automatically.
+local function get_timetable(now)
+  local timestamp = now and now or get_utc()
+  if timestamp > ms_check then
+    return tt_from_timestamp(timestamp/1000)
   end
-  return luatz.timetable.new_from_timestamp(timestamp)
+  return tt_from_timestamp(timestamp)
 end
 
---- Creates a timestamp
--- @param now (optional) Time to generate a timestamp from, if omitted current UTC time will be used
--- @return Timestamp table containing fields; second, minute, hour, day, month, year
-function _M.get_timestamps(now)
-  local timetable = _M.get_timetable(now)
+--- Creates a timestamp table containing time by different precision levels.
+-- @param now (optional) Time to generate timestamps from, if omitted current UTC time will be used
+-- @return Timestamp table containing fields/precisions; second, minute, hour, day, month, year
+local function get_timestamps(now)
+  local timetable = get_timetable(now)
+  local stamps = {}
+  
+  timetable.sec = math_floor(timetable.sec)   -- reduce to second precision
+  stamps.second = timetable:timestamp() * 1000
 
-  local second = luatz.timetable.new(timetable.year, timetable.month,
-                                     timetable.day, timetable.hour,
-                                     timetable.min, timetable.sec)
+  timetable.sec = 0
+  stamps.minute = timetable:timestamp() * 1000
+  
+  timetable.min = 0
+  stamps.hour = timetable:timestamp() * 1000
 
-  local minute = luatz.timetable.new(timetable.year, timetable.month,
-                                     timetable.day, timetable.hour,
-                                     timetable.min, 0)
+  timetable.hour = 0
+  stamps.day = timetable:timestamp() * 1000
 
-  local hour = luatz.timetable.new(timetable.year, timetable.month,
-                                   timetable.day, timetable.hour,
-                                   0, 0)
+  timetable.day = 1
+  stamps.month = timetable:timestamp() * 1000
 
-  local day = luatz.timetable.new(timetable.year, timetable.month,
-                                  timetable.day, 0, 0, 0)
+  timetable.month = 1
+  stamps.year = timetable:timestamp() * 1000
 
-  local month = luatz.timetable.new(timetable.year, timetable.month,
-                                    1, 0, 0, 0)
-
-  local year = luatz.timetable.new(timetable.year, 1, 1, 0, 0, 0)
-
-  return {
-    second = math.floor(second:timestamp() * 1000),
-    minute = minute:timestamp() * 1000,
-    hour = hour:timestamp() * 1000,
-    day = day:timestamp() * 1000,
-    month = month:timestamp() * 1000,
-    year = year:timestamp() * 1000
-  }
+  return stamps
 end
 
-return _M
+return {
+  get_utc = get_utc,
+  get_utc_ms = get_utc_ms,
+  get_timetable = get_timetable,
+  get_timestamps = get_timestamps,
+}

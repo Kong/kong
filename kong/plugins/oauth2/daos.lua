@@ -48,6 +48,7 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
   table = "oauth2_authorization_codes",
   fields = {
     id = { type = "id", dao_insert_value = true },
+    api_id = { type = "id", required = false, foreign = "apis:id" },
     credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     code = { type = "string", required = false, unique = true, immutable = true, func = generate_if_missing },
     authenticated_userid = { type = "string", required = false },
@@ -62,6 +63,7 @@ local OAUTH2_TOKENS_SCHEMA = {
   table = "oauth2_tokens",
   fields = {
     id = { type = "id", dao_insert_value = true },
+    api_id = { type = "id", required = false, foreign = "apis:id" },
     credential_id = { type = "id", required = true, foreign = "oauth2_credentials:id" },
     token_type = { type = "string", required = true, enum = { BEARER }, default = BEARER },
     expires_in = { type = "number", required = true },

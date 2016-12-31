@@ -96,14 +96,15 @@ return {
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
+        type                 = utils.hostname_type(upstream_host),  -- hostname type: 'ipv4', 'ipv6' or 'name'
         host                 = upstream_host,  -- supposed target host
         port                 = upstream_port,  -- final target port
         tries                = 0,              -- retry counter
-        retries              = api.retries,    -- number of retries for the balancer
-        --  ip               = nil,            -- final target IP address
-        -- failures          = nil,            -- for each failure an entry { name                                                = "...", code = xx }
+        retries              = api.retries,    -- configured number of retries
+        -- ip                = nil,            -- final target IP address
+        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
+        -- hostname          = nil,            -- the hostname that belongs to the ip address returned by the balancer
       }
 
       var.upstream_scheme = upstream_scheme
@@ -114,9 +115,17 @@ return {
 
       local ok, err = balancer_execute(balancer_address)
       if not ok then
-        ngx.log(ngx.ERR, "failed the initial dns/balancer resolve: ", err)
-        return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
+          "dns/balancer resolve for '"..balancer_address.upstream.host..
+          "' with: "..tostring(err))
       end
+
+      if balancer_address.hostname and not ngx.ctx.api.preserve_host then
+        ngx.var.upstream_host = balancer_address.hostname
+      else
+        ngx.var.upstream_host = upstream_host
+      end
+
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
