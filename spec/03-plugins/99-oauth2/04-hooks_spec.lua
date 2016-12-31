@@ -128,7 +128,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end, 5)
+      end)
 
       -- It should not work
       local code = provision_code("clientid123")
@@ -201,7 +201,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end, 5)
+      end)
 
       -- It should work
       local code = provision_code("updated_clientid123")
@@ -271,7 +271,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end, 5)
+      end)
 
       -- It should not work
       local code = provision_code("clientid123")
@@ -343,7 +343,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end, 5)
+      end)
 
       -- It should not work
       local res = assert(proxy_ssl_client:send {
@@ -415,7 +415,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end, 5)
+      end)
 
       -- It should work
       local res = assert(proxy_ssl_client:send {
@@ -498,7 +498,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end, 5)
+      end)
 
       -- it should not work
       local res = assert(proxy_ssl_client:send {

@@ -24,8 +24,7 @@ _M.dao_insert_values = {
     return uuid()
   end,
   timestamp = function()
-    -- return time in UNIT millisecond, and PRECISION millisecond 
-    return math.floor(timestamp.get_utc_ms()) 
+    return timestamp.get_utc()
   end
 }
 

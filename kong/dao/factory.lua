@@ -7,8 +7,6 @@ local CORE_MODELS = {
   "consumers",
   "plugins",
   "nodes",
-  "upstreams",
-  "targets",
   "ssl_certificates",
   "ssl_servers_names",
 }

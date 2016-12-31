@@ -156,46 +156,7 @@ describe("#ci Plugin: oauth2 (access)", function()
         provision_key = "provision123",
         token_expiration = 5,
         enable_implicit_grant = true,
-        anonymous = true,
-        global_credentials = false
-      }
-    })
-
-    local api8 = assert(helpers.dao.apis:insert {
-      name = "oauth2_8.com",
-      hosts = { "oauth2_8.com" },
-      upstream_url = "http://mockbin.com"
-    })
-    assert(helpers.dao.plugins:insert {
-      name = "oauth2",
-      api_id = api8.id,
-      config = {
-        scopes = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope = true,
-        provision_key = "provision123",
-        token_expiration = 5,
-        enable_implicit_grant = true,
-        global_credentials = true
-      }
-    })
-
-    local api9 = assert(helpers.dao.apis:insert {
-      name = "oauth2_9.com",
-      hosts = { "oauth2_9.com" },
-      upstream_url = "http://mockbin.com"
-    })
-    assert(helpers.dao.plugins:insert {
-      name = "oauth2",
-      api_id = api9.id,
-      config = {
-        scopes = { "email", "profile", "user.email" },
-        enable_authorization_code = true,
-        mandatory_scope = true,
-        provision_key = "provision123",
-        token_expiration = 5,
-        enable_implicit_grant = true,
-        global_credentials = true
+        anonymous = true
       }
     })
 
@@ -211,7 +172,7 @@ describe("#ci Plugin: oauth2 (access)", function()
     helpers.stop_kong()
   end)
 
-  local function provision_code(host)
+  local function provision_code()
     local proxy_ssl_client = helpers.proxy_ssl_client()
     local res = assert(proxy_ssl_client:send {
       method = "POST",
@@ -225,7 +186,7 @@ describe("#ci Plugin: oauth2 (access)", function()
         authenticated_userid = "userid123"
       },
       headers = {
-        ["Host"] = host and host or "oauth2.com",
+        ["Host"] = "oauth2.com",
         ["Content-Type"] = "application/json"
       }
     })
@@ -240,14 +201,14 @@ describe("#ci Plugin: oauth2 (access)", function()
     end
   end
 
-  local function provision_token(host)
-    local code = provision_code(host)
+  local function provision_token()
+    local code = provision_code()
     local res = assert(proxy_ssl_client:send {
       method = "POST",
       path = "/oauth2/token",
       body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
       headers = {
-        ["Host"] = host and host or "oauth2.com",
+        ["Host"] = "oauth2.com",
         ["Content-Type"] = "application/json"
       }
     })
@@ -1517,41 +1478,9 @@ describe("#ci Plugin: oauth2 (access)", function()
         local body = assert.res_status(400, res)
         assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
     end)
-
-    it("fails when an authorization code is used for another API", function()
-      local code = provision_code()
-      local res = assert(proxy_ssl_client:send {
-        method = "POST",
-        path = "/oauth2/token",
-        body = {
-          code = code,
-          client_id = "clientid123",
-          client_secret = "secret123",
-          grant_type = "authorization_code"
-        },
-        headers = {
-          ["Host"] = "oauth2_3.com",
-          ["Content-Type"] = "application/json"
-        }
-      })
-      local body = assert.res_status(400, res)
-      assert.equal([[{"error":"invalid_request","error_description":"Invalid code"}]], body)
-    end)
   end)
 
   describe("Making a request", function()
-    it("fails when no access_token is being sent in an application/json body", function()
-      local res = assert(proxy_ssl_client:send {
-        method = "POST",
-        path = "/request",
-        headers = {
-          ["Host"] = "oauth2.com",
-          ["Content-Type"] = "application/json"
-        }
-      })
-      local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is missing","error":"invalid_request"}]], body)
-    end)
     it("works when a correct access_token is being sent in the querystring", function()
       local token = provision_token()
 
@@ -1563,19 +1492,6 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       assert.res_status(200, res)
-    end)
-    it("does not work when requesting a different API", function()
-      local token = provision_token()
-
-      local res = assert(proxy_ssl_client:send {
-        method = "GET",
-        path = "/request?access_token="..token.access_token,
-        headers = {
-          ["Host"] = "oauth2_3.com"
-        }
-      })
-      local body = assert.res_status(401, res)
-      assert.equal([[{"error_description":"The access token is invalid or has expired","error":"invalid_token"}]], body)
     end)
     it("works when a correct access_token is being sent in a form body", function()
       local token = provision_token()
@@ -1627,7 +1543,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.is_nil(body.headers["x-anonymous-consumer"])
     end)
     it("works with right credentials and anonymous", function()
-      local token = provision_token("oauth2_7.com")
+      local token = provision_token()
 
       local res = assert(proxy_ssl_client:send {
         method = "POST",
@@ -1657,77 +1573,6 @@ describe("#ci Plugin: oauth2 (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_nil(body.headers["x-consumer-username"])
       assert.are.equal("true", body.headers["x-anonymous-consumer"])
-    end)
-    describe("Global Credentials", function()
-      it("does not access two different APIs that are not sharing global credentials", function()
-        local token = provision_token("oauth2_8.com")
-
-        local res = assert(proxy_ssl_client:send {
-          method = "POST",
-          path = "/request",
-          headers = {
-            ["Host"] = "oauth2_8.com",
-            Authorization = "bearer "..token.access_token
-          }
-        })
-        assert.res_status(200, res)
-
-        local res = assert(proxy_ssl_client:send {
-          method = "POST",
-          path = "/request",
-          headers = {
-            ["Host"] = "oauth2.com",
-            Authorization = "bearer "..token.access_token
-          }
-        })
-        assert.res_status(401, res)
-      end)
-      it("does not access two different APIs that are not sharing global credentials 2", function()
-        local token = provision_token("oauth2.com")
-
-        local res = assert(proxy_ssl_client:send {
-          method = "POST",
-          path = "/request",
-          headers = {
-            ["Host"] = "oauth2_8.com",
-            Authorization = "bearer "..token.access_token
-          }
-        })
-        assert.res_status(401, res)
-
-        local res = assert(proxy_ssl_client:send {
-          method = "POST",
-          path = "/request",
-          headers = {
-            ["Host"] = "oauth2.com",
-            Authorization = "bearer "..token.access_token
-          }
-        })
-        assert.res_status(200, res)
-      end)
-      it("access two different APIs that are sharing global credentials", function()
-        local token = provision_token("oauth2_8.com")
-
-        local res = assert(proxy_ssl_client:send {
-          method = "POST",
-          path = "/request",
-          headers = {
-            ["Host"] = "oauth2_8.com",
-            Authorization = "bearer "..token.access_token
-          }
-        })
-        assert.res_status(200, res)
-
-        local res = assert(proxy_ssl_client:send {
-          method = "POST",
-          path = "/request",
-          headers = {
-            ["Host"] = "oauth2_9.com",
-            Authorization = "bearer "..token.access_token
-          }
-        })
-        assert.res_status(200, res)
-      end)
     end)
   end)
 
@@ -1903,7 +1748,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.equal(token.access_token, body.postData.params.access_token)
     end)
     it("hides credentials in the body", function()
-      local token = provision_token("oauth2_3.com")
+      local token = provision_token()
 
       local res = assert(proxy_client:send {
         method = "POST",
@@ -1933,7 +1778,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.equal(token.access_token, body.queryString.access_token)
     end)
     it("hides credentials in the querystring", function()
-      local token = provision_token("oauth2_3.com")
+      local token = provision_token()
 
       local res = assert(proxy_client:send {
         method = "GET",
@@ -1960,7 +1805,7 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.equal("bearer "..token.access_token, body.headers.authorization)
     end)
     it("hides credentials in the header", function()
-      local token = provision_token("oauth2_3.com")
+      local token = provision_token()
 
       local res = assert(proxy_client:send {
         method = "GET",
