@@ -103,7 +103,7 @@ local function ttl(self, tbl, table_name, schema, ttl)
   local primary_key_type, err = retrieve_primary_key_type(self, schema, table_name)
   if not primary_key_type then return nil, err end
 
-  -- get current server time
+  -- get current server time, in milliseconds, but with SECOND precision
   local query = [[
     SELECT extract(epoch from now() at time zone 'utc')::bigint*1000 as timestamp;
   ]]
@@ -203,7 +203,7 @@ local function get_select_fields(schema)
   local fields = {}
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" then
-      fields[#fields+1] = fmt("extract(epoch from %s)::bigint*1000 as %s", k, k)
+      fields[#fields+1] = fmt("(extract(epoch from %s)*1000)::bigint as %s", k, k)
     else
       fields[#fields+1] = '"' .. k .. '"'
     end
@@ -299,7 +299,7 @@ local function deserialize_timestamps(self, row, schema)
   for k, v in pairs(schema.fields) do
     if v.type == "timestamp" and result[k] then
       local query = fmt([[
-        SELECT extract(epoch from timestamp '%s')::bigint*1000 as %s;
+        SELECT (extract(epoch from timestamp '%s')*1000)::bigint as %s;
       ]], result[k], k)
       local res, err = self:query(query)
       if not res then return nil, err

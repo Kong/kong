@@ -29,6 +29,15 @@ describe("Plugin: jwt (parser)", function()
                  ..[[tcFKN-Pi7_rWzBtQwP2u4CrFD4ZJbn2sxobzSlFb9fn4nRh_-rPPjDSeHVKwrpsYp]]
                  ..[[FSLBJxwX-KhbeGUfalg2eu9tHLDPHC4gTCpoQKxxRIwfMjW5zlHOZhohKZV2ZtpcgA]] , token)
     end)
+
+    it("should encode using ES256", function()
+      local token = jwt_parser.encode({
+        sub = "5656565656",
+        name = "Jane Doe",
+        admin = true
+      }, fixtures.es256_private_key, 'ES256')
+      assert.truthy(token)
+    end)
   end)
   describe("Decoding", function()
     it("throws an error if not given a string", function()
@@ -80,6 +89,14 @@ describe("Plugin: jwt (parser)", function()
       local jwt = assert(jwt_parser:new(token))
       assert.True(jwt:verify_signature(fixtures.rs256_public_key))
       assert.False(jwt:verify_signature(fixtures.rs256_public_key:gsub('QAB', 'zzz')))
+    end)
+    it("using ES256", function()
+      for _ = 1, 500 do
+        local token = jwt_parser.encode({sub = "foo"}, fixtures.es256_private_key, 'ES256')
+        local jwt = assert(jwt_parser:new(token))
+        assert.True(jwt:verify_signature(fixtures.es256_public_key))
+        assert.False(jwt:verify_signature(fixtures.rs256_public_key:gsub('1z+', 'zzz')))
+      end
     end)
   end)
   describe("verify registered claims", function()

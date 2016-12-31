@@ -6,6 +6,9 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 
+-- cache entry inserted as a sentinel whenever a db lookup returns nothing
+local DB_MISS_SENTINEL = { null = true } 
+
 describe("Core Hooks", function()
   describe("Global", function()
     describe("Global Plugin entity invalidation on API", function()
@@ -24,6 +27,12 @@ describe("Core Hooks", function()
           config = { minute = 10 }
         })
 
+        assert(helpers.dao.apis:insert {
+          name = "hooks2",
+          hosts = { "hooks2.com" },
+          upstream_url = "http://mockbin.com"
+        })
+
         helpers.start_kong()
         client = helpers.proxy_client()
         api_client = helpers.admin_client()
@@ -34,6 +43,64 @@ describe("Core Hooks", function()
           api_client:close()
         end
         helpers.stop_kong()
+      end)
+
+      it("should invalidate a global plugin when adding", function()
+        -- on a db-miss a sentinel value is inserted in the cache to prevent
+        -- too many db lookups. This sentinel value should be invalidated when
+        -- adding a plugin.
+
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        -- Make sure the cache is not populated
+        local r = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        assert.response(r).has.status(200)
+        assert.same(DB_MISS_SENTINEL, assert.response(r).has.jsonbody())  -- db-miss sentinel value
+
+        -- Add plugin
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/plugins/",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = cjson.encode({
+            name = "basic-auth"
+          })
+        })
+        assert.response(res).has.status(201)
+        helpers.wait_for_invalidation(cache.plugin_key("basic-auth", nil, nil))
+
+        -- Making a request: replacing the db-miss sentinel value in cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(401) -- in effect plugin, so failure
+
+        -- Make sure the cache is populated
+        local r = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        assert.response(r).has.status(200)
+        local entry = assert.response(r).has.jsonbody()
+        assert.is_true(entry.enabled)
+        assert.is.same("basic-auth", entry.name)
       end)
 
       it("should invalidate a global plugin when deleting", function()
