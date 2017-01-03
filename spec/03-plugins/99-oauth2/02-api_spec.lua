@@ -18,7 +18,8 @@ describe("Plugin: oauth (API)", function()
   describe("/consumers/:consumer/oauth2/", function()
     setup(function()
       api = assert(helpers.dao.apis:insert {
-        request_host = "oauth2_token.com",
+        name = "oauth2_token.com",
+        hosts = { "oauth2_token.com" },
         upstream_url = "http://mockbin.com/"
       })
       consumer = assert(helpers.dao.consumers:insert {

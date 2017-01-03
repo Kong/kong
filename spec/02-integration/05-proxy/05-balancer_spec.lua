@@ -94,7 +94,8 @@ dao_helpers.for_each_dao(function(kong_config)
         api_client = helpers.admin_client()
 
         assert(helpers.dao.apis:insert {
-          request_host = "balancer.test",
+          name = "balancer.test",
+          hosts = { "balancer.test" },
           upstream_url = "http://service.xyz.v1/path",
         })
         upstream = assert(helpers.dao.upstreams:insert {
@@ -439,7 +440,8 @@ dao_helpers.for_each_dao(function(kong_config)
       it("failure due to no targets", function()
         -- insert additional api + upstream with no targets
         assert(helpers.dao.apis:insert {
-          request_host = "balancer.test2",
+          name = "balancer.test2",
+          hosts = { "balancer.test2" },
           upstream_url = "http://service.xyz.v2/path",
         })
         upstream = assert(helpers.dao.upstreams:insert {

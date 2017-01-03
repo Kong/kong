@@ -162,7 +162,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api8 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_8.com",
+      name = "oauth2_8.com",
+      hosts = { "oauth2_8.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -180,7 +181,8 @@ describe("#ci Plugin: oauth2 (access)", function()
     })
 
     local api9 = assert(helpers.dao.apis:insert {
-      request_host = "oauth2_9.com",
+      name = "oauth2_9.com",
+      hosts = { "oauth2_9.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {

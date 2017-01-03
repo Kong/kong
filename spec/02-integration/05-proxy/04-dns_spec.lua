@@ -88,7 +88,7 @@ describe("DNS", function()
 
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
-        request_host = "retries.com",
+        hosts = { "retries.com" },
         upstream_url = "http://now.this.does.not/exist",
       })
     end)
