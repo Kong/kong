@@ -39,7 +39,7 @@ local function flush_redis()
 
   local ok, err = red:select(REDIS_DATABASE)
   if not ok then
-    ngx_log(ngx.ERR, "failed to change Redis database: ", err)
+    error("failed to change Redis database: ", err)
   end
 
   red:flushall()
