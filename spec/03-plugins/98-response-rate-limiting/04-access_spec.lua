@@ -5,6 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
+local REDIS_DATABASE = 0
 
 local SLEEP_TIME = 1
 
@@ -34,6 +35,11 @@ local function flush_redis()
     if not ok then
       error("failed to connect to Redis: "..err)
     end
+  end
+
+  local ok, err = red:select(REDIS_DATABASE)
+  if not ok then
+    error("failed to change Redis database: ", err)
   end
 
   red:flushall()
@@ -79,6 +85,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6}}
         }
       })
@@ -96,6 +103,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}
         }
       })
@@ -123,6 +131,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 2}}
         }
       })
@@ -140,6 +149,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 2}}
         }
       })
@@ -157,6 +167,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           block_on_first_violation = true,
           limits = {
             video = {
@@ -183,6 +194,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}
         }
       })
@@ -206,7 +218,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe("Without authentication (IP address)", function()
       it("blocks if exceeding limit", function()
         for i = 1, 6 do
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?x-kong-limit=video=1, test=5",
             headers = {
@@ -221,7 +233,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
         end
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
@@ -234,7 +246,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
       it("handles multiple limits", function()
         for i = 1, 3 do
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?x-kong-limit=video=2, image=1",
             headers = {
@@ -253,7 +265,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
         end
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=2, image=1",
           headers = {
@@ -272,7 +284,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("API-specific plugin", function()
         it("blocks if exceeding limit and a per consumer setting", function()
           for i = 1, 2 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
               headers = {
@@ -288,7 +300,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           -- Third query, while limit is 2/minute
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
             headers = {
@@ -303,7 +315,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         it("blocks if exceeding limit and a per consumer setting", function()
           for i = 1, 6 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/response-headers?apikey=apikey124&x-kong-limit=video=1",
               headers = {
@@ -318,7 +330,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
           end
 
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?apikey=apikey124",
             headers = {
@@ -332,7 +344,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         it("blocks if exceeding limit", function()
           for i = 1, 6 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
               headers = {
@@ -348,7 +360,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           -- Third query, while limit is 2/minute
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
             headers = {
@@ -365,7 +377,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
     describe("Upstream usage headers", function()
       it("should append the headers with multiple limits", function()
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/get",
           headers = {
@@ -377,7 +389,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(6, tonumber(body.headers["X-Ratelimit-Remaining-Video"]))
 
         -- Actually consume the limits
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=2, image=1",
           headers = {
@@ -388,7 +400,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/get",
           headers = {
@@ -402,7 +414,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     end)
 
     it("should block on first violation", function()
-      local res = assert(client:send {
+      local res = assert(helpers.proxy_client():send {
         method = "GET",
         path = "/response-headers?x-kong-limit=video=2, image=4",
         headers = {
@@ -413,7 +425,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
       ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-      local res = assert(client:send {
+      local res = assert(helpers.proxy_client():send {
         method = "GET",
         path = "/response-headers?x-kong-limit=video=2",
         headers = {
@@ -623,7 +635,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       it("expires a counter", function()
         local periods = timestamp.get_timestamps()
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
@@ -638,7 +650,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
         if policy == "local" then
-          local res = assert(admin_client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
             query = { cache = "shm" },
@@ -649,7 +661,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         ngx.sleep(61) -- Wait for counter to expire
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
@@ -664,7 +676,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
         if policy == "local" then
-          local res = assert(admin_client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
             query = { cache = "shm" },

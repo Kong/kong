@@ -4,6 +4,7 @@ local timestamp = require "kong.tools.timestamp"
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
+local REDIS_DATABASE = 0
 
 local SLEEP_TIME = 1
 
@@ -33,6 +34,11 @@ local function flush_redis()
     if not ok then
       error("failed to connect to Redis: ", err)
     end
+  end
+
+  local ok, err = red:select(REDIS_DATABASE)
+  if not ok then
+    error("failed to change Redis database: ", err)
   end
 
   red:flushall()
@@ -81,7 +87,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           fault_tolerant = false,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE
         }
       })
 
@@ -99,7 +106,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE
         }
       })
 
@@ -121,7 +129,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE
         }
       })
       assert(helpers.dao.plugins:insert {
@@ -134,7 +143,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE
         }
       })
 
@@ -156,7 +166,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           policy = policy,
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE
         }
       })
     end)
@@ -178,7 +189,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe("Without authentication (IP address)", function()
       it("blocks if exceeding limit", function()
         for i = 1, 6 do
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/status/200/",
             headers = {
@@ -194,7 +205,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         end
 
         -- Additonal request, while limit is 6/minute
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -212,7 +223,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         }
 
         for i = 1, 3 do
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/status/200/",
             headers = {
@@ -229,7 +240,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.are.same(limits.hour - i, tonumber(res.headers["x-ratelimit-remaining-hour"]))
         end
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -246,7 +257,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("API-specific plugin", function()
         it("blocks if exceeding limit", function()
           for i = 1, 6 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/status/200/?apikey=apikey123",
               headers = {
@@ -262,7 +273,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           -- Third query, while limit is 2/minute
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/status/200/?apikey=apikey123",
             headers = {
@@ -273,7 +284,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.are.equal([[{"message":"API rate limit exceeded"}]], body)
 
           -- Using a different key of the same consumer works
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/status/200/?apikey=apikey333",
             headers = {
@@ -286,7 +297,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("Plugin customized for specific consumer", function()
         it("blocks if exceeding limit", function()
           for i = 1, 8 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/status/200/?apikey=apikey122",
               headers = {
@@ -301,7 +312,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             assert.are.same(8 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/status/200/?apikey=apikey122",
             headers = {
@@ -313,7 +324,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         end)
         it("blocks if the only rate-limiting plugin existing is per consumer and not per API", function()
           for i = 1, 6 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/status/200/?apikey=apikey122",
               headers = {
@@ -328,7 +339,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             assert.are.same(6 - i, tonumber(res.headers["x-ratelimit-remaining-minute"]))
           end
 
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/status/200/?apikey=apikey122",
             headers = {
@@ -507,7 +518,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             redis_host = REDIS_HOST,
             redis_port = REDIS_PORT,
             redis_password = REDIS_PASSWORD,
-            fault_tolerant = false
+            fault_tolerant = false,
+            redis_database = REDIS_DATABASE
           }
         })
       end)
@@ -515,7 +527,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       it("expires a counter", function()
         local periods = timestamp.get_timestamps()
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -530,7 +542,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
         if policy == "local" then
-          local res = assert(admin_client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
             query = { cache = "shm" },
@@ -541,7 +553,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         ngx.sleep(61) -- Wait for counter to expire
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/status/200/",
           headers = {
@@ -556,7 +568,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.are.same(5, tonumber(res.headers["x-ratelimit-remaining-minute"]))
 
         if policy == "local" then
-          local res = assert(admin_client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
             path = "/cache/"..string.format("ratelimit:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "minute"),
             query = { cache = "shm" },
