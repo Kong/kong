@@ -115,7 +115,7 @@ return {
       local ok, err = balancer_execute(balancer_address)
       if not ok then
         return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
-          "dns/balancer resolve for '"..balancer_address.upstream.host..
+          "dns/balancer resolve for '"..balancer_address.host..
           "' with: "..tostring(err))
       end
 
