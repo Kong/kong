@@ -98,7 +98,7 @@ describe("DNS", function()
       helpers.stop_kong()
     end)
 
-    it("fails with 500", function()
+    it("fails with 503", function()
       local r = client:send {
         method = "GET",
         path = "/",
@@ -106,7 +106,7 @@ describe("DNS", function()
           host = "retries.com"
         }
       }
-      assert.response(r).has.status(500)
+      assert.response(r).has.status(503)
     end)
   end)
 end)
