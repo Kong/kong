@@ -26,6 +26,29 @@ return function(options)
 
 
 
+  do -- deal with ffi re-loading issues
+
+    if options.rbusted then
+      -- pre-load the ffi module, such that it becomes part of the environment
+      -- and Busted will not try to GC and reload it. The ffi is not suited
+      -- for that and will occasionally segfault if done so.
+      local ffi = require "ffi"
+
+      -- Now patch ffi.cdef to only be called once with each definition
+      local old_cdef = ffi.cdef
+      local exists = {}
+      ffi.cdef = function(def)
+        if exists[def] then return end
+        exists[def] = true
+        return old_cdef(def)
+      end
+
+    end
+
+  end
+
+
+
   do  -- implement a Lua based shm for: cli (and hence rbusted)
 
     if options.cli then
@@ -144,6 +167,7 @@ return function(options)
   do -- patch luassert when running in the Busted test environment
 
     if options.rbusted then
+      -- FIXME remove when luassert fixes have been released
       -- patch luassert's 'assert' to fix the 'third' argument problem
       -- see https://github.com/Olivine-Labs/luassert/pull/141
       local assert = require "luassert.assert"
@@ -168,7 +192,7 @@ return function(options)
 
   do -- randomseeding patch for: cli, rbusted and OpenResty
 
-    if options.rbusted then
+--[[    if options.rbusted then
 
       -- we need this version because we cannot hit the ffi, same issue
       -- as with the semaphore patch
@@ -214,7 +238,7 @@ return function(options)
       end
 
     else
-
+--]]
       -- this version of the randomseeding patch is required for
       -- production, but doesn't work in tests, due to the ffi dependency
       local util = require "kong.tools.utils"
@@ -278,10 +302,10 @@ return function(options)
       end
     end
 
-  end
+--  end
 
 
-
+--[[
   do  -- pure lua semaphore patch for: rbusted
 
     if options.rbusted then
@@ -333,7 +357,7 @@ return function(options)
     end
 
   end
-
+--]]
 
   do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
     if options.cli then
