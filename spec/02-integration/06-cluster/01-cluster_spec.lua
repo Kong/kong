@@ -154,7 +154,7 @@ describe("Cluster", function()
       end
     end)
 
-    it("should register the second node on startup and auto-join asyncronously", function()
+    it("should register the second node on startup and auto-join asynchronously", function()
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot1))
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot2))
       assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, NODES.servroot3))
