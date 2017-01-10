@@ -3,20 +3,8 @@ local cache = require "kong.tools.database_cache"
 
 describe("Plugin: ACL (hooks)", function()
   local admin_client, proxy_client
-  setup(function()
-    assert(helpers.start_kong())
-    proxy_client = helpers.proxy_client()
-    admin_client = helpers.admin_client()
-  end)
-  teardown(function()
-    if admin_client and proxy_client then
-      admin_client:close()
-      proxy_client:close()
-    end
-    helpers.stop_kong()
-  end)
-
   local consumer1, acl1
+
   before_each(function()
     helpers.dao:truncate_tables()
 
@@ -49,7 +37,8 @@ describe("Plugin: ACL (hooks)", function()
     })
 
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "acl1.com",
+      name = "api-1",
+      hosts = { "acl1.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -65,7 +54,8 @@ describe("Plugin: ACL (hooks)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "acl2.com",
+      name = "api-2",
+      hosts = { "acl2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -80,6 +70,10 @@ describe("Plugin: ACL (hooks)", function()
       }
     })
 
+    assert(helpers.start_kong())
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
+
     -- Purge cache on every test
     local res = assert(admin_client:send {
       method = "DELETE",
@@ -87,6 +81,15 @@ describe("Plugin: ACL (hooks)", function()
       headers = {}
     })
     assert.res_status(204, res)
+  end)
+
+  after_each(function()
+    if admin_client and proxy_client then
+      admin_client:close()
+      proxy_client:close()
+    end
+
+    helpers.stop_kong()
   end)
 
   describe("ACL entity invalidation", function()

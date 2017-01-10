@@ -6,15 +6,18 @@ describe("Plugin: AWS Lambda (access)", function()
     assert(helpers.start_kong())
 
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "lambda.com",
+      name = "lambda.com",
+      hosts = { "lambda.com" } ,
       upstream_url = "http://httpbin.org"
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "lambda2.com",
+      name = "lambda2.com",
+      hosts = { "lambda2.com" },
       upstream_url = "http://httpbin.org"
     })
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "lambda3.com",
+      name = "lambda3.com",
+      hosts = { "lambda3.com" },
       upstream_url = "http://httpbin.org"
     })
     

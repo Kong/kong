@@ -4,12 +4,21 @@ local threads = require "llthreads2.ex"
 describe("Plugin: datadog (log)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
-    local api1 = assert(helpers.dao.apis:insert {request_host = "datadog1.com", upstream_url = "http://mockbin.com"})
-    local api2 = assert(helpers.dao.apis:insert {request_host = "datadog2.com", upstream_url = "http://mockbin.com"})
-    local api3 = assert(helpers.dao.apis:insert {request_host = "datadog3.com", upstream_url = "http://mockbin.com"})
+    local api1 = assert(helpers.dao.apis:insert {
+      name = "datadog1_com",
+      hosts = { "datadog1.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    local api2 = assert(helpers.dao.apis:insert {
+      name = "datadog2_com",
+      hosts = { "datadog2.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    local api3 = assert(helpers.dao.apis:insert {
+      name = "datadog3_com",
+      hosts = { "datadog3.com" },
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       name = "datadog",
@@ -42,8 +51,11 @@ describe("Plugin: datadog (log)", function()
           status_count = {"T2:V2,T3:V3,T4"},
           latency = {"T2:V2:V3,T4"},
         }
-      }  
+      }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end
@@ -59,7 +71,7 @@ describe("Plugin: datadog (log)", function()
         server:setoption("reuseaddr", true)
         server:setsockname("127.0.0.1", 9999)
         local gauges = {}
-        for i = 1, 6 do
+        for _ = 1, 6 do
           gauges[#gauges+1] = server:receive()
         end
         server:close()
@@ -97,7 +109,7 @@ describe("Plugin: datadog (log)", function()
         server:setoption("reuseaddr", true)
         server:setsockname("127.0.0.1", 9999)
         local gauges = {}
-        for i = 1, 2 do
+        for _ = 1, 2 do
           gauges[#gauges+1] = server:receive()
         end
         server:close()
@@ -121,7 +133,7 @@ describe("Plugin: datadog (log)", function()
     assert.contains("kong.datadog2_com.request.count:1|c", gauges)
     assert.contains("kong.datadog2_com.request.status.200:1|c", gauges)
   end)
-  
+
   it("logs metrics with tags", function()
     local thread = threads.new({
       function()
@@ -131,7 +143,7 @@ describe("Plugin: datadog (log)", function()
         server:setoption("reuseaddr", true)
         server:setsockname("127.0.0.1", 9999)
         local gauges = {}
-        for i = 1, 3 do
+        for _ = 1, 3 do
           gauges[#gauges+1] = server:receive()
         end
         server:close()

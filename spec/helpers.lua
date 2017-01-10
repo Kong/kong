@@ -27,7 +27,7 @@ log.set_lvl(log.levels.quiet) -- disable stdout logs in tests
 local conf = assert(conf_loader(TEST_CONF_PATH))
 local dao = assert(DAOFactory.new(conf))
 -- make sure migrations are up-to-date
---assert(dao:run_migrations())
+assert(dao:run_migrations())
 
 -----------------
 -- Custom helpers
@@ -844,7 +844,7 @@ return {
   prepare_prefix = prepare_prefix,
   clean_prefix = clean_prefix,
   wait_for_invalidation = wait_for_invalidation,
-  
+
   -- miscellaneous
   intercept = intercept,
 

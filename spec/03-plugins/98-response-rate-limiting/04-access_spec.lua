@@ -52,7 +52,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       flush_redis()
       helpers.dao:drop_schema()
       assert(helpers.dao:run_migrations())
-      assert(helpers.start_kong())
 
       local consumer1 = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
       assert(helpers.dao.keyauth_credentials:insert {
@@ -73,7 +72,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api = assert(helpers.dao.apis:insert {
-        request_host = "test1.com",
+        name = "test1_com",
+        hosts = { "test1.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -91,7 +91,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test2.com",
+        name = "test2_com",
+        hosts = { "test2.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -109,7 +110,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test3.com",
+        name = "test3_com",
+        hosts = { "test3.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -137,7 +139,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test6.com",
+        name = "test6_com",
+        hosts = { "test6.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -155,7 +158,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test7.com",
+        name = "test7_com",
+        hosts = { "test7.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -182,7 +186,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test8.com",
+        name = "test8_com",
+        hosts = { "test8.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -198,6 +203,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}
         }
       })
+
+      assert(helpers.start_kong())
     end)
 
     teardown(function()
@@ -210,6 +217,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
+
     after_each(function()
       if client then client:close() end
       if admin_client then admin_client:close() end
@@ -445,7 +453,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert(helpers.dao:run_migrations())
 
           local api1 = assert(helpers.dao.apis:insert {
-            request_host = "failtest1.com",
+            name = "failtest1_com",
+            hosts = { "failtest1.com" },
             upstream_url = "http://httpbin.org"
           })
           assert(helpers.dao.plugins:insert {
@@ -462,7 +471,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            request_host = "failtest2.com",
+            name = "failtest2_com",
+            hosts = { "failtest2.com" },
             upstream_url = "http://httpbin.org"
           })
           assert(helpers.dao.plugins:insert {
@@ -548,7 +558,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         before_each(function()
           local api1 = assert(helpers.dao.apis:insert {
-            request_host = "failtest3.com",
+            name = "failtest3_com",
+            hosts = { "failtest3.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -563,7 +574,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            request_host = "failtest4.com",
+            name = "failtest4_com",
+            hosts = { "failtest4.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -615,7 +627,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert(helpers.start_kong())
 
         api = assert(helpers.dao.apis:insert {
-          request_host = "expire1.com",
+          name = "expire1_com",
+          hosts = { "expire1.com" },
           upstream_url = "http://httpbin.org"
         })
         assert(helpers.dao.plugins:insert {

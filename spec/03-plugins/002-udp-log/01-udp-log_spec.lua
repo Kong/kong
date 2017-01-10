@@ -9,17 +9,14 @@ describe("Plugin: udp-log (log)", function()
   local client
 
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     local api2 = assert(helpers.dao.apis:insert {
       name = "tests-udp-logging2",
-      request_host = "udp_logging2.com",
+      hosts = { "udp_logging2.com" },
       upstream_url = "http://127.0.0.1:"..HTTP_DELAY_PORT,
     })
     local api3 = assert(helpers.dao.apis:insert {
       name = "tests-udp-logging",
-      request_host = "udp_logging.com",
+      hosts = { "udp_logging.com" },
       upstream_url = "http://mockbin.com",
     })
 
@@ -39,6 +36,9 @@ describe("Plugin: udp-log (log)", function()
         port = UDP_PORT
       },
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
