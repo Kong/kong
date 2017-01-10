@@ -49,6 +49,27 @@ return function(options)
 
 
 
+  do -- implement `sleep` in the `init_worker` context
+
+    -- initialization code regularly uses the shm and locks.
+    -- the resty-lock is based on sleeping while waiting, but that api
+    -- is unavailable. Hence we implement a BLOCKING sleep, only in
+    -- the init_worker context.
+    local get_phase= ngx.get_phase
+    local ngx_sleep = ngx.sleep
+    local alternative_sleep = require("socket").sleep
+    ngx.sleep = function(s)
+      if get_phase() == "init_worker" then
+        ngx.log(ngx.WARN, "executing a blocking 'sleep' (", s, " seconds)")
+        return alternative_sleep(s)
+      end
+      return ngx_sleep(s)
+    end
+
+  end
+
+
+
   do  -- implement a Lua based shm for: cli (and hence rbusted)
 
     if options.cli then
