@@ -5,38 +5,38 @@ local RequestQuerystringFactory = {}
 local args = {}
 
 function RequestQuerystringFactory:new()
-    return RequestQuerystringFactory
+  return RequestQuerystringFactory
 end
 
 function RequestQuerystringFactory:getArgs()
-    return args
+  return args
 end
 
 function RequestQuerystringFactory:mergeArgsWithRequestArgs()
-    local requestArgs = req_get_uri_args()
-    for k, v in pairs(requestArgs) do
-        args[k] = v
-    end
+  local requestArgs = req_get_uri_args()
+  for k, v in pairs(requestArgs) do
+    args[k] = v
+  end
 end
 
 function RequestQuerystringFactory:persist()
-    req_set_uri_args(args)
+  req_set_uri_args(args)
 end
 
 function RequestQuerystringFactory:removeArgByKey(key)
-    if args[key] then
-        args[key] = nil
-    end
+  if args[key] then
+    args[key] = nil
+  end
 end
 
 function RequestQuerystringFactory:replaceArgByKey(key, value)
-    if args[key] then
-        args[key] = value
-    end
+  if args[key] then
+    args[key] = value
+  end
 end
 
 function RequestQuerystringFactory:add(key, value)
-    args[key]  = value
+  args[key] = value
 end
 
 return RequestQuerystringFactory

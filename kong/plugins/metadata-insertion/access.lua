@@ -9,70 +9,68 @@ local currentUserMetadata
 
 function _M.execute(conf)
 
-    if ngx.ctx.authenticated_consumer == nil then
-        return responses.send_HTTP_UNAUTHORIZED("Metadata plugin can't be used without having an authenticated user.")
-    end
+  if ngx.ctx.authenticated_consumer == nil then
+    return responses.send_HTTP_UNAUTHORIZED("Metadata plugin can't be used without having an authenticated user.")
+  end
 
-    currentUserMetadata = getPersistentMetadata()
-    appendMetadataFromTransitoryStore(currentUserMetadata)
+  currentUserMetadata = getPersistentMetadata()
+  appendMetadataFromTransitoryStore(currentUserMetadata)
 
-    local _, err = pcall(function ()
+  local _, err = pcall(function()
 
-        -----------------------------
-        -- Data Insertion Processing
-        -----------------------------
-        updateQuerystring(conf)
-        updateHeaders(conf)
-    end)
+    -----------------------------
+    -- Data Insertion Processing
+    -----------------------------
+    updateQuerystring(conf)
+    updateHeaders(conf)
+  end)
 
-    if err then
-        return responses.send_HTTP_BAD_REQUEST(err)
-    end
+  if err then
+    return responses.send_HTTP_BAD_REQUEST(err)
+  end
 end
 
 function getPersistentMetadata()
-    -- retrieve metadata from cache or database for current user
-    currentUserMetadata = cache.get_or_set("metadata_keyvaluestore."..ngx.ctx.authenticated_consumer.id, function()
-        local metadata, err = singletons.dao.metadata_keyvaluestore:find_all({consumer_id = ngx.ctx.authenticated_consumer.id})
-        if err then
-            return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
-        end
-        return metadata
-    end)
-
-    if currentUserMetadata then
-        return currentUserMetadata
+  -- retrieve metadata from cache or database for current user
+  currentUserMetadata = cache.get_or_set("metadata_keyvaluestore." .. ngx.ctx.authenticated_consumer.id, function()
+    local metadata, err = singletons.dao.metadata_keyvaluestore:find_all({ consumer_id = ngx.ctx.authenticated_consumer.id })
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
+    return metadata
+  end)
 
-    return {}
+  if currentUserMetadata then
+    return currentUserMetadata
+  end
+
+  return {}
 end
 
 function appendMetadataFromTransitoryStore(currentUserMetadata)
 
-    -- loop through transitory store and add the metadata in memory
-    -- transitory store take precedence over persitent metadata
-    if ngx.ctx.metadata_transitory_store and type(ngx.ctx.metadata_transitory_store) == "table" then
+  -- loop through transitory store and add the metadata in memory
+  -- transitory store take precedence over persitent metadata
+  if ngx.ctx.metadata_transitory_store and type(ngx.ctx.metadata_transitory_store) == "table" then
 
-        for _, transitoryStoreElem in ipairs(ngx.ctx.metadata_transitory_store) do
+    for _, transitoryStoreElem in ipairs(ngx.ctx.metadata_transitory_store) do
 
-            local persistentMetadataFound = false
+      local persistentMetadataFound = false
 
-            -- replace persitent metadata with transitory store if it exist in both place
-            for index, persistentMetadataElem in ipairs(currentUserMetadata) do
-                if persistentMetadataElem.key == transitoryStoreElem.key then
-                    currentUserMetadata[index] = transitoryStoreElem
-                    persistentMetadataFound = true
-                end
-            end
-
-            -- if nothing found in persistent metadata, let's make sure we add the transitory store element as new
-            if persistentMetadataFound == false then
-                table.insert(currentUserMetadata, transitoryStoreElem)
-            end
-
+      -- replace persitent metadata with transitory store if it exist in both place
+      for index, persistentMetadataElem in ipairs(currentUserMetadata) do
+        if persistentMetadataElem.key == transitoryStoreElem.key then
+          currentUserMetadata[index] = transitoryStoreElem
+          persistentMetadataFound = true
         end
+      end
 
+      -- if nothing found in persistent metadata, let's make sure we add the transitory store element as new
+      if persistentMetadataFound == false then
+        table.insert(currentUserMetadata, transitoryStoreElem)
+      end
     end
+  end
 end
 
 function updateQuerystring(confDataInsertion)
@@ -105,7 +103,6 @@ function updateQuerystring(confDataInsertion)
   end
 
   RequestQuerystringFactory:persist()
-
 end
 
 function updateHeaders(confDataInsertion)
@@ -138,7 +135,6 @@ function updateHeaders(confDataInsertion)
   end
 
   RequestHeadersFactory:persist()
-
 end
 
 function retrieveMetadataForConfigToken(querystringModifier)
@@ -162,12 +158,12 @@ function retrieveMetadataForConfigToken(querystringModifier)
 end
 
 function resolveParameterValuePlaceholderWithMetadata(dataProvisioningName)
-    for _, elem in ipairs(currentUserMetadata) do
-        if elem.key == dataProvisioningName then
-            return elem.value
-        end
+  for _, elem in ipairs(currentUserMetadata) do
+    if elem.key == dataProvisioningName then
+      return elem.value
     end
-    error("This API needs metadata that the current user does not provide.")
+  end
+  error("This API needs metadata that the current user does not provide.")
 end
 
 return _M
