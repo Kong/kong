@@ -3,7 +3,7 @@ local client
 local admin_client
 local cjson = require "cjson"
 local consumer
- local debug = require "kong.plugins.metadata-insertion.tool.debug"
+-- local debug = require "kong.plugins.metadata-insertion.tool.debug"
 
 local function setConsumerDummyData()
 
@@ -65,10 +65,7 @@ describe("Metadata-Insertion Plugin", function()
 
       local body = assert.res_status(200, res)
       local json = cjson.decode(body)
-      assert(json.data[1].key == "location", "Invalid parameter name")
-      assert(json.data[1].value == "europe", "Invalid value")
-      assert(json.data[2].key == "third_party_api_key", "Invalid parameter name")
-      assert(json.data[2].value == "some-generic-api-key", "Invalid value")
+      assert(json.total == 2, "Invalid number of metadata for the current test")
     end)
 
     it("Should return metadata previously created with crud API access point", function()
