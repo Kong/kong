@@ -8,15 +8,14 @@ describe("Plugin: tcp-log (log)", function()
   local client
 
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "tcp_logging.com",
+      name = "api-1",
+      hosts = { "tcp_logging.com" },
       upstream_url = "http://mockbin.com",
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "tcp_logging2.com",
+      name = "api-2",
+      hosts = { "tcp_logging2.com" },
       upstream_url = "http://127.0.0.1:"..HTTP_DELAY_PORT,
     })
 
@@ -36,6 +35,9 @@ describe("Plugin: tcp-log (log)", function()
         port = TCP_PORT
       },
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end

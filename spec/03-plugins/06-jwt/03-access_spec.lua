@@ -15,16 +15,12 @@ describe("Plugin: jwt (access)", function()
   local proxy_client, admin_client
 
   setup(function()
-    assert(helpers.start_kong())
-    proxy_client = helpers.proxy_client()
-    admin_client = helpers.admin_client()
-
-    local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", request_host = "jwt.com", upstream_url = "http://mockbin.com"})
-    local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", request_host = "jwt2.com", upstream_url = "http://mockbin.com"})
-    local api3 = assert(helpers.dao.apis:insert {name = "tests-jwt3", request_host = "jwt3.com", upstream_url = "http://mockbin.com"})
-    local api4 = assert(helpers.dao.apis:insert {name = "tests-jwt4", request_host = "jwt4.com", upstream_url = "http://mockbin.com"})
-    local api5 = assert(helpers.dao.apis:insert {name = "tests-jwt5", request_host = "jwt5.com", upstream_url = "http://mockbin.com"})
-    local api6 = assert(helpers.dao.apis:insert {name = "tests-jwt6", request_host = "jwt6.com", upstream_url = "http://mockbin.com"})
+    local api1 = assert(helpers.dao.apis:insert {name = "tests-jwt1", hosts = { "jwt.com" }, upstream_url = "http://mockbin.com"})
+    local api2 = assert(helpers.dao.apis:insert {name = "tests-jwt2", hosts = { "jwt2.com" }, upstream_url = "http://mockbin.com"})
+    local api3 = assert(helpers.dao.apis:insert {name = "tests-jwt3", hosts = { "jwt3.com" }, upstream_url = "http://mockbin.com"})
+    local api4 = assert(helpers.dao.apis:insert {name = "tests-jwt4", hosts = { "jwt4.com" }, upstream_url = "http://mockbin.com"})
+    local api5 = assert(helpers.dao.apis:insert {name = "tests-jwt5", hosts = { "jwt5.com" }, upstream_url = "http://mockbin.com"})
+    local api6 = assert(helpers.dao.apis:insert {name = "tests-jwt6", hosts = { "jwt6.com" }, upstream_url = "http://mockbin.com"})
 
     local consumer1 = assert(helpers.dao.consumers:insert {username = "jwt_tests_consumer"})
     local consumer2 = assert(helpers.dao.consumers:insert {username = "jwt_tests_base64_consumer"})
@@ -50,6 +46,10 @@ describe("Plugin: jwt (access)", function()
       algorithm = "RS256",
       rsa_public_key = fixtures.rs256_public_key
     })
+
+    assert(helpers.start_kong())
+    proxy_client = helpers.proxy_client()
+    admin_client = helpers.admin_client()
   end)
 
   teardown(function()

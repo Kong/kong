@@ -147,7 +147,7 @@ end
 -- @return balancer if found, or `false` if not found, or nil+error on error
 local get_balancer = function(target)
   -- NOTE: only called upon first lookup, so `cache_only` limitations do not apply here
-  local hostname = target.upstream.host
+  local hostname = target.host
   
   -- first go and find the upstream object, from cache or the db
   local upstream, err = get_upstream(hostname)
@@ -239,18 +239,16 @@ end
 
 -- Resolves the target structure in-place (fields `ip` and `port`).
 --
--- If the hostname matches an 'upstream' pool, then it must be balanced in that 
+-- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool provides it.
 --
 -- @param target the data structure as defined in `core.access.before` where it is created
 -- @return true on success, nil+error otherwise
 local function execute(target)
-  local upstream = target.upstream
-
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
-    target.ip = upstream.host
-    target.port = upstream.port or 80  -- TODO: remove this fallback value
+    target.ip = target.host
+    target.port = target.port or 80   -- TODO: remove this fallback value
     return true
   end
 
@@ -284,7 +282,7 @@ local function execute(target)
       if port == "No peers are available" then
         -- in this case a "503 service unavailable", others will be a 500.
         log(ERROR, "failure to get a peer from the ring-balancer '",
-                   upstream.host, "'; ", port)
+                   target.host, "'; ", port)
         return responses.send(503)
       end
 
@@ -298,8 +296,14 @@ local function execute(target)
   end
 
   -- have to do a regular DNS lookup
-  local ip, port = toip(upstream.host, upstream.port, dns_cache_only)
+  local ip, port = toip(target.host, target.port, dns_cache_only)
   if not ip then
+    if port == "dns server error; 3 name error" then
+      -- in this case a "503 service unavailable", others will be a 500.
+      log(ERROR, "name resolution failed for '", tostring(target.host), 
+                 "': ", port)
+      return responses.send(503)
+    end
     return nil, port
   end
 
@@ -308,7 +312,7 @@ local function execute(target)
   return true
 end
 
-return { 
+return {
   execute = execute,
   invalidate_balancer = invalidate_balancer,
  

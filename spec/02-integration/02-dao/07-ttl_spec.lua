@@ -18,7 +18,7 @@ helpers.for_each_dao(function(kong_config)
     it("on insert", function()
       local api, err = factory.apis:insert({
         name = "mockbin",
-        request_host = "mockbin.com",
+        hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }, {ttl = 1})
       assert.falsy(err)
@@ -39,7 +39,7 @@ helpers.for_each_dao(function(kong_config)
     it("on update", function()
       local api, err = factory.apis:insert({
         name = "mockbin",
-        request_host = "mockbin.com",
+        hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }, {ttl = 1})
       assert.falsy(err)
@@ -73,14 +73,16 @@ helpers.for_each_dao(function(kong_config)
 
         for i = 1, 4 do
           local _, err = factory.apis:insert({
-            request_host = "mockbin"..i..".com",
+            name = "api-" .. i,
+            hosts = { "mockbin"..i..".com" },
             upstream_url = "http://mockbin.com"
           }, {ttl = 1})
           assert.falsy(err)
         end
 
         local _, err = factory.apis:insert({
-          request_host = "mockbin-longttl.com",
+          name = "long-ttl",
+          hosts = { "mockbin-longttl.com" },
           upstream_url = "http://mockbin.com"
         }, {ttl = 3})
         assert.falsy(err)

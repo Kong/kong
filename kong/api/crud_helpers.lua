@@ -91,8 +91,9 @@ function _M.paginated_set(self, dao_collection)
   end
 
   return responses.send_HTTP_OK {
-    -- can't use empty_array_mt here since apparently metatables are removed
-    -- before JSON encoding.
+    -- FIXME: remove and stick to previous `empty_array_mt` metatable
+    -- assignment once https://github.com/openresty/lua-cjson/pull/16
+    -- is included in the OpenResty release we use.
     data = #rows > 0 and rows or cjson.empty_array,
     total = total_count,
     offset = offset,

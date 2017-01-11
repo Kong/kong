@@ -36,20 +36,19 @@ end
 
 describe("DNS", function()
   describe("retries", function()
-    
     local retries = 3
     local client
-    
-    setup(function()
-      assert(helpers.start_kong())
-      client = helpers.proxy_client()
 
+    setup(function()
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
-        request_host = "retries.com",
+        hosts = { "retries.com" },
         upstream_url = "http://127.0.0.1:"..TCP_PORT,
         retries = retries,
       })
+
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
     end)
 
     teardown(function()
@@ -60,7 +59,7 @@ describe("DNS", function()
     it("validates the number of retries", function()
       -- setup a bad server
       local thread = bad_tcp_server(TCP_PORT, 1)
-      
+
       -- make a request to it
       local r = client:send {
         method = "GET",
@@ -75,22 +74,20 @@ describe("DNS", function()
       local ok, tries = thread:join()
       assert.True(ok)
       assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
-
     end)
   end)
   describe("upstream resolve failure", function()
-    
     local client
-    
-    setup(function()
-      assert(helpers.start_kong())
-      client = helpers.proxy_client()
 
+    setup(function()
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
-        request_host = "retries.com",
+        hosts = { "retries.com" },
         upstream_url = "http://now.this.does.not/exist",
       })
+
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
     end)
 
     teardown(function()
@@ -98,7 +95,7 @@ describe("DNS", function()
       helpers.stop_kong()
     end)
 
-    it("fails with 500", function()
+    it("fails with 503", function()
       local r = client:send {
         method = "GET",
         path = "/",
@@ -106,7 +103,7 @@ describe("DNS", function()
           host = "retries.com"
         }
       }
-      assert.response(r).has.status(500)
+      assert.response(r).has.status(503)
     end)
   end)
 end)

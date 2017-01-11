@@ -6,24 +6,12 @@ local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
 describe("Plugin: jwt (hooks)", function()
   local admin_client, proxy_client, consumer1, api1
 
-  setup(function()
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
-    proxy_client = helpers.proxy_client()
-  end)
-  teardown(function()
-    if admin_client and proxy_client then
-      admin_client:close()
-      proxy_client:close()
-    end
-    helpers.stop_kong()
-  end)
-
   before_each(function()
     helpers.dao:truncate_tables()
 
     api1 = assert(helpers.dao.apis:insert {
-      request_host = "jwt.com",
+      name = "api-1",
+      hosts = { "jwt.com" },
       upstream_url = "http://mockbin.com"
     })
     consumer1 = assert(helpers.dao.consumers:insert {
@@ -40,6 +28,18 @@ describe("Plugin: jwt (hooks)", function()
       secret = "secret123",
       consumer_id = consumer1.id
     })
+
+    assert(helpers.start_kong())
+    admin_client = helpers.admin_client()
+    proxy_client = helpers.proxy_client()
+  end)
+
+  after_each(function()
+    if admin_client and proxy_client then
+      admin_client:close()
+      proxy_client:close()
+    end
+    helpers.stop_kong()
   end)
 
   local PAYLOAD = {

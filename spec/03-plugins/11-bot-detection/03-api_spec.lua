@@ -4,17 +4,22 @@ local BAD_REGEX = [[(https?:\/\/.*]]  -- illegal regex, errors out
 
 describe("Plugin: bot-detection (API)", function()
   local client
+
   setup(function()
+    assert(helpers.dao.apis:insert {
+      name = "bot1.com",
+      hosts = { "bot1.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.apis:insert {
+      name = "bot2.com",
+      hosts = { "bot2.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
     assert(helpers.start_kong())
-    assert(helpers.dao.apis:insert {
-      request_host = "bot1.com",
-      upstream_url = "http://mockbin.com"
-    })
-    assert(helpers.dao.apis:insert {
-      request_host = "bot2.com",
-      upstream_url = "http://mockbin.com"
-    })
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -22,6 +27,7 @@ describe("Plugin: bot-detection (API)", function()
   before_each(function()
     client = helpers.admin_client()
   end)
+
   after_each(function()
     if client then client:close() end
   end)
