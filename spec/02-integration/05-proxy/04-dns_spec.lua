@@ -36,20 +36,19 @@ end
 
 describe("DNS", function()
   describe("retries", function()
-
     local retries = 3
     local client
 
     setup(function()
-      assert(helpers.start_kong())
-      client = helpers.proxy_client()
-
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },
         upstream_url = "http://127.0.0.1:"..TCP_PORT,
         retries = retries,
       })
+
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
     end)
 
     teardown(function()
@@ -75,22 +74,20 @@ describe("DNS", function()
       local ok, tries = thread:join()
       assert.True(ok)
       assert.equals(retries, tries-1 ) -- the -1 is because the initial one is not a retry.
-
     end)
   end)
   describe("upstream resolve failure", function()
-    
     local client
-    
-    setup(function()
-      assert(helpers.start_kong())
-      client = helpers.proxy_client()
 
+    setup(function()
       assert(helpers.dao.apis:insert {
         name = "tests-retries",
         hosts = { "retries.com" },
         upstream_url = "http://now.this.does.not/exist",
       })
+
+      assert(helpers.start_kong())
+      client = helpers.proxy_client()
     end)
 
     teardown(function()

@@ -48,7 +48,7 @@ describe("Router", function()
       local body = assert.response(res).has_status(404)
       local json = cjson.decode(body)
       assert.matches("^kong/", res.headers.server)
-      assert.equal("no API found", json.message)
+      assert.equal("no API found with those values", json.message)
     end)
   end)
 
@@ -141,7 +141,7 @@ describe("Router", function()
       local body = assert.response(res).has_status(404)
       local json = cjson.decode(body)
       assert.matches("^kong/", res.headers.server)
-      assert.equal("no API found", json.message)
+      assert.equal("no API found with those values", json.message)
 
       local admin_res = assert(admin_client:send {
         method = "POST",

@@ -4,14 +4,14 @@ local cjson = require "cjson"
 
 describe("Websockets", function()
   setup(function()
-    assert(helpers.start_kong())
-
     assert(helpers.dao.apis:insert {
       name = "ws",
       uris = { "/ws"},
       strip_uri = true,
       upstream_url = "http://sockb.in"
     })
+
+    assert(helpers.start_kong())
   end)
 
   teardown(function()
