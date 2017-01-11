@@ -141,6 +141,8 @@ function Kong.init()
   singletons.configuration = config
 
   attach_hooks(events, require "kong.core.hooks")
+
+  assert(core.build_router())
 end
 
 function Kong.init_worker()
@@ -163,7 +165,10 @@ function Kong.init_worker()
   local worker_events = require "resty.worker.events"
 
   local handler = function(data, event, source, pid)
-    if source and source == constants.CACHE.CLUSTER then
+    if data and data.collection == "apis" then
+      assert(core.build_router())
+
+    elseif source and source == constants.CACHE.CLUSTER then
       singletons.events:publish(event, data)
     end
   end

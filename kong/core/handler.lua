@@ -18,7 +18,7 @@ local certificate = require "kong.core.certificate"
 local balancer_execute = require("kong.core.balancer").execute
 
 
-local router
+local router, router_err
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
@@ -28,47 +28,37 @@ local function get_now()
 end
 
 
-local function build_router()
-  local apis, err = singletons.dao.apis:find_all()
-  if err then
-    ngx.log(ngx.CRIT, "[router] could not load APIs: ", err)
-    return
-  end
-
-  for i = 1, #apis do
-    -- alias since the router expects 'headers'
-    -- as a map
-    if apis[i].hosts then
-      apis[i].headers = { host = apis[i].hosts }
-    end
-  end
-
-  router, err = Router.new(apis)
-  if not router then
-    ngx.log(ngx.CRIT, "[router] could not create router: ", err)
-    return
-  end
-end
-
-
--- in the table below the `before` and `after` is to indicate when they run; before or after the plugins
+-- in the table below the `before` and `after` is to indicate when they run:
+-- before or after the plugins
 return {
+  build_router = function()
+    local apis
+
+    apis, router_err = singletons.dao.apis:find_all()
+    if router_err then
+      return nil, "could not load APIs: " .. router_err
+    end
+
+    for i = 1, #apis do
+      -- alias since the router expects 'headers'
+      -- as a map
+      if apis[i].hosts then
+        apis[i].headers = { host = apis[i].hosts }
+      end
+    end
+
+    router, router_err = Router.new(apis)
+    if not router then
+      return nil, "could not create router: " .. router_err
+    end
+
+    return true
+  end,
+
   init_worker = {
     before = function()
       reports.init_worker()
       cluster.init_worker()
-
-      build_router()
-
-      local worker_events = require "resty.worker.events"
-
-      worker_events.register(function(data, event, source, pid)
-        if data and data.collection == "apis" then
-          --local inspect = require "inspect"
-          --print("CHANGE IN APIS DATA: ", source, inspect(event), inspect(source), inspect(data))
-          build_router()
-        end
-      end)
     end
   },
   certificate = {
@@ -78,6 +68,12 @@ return {
   },
   access = {
     before = function()
+      if not router then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+          "no router to route request (reason: " .. tostring(router_err) .. ")"
+        )
+      end
+
       local ctx = ngx.ctx
       local var = ngx.var
 
@@ -85,7 +81,7 @@ return {
 
       local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
       if not api then
-        return responses.send_HTTP_NOT_FOUND("no API found")
+        return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
 
       if api.https_only and not utils.check_https(api.http_if_terminated) then
