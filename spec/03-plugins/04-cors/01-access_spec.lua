@@ -26,7 +26,7 @@ describe("Plugin: cors (access)", function()
       upstream_url = "http://mockbin.com"
     })
     local api5 = assert(helpers.dao.apis:insert {
-      name = "api-5"
+      name = "api-5",
       request_host = { "cors5.com" },
       upstream_url = "http://mockbin.com"
     })
