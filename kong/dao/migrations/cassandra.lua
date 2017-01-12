@@ -214,6 +214,38 @@ return {
     ]],
   },
   {
+    name = "2016-12-14-172100_move_ssl_certs_to_core",
+    up = [[
+      CREATE TABLE ssl_certificates(
+        id uuid PRIMARY KEY,
+        cert text,
+        key text ,
+        created_at timestamp
+      );
+
+      CREATE TABLE ssl_servers_names(
+        name text,
+        ssl_certificate_id uuid,
+        created_at timestamp,
+        PRIMARY KEY (name, ssl_certificate_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS ON ssl_servers_names(ssl_certificate_id);
+
+      ALTER TABLE apis ADD https_only boolean;
+      ALTER TABLE apis ADD http_if_terminated boolean;
+    ]],
+    down = [[
+      DROP INDEX ssl_servers_names_ssl_certificate_idx;
+
+      DROP TABLE ssl_certificates;
+      DROP TABLE ssl_servers_names;
+
+      ALTER TABLE apis DROP https_only;
+      ALTER TABLE apis DROP http_if_terminated;
+    ]]
+  },
+  {
     name = "2016-11-11-151900_new_apis_router_1",
     up = [[
       ALTER TABLE apis ADD hosts text;
@@ -274,38 +306,6 @@ return {
 
       CREATE INDEX IF NOT EXISTS ON apis(request_host);
       CREATE INDEX IF NOT EXISTS ON apis(request_path);
-    ]]
-  },
-  {
-    name = "2016-12-14-172100_move_ssl_certs_to_core",
-    up = [[
-      CREATE TABLE ssl_certificates(
-        id uuid PRIMARY KEY,
-        cert text,
-        key text ,
-        created_at timestamp
-      );
-
-      CREATE TABLE ssl_servers_names(
-        name text,
-        ssl_certificate_id uuid,
-        created_at timestamp,
-        PRIMARY KEY (name, ssl_certificate_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS ON ssl_servers_names(ssl_certificate_id);
-
-      ALTER TABLE apis ADD https_only boolean;
-      ALTER TABLE apis ADD http_if_terminated boolean;
-    ]],
-    down = [[
-      DROP INDEX ssl_servers_names_ssl_certificate_idx;
-
-      DROP TABLE ssl_certificates;
-      DROP TABLE ssl_servers_names;
-
-      ALTER TABLE apis DROP https_only;
-      ALTER TABLE apis DROP http_if_terminated;
     ]]
   },
   {

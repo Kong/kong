@@ -195,6 +195,33 @@ return {
     ]],
   },
   {
+    name = "2016-12-14-172100_move_ssl_certs_to_core",
+    up = [[
+      CREATE TABLE ssl_certificates(
+        id uuid PRIMARY KEY,
+        cert text ,
+        key text ,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      CREATE TABLE ssl_servers_names(
+        name text PRIMARY KEY,
+        ssl_certificate_id uuid REFERENCES ssl_certificates(id) ON DELETE CASCADE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      ALTER TABLE apis ADD https_only boolean;
+      ALTER TABLE apis ADD http_if_terminated boolean;
+    ]],
+    down = [[
+      DROP TABLE ssl_certificates;
+      DROP TABLE ssl_servers_names;
+
+      ALTER TABLE apis DROP COLUMN IF EXISTS https_only;
+      ALTER TABLE apis DROP COLUMN IF EXISTS http_if_terminated;
+    ]]
+  },
+  {
     name = "2016-11-11-151900_new_apis_router_1",
     up = [[
       DO $$
@@ -268,33 +295,6 @@ return {
 
       CREATE INDEX IF NOT EXISTS ON apis(request_host);
       CREATE INDEX IF NOT EXISTS ON apis(request_path);
-    ]]
-  },
-  {
-    name = "2016-12-14-172100_move_ssl_certs_to_core",
-    up = [[
-      CREATE TABLE ssl_certificates(
-        id uuid PRIMARY KEY,
-        cert text ,
-        key text ,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
-      );
-
-      CREATE TABLE ssl_servers_names(
-        name text PRIMARY KEY,
-        ssl_certificate_id uuid REFERENCES ssl_certificates(id) ON DELETE CASCADE,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
-      );
-
-      ALTER TABLE apis ADD https_only boolean;
-      ALTER TABLE apis ADD http_if_terminated boolean;
-    ]],
-    down = [[
-      DROP TABLE ssl_certificates;
-      DROP TABLE ssl_servers_names;
-
-      ALTER TABLE apis DROP COLUMN IF EXISTS https_only;
-      ALTER TABLE apis DROP COLUMN IF EXISTS http_if_terminated;
     ]]
   },
   {
