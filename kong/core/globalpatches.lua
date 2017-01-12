@@ -26,6 +26,50 @@ return function(options)
 
 
 
+  do -- deal with ffi re-loading issues
+
+    if options.rbusted then
+      -- pre-load the ffi module, such that it becomes part of the environment
+      -- and Busted will not try to GC and reload it. The ffi is not suited
+      -- for that and will occasionally segfault if done so.
+      local ffi = require "ffi"
+
+      -- Now patch ffi.cdef to only be called once with each definition
+      local old_cdef = ffi.cdef
+      local exists = {}
+      ffi.cdef = function(def)
+        if exists[def] then return end
+        exists[def] = true
+        return old_cdef(def)
+      end
+
+    end
+
+  end
+
+
+
+  do -- implement `sleep` in the `init_worker` context
+
+    -- initialization code regularly uses the shm and locks.
+    -- the resty-lock is based on sleeping while waiting, but that api
+    -- is unavailable. Hence we implement a BLOCKING sleep, only in
+    -- the init_worker context.
+    local get_phase= ngx.get_phase
+    local ngx_sleep = ngx.sleep
+    local alternative_sleep = require("socket").sleep
+    ngx.sleep = function(s)
+      if get_phase() == "init_worker" then
+        ngx.log(ngx.WARN, "executing a blocking 'sleep' (", s, " seconds)")
+        return alternative_sleep(s)
+      end
+      return ngx_sleep(s)
+    end
+
+  end
+
+
+
   do  -- implement a Lua based shm for: cli (and hence rbusted)
 
     if options.cli then
@@ -144,6 +188,7 @@ return function(options)
   do -- patch luassert when running in the Busted test environment
 
     if options.rbusted then
+      -- FIXME remove when luassert fixes have been released
       -- patch luassert's 'assert' to fix the 'third' argument problem
       -- see https://github.com/Olivine-Labs/luassert/pull/141
       local assert = require "luassert.assert"
@@ -168,171 +213,77 @@ return function(options)
 
   do -- randomseeding patch for: cli, rbusted and OpenResty
 
-    if options.rbusted then
+    --- Seeds the random generator, use with care.
+    -- Once - properly - seeded, this method is replaced with a stub
+    -- one. This is to enforce best-practices for seeding in ngx_lua,
+    -- and prevents third-party modules from overriding our correct seed
+    -- (many modules make a wrong usage of `math.randomseed()` by calling
+    -- it multiple times or by not useing unique seeds for Nginx workers).
+    --
+    -- This patched method will create a unique seed per worker process,
+    -- using a combination of both time and the worker's pid.
+    -- luacheck: globals math
+    local util = require "kong.tools.utils"
+    local seeds = {}
+    local randomseed = math.randomseed
 
-      -- we need this version because we cannot hit the ffi, same issue
-      -- as with the semaphore patch
-      -- only used for running tests
-      local randomseed = math.randomseed
-      local seeds = {}
-
-      --- Seeds the random generator, use with care.
-      -- Once - properly - seeded, this method is replaced with a stub
-      -- one. This is to enforce best-practises for seeding in ngx_lua,
-      -- and prevents third-party modules from overriding our correct seed
-      -- (many modules make a wrong usage of `math.randomseed()` by calling
-      -- it multiple times or do not use unique seed for Nginx workers).
-      --
-      -- This patched method will create a unique seed per worker process,
-      -- using a combination of both time and the worker's pid.
-      -- luacheck: globals math
-      _G.math.randomseed = function()
-        local seed = seeds[ngx.worker.pid()]
-        if not seed then
-          -- If we're in runtime nginx, we have multiple workers so we _only_
-          -- accept seeding when in the 'init_worker' phase.
-          -- That is because that phase is the earliest one before the
-          -- workers have a chance to process business logic, and because
-          -- if we'd do that in the 'init' phase, the Lua VM is not forked
-          -- yet and all workers would end-up using the same seed.
-          if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
-                "called in init_worker context", 2))
-          end
-
-          seed = ngx.time() + ngx.worker.pid()
-          ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ", ngx.worker.id(),
-                             " (pid: ", ngx.worker.pid(), ")")
-          randomseed(seed)
-          seeds[ngx.worker.pid()] = seed
-        else
-          ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
-              "generator, but already seeded with: "..tostring(seed), 2))
+    _G.math.randomseed = function()
+      local seed = seeds[ngx.worker.pid()]
+      if not seed then
+        if not options.cli and ngx.get_phase() ~= "init_worker" then
+          ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
+              "called in init_worker context", 2))
         end
 
-        return seed
+        local bytes, err = util.get_rand_bytes(8)
+        if bytes then
+          ngx.log(ngx.DEBUG, "seeding PRNG from OpenSSL RAND_bytes()")
+
+          local t = {}
+          for i = 1, #bytes do
+            local byte = string.byte(bytes, i)
+            t[#t+1] = byte
+          end
+          local str = table.concat(t)
+          if #str > 12 then
+            -- truncate the final number to prevent integer overflow,
+            -- since math.randomseed() could get cast to a platform-specific
+            -- integer with a different size and get truncated, hence, lose
+            -- randomness.
+            -- double-precision floating point should be able to represent numbers
+            -- without rounding with up to 15/16 digits but let's use 12 of them.
+            str = string.sub(str, 1, 12)
+          end
+          seed = tonumber(str)
+        else
+          ngx.log(ngx.ERR, "could not seed from OpenSSL RAND_bytes, seeding ",
+                           "PRNG with time and worker pid instead (this can ",
+                           "result to duplicated seeds): ", err)
+
+          seed = ngx.now()*1000 + ngx.worker.pid()
+        end
+
+        ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ",
+                            ngx.worker.id())
+
+        if not options.cli then
+          local ok, err = ngx.shared.kong:safe_set("pid: " .. ngx.worker.pid(), seed)
+          if not ok then
+            ngx.log(ngx.WARN, "could not store PRNG seed in kong shm: ", err)
+          end
+        end
+
+        randomseed(seed)
+        seeds[ngx.worker.pid()] = seed
+      else
+        ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
+            "generator, but already seeded with: "..tostring(seed), 2))
       end
 
-    else
-
-      -- this version of the randomseeding patch is required for
-      -- production, but doesn't work in tests, due to the ffi dependency
-      local util = require "kong.tools.utils"
-      local seeds = {}
-      local randomseed = math.randomseed
-
-      _G.math.randomseed = function()
-        local seed = seeds[ngx.worker.pid()]
-        if not seed then
-          if not options.cli and ngx.get_phase() ~= "init_worker" then
-            ngx.log(ngx.WARN, debug.traceback("math.randomseed() must be "..
-                "called in init_worker context", 2))
-          end
-
-          local bytes, err = util.get_rand_bytes(8)
-          if bytes then
-            ngx.log(ngx.DEBUG, "seeding PRNG from OpenSSL RAND_bytes()")
-
-            local t = {}
-            for i = 1, #bytes do
-              local byte = string.byte(bytes, i)
-              t[#t+1] = byte
-            end
-            local str = table.concat(t)
-            if #str > 12 then
-              -- truncate the final number to prevent integer overflow,
-              -- since math.randomseed() could get cast to a platform-specific
-              -- integer with a different size and get truncated, hence, lose
-              -- randomness.
-              -- double-precision floating point should be able to represent numbers
-              -- without rounding with up to 15/16 digits but let's use 12 of them.
-              str = string.sub(str, 1, 12)
-            end
-            seed = tonumber(str)
-          else
-            ngx.log(ngx.ERR, "could not seed from OpenSSL RAND_bytes, seeding ",
-                             "PRNG with time and worker pid instead (this can ",
-                             "result to duplicated seeds): ", err)
-
-            seed = ngx.now()*1000 + ngx.worker.pid()
-          end
-
-          ngx.log(ngx.DEBUG, "random seed: ", seed, " for worker nb ",
-                              ngx.worker.id())
-
-          if not options.cli then
-            local ok, err = ngx.shared.kong:safe_set("pid: " .. ngx.worker.pid(), seed)
-            if not ok then
-              ngx.log(ngx.WARN, "could not store PRNG seed in kong shm: ", err)
-            end
-          end
-
-          randomseed(seed)
-          seeds[ngx.worker.pid()] = seed
-        else
-          ngx.log(ngx.DEBUG, debug.traceback("attempt to seed random number "..
-              "generator, but already seeded with: "..tostring(seed), 2))
-        end
-
-        return seed
-      end
+      return seed
     end
-
   end
 
-
-
-  do  -- pure lua semaphore patch for: rbusted
-
-    if options.rbusted then
-      -- when testing, busted will cleanup the global environment for test
-      -- insulation. This includes the `ffi` module. Because the dns module
-      -- is loaded ahead of busted, it (and its dependencies) become part
-      -- of the global environment that busted does NOT cleanup.
-      -- The semaphore library depends on the ffi, and hence prevents it
-      -- from being GCed. The result is that reloading other libraries will
-      -- generate `attempt to redefine` errors when the ffi stuff is defined
-      -- (because they weren't GCed).
-      -- __NOTE__: though it works for now, it remains a bad idea to recycle
-      -- the ffi module as it is c-based and will result in unpredictable
-      -- segfaults. At the cost of reduced test insulation the busted option
-      -- `--no-auto-insulation` could/should be used.
-      package.loaded["ngx.semaphore"] = {
-        new = function(n)
-          return {
-            resources = n or 0,
-            waiting = 0,
-            post = function(self, n)
-              self.resources = self.resources + (n or 1)
-            end,
-            wait = function(self, timeout) -- timeout = seconds
-              if self.resources > 0 then
-                self.resources = self.resources - 1
-                return true
-              end
-              self.waiting = self.waiting + 1
-              local expire = ngx.now() + timeout
-              while expire > ngx.now() do
-                ngx.sleep(0.001)
-                if self.resources > 0 then
-                  self.resources = self.resources - 1
-                  self.waiting = self.waiting - 1
-                  return true
-                end
-              end
-              self.waiting = self.waiting - 1
-              return nil, "timeout"
-            end,
-            count = function(self)
-              if self.resources > 0 then return self.resources end
-              return -self.waiting
-            end
-          }
-        end
-      }
-    end
-
-  end
 
 
   do -- cosockets connect patch for dns resolution for: cli, rbusted and OpenResty
