@@ -1,8 +1,8 @@
 local version = setmetatable({
   major = 0,
-  minor = 9,
-  patch = 7,
-  pre_release = nil
+  minor = 10,
+  patch = 0,
+  pre_release = "rc2"
 }, {
   __tostring = function(t)
     return string.format("%d.%d.%d%s", t.major, t.minor, t.patch,
