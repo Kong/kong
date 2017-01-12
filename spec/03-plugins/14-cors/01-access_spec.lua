@@ -30,16 +30,22 @@ describe("Plugin: cors (access)", function()
       hosts = { "cors5.com" },
       upstream_url = "http://mockbin.com"
     })
+    local api6 = assert(helpers.dao.apis:insert {
+      name = "api-6",
+      hosts = { "cors6.com" },
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       name = "cors",
       api_id = api1.id
     })
+
     assert(helpers.dao.plugins:insert {
       name = "cors",
       api_id = api2.id,
       config = {
-        origin = "example.com",
+        origins = {"example.com"},
         methods = {"GET"},
         headers = {"origin", "type", "accepts"},
         exposed_headers = {"x-auth-token"},
@@ -47,11 +53,12 @@ describe("Plugin: cors (access)", function()
         credentials = true
       }
     })
+
     assert(helpers.dao.plugins:insert {
       name = "cors",
       api_id = api3.id,
       config = {
-        origin = "example.com",
+        origins = {"example.com"},
         methods = {"GET"},
         headers = {"origin", "type", "accepts"},
         exposed_headers = {"x-auth-token"},
@@ -73,7 +80,20 @@ describe("Plugin: cors (access)", function()
       name = "cors",
       api_id = api5.id,
       config = {
-        origin = "*"
+        origins = { "*" }
+      }
+    })
+
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api6.id,
+      config = {
+        origins = {"example.com", "example.org"},
+        methods = {"GET"},
+        headers = {"origin", "type", "accepts"},
+        exposed_headers = {"x-auth-token"},
+        max_age = 23,
+        preflight_continue = true
       }
     })
 
@@ -102,6 +122,7 @@ describe("Plugin: cors (access)", function()
       assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
+
     it("gives appropriate defaults when origin is explicitly set to *", function()
       local res = assert(client:send {
         method = "OPTIONS",
@@ -117,6 +138,7 @@ describe("Plugin: cors (access)", function()
       assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
+
     it("accepts config options", function()
       local res = assert(client:send {
         method = "OPTIONS",
@@ -132,6 +154,7 @@ describe("Plugin: cors (access)", function()
       assert.equal("origin,type,accepts", res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
     end)
+
     it("preflight_continue enabled", function()
       local res = assert(client:send {
         method = "OPTIONS",
@@ -144,6 +167,19 @@ describe("Plugin: cors (access)", function()
       local json = cjson.decode(body)
       assert.equal("201", json.code)
       assert.equal("OK", json.message)
+    end)
+
+    it("replies with request-headers if present in request", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        headers = {
+          ["Host"] = "cors5.com",
+          ["Access-Control-Request-Headers"] = "origin,accepts",
+        }
+      })
+
+      assert.res_status(204, res)
+      assert.equal("origin,accepts", res.headers["Access-Control-Allow-Headers"])
     end)
   end)
 
@@ -163,6 +199,7 @@ describe("Plugin: cors (access)", function()
       assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
+
     it("accepts config options", function()
       local res = assert(client:send {
         method = "GET",
@@ -178,6 +215,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
+
     it("works with 404 responses", function()
       local res = assert(client:send {
         method = "GET",
@@ -194,6 +232,7 @@ describe("Plugin: cors (access)", function()
       assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
+
     it("works with 40x responses returned by another plugin", function()
       local res = assert(client:send {
         method = "GET",
@@ -208,6 +247,30 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
       assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
+    end)
+
+    it("sets CORS orgin based on origin host", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors6.com",
+          ["Origin"] = "http://www.example.com"
+        }
+      })
+      assert.res_status(200, res)
+      assert.equal("http://www.example.com", res.headers["Access-Control-Allow-Origin"])
+    end)
+
+    it("does not sets CORS orgin if origin host is not in origin_domains list", function()
+      local res = assert(client:send {
+        method = "GET",
+        headers = {
+          ["Host"] = "cors6.com",
+          ["Origin"] = "http://www.example.net"
+        }
+      })
+      assert.res_status(200, res)
+      assert.is_nil(res.headers["Access-Control-Allow-Origin"])
     end)
   end)
 end)
