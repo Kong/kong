@@ -147,7 +147,7 @@ end
 -- @return balancer if found, or `false` if not found, or nil+error on error
 local get_balancer = function(target)
   -- NOTE: only called upon first lookup, so `cache_only` limitations do not apply here
-  local hostname = target.upstream.host
+  local hostname = target.host
 
   -- first go and find the upstream object, from cache or the db
   local upstream, err = get_upstream(hostname)
@@ -300,7 +300,7 @@ local function execute(target)
   if not ip then
     if port == "dns server error; 3 name error" then
       -- in this case a "503 service unavailable", others will be a 500.
-      log(ERROR, "name resolution failed for '", tostring(target.host), 
+      log(ERROR, "name resolution failed for '", tostring(target.host),
                  "': ", port)
       return responses.send(503)
     end
