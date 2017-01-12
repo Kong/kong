@@ -26,7 +26,8 @@ describe("Plugin: cors (access)", function()
       upstream_url = "http://mockbin.com"
     })
     local api5 = assert(helpers.dao.apis:insert {
-      request_host = "cors5.com",
+      name = "api-5"
+      request_host = { "cors5.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -38,7 +39,7 @@ describe("Plugin: cors (access)", function()
       name = "cors",
       api_id = api2.id,
       config = {
-        origin = "example.com",
+        origin = {"example.com"},
         methods = {"GET"},
         headers = {"origin", "type", "accepts"},
         exposed_headers = {"x-auth-token"},
@@ -50,7 +51,7 @@ describe("Plugin: cors (access)", function()
       name = "cors",
       api_id = api3.id,
       config = {
-        origin = "example.com",
+        origin = {"example.com"},
         methods = {"GET"},
         headers = {"origin", "type", "accepts"},
         exposed_headers = {"x-auth-token"},
@@ -72,13 +73,12 @@ describe("Plugin: cors (access)", function()
       name = "cors",
       api_id = api5.id,
       config = {
-        origin = "example.com",
+        origin = {"example.com", "example.org"},
         methods = {"GET"},
         headers = {"origin", "type", "accepts"},
         exposed_headers = {"x-auth-token"},
         max_age = 23,
-        preflight_continue = true,
-        origin_domains = 'example.com, example.org'
+        preflight_continue = true
       }
     })
 
