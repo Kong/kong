@@ -5,11 +5,9 @@ local meta = require "kong.meta"
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "key-auth1.com",
+      name = "api-1",
+      hosts = { "key-auth1.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -18,7 +16,8 @@ describe("Plugin: key-auth (access)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "key-auth2.com",
+      name = "api-2",
+      hosts = { "key-auth2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -38,7 +37,8 @@ describe("Plugin: key-auth (access)", function()
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "key-auth3.com",
+      name = "api-3",
+      hosts = { "key-auth3.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -48,6 +48,9 @@ describe("Plugin: key-auth (access)", function()
         anonymous = true
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
   teardown(function()
     if client then client:close() end

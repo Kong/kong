@@ -28,14 +28,14 @@ local balancers = {}  -- table holding our balancer objects, indexed by upstream
 -- upstreams, instead of all at once forcing to rebuild all balancers
 
 -- Implements a simple dictionary with all upstream-ids indexed
--- by their name. 
+-- by their name.
 local function load_upstreams_dict_into_memory()
   log(DEBUG, "fetching all upstreams")
   local upstreams, err = singletons.dao.upstreams:find_all()
   if err then
     return nil, err
   end
-  
+
   -- build a dictionary, indexed by the upstream name
   local upstreams_dict = {}
   for _, up in ipairs(upstreams) do
@@ -66,7 +66,7 @@ local function load_upstream_into_memory(upstream_id)
   if not upstream then
     return nil, err
   end
-  
+
   return upstream[1]  -- searched by id, so only 1 row in the returned set
 end
 
@@ -74,7 +74,7 @@ end
 -- caching, invalidation, db access, et al.
 -- @return upstream table, or `false` if not found, or nil+error
 local function get_upstream(upstream_name)
-  local upstreams_dict, err = cache.get_or_set(cache.upstreams_dict_key(), 
+  local upstreams_dict, err = cache.get_or_set(cache.upstreams_dict_key(),
                               nil, load_upstreams_dict_into_memory)
   if err then
     return nil, err
@@ -96,7 +96,7 @@ local function load_targets_into_memory(upstream_id)
 
   local target_history, err = singletons.dao.targets:find_all {upstream_id = upstream_id}
   if err then return nil, err end
-  
+
   -- perform some raw data updates
   for _, target in ipairs(target_history) do
     -- split `target` field into `name` and `port`
@@ -108,7 +108,7 @@ local function load_targets_into_memory(upstream_id)
     target.order = target.created_at .. ":" .. target.id
   end
 
-  table.sort(target_history, function(a,b) 
+  table.sort(target_history, function(a,b)
     return a.order < b.order
   end)
 
@@ -122,7 +122,7 @@ end
 -- @return true
 local function apply_history(rb, history, start)
 
-  for i = start, #history do 
+  for i = start, #history do
     local target = history[i]
 
     if target.weight > 0 then
@@ -147,8 +147,8 @@ end
 -- @return balancer if found, or `false` if not found, or nil+error on error
 local get_balancer = function(target)
   -- NOTE: only called upon first lookup, so `cache_only` limitations do not apply here
-  local hostname = target.upstream.host
-  
+  local hostname = target.host
+
   -- first go and find the upstream object, from cache or the db
   local upstream, err = get_upstream(hostname)
 
@@ -161,7 +161,7 @@ local get_balancer = function(target)
   end
 
   -- we've got the upstream, now fetch its targets, from cache or the db
-  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id), 
+  local targets_history, err = cache.get_or_set(cache.targets_key(upstream.id),
                                nil, load_targets_into_memory, upstream.id)
   if err then
     return nil, err
@@ -228,7 +228,7 @@ local get_balancer = function(target)
       apply_history(balancer, targets_history, 1)
     end
   end
-  
+
   return balancer
 end
 
@@ -239,18 +239,16 @@ end
 
 -- Resolves the target structure in-place (fields `ip` and `port`).
 --
--- If the hostname matches an 'upstream' pool, then it must be balanced in that 
+-- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool provides it.
 --
 -- @param target the data structure as defined in `core.access.before` where it is created
 -- @return true on success, nil+error otherwise
 local function execute(target)
-  local upstream = target.upstream
-
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
-    target.ip = upstream.host
-    target.port = upstream.port or 80  -- TODO: remove this fallback value
+    target.ip = target.host
+    target.port = target.port or 80 -- TODO: remove this fallback value
     return true
   end
 
@@ -274,17 +272,17 @@ local function execute(target)
     -- store for retries
     target.balancer = balancer
   end
-  
+
   if balancer then
     -- have to invoke the ring-balancer
     local hashValue = nil  -- TODO: implement, nil does simple round-robin
-    
+
     local ip, port, hostname = balancer:getPeer(hashValue, dns_cache_only)
     if not ip then
       if port == "No peers are available" then
         -- in this case a "503 service unavailable", others will be a 500.
         log(ERROR, "failure to get a peer from the ring-balancer '",
-                   upstream.host, "'; ", port)
+                   target.host, "': ", port)
         return responses.send(503)
       end
 
@@ -298,8 +296,14 @@ local function execute(target)
   end
 
   -- have to do a regular DNS lookup
-  local ip, port = toip(upstream.host, upstream.port, dns_cache_only)
+  local ip, port = toip(target.host, target.port, dns_cache_only)
   if not ip then
+    if port == "dns server error; 3 name error" then
+      -- in this case a "503 service unavailable", others will be a 500.
+      log(ERROR, "name resolution failed for '", tostring(target.host),
+                 "': ", port)
+      return responses.send(503)
+    end
     return nil, port
   end
 
@@ -308,10 +312,10 @@ local function execute(target)
   return true
 end
 
-return { 
+return {
   execute = execute,
   invalidate_balancer = invalidate_balancer,
- 
+
   -- ones below are exported for test purposes
   _load_upstreams_dict_into_memory = load_upstreams_dict_into_memory,
   _load_upstream_into_memory = load_upstream_into_memory,

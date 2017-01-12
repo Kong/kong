@@ -4,16 +4,14 @@ describe("Plugin: response-transformer (filter)", function()
   local client
 
   setup(function()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer",
-      request_host = "response.com",
+      hosts = { "response.com" },
       upstream_url = "http://httpbin.org"
     })
     local api2 = assert(helpers.dao.apis:insert {
       name = "tests-response-transformer-2",
-      request_host = "response2.com",
+      hosts = { "response2.com" },
       upstream_url = "http://httpbin.org"
     })
 
@@ -36,7 +34,10 @@ describe("Plugin: response-transformer (filter)", function()
         }
       }
     })
+
+    assert(helpers.start_kong())
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -44,6 +45,7 @@ describe("Plugin: response-transformer (filter)", function()
   before_each(function()
     client = helpers.proxy_client()
   end)
+
   after_each(function()
     if client then client:close() end
   end)

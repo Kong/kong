@@ -145,15 +145,156 @@ return {
   {
     name = "2016-09-05-212515_retries",
     up = [[
-      DO $$ 
+      DO $$
       BEGIN
         ALTER TABLE apis ADD COLUMN retries smallint NOT NULL DEFAULT 5;
-      EXCEPTION WHEN duplicate_column THEN 
+      EXCEPTION WHEN duplicate_column THEN
           -- Do nothing, accept existing state
       END$$;
     ]],
     down = [[
       ALTER TABLE apis DROP COLUMN IF EXISTS retries;
+    ]]
+  },
+  {
+    name = "2016-09-16-141423_upstreams",
+    -- Note on the timestamps below; these use a precision of milliseconds
+    -- this differs from the other tables above, as they only use second precision.
+    -- This differs from the change to the Cassandra entities.
+    up = [[
+      CREATE TABLE IF NOT EXISTS upstreams(
+        id uuid PRIMARY KEY,
+        name text UNIQUE,
+        slots int NOT NULL,
+        orderlist text NOT NULL,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
+      );
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('upstreams_name_idx')) IS NULL THEN
+          CREATE INDEX upstreams_name_idx ON upstreams(name);
+        END IF;
+      END$$;
+      CREATE TABLE IF NOT EXISTS targets(
+        id uuid PRIMARY KEY,
+        target text NOT NULL,
+        weight int NOT NULL,
+        upstream_id uuid REFERENCES upstreams(id) ON DELETE CASCADE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
+      );
+      DO $$
+      BEGIN
+        IF (SELECT to_regclass('targets_target_idx')) IS NULL THEN
+          CREATE INDEX targets_target_idx ON targets(target);
+        END IF;
+      END$$;
+    ]],
+    down = [[
+      DROP TABLE upstreams;
+      DROP TABLE targets;
+    ]],
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_1",
+    up = [[
+      DO $$
+      BEGIN
+        ALTER TABLE apis ADD hosts text;
+        ALTER TABLE apis ADD uris text;
+        ALTER TABLE apis ADD methods text;
+        ALTER TABLE apis ADD strip_uri boolean;
+      EXCEPTION WHEN duplicate_column THEN
+
+      END$$;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP COLUMN IF EXISTS headers;
+      ALTER TABLE apis DROP COLUMN IF EXISTS uris;
+      ALTER TABLE apis DROP COLUMN IF EXISTS methods;
+      ALTER TABLE apis DROP COLUMN IF EXISTS strip_uri;
+    ]]
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_2",
+    up = function(_, _, dao)
+      -- create request_headers and request_uris
+      -- with one entry each: the current request_host
+      -- and the current request_path
+      -- We use a raw SQL query because we removed the
+      -- request_host/request_path fields in the API schema,
+      -- hence the Postgres DAO won't include them in the
+      -- retrieved rows.
+      local rows, err = dao.db:query([[
+        SELECT * FROM apis;
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        local fields_to_update = {
+          hosts = { row.request_host },
+          uris = { row.request_path },
+          strip_uri = row.strip_request_path,
+        }
+
+        local _, err = dao.apis:update(fields_to_update, { id = row.id })
+        if err then
+          return err
+        end
+      end
+    end,
+    down = function(_, _, dao)
+      -- re insert request_host and request_path from
+      -- the first element of request_headers and
+      -- request_uris
+
+    end
+  },
+  {
+    name = "2016-11-11-151900_new_apis_router_3",
+    up = [[
+      DROP INDEX IF EXISTS apis_request_host_idx;
+      DROP INDEX IF EXISTS apis_request_path_idx;
+
+      ALTER TABLE apis DROP COLUMN IF EXISTS request_host;
+      ALTER TABLE apis DROP COLUMN IF EXISTS request_path;
+      ALTER TABLE apis DROP COLUMN IF EXISTS strip_request_path;
+    ]],
+    down = [[
+      ALTER TABLE apis ADD request_host text;
+      ALTER TABLE apis ADD request_path text;
+      ALTER TABLE apis ADD strip_request_path boolean;
+
+      CREATE INDEX IF NOT EXISTS ON apis(request_host);
+      CREATE INDEX IF NOT EXISTS ON apis(request_path);
+    ]]
+  },
+  {
+    name = "2016-12-14-172100_move_ssl_certs_to_core",
+    up = [[
+      CREATE TABLE ssl_certificates(
+        id uuid PRIMARY KEY,
+        cert text ,
+        key text ,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      CREATE TABLE ssl_servers_names(
+        name text PRIMARY KEY,
+        ssl_certificate_id uuid REFERENCES ssl_certificates(id) ON DELETE CASCADE,
+        created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc')
+      );
+
+      ALTER TABLE apis ADD https_only boolean;
+      ALTER TABLE apis ADD http_if_terminated boolean;
+    ]],
+    down = [[
+      DROP TABLE ssl_certificates;
+      DROP TABLE ssl_servers_names;
+
+      ALTER TABLE apis DROP COLUMN IF EXISTS https_only;
+      ALTER TABLE apis DROP COLUMN IF EXISTS http_if_terminated;
     ]]
   },
   {

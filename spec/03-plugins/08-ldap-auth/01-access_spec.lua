@@ -3,22 +3,21 @@ local helpers = require "spec.helpers"
 
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
-  setup(function()
-    assert(helpers.start_kong())
 
+  setup(function()
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
-      request_host = "ldap.com",
+      hosts = { "ldap.com" },
       upstream_url = "http://mockbin.com"
     })
     api2 = assert(helpers.dao.apis:insert {
       name = "test-ldap2",
-      request_host = "ldap2.com",
+      hosts = { "ldap2.com" },
       upstream_url = "http://mockbin.com"
     })
     local api3 = assert(helpers.dao.apis:insert {
       name = "test-ldap3",
-      request_host = "ldap3.com",
+      hosts = { "ldap3.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -58,7 +57,10 @@ describe("Plugin: ldap-auth (access)", function()
         anonymous = true
       }
     })
+
+    assert(helpers.start_kong())
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -67,6 +69,7 @@ describe("Plugin: ldap-auth (access)", function()
     client = helpers.proxy_client()
     client_admin = helpers.admin_client()
   end)
+
   after_each(function()
     if client then client:close() end
   end)
@@ -252,7 +255,7 @@ describe("Plugin: ldap-auth (access)", function()
       res:read_body()
       return res.status == 200
     end)
-    
+
     -- Check that cache is invalidated
     helpers.wait_until(function()
       local res = client_admin:send {
