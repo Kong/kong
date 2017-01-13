@@ -15,7 +15,7 @@ describe("Core Hooks", function()
     describe("Plugin entity invalidation on API", function()
       local client, api_client
       local plugin
-      local no_consumer_api, consumer_api, consumer
+      local db_miss_api
 
       before_each(function()
         helpers.start_kong()
@@ -36,18 +36,18 @@ describe("Core Hooks", function()
           config = { minute = 10 }
         })
 
-        no_consumer_api = assert(helpers.dao.apis:insert {
+        assert(helpers.dao.apis:insert {
           request_host = "db-miss.org",
           upstream_url = "http://mockbin.com"
         })
 
-        consumer_api = assert(helpers.dao.apis:insert {
+        db_miss_api = assert(helpers.dao.apis:insert {
           request_host = "db-miss-you-too.org",
           upstream_url = "http://mockbin.com"
         })
         assert(helpers.dao.plugins:insert {
           name = "correlation-id",
-          api_id = consumer_api.id
+          api_id = db_miss_api.id
         })
 
       end)
