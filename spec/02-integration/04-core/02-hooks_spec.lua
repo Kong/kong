@@ -15,6 +15,7 @@ describe("Core Hooks", function()
     describe("Plugin entity invalidation on API", function()
       local client, api_client
       local plugin
+      local no_consumer_api, consumer_api, consumer
 
       before_each(function()
         helpers.start_kong()
@@ -34,6 +35,21 @@ describe("Core Hooks", function()
           name = "rate-limiting",
           config = { minute = 10 }
         })
+
+        no_consumer_api = assert(helpers.dao.apis:insert {
+          request_host = "db-miss.org",
+          upstream_url = "http://mockbin.com"
+        })
+
+        consumer_api = assert(helpers.dao.apis:insert {
+          request_host = "db-miss-you-too.org",
+          upstream_url = "http://mockbin.com"
+        })
+        assert(helpers.dao.plugins:insert {
+          name = "correlation-id",
+          api_id = consumer_api.id
+        })
+
       end)
       after_each(function()
         if client and api_client then
@@ -43,11 +59,29 @@ describe("Core Hooks", function()
         helpers.stop_kong()
       end)
 
+      it("inserts sentinel values for db-miss", function()
+        -- test case specific for https://github.com/Mashape/kong/pull/1841
+        -- make a request, to populate cache with sentinel values
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "db-miss.org"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        -- check sentinel value for global plugin; pluginname, nil, nil
+        local cache_path = "/cache/"..cache.plugin_key("correlation-id", nil, nil)
+        local res = assert(api_client:send {
+          method = "GET",
+          path = cache_path
+        })
+        assert.response(res).has.status(200)
+        assert.same(db_miss_sentinel, assert.response(res).has.jsonbody())
+      end)
+
       it("should invalidate a global plugin when adding", function()
-        -- on a db-miss a sentinel value is inserted in the cache to prevent
-        -- too many db lookups. This sentinel value should be invalidated when
-        -- adding a plugin.
-        
         -- Making a request to populate the cache
         local res = assert(client:send {
           method = "GET",
