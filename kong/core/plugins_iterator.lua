@@ -30,10 +30,9 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
           return row
         end
       end
-    else
-      -- insert a cached value to not trigger too many DB queries.
-      return {null = true}
     end
+    -- insert a cached value to not trigger too many DB queries.
+    return {null = true}
   end)
 
   if plugin ~= nil and plugin.enabled then
