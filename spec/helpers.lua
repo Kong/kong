@@ -222,7 +222,7 @@ end
 -- @name proxy_ssl_client
 local function proxy_ssl_client(timeout)
   local client = http_client(conf.proxy_ip, conf.proxy_ssl_port, timeout)
-  client:ssl_handshake()
+  assert(client:ssl_handshake())
   return client
 end
 

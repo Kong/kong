@@ -37,14 +37,6 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       consumer_id = consumer.id
     })
 
-    -- Invalidate cache
-    local res = assert(admin_client:send {
-      method = "DELETE",
-      path = "/cache/",
-      headers = {}
-    })
-    assert.res_status(204, res)
-
     assert(helpers.start_kong())
     admin_client = helpers.admin_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
