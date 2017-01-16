@@ -214,12 +214,18 @@ local function prepare_prefix(kong_config, nginx_custom_template_path)
   end
 
   -- create log files in case they don't already exist
-  local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_err_logs)
-  if not ok then return nil, stderr end
-  local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_acc_logs)
-  if not ok then return nil, stderr end
-  local ok, _, _, stderr = pl_utils.executeex("touch "..kong_config.nginx_admin_acc_logs)
-  if not ok then return nil, stderr end
+  if not pl_path.exists(kong_config.nginx_err_logs) then
+    local ok, err = pl_file.write(kong_config.nginx_err_logs, "")
+    if not ok then return nil, err end
+  end
+  if not pl_path.exists(kong_config.nginx_acc_logs) then
+    local ok, err = pl_file.write(kong_config.nginx_acc_logs, "")
+    if not ok then return nil, err end
+  end
+  if not pl_path.exists(kong_config.nginx_admin_acc_logs) then
+    local ok, err = pl_file.write(kong_config.nginx_admin_acc_logs, "")
+    if not ok then return nil, err end
+  end
 
   log.verbose("saving serf identifier to %s", kong_config.serf_node_id)
   if not pl_path.exists(kong_config.serf_node_id) then

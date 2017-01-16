@@ -1,9 +1,11 @@
-local pl_utils = require "pl.utils"
+local pl_file = require "pl.file"
+local pl_path = require "pl.path"
 
 local function validate_file(value)
-  local ok = pl_utils.executeex("touch "..value)
-  if not ok then
-    return false, "Cannot create file. Make sure the path is valid, and has the right permissions"
+  -- create file in case it doesn't exist
+  if not pl_path.exists(value) then
+    local ok, err = pl_file.write(value, "")
+    if not ok then return false, string.format("Cannot create file: %s", err) end
   end
 
   return true

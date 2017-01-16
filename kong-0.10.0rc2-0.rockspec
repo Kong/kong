@@ -13,7 +13,7 @@ description = {
 dependencies = {
   "luasec == 0.6",
   "luasocket == 2.0.2",
-  "penlight == 1.3.2",
+  "penlight == 1.4.1",
   "mediator_lua == 1.1.2",
   "lua-resty-http == 0.08",
   "lua-resty-jit-uuid == 0.0.5",

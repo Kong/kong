@@ -6,7 +6,7 @@ describe("Websockets", function()
   setup(function()
     assert(helpers.dao.apis:insert {
       name = "ws",
-      uris = { "/ws"},
+      uris = { "/ws" },
       strip_uri = true,
       upstream_url = "http://sockb.in"
     })
