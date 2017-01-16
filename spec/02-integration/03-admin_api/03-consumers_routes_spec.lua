@@ -23,7 +23,7 @@ describe("Admin API", function()
   before_each(function()
     helpers.dao:truncate_tables()
     consumer = assert(helpers.dao.consumers:insert {
-      username = "bob",
+      username = "bob pop",
       custom_id = "1234"
     })
   end)
@@ -68,12 +68,12 @@ describe("Admin API", function()
               method = "POST",
               path = "/consumers",
               body = {
-                username = "bob"
+                username = "bob pop"
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"username":"already exists with value 'bob'"}]], body)
+            assert.equal([[{"username":"already exists with value 'bob pop'"}]], body)
           end
         end)
       end)
