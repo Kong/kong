@@ -185,32 +185,6 @@ return function(options)
 
 
 
-  do -- patch luassert when running in the Busted test environment
-
-    if options.rbusted then
-      -- FIXME remove when luassert fixes have been released
-      -- patch luassert's 'assert' to fix the 'third' argument problem
-      -- see https://github.com/Olivine-Labs/luassert/pull/141
-      local assert = require "luassert.assert"
-      local assert_mt = getmetatable(assert)
-      if assert_mt then
-        assert_mt.__call = function(self, bool, message, level, ...)
-          if not bool then
-            local lvl = 2
-            if type(level) == "number" then
-              lvl = level + 1
-            end
-            error(message or "assertion failed!", lvl)
-          end
-          return bool, message, level, ...
-        end
-      end
-    end
-
-  end
-
-
-
   do -- randomseeding patch for: cli, rbusted and OpenResty
 
     --- Seeds the random generator, use with care.
