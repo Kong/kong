@@ -82,8 +82,8 @@ function _M.execute()
 
   local sni, err = ssl.server_name()
   if not sni then
-    log(ERR, "could not retrieve Server Name Indication from client: ", err)
-    return ngx.exit(ngx.ERROR)
+    log(DEBUG, "could not retrieve Server Name Indication from client and using global SSL configuration: ", err)
+    return
   end
 
   local cert_and_key, err
