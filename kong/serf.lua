@@ -55,8 +55,13 @@ function Serf:leave()
   -- fixed we can check again for any errors returned by the following command.
   self:invoke_signal("leave")
 
-  local _, err = self.dao.nodes:delete {name = self.node_name}
-  if err then return nil, tostring(err) end
+  -- This check is required in case the prefix preparation fails befofe a node
+  -- id can be generated. In that case this value will be nil and the DAO will
+  -- fail because the primary key is missing in the delete operation.
+  if self.node_name then
+    local _, err = self.dao.nodes:delete {name = self.node_name}
+    if err then return nil, tostring(err) end
+  end
 
   return true
 end
