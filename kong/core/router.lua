@@ -425,7 +425,7 @@ local _M = {}
 
 function _M.new(apis)
   if type(apis) ~= "table" then
-    return error("expected arg #1 apis to be a table", 2)
+    return error("expected arg #1 apis to be a table")
   end
 
   local self = {}
@@ -481,13 +481,13 @@ function _M.new(apis)
 
   local function find_api(method, uri, headers)
     if type(method) ~= "string" then
-      return error("arg #1 method must be a string", 2)
+      return error("arg #1 method must be a string")
     end
     if type(uri) ~= "string" then
-      return error("arg #2 uri must be a string", 2)
+      return error("arg #2 uri must be a string")
     end
     if type(headers) ~= "table" then
-      return error("arg #3 headers must be a table", 2)
+      return error("arg #3 headers must be a table")
     end
 
 
