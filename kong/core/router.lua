@@ -619,7 +619,6 @@ function _M.new(apis)
 
     if api_t.strip_uri_regex then
       local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
-      api_t.strip_uri_regex = nil
       ngx.req.set_uri(stripped_uri)
     end
 

@@ -709,6 +709,32 @@ describe("Router", function()
         assert.same(use_case_apis[1], api)
         assert.equal("/my-api/hello/world", _ngx.var.uri)
       end)
+
+      it("can find an API with stripped URI several times in a row", function()
+        local _ngx = mock_ngx("GET", "/my-api", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/", _ngx.var.uri)
+
+        _ngx = mock_ngx("GET", "/my-api", {})
+        local api2 = router.exec(_ngx)
+        assert.same(use_case_apis[1], api2)
+        assert.equal("/", _ngx.var.uri)
+      end)
+
+      it("can proxy an API with stripped URI with different URIs in a row", function()
+        local _ngx = mock_ngx("GET", "/my-api", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/", _ngx.var.uri)
+
+        _ngx = mock_ngx("GET", "/this-api", {})
+        local api2 = router.exec(_ngx)
+        assert.same(use_case_apis[1], api2)
+        assert.equal("/", _ngx.var.uri)
+      end)
     end)
   end)
 end)
