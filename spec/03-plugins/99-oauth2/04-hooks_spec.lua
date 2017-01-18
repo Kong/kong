@@ -4,23 +4,13 @@ local helpers = require "spec.helpers"
 
 describe("#ci Plugin: oauth2 (hooks)", function()
   local admin_client, proxy_ssl_client
-  setup(function()
-    assert(helpers.start_kong())
-    admin_client = helpers.admin_client()
-    proxy_ssl_client = helpers.proxy_ssl_client()
-  end)
-  teardown(function()
-    if admin_client and proxy_ssl_client then
-      admin_client:close()
-      proxy_ssl_client:close()
-    end
-    helpers.stop_kong()
-  end)
 
   before_each(function()
     helpers.dao:truncate_tables()
+
     local api = assert(helpers.dao.apis:insert {
-      request_host = "oauth2.com",
+      name = "api-1",
+      hosts = { "oauth2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -54,6 +44,18 @@ describe("#ci Plugin: oauth2 (hooks)", function()
       headers = {}
     })
     assert.res_status(204, res)
+
+    assert(helpers.start_kong())
+    admin_client = helpers.admin_client()
+    proxy_ssl_client = helpers.proxy_ssl_client()
+  end)
+
+  after_each(function()
+    if admin_client and proxy_ssl_client then
+      admin_client:close()
+      proxy_ssl_client:close()
+    end
+    helpers.stop_kong()
   end)
 
   local function provision_code(client_id)
@@ -126,7 +128,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end)
+      end, 5)
 
       -- It should not work
       local code = provision_code("clientid123")
@@ -199,7 +201,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end)
+      end, 5)
 
       -- It should work
       local code = provision_code("updated_clientid123")
@@ -269,7 +271,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end)
+      end, 5)
 
       -- It should not work
       local code = provision_code("clientid123")
@@ -341,7 +343,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end)
+      end, 5)
 
       -- It should not work
       local res = assert(proxy_ssl_client:send {
@@ -413,7 +415,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end)
+      end, 5)
 
       -- It should work
       local res = assert(proxy_ssl_client:send {
@@ -496,7 +498,7 @@ describe("#ci Plugin: oauth2 (hooks)", function()
         })
         res:read_body()
         return res.status == 404
-      end)
+      end, 5)
 
       -- it should not work
       local res = assert(proxy_ssl_client:send {

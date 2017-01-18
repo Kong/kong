@@ -11,6 +11,7 @@ local CACHE_KEYS = {
   APIS = "apis",
   CONSUMERS = "consumers",
   PLUGINS = "plugins",
+  CERTIFICATES = "certificates",
   BASICAUTH_CREDENTIAL = "basicauth_credentials",
   HMACAUTH_CREDENTIAL = "hmacauth_credentials",
   KEYAUTH_CREDENTIAL = "keyauth_credentials",
@@ -21,7 +22,9 @@ local CACHE_KEYS = {
   SSL = "ssl",
   ALL_APIS_BY_DIC = "ALL_APIS_BY_DIC",
   LDAP_CREDENTIAL = "ldap_credentials",
-  BOT_DETECTION = "bot_detection"
+  BOT_DETECTION = "bot_detection",
+  UPSTREAMS = "upstreams",
+  TARGETS = "targets",
 }
 
 local _M = {}
@@ -55,7 +58,7 @@ local DATA = {}
 
 function _M.set(key, value, exptime)
   exptime = exptime or 0
-  
+
   if exptime ~= 0 then
     value = {
       value = value,
@@ -74,7 +77,7 @@ end
 
 function _M.get(key)
   local now = gettime()
-  
+
   -- check local memory, and verify ttl
   local value = DATA[key]
   if value ~= nil then
@@ -88,7 +91,7 @@ function _M.get(key)
     -- value with expired ttl, delete it
     DATA[key] = nil
   end
-  
+
   -- nothing found yet, get it from Shared Dictionary
   value = _M.sh_get(key)
   if value == nil then
@@ -152,7 +155,11 @@ function _M.get_or_set(key, ttl, cb, ...)
   value = _M.get(key)
   if value == nil then
     -- Get from closure
-    value = cb(...)
+    value, err = cb(...)
+    if err then
+      return nil, err
+    end
+
     if value ~= nil then
       local ok, err = _M.set(key, value, ttl)
       if not ok then
@@ -182,6 +189,10 @@ end
 
 function _M.plugin_key(name, api_id, consumer_id)
   return CACHE_KEYS.PLUGINS..":"..name..(api_id and ":"..api_id or "")..(consumer_id and ":"..consumer_id or "")
+end
+
+function _M.certificate_key(sni)
+  return CACHE_KEYS.CERTIFICATES .. ":" .. sni
 end
 
 function _M.basicauth_credential_key(username)
@@ -222,6 +233,18 @@ end
 
 function _M.bot_detection_key(key)
   return CACHE_KEYS.BOT_DETECTION..":"..key
+end
+
+function _M.upstreams_dict_key()
+  return CACHE_KEYS.UPSTREAMS
+end
+
+function _M.upstream_key(upstream_id)
+  return CACHE_KEYS.UPSTREAMS..":"..upstream_id
+end
+
+function _M.targets_key(upstream_id)
+  return CACHE_KEYS.TARGETS..":"..upstream_id
 end
 
 function _M.all_apis_by_dict_key()

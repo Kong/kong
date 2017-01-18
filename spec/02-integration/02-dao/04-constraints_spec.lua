@@ -4,9 +4,9 @@ local utils = require "kong.tools.utils"
 
 local api_tbl = {
   name = "mockbin",
-  request_host = "mockbin.com",
-  request_path = "/mockbin",
-  strip_request_path = true,
+  hosts = { "mockbin.com" },
+  uris = { "/mockbin" },
+  strip_uri = true,
   upstream_url = "https://mockbin.com"
 }
 
@@ -147,8 +147,8 @@ helpers.for_each_dao(function(kong_config)
         local err
         api_fixture, err = apis:insert {
           name = "to-delete",
-          request_host = "to-delete.com",
-          request_path = "/to-delete",
+          hosts = { "to-delete.com" },
+          uris = { "/to-delete" },
           upstream_url = "https://mockbin.com"
         }
         assert.falsy(err)

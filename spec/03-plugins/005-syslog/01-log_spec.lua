@@ -6,18 +6,19 @@ local pl_stringx = require "pl.stringx"
 describe("#ci Plugin: syslog (log)", function()
   local client, platform
   setup(function()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "logging.com",
+      name = "api-1",
+      hosts = { "logging.com" },
       upstream_url = "http://mockbin.com"
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "logging2.com",
+      name = "api-2",
+      hosts = { "logging2.com" },
       upstream_url = "http://mockbin.com"
     })
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "logging3.com",
+      name = "api-3",
+      hosts = { "logging3.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -55,6 +56,8 @@ describe("#ci Plugin: syslog (log)", function()
     local ok, _, stdout = helpers.execute("uname")
     assert(ok, "failed to retrieve platform name")
     platform = pl_stringx.strip(stdout)
+
+    assert(helpers.start_kong())
   end)
   teardown(function()
     helpers.stop_kong()

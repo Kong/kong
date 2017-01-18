@@ -208,8 +208,8 @@
 # CLUSTERING
 #------------------------------------------------------------------------------
 
-# In addition to pointing to the same database, each Kong node must join the
-# same cluster.
+# In addition to pointing to the same database, each Kong node must be 
+# reachable by the other nodes in the cluster.
 #
 # Kong's clustering works on the IP layer (hostnames are not supported, only
 # IPs) and expects a flat network topology without any NAT between the

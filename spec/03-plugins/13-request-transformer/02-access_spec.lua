@@ -4,17 +4,15 @@ describe("Plugin: request-transformer (access)", function()
   local client
 
   setup(function()
-    assert(helpers.start_kong())
-
-    local api1 = assert(helpers.dao.apis:insert {request_host = "test1.com", upstream_url = "http://mockbin.com"})
-    local api2 = assert(helpers.dao.apis:insert {request_host = "test2.com", upstream_url = "http://httpbin.org"})
-    local api3 = assert(helpers.dao.apis:insert {request_host = "test3.com", upstream_url = "http://mockbin.com"})
-    local api4 = assert(helpers.dao.apis:insert {request_host = "test4.com", upstream_url = "http://mockbin.com"})
-    local api5 = assert(helpers.dao.apis:insert {request_host = "test5.com", upstream_url = "http://mockbin.com"})
-    local api6 = assert(helpers.dao.apis:insert {request_host = "test6.com", upstream_url = "http://mockbin.com"})
-    local api7 = assert(helpers.dao.apis:insert {request_host = "test7.com", upstream_url = "http://mockbin.com"})
-    local api8 = assert(helpers.dao.apis:insert {request_host = "test8.com", upstream_url = "http://mockbin.com"})
-    local api9 = assert(helpers.dao.apis:insert {request_host = "test9.com", upstream_url = "http://mockbin.com"})
+    local api1 = assert(helpers.dao.apis:insert { name = "api-1", hosts = { "test1.com" }, upstream_url = "http://mockbin.com"})
+    local api2 = assert(helpers.dao.apis:insert { name = "api-2", hosts = { "test2.com" }, upstream_url = "http://httpbin.org"})
+    local api3 = assert(helpers.dao.apis:insert { name = "api-3", hosts = { "test3.com" }, upstream_url = "http://mockbin.com"})
+    local api4 = assert(helpers.dao.apis:insert { name = "api-4", hosts = { "test4.com" }, upstream_url = "http://mockbin.com"})
+    local api5 = assert(helpers.dao.apis:insert { name = "api-5", hosts = { "test5.com" }, upstream_url = "http://mockbin.com"})
+    local api6 = assert(helpers.dao.apis:insert { name = "api-6", hosts = { "test6.com" }, upstream_url = "http://mockbin.com"})
+    local api7 = assert(helpers.dao.apis:insert { name = "api-7", hosts = { "test7.com" }, upstream_url = "http://mockbin.com"})
+    local api8 = assert(helpers.dao.apis:insert { name = "api-8", hosts = { "test8.com" }, upstream_url = "http://mockbin.com"})
+    local api9 = assert(helpers.dao.apis:insert { name = "api-9", hosts = { "test9.com" }, upstream_url = "http://mockbin.com"})
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
@@ -106,6 +104,7 @@ describe("Plugin: request-transformer (access)", function()
         http_method = "GET"
       }
     })
+
     assert(helpers.dao.plugins:insert {
       api_id = api9.id,
       name = "request-transformer",
@@ -117,7 +116,10 @@ describe("Plugin: request-transformer (access)", function()
         }
       }
     })
+
+    assert(helpers.start_kong())
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -125,6 +127,7 @@ describe("Plugin: request-transformer (access)", function()
   before_each(function()
     client = helpers.proxy_client()
   end)
+
   after_each(function()
     if client then client:close() end
   end)

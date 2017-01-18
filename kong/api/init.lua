@@ -110,7 +110,7 @@ end
 ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster" }) do
+for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster", "certificates", "snis", "upstreams"}) do
   local routes = require("kong.api.routes."..v)
   attach_routes(insert_405(routes))
 end

@@ -26,12 +26,12 @@ local mock_bin_https = create_mock_bin()
 describe("Plugin: http-log (log)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "http_logging.com",
+      name = "api-1",
+      hosts = { "http_logging.com" },
       upstream_url = "http://mockbin.com"
     })
+
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
       name = "http-log",
@@ -41,9 +41,11 @@ describe("Plugin: http-log (log)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "https_logging.com",
+      name = "api-2",
+      hosts = { "https_logging.com" },
       upstream_url = "http://mockbin.com"
     })
+
     assert(helpers.dao.plugins:insert {
       api_id = api2.id,
       name = "http-log",
@@ -51,6 +53,8 @@ describe("Plugin: http-log (log)", function()
         http_endpoint = "https://mockbin.org/bin/"..mock_bin_https
       }
     })
+
+    assert(helpers.start_kong())
   end)
   teardown(function()
     helpers.stop_kong()

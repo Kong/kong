@@ -1,9 +1,9 @@
 package = "kong"
-version = "0.9.6-0"
+version = "0.9.7-0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Mashape/kong",
-  tag = "0.9.6"
+  tag = "0.9.7"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -76,6 +76,9 @@ build = {
     ["kong.api.routes.plugins"] = "kong/api/routes/plugins.lua",
     ["kong.api.routes.cache"] = "kong/api/routes/cache.lua",
     ["kong.api.routes.cluster"] = "kong/api/routes/cluster.lua",
+    ["kong.api.routes.upstreams"] = "kong/api/routes/upstreams.lua",
+    ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
+    ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
 
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
@@ -86,7 +89,7 @@ build = {
 
     ["kong.core.handler"] = "kong/core/handler.lua",
     ["kong.core.certificate"] = "kong/core/certificate.lua",
-    ["kong.core.resolver"] = "kong/core/resolver.lua",
+    ["kong.core.router"] = "kong/core/router.lua",
     ["kong.core.plugins_iterator"] = "kong/core/plugins_iterator.lua",
     ["kong.core.hooks"] = "kong/core/hooks.lua",
     ["kong.core.reports"] = "kong/core/reports.lua",
@@ -102,6 +105,10 @@ build = {
     ["kong.dao.schemas.nodes"] = "kong/dao/schemas/nodes.lua",
     ["kong.dao.schemas.consumers"] = "kong/dao/schemas/consumers.lua",
     ["kong.dao.schemas.plugins"] = "kong/dao/schemas/plugins.lua",
+    ["kong.dao.schemas.upstreams"] = "kong/dao/schemas/upstreams.lua",
+    ["kong.dao.schemas.targets"] = "kong/dao/schemas/targets.lua",
+    ["kong.dao.schemas.ssl_certificates"] = "kong/dao/schemas/ssl_certificates.lua",
+    ["kong.dao.schemas.ssl_servers_names"] = "kong/dao/schemas/ssl_servers_names.lua",
     ["kong.dao.db"] = "kong/dao/db/init.lua",
     ["kong.dao.db.cassandra"] = "kong/dao/db/cassandra.lua",
     ["kong.dao.db.postgres"] = "kong/dao/db/postgres.lua",
@@ -202,10 +209,6 @@ build = {
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
 
-    ["kong.plugins.ssl.handler"] = "kong/plugins/ssl/handler.lua",
-    ["kong.plugins.ssl.hooks"] = "kong/plugins/ssl/hooks.lua",
-    ["kong.plugins.ssl.schema"] = "kong/plugins/ssl/schema.lua",
-
     ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",
     ["kong.plugins.ip-restriction.schema"] = "kong/plugins/ip-restriction/schema.lua",
     ["kong.plugins.ip-restriction.migrations.cassandra"] = "kong/plugins/ip-restriction/migrations/cassandra.lua",
@@ -230,6 +233,7 @@ build = {
     ["kong.plugins.jwt.api"] = "kong/plugins/jwt/api.lua",
     ["kong.plugins.jwt.daos"] = "kong/plugins/jwt/daos.lua",
     ["kong.plugins.jwt.jwt_parser"] = "kong/plugins/jwt/jwt_parser.lua",
+    ["kong.plugins.jwt.asn_sequence"] = "kong/plugins/jwt/asn_sequence.lua",
 
     ["kong.plugins.hmac-auth.migrations.cassandra"] = "kong/plugins/hmac-auth/migrations/cassandra.lua",
     ["kong.plugins.hmac-auth.migrations.postgres"] = "kong/plugins/hmac-auth/migrations/postgres.lua",
@@ -265,5 +269,9 @@ build = {
     ["kong.plugins.bot-detection.rules"] = "kong/plugins/bot-detection/rules.lua",
     ["kong.plugins.bot-detection.cache"] = "kong/plugins/bot-detection/cache.lua",
     ["kong.plugins.bot-detection.hooks"] = "kong/plugins/bot-detection/hooks.lua",
+
+    ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
+    ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
+    ["kong.plugins.aws-lambda.v4"] = "kong/plugins/aws-lambda/v4.lua",
   }
 }

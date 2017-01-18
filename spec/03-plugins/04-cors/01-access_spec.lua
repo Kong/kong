@@ -3,24 +3,26 @@ local cjson = require "cjson"
 
 describe("Plugin: cors (access)", function()
   local client
-  setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
 
+  setup(function()
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "cors1.com",
+      name = "api-1",
+      hosts = { "cors1.com" },
       upstream_url = "http://mockbin.com"
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "cors2.com",
+      name = "api-2",
+      hosts = { "cors2.com" },
       upstream_url = "http://mockbin.com"
     })
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "cors3.com",
+      name = "api-3",
+      hosts = { "cors3.com" },
       upstream_url = "http://mockbin.com"
     })
     local api4 = assert(helpers.dao.apis:insert {
-      request_host = "cors4.com",
+      name = "api-4",
+      hosts = { "cors4.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -61,6 +63,9 @@ describe("Plugin: cors (access)", function()
       name = "key-auth",
       api_id = api4.id
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()

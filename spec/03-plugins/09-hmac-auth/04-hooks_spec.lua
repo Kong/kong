@@ -6,13 +6,11 @@ local crypto = require "crypto"
 
 describe("Plugin: hmac-auth (hooks)", function()
   local client_proxy, client_admin, consumer, credential
-  setup(function()
-    assert(helpers.start_kong())
-    client_proxy = helpers.proxy_client()
-    client_admin = helpers.admin_client()
 
+  setup(function()
     local api = assert(helpers.dao.apis:insert {
-      request_host = "hmacauth.com",
+      name = "api-1",
+      hosts = { "hmacauth.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -32,6 +30,10 @@ describe("Plugin: hmac-auth (hooks)", function()
       secret = "secret",
       consumer_id = consumer.id
     })
+
+    assert(helpers.start_kong())
+    client_proxy = helpers.proxy_client()
+    client_admin = helpers.admin_client()
   end)
 
    teardown(function()
