@@ -64,7 +64,7 @@ describe("SSL", function()
   end)
 
   describe("global SSL", function()
-    it("fallbakcs on the global SSL certificate", function()
+    it("fallbacks on the default proxy SSL certificate when SNI is not provided by client", function()
       local res = assert(https_client:send {
         method = "GET",
         path = "/status/200",
