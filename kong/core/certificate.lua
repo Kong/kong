@@ -86,7 +86,7 @@ function _M.execute()
     return ngx.exit(ngx.ERROR)
   end
   if not sni then
-    log(DEBUG, "no Server Name Indication provided by client, serving ".. 
+    log(DEBUG, "no Server Name Indication provided by client, serving ", 
                "default proxy SSL certificate")
     -- use fallback certificate
     return
