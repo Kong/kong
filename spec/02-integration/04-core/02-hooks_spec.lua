@@ -7,11 +7,15 @@ local pl_path = require "pl.path"
 local pl_file = require "pl.file"
 local pl_stringx = require "pl.stringx"
 
+-- cache entry inserted as a sentinel whenever a db lookup returns nothing
+local db_miss_sentinel = { null = true }
+
 describe("Core Hooks", function()
   describe("Global", function()
-    describe("Global Plugin entity invalidation on API", function()
+    describe("Plugin entity invalidation on API", function()
       local client, api_client
       local plugin
+      local db_miss_api
 
       before_each(function()
         helpers.start_kong()
@@ -22,11 +26,30 @@ describe("Core Hooks", function()
           request_host = "hooks1.com",
           upstream_url = "http://mockbin.com"
         })
+        assert(helpers.dao.apis:insert {
+          request_host = "hooks2.com",
+          upstream_url = "http://mockbin.com"
+        })
 
         plugin = assert(helpers.dao.plugins:insert {
           name = "rate-limiting",
           config = { minute = 10 }
         })
+
+        assert(helpers.dao.apis:insert {
+          request_host = "db-miss.org",
+          upstream_url = "http://mockbin.com"
+        })
+
+        db_miss_api = assert(helpers.dao.apis:insert {
+          request_host = "db-miss-you-too.org",
+          upstream_url = "http://mockbin.com"
+        })
+        assert(helpers.dao.plugins:insert {
+          name = "correlation-id",
+          api_id = db_miss_api.id
+        })
+
       end)
       after_each(function()
         if client and api_client then
@@ -34,6 +57,90 @@ describe("Core Hooks", function()
           api_client:close()
         end
         helpers.stop_kong()
+      end)
+
+      it("inserts sentinel values for db-miss", function()
+        -- test case specific for https://github.com/Mashape/kong/pull/1841
+        -- make a request, to populate cache with sentinel values
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "db-miss.org"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        -- check sentinel value for global plugin; pluginname, nil, nil
+        local cache_path = "/cache/"..cache.plugin_key("correlation-id", nil, nil)
+        local res = assert(api_client:send {
+          method = "GET",
+          path = cache_path
+        })
+        assert.response(res).has.status(200)
+        assert.same(db_miss_sentinel, assert.response(res).has.jsonbody())
+      end)
+
+      it("should invalidate a global plugin when adding", function()
+        -- Making a request to populate the cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        -- Make sure the cache is not populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        local entry = cjson.decode(assert.res_status(200, res))
+        assert.same(db_miss_sentinel, entry)  -- db-miss sentinel value
+        
+        -- Add plugin
+        local res = assert(api_client:send {
+          method = "POST",
+          path = "/plugins/",
+          headers = {
+            ["Content-Type"] = "application/json"
+          },
+          body = cjson.encode({
+            name = "basic-auth"
+          })
+        })
+        assert.response(res).has.status(201)
+
+        -- Wait for cache to be invalidated
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
+
+        -- Making a request: replacing the db-miss sentinel value in cache
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "hooks2.com"
+          }
+        })
+        assert.response(res).has.status(401) -- in effect plugin, so failure
+
+        -- Make sure the cache is populated
+        local res = assert(api_client:send {
+          method = "GET",
+          path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+        })
+        local entry = cjson.decode(assert.res_status(200, res))
+        assert.is_true(entry.enabled)
+        assert.is.same("basic-auth", entry.name)
       end)
 
       it("should invalidate a global plugin when deleting", function()
