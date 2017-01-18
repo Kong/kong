@@ -11,8 +11,8 @@ local DB_MISS_SENTINEL = { null = true }
 
 describe("Core Hooks", function()
   describe("Global", function()
-    describe("Global Plugin entity invalidation on API", function()
-      local client, api_client
+    describe("Plugin entity invalidation on API", function()
+      local client, api_client, db_miss_api
       local plugin
 
       before_each(function()
@@ -33,6 +33,23 @@ describe("Core Hooks", function()
           upstream_url = "http://mockbin.com"
         })
 
+        assert(helpers.dao.apis:insert {
+          name = "db-miss",
+          hosts = { "db-miss.org" },
+          upstream_url = "http://mockbin.com"
+        })
+
+        db_miss_api = assert(helpers.dao.apis:insert {
+          name = "db-miss-you-too",
+          hosts = { "db-miss-you-too.org" },
+          upstream_url = "http://mockbin.com"
+        })
+        assert(helpers.dao.plugins:insert {
+          name = "correlation-id",
+          api_id = db_miss_api.id
+        })
+
+
         helpers.start_kong()
         client = helpers.proxy_client()
         api_client = helpers.admin_client()
@@ -43,6 +60,28 @@ describe("Core Hooks", function()
           api_client:close()
         end
         helpers.stop_kong()
+      end)
+
+      it("inserts sentinel values for db-miss", function()
+        -- test case specific for https://github.com/Mashape/kong/pull/1841
+        -- make a request, to populate cache with sentinel values
+        local res = assert(client:send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "db-miss.org"
+          }
+        })
+        assert.response(res).has.status(200)
+
+        -- check sentinel value for global plugin; pluginname, nil, nil
+        local cache_path = "/cache/"..cache.plugin_key("correlation-id", nil, nil)
+        local res = assert(api_client:send {
+          method = "GET",
+          path = cache_path
+        })
+        assert.response(res).has.status(200)
+        assert.same(DB_MISS_SENTINEL, assert.response(res).has.jsonbody())
       end)
 
       it("should invalidate a global plugin when adding", function()
@@ -61,13 +100,13 @@ describe("Core Hooks", function()
         assert.response(res).has.status(200)
 
         -- Make sure the cache is not populated
-        local r = assert(api_client:send {
+        local res = assert(api_client:send {
           method = "GET",
           path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
         })
-        assert.response(r).has.status(200)
-        assert.same(DB_MISS_SENTINEL, assert.response(r).has.jsonbody())  -- db-miss sentinel value
-
+        local entry = cjson.decode(assert.res_status(200, res))
+        assert.same(DB_MISS_SENTINEL, entry)  -- db-miss sentinel value
+        
         -- Add plugin
         local res = assert(api_client:send {
           method = "POST",
@@ -80,7 +119,16 @@ describe("Core Hooks", function()
           })
         })
         assert.response(res).has.status(201)
-        helpers.wait_for_invalidation(cache.plugin_key("basic-auth", nil, nil))
+
+        -- Wait for cache to be invalidated
+        helpers.wait_until(function()
+          local res = assert(api_client:send {
+            method = "GET",
+            path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
+          })
+          res:read_body()
+          return res.status == 404
+        end, 3)
 
         -- Making a request: replacing the db-miss sentinel value in cache
         local res = assert(client:send {
@@ -93,12 +141,11 @@ describe("Core Hooks", function()
         assert.response(res).has.status(401) -- in effect plugin, so failure
 
         -- Make sure the cache is populated
-        local r = assert(api_client:send {
+        local res = assert(api_client:send {
           method = "GET",
           path = "/cache/"..cache.plugin_key("basic-auth", nil, nil)
         })
-        assert.response(r).has.status(200)
-        local entry = assert.response(r).has.jsonbody()
+        local entry = cjson.decode(assert.res_status(200, res))
         assert.is_true(entry.enabled)
         assert.is.same("basic-auth", entry.name)
       end)
