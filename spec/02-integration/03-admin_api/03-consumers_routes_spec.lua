@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local escape = require("socket.url").escape
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -264,7 +265,7 @@ describe("Admin API", function()
         it("retrieves by username", function()
           local res = assert(client:send {
             method = "GET",
-            path = "/consumers/"..consumer.username
+            path = "/consumers/"..escape(consumer.username)
           })
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
