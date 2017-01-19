@@ -61,7 +61,7 @@ end
 
 function _M.paginated_set(self, dao_collection)
   local size = self.params.size and tonumber(self.params.size) or 100
-  local offset = self.params.offset and ngx.decode_base64(self.params.offset) or nil
+  local offset = self.params.offset and ngx.decode_base64(self.params.offset)
 
   self.params.size = nil
   self.params.offset = nil
