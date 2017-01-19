@@ -3,6 +3,7 @@ local Errors = require "kong.dao.errors"
 local REDIS = "redis"
 
 return {
+  no_backup = true,
   fields = {
     second = { type = "number" },
     minute = { type = "number" },
