@@ -212,8 +212,8 @@ describe("#ci Plugin: oauth2 (access)", function()
   end)
 
   local function provision_code(host)
-    local proxy_ssl_client = helpers.proxy_ssl_client()
-    local res = assert(proxy_ssl_client:send {
+    local request_client = helpers.proxy_ssl_client()
+    local res = assert(request_client:send {
       method = "POST",
       path = "/oauth2/authorize",
       body = {
@@ -229,8 +229,9 @@ describe("#ci Plugin: oauth2 (access)", function()
         ["Content-Type"] = "application/json"
       }
     })
-    local body = cjson.decode(assert.res_status(200, res))
-    proxy_ssl_client:close()
+    assert.response(res).has.status(200)
+    local body = assert.response(res).has.jsonbody()
+    request_client:close()
     if body.redirect_uri then
       local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
       assert.is_nil(err)
@@ -242,7 +243,8 @@ describe("#ci Plugin: oauth2 (access)", function()
 
   local function provision_token(host)
     local code = provision_code(host)
-    local res = assert(proxy_ssl_client:send {
+    local request_client = helpers.proxy_ssl_client()
+    local res = assert(request_client:send {
       method = "POST",
       path = "/oauth2/token",
       body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -251,8 +253,10 @@ describe("#ci Plugin: oauth2 (access)", function()
         ["Content-Type"] = "application/json"
       }
     })
-    local token = cjson.decode(assert.res_status(200, res))
+    assert.response(res).has.status(200)
+    local token = assert.response(res).has.jsonbody()
     assert.is_table(token)
+    request_client:close()
     return token
   end
 
