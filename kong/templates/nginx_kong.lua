@@ -94,7 +94,6 @@ server {
     location / {
         set $upstream_host nil;
         set $upstream_scheme nil;
-        set $upstream_connection nil;
 
         access_by_lua_block {
             kong.access()
