@@ -1,5 +1,22 @@
 ## [Unreleased][unreleased]
 
+## [0.9.8] - 2017/01/19
+
+### Fixed
+
+- Properly set the admin IP in the Serf script.
+
+### Changed
+
+- Provide negative-caching for missed database entities. This should improve
+  performance in some cases.
+  [#1914](https://github.com/Mashape/kong/pull/1914)
+
+### Fixed
+
+- Plugins:
+  - Fix fault tolerancy logic and error reporting in rate-limiting plugins.
+
 ## [0.9.7] - 2016/12/21
 
 ### Fixed
@@ -812,7 +829,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.7...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.8...next
+[0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8
 [0.9.7]: https://github.com/mashape/kong/compare/0.9.6...0.9.7
 [0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
 [0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
