@@ -9,7 +9,7 @@ describe("rockspec/meta", function()
   setup(function()
     lua_srcs = pl_dir.getallfiles("./kong", "*.lua")
     assert.True(#lua_srcs > 0)
-    local res = pl_dir.getfiles(".", "kong-*.rockspec")
+    local res = pl_dir.getfiles(".", "*.rockspec")
     assert.equal(1, #res)
     rock_filename = res[1]
     local f = assert(loadfile(res[1]))
