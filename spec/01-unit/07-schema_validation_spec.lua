@@ -13,6 +13,7 @@ describe("Schemas", function()
         string = { type = "string", required = true, immutable = true},
         table = {type = "table"},
         number = {type = "number"},
+        timestamp = {type = "timestamp"},
         url = {regex = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"},
         date = {default = 123456, immutable = true},
         allowed = {enum = {"hello", "world"}},
@@ -174,7 +175,7 @@ describe("Schemas", function()
       assert.truthy(valid)
     end)
 
-    it("should consider `id` and `timestamp` as types", function()
+    it("should consider `id` as a type", function()
       local s = {
         fields = {
           id = {type = "id"}
@@ -182,6 +183,20 @@ describe("Schemas", function()
       }
 
       local values = {id = "123"}
+
+      local valid, err = validate_entity(values, s)
+      assert.falsy(err)
+      assert.truthy(valid)
+    end)
+
+    it("should consider `timestamp` as a type", function()
+      local s = {
+        fields = {
+          created_at = {type = "timestamp"}
+        }
+      }
+
+      local values = {created_at = "123"}
 
       local valid, err = validate_entity(values, s)
       assert.falsy(err)
@@ -228,6 +243,31 @@ describe("Schemas", function()
         assert.falsy(err)
         assert.truthy(valid)
         assert.same("boolean", type(values.boolean_val))
+      end)
+
+      it("should not return an error when a `timestamp` is passed as a string", function()
+        local values = {string = "test", timestamp = "123"}
+
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(err)
+        assert.truthy(valid)
+        assert.same("number", type(values.timestamp))
+      end)
+
+      it("should return an error when a `timestamp` is not a number", function()
+        local values = {string = "test", timestamp = "just a string"}
+
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(valid)
+        assert.are.same("timestamp is not a timestamp", err.timestamp)
+      end)
+
+      it("should return an error when a `timestamp` is a negative number", function()
+        local values = {string = "test", timestamp = "-123"}
+
+        local valid, err = validate_entity(values, schema)
+        assert.falsy(valid)
+        assert.are.same("timestamp is not a timestamp", err.timestamp)
       end)
 
       it("should alias a string to `array`", function()
