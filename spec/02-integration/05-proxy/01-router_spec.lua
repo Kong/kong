@@ -198,6 +198,53 @@ describe("Router", function()
     end)
   end)
 
+  describe("preserve_host", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "api-1",
+          preserve_host = true,
+          upstream_url = "http://httpbin.org",
+          hosts = "preserved.com",
+        },
+        {
+          name = "api-2",
+          preserve_host = false,
+          upstream_url = "http://httpbin.org",
+          hosts = "discarded.com",
+        }
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("preserves downstream host if enabled", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "preserved.com" },
+      })
+
+      local body = assert.res_status(404, res)
+      assert.matches("Server at preserved.com", body, nil, true)
+    end)
+
+    it("discards downstream host if disabled", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "discarded.com" },
+      })
+
+      assert.res_status(200, res)
+    end)
+  end)
+
   describe("edge-cases", function()
 
     setup(function()

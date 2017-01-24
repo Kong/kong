@@ -103,7 +103,6 @@ return {
       }
 
       var.upstream_scheme = upstream_scheme
-      var.upstream_host = upstream_host
 
       ctx.api = api
       ctx.balancer_address = balancer_address
@@ -115,11 +114,11 @@ return {
           "' with: "..tostring(err))
       end
 
-      if balancer_address.hostname and not ngx.ctx.api.preserve_host then
-        ngx.var.upstream_host = balancer_address.hostname
+      if balancer_address.hostname and not api.preserve_host then
+        var.upstream_host = balancer_address.hostname
 
       else
-        ngx.var.upstream_host = upstream_host
+        var.upstream_host = upstream_host
       end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.

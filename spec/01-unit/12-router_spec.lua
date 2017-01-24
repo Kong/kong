@@ -736,5 +736,49 @@ describe("Router", function()
         assert.equal("/", _ngx.var.uri)
       end)
     end)
+
+    describe("preserve Host header", function()
+      local router
+      local use_case_apis = {
+        -- use the request's Host header
+        {
+          name = "api-1",
+          upstream_url = "http://httpbin.org",
+          preserve_host = true,
+          headers = {
+            ["host"] = { "preserve.com" },
+          }
+        },
+        -- use the API's upstream_url's Host
+        {
+          name = "api-2",
+          upstream_url = "http://httpbin.org",
+          preserve_host = false,
+          headers = {
+            ["host"] = { "discard.com" },
+          }
+        },
+      }
+
+      setup(function()
+        router = assert(Router.new(use_case_apis))
+      end)
+
+      it("uses the request's Host header if preserve_host", function()
+        local _ngx = mock_ngx("GET", "/", { ["host"] = "preserve.com" })
+
+        local api, _, upstream_host = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("preserve.com", upstream_host)
+      end)
+
+      it("uses the API's upstream_url host if not preserve_host", function()
+        local _ngx = mock_ngx("GET", "/", { ["host"] = "discard.com" })
+
+        local api, _, upstream_host = router.exec(_ngx)
+        assert.same(use_case_apis[2], api)
+        assert.equal("httpbin.org", upstream_host)
+      end)
+    end)
   end)
 end)

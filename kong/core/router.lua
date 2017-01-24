@@ -73,6 +73,7 @@ local function marshall_api(api)
   local api_t              = {
     api                    = api,
     strip_uri              = api.strip_uri,
+    preserve_host          = api.preserve_host,
     match_rules            = 0x00,
     hosts                  = {},
     wildcard_hosts_regexes = {},
@@ -597,6 +598,7 @@ function _M.new(apis)
   function self.exec(ngx)
     local method = ngx.req.get_method()
     local uri = ngx.var.uri
+    local upstream_host
     local headers
 
 
@@ -617,9 +619,21 @@ function _M.new(apis)
     end
 
 
+    upstream_host = api_t.upstream_host
+
+
     if api_t.strip_uri_regex then
       local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
       ngx.req.set_uri(stripped_uri)
+    end
+
+
+    if api_t.preserve_host then
+      if not headers then
+        headers = ngx.req.get_headers()
+      end
+
+      upstream_host = headers["host"]
     end
 
 
@@ -628,7 +642,7 @@ function _M.new(apis)
     end
 
 
-    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, api_t.upstream_port
+    return api_t.api, api_t.upstream_scheme, upstream_host, api_t.upstream_port
   end
 
 
