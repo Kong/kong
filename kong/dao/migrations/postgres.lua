@@ -335,4 +335,13 @@ return {
       DROP TABLE targets;
     ]],
   },
+  {
+    name = "2016-01-25-103600_unique_custom_id",
+    up = [[
+      ALTER TABLE consumers ADD CONSTRAINT consumers_custom_id_key UNIQUE(custom_id);
+    ]],
+    down = [[
+      ALTER TABLE consumers DROP CONSTRAINT consumers_custom_id_key;
+    ]],
+  },
 }

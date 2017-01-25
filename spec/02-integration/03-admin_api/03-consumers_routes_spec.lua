@@ -93,7 +93,7 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"username":"already exists with value 'bob'"}]], body)
+            assert.equal([[{"custom_id":"already exists with value '1234'"}]], body)
           end
         end)
       end)
