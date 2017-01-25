@@ -513,7 +513,7 @@ describe("Entities Schemas", function()
 
           local valid, errors = validate_entity(t, api_schema)
           assert.is_false(valid)
-          assert.equal("retries must be an integer, from 0 to 32767", errors.retries)
+          assert.equal("must be an integer between 0 and 32767", errors.retries)
         end
       end)
     end)
@@ -527,6 +527,47 @@ describe("Entities Schemas", function()
       assert.is_false(ok)
       assert.is_nil(errors)
       assert.equal("at least one of 'hosts', 'uris' or 'methods' must be specified", tostring(self_err))
+    end)
+
+    describe("timeouts", function()
+      local fields = {
+        "upstream_connect_timeout",
+        "upstream_send_timeout",
+        "upstream_read_timeout",
+      }
+
+      for i = 1, #fields do
+        local field = fields[i]
+
+        it(field .. " accepts valid values", function()
+          local valids = { 1, 60000, 100000, 100 }
+
+          for j = 1, #valids do
+            assert(validate_entity({
+              name         = "api",
+              upstream_url = "http://httpbin.org",
+              methods      = "GET",
+              [field]      = valids[j],
+            }, api_schema))
+          end
+        end)
+
+        it(field .. " refuses invalid values", function()
+          local invalids = { -1, 0, 2^31, -100, 0.12 }
+
+          for j = 1, #invalids do
+            local ok, errors = validate_entity({
+              name         = "api",
+              upstream_url = "http://httpbin.org",
+              methods      = "GET",
+              [field]      = invalids[j],
+            }, api_schema)
+
+            assert.is_false(ok)
+            assert.equal("must be an integer between 1 and " .. 2^31 - 1, errors[field])
+          end
+        end)
+      end
     end)
   end)
 

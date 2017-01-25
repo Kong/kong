@@ -106,6 +106,7 @@ server {
         proxy_set_header Host $upstream_host;
         proxy_set_header Upgrade $upstream_upgrade;
         proxy_set_header Connection $upstream_connection;
+
         proxy_pass_header Server;
         proxy_pass $upstream_scheme://kong_upstream;
 

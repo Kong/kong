@@ -67,6 +67,11 @@ perform significantly better than any previous version.
   the configuration file: `admin_listen_ssl`, `admin_ssl`, `admin_ssl_cert` and
   `admin_ssl_cert_key`.
   [#1706](https://github.com/Mashape/kong/pull/1706)
+- Support for upstream connection timeouts. APIs now have 3 new fields:
+  `upstream_connect_timeout`, `upstream_send_timeout`, `upstream_read_timeout`
+  to specify, in milliseconds, a timeout value for requests between Kong and
+  your APIs.
+  [#2036](https://github.com/Mashape/kong/pull/2036)
 - Plugins:
   - :fireworks: **New AWS Lambda plugin**. Thanks Tim Erickson for his
     collaboration on this new addition.
