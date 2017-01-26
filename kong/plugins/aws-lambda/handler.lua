@@ -43,11 +43,11 @@ end
 
 function AWSLambdaHandler:access(conf)
   AWSLambdaHandler.super.access(self)
-  
+
   local bodyJson = cjson.encode(retrieve_parameters())
 
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations", 
+  local path = string.format("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
 
   local opts = {
@@ -61,7 +61,7 @@ function AWSLambdaHandler:access(conf)
       ["Content-Type"] = "application/x-amz-json-1.1",
       ["Content-Length"] = tostring(#bodyJson)
     },
-    body = bodyJson, 
+    body = bodyJson,
     path = path,
     access_key = conf.aws_key,
     secret_key = conf.aws_secret,
@@ -92,7 +92,6 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  local status = res.status
   local body = res:read_body()
   local headers = res.headers
 
@@ -101,11 +100,16 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  ngx.status = res.status
+
   -- Send response to client
   for k, v in pairs(headers) do
     ngx.header[k] = v
   end
-  responses.send(status, body, headers, true)
+
+  ngx.say(body)
+
+  return ngx.exit(res.status)
 end
 
 AWSLambdaHandler.PRIORITY = 750

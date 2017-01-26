@@ -2,25 +2,26 @@ local helpers = require "spec.helpers"
 
 describe("Plugin: AWS Lambda (access)", function()
   local client, api_client
-  setup(function()
-    assert(helpers.start_kong())
 
+  setup(function()
     local api1 = assert(helpers.dao.apis:insert {
       name = "lambda.com",
       hosts = { "lambda.com" } ,
       upstream_url = "http://httpbin.org"
     })
+
     local api2 = assert(helpers.dao.apis:insert {
       name = "lambda2.com",
       hosts = { "lambda2.com" },
       upstream_url = "http://httpbin.org"
     })
+
     local api3 = assert(helpers.dao.apis:insert {
       name = "lambda3.com",
       hosts = { "lambda3.com" },
       upstream_url = "http://httpbin.org"
     })
-    
+
     assert(helpers.dao.plugins:insert {
       name = "aws-lambda",
       api_id = api1.id,
@@ -55,15 +56,20 @@ describe("Plugin: AWS Lambda (access)", function()
         invocation_type = "DryRun"
       }
     })
+
+    assert(helpers.start_kong())
   end)
+
   before_each(function()
     client = helpers.proxy_client()
     api_client = helpers.admin_client()
   end)
+
   after_each(function ()
     client:close()
     api_client:close()
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
