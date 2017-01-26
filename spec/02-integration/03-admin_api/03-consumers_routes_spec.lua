@@ -67,7 +67,7 @@ describe("Admin API", function()
                        ..[[a 'username' must be specified"}]], body)
           end
         end)
-        it_content_types("returns 409 on conflict", function(content_type)
+        it_content_types("returns 409 on conflicting username", function(content_type)
           return function()
             local res = assert(client:send {
               method = "POST",
@@ -79,6 +79,21 @@ describe("Admin API", function()
             })
             local body = assert.res_status(409, res)
             assert.equal([[{"username":"already exists with value 'bob'"}]], body)
+          end
+        end)
+        it_content_types("returns 409 on conflicting custom_id", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/consumers",
+              body = {
+                username = "tom",
+                custom_id = consumer.custom_id,
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(409, res)
+            assert.equal([[{"custom_id":"already exists with value '1234'"}]], body)
           end
         end)
       end)
