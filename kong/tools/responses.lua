@@ -39,6 +39,7 @@ local server_header = meta._NAME.."/"..meta._VERSION
 -- @field HTTP_CONFLICT 409 Conflict
 -- @field HTTP_UNSUPPORTED_MEDIA_TYPE 415 Unsupported Media Type
 -- @field HTTP_INTERNAL_SERVER_ERROR Internal Server Error
+-- @field HTTP_SERVICE_UNAVAILABLE 503 Service Unavailable
 -- @usage return responses.send_HTTP_OK()
 -- @usage return responses.HTTP_CREATED("Entity created")
 -- @usage return responses.HTTP_INTERNAL_SERVER_ERROR()
@@ -55,7 +56,8 @@ local _M = {
     HTTP_METHOD_NOT_ALLOWED = 405,
     HTTP_CONFLICT = 409,
     HTTP_UNSUPPORTED_MEDIA_TYPE = 415,
-    HTTP_INTERNAL_SERVER_ERROR = 500
+    HTTP_INTERNAL_SERVER_ERROR = 500,
+    HTTP_SERVICE_UNAVAILABLE = 503
   }
 }
 
@@ -68,6 +70,7 @@ local _M = {
 -- @field status_codes.HTTP_UNAUTHORIZED Default: Unauthorized
 -- @field status_codes.HTTP_INTERNAL_SERVER_ERROR Always "Internal Server Error"
 -- @field status_codes.HTTP_METHOD_NOT_ALLOWED Always "Method not allowed"
+-- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service Unavailable"
 local response_default_content = {
   [_M.status_codes.HTTP_UNAUTHORIZED] = function(content)
     return content or "Unauthorized"
@@ -83,6 +86,9 @@ local response_default_content = {
   end,
   [_M.status_codes.HTTP_METHOD_NOT_ALLOWED] = function(content)
     return "Method not allowed"
+  end,
+  [_M.status_codes.HTTP_SERVICE_UNAVAILABLE] = function(content)
+    return content or "Service Unavailable"
   end
 }
 
@@ -96,7 +102,7 @@ local function send_response(status_code)
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
   return function(content, headers)
-    if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
+    if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR and status_code ~= _M.status_codes.HTTP_SERVICE_UNAVAILABLE then
       if content then
         ngx.log(ngx.ERR, tostring(content))
       end
