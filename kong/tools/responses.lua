@@ -57,7 +57,7 @@ local _M = {
     HTTP_CONFLICT = 409,
     HTTP_UNSUPPORTED_MEDIA_TYPE = 415,
     HTTP_INTERNAL_SERVER_ERROR = 500,
-    HTTP_SERVICE_UNAVAILABLE = 503
+    HTTP_SERVICE_UNAVAILABLE = 503,
   }
 }
 
@@ -102,7 +102,7 @@ local function send_response(status_code)
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
   return function(content, headers)
-    if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR and status_code ~= _M.status_codes.HTTP_SERVICE_UNAVAILABLE then
+    if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
       if content then
         ngx.log(ngx.ERR, tostring(content))
       end
