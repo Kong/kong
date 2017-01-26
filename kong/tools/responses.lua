@@ -88,13 +88,8 @@ local response_default_content = {
     return "Method not allowed"
   end,
   [_M.status_codes.HTTP_SERVICE_UNAVAILABLE] = function(content)
-<<<<<<< HEAD
     return content or "Service unavailable"
   end,
-=======
-    return content or "Service Unavailable"
-  end
->>>>>>> feat(tools): HTTP Response 503 Service unavailable
 }
 
 -- Return a closure which will be usable to respond with a certain status code.
@@ -107,11 +102,7 @@ local function send_response(status_code)
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
   return function(content, headers)
-<<<<<<< HEAD
     if status_code == _M.status_codes.HTTP_INTERNAL_SERVER_ERROR then
-=======
-    if status_code >= _M.status_codes.HTTP_INTERNAL_SERVER_ERROR and status_code ~= _M.status_codes.HTTP_SERVICE_UNAVAILABLE then
->>>>>>> feat(tools): HTTP Response 503 Service unavailable
       if content then
         ngx.log(ngx.ERR, tostring(content))
       end
