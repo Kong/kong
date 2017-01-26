@@ -89,6 +89,20 @@ describe("Plugin: basic-auth (API)", function()
               ["Content-Type"] = "application/json"
             }
           })
+
+          assert.res_status(201, res)
+
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers/bob/basic-auth",
+            body = {
+              username = "bob",
+              password = "kong"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
           assert.res_status(409, res)
         end)
       end)
