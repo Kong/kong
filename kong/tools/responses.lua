@@ -70,7 +70,7 @@ local _M = {
 -- @field status_codes.HTTP_UNAUTHORIZED Default: Unauthorized
 -- @field status_codes.HTTP_INTERNAL_SERVER_ERROR Always "Internal Server Error"
 -- @field status_codes.HTTP_METHOD_NOT_ALLOWED Always "Method not allowed"
--- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service Unavailable"
+-- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service unavailable"
 local response_default_content = {
   [_M.status_codes.HTTP_UNAUTHORIZED] = function(content)
     return content or "Unauthorized"
