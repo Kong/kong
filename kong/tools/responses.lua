@@ -70,7 +70,7 @@ local _M = {
 -- @field status_codes.HTTP_UNAUTHORIZED Default: Unauthorized
 -- @field status_codes.HTTP_INTERNAL_SERVER_ERROR Always "Internal Server Error"
 -- @field status_codes.HTTP_METHOD_NOT_ALLOWED Always "Method not allowed"
--- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service Unavailable"
+-- @field status_codes.HTTP_SERVICE_UNAVAILABLE Default: "Service unavailable"
 local response_default_content = {
   [_M.status_codes.HTTP_UNAUTHORIZED] = function(content)
     return content or "Unauthorized"
@@ -88,8 +88,8 @@ local response_default_content = {
     return "Method not allowed"
   end,
   [_M.status_codes.HTTP_SERVICE_UNAVAILABLE] = function(content)
-    return content or "Service Unavailable"
-  end
+    return content or "Service unavailable"
+  end,
 }
 
 -- Return a closure which will be usable to respond with a certain status code.
@@ -97,7 +97,7 @@ local response_default_content = {
 -- @param[type=number] status_code The status for which to define a function
 local function send_response(status_code)
   -- Send a JSON response for the closure's status code with the given content.
-  -- If the content happens to be an error (>500), it will be logged by ngx.log as an ERR.
+  -- If the content happens to be an error (500), it will be logged by ngx.log as an ERR.
   -- @see https://github.com/openresty/lua-nginx-module
   -- @param content (Optional) The content to send as a response.
   -- @return ngx.exit (Exit current context)
@@ -147,7 +147,7 @@ local closure_cache = {}
 --- Send a response with any status code or body,
 -- Not all status codes are available as sugar methods, this function can be
 -- used to send any response.
--- If the `status_code` parameter is in the 5xx range, it is expectde that the `content` parameter be the error encountered. It will be logged and the response body will be empty. The user will just receive a 500 status code.
+-- If the `status_code` parameter is in the 5xx range, it is expected that the `content` parameter be the error encountered. For 500 errors it will be logged. The response body will be empty. The user will just receive a 500 status code.
 -- Will call `ngx.say` and `ngx.exit`, terminating the current context.
 -- @see ngx.say
 -- @see ngx.exit
