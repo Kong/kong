@@ -259,6 +259,8 @@ return {
       end
 
       for _, row in ipairs(rows) do
+        if row.request_host == "" then row.request_host = nil end
+        if row.request_path == "" then row.request_path = nil end
         local fields_to_update = {
           hosts = { row.request_host },
           uris = { row.request_path },
