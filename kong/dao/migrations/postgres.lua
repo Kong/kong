@@ -259,6 +259,8 @@ return {
       end
 
       for _, row in ipairs(rows) do
+        if row.request_host == "" then row.request_host = nil end
+        if row.request_path == "" then row.request_path = nil end
         local fields_to_update = {
           hosts = { row.request_host },
           uris = { row.request_path },
@@ -296,44 +298,6 @@ return {
       CREATE INDEX IF NOT EXISTS ON apis(request_host);
       CREATE INDEX IF NOT EXISTS ON apis(request_path);
     ]]
-  },
-  {
-    name = "2016-09-16-141423_upstreams",
-    -- Note on the timestamps below; these use a precision of milliseconds
-    -- this differs from the other tables above, as they only use second precision.
-    -- This differs from the change to the Cassandra entities.
-    up = [[
-      CREATE TABLE IF NOT EXISTS upstreams(
-        id uuid PRIMARY KEY,
-        name text UNIQUE,
-        slots int NOT NULL,
-        orderlist text NOT NULL,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
-      );
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('upstreams_name_idx')) IS NULL THEN
-          CREATE INDEX upstreams_name_idx ON upstreams(name);
-        END IF;
-      END$$;
-      CREATE TABLE IF NOT EXISTS targets(
-        id uuid PRIMARY KEY,
-        target text NOT NULL,
-        weight int NOT NULL,
-        upstream_id uuid REFERENCES upstreams(id) ON DELETE CASCADE,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
-      );
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('targets_target_idx')) IS NULL THEN
-          CREATE INDEX targets_target_idx ON targets(target);
-        END IF;
-      END$$;
-    ]],
-    down = [[
-      DROP TABLE upstreams;
-      DROP TABLE targets;
-    ]],
   },
   {
     name = "2016-01-25-103600_unique_custom_id",
