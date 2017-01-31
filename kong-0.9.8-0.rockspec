@@ -20,7 +20,7 @@ dependencies = {
   "multipart == 0.4",
   "version == 0.2",
   "lapis == 1.5.1",
-  "lua-cassandra == 0.5.3",
+  "lua-cassandra == 0.5.5",
   "pgmoon-mashape == 2.0.1",
   "luatz == 0.3",
   "lua_system_constants == 0.1.1",
