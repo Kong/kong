@@ -17,7 +17,7 @@ local EXPIRATIONS = {
   hour = 3600,
   day = 86400,
   month = 2592000,
-  year = 31104000
+  year = 31536000,
 }
 
 return {
