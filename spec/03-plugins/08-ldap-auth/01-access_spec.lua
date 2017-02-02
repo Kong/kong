@@ -1,5 +1,6 @@
 local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
@@ -19,6 +20,15 @@ describe("Plugin: ldap-auth (access)", function()
       name = "test-ldap3",
       hosts = { "ldap3.com" },
       upstream_url = "http://mockbin.com"
+    })
+    local api4 = assert(helpers.dao.apis:insert {
+      name = "test-ldap4",
+      hosts = { "ldap4.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
     })
 
     assert(helpers.dao.plugins:insert {
@@ -54,7 +64,20 @@ describe("Plugin: ldap-auth (access)", function()
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
-        anonymous = true
+        anonymous = anonymous_user.id,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api4.id,
+      name = "ldap-auth",
+      config = {
+        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid",
+        cache_ttl = 2,
+        anonymous = utils.uuid(), -- non existing consumer
       }
     })
 
@@ -297,7 +320,18 @@ describe("Plugin: ldap-auth (access)", function()
       assert.response(r).has.status(200)
       local value = assert.request(r).has.header("x-anonymous-consumer")
       assert.are.equal("true", value)
-      assert.request(r).has_not.header("x-consumer-username")
+      value = assert.request(r).has.header("x-consumer-username")
+      assert.equal('no-body', value)
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "ldap4.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
   end)
 end)
