@@ -3,7 +3,7 @@ local helpers = require "spec.helpers"
 
 describe("Plugin: ldap-auth (access)", function()
   local client, client_admin, api2, plugin2
-
+  local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
   setup(function()
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
@@ -25,7 +25,7 @@ describe("Plugin: ldap-auth (access)", function()
       api_id = api1.id,
       name = "ldap-auth",
       config = {
-        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_host = ldap_host_aws,
         ldap_port = "389",
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
@@ -36,7 +36,7 @@ describe("Plugin: ldap-auth (access)", function()
       api_id = api2.id,
       name = "ldap-auth",
       config = {
-        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_host = ldap_host_aws,
         ldap_port = "389",
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
@@ -49,7 +49,7 @@ describe("Plugin: ldap-auth (access)", function()
       api_id = api3.id,
       name = "ldap-auth",
       config = {
-        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_host = ldap_host_aws,
         ldap_port = "389",
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
