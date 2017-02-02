@@ -97,14 +97,17 @@ return {
         port                 = upstream_port,  -- final target port
         tries                = 0,              -- retry counter
         retries              = api.retries,    -- number of retries for the balancer
-        --  ip               = nil,            -- final target IP address
+        connect_timeout      = api.upstream_connect_timeout or 60000,
+        send_timeout         = api.upstream_send_timeout or 60000,
+        read_timeout         = api.upstream_read_timeout or 60000,
+        -- ip                = nil,            -- final target IP address
         -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
       }
 
       var.upstream_scheme = upstream_scheme
 
-      ctx.api = api
+      ctx.api              = api
       ctx.balancer_address = balancer_address
 
       local ok, err = balancer_execute(balancer_address)
@@ -124,9 +127,9 @@ return {
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
       local ctx = ngx.ctx
-
       local now = get_now()
-      ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
+
+      ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
       ctx.KONG_ACCESS_ENDED_AT = now
       -- time spent in Kong before sending the reqeust to upstream
       ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
