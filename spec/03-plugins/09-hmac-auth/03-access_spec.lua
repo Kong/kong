@@ -1,6 +1,7 @@
 local cjson = require "cjson"
 local crypto = require "crypto"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 local hmac_sha1_binary = function(secret, data)
   return crypto.hmac.digest("sha1", data, secret, true)
@@ -35,6 +36,9 @@ describe("Plugin: hmac-auth (access)", function()
       consumer_id = consumer.id
     })
 
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
+    })
     local api2 = assert(helpers.dao.apis:insert {
       name = "api-2",
       hosts = { "hmacauth2.com" },
@@ -44,7 +48,21 @@ describe("Plugin: hmac-auth (access)", function()
       name = "hmac-auth",
       api_id = api2.id,
       config = {
-        anonymous = true,
+        anonymous = anonymous_user.id,
+        clock_skew = 3000
+      }
+    })
+
+    local api3 = assert(helpers.dao.apis:insert {
+      name = "api-3",
+      hosts = { "hmacauth3.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "hmac-auth",
+      api_id = api3.id,
+      config = {
+        anonymous = utils.uuid(),  -- non existing consumer
         clock_skew = 3000
       }
     })
@@ -796,7 +814,17 @@ describe("Plugin: hmac-auth (access)", function()
       local body = assert.res_status(200, res)
       body = cjson.decode(body)
       assert.equal("true", body.headers["x-anonymous-consumer"])
-      assert.is_nil(body.headers["x-consumer-username"])
+      assert.equal('no-body', body.headers["x-consumer-username"])
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "hmacauth3.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
   end)
 end)
