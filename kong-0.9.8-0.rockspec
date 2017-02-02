@@ -257,7 +257,6 @@ build = {
 
     ["kong.plugins.datadog.handler"] = "kong/plugins/datadog/handler.lua",
     ["kong.plugins.datadog.schema"] = "kong/plugins/datadog/schema.lua",
-    ["kong.plugins.datadog.statsd_logger"] = "kong/plugins/datadog/statsd_logger.lua",
     
     ["kong.plugins.statsd.migrations.cassandra"] = "kong/plugins/statsd/migrations/cassandra.lua",
     ["kong.plugins.statsd.migrations.postgres"] = "kong/plugins/statsd/migrations/postgres.lua",
