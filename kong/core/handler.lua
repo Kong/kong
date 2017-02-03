@@ -103,6 +103,7 @@ return {
         -- ip                = nil,            -- final target IP address
         -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
+        -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
       var.upstream_scheme = upstream_scheme
@@ -119,9 +120,11 @@ return {
 
       if balancer_address.hostname and not api.preserve_host then
         var.upstream_host = balancer_address.hostname
+        var.upstream_port = balancer_address.port
 
       else
         var.upstream_host = upstream_host
+        var.upstream_port = upstream_port
       end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
