@@ -200,6 +200,12 @@ describe("Utils", function()
         }
         assert.equal("hello=world&multiple=hello%2c%20world&multiple%20values", str)
       end)
+      it("should not interpret the `%` character followed by 2 characters in the [0-9a-f] group as an hexadecimal value", function()
+        local str = utils.encode_args {
+          foo = "%bar%"
+        }
+        assert.equal("foo=%25bar%25", str)
+      end)
       it("should not percent-encode if given a `raw` option", function()
         -- this is useful for kong.tools.http_client
         local str = utils.encode_args({
@@ -229,6 +235,12 @@ describe("Utils", function()
             b = false
           }, true)
           assert.equal("a=true&b=false", str)
+        end)
+        it("should prevent double percent-encoding", function()
+          local str = utils.encode_args({
+            foo = "hello%20world"
+          }, true)
+          assert.equal("foo=hello%20world", str)
         end)
       end)
     end)
