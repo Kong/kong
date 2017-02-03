@@ -12,6 +12,11 @@ helpers.for_each_dao(function(kong_config)
       factory = assert(Factory.new(kong_config))
       factory:drop_schema()
     end)
+
+    teardown(function()
+      ngx.shared.cassandra:flush_expired()
+    end)
+
     before_each(function()
       factory = assert(Factory.new(kong_config))
     end)

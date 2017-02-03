@@ -25,7 +25,7 @@ local function load_plugin_into_memory(api_id, consumer_id, plugin_name)
     end
   end
   -- insert a cached value to not trigger too many DB queries.
-  return {null = true}  -- works because: `.enabled == nil` 
+  return {null = true}  -- works because: `.enabled == nil`
 end
 
 --- Load the configuration for a plugin entry in the DB.
@@ -39,7 +39,6 @@ local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
   local plugin = cache.get_or_set(cache_key, nil, load_plugin_into_memory,
                                   api_id, consumer_id, plugin_name)
-
   if plugin ~= nil and plugin.enabled then
     return plugin.config or {}
   end
