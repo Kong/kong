@@ -10,6 +10,11 @@ helpers.for_each_dao(function(kong_config)
       local f = Factory(kong_config)
       f:drop_schema()
     end)
+
+    teardown(function()
+      ngx.shared.cassandra:flush_expired()
+    end)
+
     before_each(function()
       factory = Factory(kong_config)
     end)
@@ -105,6 +110,7 @@ helpers.for_each_dao(function(kong_config)
           kong_config.pg_port = pg_port
           kong_config.cassandra_port = cassandra_port
           kong_config.cassandra_timeout = cassandra_timeout
+          ngx.shared.cassandra:flush_all()
         end)
         kong_config.pg_port = 3333
         kong_config.cassandra_port = 3333
