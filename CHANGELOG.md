@@ -1,5 +1,22 @@
 ## [Unreleased][unreleased]
 
+## [0.9.9] - 2017/02/02
+
+### Fixed
+
+- Correctly put Cassandra sockets into the Nginx connection pool for later
+  reuse. This greatly improves the performance for rate-limiting and
+  response-ratelimiting plugins.
+  [f8f5306](https://github.com/Mashape/kong/commit/f8f53061207de625a29bbe5d80f1807da468a1bc)
+- Correct length of a year in seconds for rate-limiting and
+  response-ratelimiting plugins. A year was wrongly assumed to only be 360
+  days long.
+  [e4fdb2a](https://github.com/Mashape/kong/commit/e4fdb2a3af4a5f2bf298c7b6488d88e67288c98b)
+- Prevent misinterpretation of the `%` character in proxied URLs encoding.
+  Thanks Thomas Jouannic for the patch.
+  [#1998](https://github.com/Mashape/kong/pull/1998)
+  [#2040](https://github.com/Mashape/kong/pull/2040)
+
 ## [0.9.8] - 2017/01/19
 
 ### Fixed
@@ -829,7 +846,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.8...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.9...next
+[0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
 [0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8
 [0.9.7]: https://github.com/mashape/kong/compare/0.9.6...0.9.7
 [0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6

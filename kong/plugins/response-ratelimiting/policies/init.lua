@@ -18,7 +18,7 @@ local EXPIRATIONS = {
   hour = 3600,
   day = 86400,
   month = 2592000,
-  year = 31104000
+  year = 31536000,
 }
 
 return {
@@ -37,7 +37,7 @@ return {
           return nil, err
         end
       end
-      
+
       return true
     end,
     usage = function(conf, api_id, identifier, current_timestamp, period, name)

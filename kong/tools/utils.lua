@@ -163,16 +163,13 @@ do
   local url = require "socket.url"
 
   --- URL escape and format key and value
-  -- An obligatory url.unescape pass must be done to prevent double-encoding
-  -- already encoded values (which contain a '%' character that `url.escape` escapes)
+  -- values should be already decoded or the `raw` option should be passed to prevent double-encoding
   local function encode_args_value(key, value, raw)
     if not raw then
-      key = url.unescape(key)
       key = url.escape(key)
     end
     if value ~= nil then
       if not raw then
-        value = url.unescape(value)
         value = url.escape(value)
       end
       return fmt("%s=%s", key, value)
