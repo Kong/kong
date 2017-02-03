@@ -10,8 +10,6 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 
-local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
-
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
   "/etc/kong.conf"
@@ -218,13 +216,16 @@ local function check_and_infer(conf)
     end
   end
 
-  if not conf.cluster_listen:match(ipv4_port_pattern) then
+  local ip, port = utils.normalize_ipv4(conf.cluster_listen)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
   end
-  if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
+  ip, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  if conf.cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+  ip, port = utils.normalize_ipv4(conf.cluster_advertise or "")
+  if conf.cluster_advertise and not (ip and port) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then
