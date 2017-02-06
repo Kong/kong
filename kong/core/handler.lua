@@ -79,6 +79,8 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
+      local original_host_header = ngx.req.get_headers().host
+
       local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
@@ -92,8 +94,8 @@ return {
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
-        host                 = upstream_host,  -- supposed target host
+        type                 = utils.hostname_type(upstream_host),  -- the type of `host`; ipv4, ipv6 or name
+        host                 = upstream_host,  -- target host per `upstream_url`
         port                 = upstream_port,  -- final target port
         tries                = 0,              -- retry counter
         retries              = api.retries,    -- number of retries for the balancer
@@ -118,16 +120,13 @@ return {
           "' with: "..tostring(err))
       end
 
-      if balancer_address.hostname and not api.preserve_host then
-        var.upstream_host = balancer_address.hostname
-        var.upstream_port = balancer_address.port
-
+      if api.preserve_host then
+        var.upstream_host = original_host_header
       else
-        var.upstream_host = upstream_host
-        var.upstream_port = upstream_port
+        var.upstream_host = balancer_address.hostname..":"..balancer_address.port
       end
     end,
-    -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
+    -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
       local ctx = ngx.ctx
       local now = get_now()
