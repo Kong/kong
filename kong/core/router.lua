@@ -634,7 +634,7 @@ function _M.new(apis)
       if not headers then
         headers = ngx.req.get_headers()
       end
-  
+
       host_header = headers["host"]
     end
 
