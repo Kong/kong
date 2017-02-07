@@ -147,7 +147,7 @@ function _M.validate_entity(tbl, schema, options)
         end
 
         -- [REGEX] Check field against a regex if specified
-        if (type(t[column]) == "string" or type(t[column]) == "number") and v.regex then
+        if type(t[column]) == "string" and v.regex then
           if not ngx.re.find(t[column], v.regex) then
             errors = utils.add_error(errors, error_prefix..column, column.." has an invalid value")
           end
