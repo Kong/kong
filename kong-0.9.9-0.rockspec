@@ -272,5 +272,10 @@ build = {
     ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"] = "kong/plugins/aws-lambda/v4.lua",
+
+    ["kong.plugins.request-termination.migrations.cassandra"] = "kong/plugins/request-termination/migrations/cassandra.lua",
+    ["kong.plugins.request-termination.daos"] = "kong/plugins/request-termination/daos.lua",
+    ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
+    ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
   }
 }
