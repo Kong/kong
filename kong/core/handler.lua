@@ -79,9 +79,8 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local original_host_header = ngx.req.get_headers().host
-
-      local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
+      local api, upstream_scheme, upstream_host, 
+                 upstream_port, host_header = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
@@ -120,11 +119,10 @@ return {
           "' with: "..tostring(err))
       end
 
-      if api.preserve_host then
-        var.upstream_host = original_host_header
-      else
-        var.upstream_host = balancer_address.hostname..":"..balancer_address.port
-      end
+      -- if set `host_header` is the original header to be preserved
+      var.upstream_host = host_header or 
+          balancer_address.hostname..":"..balancer_address.port
+
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()

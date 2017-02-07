@@ -9,6 +9,7 @@ local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
+local match = string.match
 local fmt = string.format
 local tonumber = tonumber
 local ipairs = ipairs
@@ -492,10 +493,11 @@ function _M.new(apis)
     end
 
 
-    local host = headers["Host"] or headers["host"]
+    local host = headers["host"]
     if host then
-      host = host:match("^([^:]+)") -- strip port number if given
+      host = match(host,"^([^:]+)") -- strip port number if given
     end
+
     method = upper(method)
 
 
@@ -601,6 +603,7 @@ function _M.new(apis)
   function self.exec(ngx)
     local method = ngx.req.get_method()
     local uri = ngx.var.uri
+    local host_header
     local headers
 
 
@@ -627,12 +630,22 @@ function _M.new(apis)
     end
 
 
+    if api_t.preserve_host then
+      if not headers then
+        headers = ngx.req.get_headers()
+      end
+  
+      host_header = headers["host"]
+    end
+
+
     if ngx.var.http_kong_debug then
       ngx.header["Kong-Api-Name"] = api_t.api.name
     end
 
 
-    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, api_t.upstream_port
+    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, 
+           api_t.upstream_port, host_header
   end
 
 
