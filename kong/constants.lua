@@ -4,7 +4,8 @@ local plugins = {
   "galileo", "request-transformer", "response-transformer",
   "request-size-limiting", "rate-limiting", "response-ratelimiting", "syslog",
   "loggly", "datadog", "runscope", "ldap-auth", "statsd", "bot-detection",
-  "aws-lambda"
+  "aws-lambda",
+  "request-termination",
 }
 
 local plugin_map = {}
