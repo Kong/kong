@@ -13,7 +13,6 @@ describe("Schemas", function()
         string = { type = "string", required = true, immutable = true},
         table = {type = "table"},
         number = {type = "number"},
-        numberRegex = {type = "number", regex = "\\d{3}"},
         url = {regex = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"},
         date = {default = 123456, immutable = true},
         allowed = {enum = {"hello", "world"}},
@@ -296,14 +295,6 @@ describe("Schemas", function()
         assert.falsy(valid)
         assert.truthy(err)
         assert.are.same("url has an invalid value", err.url)
-      end)
-      it("should validate a field against a regex", function()
-        local values = {string = "value", numberRegex = "22"}
-
-        local valid, err = validate_entity(values, schema)
-        assert.falsy(valid)
-        assert.truthy(err)
-        assert.are.same("numberRegex has an invalid value", err.numberRegex)
       end)
     end)
 
