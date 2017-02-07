@@ -79,7 +79,8 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
+      local api, upstream_scheme, upstream_host, 
+                 upstream_port, host_header = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
@@ -92,8 +93,8 @@ return {
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
-        host                 = upstream_host,  -- supposed target host
+        type                 = utils.hostname_type(upstream_host),  -- the type of `host`; ipv4, ipv6 or name
+        host                 = upstream_host,  -- target host per `upstream_url`
         port                 = upstream_port,  -- final target port
         tries                = 0,              -- retry counter
         retries              = api.retries,    -- number of retries for the balancer
@@ -103,6 +104,7 @@ return {
         -- ip                = nil,            -- final target IP address
         -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
+        -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
       var.upstream_scheme = upstream_scheme
@@ -117,14 +119,12 @@ return {
           "' with: "..tostring(err))
       end
 
-      if balancer_address.hostname and not api.preserve_host then
-        var.upstream_host = balancer_address.hostname
+      -- if set `host_header` is the original header to be preserved
+      var.upstream_host = host_header or 
+          balancer_address.hostname..":"..balancer_address.port
 
-      else
-        var.upstream_host = upstream_host
-      end
     end,
-    -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
+    -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
       local ctx = ngx.ctx
       local now = get_now()

@@ -230,8 +230,37 @@ describe("Router", function()
         headers = { ["Host"] = "preserved.com" },
       })
 
-      local body = assert.res_status(404, res)
-      assert.matches("Server at preserved.com", body, nil, true)
+      assert.res_status(200, res)
+      local json = cjson.decode((res:read_body()))
+      assert.equal("preserved.com", json.headers.Host)
+    end)
+
+    pending("preserves downstream host+port if enabled", function()
+      -- pending because httpbin.org seems to not return the exact header
+      -- but a parsed one, with the port stripped.
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "preserved.com:80" },
+      })
+
+      assert.res_status(200, res)
+      local json = cjson.decode((res:read_body()))
+      assert.equal("preserved.com:80", json.headers.Host)
+    end)
+
+    pending("preserves downstream host+non_default_port if enabled", function()
+      -- pending because httpbin.org seems to not return the exact header
+      -- but a parsed one, with the port stripped.
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "preserved.com:123" },
+      })
+
+      assert.res_status(200, res)
+      local json = cjson.decode((res:read_body()))
+      assert.equal("preserved.com:123", json.headers.Host)
     end)
 
     it("discards downstream host if disabled", function()
@@ -241,7 +270,8 @@ describe("Router", function()
         headers = { ["Host"] = "discarded.com" },
       })
 
-      assert.res_status(200, res)
+      assert.response(res).has.status(200)
+      assert.equal("httpbin.org", assert.request(res).has.header("Host"))
     end)
   end)
 

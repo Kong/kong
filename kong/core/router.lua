@@ -9,6 +9,7 @@ local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
+local match = string.match
 local fmt = string.format
 local tonumber = tonumber
 local ipairs = ipairs
@@ -492,7 +493,11 @@ function _M.new(apis)
     end
 
 
-    local host = headers["Host"] or headers["host"]
+    local host = headers["host"]
+    if host then
+      host = match(host,"^([^:]+)") -- strip port number if given
+    end
+
     method = upper(method)
 
 
@@ -598,7 +603,7 @@ function _M.new(apis)
   function self.exec(ngx)
     local method = ngx.req.get_method()
     local uri = ngx.var.uri
-    local upstream_host
+    local host_header
     local headers
 
 
@@ -619,9 +624,6 @@ function _M.new(apis)
     end
 
 
-    upstream_host = api_t.upstream_host
-
-
     if api_t.strip_uri_regex then
       local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
       ngx.req.set_uri(stripped_uri)
@@ -633,7 +635,7 @@ function _M.new(apis)
         headers = ngx.req.get_headers()
       end
 
-      upstream_host = headers["host"]
+      host_header = headers["host"]
     end
 
 
@@ -642,7 +644,8 @@ function _M.new(apis)
     end
 
 
-    return api_t.api, api_t.upstream_scheme, upstream_host, api_t.upstream_port
+    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, 
+           api_t.upstream_port, host_header
   end
 
 
