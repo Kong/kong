@@ -15,13 +15,10 @@ end
 function RequestTerminationHandler:access(conf)
   RequestTerminationHandler.super.access(self)
 
-  local status_code = conf.status_code
+  local status_code = conf.status_code or 503
   local content_type = conf.content_type
   local body = conf.body
   local message = conf.message
-  if not status_code then
-    status_code = 503
-  end
   if body then
     ngx.status = status_code
     
