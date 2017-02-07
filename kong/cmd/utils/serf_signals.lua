@@ -16,23 +16,46 @@ local serf_event_name = "kong"
 local serf_version_pattern = "^Serf v([%d%.]+)"
 local serf_compatible = version.set(unpack(meta._DEPENDENCIES.serf))
 local start_timeout = 5
+local serf_search_paths = {
+  "serf",
+  "/usr/local/bin/serf"
+}
 
-local function check_serf_bin(kong_config)
-  log.debug("checking 'serf' executable from 'serf_path' config setting")
-
-  local cmd = fmt("%s version", kong_config.serf_path)
+local function check_version(path)
+  local cmd = fmt("%s version", path)
   local ok, _, stdout = pl_utils.executeex(cmd)
   log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stdout)[1])
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
     if not version_match or not serf_compatible:matches(version_match) then
-      return nil, "incompatible serf found. Kong requires version "..
-                  tostring(serf_compatible)..", got "..version_match
+      return nil, fmt("incompatible serf found at '%s'. Kong requires version '%s', got '%s'",
+                  path, tostring(serf_compatible), version_match)
     end
     return true
   end
+end
 
-  return nil, "could not find 'serf' executable (is 'serf_path' correctly set?)"
+local function check_serf_bin(kong_config)
+  log.debug("searching for 'serf' executable")
+
+  if kong_config.serf_path then
+    serf_search_paths = { kong_config.serf_path }
+  end
+
+  local found
+  for _, path in ipairs(serf_search_paths) do
+    if check_version(path) then
+      found = path
+      log.debug("found 'serf' executable at %s", found)
+      break
+    end
+  end
+
+  if not found then
+    return nil, "could not find 'serf' executable (is 'serf_path' correctly set?)"
+  end
+
+  return found
 end
 
 local _M = {}
