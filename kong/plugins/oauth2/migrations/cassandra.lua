@@ -147,5 +147,16 @@ return {
         if err then return err end
       end
     end
+  },
+  {
+    name = "2017-01-27-oauth2_consumer_scopes",
+    up = [[
+      ALTER TABLE oauth2_credentials ADD allowed_scopes text;
+      ALTER TABLE oauth2_authorization_codes ADD scope_required_in_response boolean;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_credentials DROP allowed_scopes;
+      ALTER TABLE oauth2_authorization_codes DROP scope_required_in_response;
+    ]]
   }
 }

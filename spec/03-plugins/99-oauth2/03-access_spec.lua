@@ -29,6 +29,14 @@ describe("#ci Plugin: oauth2 (access)", function()
       name = "testapp3",
       consumer_id = consumer.id
     })
+    assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientidabc",
+      client_secret = "secretabc",
+      redirect_uri = {"http://scope.com"},
+      name = "testapp4",
+      allowed_scopes = "foo bar",
+      consumer_id = consumer.id
+    })
 
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
@@ -213,6 +221,25 @@ describe("#ci Plugin: oauth2 (access)", function()
         token_expiration = 5,
         enable_implicit_grant = true,
         global_credentials = true
+      }
+    })
+
+    local api10 = assert(helpers.dao.apis:insert {
+      name = "oauth2_10.com",
+      hosts = { "oauth2_10.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api10.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_password_grant = true,
+        enable_client_credentials = true
       }
     })
 

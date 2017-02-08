@@ -94,7 +94,21 @@ return {
   {
     name = "2016-12-22-283949_serialize_redirect_uri",
     up = function(_, _, factory)
-      local schema = factory.oauth2_credentials.schema
+      -- Schema for this point of time
+      local schema = {
+        primary_key = {"id"},
+        table = "oauth2_credentials",
+        fields = {
+          id = { type = "id", dao_insert_value = true },
+          consumer_id = { type = "id", required = true, foreign = "consumers:id" },
+          client_id = { type = "string", required = false, unique = true },
+          redirect_uri = { type = "array", required = true },
+        },
+        marshall_event = function(self, t)
+          return { id = t.id, consumer_id = t.consumer_id, client_id = t.client_id }
+        end
+      }
+
       schema.fields.redirect_uri.type = "string"
       local json = require "cjson"
       local apps, err = factory.oauth2_credentials.db:find_all('oauth2_credentials', nil, schema);
@@ -150,5 +164,16 @@ return {
         if err then return err end
       end
     end
+  },
+  {
+    name = "2017-01-27-oauth2_consumer_scopes",
+    up = [[
+      ALTER TABLE oauth2_credentials ADD COLUMN allowed_scopes text;
+      ALTER TABLE oauth2_authorization_codes ADD COLUMN scope_required_in_response boolean;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_credentials DROP COLUMN allowed_scopes;
+      ALTER TABLE oauth2_authorization_codes DROP COLUMN scope_required_in_response;
+    ]]
   }
 }

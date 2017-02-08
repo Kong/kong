@@ -36,7 +36,7 @@ local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
 
-local function generate_token(conf, api, credential, authenticated_userid, scope, state, expiration, disable_refresh)
+local function generate_token(conf, api, credential, authenticated_userid, scope, scope_required_in_response, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
 
   local refresh_token
@@ -62,11 +62,17 @@ local function generate_token(conf, api, credential, authenticated_userid, scope
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  local response_scope = nil
+  if scope_required_in_response then
+    response_scope = scope
+  end
+
   return {
     access_token = token.access_token,
     token_type = "bearer",
     expires_in = token_expiration > 0 and token.expires_in or nil,
     refresh_token = refresh_token,
+    scope = response_scope, -- If nil, this is omitted
     state = state -- If state is nil, this value won't be added
   }
 end
@@ -105,7 +111,7 @@ local function retrieve_parameters()
   return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
 end
 
-local function retrieve_scopes(parameters, conf)
+local function retrieve_scopes(parameters, conf, client)
   local scope = parameters[SCOPE]
   local scopes = {}
   if conf.scopes and scope then
@@ -120,7 +126,33 @@ local function retrieve_scopes(parameters, conf)
     return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
   end
 
-  return true, scopes
+  -- Scopes have been established, now filter for allowed scopes in
+  -- from the client. This is allowed OAuth2 behaviour; the authorization
+  -- does not have to grant all scopes to the client.
+  --
+  -- If the client does not have allowed_scopes set, it is considered
+  -- "trusted" (default behavior) and all scopes are granted.
+  --
+  -- If we change the scopes due to scope filtering, we need to pass the
+  -- scope in the token response (as defined by the OAuth 2.0 spec)
+  local scope_required_in_response = false
+  if client and client.allowed_scopes then
+    local filtered_scopes = {}
+    local client_allowed_scopes = client.allowed_scopes:gmatch("%S+")
+    for v in scopes do
+      -- is scope in both tables?
+      if utils.table_contains(client_allowed_scopes, v) then
+        table.insert(filtered_scopes, v)
+      end -- else: omit, we need to communicate scope to client
+        scope_required_in_response = true
+    end
+    scopes = filtered_scopes
+    -- Note: It may be that we filtered away all scopes here;
+    -- in that case the scope for the access token will be empty.
+    -- That is not an error.
+  end
+
+  return true, scopes, scope_required_in_response
 end
 
 local function authorize(conf)
@@ -145,15 +177,16 @@ local function authorize(conf)
         response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid "..RESPONSE_TYPE}
       end
 
+      -- Get redirect_uri and the client record
+      allowed_redirect_uris, client = get_redirect_uri(parameters[CLIENT_ID])
+
       -- Check scopes
-      local ok, scopes = retrieve_scopes(parameters, conf)
+      local ok, scopes, scope_required_in_response = retrieve_scopes(parameters, conf, client)
       if not ok then
         response_params = scopes -- If it's not ok, then this is the error message
       end
 
       -- Check client_id and redirect_uri
-      allowed_redirect_uris, client = get_redirect_uri(parameters[CLIENT_ID])
-
       if not allowed_redirect_uris then
         response_params = {[ERROR] = "invalid_client", error_description = "Invalid client authentication" }
       else
@@ -179,7 +212,8 @@ local function authorize(conf)
             api_id = api_id,
             credential_id = client.id,
             authenticated_userid = parameters[AUTHENTICATED_USERID],
-            scope = table.concat(scopes, " ")
+            scope = table.concat(scopes, " "),
+            scope_required_in_response = scope_required_in_response
           }, {ttl = 300})
 
           if err then
@@ -191,7 +225,7 @@ local function authorize(conf)
           }
         else
           -- Implicit grant, override expiration to zero
-          response_params = generate_token(conf, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), state, nil, true)
+          response_params = generate_token(conf, ngx.ctx.api, client, parameters[AUTHENTICATED_USERID],  table.concat(scopes, " "), scope_required_in_response, state, nil, true)
           is_implicit_grant = true
         end
       end
@@ -312,7 +346,7 @@ local function issue_token(conf)
         elseif authorization_code.credential_id ~= client.id then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..CODE}
         else
-          response_params = generate_token(conf, ngx.ctx.api, client, authorization_code.authenticated_userid, authorization_code.scope, state)
+          response_params = generate_token(conf, ngx.ctx.api, client, authorization_code.authenticated_userid, authorization_code.scope, authorization_code.scope_required_in_response, state)
           singletons.dao.oauth2_authorization_codes:delete({id=authorization_code.id}) -- Delete authorization code so it cannot be reused
         end
       elseif grant_type == GRANT_CLIENT_CREDENTIALS then
@@ -321,11 +355,11 @@ local function issue_token(conf)
           response_params = {[ERROR] = "invalid_provision_key", error_description = "Invalid provision_key"}
         else
           -- Check scopes
-          local ok, scopes = retrieve_scopes(parameters, conf)
+          local ok, scopes, scope_required_in_response = retrieve_scopes(parameters, conf, client)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), state, nil, true)
+            response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), scope_required_in_response, state, nil, true)
           end
         end
       elseif grant_type == GRANT_PASSWORD then
@@ -336,11 +370,11 @@ local function issue_token(conf)
           response_params = {[ERROR] = "invalid_authenticated_userid", error_description = "Missing authenticated_userid parameter"}
         else
           -- Check scopes
-          local ok, scopes = retrieve_scopes(parameters, conf)
+          local ok, scopes, scope_required_in_response = retrieve_scopes(parameters, conf, client)
           if not ok then
             response_params = scopes -- If it's not ok, then this is the error message
           else
-            response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "), state)
+            response_params = generate_token(conf, ngx.ctx.api, client, parameters.authenticated_userid, table.concat(scopes, " "),scope_required_in_response, state)
           end
         end
       elseif grant_type == GRANT_REFRESH_TOKEN then
@@ -353,7 +387,7 @@ local function issue_token(conf)
         if not token then
           response_params = {[ERROR] = "invalid_request", error_description = "Invalid "..REFRESH_TOKEN}
         else
-          response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, state)
+          response_params = generate_token(conf, ngx.ctx.api, client, token.authenticated_userid, token.scope, false, state)
           singletons.dao.oauth2_tokens:delete({id=token.id}) -- Delete old token
         end
       end

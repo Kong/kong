@@ -36,6 +36,7 @@ local OAUTH2_CREDENTIALS_SCHEMA = {
     client_id = { type = "string", required = false, unique = true, func = generate_if_missing },
     client_secret = { type = "string", required = false, unique = true, func = generate_if_missing },
     redirect_uri = { type = "array", required = true, func = validate_uris },
+    allowed_scopes = { type = "string", required = false },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   },
   marshall_event = function(self, t)
@@ -53,6 +54,7 @@ local OAUTH2_AUTHORIZATION_CODES_SCHEMA = {
     code = { type = "string", required = false, unique = true, immutable = true, func = generate_if_missing },
     authenticated_userid = { type = "string", required = false },
     scope = { type = "string" },
+    scope_required_in_response = { type = "boolean" },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   }
 }

@@ -65,6 +65,41 @@ describe("Plugin: oauth (API)", function()
         assert.equal("Test APP", body.name)
         assert.equal(2, #body.redirect_uri)
       end)
+      it("creates an oauth2 credential with allowed_scopes", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.org/",
+            allowed_scopes = "foo bar code"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(201, res))
+        assert.equal(consumer.id, body.consumer_id)
+        assert.equal("Test APP", body.name)
+        assert.equal("foo bar code", body.allowed_scopes)
+      end)
+      it("creates an oauth2 credential without allowed_scopes", function()
+        local res = assert(admin_client:send {
+          method = "POST",
+          path = "/consumers/bob/oauth2",
+          body = {
+            name = "Test APP",
+            redirect_uri = "http://google.org/"
+          },
+          headers = {
+            ["Content-Type"] = "application/json"
+          }
+        })
+        local body = cjson.decode(assert.res_status(201, res))
+        assert.equal(consumer.id, body.consumer_id)
+        assert.equal("Test APP", body.name)
+        assert.is_nil(body.allowed_scopes)
+      end)
       describe("errors", function()
         it("returns bad request", function()
           local res = assert(admin_client:send {
