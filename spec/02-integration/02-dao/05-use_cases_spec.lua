@@ -112,3 +112,30 @@ helpers.for_each_dao(function(kong_config)
     end)
   end)
 end)
+
+
+describe("#cassandra", function()
+  describe("LB policy", function()
+    it("accepts DCAwareRoundRobin", function()
+      local helpers = require "spec.helpers"
+
+      local kong_config                = helpers.test_conf
+
+      local database                   = kong_config.database
+      local cassandra_lb_policy        = kong_config.cassandra_lb_policy
+      local cassandra_local_datacenter = kong_config.cassandra_local_datacenter
+
+      finally(function()
+        kong_config.database                   = database
+        kong_config.cassandra_lb_policy        = cassandra_lb_policy
+        kong_config.cassandra_local_datacenter = cassandra_local_datacenter
+      end)
+
+      kong_config.database                   = "cassandra"
+      kong_config.cassandra_lb_policy        = "DCAwareRoundRobin"
+      kong_config.cassandra_local_datacenter = "my-dc"
+
+      assert(Factory.new(kong_config))
+    end)
+  end)
+end)
