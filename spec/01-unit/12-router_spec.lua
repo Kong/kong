@@ -771,31 +771,52 @@ describe("Router", function()
         router = assert(Router.new(use_case_apis))
       end)
 
-      it("uses the request's Host header if preserve_host", function()
-        local _ngx = mock_ngx("GET", "/", { ["host"] = "preserve.com" })
+      describe("when preserve_host is true", function()
+        local host = "preserve.com"
 
-        local api, _, upstream_host, _, host_header = router.exec(_ngx)
-        assert.same(use_case_apis[1], api)
-        assert.equal("httpbin.org", upstream_host)
-        assert.equal("preserve.com", host_header)
+        it("uses the request's Host header", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, _, _, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal(host, host_header)
+        end)
+
+        it("uses the request's Host header incl. port", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host .. ":123" })
+
+          local api, _, _, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal(host .. ":123", host_header)
+        end)
+
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, _, upstream_host = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal("httpbin.org", upstream_host)
+        end)
       end)
 
-      it("uses the request's Host header incl. port if preserve_host", function()
-        local _ngx = mock_ngx("GET", "/", { ["host"] = "preserve.com:123" })
+      describe("when preserve_host is false", function()
+        local host = "discard.com"
 
-        local api, _, upstream_host, _, host_header = router.exec(_ngx)
-        assert.same(use_case_apis[1], api)
-        assert.equal("httpbin.org", upstream_host)
-        assert.equal("preserve.com:123", host_header)
-      end)
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
 
-      it("uses the API's upstream_url host if not preserve_host", function()
-        local _ngx = mock_ngx("GET", "/", { ["host"] = "discard.com" })
+          local api, _, upstream_host = router.exec(_ngx)
+          assert.same(use_case_apis[2], api)
+          assert.equal("httpbin.org", upstream_host)
+        end)
 
-        local api, _, upstream_host, _, host_header = router.exec(_ngx)
-        assert.same(use_case_apis[2], api)
-        assert.equal("httpbin.org", upstream_host)
-        assert.is_nil(host_header)
+        it("does not set the host_header", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, _, _, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[2], api)
+          assert.is_nil(host_header)
+        end)
       end)
     end)
   end)
