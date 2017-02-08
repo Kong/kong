@@ -11,7 +11,7 @@ return {
       elseif strategy == "NetworkTopologyStrategy" then
         local dcs = {}
         for _, dc_conf in ipairs(kong_config.cassandra_data_centers) do
-          local dc_name, dc_repl = string.match(dc_conf, "(%w+):(%d+)")
+          local dc_name, dc_repl = string.match(dc_conf, "([^:]+):(%d+)")
           if dc_name and dc_repl then
             table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
           else
