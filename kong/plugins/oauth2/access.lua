@@ -138,13 +138,17 @@ local function retrieve_scopes(parameters, conf, client)
   local scope_required_in_response = false
   if client and client.allowed_scopes then
     local filtered_scopes = {}
-    local client_allowed_scopes = client.allowed_scopes:gmatch("%S+")
-    for v in scopes do
+    local client_allowed_scopes = {}
+    for allowed_scope in client.allowed_scopes:gmatch("%S+") do
+      table.insert(client_allowed_scopes, allowed_scope)
+    end
+    for idx,v in ipairs(scopes) do
       -- is scope in both tables?
       if utils.table_contains(client_allowed_scopes, v) then
         table.insert(filtered_scopes, v)
-      end -- else: omit, we need to communicate scope to client
+      else -- else: omit, we need to communicate scope to client
         scope_required_in_response = true
+      end
     end
     scopes = filtered_scopes
     -- Note: It may be that we filtered away all scopes here;
