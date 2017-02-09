@@ -496,7 +496,10 @@ function _M:queries(queries, no_keyspace)
   for _, query in ipairs(utils.split(queries, ";")) do
     query = utils.strip(query)
     if query ~= "" then
-      local res, err = self:query(query, nil, nil, nil, no_keyspace)
+      local res, err = self:query(query, nil, {
+        prepared = false,
+        --consistency = cassandra.consistencies.all,
+      }, nil, no_keyspace)
       if not res then return err end
     end
   end
@@ -542,7 +545,10 @@ function _M:current_migrations()
   -- Check if keyspace exists
   local rows, err = self:query(q_keyspace_exists, {
     self.cluster_options.keyspace
-  }, {prepared = false}, nil, true)
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  }, nil, true)
   if not rows then       return nil, err
   elseif #rows == 0 then return {} end
 
@@ -550,11 +556,15 @@ function _M:current_migrations()
   rows, err = self:query(q_migrations_table_exists, {
     self.cluster_options.keyspace,
     "schema_migrations"
-  }, {prepared = false})
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  })
   if not rows then return nil, err
   elseif rows[1] and rows[1].count > 0 then
     return self:query("SELECT * FROM schema_migrations", nil, {
-      prepared = false
+      prepared = false,
+      --consistency = cassandra.consistencies.all,
     })
   else return {} end
 end
@@ -564,7 +574,13 @@ function _M:record_migration(id, name)
     UPDATE schema_migrations
     SET migrations = migrations + ?
     WHERE id = ?
-  ]], {cassandra.list({name}), id})
+  ]], {
+    cassandra.list({ name }),
+    id
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  })
   if not res then return nil, err end
   return true
 end
