@@ -247,6 +247,14 @@
 #cluster_encrypt_key =           # base64-encoded 16-bytes key to encrypt
                                  # cluster traffic with.
 
+#cluster_keyring_file =          # Specifies a file to load keyring data from. 
+                                 # Kong is able to keep encryption keys in sync 
+                                 # and perform key rotations. During a key 
+                                 # rotation, there may be some period of time in 
+                                 # which Kong is required to maintain more than 
+                                 # one encryption key until all members have 
+                                 # received the new key.
+
 #cluster_ttl_on_failure = 3600   # Time to live (in seconds) of a node in the
                                  # cluster when it stops sending healthcheck
                                  # pings, possibly caused by a node or network
