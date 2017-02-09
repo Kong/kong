@@ -59,8 +59,10 @@ local CATEGORIES = {
   MATCH_RULES.METHOD,
 }
 
+local categories_len = #CATEGORIES
+
 local CATEGORIES_LOOKUP = {}
-for i = 1, #CATEGORIES do
+for i = 1, categories_len do
   CATEGORIES_LOOKUP[CATEGORIES[i]] = i
 end
 
@@ -535,7 +537,7 @@ function _M.new(apis)
         -- hosts/URIs/methods
         local category_idx = CATEGORIES_LOOKUP[req_category]
 
-        while category_idx <= #CATEGORIES_LOOKUP do
+        while category_idx <= categories_len do
           local bit_category = CATEGORIES[category_idx]
 
           local candidates = reduce(categories, bit_category, method, uri, host)
