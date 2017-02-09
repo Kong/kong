@@ -32,8 +32,16 @@ describe("#ci Plugin: oauth2 (access)", function()
     assert(helpers.dao.oauth2_credentials:insert {
       client_id = "clientidabc",
       client_secret = "secretabc",
-      redirect_uri = {"http://scope.com"},
+      redirect_uri = {"http://google.com/kong"},
       name = "testapp4",
+      allowed_scopes = "email profile",
+      consumer_id = consumer.id
+    })
+    assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientiddef",
+      client_secret = "secretdef",
+      redirect_uri = {"http://google.com/kong"},
+      name = "testapp5",
       allowed_scopes = "foo bar",
       consumer_id = consumer.id
     })
@@ -255,21 +263,21 @@ describe("#ci Plugin: oauth2 (access)", function()
     helpers.stop_kong()
   end)
 
-  local function provision_code(host)
+  local function provision_code2(host, client_id, scope)
     local request_client = helpers.proxy_ssl_client()
     local res = assert(request_client:send {
       method = "POST",
       path = "/oauth2/authorize",
       body = {
         provision_key = "provision123",
-        client_id = "clientid123",
-        scope = "email",
+        client_id = client_id,
+        scope = scope,
         response_type = "code",
         state = "hello",
         authenticated_userid = "userid123"
       },
       headers = {
-        ["Host"] = host and host or "oauth2.com",
+        ["Host"] = host,
         ["Content-Type"] = "application/json"
       }
     })
@@ -283,6 +291,10 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.is_nil(err)
       return m[1]
     end
+  end
+
+  local function provision_code(host)
+    return provision_code2(host and host or "oauth2.com", "clientid123", "email")
   end
 
   local function provision_token(host)
@@ -1819,7 +1831,7 @@ describe("#ci Plugin: oauth2 (access)", function()
     it("returns 401 Unauthorized when token has expired", function()
       local token = provision_token()
 
-      -- Token expires in (5 seconds)
+     -- Token expires in (5 seconds)
       ngx.sleep(7)
 
       local res = assert(proxy_ssl_client:send {
@@ -2019,6 +2031,121 @@ describe("#ci Plugin: oauth2 (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_nil(body.headers.authorization)
+    end)
+  end)
+
+  describe("Using consumer allowed_scopes, ", function()
+    it("client_credentials flow returns success with an application that has allowed scopes", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          client_id = "clientidabc",
+          client_secret="secretabc",
+          scope = "email", -- matches allowed scope, no scope/same scope returned
+          grant_type = "client_credentials"
+        },
+        headers = {
+          ["Host"] = "oauth2_10.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+    end)
+    it("client_credentials flow returns success and explicit scope with an application that has allowed scopes", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          client_id = "clientidabc",
+          client_secret="secretabc",
+          scope = "email user.email",
+          grant_type = "client_credentials"
+        },
+        headers = {
+          ["Host"] = "oauth2_10.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","scope":"email","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+    end)
+    it("client_credentials flow returns success and empty scope with an application that has non-matching scopes", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          client_id = "clientiddef",
+          client_secret="secretdef",
+          scope = "email", -- allowed scopes are "foo bar"
+          grant_type = "client_credentials"
+        },
+        headers = {
+          ["Host"] = "oauth2_10.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.is_table(ngx.re.match(body, [[^\{"token_type":"bearer","scope":"","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+    end)
+    it("auth code flow returns success and no scope if correct scope is claimed", function()
+      local code = provision_code2("oauth2_10.com", "clientidabc", "email")
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          code = code,
+          client_id = "clientidabc",
+          client_secret = "secretabc",
+          grant_type = "authorization_code"
+        },
+        headers = {
+          ["Host"] = "oauth2_10.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+    end)
+    it("auth code flow returns success and explicit scope with an application that has allowed scopes", function()
+      local code = provision_code2("oauth2_10.com", "clientidabc", "email user.email")
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          code = code,
+          client_id = "clientidabc",
+          client_secret = "secretabc",
+          grant_type = "authorization_code"
+        },
+        headers = {
+          ["Host"] = "oauth2_10.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","scope":"email","access_token":"[\w]{32,32}","expires_in":5\}$]]))
+    end)
+    it("auth code flow returns success and empty scope with an application that has non-matching  allowed scopes", function()
+      local code = provision_code2("oauth2_10.com", "clientiddef", "email user.email")
+
+      local res = assert(proxy_ssl_client:send {
+        method = "POST",
+        path = "/oauth2/token",
+        body = {
+          code = code,
+          client_id = "clientiddef",
+          client_secret = "secretdef",
+          grant_type = "authorization_code"
+        },
+        headers = {
+          ["Host"] = "oauth2_10.com",
+          ["Content-Type"] = "application/json"
+        }
+      })
+      local body = assert.res_status(200, res)
+      assert.is_table(ngx.re.match(body, [[^\{"refresh_token":"[\w]{32,32}","token_type":"bearer","scope":"","access_token":"[\w]{32,32}","expires_in":5\}$]]))
     end)
   end)
 end)

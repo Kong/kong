@@ -117,13 +117,13 @@ local function retrieve_scopes(parameters, conf, client)
   if conf.scopes and scope then
     for v in scope:gmatch("%S+") do
       if not utils.table_contains(conf.scopes, v) then
-        return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}
+        return false, {[ERROR] = "invalid_scope", error_description = "\""..v.."\" is an invalid "..SCOPE}, false
       else
         table.insert(scopes, v)
       end
     end
   elseif not scope and conf.mandatory_scope then
-    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}
+    return false, {[ERROR] = "invalid_scope", error_description = "You must specify a "..SCOPE}, false
   end
 
   -- Scopes have been established, now filter for allowed scopes in
