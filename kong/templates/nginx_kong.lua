@@ -94,6 +94,7 @@ server {
     location / {
         set $upstream_host nil;
         set $upstream_scheme nil;
+        set $upstream_uri nil;
         set $upstream_connection nil;
 
         access_by_lua_block {
@@ -108,7 +109,7 @@ server {
         proxy_set_header Upgrade $upstream_upgrade;
         proxy_set_header Connection $upstream_connection;
         proxy_pass_header Server;
-        proxy_pass $upstream_scheme://kong_upstream;
+        proxy_pass $upstream_scheme://kong_upstream/$upstream_uri;
 
         header_filter_by_lua_block {
             kong.header_filter()
