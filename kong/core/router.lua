@@ -263,8 +263,9 @@ local function categorize_api_t(api_t, categories, uris_prefixes, wildcard_hosts
     })
   end
 
-  for _, uri_prefix_regex in ipairs(api_t.uris_prefixes_regexes) do
+  for i, uri_prefix_regex in ipairs(api_t.uris_prefixes_regexes) do
     insert(uris_prefixes, {
+      uri   = api_t.api.uris[i],
       regex = uri_prefix_regex.regex,
       api_t = api_t,
     })
@@ -298,32 +299,12 @@ do
     end,
 
     [MATCH_RULES.URI] = function(api_t, _, uri)
-      -- plain
-
       if api_t.uris[uri] then
         if api_t.strip_uri then
           api_t.strip_uri_regex = api_t.uris[uri].strip_regex
         end
 
         return true
-      end
-
-      -- prefix
-
-      for i = 1, #api_t.uris_prefixes_regexes do
-        local from, _, err = re_find(uri, api_t.uris_prefixes_regexes[i].regex, "jo")
-        if err then
-          log(ERR, "could not search for URI prefix: ", err)
-          return
-        end
-
-        if from then
-          if api_t.strip_uri then
-            api_t.strip_uri_regex = api_t.uris_prefixes_regexes[i].strip_regex
-          end
-
-          return true
-        end
       end
     end,
 
@@ -522,9 +503,26 @@ function _M.new(apis)
         req_category = bor(req_category, MATCH_RULES.HOST)
       end
 
+
       if indexes.plain_uris[uri] then
         req_category = bor(req_category, MATCH_RULES.URI)
+
+      else
+        for i = 1, #uris_prefixes do
+          local from, _, err = re_find(uri, uris_prefixes[i].regex, "jo")
+          if err then
+            log(ERR, "could not search for URI prefix: ", err)
+            return
+          end
+
+          if from then
+            uri = uris_prefixes[i].uri
+            req_category = bor(req_category, MATCH_RULES.URI)
+            break
+          end
+        end
       end
+
 
       if indexes.methods[method] then
         req_category = bor(req_category, MATCH_RULES.METHOD)
@@ -556,29 +554,9 @@ function _M.new(apis)
     end
 
 
-    -- URI prefix checking
     -- no API seemed to belong to any of those recorded in our
     -- fast-indexed category lookups, we now want to test for
-    -- wildcard hosts and prefix URIs
-
-
-    for i = 1, #uris_prefixes do
-      local from, _, err = re_find(uri, uris_prefixes[i].regex, "jo")
-      if err then
-        log(ERR, "could not search for URI prefix: ", err)
-        return
-      end
-
-      -- our URI matches this API's URI as a prefix
-      -- let's test all of its other conditions
-      if from and match_api(uris_prefixes[i].api_t, method, uri, host) then
-        cache:set(cache_key, uris_prefixes[i].api_t)
-        return uris_prefixes[i].api_t
-      end
-    end
-
-
-    -- wildcard host checking
+    -- wildcard hosts
 
 
     for i = 1, #wildcard_hosts do

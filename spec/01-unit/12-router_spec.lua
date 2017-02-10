@@ -321,6 +321,28 @@ describe("Router", function()
           assert.truthy(api_t)
           assert.same(use_case[1], api_t.api)
         end)
+
+        it("HTTP method does not supersede non-plain URI", function()
+          local use_case = {
+            {
+              name = "api-1",
+              methods = { "GET" },
+            },
+            {
+              name = "api-2",
+              uris = { "/httpbin" },
+            }
+          }
+
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/httpbin", {})
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+
+          api_t = router.select("GET", "/httpbin/status/200", {})
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+        end)
       end)
 
       describe("multiple APIs of same category with conflicting values", function()
