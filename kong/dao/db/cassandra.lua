@@ -159,9 +159,11 @@ end
 local function deserialize_rows(rows, schema)
   for i, row in ipairs(rows) do
     for col, value in pairs(row) do
-      local t = schema.fields[col].type
-      if t == "table" or t == "array" then
-        rows[i][col] = cjson.decode(value)
+      if schema.fields[col] then
+        local t = schema.fields[col].type
+        if t == "table" or t == "array" then
+          rows[i][col] = cjson.decode(value)
+        end
       end
     end
   end

@@ -259,15 +259,22 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        if row.request_host == "" then row.request_host = nil end
-        if row.request_path == "" then row.request_path = nil end
-        local fields_to_update = {
-          hosts = { row.request_host },
-          uris = { row.request_path },
-          strip_uri = row.strip_request_path,
-        }
+        local hosts
+        local uris
 
-        local _, err = dao.apis:update(fields_to_update, { id = row.id })
+        if row.request_host and row.request_host ~= "" then
+          hosts = { row.request_host }
+        end
+
+        if row.request_path and row.request_path ~= "" then
+          uris = { row.request_path }
+        end
+
+        local _, err = dao.apis:update({
+          hosts     = hosts,
+          uris      = uris,
+          strip_uri = row.strip_request_path,
+        }, { id = row.id })
         if err then
           return err
         end
@@ -336,9 +343,11 @@ return {
           or not row.upstream_read_timeout
           or not row.upstream_send_timeout then
 
-          -- update row, getting default values for upstream timeouts
-          -- from schema file
-          local _, err = dao.apis:update(row, { id = row.id })
+          local _, err = dao.apis:update({
+            upstream_connect_timeout = 60000,
+            upstream_send_timeout = 60000,
+            upstream_read_timeout = 60000,
+          }, { id = row.id })
           if err then
             return err
           end
