@@ -83,10 +83,7 @@ local function marshall_api(api)
     uris                   = {},
     uris_prefixes_regexes  = {},
     methods                = {},
-    upstream_scheme        = nil,
-    upstream_host          = nil,
-    upstream_port          = nil,
-    upstream_path           = nil,
+    upstream               = {},
   }
 
 
@@ -186,17 +183,19 @@ local function marshall_api(api)
   if api.upstream_url then
     local parsed = url.parse(api.upstream_url)
 
-    api_t.upstream_scheme = parsed.scheme
-    api_t.upstream_host   = parsed.host
-    api_t.upstream_port   = tonumber(parsed.port)
-    api_t.upstream_path    = parsed.path
+    api_t.upstream = {
+      scheme       = parsed.scheme,
+      host         = parsed.host,
+      port         = tonumber(parsed.port),
+      path         = parsed.path,
+    }
 
-    if not api_t.upstream_port then
+    if not api_t.upstream.port then
       if parsed.scheme == "https" then
-        api_t.upstream_port = 443
+        api_t.upstream.port = 443
 
       else
-        api_t.upstream_port = 80
+        api_t.upstream.port = 80
       end
     end
   end
@@ -617,8 +616,8 @@ function _M.new(apis)
     end
 
 
-    if api_t.upstream_path then
-      new_uri = api_t.upstream_path .. new_uri
+    if api_t.upstream.path then
+      new_uri = api_t.upstream.path .. new_uri
     end
 
 
@@ -640,9 +639,7 @@ function _M.new(apis)
       ngx.header["Kong-Api-Name"] = api_t.api.name
     end
 
-
-    return api_t.api, api_t.upstream_scheme, api_t.upstream_host,
-           api_t.upstream_port, host_header, api_t.upstream_path
+    return api_t.api, api_t.upstream, host_header
   end
 
 
