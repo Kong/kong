@@ -9,7 +9,6 @@ local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
-local match = string.match
 local fmt = string.format
 local tonumber = tonumber
 local ipairs = ipairs
@@ -477,12 +476,21 @@ function _M.new(apis)
     end
 
 
-    local host = headers["host"]
-    if host then
-      host = match(host,"^([^:]+)") -- strip port number if given
-    end
-
     method = upper(method)
+
+
+    local host = headers["host"] or headers["Host"]
+    if host then
+      -- strip port number if given
+      local m, err = re_match(host, "^([^:]+)", "jo")
+      if not m then
+        log(ERR, "could not strip port from Host header: ", err)
+      end
+
+      if m[0] then
+        host = m[0]
+      end
+    end
 
 
     -- cache checking
