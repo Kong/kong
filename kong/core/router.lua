@@ -86,6 +86,7 @@ local function marshall_api(api)
     upstream_scheme        = nil,
     upstream_host          = nil,
     upstream_port          = nil,
+    upstream_path           = nil,
   }
 
 
@@ -186,8 +187,9 @@ local function marshall_api(api)
     local parsed = url.parse(api.upstream_url)
 
     api_t.upstream_scheme = parsed.scheme
-    api_t.upstream_host = parsed.host
-    api_t.upstream_port = tonumber(parsed.port)
+    api_t.upstream_host   = parsed.host
+    api_t.upstream_port   = tonumber(parsed.port)
+    api_t.upstream_path    = parsed.path
 
     if not api_t.upstream_port then
       if parsed.scheme == "https" then
@@ -583,6 +585,7 @@ function _M.new(apis)
   function self.exec(ngx)
     local method = ngx.req.get_method()
     local uri = ngx.var.uri
+    local new_uri = uri
     local host_header
     local headers
 
@@ -605,8 +608,22 @@ function _M.new(apis)
 
 
     if api_t.strip_uri_regex then
-      local stripped_uri = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
-      ngx.req.set_uri(stripped_uri)
+      local err
+      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
+      if not new_uri then
+        log(ERR, "could not strip URI: ", err)
+        return
+      end
+    end
+
+
+    if api_t.upstream_path then
+      new_uri = api_t.upstream_path .. new_uri
+    end
+
+
+    if new_uri ~= uri then
+      ngx.req.set_uri(new_uri)
     end
 
 
@@ -624,8 +641,8 @@ function _M.new(apis)
     end
 
 
-    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, 
-           api_t.upstream_port, host_header
+    return api_t.api, api_t.upstream_scheme, api_t.upstream_host,
+           api_t.upstream_port, host_header, api_t.upstream_path
   end
 
 

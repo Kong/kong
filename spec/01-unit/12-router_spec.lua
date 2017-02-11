@@ -613,6 +613,23 @@ describe("Router", function()
       assert.equal(443, upstream_port)
     end)
 
+    it("parses path component from upstream_url property", function()
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api" },
+          upstream_url = "http://httpbin.org/get",
+        }
+      }
+
+      local router = assert(Router.new(use_case_apis))
+
+      local _ngx = mock_ngx("GET", "/my-api", {})
+      local api, _, _, _, _, upstream_path = router.exec(_ngx)
+      assert.same(use_case_apis[1], api)
+      assert.equal("/get", upstream_path)
+    end)
+
     it("parses upstream_url port", function()
       local use_case_apis = {
         {
