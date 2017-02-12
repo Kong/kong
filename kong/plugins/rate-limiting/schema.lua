@@ -17,7 +17,8 @@ return {
     redis_port = { type = "number", default = 6379 },
     redis_password = { type = "string" },
     redis_timeout = { type = "number", default = 2000 },
-    redis_database = { type = "number", default = 0 }
+    redis_database = { type = "number", default = 0 },
+    hide_client_headers = { type = "boolean", default = false },
   },
   self_check = function(schema, plugin_t, dao, is_update)
     local ordered_periods = { "second", "minute", "hour", "day", "month", "year"}

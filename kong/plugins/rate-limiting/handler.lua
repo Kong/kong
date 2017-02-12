@@ -95,9 +95,11 @@ function RateLimitingHandler:access(conf)
 
   if usage then
     -- Adding headers
-    for k, v in pairs(usage) do
-      ngx.header[RATELIMIT_LIMIT.."-"..k] = v.limit
-      ngx.header[RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+    if not conf.hide_client_headers then
+      for k, v in pairs(usage) do
+        ngx.header[RATELIMIT_LIMIT.."-"..k] = v.limit
+        ngx.header[RATELIMIT_REMAINING.."-"..k] = math.max(0, (stop == nil or stop == k) and v.remaining - 1 or v.remaining) -- -increment_value for this current request
+      end
     end
 
     -- If limit is exceeded, terminate the request
