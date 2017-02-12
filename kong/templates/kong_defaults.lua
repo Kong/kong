@@ -59,4 +59,7 @@ lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua
 lua_package_cpath = NONE
 serf_path = serf
+
+redis_host = 127.0.0.1
+redis_port = 6379
 ]]

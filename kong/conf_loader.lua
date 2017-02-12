@@ -63,7 +63,8 @@ local CONF_INFERENCES = {
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
-
+  redis_host = {typ = "string"},
+  redis_port = {typ = "number"},
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
   pg_ssl = {typ = "boolean"},
