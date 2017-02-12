@@ -58,7 +58,8 @@ return {
           year = { type = "number" }
         }
       }
-    }
+    },
+    hide_client_headers = { type = "boolean", default = false },
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.limits or (not next(plugin_t.limits)) then

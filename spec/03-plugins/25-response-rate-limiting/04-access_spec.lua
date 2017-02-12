@@ -204,6 +204,26 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         }
       })
 
+      api = assert(helpers.dao.apis:insert {
+        name = "test9_com",
+        hosts = { "test9.com" },
+        upstream_url = "http://httpbin.org"
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "response-ratelimiting",
+        api_id = api.id,
+        config = {
+          fault_tolerant = false,
+          policy = policy,
+          hide_client_headers = true,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
+          limits = {video = {minute = 6}}
+        }
+      })
+
       assert(helpers.start_kong())
     end)
 
@@ -475,6 +495,22 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
       local body = assert.res_status(429, res)
       assert.equal([[{"message":"API rate limit exceeded for 'image'"}]], body)
+    end)
+
+    describe("Config with hide_client_headers", function()
+      it("does not send rate-limit headers when hide_client_headers==true", function()
+        local res = assert(helpers.proxy_client():send {
+          method = "GET",
+          path = "/status/200",
+          headers = {
+            ["Host"] = "test9.com"
+          }
+        })
+
+        assert.res_status(200, res)
+        assert.is_nil(res.headers["x-ratelimit-remaining-video-minute"])
+        assert.is_nil(res.headers["x-ratelimit-limit-video-minute"])
+      end)
     end)
 
     if policy == "cluster" then

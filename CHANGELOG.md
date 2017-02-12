@@ -25,6 +25,9 @@
 - Plugins:
   - key-auth: Allow setting API key header names with an underscore.
     [#2370](https://github.com/Mashape/kong/pull/2370)
+  - rate-limiting/response-ratelimiting: Optionally hide informative response
+    headers.
+    [#2087](https://github.com/Mashape/kong/pull/2087)
 
 ### Added
 
