@@ -9,6 +9,7 @@ local re_sub = ngx.re.sub
 local insert = table.insert
 local upper = string.upper
 local lower = string.lower
+local find = string.find
 local fmt = string.format
 local tonumber = tonumber
 local ipairs = ipairs
@@ -72,17 +73,17 @@ local empty_t = {}
 
 
 local function marshall_api(api)
-  local api_t              = {
-    api                    = api,
-    strip_uri              = api.strip_uri,
-    preserve_host          = api.preserve_host,
-    match_rules            = 0x00,
-    hosts                  = {},
-    wildcard_hosts_regexes = {},
-    uris                   = {},
-    uris_prefixes_regexes  = {},
-    methods                = {},
-    upstream               = {},
+  local api_t             = {
+    api                   = api,
+    strip_uri             = api.strip_uri,
+    preserve_host         = api.preserve_host,
+    match_rules           = 0x00,
+    hosts                 = {},
+    wildcard_hosts        = {},
+    uris                  = {},
+    uris_prefixes_regexes = {},
+    methods               = {},
+    upstream              = {},
   }
 
 
@@ -107,21 +108,22 @@ local function marshall_api(api)
     end
 
     if #host_values > 0 then
-      api_t.match_rules            = bor(api_t.match_rules, MATCH_RULES.HOST)
-      api_t.hosts                  = {}
-      api_t.wildcard_hosts_regexes = {}
+      api_t.match_rules    = bor(api_t.match_rules, MATCH_RULES.HOST)
+      api_t.hosts          = {}
+      api_t.wildcard_hosts = {}
 
       for _, host_value in ipairs(host_values) do
-        if host_value:find("%*") then
+        if find(host_value, "*", nil, true) then
           -- wildcard host matching
           local wildcard_host_regex = "^" .. host_value:gsub("%.", "\\.")
                                                        :gsub("%*", ".+") .. "$"
-          insert(api_t.wildcard_hosts_regexes, wildcard_host_regex)
-
-        else
-          -- plain host matching
-          api_t.hosts[host_value] = true
+          insert(api_t.wildcard_hosts, {
+            value = host_value,
+            regex = wildcard_host_regex
+          })
         end
+
+        api_t.hosts[host_value] = true
       end
     end
   end
@@ -254,11 +256,10 @@ local function categorize_api_t(api_t, categories, uris_prefixes, wildcard_hosts
     insert(category.methods[method], api_t)
   end
 
-  --
-
-  for _, wildcard_host_regex in ipairs(api_t.wildcard_hosts_regexes) do
+  for _, wildcard_host in ipairs(api_t.wildcard_hosts) do
     insert(wildcard_hosts, {
-      regex = wildcard_host_regex,
+      value = wildcard_host.value,
+      regex = wildcard_host.regex,
       api_t = api_t,
     })
   end
@@ -277,24 +278,8 @@ do
 
   local matchers = {
     [MATCH_RULES.HOST] = function(api_t, _, _, host)
-      -- plain
-
       if api_t.hosts[host] then
         return true
-      end
-
-      -- wildcard
-
-      for i = 1, #api_t.wildcard_hosts_regexes do
-        local m, err = re_match(host, api_t.wildcard_hosts_regexes[i], "jo")
-        if err then
-          log(ERR, "could not match wildcard host: ", err)
-          return
-        end
-
-        if m then
-          return true
-        end
       end
     end,
 
@@ -504,12 +489,25 @@ function _M.new(apis)
 
 
     do
-      -- plain match checking
-
       local req_category = 0x00
 
       if indexes.plain_hosts[host] then
         req_category = bor(req_category, MATCH_RULES.HOST)
+
+      elseif host then
+        for i = 1, #wildcard_hosts do
+          local m, err = re_match(host, wildcard_hosts[i].regex, "jo")
+          if err then
+            log(ERR, "could not match wildcard host: ", err)
+            return
+          end
+
+          if m then
+            host = wildcard_hosts[i].value
+            req_category = bor(req_category, MATCH_RULES.HOST)
+            break
+          end
+        end
       end
 
 
@@ -537,7 +535,9 @@ function _M.new(apis)
         req_category = bor(req_category, MATCH_RULES.METHOD)
       end
 
+
       --print("highest potential category: ", req_category)
+
 
       if req_category ~= 0x00 then
         -- we might have a match from our indexes of plain
@@ -561,26 +561,6 @@ function _M.new(apis)
         end
       end
     end
-
-
-    -- no API seemed to belong to any of those recorded in our
-    -- fast-indexed category lookups, we now want to test for
-    -- wildcard hosts
-
-
-    for i = 1, #wildcard_hosts do
-      local m, err = re_match(host, wildcard_hosts[i].regex, "jo")
-      if err then
-        log(ERR, "could not match wildcard host: ", err)
-        return
-      end
-
-      if m and match_api(wildcard_hosts[i].api_t, method, uri, host) then
-        cache:set(cache_key, wildcard_hosts[i].api_t)
-        return wildcard_hosts[i].api_t
-      end
-    end
-
 
     -- no match :'(
   end

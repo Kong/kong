@@ -343,6 +343,30 @@ describe("Router", function()
           assert.truthy(api_t)
           assert.same(use_case[2], api_t.api)
         end)
+
+        it("HTTP method does not supersede wildcard domain", function()
+          local use_case = {
+            {
+              name = "api-1",
+              methods = { "GET" },
+            },
+            {
+              name = "api-2",
+              headers = {
+                ["Host"] = { "domain.*" }
+              }
+            }
+          }
+
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/", {})
+          assert.truthy(api_t)
+          assert.same(use_case[1], api_t.api)
+
+          api_t = router.select("GET", "/", { ["host"] = "domain.com" })
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+        end)
       end)
 
       describe("multiple APIs of same category with conflicting values", function()
