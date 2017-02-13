@@ -64,11 +64,13 @@ local CONF_INFERENCES = {
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
+  pg_password = {typ = "string"},
   pg_ssl = {typ = "boolean"},
   pg_ssl_verify = {typ = "boolean"},
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
+  cassandra_password = {typ = "string"},
   cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},

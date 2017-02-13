@@ -444,4 +444,16 @@ describe("Configuration loader", function()
       assert.is_nil(purged_conf.cluster_encrypt_key)
     end)
   end)
+
+  describe("number as string", function()
+    it("force the numeric pg_password/cassandra_password to a string", function()
+      local conf = assert(conf_loader(nil, {
+        pg_password = 123456,
+        cassandra_password = 123456
+      }))
+
+      assert.equal("123456", conf.pg_password)
+      assert.equal("123456", conf.cassandra_password)
+    end)
+  end)
 end)
