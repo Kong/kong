@@ -10,7 +10,6 @@ statsd_mt.__index = statsd_mt
 
 function statsd_mt:new(conf)
   local sock = ngx_socket_udp()
-  sock:settimeout(conf.timeout)
   local ok, err = sock:setpeername(conf.host, conf.port)
   if not ok then
     return nil, "failed to connect to "..conf.host..":"..conf.port..": "..err
