@@ -79,8 +79,7 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream_scheme, upstream_host, 
-                 upstream_port, host_header = router.exec(ngx)
+      local api, upstream, host_header = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
@@ -93,9 +92,9 @@ return {
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_host),  -- the type of `host`; ipv4, ipv6 or name
-        host                 = upstream_host,  -- target host per `upstream_url`
-        port                 = upstream_port,  -- final target port
+        type                 = utils.hostname_type(upstream.host),  -- the type of `host`; ipv4, ipv6 or name
+        host                 = upstream.host,  -- target host per `upstream_url`
+        port                 = upstream.port,  -- final target port
         tries                = 0,              -- retry counter
         retries              = api.retries,    -- number of retries for the balancer
         connect_timeout      = api.upstream_connect_timeout or 60000,
@@ -107,7 +106,7 @@ return {
         -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
-      var.upstream_scheme = upstream_scheme
+      var.upstream_scheme = upstream.scheme
 
       ctx.api              = api
       ctx.balancer_address = balancer_address
