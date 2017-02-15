@@ -305,14 +305,38 @@ return {
   },
   {
     name = "2016-11-11-151900_new_apis_router_3",
-    up = [[
-      DROP INDEX apis_request_host_idx;
-      DROP INDEX apis_request_path_idx;
+    up = function(db, kong_config)
+      local keyspace_name = kong_config.cassandra_keyspace
 
-      ALTER TABLE apis DROP request_host;
-      ALTER TABLE apis DROP request_path;
-      ALTER TABLE apis DROP strip_request_path;
-    ]],
+      local rows, err = db:query([[
+         SELECT *
+         FROM system.schema_columns
+         WHERE keyspace_name = ']] .. keyspace_name .. [['
+           AND columnfamily_name = 'apis'
+           AND column_name IN ('request_host', 'request_path')
+      ]])
+      if err then
+        return err
+      end
+
+      for i = 1, #rows do
+        if rows[i].index_name then
+          local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+          if not res then
+            return err
+          end
+        end
+      end
+
+      err = db:queries [[
+        ALTER TABLE apis DROP request_host;
+        ALTER TABLE apis DROP request_path;
+        ALTER TABLE apis DROP strip_request_path;
+      ]]
+      if err then
+        return err
+      end
+    end,
     down = [[
       ALTER TABLE apis ADD request_host text;
       ALTER TABLE apis ADD request_path text;
