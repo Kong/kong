@@ -51,12 +51,29 @@ describe("#ci Plugin: oauth2 (access)", function()
     local api2 = assert(helpers.dao.apis:insert {
       name = "api-2",
       hosts = { "mockbin-path.com" },
-      uris = { "/somepath/" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api2.id,
+      config = {
+        scopes = { "email", "profile" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true
+      }
+    })
+
+    local api2bis = assert(helpers.dao.apis:insert {
+      name = "api-2-bis",
+      uris = { "/somepath" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api2bis.id,
       config = {
         scopes = { "email", "profile" },
         enable_authorization_code = true,
@@ -556,7 +573,6 @@ describe("#ci Plugin: oauth2 (access)", function()
             response_type = "code"
           },
           headers = {
-            ["Host"] = "mockbin-path.com",
             ["Content-Type"] = "application/json"
           }
         })

@@ -2,7 +2,6 @@ local url = require "socket.url"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local pl_stringx = require "pl.stringx"
 local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
@@ -36,10 +35,6 @@ local GRANT_REFRESH_TOKEN = "refresh_token"
 local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
-
-
-local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
-local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
 local function generate_token(conf, api, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
@@ -501,17 +496,26 @@ local function do_authentication(conf)
 end
 
 function _M.execute(conf)
-  -- Check if the API has a request_path and if it's being invoked with the path resolver
-  local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
-  if pl_stringx.endswith(path_prefix, "/") then
-    path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
-  end
-
   if ngx.req.get_method() == "POST" then
-    if ngx.re.match(ngx.var.request_uri, string.format(AUTHORIZE_URL, path_prefix)) then
-      authorize(conf)
-    elseif ngx.re.match(ngx.var.request_uri, string.format(TOKEN_URL, path_prefix)) then
+    local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
+    if err then
+      ngx.log(ngx.ERR, "could not search for token path segment: ", err)
+      return
+    end
+
+    if from then
       issue_token(conf)
+
+    else
+      from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/authorize]], "oj")
+      if err then
+        ngx.log(ngx.ERR, "could not search for authorize path segment: ", err)
+        return
+      end
+
+      if from then
+        authorize(conf)
+      end
     end
   end
 
