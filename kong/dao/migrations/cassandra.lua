@@ -167,10 +167,13 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        if not row.retries then  -- only if retries is not set already
-          -- we do not specify default values explicitly, as they will be
-          -- taken from the schema automatically by the dao.
-          local _, err = dao.apis:update(row, { id = row.id }, {full = true})
+        if not row.retries then
+
+          local _, err = dao.apis:update({
+            retries = 5
+          }, {
+            id = row.id
+          })
           if err then
             return err
           end
@@ -272,11 +275,22 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        row.hosts = { row.request_host }
-        row.uris = { row.request_path }
-        row.strip_uri = row.strip_request_path
+        local hosts
+        local uris
 
-        local _, err = dao.apis:update(row, { id = row.id }, { full = true })
+        if row.request_host then
+          hosts = { row.request_host }
+        end
+
+        if row.request_path then
+          uris = { row.request_path }
+        end
+
+        local _, err = dao.apis:update({
+          hosts = hosts,
+          uris = uris,
+          strip_uri = row.strip_request_path,
+        }, { id = row.id })
         if err then
           return err
         end
@@ -336,9 +350,11 @@ return {
           or not row.upstream_read_timeout
           or not row.upstream_send_timeout then
 
-          -- update row, getting default values for upstream timeouts
-          -- from schema file
-          local _, err = dao.apis:update(row, { id = row.id })
+          local _, err = dao.apis:update({
+            upstream_connect_timeout = 60000,
+            upstream_send_timeout = 60000,
+            upstream_read_timeout = 60000,
+          }, { id = row.id })
           if err then
             return err
           end
