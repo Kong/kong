@@ -46,6 +46,10 @@ function _M.get(key)
   return value, flags
 end
 
+function _M.rawadd(key, value, exptime)
+  return cache:add(key, value, exptime)
+end
+
 function _M.incr(key, value)
   return cache:incr(key, value)
 end
