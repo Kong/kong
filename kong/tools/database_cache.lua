@@ -35,6 +35,10 @@ function _M.sh_set(key, value, exptime)
   return cache:set(key, value, exptime or 0)
 end
 
+function _M.sh_add(key, value, exptime)
+  return cache:add(key, value, exptime)
+end
+
 function _M.sh_incr(key, value)
   return cache:incr(key, value)
 end
