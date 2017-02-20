@@ -14,16 +14,12 @@ local _M = {}
 local function parse_header(header_value, limits)
   local increments = {}
   if header_value then
-    if (type(header_value) == "table") then
-      -- multiple headers with same name: combine per RFC 2616 section 4.2
-      local hval_str = header_value[1]
-      local i
-      for i = 2,#header_value do
-        hval_str = hval_str .. "," .. header_value[i]
-      end
-      header_value = hval_str
+    local parts
+    if type(header_value) == "table" then
+      parts = header_value
+    else
+      parts = utils.split(header_value, ",")
     end
-    local parts = utils.split(header_value, ",")
     for _, v in ipairs(parts) do
       local increment_parts = utils.split(v, "=")
       if #increment_parts == 2 then
