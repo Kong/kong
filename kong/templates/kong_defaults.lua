@@ -55,6 +55,7 @@ dns_resolver = NONE
 dns_hostsfile = /etc/hosts
 
 lua_code_cache = on
+lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua
