@@ -80,6 +80,7 @@ function _M.start(kong_config, dao)
     ["-rpc-addr"] = kong_config.cluster_listen_rpc,
     ["-advertise"] = kong_config.cluster_advertise,
     ["-encrypt"] = kong_config.cluster_encrypt_key,
+    ["-keyring-file"] = kong_config.cluster_keyring_file,
     ["-log-level"] = "err",
     ["-profile"] = kong_config.cluster_profile,
     ["-node"] = serf.node_name,
