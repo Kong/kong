@@ -72,6 +72,13 @@ perform significantly better than any previous version.
   to specify, in milliseconds, a timeout value for requests between Kong and
   your APIs.
   [#2036](https://github.com/Mashape/kong/pull/2036)
+- Support for clustering key rotation in the underlying Serf process:
+  - new `cluster_keyring_file` property in the configuration file.
+  - new `kong cluster keys ..` CLI commands that expose the underlying
+    `serf keys ..` commands.
+  [#2069](https://github.com/Mashape/kong/pull/2069)
+- Support for `lua_socket_pool_size` property in configuration file.
+  [#2109](https://github.com/Mashape/kong/pull/2109)
 - Plugins:
   - :fireworks: **New AWS Lambda plugin**. Thanks Tim Erickson for his
     collaboration on this new addition.
@@ -92,6 +99,10 @@ perform significantly better than any previous version.
 
 ### Fixed
 
+- Looking for Serf in known installation paths.
+  [#1997](https://github.com/Mashape/kong/pull/1997)
+- Including port in upstream `Host` header.
+  [#2045](https://github.com/Mashape/kong/pull/2045)
 - Clarify the purpose of the `cluster_listen_rpc` property in
   the configuration file. Thanks Jeremy Monin for the patch.
   [#1860](https://github.com/Mashape/kong/pull/1860)
@@ -100,6 +111,9 @@ perform significantly better than any previous version.
     (PostgreSQL/Cassandra).
 - Plugins:
   - Fix fault tolerancy logic and error reporting in rate-limiting plugins.
+  - CORS: Properly return `Access-Control-Allow-Credentials: false` if 
+    `Access-Control-Allow-Origin: *`.
+    [#2104](https://github.com/Mashape/kong/pull/2104)
 
 ## [0.9.7] - 2016/12/21
 
