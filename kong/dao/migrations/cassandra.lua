@@ -278,6 +278,11 @@ return {
         local hosts
         local uris
 
+        local upstream_url = row.upstream_url
+        while string.sub(upstream_url, #upstream_url) == "/" do
+          upstream_url = string.sub(upstream_url, 1, #upstream_url - 1)
+        end
+
         if row.request_host then
           hosts = { row.request_host }
         end
@@ -290,6 +295,7 @@ return {
           hosts = hosts,
           uris = uris,
           strip_uri = row.strip_request_path,
+          upstream_url = upstream_url,
         }, { id = row.id })
         if err then
           return err

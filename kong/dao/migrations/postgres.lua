@@ -264,6 +264,12 @@ return {
       for _, row in ipairs(rows) do
         local set = {}
 
+        local upstream_url = row.upstream_url
+        while string.sub(upstream_url, #upstream_url) == "/" do
+          upstream_url = string.sub(upstream_url, 1, #upstream_url - 1)
+        end
+        set[#set + 1] = fmt("upstream_url = '%s'", upstream_url)
+
         if row.request_host and row.request_host ~= "" then
           set[#set + 1] = fmt("hosts = '%s'", 
                               cjson.encode({ row.request_host }))
