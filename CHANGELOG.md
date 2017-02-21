@@ -42,6 +42,8 @@ perform significantly better than any previous version.
   [#1782](https://github.com/Mashape/kong/pull/1782)
 - Final slashes in `upstream_url` are no longer allowed.
   [#2115](https://github.com/Mashape/kong/pull/2115)
+- Auto-generates stronger SHA-256 with RSA encryption SSL certificates.
+  [#2117](https://github.com/Mashape/kong/pull/2117)
 
 ### Added
 

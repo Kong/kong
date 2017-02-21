@@ -115,11 +115,11 @@ local function gen_default_ssl_cert(kong_config, admin)
 
     local passphrase = utils.random_string()
     local commands = {
-      fmt("openssl genrsa -des3 -out %s -passout pass:%s 1024", ssl_cert_key, passphrase),
-      fmt("openssl req -new -key %s -out %s -subj \"/C=US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost\" -passin pass:%s", ssl_cert_key, ssl_cert_csr, passphrase),
+      fmt("openssl genrsa -des3 -out %s -passout pass:%s 2048", ssl_cert_key, passphrase),
+      fmt("openssl req -new -key %s -out %s -subj \"/C=US/ST=California/L=San Francisco/O=Kong/OU=IT Department/CN=localhost\" -passin pass:%s -sha256", ssl_cert_key, ssl_cert_csr, passphrase),
       fmt("cp %s %s.org", ssl_cert_key, ssl_cert_key),
       fmt("openssl rsa -in %s.org -out %s -passin pass:%s", ssl_cert_key, ssl_cert_key, passphrase),
-      fmt("openssl x509 -req -in %s -signkey %s -out %s", ssl_cert_csr, ssl_cert_key, ssl_cert),
+      fmt("openssl x509 -req -in %s -signkey %s -out %s -sha256", ssl_cert_csr, ssl_cert_key, ssl_cert),
       fmt("rm %s", ssl_cert_csr),
       fmt("rm %s.org", ssl_cert_key)
     }
