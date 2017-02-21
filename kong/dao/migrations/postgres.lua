@@ -235,7 +235,7 @@ return {
       END$$;
     ]],
     down = [[
-      ALTER TABLE apis DROP COLUMN IF EXISTS headers;
+      ALTER TABLE apis DROP COLUMN IF EXISTS hosts;
       ALTER TABLE apis DROP COLUMN IF EXISTS uris;
       ALTER TABLE apis DROP COLUMN IF EXISTS methods;
       ALTER TABLE apis DROP COLUMN IF EXISTS strip_uri;
