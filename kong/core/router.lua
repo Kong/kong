@@ -184,6 +184,7 @@ local function marshall_api(api)
     api_t.upstream_scheme = parsed.scheme
     api_t.upstream_host = parsed.host
     api_t.upstream_port = tonumber(parsed.port)
+    api_t.upstream_uri = parsed.path
 
     if not api_t.upstream_port then
       if parsed.scheme == "https" then
@@ -629,7 +630,7 @@ function _M.new(apis)
     end
 
 
-    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, api_t.upstream_port
+    return api_t.api, api_t.upstream_scheme, api_t.upstream_host, api_t.upstream_port, api_t.upstream_uri
   end
 
 

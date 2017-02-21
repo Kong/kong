@@ -79,7 +79,7 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
+      local api, upstream_scheme, upstream_host, upstream_port, upstream_uri = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
@@ -104,6 +104,7 @@ return {
 
       var.upstream_scheme = upstream_scheme
       var.upstream_host = upstream_host
+      var.upstream_uri = upstream_uri
 
       ctx.api = api
       ctx.balancer_address = balancer_address
