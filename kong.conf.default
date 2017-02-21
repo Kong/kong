@@ -322,3 +322,7 @@
 
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).
+
+#lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
+                                 # connection pool associated with every remote
+                                 # server
