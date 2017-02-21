@@ -81,12 +81,30 @@ local function load_credential_from_db(username)
                           nil, load_credential_into_memory, username)
 end
 
-local function load_consumer_into_memory(credential)
-  local result, err = singletons.dao.consumers:find { id = credential.consumer_id }
-  if err then
+local function load_consumer_into_memory(consumer_id, anonymous)
+  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  if not result then
+    if anonymous and not err then
+      err = 'anonymous consumer "'..consumer_id..'" not found'
+    end
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   return result
+end
+
+local function set_consumer(consumer, credential)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  if credential then
+    ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    ngx.ctx.authenticated_credential = credential
+    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+  else
+    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+  
 end
 
 local function do_authentication(conf)
@@ -115,15 +133,9 @@ local function do_authentication(conf)
 
   -- Retrieve consumer
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-                                    nil, load_consumer_into_memory, credential)
+                   nil, load_consumer_into_memory, credential.consumer_id, false)
 
-  ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
-  ngx.ctx.authenticated_credential = credential
-  ngx.ctx.authenticated_consumer = consumer
+  set_consumer(consumer, credential)
 
   return true
 end
@@ -131,8 +143,11 @@ end
 function _M.execute(conf)
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous then
-      ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    if conf.anonymous ~= "" then
+      -- get anonymous user
+      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+                       nil, load_consumer_into_memory, conf.anonymous, true)
+      set_consumer(consumer, nil)
     else
       return responses.send(err.status, err.message, err.headers)
     end

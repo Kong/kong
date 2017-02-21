@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 describe("#ci Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
@@ -7,6 +8,9 @@ describe("#ci Plugin: oauth2 (access)", function()
   setup(function()
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
+    })
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
     })
     client1 = assert(helpers.dao.oauth2_credentials:insert {
       client_id = "clientid123",
@@ -173,7 +177,7 @@ describe("#ci Plugin: oauth2 (access)", function()
         provision_key = "provision123",
         token_expiration = 5,
         enable_implicit_grant = true,
-        anonymous = true,
+        anonymous = anonymous_user.id,
         global_credentials = false
       }
     })
@@ -213,6 +217,26 @@ describe("#ci Plugin: oauth2 (access)", function()
         token_expiration = 5,
         enable_implicit_grant = true,
         global_credentials = true
+      }
+    })
+
+    local api10 = assert(helpers.dao.apis:insert {
+      name = "oauth2_10.com",
+      hosts = { "oauth2_10.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api10.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = true,
+        anonymous = utils.uuid(), -- a non existing consumer
       }
     })
 
@@ -1675,8 +1699,18 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
-      assert.is_nil(body.headers["x-consumer-username"])
       assert.are.equal("true", body.headers["x-anonymous-consumer"])
+      assert.equal('no-body', body.headers["x-consumer-username"])
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "oauth2_10.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
     describe("Global Credentials", function()
       it("does not access two different APIs that are not sharing global credentials", function()

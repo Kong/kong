@@ -1,6 +1,14 @@
 local utils = require "kong.tools.utils"
 local Errors = require "kong.dao.errors"
 
+local function check_user(anonymous)
+  if anonymous == "" or utils.is_valid_uuid(anonymous) then
+    return true
+  end
+  
+  return false, "the anonymous user must be empty or a valid uuid"
+end
+
 local function generate_if_missing(v, t, column)
   if not v or utils.strip(v) == "" then
     return true, nil, { [column] = utils.random_string()}
@@ -28,8 +36,8 @@ return {
     enable_password_grant = { required = true, type = "boolean", default = false },
     hide_credentials = { type = "boolean", default = false },
     accept_http_if_already_terminated = { required = false, type = "boolean", default = false },
-    anonymous = {type = "boolean", default = false},
-    global_credentials = {type = "boolean", default = false}
+    anonymous = {type = "string", default = "", func = check_user},
+    global_credentials = {type = "boolean", default = false},
   },
   self_check = function(schema, plugin_t, dao, is_update)
     if not plugin_t.enable_authorization_code and not plugin_t.enable_implicit_grant
