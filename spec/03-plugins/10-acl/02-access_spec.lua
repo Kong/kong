@@ -4,9 +4,8 @@ local cache = require "kong.tools.database_cache"
 
 describe("Plugin: ACL (access)", function()
   local client, api_client
-  setup(function()
-    assert(helpers.start_kong())
 
+  setup(function()
     local consumer1 = assert(helpers.dao.consumers:insert {
       username = "consumer1"
     })
@@ -60,7 +59,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "acl1.com",
+      name = "api-1",
+      hosts = { "acl1.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -72,7 +72,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "acl2.com",
+      name = "api-2",
+      hosts = { "acl2.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -89,7 +90,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "acl3.com",
+      name = "api-3",
+      hosts = { "acl3.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -106,7 +108,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api4 = assert(helpers.dao.apis:insert {
-      request_host = "acl4.com",
+      name = "api-4",
+      hosts = { "acl4.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -123,7 +126,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api5 = assert(helpers.dao.apis:insert {
-      request_host = "acl5.com",
+      name = "api-5",
+      hosts = { "acl5.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -140,7 +144,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api6 = assert(helpers.dao.apis:insert {
-      request_host = "acl6.com",
+      name = "api-6",
+      hosts = { "acl6.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -157,7 +162,8 @@ describe("Plugin: ACL (access)", function()
     })
 
     local api7 = assert(helpers.dao.apis:insert {
-      request_host = "acl7.com",
+      name = "api-7",
+      hosts = { "acl7.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
@@ -172,15 +178,20 @@ describe("Plugin: ACL (access)", function()
       api_id = api7.id,
       config = {}
     })
+
+    assert(helpers.start_kong())
   end)
+
   before_each(function()
     client = helpers.proxy_client()
     api_client = helpers.admin_client()
   end)
+
   after_each(function ()
     client:close()
     api_client:close()
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
@@ -369,7 +380,7 @@ describe("Plugin: ACL (access)", function()
           },
           body = {
             name = "acl_test"..i,
-            request_host = "acl_test"..i..".com",
+            hosts = { "acl_test"..i..".com" },
             upstream_url = "http://mockbin.com"
           }
         })

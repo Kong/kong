@@ -8,23 +8,24 @@ local TRACKER_PATTERN = "%d+%.%d+%.%d+%.%d+%-%d+%-%d+%-%d+%-%d+%-%d%d%d%d%d%d%d%
 describe("Plugin: correlation-id (access)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "correlation1.com",
+      name = "api-1",
+      hosts = { "correlation1.com" },
       upstream_url = "http://mockbin.com"
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "correlation2.com",
+      name = "api-2",
+      hosts = { "correlation2.com" },
       upstream_url = "http://mockbin.com"
     })
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "correlation3.com",
+      name = "api-3",
+      hosts = { "correlation3.com" },
       upstream_url = "http://mockbin.com"
     })
     local api4 = assert(helpers.dao.apis:insert {
-      request_host = "correlation-tracker.com",
+      name = "api-4",
+      hosts = { "correlation-tracker.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -54,6 +55,9 @@ describe("Plugin: correlation-id (access)", function()
         generator = "tracker"
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()

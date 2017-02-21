@@ -107,8 +107,10 @@ local function insert_405(routes)
   return routes
 end
 
+ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
+
 -- Load core routes
-for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster" }) do
+for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster", "certificates", "snis", "upstreams"}) do
   local routes = require("kong.api.routes."..v)
   attach_routes(insert_405(routes))
 end
@@ -118,10 +120,10 @@ if singletons.configuration and singletons.configuration.plugins then
   for k in pairs(singletons.configuration.plugins) do
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..k..".api")
     if loaded then
-      ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: "..k)
+      ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
       attach_routes(insert_405(mod))
     else
-      ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: "..k)
+      ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: ", k)
     end
   end
 end

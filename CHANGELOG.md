@@ -1,5 +1,96 @@
 ## [Unreleased][unreleased]
 
+## [0.9.9] - 2017/02/02
+
+### Fixed
+
+- Correctly put Cassandra sockets into the Nginx connection pool for later
+  reuse. This greatly improves the performance for rate-limiting and
+  response-ratelimiting plugins.
+  [f8f5306](https://github.com/Mashape/kong/commit/f8f53061207de625a29bbe5d80f1807da468a1bc)
+- Correct length of a year in seconds for rate-limiting and
+  response-ratelimiting plugins. A year was wrongly assumed to only be 360
+  days long.
+  [e4fdb2a](https://github.com/Mashape/kong/commit/e4fdb2a3af4a5f2bf298c7b6488d88e67288c98b)
+- Prevent misinterpretation of the `%` character in proxied URLs encoding.
+  Thanks Thomas Jouannic for the patch.
+  [#1998](https://github.com/Mashape/kong/pull/1998)
+  [#2040](https://github.com/Mashape/kong/pull/2040)
+
+## [0.9.8] - 2017/01/19
+
+### Fixed
+
+- Properly set the admin IP in the Serf script.
+
+### Changed
+
+- Provide negative-caching for missed database entities. This should improve
+  performance in some cases.
+  [#1914](https://github.com/Mashape/kong/pull/1914)
+
+### Fixed
+
+- Plugins:
+  - Fix fault tolerancy logic and error reporting in rate-limiting plugins.
+
+## [0.9.7] - 2016/12/21
+
+### Fixed
+
+- Fixed a performance issue in Cassandra by removing an old workaround that was
+  forcing Cassandra to use LuaSocket instead of cosockets.
+  [#1916](https://github.com/Mashape/kong/pull/1916)
+- Fixed an issue that was causing a recursive attempt to stop Kong's services
+  when an error was occurring.
+  [#1877](https://github.com/Mashape/kong/pull/1877)
+- Custom plugins are now properly loaded again.
+  [#1910](https://github.com/Mashape/kong/pull/1910)
+- Plugins:
+  - Galileo: properly encode empty arrays.
+    [#1909](https://github.com/Mashape/kong/pull/1909)
+  - OAuth 2: implements a missing Postgres migration for `redirect_uri` in
+    every OAuth 2 credential. [#1911](https://github.com/Mashape/kong/pull/1911)
+  - OAuth 2: safely parse the request body even when no data has been sent.
+    [#1915](https://github.com/Mashape/kong/pull/1915)
+
+## [0.9.6] - 2016/11/29
+
+### Fixed
+
+- Resolve support for PostgreSQL SSL connections.
+  [#1720](https://github.com/Mashape/kong/issues/1720)
+- Ensure `kong start` honors the `--conf` flag is a config file already exists
+  at one of the default locations (`/etc/kong.conf`, `/etc/kong/kong.conf`).
+  [#1681](https://github.com/Mashape/kong/pull/1681)
+- Obfuscate sensitive properties from the `/` Admin API route which returns
+  the current node's configuration.
+  [#1650](https://github.com/Mashape/kong/pull/1650)
+
+## [0.9.5] - 2016/11/07
+
+### Changed
+
+- Dropping support for OpenResty 1.9.15.1 in favor of 1.11.2.1
+  [#1797](https://github.com/Mashape/kong/pull/1797)
+
+### Fixed
+
+- Fixed an error (introduced in 0.9.4) in the auto-clustering event
+
+## [0.9.4] - 2016/11/02
+
+### Fixed
+
+- Fixed the random string generator that was causing some problems, especially
+  in Serf for clustering. [#1754](https://github.com/Mashape/kong/pull/1754)
+- Seed random number generator in CLI.
+  [#1641](https://github.com/Mashape/kong/pull/1641)
+- Reducing log noise in the Admin API.
+  [#1781](https://github.com/Mashape/kong/pull/1781)
+- Fixed the reports lock implementation that was generating a periodic error
+  message. [#1783](https://github.com/Mashape/kong/pull/1783)
+
 ## [0.9.3] - 2016/10/07
 
 ### Added
@@ -8,7 +99,7 @@
 
 ### Fixed
 
-- Properly invalidate global plugins. 
+- Properly invalidate global plugins.
   [#1723](https://github.com/Mashape/kong/pull/1723)
 
 ## [0.9.2] - 2016/09/20
@@ -755,7 +846,13 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.9.3...next
+[unreleased]: https://github.com/mashape/kong/compare/0.9.9...next
+[0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
+[0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8
+[0.9.7]: https://github.com/mashape/kong/compare/0.9.6...0.9.7
+[0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
+[0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
+[0.9.4]: https://github.com/mashape/kong/compare/0.9.3...0.9.4
 [0.9.3]: https://github.com/mashape/kong/compare/0.9.2...0.9.3
 [0.9.2]: https://github.com/mashape/kong/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/mashape/kong/compare/0.9.0...0.9.1

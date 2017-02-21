@@ -1,24 +1,24 @@
 local helpers = require "spec.helpers"
-local cjson = require "cjson"
 
 describe("Resolver", function()
   local admin_client
 
   setup(function()
+    assert(helpers.dao.apis:insert {
+      name = "mockbin",
+      hosts = { "mockbin.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
     assert(helpers.start_kong({
       custom_plugins = "database-cache",
       lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
     }))
     admin_client = helpers.admin_client()
 
-    assert(helpers.dao.apis:insert {
-      request_host = "mockbin.com",
-      upstream_url = "http://mockbin.com"
-    })
-
     local res = assert(admin_client:send {
       method = "POST",
-      path = "/apis/mockbin.com/plugins/",
+      path = "/apis/mockbin/plugins/",
       body = {
         name = "database-cache"
       },
@@ -53,19 +53,22 @@ describe("Resolver", function()
     helpers.wait_until(function()
       local res = assert(admin_client:send {
         method = "GET",
-        path = "/cache/invocations"
+        path = "/cache/invocations",
+        query = { cache = "shm" },
       })
-      local body = assert.res_status(200, res)
-      return cjson.decode(body).message == 3
+      assert.response(res).has.status(200)
+      return 3 == assert.response(res).has.jsonbody()["message"]
     end, 10)
 
     -- Invocation are 3, but lookups should be 1
     local res = assert(admin_client:send {
       method = "GET",
-      path = "/cache/lookups"
+      path = "/cache/lookups",
+      query = { cache = "shm" },
     })
-    local body = assert.res_status(200, res)
-    assert.equal(1, cjson.decode(body).message)
+    assert.response(res).has.status(200)
+    local json = assert.response(res).has.jsonbody()
+    assert.equal(1, json.message)
 
     ngx.sleep(1) -- block to allow timers requests to finish
   end)

@@ -8,21 +8,53 @@
 -- In the `access_by_lua` phase, it is responsible for retrieving the API being proxied by
 -- a Consumer. Then it is responsible for loading the plugins to execute on this request.
 local utils = require "kong.tools.utils"
+local Router = require "kong.core.router"
 local reports = require "kong.core.reports"
 local cluster = require "kong.core.cluster"
-local resolver = require "kong.core.resolver"
 local constants = require "kong.constants"
+local responses = require "kong.tools.responses"
+local singletons = require "kong.singletons"
 local certificate = require "kong.core.certificate"
+local balancer_execute = require("kong.core.balancer").execute
 
+
+local router, router_err
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
+
 
 local function get_now()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
 end
 
--- in the table below the `before` and `after` is to indicate when they run; before or after the plugins
+
+-- in the table below the `before` and `after` is to indicate when they run:
+-- before or after the plugins
 return {
+  build_router = function()
+    local apis
+
+    apis, router_err = singletons.dao.apis:find_all()
+    if router_err then
+      return nil, "could not load APIs: " .. router_err
+    end
+
+    for i = 1, #apis do
+      -- alias since the router expects 'headers'
+      -- as a map
+      if apis[i].hosts then
+        apis[i].headers = { host = apis[i].hosts }
+      end
+    end
+
+    router, router_err = Router.new(apis)
+    if not router then
+      return nil, "could not create router: " .. router_err
+    end
+
+    return true
+  end,
+
   init_worker = {
     before = function()
       reports.init_worker()
@@ -31,33 +63,75 @@ return {
   },
   certificate = {
     before = function()
-      ngx.ctx.api = certificate.execute()
+      certificate.execute()
     end
   },
   access = {
     before = function()
-      ngx.ctx.KONG_ACCESS_START = get_now()
-      ngx.ctx.api, ngx.ctx.upstream_url, ngx.var.upstream_host = resolver.execute(ngx.var.request_uri, ngx.req.get_headers())
+      if not router then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(
+          "no router to route request (reason: " .. tostring(router_err) .. ")"
+        )
+      end
+
+      local ctx = ngx.ctx
+      local var = ngx.var
+
+      ctx.KONG_ACCESS_START = get_now()
+
+      local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
+      if not api then
+        return responses.send_HTTP_NOT_FOUND("no API found with those values")
+      end
+
+      if api.https_only and not utils.check_https(api.http_if_terminated) then
+        ngx.header["connection"] = "Upgrade"
+        ngx.header["upgrade"]    = "TLS/1.0, HTTP/1.1"
+
+        return responses.send(426, "Please use HTTPS protocol")
+      end
+
+      local balancer_address = {
+        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
+        host                 = upstream_host,  -- supposed target host
+        port                 = upstream_port,  -- final target port
+        tries                = 0,              -- retry counter
+        retries              = api.retries,    -- number of retries for the balancer
+        --  ip               = nil,            -- final target IP address
+        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
+        -- balancer          = nil,            -- the balancer object, in case of a balancer
+      }
+
+      var.upstream_scheme = upstream_scheme
+      var.upstream_host = upstream_host
+
+      ctx.api = api
+      ctx.balancer_address = balancer_address
+
+      local ok, err = balancer_execute(balancer_address)
+      if not ok then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed the initial "..
+          "dns/balancer resolve for '"..balancer_address.host..
+          "' with: "..tostring(err))
+      end
+
+      if balancer_address.hostname and not ngx.ctx.api.preserve_host then
+        ngx.var.upstream_host = balancer_address.hostname
+
+      else
+        ngx.var.upstream_host = upstream_host
+      end
     end,
     -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
     after = function()
-      -- Append any querystring parameters modified during plugins execution
-      local upstream_url = ngx.ctx.upstream_url
-      local uri_args = ngx.req.get_uri_args()
-      if next(uri_args) then
-        upstream_url = upstream_url.."?"..utils.encode_args(uri_args)
-      end
-
-      -- Set the `$upstream_url` and `$upstream_host` variables for the `proxy_pass` nginx
-      -- directive in kong.yml.
-      ngx.var.upstream_url = upstream_url
+      local ctx = ngx.ctx
 
       local now = get_now()
-      ngx.ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
-      ngx.ctx.KONG_ACCESS_ENDED_AT = now
+      ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
+      ctx.KONG_ACCESS_ENDED_AT = now
       -- time spent in Kong before sending the reqeust to upstream
-      ngx.ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
-      ngx.ctx.KONG_PROXIED = true
+      ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.
+      ctx.KONG_PROXIED = true
     end
   },
   header_filter = {

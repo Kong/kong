@@ -21,7 +21,6 @@ describe("kong health", function()
     local _, _, stdout = assert(helpers.kong_exec("health --prefix "..helpers.test_conf.prefix))
     assert.matches("serf%.-running", stdout)
     assert.matches("nginx%.-running", stdout)
-    assert.not_matches("dnsmasq.*running", stdout)
     assert.matches("Kong is healthy at "..helpers.test_conf.prefix, stdout, nil, true)
   end)
   it("fails when Kong is not running", function()
@@ -34,16 +33,6 @@ describe("kong health", function()
     helpers.execute("pkill serf")
 
     local ok, stderr = helpers.kong_exec("health --prefix "..helpers.test_conf.prefix)
-    assert.False(ok)
-    assert.matches("some services are not running", stderr, nil, true)
-  end)
-  it("checks dnsmasq if enabled", function()
-    assert(helpers.kong_exec("start --conf "..helpers.test_conf_path))
-
-    local ok, stderr = helpers.kong_exec("health --prefix "..helpers.test_conf.prefix, {
-      dnsmasq = true,
-      dns_resolver = ""
-    })
     assert.False(ok)
     assert.matches("some services are not running", stderr, nil, true)
   end)
