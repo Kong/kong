@@ -308,27 +308,52 @@ return {
     up = function(db, kong_config)
       local keyspace_name = kong_config.cassandra_keyspace
 
-      local rows, err = db:query([[
-         SELECT *
-         FROM system.schema_columns
-         WHERE keyspace_name = ']] .. keyspace_name .. [['
-           AND columnfamily_name = 'apis'
-           AND column_name IN ('request_host', 'request_path')
-      ]])
-      if err then
-        return err
-      end
+      if db.release_version < 3 then
+        local rows, err = db:query([[
+          SELECT *
+          FROM system.schema_columns
+          WHERE keyspace_name = ']] .. keyspace_name .. [['
+            AND columnfamily_name = 'apis'
+            AND column_name IN ('request_host', 'request_path')
+        ]])
+        if err then
+          return err
+        end
 
-      for i = 1, #rows do
-        if rows[i].index_name then
-          local res, err = db:query("DROP INDEX " .. rows[i].index_name)
-          if not res then
-            return err
+        for i = 1, #rows do
+          if rows[i].index_name then
+            local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+            if not res then
+              return err
+            end
+          end
+        end
+
+      else
+        local rows, err = db:query([[
+          SELECT *
+          FROM system_schema.indexes
+          WHERE keyspace_name = ']] .. keyspace_name .. [['
+            AND table_name = 'apis'
+        ]])
+        if err then
+          return err
+        end
+
+        for i = 1, #rows do
+          if rows[i].options and 
+             rows[i].options.target == "request_host" or
+             rows[i].options.target == "request_path" then
+
+            local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+            if not res then
+              return err
+            end
           end
         end
       end
 
-      err = db:queries [[
+      local err = db:queries [[
         ALTER TABLE apis DROP request_host;
         ALTER TABLE apis DROP request_path;
         ALTER TABLE apis DROP strip_request_path;
