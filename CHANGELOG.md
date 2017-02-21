@@ -40,6 +40,8 @@ perform significantly better than any previous version.
 - Separate Admin API and Proxy error logs. Admin API logs are now written to
   `logs/admin_access.log`.
   [#1782](https://github.com/Mashape/kong/pull/1782)
+- Final slashes in `upstream_url` are no longer allowed.
+  [#2115](https://github.com/Mashape/kong/pull/2115)
 
 ### Added
 

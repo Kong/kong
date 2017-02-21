@@ -5,13 +5,17 @@ local Errors = require "kong.dao.errors"
 local sub = string.sub
 local match = string.match
 
-local function validate_upstream_url_protocol(value)
+local function validate_upstream_url(value)
   local parsed_url = url.parse(value)
   if parsed_url.scheme and parsed_url.host then
     parsed_url.scheme = parsed_url.scheme:lower()
     if not (parsed_url.scheme == "http" or parsed_url.scheme == "https") then
       return false, "Supported protocols are HTTP and HTTPS"
     end
+  end
+
+  if parsed_url.path and string.sub(value, #value) == "/" then
+    return false, "Cannot end with a slash"
   end
 
   return true
@@ -198,7 +202,7 @@ return {
     strip_uri = {type = "boolean", default = true},
     https_only = {type = "boolean", default = false},
     http_if_terminated = {type = "boolean", default = true},
-    upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
+    upstream_url = {type = "url", required = true, func = validate_upstream_url},
     preserve_host = {type = "boolean", default = false},
     retries = {type = "number", default = 5, func = check_smallint},
     upstream_connect_timeout = {type = "number", default = 60000, func = check_u_int},

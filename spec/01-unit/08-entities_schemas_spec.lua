@@ -76,6 +76,16 @@ describe("Entities Schemas", function()
         }, api_schema)
         assert.is_false(valid)
         assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
+      end)
+
+      it("should return error with final slash in upstream_url", function()
+        local valid, errors = validate_entity({
+          name = "mockbin",
+          upstream_url = "http://mockbin.com/",
+          hosts = { "mockbin.com" },
+        }, api_schema)
+        assert.is_false(valid)
+        assert.equal("Cannot end with a slash", errors.upstream_url)
 
       end)
 
