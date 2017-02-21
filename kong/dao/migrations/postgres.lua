@@ -258,25 +258,32 @@ return {
         return err
       end
 
+      local fmt = string.format
+      local cjson = require("cjson")
+
       for _, row in ipairs(rows) do
-        local hosts
-        local uris
+        local set = {}
 
         if row.request_host and row.request_host ~= "" then
-          hosts = { row.request_host }
+          set[#set + 1] = fmt("hosts = '%s'", 
+                              cjson.encode({ row.request_host }))
         end
 
         if row.request_path and row.request_path ~= "" then
-          uris = { row.request_path }
+          set[#set + 1] = fmt("uris = '%s'", 
+                              cjson.encode({ row.request_path }))
         end
 
-        local _, err = dao.apis:update({
-          hosts     = hosts,
-          uris      = uris,
-          strip_uri = row.strip_request_path,
-        }, { id = row.id })
-        if err then
-          return err
+        set[#set + 1] = fmt("strip_uri = %s", tostring(row.strip_request_path))
+
+        if #set > 0 then
+          local query = [[UPDATE apis SET %s WHERE id = '%s';]]
+          local _, err = dao.db:query(
+            fmt(query, table.concat(set, ", "), row.id)
+          )
+          if err then
+            return err
+          end
         end
       end
     end,
