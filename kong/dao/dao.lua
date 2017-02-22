@@ -8,7 +8,7 @@
 -- and is responsible for propagating clustering events related to data invalidation,
 -- as well as foreign constraints when the underlying database does not support them
 -- (as with Cassandra).
--- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @copyright Copyright 2016-2017 Mashape Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.dao
 
