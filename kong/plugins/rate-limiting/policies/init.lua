@@ -18,7 +18,7 @@ local EXPIRATIONS = {
   hour = 3600,
   day = 86400,
   month = 2592000,
-  year = 31104000
+  year = 31536000,
 }
 
 return {
@@ -124,7 +124,7 @@ return {
         ngx_log(ngx.ERR, "failed to set Redis keepalive: ", err)
         return nil, err
       end
-      
+
       return true
     end,
     usage = function(conf, api_id, identifier, current_timestamp, name)
