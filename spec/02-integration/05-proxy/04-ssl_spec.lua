@@ -105,7 +105,7 @@ describe("SSL", function()
       local body = assert.res_status(426, res)
       assert.equal([[{"message":"Please use HTTPS protocol"}]], body)
       assert.contains("Upgrade", res.headers.connection)
-      assert.equal("TLS/1.0, HTTP/1.1", res.headers.upgrade)
+      assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
     end)
 
     it("blocks request with HTTPS in x-forwarded-proto but no http_if_already_terminated", function()
