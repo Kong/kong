@@ -167,10 +167,13 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        if not row.retries then  -- only if retries is not set already
-          -- we do not specify default values explicitly, as they will be
-          -- taken from the schema automatically by the dao.
-          local _, err = dao.apis:update(row, { id = row.id }, {full = true})
+        if not row.retries then
+
+          local _, err = dao.apis:update({
+            retries = 5
+          }, {
+            id = row.id
+          })
           if err then
             return err
           end
@@ -272,11 +275,28 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        row.hosts = { row.request_host }
-        row.uris = { row.request_path }
-        row.strip_uri = row.strip_request_path
+        local hosts
+        local uris
 
-        local _, err = dao.apis:update(row, { id = row.id }, { full = true })
+        local upstream_url = row.upstream_url
+        while string.sub(upstream_url, #upstream_url) == "/" do
+          upstream_url = string.sub(upstream_url, 1, #upstream_url - 1)
+        end
+
+        if row.request_host then
+          hosts = { row.request_host }
+        end
+
+        if row.request_path then
+          uris = { row.request_path }
+        end
+
+        local _, err = dao.apis:update({
+          hosts = hosts,
+          uris = uris,
+          strip_uri = row.strip_request_path,
+          upstream_url = upstream_url,
+        }, { id = row.id })
         if err then
           return err
         end
@@ -291,14 +311,63 @@ return {
   },
   {
     name = "2016-11-11-151900_new_apis_router_3",
-    up = [[
-      DROP INDEX apis_request_host_idx;
-      DROP INDEX apis_request_path_idx;
+    up = function(db, kong_config)
+      local keyspace_name = kong_config.cassandra_keyspace
 
-      ALTER TABLE apis DROP request_host;
-      ALTER TABLE apis DROP request_path;
-      ALTER TABLE apis DROP strip_request_path;
-    ]],
+      if db.release_version < 3 then
+        local rows, err = db:query([[
+          SELECT *
+          FROM system.schema_columns
+          WHERE keyspace_name = ']] .. keyspace_name .. [['
+            AND columnfamily_name = 'apis'
+            AND column_name IN ('request_host', 'request_path')
+        ]])
+        if err then
+          return err
+        end
+
+        for i = 1, #rows do
+          if rows[i].index_name then
+            local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+            if not res then
+              return err
+            end
+          end
+        end
+
+      else
+        local rows, err = db:query([[
+          SELECT *
+          FROM system_schema.indexes
+          WHERE keyspace_name = ']] .. keyspace_name .. [['
+            AND table_name = 'apis'
+        ]])
+        if err then
+          return err
+        end
+
+        for i = 1, #rows do
+          if rows[i].options and 
+             rows[i].options.target == "request_host" or
+             rows[i].options.target == "request_path" then
+
+            local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+            if not res then
+              return err
+            end
+          end
+        end
+      end
+
+      local err = db:queries [[
+        ALTER TABLE apis DROP request_host;
+        ALTER TABLE apis DROP request_path;
+        ALTER TABLE apis DROP strip_request_path;
+      ]]
+      if err then
+        return err
+      end
+    end,
     down = [[
       ALTER TABLE apis ADD request_host text;
       ALTER TABLE apis ADD request_path text;
@@ -336,9 +405,11 @@ return {
           or not row.upstream_read_timeout
           or not row.upstream_send_timeout then
 
-          -- update row, getting default values for upstream timeouts
-          -- from schema file
-          local _, err = dao.apis:update(row, { id = row.id })
+          local _, err = dao.apis:update({
+            upstream_connect_timeout = 60000,
+            upstream_send_timeout = 60000,
+            upstream_read_timeout = 60000,
+          }, { id = row.id })
           if err then
             return err
           end

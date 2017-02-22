@@ -1,10 +1,15 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: key-auth (access)", function()
   local client
   setup(function()
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
+    })
+    
     local api1 = assert(helpers.dao.apis:insert {
       name = "api-1",
       hosts = { "key-auth1.com" },
@@ -45,7 +50,20 @@ describe("Plugin: key-auth (access)", function()
       name = "key-auth",
       api_id = api3.id,
       config = {
-        anonymous = true
+        anonymous = anonymous_user.id
+      }
+    })
+
+    local api4 = assert(helpers.dao.apis:insert {
+      name = "api-4",
+      hosts = { "key-auth4.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api4.id,
+      config = {
+        anonymous = utils.uuid()  -- unknown consumer
       }
     })
 
@@ -212,7 +230,17 @@ describe("Plugin: key-auth (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal('true', body.headers["x-anonymous-consumer"])
-      assert.is_nil(body.headers["x-consumer-username"])
+      assert.equal('no-body', body.headers["x-consumer-username"])
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "key-auth4.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
   end)
 end)

@@ -99,6 +99,7 @@ local CONF_INFERENCES = {
 
   lua_code_cache = {typ = "ngx_boolean"},
   lua_ssl_verify_depth = {typ = "number"},
+  lua_socket_pool_size = {typ = "number"},
 }
 
 -- List of settings whose values must not be printed when

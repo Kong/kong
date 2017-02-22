@@ -58,12 +58,29 @@ local function load_credential(jwt_secret_key)
   return rows[1]
 end
 
-local function load_consumer(jwt_secret)
-  local consumer, err = singletons.dao.consumers:find {id = jwt_secret.consumer_id}
-  if err then
+local function load_consumer(consumer_id, anonymous)
+  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  if not result then
+    if anonymous and not err then
+      err = 'anonymous consumer "'..consumer_id..'" not found'
+    end
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
-  return consumer
+  return result
+end
+
+local function set_consumer(consumer, jwt_secret)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  if jwt_secret then
+    ngx.ctx.authenticated_credential = jwt_secret
+    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+  else
+    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+  
 end
 
 local function do_authentication(conf)
@@ -133,19 +150,14 @@ local function do_authentication(conf)
 
   -- Retrieve the consumer
   local consumer = cache.get_or_set(cache.consumer_key(jwt_secret_key),
-                                    nil, load_consumer, jwt_secret)
+                                    nil, load_consumer, jwt_secret.consumer_id)
 
   -- However this should not happen
   if not consumer then
     return false, {status = 403, message = string_format("Could not find consumer for '%s=%s'", conf.key_claim_name, jwt_secret_key)}
   end
 
-  ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx.ctx.authenticated_credential = jwt_secret
-  ngx.ctx.authenticated_consumer = consumer
+  set_consumer(consumer, jwt_secret)
 
   return true
 end
@@ -155,8 +167,11 @@ function JwtHandler:access(conf)
   
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous then
-      ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    if conf.anonymous ~= "" then
+      -- get anonymous user
+      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+                       nil, load_consumer, conf.anonymous, true)
+      set_consumer(consumer, nil)
     else
       return responses.send(err.status, err.message, err.headers)
     end

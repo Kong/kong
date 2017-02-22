@@ -1,6 +1,7 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 local meta = require "kong.meta"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: basic-auth (access)", function()
   local client
@@ -31,6 +32,9 @@ describe("Plugin: basic-auth (access)", function()
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
     })
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
+    })
     assert(helpers.dao.basicauth_credentials:insert {
       username = "bob",
       password = "kong",
@@ -51,7 +55,20 @@ describe("Plugin: basic-auth (access)", function()
       name = "basic-auth",
       api_id = api3.id,
       config = {
-        anonymous = true
+        anonymous = anonymous_user.id
+      }
+    })
+
+    local api4 = assert(helpers.dao.apis:insert {
+      name = "api-4",
+      hosts = { "basic-auth4.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "basic-auth",
+      api_id = api4.id,
+      config = {
+        anonymous = utils.uuid() -- a non-existing consumer id
       }
     })
 
@@ -255,7 +272,17 @@ describe("Plugin: basic-auth (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal('true', body.headers["x-anonymous-consumer"])
-      assert.is_nil(body.headers["x-consumer-username"])
+      assert.equal('no-body', body.headers["x-consumer-username"])
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "basic-auth4.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
   end)
 end)

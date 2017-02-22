@@ -2,6 +2,7 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local fixtures = require "spec.03-plugins.06-jwt.fixtures"
 local jwt_encoder = require "kong.plugins.jwt.jwt_parser"
+local utils = require "kong.tools.utils"
 
 local PAYLOAD = {
   iss = nil,
@@ -21,18 +22,21 @@ describe("Plugin: jwt (access)", function()
     local api4 = assert(helpers.dao.apis:insert {name = "tests-jwt4", hosts = { "jwt4.com" }, upstream_url = "http://mockbin.com"})
     local api5 = assert(helpers.dao.apis:insert {name = "tests-jwt5", hosts = { "jwt5.com" }, upstream_url = "http://mockbin.com"})
     local api6 = assert(helpers.dao.apis:insert {name = "tests-jwt6", hosts = { "jwt6.com" }, upstream_url = "http://mockbin.com"})
+    local api7 = assert(helpers.dao.apis:insert {name = "tests-jwt7", hosts = { "jwt7.com" }, upstream_url = "http://mockbin.com"})
 
     local consumer1 = assert(helpers.dao.consumers:insert {username = "jwt_tests_consumer"})
     local consumer2 = assert(helpers.dao.consumers:insert {username = "jwt_tests_base64_consumer"})
     local consumer3 = assert(helpers.dao.consumers:insert {username = "jwt_tests_rsa_consumer_1"})
     local consumer4 = assert(helpers.dao.consumers:insert {username = "jwt_tests_rsa_consumer_2"})
+    local anonymous_user = assert(helpers.dao.consumers:insert {username = "no-body"})
 
     assert(helpers.dao.plugins:insert {name = "jwt", config = {}, api_id = api1.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {uri_param_names = {"token", "jwt"}}, api_id = api2.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {claims_to_verify = {"nbf", "exp"}}, api_id = api3.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {key_claim_name = "aud"}, api_id = api4.id})
     assert(helpers.dao.plugins:insert {name = "jwt", config = {secret_is_base64 = true}, api_id = api5.id})
-    assert(helpers.dao.plugins:insert {name = "jwt", config = {anonymous = true}, api_id = api6.id})
+    assert(helpers.dao.plugins:insert {name = "jwt", config = {anonymous = anonymous_user.id}, api_id = api6.id})
+    assert(helpers.dao.plugins:insert {name = "jwt", config = {anonymous = utils.uuid()}, api_id = api7.id})
 
     jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer1.id})
     base64_jwt_secret = assert(helpers.dao.jwt_secrets:insert {consumer_id = consumer2.id})
@@ -317,7 +321,17 @@ describe("Plugin: jwt (access)", function()
       })
       local body = cjson.decode(assert.res_status(200, res))
       assert.equal('true', body.headers["x-anonymous-consumer"])
-      assert.is_nil(body.headers["x-consumer-username"])
+      assert.equal('no-body', body.headers["x-consumer-username"])
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "jwt7.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
   end)
 end)

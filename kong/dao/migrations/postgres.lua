@@ -235,7 +235,7 @@ return {
       END$$;
     ]],
     down = [[
-      ALTER TABLE apis DROP COLUMN IF EXISTS headers;
+      ALTER TABLE apis DROP COLUMN IF EXISTS hosts;
       ALTER TABLE apis DROP COLUMN IF EXISTS uris;
       ALTER TABLE apis DROP COLUMN IF EXISTS methods;
       ALTER TABLE apis DROP COLUMN IF EXISTS strip_uri;
@@ -258,18 +258,38 @@ return {
         return err
       end
 
-      for _, row in ipairs(rows) do
-        if row.request_host == "" then row.request_host = nil end
-        if row.request_path == "" then row.request_path = nil end
-        local fields_to_update = {
-          hosts = { row.request_host },
-          uris = { row.request_path },
-          strip_uri = row.strip_request_path,
-        }
+      local fmt = string.format
+      local cjson = require("cjson")
 
-        local _, err = dao.apis:update(fields_to_update, { id = row.id })
-        if err then
-          return err
+      for _, row in ipairs(rows) do
+        local set = {}
+
+        local upstream_url = row.upstream_url
+        while string.sub(upstream_url, #upstream_url) == "/" do
+          upstream_url = string.sub(upstream_url, 1, #upstream_url - 1)
+        end
+        set[#set + 1] = fmt("upstream_url = '%s'", upstream_url)
+
+        if row.request_host and row.request_host ~= "" then
+          set[#set + 1] = fmt("hosts = '%s'", 
+                              cjson.encode({ row.request_host }))
+        end
+
+        if row.request_path and row.request_path ~= "" then
+          set[#set + 1] = fmt("uris = '%s'", 
+                              cjson.encode({ row.request_path }))
+        end
+
+        set[#set + 1] = fmt("strip_uri = %s", tostring(row.strip_request_path))
+
+        if #set > 0 then
+          local query = [[UPDATE apis SET %s WHERE id = '%s';]]
+          local _, err = dao.db:query(
+            fmt(query, table.concat(set, ", "), row.id)
+          )
+          if err then
+            return err
+          end
         end
       end
     end,
@@ -336,9 +356,11 @@ return {
           or not row.upstream_read_timeout
           or not row.upstream_send_timeout then
 
-          -- update row, getting default values for upstream timeouts
-          -- from schema file
-          local _, err = dao.apis:update(row, { id = row.id })
+          local _, err = dao.apis:update({
+            upstream_connect_timeout = 60000,
+            upstream_send_timeout = 60000,
+            upstream_read_timeout = 60000,
+          }, { id = row.id })
           if err then
             return err
           end

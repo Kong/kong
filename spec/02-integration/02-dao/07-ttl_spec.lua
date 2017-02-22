@@ -67,6 +67,27 @@ helpers.for_each_dao(function(kong_config)
     end)
 
     if kong_config.database == "postgres" then
+      it("retrieves proper entity with no TTL properties attached", function()
+        local _, err = factory.apis:insert({
+          name = "mockbin",
+          hosts = { "mockbin.com" },
+          upstream_url = "http://mockbin.com"
+        }, {ttl = 5})
+
+        assert.falsy(err)
+        local rows, err = factory.apis:find_all()
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.equal(1, #rows)
+
+        -- Check that no TTL stuff is in the returned value
+        assert.is_nil(rows[1].primary_key_value)
+        assert.is_nil(rows[1].primary_uuid_value)
+        assert.is_nil(rows[1].table_name)
+        assert.is_nil(rows[1].primary_key_name)
+        assert.is_nil(rows[1].expire_at)
+      end)
+      
       it("clears old entities", function()
         local DB = require "kong.dao.db.postgres"
         local _db = DB.new(kong_config)

@@ -76,6 +76,16 @@ describe("Entities Schemas", function()
         }, api_schema)
         assert.is_false(valid)
         assert.equal("Supported protocols are HTTP and HTTPS", errors.upstream_url)
+      end)
+
+      it("should return error with final slash in upstream_url", function()
+        local valid, errors = validate_entity({
+          name = "mockbin",
+          upstream_url = "http://mockbin.com/",
+          hosts = { "mockbin.com" },
+        }, api_schema)
+        assert.is_false(valid)
+        assert.equal("Cannot end with a slash", errors.upstream_url)
 
       end)
 
@@ -628,7 +638,7 @@ describe("Entities Schemas", function()
       -- Insert key-auth, whose config has some default values that should be set
       local plugin = {name = "key-auth", api_id = "stub"}
       local valid = validate_entity(plugin, plugins_schema, {dao = dao_stub})
-      assert.same({key_names = {"apikey"}, hide_credentials = false, anonymous = false}, plugin.config)
+      assert.same({key_names = {"apikey"}, hide_credentials = false, anonymous = ""}, plugin.config)
       assert.is_true(valid)
     end)
     it("should be valid if no value is specified for a subfield and if the config schema has default as empty array", function()

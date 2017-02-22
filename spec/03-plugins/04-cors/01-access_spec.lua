@@ -25,6 +25,11 @@ describe("Plugin: cors (access)", function()
       hosts = { "cors4.com" },
       upstream_url = "http://mockbin.com"
     })
+    local api5 = assert(helpers.dao.apis:insert {
+      name = "api-5",
+      hosts = { "cors5.com" },
+      upstream_url = "http://mockbin.com"
+    })
 
     assert(helpers.dao.plugins:insert {
       name = "cors",
@@ -64,6 +69,14 @@ describe("Plugin: cors (access)", function()
       api_id = api4.id
     })
 
+    assert(helpers.dao.plugins:insert {
+      name = "cors",
+      api_id = api5.id,
+      config = {
+        origin = "*"
+      }
+    })
+
     assert(helpers.start_kong())
     client = helpers.proxy_client()
   end)
@@ -86,7 +99,22 @@ describe("Plugin: cors (access)", function()
       assert.equal("*", res.headers["Access-Control-Allow-Origin"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
+      assert.is_nil(res.headers["Access-Control-Max-Age"])
+    end)
+    it("gives appropriate defaults when origin is explicitly set to *", function()
+      local res = assert(client:send {
+        method = "OPTIONS",
+        headers = {
+          ["Host"] = "cors5.com"
+        }
+      })
+      assert.res_status(204, res)
+      assert.equal("GET,HEAD,PUT,PATCH,POST,DELETE", res.headers["Access-Control-Allow-Methods"])
+      assert.equal("*", res.headers["Access-Control-Allow-Origin"])
+      assert.is_nil(res.headers["Access-Control-Allow-Headers"])
+      assert.is_nil(res.headers["Access-Control-Expose-Headers"])
+      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
     it("accepts config options", function()
@@ -132,7 +160,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
     it("accepts config options", function()
@@ -163,7 +191,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
     it("works with 40x responses returned by another plugin", function()
@@ -178,7 +206,7 @@ describe("Plugin: cors (access)", function()
       assert.is_nil(res.headers["Access-Control-Allow-Methods"])
       assert.is_nil(res.headers["Access-Control-Allow-Headers"])
       assert.is_nil(res.headers["Access-Control-Expose-Headers"])
-      assert.is_nil(res.headers["Access-Control-Allow-Credentials"])
+      assert.equal("false", res.headers["Access-Control-Allow-Credentials"])
       assert.is_nil(res.headers["Access-Control-Max-Age"])
     end)
   end)
