@@ -417,39 +417,11 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(4, tonumber(body.headers["X-Ratelimit-Remaining-Video"]))
       end)
 
-      it("has test case where upstream sends multiple x-kong-limit headers", function()
-        -- Multiple headers with same name is OK per RFC 2616 section 4.2.
-        -- Can't use proxy_client to validate upstream:
-        -- res.headers can't have multiple table keys with the same name
-        local sock = assert(ngx.socket.tcp())
-
-        sock:settimeout(3000)
-        assert(sock:connect("httpbin.org", 80))
-        sock:send("GET /response-headers?x-kong-limit=video=2&x-kong-limit=image=1 HTTP/1.1\r\nHost: httpbin.org\r\n\r\n")
-
-        -- Read content-length value from headers
-        local readline = sock:receiveuntil("\r\n\r\n")
-        local headers = assert(readline()):lower()
-        local content_length = string.match(headers, ".*content%-length:%s*(%d+).*")
-
-        -- Read body, should be expected length
-        assert(sock:receive(tonumber(content_length)))
-        sock:close()
-
-        -- Validate x-kong-limit headers
-        local limit_header_count = 0
-        for header_value in string.gmatch(headers, ".-x%-kong%-limit:%s*(%S+).-") do
-          limit_header_count = limit_header_count + 1
-          assert(header_value == "video=2" or header_value == "image=1")
-        end
-        assert.equal(2, limit_header_count)
-      end)
-
       it("combines multiple x-kong-limit headers from upstream", function()
         for i = 1, 3 do
           local res = assert(client:send {
             method = "GET",
-            path = "/response-headers?x-kong-limit=video=2&x-kong-limit=image=1",
+            path = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
             headers = {
               ["Host"] = "test4.com"
             }
@@ -466,13 +438,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         local res = assert(client:send {
           method = "GET",
-          path = "/response-headers?x-kong-limit=video=2&x-kong-limit=image=1",
+          path = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
           headers = {
             ["Host"] = "test4.com"
           }
         })
+
         local body = assert.res_status(429, res)
-        assert.equal([[]], body)
+        assert.equal("", body)
         assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
         assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
       end)
