@@ -98,6 +98,12 @@ perform significantly better than any previous version.
   - rate-limiting: Ability to select the Redis database to use via the new
     `config.redis_database` plugin property.
     [#1941](https://github.com/Mashape/kong/pull/1941)
+  - Statsd: Support for 3 new metrics  
+    `upstream_latency`, `kong_latency` and `status_count_per_user`.
+    [#2090](https://github.com/Mashape/kong/pull/2090)
+  - Datadog: Support for tagging and 3 new metrics  `upstream_latency`, 
+    `kong_latency` and `status_count_per_user`.
+    [#2090](https://github.com/Mashape/kong/pull/2090)
 
 ### Fixed
 
