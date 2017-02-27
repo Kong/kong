@@ -21,6 +21,9 @@ perform significantly better than any previous version.
   been added to Kong core, and are configurable via new properties on the API
   entity. See the related PR for a detailed explanation of this change.
   [#1970](https://github.com/Mashape/kong/pull/1970)
+- :warning: Dropping support for unsecure `TLS/1.0` and defaulting `Upgrade` 
+  responses to `TLS/1.2`.
+  [#2119](https://github.com/Mashape/kong/pull/2119)
 - Bump the compatible OpenResty version to `1.11.2.1` and `1.11.2.2`. Support
   for OpenResty `1.11.2.2` requires the `--without-luajit-lua52` compilation
   flag.
