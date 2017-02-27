@@ -128,6 +128,23 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
+        request_host = "test4.com",
+        upstream_url = "http://httpbin.org"
+      })
+      assert(helpers.dao.plugins:insert {
+        name = "response-ratelimiting",
+        api_id = api.id,
+        config = {
+          fault_tolerant = false,
+          policy = policy,
+          redis_host = REDIS_HOST,
+          redis_port = REDIS_PORT,
+          redis_password = REDIS_PASSWORD,
+          limits = {video = {minute = 6}, image = {minute = 4}}
+        }
+      })
+
+      api = assert(helpers.dao.apis:insert {
         request_host = "test6.com",
         upstream_url = "http://httpbin.org"
       })
@@ -398,6 +415,39 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal(3, tonumber(body.headers["X-Ratelimit-Remaining-Image"]))
         assert.equal(4, tonumber(body.headers["X-Ratelimit-Remaining-Video"]))
+      end)
+
+      it("combines multiple x-kong-limit headers from upstream", function()
+        for i = 1, 3 do
+          local res = assert(client:send {
+            method = "GET",
+            path = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
+            headers = {
+              ["Host"] = "test4.com"
+            }
+          })
+
+          assert.res_status(200, res)
+          assert.equal(6, tonumber(res.headers["x-ratelimit-limit-video-minute"]))
+          assert.equal(6 - (i * 2), tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+          assert.equal(4, tonumber(res.headers["x-ratelimit-limit-image-minute"]))
+          assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
+
+          ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
+        end
+
+        local res = assert(client:send {
+          method = "GET",
+          path = "/response-headers?x-kong-limit=video%3D2&x-kong-limit=image%3D1",
+          headers = {
+            ["Host"] = "test4.com"
+          }
+        })
+
+        local body = assert.res_status(429, res)
+        assert.equal("", body)
+        assert.equal(0, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
+        assert.equal(1, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
       end)
     end)
 
