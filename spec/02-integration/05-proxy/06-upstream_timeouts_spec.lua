@@ -21,7 +21,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("upstream timeouts", function()
+  describe("upstream timeouts with DB: " .. kong_config.database, function()
     local client
 
     setup(function()
@@ -33,20 +33,20 @@ dao_helpers.for_each_dao(function(kong_config)
         {
           name = "api-1",
           methods = "HEAD",
-          upstream_url = "http://httpbin.org",
+          upstream_url = "http://httpbin.org:81",
           upstream_connect_timeout = 1, -- ms
         },
         {
           name = "api-2",
           methods = "POST",
           upstream_url = "http://httpbin.org",
-          upstream_send_timeout = 100, -- ms
+          upstream_send_timeout = 1, -- ms
         },
         {
           name = "api-3",
           methods = "GET",
           upstream_url = "http://httpbin.org",
-          upstream_read_timeout = 100, -- ms
+          upstream_read_timeout = 1, -- ms
         }
       }
 
@@ -56,7 +56,7 @@ dao_helpers.for_each_dao(function(kong_config)
     end)
 
     teardown(function()
-      helpers.stop_kong(nil, true)
+      helpers.stop_kong()
     end)
 
     before_each(function()
@@ -102,7 +102,9 @@ dao_helpers.for_each_dao(function(kong_config)
           headers = { ["Content-Type"] = "application/json" }
         })
 
-        assert.res_status(504, res)
+        -- do *not* use assert.res_status() here in case of
+        -- failure to avoid a 1MB long error log
+        assert.equal(504, res.status)
       end)
     end)
   end)
