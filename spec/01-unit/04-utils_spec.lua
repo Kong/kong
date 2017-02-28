@@ -458,5 +458,20 @@ describe("Utils", function()
       end)
     end)
   end)
-  
+
+  it("validate_header_name() validates header names", function()
+    local header_chars = [[-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+
+    for i = 1, 255 do
+      local c = string.char(i)
+
+      if string.find(header_chars, c, nil, true) then
+        assert(utils.validate_header_name(c) == c,
+          "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
+      else
+        assert(utils.validate_header_name(c) == nil,
+          "ascii character " .. i .. " should not have been allowed")
+      end
+    end
+  end)
 end)

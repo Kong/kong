@@ -29,6 +29,7 @@ local gsub       = string.gsub
 local split      = pl_stringx.split
 local strip      = pl_stringx.strip
 local re_find    = ngx.re.find
+local re_match   = ngx.re.match
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -581,6 +582,24 @@ _M.format_host = function(p1, p2)
   else
     return host ..  (port and ":"..port or "")
   end
+end
+
+--- Validates a header name.
+-- Checks characters used in a header name to be valid, as per nginx only
+-- a-z, A-Z, 0-9 and '-' are allowed.
+-- @param name (string) the header name to verify
+-- @return the valid header name, or `nil+error`
+_M.validate_header_name = function(name)
+  if name == nil or name == "" then
+    return nil, "no header name provided"
+  end
+
+  if re_match(name, "^[a-zA-Z0-9-]+$", "jo") then
+    return name
+  end
+
+  return nil, "bad header name '" .. name ..
+              "', allowed characters are A-Z, a-z, 0-9 and '-'"
 end
 
 return _M
