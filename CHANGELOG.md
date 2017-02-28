@@ -92,10 +92,12 @@ perform significantly better than any previous version.
     [#1777](https://github.com/Mashape/kong/pull/1777)
     [#1190](https://github.com/Mashape/kong/pull/1190)
   - Anonymous authentication for auth plugins. When such plugins receive the
-    `config.anonymous=true` property, even non-authenticated requests will be
-    proxied by Kong, without the traditional Consumer headers, but with a
-    `X-Anonymous-Consumer` header.
-    [#1666](https://github.com/Mashape/kong/pull/1666)
+    `config.anonymous=<consumer_id>` property, even non-authenticated requests
+    will be proxied by Kong, with the traditional Consumer headers set to the
+    designated anonymous consumer, but also with a `X-Anonymous-Consumer` 
+    header. Multiple auth plugins will work in a logical `OR` fashion.
+    [#1666](https://github.com/Mashape/kong/pull/1666) and
+    [#2035](https://github.com/Mashape/kong/pull/2035)
   - request-transformer: Ability to change the HTTP method of the upstream
     request. [#1635](https://github.com/Mashape/kong/pull/1635)
   - jwt: Support for ES256 signatures.
