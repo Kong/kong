@@ -24,6 +24,7 @@ local concat     = table.concat
 local insert     = table.insert
 local lower      = string.lower
 local fmt        = string.format
+local match      = string.match
 local find       = string.find
 local gsub       = string.gsub
 local split      = pl_stringx.split
@@ -581,6 +582,29 @@ _M.format_host = function(p1, p2)
   else
     return host ..  (port and ":"..port or "")
   end
+end
+
+-- patterns for allowed header characters
+local header_chars = [[!#$%%&'%*%+%-%.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^`abcdefghijklmnopqrstuvwxyz|~]]
+local header_allowed = "^["..header_chars.."]+$"
+local header_allowed_u = "^["..header_chars.."_]+$"  -- adds underscore
+
+--- Validates a header name.
+-- Checks characters used in a header name to be valid.
+-- @param name (string) the header name to verify
+-- @param allow_underscore (boolean, optional) if thruthy and `_` (underscore) is
+-- accepted, otherwise it will fail.
+-- @return the valid header name, or `nil+error`
+_M.validate_header_name = function(name, allow_underscore)
+  -- allow_underscore is used because openresty by default changes "_" into "-"
+  if name == nil or name == "" then
+    return nil, "no header name provided"
+  end
+  if match(name, allow_underscore and header_allowed_u or header_allowed) then
+    return name
+  end
+  return nil, "only the following characters are allowed for header names: "..
+              (allow_underscore and header_allowed_u or header_allowed)
 end
 
 return _M

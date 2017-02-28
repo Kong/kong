@@ -458,5 +458,29 @@ describe("Utils", function()
       end)
     end)
   end)
-  
+
+  describe("validate_header_name()", function()
+    it("validates header names without underscore", function()
+      local header_chars = [[%!#$&'*+-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^`abcdefghijklmnopqrstuvwxyz|~]]
+      for i = 1, 255 do
+        local c = string.char(i)
+        if string.find(header_chars, c, nil, true) then
+          assert(utils.validate_header_name(c) == c, "ascii character '"..c.."' ("..i..") should have been allowed")
+        else
+          assert(utils.validate_header_name(c) == nil, "ascii character "..i.." should not have been allowed")
+        end
+      end
+    end)
+    it("validates header names with underscore", function()
+      local header_chars = [[%!#$&'*+-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^`abcdefghijklmnopqrstuvwxyz|~_]]
+      for i = 1, 255 do
+        local c = string.char(i)
+        if string.find(header_chars, c, nil, true) then
+          assert(utils.validate_header_name(c, true) == c, "ascii character '"..c.."' ("..i..") should have been allowed")
+        else
+          assert(utils.validate_header_name(c, true) == nil, "ascii character "..i.." should not have been allowed")
+        end
+      end
+    end)
+  end)
 end)
