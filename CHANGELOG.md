@@ -118,6 +118,8 @@ perform significantly better than any previous version.
   - CORS: Properly return `Access-Control-Allow-Credentials: false` if 
     `Access-Control-Allow-Origin: *`.
     [#2104](https://github.com/Mashape/kong/pull/2104)
+  - key-auth: validate the `key_names` to be proper header names
+    [#2142](https://github.com/Mashape/kong/pull/2142)
 
 ## [0.9.7] - 2016/12/21
 
