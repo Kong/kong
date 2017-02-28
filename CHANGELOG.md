@@ -21,7 +21,7 @@ perform significantly better than any previous version.
   been added to Kong core, and are configurable via new properties on the API
   entity. See the related PR for a detailed explanation of this change.
   [#1970](https://github.com/Mashape/kong/pull/1970)
-- :warning: Dropping support for unsecure `TLS/1.0` and defaulting `Upgrade` 
+- :warning: Dropping support for unsecure `TLS/1.0` and defaulting `Upgrade`
   responses to `TLS/1.2`.
   [#2119](https://github.com/Mashape/kong/pull/2119)
 - Bump the compatible OpenResty version to `1.11.2.1` and `1.11.2.2`. Support
@@ -94,7 +94,7 @@ perform significantly better than any previous version.
   - Anonymous authentication for auth plugins. When such plugins receive the
     `config.anonymous=<consumer_id>` property, even non-authenticated requests
     will be proxied by Kong, with the traditional Consumer headers set to the
-    designated anonymous consumer, but also with a `X-Anonymous-Consumer` 
+    designated anonymous consumer, but also with a `X-Anonymous-Consumer`
     header. Multiple auth plugins will work in a logical `OR` fashion.
     [#1666](https://github.com/Mashape/kong/pull/1666) and
     [#2035](https://github.com/Mashape/kong/pull/2035)
@@ -120,9 +120,11 @@ perform significantly better than any previous version.
     (PostgreSQL/Cassandra).
 - Plugins:
   - Fix fault tolerancy logic and error reporting in rate-limiting plugins.
-  - CORS: Properly return `Access-Control-Allow-Credentials: false` if 
+  - CORS: Properly return `Access-Control-Allow-Credentials: false` if
     `Access-Control-Allow-Origin: *`.
     [#2104](https://github.com/Mashape/kong/pull/2104)
+  - key-auth: enforce `key_names` to be proper header names according to Nginx.
+    [#2142](https://github.com/Mashape/kong/pull/2142)
 
 ## [0.9.7] - 2016/12/21
 
