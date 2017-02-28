@@ -28,7 +28,7 @@ local PREFIX_PATHS = {
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
-  kong_conf = {"kong.conf"}
+  kong_env = {".kong_env"}
   ;
   ssl_cert_default = {"ssl", "kong-default.crt"},
   ssl_cert_key_default = {"ssl", "kong-default.key"},

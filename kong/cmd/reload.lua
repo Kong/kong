@@ -17,7 +17,7 @@ local function execute(args)
          "no such prefix: "..default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_conf, {
+  local conf = assert(conf_loader(default_conf.kong_env, {
     prefix = args.prefix
   }))
   assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
