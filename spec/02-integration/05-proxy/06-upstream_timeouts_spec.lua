@@ -21,7 +21,7 @@ end
 
 dao_helpers.for_each_dao(function(kong_config)
 
-  describe("upstream timeouts", function()
+  pending("upstream timeouts", function()
     local client
 
     setup(function()
