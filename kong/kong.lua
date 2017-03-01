@@ -125,7 +125,7 @@ function Kong.init()
   local conf_loader = require "kong.conf_loader"
 
   -- retrieve kong_config
-  local conf_path = pl_path.join(ngx.config.prefix(), "kong.conf")
+  local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
   local events = Events() -- retrieve node plugins

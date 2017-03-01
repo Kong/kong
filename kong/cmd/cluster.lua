@@ -23,7 +23,7 @@ local function execute(args)
   -- load <PREFIX>/kong.conf containing running node's config
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
-  local conf = assert(conf_loader(default_conf.kong_conf))
+  local conf = assert(conf_loader(default_conf.kong_env))
   local dao = assert(DAOFactory.new(conf))
   local serf = Serf.new(conf, dao)
 
