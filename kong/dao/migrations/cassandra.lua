@@ -37,6 +37,11 @@ return {
         return err
       end
 
+      local ok, err = db:coordinator_change_keyspace(keyspace_name)
+      if not ok then
+        return err
+      end
+
       local res, err = db:query [[
         CREATE TABLE IF NOT EXISTS schema_migrations(
           id text PRIMARY KEY,
