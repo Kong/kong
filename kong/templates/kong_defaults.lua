@@ -22,6 +22,8 @@ admin_ssl_cert_key = NONE
 upstream_keepalive = 60
 server_tokens = on
 latency_tokens = on
+real_ip_recursive = off
+set_real_ip_from = NONE
 
 database = postgres
 pg_host = 127.0.0.1

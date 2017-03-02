@@ -130,6 +130,20 @@
                                  # and "X-Kong-Upstream-Latency" response
                                  # header fields.
 
+#real_ip_recursive = off         # Sets the ngx_http_realip_module directive of
+                                 # the same name.
+# Note: See http://nginx.org/en/docs/http/ngx_http_realip_module.html for a
+# description of this directive.
+
+#set_real_ip_from = 0.0.0.0/0    # Defines trusted addresses that are known
+                                 # to send correct replacement addresses.
+                                 # If the special value unix: is specified,
+                                 # all UNIX-domain sockets will be trusted.
+                                 # This directive accepts a comma-separated
+                                 # list of values.
+# Note: See http://nginx.org/en/docs/http/ngx_http_realip_module.html for a
+# list of accepted values.
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------
@@ -329,22 +343,6 @@
 #lua_ssl_verify_depth = 1        # Sets the verification depth in the server
                                  # certificates chain used by Lua cosockets,
                                  # set by `lua_ssl_trusted_certificate`.
-                                 # This includes the certificates configured
-                                 # for Kong's database connections.
-
-#lua_code_cache = on             # When disabled, every request will run in a
-                                 # separate Lua VM instance: all Lua modules
-                                 # will be loaded from scratch. Useful for
-                                 # adopting an edit-and-refresh approach while
-                                 # developing a plugin.
-                                 # Turning this directive off has a severe
-                                 # impact on performance.
-
-#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
-                                 # Useful when developing or using custom
-                                 # plugins not stored in the default search
-                                 # path.
-
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).
 

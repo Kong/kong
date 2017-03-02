@@ -151,6 +151,32 @@ describe("NGINX conf compiler", function()
       end)
     end)
 
+    describe("ngx_http_realip_module settings", function()
+      it("defaults", function()
+        local conf = assert(conf_loader())
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("real_ip_recursive off;", nginx_conf, nil, true)
+        assert.not_matches("set_real_ip_from", nginx_conf, nil, true)
+      end)
+
+      it("real_ip_recursive", function()
+        local conf = assert(conf_loader(nil, {
+          real_ip_recursive = true,
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("real_ip_recursive on;", nginx_conf, nil, true)
+      end)
+
+      it("set_real_ip_from", function()
+        local conf = assert(conf_loader(nil, {
+          set_real_ip_from = "192.168.1.0/24,192.168.2.1,2001:0db8::/32"
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("set_real_ip_from 192.168.1.0/24", nginx_conf, nil, true)
+        assert.matches("set_real_ip_from 192.168.1.0", nginx_conf, nil, true)
+        assert.matches("set_real_ip_from 2001:0db8::/32", nginx_conf, nil, true)
+      end)
+    end)
   end)
 
   describe("compile_nginx_conf()", function()

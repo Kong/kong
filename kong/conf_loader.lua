@@ -64,6 +64,8 @@ local CONF_INFERENCES = {
   upstream_keepalive = {typ = "number"},
   server_tokens = {typ = "boolean"},
   latency_tokens = {typ = "boolean"},
+  real_ip_recursive = {typ = "ngx_boolean"},
+  set_real_ip_from = {typ = "array"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},

@@ -23,10 +23,6 @@ client_max_body_size 0;
 proxy_ssl_server_name on;
 underscores_in_headers on;
 
-real_ip_header X-Forwarded-For;
-set_real_ip_from 0.0.0.0/0;
-real_ip_recursive on;
-
 lua_package_path '${{LUA_PACKAGE_PATH}};;';
 lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
@@ -100,6 +96,10 @@ server {
             kong.access()
         }
 
+        real_ip_recursive ${{REAL_IP_RECURSIVE}};
+> for i = 1, #set_real_ip_from do
+        set_real_ip_from $(set_real_ip_from[i]);
+> end
         proxy_http_version 1.1;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
