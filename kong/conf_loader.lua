@@ -61,6 +61,8 @@ local CONF_INFERENCES = {
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
+  real_ip_recursive = {typ = "ngx_boolean"},
+  set_real_ip_from = {typ = "array"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
