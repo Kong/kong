@@ -39,6 +39,20 @@ describe("Plugin: hmac-auth (API)", function()
         credential = cjson.decode(body)
         assert.equal(consumer.id, credential.consumer_id)
       end)
+      it("[SUCCESS] should create a hmac-auth credential with a random secret", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/consumers/bob/hmac-auth/",
+          body = {
+            username = "bob",
+          },
+          headers = {["Content-Type"] = "application/json"}
+        })
+
+        local body = assert.res_status(201, res)
+        credential = cjson.decode(body)
+        assert.is.not_nil(credential.secret)
+      end)
       it("[FAILURE] should return proper errors", function()
         local res = assert(client:send {
           method = "POST",
