@@ -19,7 +19,7 @@ return {
   -- to lua-version's `set()` in the form {from, to}
   _DEPENDENCIES = {
     nginx = {"1.11.2.1", "1.11.2.2"},
-    serf = {"0.7.0", "0.8.0"},
+    serf = {"0.7.0", "0.8.1"},
     --resty = {}, -- not version dependent for now
   }
 }
