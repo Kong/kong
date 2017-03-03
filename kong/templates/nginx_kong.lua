@@ -70,6 +70,21 @@ map $http_upgrade $upstream_upgrade {
     websocket websocket;
 }
 
+map $http_x_forwarded_proto $upstream_x_forwarded_proto {
+    default $http_x_forwarded_proto;
+    '' $scheme;
+}
+
+map $http_x_forwarded_host $upstream_x_forwarded_host {
+    default $http_x_forwarded_host;
+    '' $http_host;
+}
+
+map $http_x_forwarded_port $upstream_x_forwarded_port {
+    default $http_x_forwarded_port;
+    '' $server_port;
+}
+
 server {
     server_name kong;
     listen ${{PROXY_LISTEN}};
@@ -101,15 +116,17 @@ server {
         set_real_ip_from $(set_real_ip_from[i]);
 > end
         proxy_http_version 1.1;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Host $upstream_host;
-        proxy_set_header Upgrade $upstream_upgrade;
-        proxy_set_header Connection $upstream_connection;
-
-        proxy_pass_header Server;
-        proxy_pass $upstream_scheme://kong_upstream;
+        proxy_set_header   X-Real-IP         $realip_remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $upstream_x_forwarded_proto;
+        proxy_set_header   X-Forwarded-Host  $upstream_x_forwarded_host;
+        proxy_set_header   X-Forwarded-Port  $upstream_x_forwarded_port;
+        proxy_set_header   Host              $upstream_host;
+        proxy_set_header   Upgrade           $upstream_upgrade;
+        proxy_set_header   Connection        $upstream_connection;
+        proxy_pass_header  Server;
+        proxy_pass_header  Date;
+        proxy_pass         $upstream_scheme://kong_upstream;
 
         header_filter_by_lua_block {
             kong.header_filter()
