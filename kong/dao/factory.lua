@@ -245,7 +245,7 @@ local function migrate(self, identifier, migrations_modules, cur_migrations, on_
     if on_success then
       on_success(identifier, migration.name, self.db:infos())
     end
-end
+  end
 
   return true, nil, #to_run
 end
@@ -270,6 +270,14 @@ function _M:run_migrations(on_migrate, on_success)
 
   log.verbose("running datastore migrations")
 
+  if self.db.name == "cassandra" then
+    local ok, err = self.db:first_coordinator()
+    if not ok then
+      return nil, ret_error_string(self.db.name, nil,
+                    "could not find coordinator: " .. err)
+    end
+  end
+
   local migrations_modules = self:migrations_modules()
   local cur_migrations, err = self:current_migrations()
   if err then return nil, err end
@@ -284,6 +292,23 @@ function _M:run_migrations(on_migrate, on_success)
       else
         migrations_ran = migrations_ran + n_ran
       end
+    end
+  end
+
+  if self.db.name == "cassandra" then
+    log.verbose("now waiting for schema consensus (%dms) timeout",
+                self.db.cluster.max_schema_consensus_wait)
+
+    local ok, err = self.db:wait_for_schema_consensus()
+    if not ok then
+      return nil, ret_error_string(self.db.name, nil,
+                    "could not wait for schema consensus: " .. err)
+    end
+
+    ok, err = self.db:close_coordinator()
+    if not ok then
+      return nil, ret_error_string(self.db.name, nil,
+                    "could not close coordinator: " .. err)
     end
   end
 

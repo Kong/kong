@@ -169,11 +169,62 @@ local function deserialize_rows(rows, schema)
   end
 end
 
+local coordinator
+
+function _M:first_coordinator()
+  local peer, err = self.cluster:first_coordinator()
+  if not peer then
+    return nil, err
+  end
+
+  coordinator = peer
+
+  return true
+end
+
+function _M:coordinator_change_keyspace(keyspace)
+  if not coordinator then
+    return nil, "no coordinator"
+  end
+
+  return coordinator:change_keyspace(keyspace)
+end
+
+function _M:close_coordinator()
+  if not coordinator then
+    return nil, "no coordinator"
+  end
+
+  local ok, err = coordinator:close()
+  if not ok then
+    return nil, err
+  end
+
+  coordinator = nil
+
+  return ok
+end
+
+function _M:wait_for_schema_consensus()
+  if not coordinator then
+    return nil, "no coordinator"
+  end
+
+  return self.cluster:wait_schema_consensus(coordinator)
+end
+
 function _M:query(query, args, options, schema, no_keyspace)
   local opts = self:clone_query_options(options)
   local coordinator_opts = {}
   if no_keyspace then
     coordinator_opts.no_keyspace = true
+  end
+
+  if coordinator then
+    local res, err = coordinator:execute(query, args, coordinator_opts)
+    if not res then return nil, Errors.db(err) end
+
+    return res
   end
 
   local res, err = self.cluster:execute(query, args, opts, coordinator_opts)
