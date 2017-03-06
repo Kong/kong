@@ -603,6 +603,14 @@ function _M:current_migrations()
   if not rows then       return nil, err
   elseif #rows == 0 then return {} end
 
+  if coordinator then
+    local keyspace = self.cluster_options.keyspace
+    local ok, err = self:coordinator_change_keyspace(keyspace)
+    if not ok then
+      return nil, err
+    end
+  end
+
   -- Check if schema_migrations table exists
   rows, err = self:query(q_migrations_table_exists, {
     self.cluster_options.keyspace,
