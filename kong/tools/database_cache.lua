@@ -39,8 +39,8 @@ function _M.sh_add(key, value, exptime)
   return cache:add(key, value, exptime)
 end
 
-function _M.sh_incr(key, value)
-  return cache:incr(key, value)
+function _M.sh_incr(key, value, init)
+  return cache:incr(key, value, init)
 end
 
 function _M.sh_get(key)
