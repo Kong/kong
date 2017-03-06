@@ -79,7 +79,7 @@ describe("Plugin: request-termination (access)", function()
       api_id = api6.id,
       config = {
         status_code=503,
-        body='{"code": 1, "message": "Service unavailable}'
+        body='{"code": 1, "message": "Service unavailable"}'
       }
     })
 
@@ -170,7 +170,7 @@ describe("Plugin: request-termination (access)", function()
         }
       })
       local body = assert.res_status(503, res)
-      assert.equal([[{"code": 1, "message": "Service unavailable}]], body)
+      assert.equal([[{"code": 1, "message": "Service unavailable"}]], body)
     end)
 
   end)

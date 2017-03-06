@@ -147,7 +147,8 @@ local closure_cache = {}
 --- Send a response with any status code or body,
 -- Not all status codes are available as sugar methods, this function can be
 -- used to send any response.
--- If the `status_code` parameter is in the 5xx range, it is expected that the `content` parameter be the error encountered. For 500 errors it will be logged. The response body will be empty. The user will just receive a 500 status code.
+-- For `status_code=5xx` the `content` parameter should be the description of the error that occurred.
+-- For `status_code=500` the content will be logged by ngx.log as an ERR.
 -- Will call `ngx.say` and `ngx.exit`, terminating the current context.
 -- @see ngx.say
 -- @see ngx.exit

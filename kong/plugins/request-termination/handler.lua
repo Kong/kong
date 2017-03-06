@@ -15,7 +15,7 @@ end
 function RequestTerminationHandler:access(conf)
   RequestTerminationHandler.super.access(self)
 
-  local status_code = conf.status_code or 503
+  local status_code = conf.status_code
   local content_type = conf.content_type
   local body = conf.body
   local message = conf.message
