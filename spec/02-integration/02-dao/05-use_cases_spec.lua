@@ -82,10 +82,10 @@ helpers.for_each_dao(function(kong_config)
       assert.falsy(err)
 
       local updated_key_auth, err = factory.plugins:update({
-        config = {key_names = {"key_updated"}}
+        config = {key_names = {"key-updated"}}
       }, key_auth)
       assert.falsy(err)
-      assert.same({"key_updated"}, updated_key_auth.config.key_names)
+      assert.same({"key-updated"}, updated_key_auth.config.key_names)
     end)
 
     it("does not override plugin config if partial update", function()
@@ -104,10 +104,10 @@ helpers.for_each_dao(function(kong_config)
       assert.falsy(err)
 
       local updated_key_auth, err = factory.plugins:update({
-        config = {key_names = {"key_set_null_test_updated"}}
+        config = {key_names = {"key-set-null-test-updated"}}
       }, key_auth)
       assert.falsy(err)
-      assert.same({"key_set_null_test_updated"}, updated_key_auth.config.key_names)
+      assert.same({"key-set-null-test-updated"}, updated_key_auth.config.key_names)
       assert.True(updated_key_auth.config.hide_credentials)
     end)
   end)

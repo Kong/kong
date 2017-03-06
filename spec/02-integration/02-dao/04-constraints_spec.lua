@@ -49,13 +49,13 @@ helpers.for_each_dao(function(kong_config)
       end)
       it("insert a valid plugin bis", function()
         plugin_fixture.api_id = api_fixture.id
-        plugin_fixture.config = {key_names = {"api_key"}}
+        plugin_fixture.config = {key_names = {"api-key"}}
 
         local plugin, err = plugins:insert(plugin_fixture)
         assert.falsy(err)
         assert.is_table(plugin)
         assert.equal(api_fixture.id, plugin.api_id)
-        assert.same({hide_credentials = false, key_names = {"api_key"}, anonymous = ""}, plugin.config)
+        assert.same({hide_credentials = false, key_names = {"api-key"}, anonymous = ""}, plugin.config)
       end)
       describe("unique per API/Consumer", function()
         it("API/Plugin", function()
