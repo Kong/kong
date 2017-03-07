@@ -447,6 +447,7 @@ describe("Plugin: ACL (access)", function()
               ["Host"] = "acl_test"..i..".com"
             }
           })
+          res:read_body()
           return res.status ~= 404
         end, 5)
 
