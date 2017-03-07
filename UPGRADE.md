@@ -19,11 +19,10 @@ Then, run any new migration to upgrade your database schema:
 
 ```shell
 $ kong migrations up [-c configuration_file]
-...
-[OK] Schema up to date
 ```
 
-If you see the "Schema up to date" message, you only have to
+If the command is successful and no migration has been ran
+(no output), then you only have to
 [reload](https://getkong.org/docs/latest/cli/#reload) Kong:
 
 ```shell
@@ -32,7 +31,67 @@ $ kong reload [-c configuration_file]
 
 **Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly
 starts new workers taking over the old ones until they all have been
-terminated. This will guarantee you no drop in your current incoming traffic.
+terminated. In this way, Kong will serve new requests via the new
+configuration, without dropping existing in-flight connections.
+
+## Upgrade to `0.10.x`
+
+Due to the breaking changes introduced in this version, we recommend that you
+careful test your cluster deployment.
+
+Kong 0.10 introduced the following breaking changes:
+
+- API Objects (as configured via the Admin API) do **not** support the
+  `request_host` and `request_uri` fields anymore. The 0.10 migrations should
+  upgrade your current API Objects, but make sure to read the new [0.10 Proxy
+  Guide](https://getkong.org/docs/0.10.x/proxy) to learn the new routing
+  capabilities of Kong. This means that Kong can now route incoming requests
+  according to a combination of Host headers, URIs, and HTTP
+  methods.
+- The `upstream_url` of API Objects does not accept trailing slashes anymore.
+- Dynamic SSL certificates serving is now handled by the core, and **not**
+  through the `ssl` plugin anymore. This version introduced the `/certificates`
+  and `/snis` endpoints.  See the new [0.10 Proxy
+  Guide](https://getkong.org/docs/0.10.x/proxy) to learn more about how to
+  configure your SSL certificates on your APIs. The `ssl` plugin has been
+  removed.
+- The preferred version of OpenResty is now `1.11.2.2`. However, this version
+  requires that you compiled OpenResty with the `--without-luajit-lua52` flag.
+  Make sure to do so if you install OpenResty and Kong from source.
+- Dnsmasq is not a dependency anymore (However, be careful before removing it
+  if you configured it to be your DNS name server via Kong's `resolver`
+  property)
+
+We recommend that you consult the full [0.10.0
+Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a full
+list of changes and new features, including load balancing capabilities,
+support for Cassandra 3.x, SRV records resolution, and much more.
+
+Here is how to ensure a smooth upgrade from a 0.9 cluster to 0.10:
+
+1. Make sure your 0.9 cluster is warm. Most of your entities should be cached
+   by the running Kong nodes already (APIs, Consumers, Plugins), because your
+   datastore will be incompatible with your 0.9 Kong nodes once migrated.
+2. Provision a 0.10 node and configure it as you wish (environment variables/
+   configuration file). Make sure to point your nodes to your current
+   datastore.
+3. Without starting the 0.10 node and, run the 0.10 migrations against your
+   current datastore:
+
+```
+$ kong migrations up <-c kong.conf>
+```
+
+As usual, this step should be executed from a single node.
+
+4. You can now provision a fresh 0.10 cluster pointing to your migrated
+   datastore and start your 0.10 nodes.
+5. Gradually switch your traffic from the 0.9 cluster to the new, 0.10 one.
+   Remember, once your database is migrated, your 0.9 nodes will rely on
+   their cache and not on the underlying database. Your traffic should switch
+   to the new cluster as quickly as possible.
+6. Once your traffic is fully migrated over the 0.10 cluster, decommission
+   your 0.9 cluster.
 
 ## Upgrade to `0.9.x`
 
