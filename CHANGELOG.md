@@ -115,6 +115,10 @@ perform significantly better than any previous version.
 - Clarify the purpose of the `cluster_listen_rpc` property in
   the configuration file. Thanks Jeremy Monin for the patch.
   [#1860](https://github.com/Mashape/kong/pull/1860)
+- Admin API:
+  - Properly Return JSON responses (instead of HTML) on HTTP 409 Conflict
+    when adding Plugins.
+    [#2014](https://github.com/Mashape/kong/issues/2014)
 - CLI:
   - Avoid double-prefixing migration error messages with the database name
     (PostgreSQL/Cassandra).
