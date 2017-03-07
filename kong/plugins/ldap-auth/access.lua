@@ -155,7 +155,7 @@ function _M.execute(conf)
                        nil, load_consumer, conf.anonymous, true)
       set_consumer(consumer, nil)
     else
-      return responses.send(err.status, err.message, err.headers)
+      return responses.send(err.status, err.message)
     end
   end
 end
