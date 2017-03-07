@@ -125,6 +125,9 @@ perform significantly better than any previous version.
     [#2104](https://github.com/Mashape/kong/pull/2104)
   - key-auth: enforce `key_names` to be proper header names according to Nginx.
     [#2142](https://github.com/Mashape/kong/pull/2142)
+- Admin api:
+  - Return json response on 409 conflicts when adding plugins.
+    [2014](https://github.com/Mashape/kong/issues/2014)
 
 ## [0.9.7] - 2016/12/21
 
