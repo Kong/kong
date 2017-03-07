@@ -69,7 +69,9 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.matches("Plugin configuration already exists", tostring(err), nil, true)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'key-auth'",
+                         err, nil, true)
         end)
         it("API/Consumer/Plugin", function()
           local consumer, err = factory.consumers:insert {
@@ -94,7 +96,9 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.matches("Plugin configuration already exists", tostring(err), nil, true)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'rate-limiting'",
+                         err, nil, true)
         end)
       end)
     end)
