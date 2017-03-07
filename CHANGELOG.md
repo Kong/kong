@@ -5,7 +5,7 @@
 Kong 0.10 is one of most significant releases to this day. It ships with
 exciting new features that have been havily requested for the last few months,
 such as load balancing, Cassandra 3.0 compatibility, Websockets support,
-internal DNS resolution (A and SRV records without dnsmasq), and more flexible
+internal DNS resolution (A and SRV records without Dnsmasq), and more flexible
 matching capabilities for APIs routing.
 
 On top of those new features, this release received a particular attention to
@@ -14,37 +14,31 @@ perform significantly better than any previous version.
 
 ### Changed
 
-- :warning: Drop the dnsmasq dependency. We now internally resolve both A and
-  SRV DNS records.
-  [#1587](https://github.com/Mashape/kong/pull/1587)
+- :warning: API Objects (as configured via the Admin API) do **not** support
+  the `request_host` and `request_uri` fields anymore. The 0.10 migrations
+  should upgrade your current API Objects, but make sure to read the new [0.10
+  Proxy Guide](https://getkong.org/docs/0.10.x/proxy) to learn the new routing
+  capabilities of Kong. On the good side, this means that Kong can now route
+  incoming requests according to a combination of Host headers, URIs, and HTTP
+  methods.
+- :warning: Final slashes in `upstream_url` are no longer allowed.
+  [#2115](https://github.com/Mashape/kong/pull/2115)
 - :warning: The SSL plugin has been removed and dynamic SSL capabilities have
   been added to Kong core, and are configurable via new properties on the API
   entity. See the related PR for a detailed explanation of this change.
   [#1970](https://github.com/Mashape/kong/pull/1970)
+- :warning: Drop the Dnsmasq dependency. We now internally resolve both A and
+  SRV DNS records.
+  [#1587](https://github.com/Mashape/kong/pull/1587)
 - :warning: Dropping support for unsecure `TLS/1.0` and defaulting `Upgrade`
   responses to `TLS/1.2`.
   [#2119](https://github.com/Mashape/kong/pull/2119)
 - Bump the compatible OpenResty version to `1.11.2.1` and `1.11.2.2`. Support
   for OpenResty `1.11.2.2` requires the `--without-luajit-lua52` compilation
   flag.
-- Maintain upstream connections pools which should greatly improve performance,
-  especially for HTTPS upstream connections.
-  We now use HTTP/1.1 for upstream connections as well as an nginx `upstream`
-  block with a configurable `keepalive` directive, thanks to the new
-  `nginx_keepalive` configuration property.
-  [#1587](https://github.com/Mashape/kong/pull/1587)
-  [#1827](https://github.com/Mashape/kong/pull/1827)
-- Use an in-memory caching strategy for database entities in order to reduce
-  CPU load during requests proxying.
-  [#1688](https://github.com/Mashape/kong/pull/1688)
-- Provide negative-caching for missed database entities. This should improve
-  performance in some cases.
-  [#1914](https://github.com/Mashape/kong/pull/1914)
 - Separate Admin API and Proxy error logs. Admin API logs are now written to
   `logs/admin_access.log`.
   [#1782](https://github.com/Mashape/kong/pull/1782)
-- Final slashes in `upstream_url` are no longer allowed.
-  [#2115](https://github.com/Mashape/kong/pull/2115)
 - Auto-generates stronger SHA-256 with RSA encryption SSL certificates.
   [#2117](https://github.com/Mashape/kong/pull/2117)
 
@@ -67,9 +61,22 @@ perform significantly better than any previous version.
   HTTP methods. See the related PR for a detailed explanation of the new
   properties and capabilities of the new router.
   [#1970](https://github.com/Mashape/kong/pull/1970)
+- :fireworks: Maintain upstream connection pools which should greatly improve
+  performance, especially for HTTPS upstream connections.  We now use HTTP/1.1
+  for upstream connections as well as an nginx `upstream` block with a
+  configurable`keepalive` directive, thanks to the new `nginx_keepalive`
+  configuration property.
+  [#1587](https://github.com/Mashape/kong/pull/1587)
+  [#1827](https://github.com/Mashape/kong/pull/1827)
 - :fireworks: Websockets support. Kong can now upgrade client connections to
   use the `ws` protocol when `Upgrade: websocket` is present.
   [#1827](https://github.com/Mashape/kong/pull/1827)
+- Use an in-memory caching strategy for database entities in order to reduce
+  CPU load during requests proxying.
+  [#1688](https://github.com/Mashape/kong/pull/1688)
+- Provide negative-caching for missed database entities. This should improve
+  performance in some cases.
+  [#1914](https://github.com/Mashape/kong/pull/1914)
 - Support for serving the Admin API over SSL. This introduces new properties in
   the configuration file: `admin_listen_ssl`, `admin_ssl`, `admin_ssl_cert` and
   `admin_ssl_cert_key`.
@@ -267,7 +274,7 @@ perform significantly better than any previous version.
 - ulimit with `unlimited` value is now properly handled.
   [#1545](https://github.com/Mashape/kong/pull/1545)
 - CLI:
-  - Stop third-party services (dnsmasq/Serf) when Kong could not start.
+  - Stop third-party services (Dnsmasq/Serf) when Kong could not start.
     [#1588](https://github.com/Mashape/kong/pull/1588)
   - Prefix database migration errors (such as Postgres' `connection refused`)
     with the database name (`postgres`/`cassandra`) to avoid confusions.
@@ -301,7 +308,7 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 - :fireworks: Support for SSL connections between Kong and PostgreSQL. [#1425](https://github.com/Mashape/kong/pull/1425)
 - :fireworks: Ability to apply plugins with more granularity: per-consumer, and global plugins are now possible. [#1403](https://github.com/Mashape/kong/pull/1403)
 - New `kong check` command: validates a Kong configuration file.
-- Better version check for third-party dependencies (OpenResty, Serf, dnsmasq). [#1307](https://github.com/Mashape/kong/pull/1307)
+- Better version check for third-party dependencies (OpenResty, Serf, Dnsmasq). [#1307](https://github.com/Mashape/kong/pull/1307)
 - Ability to configure the validation depth of database SSL certificates from the configuration file. [#1420](https://github.com/Mashape/kong/pull/1420)
 - `request_host`: internationalized url support; utf-8 domain names through punycode support and paths through %-encoding. [#1300](https://github.com/Mashape/kong/issues/1300)
 - Implements caching locks when fetching database configuration (APIs, Plugins...) to avoid dog pile effect on cold nodes. [#1402](https://github.com/Mashape/kong/pull/1402)
@@ -333,7 +340,7 @@ The main focus of this release is Kong's new CLI. With a simpler configuration f
 > - new test suite using resty-cli and removing the need to monkey-patch the `ngx` global.
 > - custom assertions and new helper methods (`wait_until()`) to gracefully fail in case of timeout.
 > - increase atomicity of the testing environment.
-> - lighter testing instance, only running 1 worker and not using dnsmasq by default.
+> - lighter testing instance, only running 1 worker and not using Dnsmasq by default.
 
 ## [0.8.3] - 2016/06/01
 

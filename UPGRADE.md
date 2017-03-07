@@ -1,46 +1,131 @@
-This document guides you through the process of upgrading Kong. First, check if a section named "Upgrade to Kong `x.x.x`" exists (`x.x.x`) being the version you are planning to upgrade to. If such a section does not exist, the upgrade you want to perform does not have any particular instructions, and you can simply consult the [Suggested upgrade path](#suggested-upgrade-path).
+This document guides you through the process of upgrading Kong. First, check if
+a section named "Upgrade to Kong `x.x.x`" exists (`x.x.x`) being the version
+you are planning to upgrade to. If such a section does not exist, the upgrade
+you want to perform does not have any particular instructions, and you can
+simply consult the [Suggested upgrade path](#suggested-upgrade-path).
 
 ## Suggested upgrade path
 
-Unless indicated otherwise in one of the upgrade paths of this document, it is possible to upgrade Kong **without downtime**:
+Unless indicated otherwise in one of the upgrade paths of this document, it is
+possible to upgrade Kong **without downtime**:
 
-Considering that Kong is already running on your system, acquire the latest version from any of the available [installation methods](https://getkong.org/install/) and proceed to installing it, overriding your previous installation. Once done, consider that this is a good time to also modify your configuration.
+Considering that Kong is already running on your system, acquire the latest
+version from any of the available [installation
+methods](https://getkong.org/install/) and proceed to installing it, overriding
+your previous installation. Once done, consider that this is a good time to
+also modify your configuration.
 
 Then, run any new migration to upgrade your database schema:
 
 ```shell
 $ kong migrations up [-c configuration_file]
-...
-[OK] Schema up to date
 ```
 
-If you see the "Schema up to date" message, you only have to [reload](https://getkong.org/docs/latest/cli/#reload) Kong:
+If the command is successful and no migration has been ran
+(no output), then you only have to
+[reload](https://getkong.org/docs/latest/cli/#reload) Kong:
 
 ```shell
 $ kong reload [-c configuration_file]
 ```
 
-**Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly starts new workers taking over the old ones until they all have been terminated. This will guarantee you no drop in your current incoming traffic.
+**Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly
+starts new workers taking over the old ones until they all have been
+terminated. In this way, Kong will serve new requests via the new
+configuration, without dropping existing in-flight connections.
+
+## Upgrade to `0.10.x`
+
+Due to the breaking changes introduced in this version, we recommend that you
+careful test your cluster deployment.
+
+Kong 0.10 introduced the following breaking changes:
+
+- API Objects (as configured via the Admin API) do **not** support the
+  `request_host` and `request_uri` fields anymore. The 0.10 migrations should
+  upgrade your current API Objects, but make sure to read the new [0.10 Proxy
+  Guide](https://getkong.org/docs/0.10.x/proxy) to learn the new routing
+  capabilities of Kong. This means that Kong can now route incoming requests
+  according to a combination of Host headers, URIs, and HTTP
+  methods.
+- The `upstream_url` of API Objects does not accept trailing slashes anymore.
+- Dynamic SSL certificates serving is now handled by the core, and **not**
+  through the `ssl` plugin anymore. This version introduced the `/certificates`
+  and `/snis` endpoints.  See the new [0.10 Proxy
+  Guide](https://getkong.org/docs/0.10.x/proxy) to learn more about how to
+  configure your SSL certificates on your APIs. The `ssl` plugin has been
+  removed.
+- The preferred version of OpenResty is now `1.11.2.2`. However, this version
+  requires that you compiled OpenResty with the `--without-luajit-lua52` flag.
+  Make sure to do so if you install OpenResty and Kong from source.
+- Dnsmasq is not a dependency anymore (However, be careful before removing it
+  if you configured it to be your DNS name server via Kong's `resolver`
+  property)
+
+We recommend that you consult the full [0.10.0
+Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a full
+list of changes and new features, including load balancing capabilities,
+support for Cassandra 3.x, SRV records resolution, and much more.
+
+Here is how to ensure a smooth upgrade from a 0.9 cluster to 0.10:
+
+1. Make sure your 0.9 cluster is warm. Most of your entities should be cached
+   by the running Kong nodes already (APIs, Consumers, Plugins), because your
+   datastore will be incompatible with your 0.9 Kong nodes once migrated.
+2. Provision a 0.10 node and configure it as you wish (environment variables/
+   configuration file). Make sure to point your nodes to your current
+   datastore.
+3. Without starting the 0.10 node and, run the 0.10 migrations against your
+   current datastore:
+
+```
+$ kong migrations up <-c kong.conf>
+```
+
+As usual, this step should be executed from a single node.
+
+4. You can now provision a fresh 0.10 cluster pointing to your migrated
+   datastore and start your 0.10 nodes.
+5. Gradually switch your traffic from the 0.9 cluster to the new, 0.10 one.
+   Remember, once your database is migrated, your 0.9 nodes will rely on
+   their cache and not on the underlying database. Your traffic should switch
+   to the new cluster as quickly as possible.
+6. Once your traffic is fully migrated over the 0.10 cluster, decommission
+   your 0.9 cluster.
 
 ## Upgrade to `0.9.x`
 
-PostgreSQL is the new default datastore for Kong. If you were using Cassandra and you are upgrading, you must explicitly set `cassandra` as your `database`.
+PostgreSQL is the new default datastore for Kong. If you were using Cassandra
+and you are upgrading, you must explicitly set `cassandra` as your `database`.
 
-This release introduces a new CLI, which uses the [lua-resty-cli](https://github.com/openresty/resty-cli) interpreter. As such, the `resty` executable (shipped in the OpenResty bundle) must be available in your `$PATH`.
-Additionally, the `bin/kong` executable is not installed through Luarocks anymore, and must be placed in your `$PATH` as well.
-This change of behavior is taken care of if you are using one of the official Kong packages.
+This release introduces a new CLI, which uses the
+[lua-resty-cli](https://github.com/openresty/resty-cli) interpreter. As such,
+the `resty` executable (shipped in the OpenResty bundle) must be available in
+your `$PATH`.  Additionally, the `bin/kong` executable is not installed through
+Luarocks anymore, and must be placed in your `$PATH` as well.  This change of
+behavior is taken care of if you are using one of the official Kong packages.
 
-Once Kong updated, familiarize yourself with its new configuration format, and consider setting some of its properties via environment variables, if the need arises. This behavior as well as all available settings are documented in the `kong.conf.default` file shipped with this version.
+Once Kong updated, familiarize yourself with its new configuration format, and
+consider setting some of its properties via environment variables, if the need
+arises. This behavior as well as all available settings are documented in the
+`kong.conf.default` file shipped with this version.
 
-Once your nodes configured, we recommend that you seamingly redirect your traffic through the new Kong 0.9 nodes before decomissioning your old nodes.
+Once your nodes configured, we recommend that you seamingly redirect your
+traffic through the new Kong 0.9 nodes before decomissioning your old nodes.
 
 ## Upgrade to `0.8.x`
 
-No important breaking changes for this release, just be careful to not use the long deprecated routes `/consumers/:consumer/keyauth/` and `/consumers/:consumer/basicauth/` as instructed in the Changelog. As always, also make sure to check the configuration file for new properties (this release allows you to configure the read/write consistency of Cassandra).
+No important breaking changes for this release, just be careful to not use the
+long deprecated routes `/consumers/:consumer/keyauth/` and
+`/consumers/:consumer/basicauth/` as instructed in the Changelog. As always,
+also make sure to check the configuration file for new properties (this release
+allows you to configure the read/write consistency of Cassandra).
 
-Let's talk about **PostgreSQL**. To use it instead of Cassandra, follow those steps:
+Let's talk about **PostgreSQL**. To use it instead of Cassandra, follow those
+steps:
 
-* Get your hands on a 9.4+ server (being compatible with Postgres 9.4 allows you to use [Amazon RDS](https://aws.amazon.com/rds/))
+* Get your hands on a 9.4+ server (being compatible with Postgres 9.4 allows
+  you to use [Amazon RDS](https://aws.amazon.com/rds/))
 * Create a database, (maybe a user too?), let's say `kong`
 * Update your Kong configuration:
 
@@ -55,7 +140,8 @@ postgres:
   database: kong
 ```
 
-As usual, migrations should run from kong start, but as a reminder and just in case, here are some tips:
+As usual, migrations should run from kong start, but as a reminder and just in
+case, here are some tips:
 
 Reset the database with (careful, you'll lose all data):
 ```
@@ -72,15 +158,29 @@ If needed, list your migrations for debug purposes with:
 $ kong migrations list --config kong.yml
 ```
 
-**Note**: This release does not provide a mean to migrate from Cassandra to PostgreSQL. Additionally, we recommend that you **do not** use `kong reload` if you switch your cluster from Cassandra to PostgreSQL. Instead, we recommend that you migrate by spawning a new cluster and gradually redirect your traffic before decomissioning your old nodes.
+**Note**: This release does not provide a mean to migrate from Cassandra to
+PostgreSQL. Additionally, we recommend that you **do not** use `kong reload` if
+you switch your cluster from Cassandra to PostgreSQL. Instead, we recommend
+that you migrate by spawning a new cluster and gradually redirect your traffic
+before decomissioning your old nodes.
 
 ## Upgrade to `0.7.x`
 
-If you are running a source installation, you will need to upgrade OpenResty to its `1.9.7.*` version. The good news is that this family of releases does not need to patch the NGINX core anymore to enable SSL support. If you install Kong from one of the distribution packages, they already include the appropriate OpenResty, simply download and install the appropriate package for your platform.
+If you are running a source installation, you will need to upgrade OpenResty to
+its `1.9.7.*` version. The good news is that this family of releases does not
+need to patch the NGINX core anymore to enable SSL support. If you install Kong
+from one of the distribution packages, they already include the appropriate
+OpenResty, simply download and install the appropriate package for your
+platform.
 
-As described in the Changelog, this upgrade has benefits, such as the SSL support and fixes for critical NGINX vulnerabilities, but also requires that you upgrade the `nginx` property of your Kong config, because it is not backwards compatible.
+As described in the Changelog, this upgrade has benefits, such as the SSL
+support and fixes for critical NGINX vulnerabilities, but also requires that
+you upgrade the `nginx` property of your Kong config, because it is not
+backwards compatible.
 
-- We advise that you retrieve the `nginx` property from the `0.7.x` configuration file, and use it in yours with the changes you feel are appropriate.
+- We advise that you retrieve the `nginx` property from the `0.7.x`
+  configuration file, and use it in yours with the changes you feel are
+  appropriate.
 
 - Finally, you can reload Kong as usual:
 
@@ -88,13 +188,21 @@ As described in the Changelog, this upgrade has benefits, such as the SSL suppor
 $ kong reload [-c configuration_file]
 ```
 
-**Note**: We expose the underlying NGINX configuration as a way for Kong to be as flexible as possible and allow you to bend your NGINX instance to your needs. We are aware that many of you do not need to customize it and such changes should not affect you. Plans are to embed the NGINX configuration in Kong, while still allowing customization for the most demanding users. [#217](https://github.com/Mashape/kong/pull/217) is the place to discuss this and share thoughts/needs.
+**Note**: We expose the underlying NGINX configuration as a way for Kong to be
+as flexible as possible and allow you to bend your NGINX instance to your
+needs. We are aware that many of you do not need to customize it and such
+changes should not affect you. Plans are to embed the NGINX configuration in
+Kong, while still allowing customization for the most demanding users.
+[#217](https://github.com/Mashape/kong/pull/217) is the place to discuss this
+and share thoughts/needs.
 
 ## Upgrade to `0.6.x`
 
-**Note**: if you are using Kong 0.4.x or earlier, you must first upgrade to Kong 0.5.x.
+**Note**: if you are using Kong 0.4.x or earlier, you must first upgrade to
+Kong 0.5.x.
 
-The configuration file changed in this release. Make sure to check out the new default one and update it to your needs. In particular, make sure that:
+The configuration file changed in this release. Make sure to check out the new
+default one and update it to your needs. In particular, make sure that:
 
 ```yaml
 plugins_available:
@@ -124,27 +232,43 @@ cassandra:
     - ...
 ```
 
-Secondly, if you installed Kong from source or maintain a development installation, you will need to have [Serf](https://www.serfdom.io) installed on your system and available in your `$PATH`. Serf is included with all the distribution packages and images available at [getkong.org/install](https://getkong.org/install/).
+Secondly, if you installed Kong from source or maintain a development
+installation, you will need to have [Serf](https://www.serfdom.io) installed on
+your system and available in your `$PATH`. Serf is included with all the
+distribution packages and images available at
+[getkong.org/install](https://getkong.org/install/).
 
-The same way, this should already be the case but make sure that LuaJIT is in your `$PATH` too as the CLI interpreter switched from Lua 5.1 to LuaJIT. Distribution packages also include LuaJIT.
+The same way, this should already be the case but make sure that LuaJIT is in
+your `$PATH` too as the CLI interpreter switched from Lua 5.1 to LuaJIT.
+Distribution packages also include LuaJIT.
 
-In order to start Kong with its new clustering and cache invalidation capabilities, you will need to restart your node(s) (and not reload):
+In order to start Kong with its new clustering and cache invalidation
+capabilities, you will need to restart your node(s) (and not reload):
 
 ```shell
 $ kong restart [-c configuration_file]
 ```
 
-Read more about the new clustering capabilities of Kong 0.6.0 and its configurations in the [Clustering documentation](https://getkong.org/docs/0.6.x/clustering/).
+Read more about the new clustering capabilities of Kong 0.6.0 and its
+configurations in the [Clustering
+documentation](https://getkong.org/docs/0.6.x/clustering/).
 
 ## Upgrade to `0.5.x`
 
-Migrating to 0.5.x can be done **without downtime** by following those instructions. It is important that you be running Kong `0.4.2` and have the latest release of Python 2.7 on your system when executing those steps.
+Migrating to 0.5.x can be done **without downtime** by following those
+instructions. It is important that you be running Kong `0.4.2` and have the
+latest release of Python 2.7 on your system when executing those steps.
 
-> Several changes were introduced in this version: some plugins and properties were renamed and the database schema slightly changed to introduce "plugins migrations". Now, each plugin can have its own migration if it needs to store data in your cluster. This is not a regular migration since the schema of the table handling the migrations itself changed.
+> Several changes were introduced in this version: some plugins and properties
+> were renamed and the database schema slightly changed to introduce "plugins
+> migrations". Now, each plugin can have its own migration if it needs to store
+> data in your cluster. This is not a regular migration since the schema of the
+> table handling the migrations itself changed.
 
 ##### 1. Configuration file
 
-You will need to update your configuration file. Replace the `plugins_available` values with:
+You will need to update your configuration file. Replace the
+`plugins_available` values with:
 
 ```yaml
 plugins_available:
@@ -185,7 +309,10 @@ properties:
 
 ##### 2. Migration script
 
-[This Python script](https://github.com/Mashape/kong/blob/0.5.0/scripts/migration.py) will take care of migrating your database schema should you execute the following instructions:
+[This Python
+script](https://github.com/Mashape/kong/blob/0.5.0/scripts/migration.py) will
+take care of migrating your database schema should you execute the following
+instructions:
 
 ```shell
 # First, make sure you are already running Kong 0.4.2
@@ -206,15 +333,20 @@ $ pip install cassandra-driver==2.7.2 pyyaml
 $ python migration.py -c /path/to/kong/config
 ```
 
-If everything went well the script should print a success message. **At this point, your database is compatible with both Kong 0.4.2 and 0.5.x.** If you are running more than one Kong node, you simply have to follow step 3. for each one of them now.
+If everything went well the script should print a success message. **At this
+point, your database is compatible with both Kong 0.4.2 and 0.5.x.** If you are
+running more than one Kong node, you simply have to follow step 3. for each one
+of them now.
 
 ##### 3. Upgrade without downtime
 
-You can now upgrade Kong to `0.5.x.` Proceed as a regular upgrade and follow the suggested upgrade path, in particular the `kong reload` command.
+You can now upgrade Kong to `0.5.x.` Proceed as a regular upgrade and follow
+the suggested upgrade path, in particular the `kong reload` command.
 
 ##### 4. Purge your Cassandra cluster
 
-Finally, once Kong has restarted in 0.5.x, run the migration script again, with the `--purge` flag:
+Finally, once Kong has restarted in 0.5.x, run the migration script again, with
+the `--purge` flag:
 
 ```shell
 $ python migration.py -c /path/to/kong/config --purge
@@ -231,7 +363,8 @@ Some entities and properties were renamed to avoid confusion:
   - `path` -> `request_path`
   - `strip_path` -> `strip_request_path`
   - `target_url` -> `upstream_url`
-- `plugins_configurations` have been renamed to `plugins`, and their `value` property has been renamed to `config` to avoid confusions.
+- `plugins_configurations` have been renamed to `plugins`, and their `value`
+  property has been renamed to `config` to avoid confusions.
 - The Key authentication and Basic authentication plugins routes have changed:
 
 ```
@@ -242,15 +375,18 @@ Old route                             New route
 /consumers/:consumer/basicauth/:id -> /consumers/:consumer/basic-auth/:id
 ```
 
-The old routes are still maintained but will be removed in upcoming versions. Consider them **deprecated**.
+The old routes are still maintained but will be removed in upcoming versions.
+Consider them **deprecated**.
 
 - Admin API:
   - The route to retrieve enabled plugins is now under `/plugins/enabled`.
-  - The route to retrieve a plugin's configuration schema is now under `/plugins/schema/{plugin name}`.
+  - The route to retrieve a plugin's configuration schema is now under
+    `/plugins/schema/{plugin name}`.
 
 ## Upgrade to Kong `0.4.2`
 
-The configuration format for specifying the port of your Cassandra instance changed. Replace:
+The configuration format for specifying the port of your Cassandra instance
+changed. Replace:
 
 ```yaml
 cassandra:
@@ -270,7 +406,8 @@ cassandra:
 
 ## Upgrade to `0.3.x`
 
-Kong now requires a patch on OpenResty for SSL support. On Homebrew you will need to reinstall OpenResty.
+Kong now requires a patch on OpenResty for SSL support. On Homebrew you will
+need to reinstall OpenResty.
 
 #### Homebrew
 
@@ -285,7 +422,9 @@ $ brew upgrade kong
 If you are seeing a similar error on `kong start`:
 
 ```
-nginx: [error] [lua] init_by_lua:5: Startup error: Cassandra error: Failed to prepare statement: "SELECT id FROM apis WHERE path = ?;". Cassandra returned error (Invalid): "Undefined name path in where clause ('path = ?')"
+nginx: [error] [lua] init_by_lua:5: Startup error: Cassandra error: Failed to
+prepare statement: "SELECT id FROM apis WHERE path = ?;". Cassandra returned
+error (Invalid): "Undefined name path in where clause ('path = ?')"
 ```
 
 You can run the following command to update your schema:
@@ -294,4 +433,5 @@ You can run the following command to update your schema:
 $ kong migrations up
 ```
 
-Please consider updating to `0.3.1` or greater which automatically handles the schema migration.
+Please consider updating to `0.3.1` or greater which automatically handles the
+schema migration.
