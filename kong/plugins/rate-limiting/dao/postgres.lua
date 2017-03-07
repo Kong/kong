@@ -25,6 +25,18 @@ function _M:increment(api_id, identifier, current_timestamp, value)
   return true
 end
 
+function _M:update(api_id, identifier, current_timestamp, period, value)
+  local periods = timestamp.get_timestamps(current_timestamp)
+  local buf = fmt("SELECT increment_rate_limits('%s', '%s', '%s', to_timestamp('%s') at time zone 'UTC', %d)",
+                        api_id, identifier, period, periods[period]/1000, value)
+
+  local res, err = self:query(queries)
+  if not res then
+    return false, err
+  end
+  return true
+end
+
 function _M:find(api_id, identifier, current_timestamp, period)
   local periods = timestamp.get_timestamps(current_timestamp)
 
