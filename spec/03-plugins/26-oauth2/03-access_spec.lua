@@ -2027,5 +2027,21 @@ describe("#ci Plugin: oauth2 (access)", function()
       local body = cjson.decode(assert.res_status(200, res))
       assert.is_nil(body.headers.authorization)
     end)
+    it("does not abort when the request body is a multipart form upload", function()
+      local token = provision_token("oauth2_3.com")
+
+      local res = assert(proxy_client:send {
+        method = "POST",
+        path = "/request?access_token="..token.access_token,
+        body = {
+          foo = "bar"
+        },
+        headers = {
+          ["Host"] = "oauth2_3.com",
+          ["Content-Type"] = "multipart/form-data"
+        }
+      })
+      assert.res_status(200, res)
+    end)
   end)
 end)

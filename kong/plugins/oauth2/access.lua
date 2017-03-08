@@ -422,7 +422,11 @@ local function parse_access_token(conf)
       parameters[ACCESS_TOKEN] = nil
       ngx.req.set_uri_args(parameters)
 
-      if ngx.req.get_method() ~= "GET" then -- Remove from body
+      local content_type = req_get_headers()[CONTENT_TYPE]
+      local is_form_post = content_type and
+        string_find(content_type, "application/x-www-form-urlencoded", 1, true)
+
+      if ngx.req.get_method() ~= "GET" and is_form_post then -- Remove from body
         ngx.req.read_body()
         parameters = ngx.req.get_post_args()
         parameters[ACCESS_TOKEN] = nil
