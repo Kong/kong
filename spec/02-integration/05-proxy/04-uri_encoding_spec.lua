@@ -5,20 +5,20 @@ describe("URI encoding", function()
   local client
 
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     assert(helpers.dao.apis:insert {
       name = "api-1",
-      request_host = "httpbin.com",
+      hosts = { "httpbin.com" },
       upstream_url = "http://httpbin.org",
     })
 
     assert(helpers.dao.apis:insert {
       name = "api-2",
-      request_host = "mockbin.com",
+      hosts = { "mockbin.com" },
       upstream_url = "http://mockbin.com",
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
@@ -43,7 +43,7 @@ describe("URI encoding", function()
     assert.equal([[{"or":[{"name":{"like":"%bac%"}}]}]], json.args.where)
   end)
 
-  it("issue #1480 does percent-encode args unecessarily", function()
+  it("issue #1480 does not percent-encode args unecessarily", function()
     -- behavior might not be correct, but we assert it anyways until
     -- a change is planned and documented.
     -- https://github.com/Mashape/kong/issues/1480
@@ -61,7 +61,7 @@ describe("URI encoding", function()
     local body = assert.res_status(200, res)
     local json = cjson.decode(body)
 
-    assert.equal("http://mockbin.com/request?param=1%2e2%2e3", json.url)
+    assert.equal("http://mockbin.com/request?param=1.2.3", json.url)
   end)
 
   it("issue #749 does not decode percent-encoded args", function()
@@ -81,7 +81,7 @@ describe("URI encoding", function()
     local json = cjson.decode(body)
 
     -- TODO: %7C is apparently decoded/re-encoded to %7c
-    assert.equal("http://mockbin.com/request?param=abc%7cdef", json.url)
+    assert.equal("http://mockbin.com/request?param=abc%7Cdef", json.url)
   end)
 
   it("issue #688 does not percent-decode proxied URLs", function()
