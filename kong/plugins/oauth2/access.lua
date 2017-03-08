@@ -7,6 +7,7 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local singletons = require "kong.singletons"
+local public_utils = require "kong.utils.public"
 
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
@@ -99,7 +100,7 @@ local function retrieve_parameters()
     body_parameters, err = cjson.decode(ngx.req.get_body_data())
     if err then body_parameters = {} end
   else
-    body_parameters = ngx.req.get_post_args()
+    body_parameters = public_utils.get_post_args()
   end
 
   return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
@@ -424,7 +425,7 @@ local function parse_access_token(conf)
 
       if ngx.req.get_method() ~= "GET" then -- Remove from body
         ngx.req.read_body()
-        parameters = ngx.req.get_post_args()
+        parameters = public_utils.get_post_args()
         parameters[ACCESS_TOKEN] = nil
         local encoded_args = ngx.encode_args(parameters)
         ngx.req.set_header(CONTENT_LENGTH, #encoded_args)
