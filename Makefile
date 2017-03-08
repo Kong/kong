@@ -26,6 +26,9 @@ lint:
 						--globals '_KONG' \
 						--globals 'ngx' \
 						--globals 'assert' \
+						--globals 'string.pack' \
+						--globals 'string.unpack' \
+						--globals 'bit.mod' \
 						--no-redefined \
 						--no-unused-args \
 						--ignore 6..

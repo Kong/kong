@@ -36,9 +36,10 @@ describe("reports", function()
         foo = "bar"
       }, "127.0.0.1", 8189)
 
-      local ok, res = thread:join()
+      local ok, res, err = thread:join()
       assert.True(ok)
       assert.is_nil(res)
+      assert.equal("timeout", err)
     end)
   end)
 end)

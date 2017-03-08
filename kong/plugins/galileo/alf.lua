@@ -158,8 +158,13 @@ function _M:add_entry(_ngx, req_body_str, resp_body_str)
         mimeType = resp_content_type
       }
     end
-  else
+  end
+
+  if not req_body_size then
     req_body_size = tonumber(request_content_len) or 0
+  end
+
+  if not resp_body_size then
     resp_body_size = tonumber(resp_content_len) or 0
   end
 

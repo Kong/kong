@@ -10,12 +10,12 @@ local FILE_LOG_PATH = os.tmpname()
 describe("Plugin: file-log (log)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "file_logging.com",
+      name = "api-1",
+      hosts = { "file_logging.com" },
       upstream_url = "http://mockbin.com"
     })
+
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
       name = "file-log",
@@ -23,6 +23,8 @@ describe("Plugin: file-log (log)", function()
         path = FILE_LOG_PATH
       }
     })
+
+    assert(helpers.start_kong())
   end)
   teardown(function()
     helpers.stop_kong()

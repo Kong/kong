@@ -4,35 +4,39 @@ local UDP_PORT = 20000
 describe("Plugin: statsd (log)", function()
   local client
   setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
-
     local api1 = assert(helpers.dao.apis:insert {
-      request_host = "logging1.com",
+      name = "logging1_com",
+      hosts = { "logging1.com" },
       upstream_url = "http://mockbin.com"
     })
     local api2 = assert(helpers.dao.apis:insert {
-      request_host = "logging2.com",
+      name = "logging2_com",
+      hosts = { "logging2.com" },
       upstream_url = "http://mockbin.com"
     })
     local api3 = assert(helpers.dao.apis:insert {
-      request_host = "logging3.com",
+      name = "logging3_com",
+      hosts = { "logging3.com" },
       upstream_url = "http://mockbin.com"
     })
     local api4 = assert(helpers.dao.apis:insert {
-      request_host = "logging4.com",
+      name = "logging4_com",
+      hosts = { "logging4.com" },
       upstream_url = "http://mockbin.com"
     })
     local api5 = assert(helpers.dao.apis:insert {
-      request_host = "logging5.com",
+      name = "logging5_com",
+      hosts = { "logging5.com" },
       upstream_url = "http://mockbin.com"
     })
     local api6 = assert(helpers.dao.apis:insert {
-      request_host = "logging6.com",
+      name = "logging6_com",
+      hosts = { "logging6.com" },
       upstream_url = "http://mockbin.com"
     })
     local api7 = assert(helpers.dao.apis:insert {
-      request_host = "logging7.com",
+      name = "logging7_com",
+      hosts = { "logging7.com" },
       upstream_url = "http://mockbin.com"
     })
 
@@ -98,6 +102,9 @@ describe("Plugin: statsd (log)", function()
         metrics = {"upstream_latency"}
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
 
   teardown(function()
@@ -116,7 +123,7 @@ describe("Plugin: statsd (log)", function()
         server:setoption("reuseaddr", true)
         server:setsockname("127.0.0.1", port)
         local metrics = {}
-        for i = 1, 7 do
+        for _ = 1, 7 do
           metrics[#metrics+1] = server:receive()
         end
         server:close()

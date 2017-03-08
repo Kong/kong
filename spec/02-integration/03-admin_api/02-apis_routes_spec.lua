@@ -31,7 +31,7 @@ describe("Admin API", function()
             path = "/apis",
             body = {
               name = "my-api",
-              request_host = "my.api.com",
+              hosts = "my.api.com",
               upstream_url = "http://api.com"
             },
             headers = {["Content-Type"] = content_type}
@@ -39,15 +39,41 @@ describe("Admin API", function()
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
           assert.equal("my-api", json.name)
-          assert.equal("my.api.com", json.request_host)
+          assert.same({ "my.api.com" }, json.hosts)
           assert.equal("http://api.com", json.upstream_url)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
-          assert.is_nil(json.request_path)
+          assert.is_nil(json.paths)
           assert.False(json.preserve_host)
-          assert.False(json.strip_request_path)
+          assert.True(json.strip_uri)
+          assert.equals(5, json.retries)
         end
       end)
+
+      it_content_types("creates an API with complex routing", function(content_type)
+        return function()
+          local res = assert(client:send {
+            method = "POST",
+            path = "/apis",
+            body = {
+              name = "my-api",
+              upstream_url = "http://httpbin.org",
+              methods = "GET,POST,PATCH",
+              hosts = "foo.api.com,bar.api.com",
+              uris = "/foo,/bar",
+            },
+            headers = {["Content-Type"] = content_type}
+          })
+
+          local body = assert.res_status(201, res)
+          local json = cjson.decode(body)
+          assert.equal("my-api", json.name)
+          assert.same({ "foo.api.com", "bar.api.com" }, json.hosts)
+          assert.same({ "/foo","/bar" }, json.uris)
+          assert.same({ "GET", "POST", "PATCH" }, json.methods)
+        end
+      end)
+
       describe("errors", function()
         it("handles malformed JSON body", function()
           local res = assert(client:request {
@@ -69,24 +95,25 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"upstream_url":"upstream_url is required",]]
-                         ..[["request_path":"At least a 'request_host' or a]]
-                         ..[[ 'request_path' must be specified","request_host":]]
-                         ..[["At least a 'request_host' or a 'request_path']]
-                         ..[[ must be specified"}]], body)
+            local json = cjson.decode(body)
+            assert.same({
+              name = "name is required",
+              upstream_url = "upstream_url is required"
+            }, json)
 
             -- Invalid parameter
             res = assert(client:send {
               method = "POST",
               path = "/apis",
               body = {
-                request_host = "my-api.com/com",
+                name = "my-api",
+                hosts = "my-api.com/com",
                 upstream_url = "http://my-api.con"
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"request_host":"Invalid value: my-api.com\/com"}]], body)
+            assert.equal([[{"hosts":"host with value 'my-api.com\/com' is invalid: Invalid hostname"}]], body)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -96,7 +123,7 @@ describe("Admin API", function()
               path = "/apis",
               body = {
                 name = "my-api",
-                request_host = "my-api.com",
+                hosts = "my-api.com",
                 upstream_url = "http://my-api.com"
               },
               headers = {["Content-Type"] = content_type}
@@ -108,7 +135,7 @@ describe("Admin API", function()
               path = "/apis",
               body = {
                 name = "my-api",
-                request_host = "my-api2.com",
+                hosts = "my-api2.com",
                 upstream_url = "http://my-api2.com"
               },
               headers = {["Content-Type"] = content_type}
@@ -119,6 +146,7 @@ describe("Admin API", function()
         end)
       end)
     end)
+  end)
 
     describe("PUT", function()
       before_each(function()
@@ -132,22 +160,24 @@ describe("Admin API", function()
             path = "/apis",
             body = {
               name = "my-api",
-              request_host = "my.api.com",
               upstream_url = "http://my-api.com",
-              created_at = 1461276890000
+              hosts = "my.api.com",
+              created_at = 1461276890000,
+              retries = 0,
             },
             headers = {["Content-Type"] = content_type}
           })
           local body = assert.res_status(201, res)
           local json = cjson.decode(body)
           assert.equal("my-api", json.name)
-          assert.equal("my.api.com", json.request_host)
+          assert.same({ "my.api.com" }, json.hosts)
           assert.equal("http://my-api.com", json.upstream_url)
           assert.is_number(json.created_at)
           assert.is_string(json.id)
-          assert.is_nil(json.request_path)
+          assert.is_nil(json.paths)
           assert.False(json.preserve_host)
-          assert.False(json.strip_request_path)
+          assert.True(json.strip_uri)
+          assert.equals(0, json.retries)
         end
       end)
       it_content_types("replaces if exists", function(content_type)
@@ -157,7 +187,7 @@ describe("Admin API", function()
             path = "/apis",
             body = {
               name = "my-api",
-              request_host = "my.api.com",
+              hosts = "my.api.com",
               upstream_url = "http://my-api.com"
             },
             headers = {["Content-Type"] = content_type}
@@ -171,19 +201,21 @@ describe("Admin API", function()
             body = {
               id = json.id,
               name = "my-new-api",
-              request_host = "my-new-api.com",
+              hosts = "my-new-api.com",
               upstream_url = "http://my-api.com",
-              created_at = json.created_at
+              created_at = json.created_at,
+              retries = 99,
             },
             headers = {["Content-Type"] = content_type}
           })
           body = assert.res_status(200, res)
           local updated_json = cjson.decode(body)
           assert.equal("my-new-api", updated_json.name)
-          assert.equal("my-new-api.com", updated_json.request_host)
+          assert.same({ "my-new-api.com" }, updated_json.hosts)
           assert.equal(json.upstream_url, updated_json.upstream_url)
           assert.equal(json.id, updated_json.id)
           assert.equal(json.created_at, updated_json.created_at)
+          assert.equal(99, updated_json.retries)
         end
       end)
       describe("errors", function()
@@ -197,25 +229,26 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"upstream_url":"upstream_url is required",]]
-                         ..[["request_path":"At least a 'request_host' or a]]
-                         ..[[ 'request_path' must be specified","request_host":]]
-                         ..[["At least a 'request_host' or a 'request_path']]
-                         ..[[ must be specified"}]], body)
+            local json = cjson.decode(body)
+            assert.same({
+              name = "name is required",
+              upstream_url = "upstream_url is required"
+            }, json)
 
             -- Invalid parameter
             res = assert(client:send {
               method = "PUT",
               path = "/apis",
               body = {
-                request_host = "my-api.com/com",
+                name = "my-api",
                 upstream_url = "http://my-api.com",
+                hosts = "my-api.com/com",
                 created_at = 1461276890000
               },
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"request_host":"Invalid value: my-api.com\/com"}]], body)
+            assert.equal([[{"hosts":"host with value 'my-api.com\/com' is invalid: Invalid hostname"}]], body)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -227,7 +260,7 @@ describe("Admin API", function()
                 path = "/apis",
                 body = {
                   name = "my-api",
-                  request_host = "my-api.com",
+                  hosts = "my-api.com",
                   upstream_url = "http://my-api.com",
                   created_at = 1461276890000
                 },
@@ -241,7 +274,7 @@ describe("Admin API", function()
                 path = "/apis",
                 body = {
                   name = "my-api",
-                  request_host = "my-api2.com",
+                  hosts = "my-api2.com",
                   upstream_url = "http://my-api2.com",
                   created_at = json.created_at
                 },
@@ -261,7 +294,7 @@ describe("Admin API", function()
         for i = 1, 10 do
           assert(helpers.dao.apis:insert {
             name = "api-"..i,
-            request_path = "/api-"..i,
+            uris = "/api-"..i,
             upstream_url = "http://my-api.com"
           })
         end
@@ -272,7 +305,7 @@ describe("Admin API", function()
 
       it("retrieves the first page", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/apis"
         })
         local res = assert.res_status(200, res)
@@ -320,7 +353,7 @@ describe("Admin API", function()
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
-          methd = "GET",
+          method = "GET",
           path = "/apis",
           body = "this fails if decoded as json",
           headers = {
@@ -368,7 +401,7 @@ describe("Admin API", function()
       before_each(function()
         api = assert(helpers.dao.apis:insert {
           name = "my-api",
-          request_path = "/my-api",
+          uris = "/my-api",
           upstream_url = "http://my-api.com"
         })
       end)
@@ -454,38 +487,38 @@ describe("Admin API", function()
             assert.same(json, in_db)
           end
         end)
-        it_content_types("updates request_path", function(content_type)
+        it_content_types("updates uris", function(content_type)
           return function()
             local res = assert(client:send {
               method = "PATCH",
               path = "/apis/"..api.id,
               body = {
-                request_path = "/my-updated-api"
+                uris = "/my-updated-api,/my-new-uri"
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.equal("/my-updated-api", json.request_path)
+            assert.same({ "/my-updated-api", "/my-new-uri" }, json.uris)
             assert.equal(api.id, json.id)
 
             local in_db = assert(helpers.dao.apis:find {id = api.id})
             assert.same(json, in_db)
           end
         end)
-        it_content_types("updates strip_request_path if not previously set", function(content_type)
+        it_content_types("updates strip_uri if not previously set", function(content_type)
           return function()
             local res = assert(client:send {
               method = "PATCH",
               path = "/apis/"..api.id,
               body = {
-                strip_request_path = true
+                strip_uri = true
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.True(json.strip_request_path)
+            assert.True(json.strip_uri)
             assert.equal(api.id, json.id)
 
             local in_db = assert(helpers.dao.apis:find {id = api.id})
@@ -498,15 +531,15 @@ describe("Admin API", function()
               method = "PATCH",
               path = "/apis/"..api.id,
               body = {
-               request_path = "/my-updated-path",
-               request_host = "my-updated.tld"
+                uris = "/my-updated-path",
+                hosts = "my-updated.tld"
               },
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(200, res)
             local json = cjson.decode(body)
-            assert.equal("/my-updated-path", json.request_path)
-            assert.equal("my-updated.tld", json.request_host)
+            assert.same({ "/my-updated-path" }, json.uris)
+            assert.same({ "my-updated.tld" }, json.hosts)
             assert.equal(api.id, json.id)
 
             local in_db = assert(helpers.dao.apis:find {id = api.id})
@@ -520,7 +553,7 @@ describe("Admin API", function()
                 method = "PATCH",
                 path = "/apis/_inexistent_",
                 body = {
-                 request_path = "/my-updated-path"
+                 uris = "/my-updated-path"
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -533,7 +566,7 @@ describe("Admin API", function()
                 method = "PATCH",
                 path = "/apis/"..api.id,
                 body = {
-                 upstream_url = "api.com"
+                  upstream_url = "api.com"
                 },
                 headers = {["Content-Type"] = content_type}
               })
@@ -572,7 +605,6 @@ describe("Admin API", function()
         end)
       end)
     end)
-  end)
 
   describe("/apis/{api}/plugins", function()
     local api
@@ -581,7 +613,7 @@ describe("Admin API", function()
 
       api = assert(helpers.dao.apis:insert {
         name = "my-api",
-        request_path = "/my-api",
+        uris = "/my-api",
         upstream_url = "http://my-api.com"
       })
     end)
@@ -635,6 +667,34 @@ describe("Admin API", function()
             })
             local body = assert.res_status(400, res)
             assert.equal([[{"name":"name is required"}]], body)
+          end
+        end)
+        it_content_types("returns 409 on conflict", function(content_type)
+          return function()
+            -- insert initial plugin
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis/"..api.id.."/plugins",
+              body = {
+                name="basic-auth",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.response(res).has.status(201)
+            assert.response(res).has.jsonbody()
+
+            -- do it again, to provoke the error
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis/"..api.id.."/plugins",
+              body = {
+                name="basic-auth",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.response(res).has.status(409)
+            local json = assert.response(res).has.jsonbody()
+            assert.same({ name = "already exists with value 'basic-auth'"}, json)
           end
         end)
       end)
@@ -844,7 +904,7 @@ describe("Admin API", function()
           -- Create an API and try to query our plugin through it
           local w_api = assert(helpers.dao.apis:insert {
             name = "wrong-api",
-            request_path = "/wrong-api",
+            uris = "/wrong-api",
             upstream_url = "http://wrong-api.com"
           })
 
@@ -997,7 +1057,7 @@ describe("Admin API", function()
     setup(function()
       assert(helpers.dao.apis:insert {
         name = "my-cool-api",
-        request_host = "my.api.com",
+        hosts = "my.api.com",
         upstream_url = "http://api.com"
       })
     end)

@@ -52,15 +52,22 @@ if [ ! "$(ls -A $OPENSSL_INSTALL)" ]; then
 fi
 
 if [ ! "$(ls -A $OPENRESTY_INSTALL)" ]; then
+  OPENRESTY_OPTS=(
+    "--prefix=$OPENRESTY_INSTALL"
+    "--with-openssl=$OPENSSL_DOWNLOAD"
+    "--with-ipv6"
+    "--with-pcre-jit"
+    "--with-http_ssl_module"
+    "--with-http_realip_module"
+    "--with-http_stub_status_module"
+  )
+
+  if [ "$OPENRESTY" != "1.11.2.1" ]; then
+    OPENRESTY_OPTS[${#OPENRESTY_OPTS[@]}]="--without-luajit-lua52"
+  fi
+
   pushd $OPENRESTY_DOWNLOAD
-    ./configure \
-      --prefix=$OPENRESTY_INSTALL \
-      --with-openssl=$OPENSSL_DOWNLOAD \
-      --with-ipv6 \
-      --with-pcre-jit \
-      --with-http_ssl_module \
-      --with-http_realip_module \
-      --with-http_stub_status_module
+    ./configure ${OPENRESTY_OPTS[*]}
     make
     make install
   popd
@@ -94,8 +101,8 @@ eval `luarocks path`
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
 if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
-  pip install --user PyYAML six ccm==2.4.6
-  ccm create test -v binary:$CASSANDRA -n 1 -d
+  pip install --user PyYAML six ccm
+  ccm create test -v $CASSANDRA -n 1 -d
   ccm start -v
   ccm status
 fi

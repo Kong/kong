@@ -5,6 +5,7 @@ local timestamp = require "kong.tools.timestamp"
 local REDIS_HOST = "127.0.0.1"
 local REDIS_PORT = 6379
 local REDIS_PASSWORD = ""
+local REDIS_DATABASE = 0
 
 local SLEEP_TIME = 1
 
@@ -36,6 +37,11 @@ local function flush_redis()
     end
   end
 
+  local ok, err = red:select(REDIS_DATABASE)
+  if not ok then
+    error("failed to change Redis database: ", err)
+  end
+
   red:flushall()
   red:close()
 end
@@ -46,7 +52,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       flush_redis()
       helpers.dao:drop_schema()
       assert(helpers.dao:run_migrations())
-      assert(helpers.start_kong())
 
       local consumer1 = assert(helpers.dao.consumers:insert {custom_id = "provider_123"})
       assert(helpers.dao.keyauth_credentials:insert {
@@ -67,7 +72,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       local api = assert(helpers.dao.apis:insert {
-        request_host = "test1.com",
+        name = "test1_com",
+        hosts = { "test1.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -79,12 +85,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6}}
         }
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test2.com",
+        name = "test2_com",
+        hosts = { "test2.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -96,12 +104,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}
         }
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test3.com",
+        name = "test3_com",
+        hosts = { "test3.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -123,12 +133,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 2}}
         }
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test4.com",
+        name = "test4_com",
+        hosts = { "test4.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -140,29 +152,14 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6}, image = {minute = 4}}
         }
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test6.com",
-        upstream_url = "http://httpbin.org"
-      })
-      assert(helpers.dao.plugins:insert {
-        name = "response-ratelimiting",
-        api_id = api.id,
-        config = {
-          fault_tolerant = true,
-          policy = policy,
-          redis_host = REDIS_HOST,
-          redis_port = REDIS_PORT,
-          redis_password = REDIS_PASSWORD,
-          limits = {video = {minute = 2}}
-        }
-      })
-
-      api = assert(helpers.dao.apis:insert {
-        request_host = "test7.com",
+        name = "test7_com",
+        hosts = { "test7.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -174,6 +171,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           block_on_first_violation = true,
           limits = {
             video = {
@@ -188,7 +186,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       })
 
       api = assert(helpers.dao.apis:insert {
-        request_host = "test8.com",
+        name = "test8_com",
+        hosts = { "test8.com" },
         upstream_url = "http://httpbin.org"
       })
       assert(helpers.dao.plugins:insert {
@@ -200,9 +199,12 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           redis_host = REDIS_HOST,
           redis_port = REDIS_PORT,
           redis_password = REDIS_PASSWORD,
+          redis_database = REDIS_DATABASE,
           limits = {video = {minute = 6, hour = 10}, image = {minute = 4}}
         }
       })
+
+      assert(helpers.start_kong())
     end)
 
     teardown(function()
@@ -215,6 +217,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       client = helpers.proxy_client()
       admin_client = helpers.admin_client()
     end)
+
     after_each(function()
       if client then client:close() end
       if admin_client then admin_client:close() end
@@ -223,7 +226,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     describe("Without authentication (IP address)", function()
       it("blocks if exceeding limit", function()
         for i = 1, 6 do
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?x-kong-limit=video=1, test=5",
             headers = {
@@ -238,7 +241,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
         end
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
@@ -251,7 +254,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
       it("handles multiple limits", function()
         for i = 1, 3 do
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?x-kong-limit=video=2, image=1",
             headers = {
@@ -270,7 +273,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(4 - i, tonumber(res.headers["x-ratelimit-remaining-image-minute"]))
         end
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=2, image=1",
           headers = {
@@ -289,7 +292,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("API-specific plugin", function()
         it("blocks if exceeding limit and a per consumer setting", function()
           for i = 1, 2 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
               headers = {
@@ -305,7 +308,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           -- Third query, while limit is 2/minute
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?apikey=apikey123&x-kong-limit=video=1",
             headers = {
@@ -320,7 +323,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         it("blocks if exceeding limit and a per consumer setting", function()
           for i = 1, 6 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/response-headers?apikey=apikey124&x-kong-limit=video=1",
               headers = {
@@ -335,7 +338,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
             assert.equal(6 - i, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
           end
 
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?apikey=apikey124",
             headers = {
@@ -349,7 +352,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         it("blocks if exceeding limit", function()
           for i = 1, 6 do
-            local res = assert(client:send {
+            local res = assert(helpers.proxy_client():send {
               method = "GET",
               path = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
               headers = {
@@ -365,7 +368,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           end
 
           -- Third query, while limit is 2/minute
-          local res = assert(client:send {
+          local res = assert(helpers.proxy_client():send {
             method = "GET",
             path = "/response-headers?apikey=apikey125&x-kong-limit=video=1",
             headers = {
@@ -382,7 +385,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
     describe("Upstream usage headers", function()
       it("should append the headers with multiple limits", function()
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/get",
           headers = {
@@ -394,7 +397,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(6, tonumber(body.headers["X-Ratelimit-Remaining-Video"]))
 
         -- Actually consume the limits
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=2, image=1",
           headers = {
@@ -405,7 +408,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/get",
           headers = {
@@ -452,7 +455,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
     end)
 
     it("should block on first violation", function()
-      local res = assert(client:send {
+      local res = assert(helpers.proxy_client():send {
         method = "GET",
         path = "/response-headers?x-kong-limit=video=2, image=4",
         headers = {
@@ -463,7 +466,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
       ngx.sleep(SLEEP_TIME) -- Wait for async timer to increment the limit
 
-      local res = assert(client:send {
+      local res = assert(helpers.proxy_client():send {
         method = "GET",
         path = "/response-headers?x-kong-limit=video=2",
         headers = {
@@ -483,7 +486,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert(helpers.dao:run_migrations())
 
           local api1 = assert(helpers.dao.apis:insert {
-            request_host = "failtest1.com",
+            name = "failtest1_com",
+            hosts = { "failtest1.com" },
             upstream_url = "http://httpbin.org"
           })
           assert(helpers.dao.plugins:insert {
@@ -500,7 +504,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            request_host = "failtest2.com",
+            name = "failtest2_com",
+            hosts = { "failtest2.com" },
             upstream_url = "http://httpbin.org"
           })
           assert(helpers.dao.plugins:insert {
@@ -538,8 +543,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
           -- Simulate an error on the database
-          local err = helpers.dao.response_ratelimiting_metrics:drop_table(helpers.dao.response_ratelimiting_metrics.table)
-          assert.falsy(err)
+          assert(helpers.dao.db:drop_table("response_ratelimiting_metrics"))
 
           -- Make another request
           local res = assert(helpers.proxy_client():send {
@@ -566,8 +570,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
           -- Simulate an error on the database
-          local err = helpers.dao.response_ratelimiting_metrics:drop_table(helpers.dao.response_ratelimiting_metrics.table)
-          assert.falsy(err)
+          assert(helpers.dao.db:drop_table("response_ratelimiting_metrics"))
 
           -- Make another request
           local res = assert(helpers.proxy_client():send {
@@ -587,12 +590,9 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       describe("Fault tolerancy", function()
 
         before_each(function()
-          helpers.kill_all()
-          helpers.dao:drop_schema()
-          assert(helpers.dao:run_migrations())
-
           local api1 = assert(helpers.dao.apis:insert {
-            request_host = "failtest3.com",
+            name = "failtest3_com",
+            hosts = { "failtest3.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -607,7 +607,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
           })
 
           local api2 = assert(helpers.dao.apis:insert {
-            request_host = "failtest4.com",
+            name = "failtest4_com",
+            hosts = { "failtest4.com" },
             upstream_url = "http://mockbin.com"
           })
           assert(helpers.dao.plugins:insert {
@@ -620,8 +621,6 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
               limits = {video = {minute = 6}}
             }
           })
-
-          assert(helpers.start_kong())
         end)
 
         it("does not work if an error occurs", function()
@@ -661,7 +660,8 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert(helpers.start_kong())
 
         api = assert(helpers.dao.apis:insert {
-          request_host = "expire1.com",
+          name = "expire1_com",
+          hosts = { "expire1.com" },
           upstream_url = "http://httpbin.org"
         })
         assert(helpers.dao.plugins:insert {
@@ -681,7 +681,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
       it("expires a counter", function()
         local periods = timestamp.get_timestamps()
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
@@ -696,9 +696,10 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
         if policy == "local" then
-          local res = assert(admin_client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute")
+            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
+            query = { cache = "shm" },
           })
           local body = assert.res_status(200, res)
           assert.equal([[{"message":1}]], body)
@@ -706,7 +707,7 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
 
         ngx.sleep(61) -- Wait for counter to expire
 
-        local res = assert(client:send {
+        local res = assert(helpers.proxy_client():send {
           method = "GET",
           path = "/response-headers?x-kong-limit=video=1",
           headers = {
@@ -721,9 +722,10 @@ for i, policy in ipairs({"local", "cluster", "redis"}) do
         assert.equal(5, tonumber(res.headers["x-ratelimit-remaining-video-minute"]))
 
         if policy == "local" then
-          local res = assert(admin_client:send {
+          local res = assert(helpers.admin_client():send {
             method = "GET",
-            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute")
+            path = "/cache/"..string.format("response-ratelimit:%s:%s:%s:%s:%s", api.id, "127.0.0.1", periods.minute, "video", "minute"),
+            query = { cache = "shm" },
           })
           assert.res_status(404, res)
         end

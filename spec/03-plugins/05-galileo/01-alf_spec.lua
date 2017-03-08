@@ -240,6 +240,15 @@ describe("ALF serializer", function()
         local entry = assert(alf:add_entry(_ngx, body_str))
         assert.equal(#body_str, entry.request.bodySize)
       end)
+      it("zeroes bodySize if body logging but no body", function()
+        _G.ngx.req.get_headers = function()
+          return {}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new(true) -- log_bodies enabled
+        local entry = assert(alf:add_entry(_ngx))
+        assert.equal(0, entry.request.bodySize)
+      end)
       it("zeroes bodySize if no body logging or Content-Length", function()
         _G.ngx.req.get_headers = function()
           return {}
@@ -367,6 +376,15 @@ describe("ALF serializer", function()
         local alf = alf_serializer.new(true) -- log_bodies enabled
         local entry = assert(alf:add_entry(_ngx, nil, body_str))
         assert.equal(#body_str, entry.response.bodySize)
+      end)
+      it("zeroes bodySize if body logging but no body", function()
+        _G.ngx.resp.get_headers = function()
+          return {}
+        end
+        reload_alf_serializer()
+        local alf = alf_serializer.new(true) -- log_bodies enabled
+        local entry = assert(alf:add_entry(_ngx))
+        assert.equal(0, entry.response.bodySize)
       end)
       it("zeroes bodySize if no body logging or Content-Length", function()
         _G.ngx.resp.get_headers = function()

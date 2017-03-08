@@ -5,11 +5,16 @@ describe("Admin API", function()
   local client
   setup(function()
     assert(helpers.start_kong())
-    client = helpers.admin_client()
   end)
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
+  end)
+  before_each(function()
+    client = helpers.admin_client()
+  end)
+  after_each(function()
+    if client then client:close() end
   end)
 
   describe("/cluster", function()
@@ -88,30 +93,48 @@ describe("Admin API", function()
         })
         assert.res_status(200, res) -- why not 204??
 
-        ngx.sleep(3)
+        helpers.wait_until(function()
+          res = assert(client:send {
+            method = "GET",
+            path = "/cluster"
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equal(2, #json.data)
+          assert.equal(2, json.total)
 
-        res = assert(client:send {
-          method = "GET",
-          path = "/cluster"
-        })
-        local body = assert.res_status(200, res)
-        local json = cjson.decode(body)
-        assert.equal(2, #json.data)
-        assert.equal(2, json.total)
-        assert.equal("alive", json.data[1].status)
-        assert.equal("leaving", json.data[2].status)
+          local alive, leaving
+          for k, v in ipairs(json.data) do
+            if v.address == "127.0.0.1:20001" then
+              leaving = v
+            else
+              alive = v
+            end
+          end
+
+          assert.equal("alive", alive.status)
+          return leaving.status == "leaving"
+        end, 10)
       end)
     end)
   end)
 
   describe("/cluster/events", function()
     describe("POST", function()
-      it("posts a new event", function()
-        -- old test simply converted
+      it("fails with an invalid event", function()
         local res = assert(client:send {
           method = "POST",
           path = "/cluster/events",
           body = {},
+          headers = {["Content-Type"] = "application/json"}
+        })
+        assert.res_status(400, res)
+      end)
+      it("posts a new event", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/cluster/events",
+          body = { type = "hello" },
           headers = {["Content-Type"] = "application/json"}
         })
         assert.res_status(200, res)

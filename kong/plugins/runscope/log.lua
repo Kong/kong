@@ -8,7 +8,6 @@ local ngx_log = ngx.log
 local ngx_log_ERR = ngx.ERR
 local ngx_timer_at = ngx.timer.at
 local string_format = string.format
-local string_len = string.len
 
 -- Generates http payload .
 -- @param `method` http method to be used to send data
@@ -19,7 +18,7 @@ local function generate_post_payload(parsed_url, access_token, message)
   local body = cjson.encode(message)
   local payload = string_format(
     "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s",
-    "POST", parsed_url.path, parsed_url.host, access_token, string_len(body), body)
+    "POST", parsed_url.path, parsed_url.host, access_token, #body, body)
   return payload
 end
 

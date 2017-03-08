@@ -73,7 +73,7 @@ local function send_report(signal_type, t, host, port)
   local mutable_idx = _buffer_immutable_idx
 
   for k, v in pairs(t) do
-    if k ~= "created_at" and sub(k, -2) ~= "id" then
+    if k == "unique_id" or (k ~= "created_at" and sub(k, -2) ~= "id") then
       if type(v) == "table" then
         local json, err = cjson.encode(v)
         if err then
@@ -98,8 +98,6 @@ local function send_report(signal_type, t, host, port)
   sock:settimeout(1000)
 
   -- concat and send buffer
-
-  --print(concat(_buffer, ";", 1, mutable_idx))
 
   ok, err = sock:send(concat(_buffer, ";", 1, mutable_idx))
   if not ok then

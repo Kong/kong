@@ -10,21 +10,26 @@
 
 local ffi = require "ffi"
 local uuid = require "resty.jit-uuid"
+local pl_stringx = require "pl.stringx"
 
 local C          = ffi.C
 local ffi_new    = ffi.new
 local ffi_str    = ffi.string
-local fmt        = string.format
 local type       = type
 local pairs      = pairs
 local ipairs     = ipairs
-local re_find    = ngx.re.find
 local tostring   = tostring
 local sort       = table.sort
 local concat     = table.concat
 local insert     = table.insert
+local lower      = string.lower
+local fmt        = string.format
 local find       = string.find
 local gsub       = string.gsub
+local split      = pl_stringx.split
+local strip      = pl_stringx.strip
+local re_find    = ngx.re.find
+local re_match   = ngx.re.match
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -41,6 +46,17 @@ const char *ERR_reason_error_string(unsigned long e);
 ]]
 
 local _M = {}
+
+--- splits a string.
+-- just a placeholder to the penlight `pl.stringx.split` function
+-- @function split
+_M.split = split
+
+--- strips whitespace from a string.
+-- just a placeholder to the penlight `pl.stringx.strip` function
+-- @function strip
+_M.strip = strip
+
 
 --- Retrieves the hostname of the local machine
 -- @return string  The hostname
@@ -143,13 +159,6 @@ end
 -- function _M.is_valid_uuid(str)
 --  return str == "00000000-0000-0000-0000-000000000000" or uuid.is_valid(str)
 --end
-
-do
-  local pl_stringx = require "pl.stringx"
-
-  _M.split = pl_stringx.split
-  _M.strip = pl_stringx.strip
-end
 
 do
   local url = require "socket.url"
@@ -301,10 +310,13 @@ function _M.deep_copy(orig)
   return copy
 end
 
+--- Copies a table into a new table.
+-- neither sub tables nor metatables will be copied.
+-- @param orig The table to copy
+-- @return Returns a copy of the input table
 function _M.shallow_copy(orig)
-  local orig_type = type(orig)
   local copy
-  if orig_type == "table" then
+  if type(orig) == "table" then
     copy = {}
     for orig_key, orig_value in pairs(orig) do
       copy[orig_key] = orig_value
@@ -367,9 +379,6 @@ function _M.load_module_if_exists(module_name)
   end
 end
 
-local find = string.find
-local tostring = tostring
-
 -- Numbers taken from table 3-7 in www.unicode.org/versions/Unicode6.2.0/UnicodeStandard-6.2.pdf
 -- find-based solution inspired by http://notebook.kulchenko.com/programming/fixing-malformed-utf8-in-lua
 function _M.validate_utf8(val)
@@ -391,6 +400,203 @@ function _M.validate_utf8(val)
   end
 
   return true
+end
+
+--- checks the hostname type; ipv4, ipv6, or name.
+-- Type is determined by exclusion, not by validation. So if it returns 'ipv6' then
+-- it can only be an ipv6, but it is not necessarily a valid ipv6 address.
+-- @param name the string to check (this may contain a portnumber)
+-- @return string either; 'ipv4', 'ipv6', or 'name'
+-- @usage hostname_type("123.123.123.123")  -->  "ipv4"
+-- hostname_type("::1")              -->  "ipv6"
+-- hostname_type("some::thing")      -->  "ipv6", but invalid...
+_M.hostname_type = function(name)
+  local remainder, colons = gsub(name, ":", "")
+  if colons > 1 then return "ipv6" end
+  if remainder:match("^[%d%.]+$") then return "ipv4" end
+  return "name"
+end
+
+--- parses, validates and normalizes an ipv4 address.
+-- @param address the string containing the address (formats; ipv4, ipv4:port)
+-- @return normalized address (string) + port (number or nil), or alternatively nil+error
+_M.normalize_ipv4 = function(address)
+  local a,b,c,d,port
+  if address:find(":") then
+    -- has port number
+    a,b,c,d,port = address:match("^(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?):(%d+)$")
+  else
+    -- without port number
+    a,b,c,d,port = address:match("^(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)%.(%d%d?%d?)$")
+  end
+  if not a then
+    return nil, "invalid ipv4 address: "..address
+  end
+  a,b,c,d = tonumber(a), tonumber(b), tonumber(c), tonumber(d)
+  if (a<0) or (a>255) or (b<0) or (b>255) or (c<0) or (c>255) or (d<0) or (d>255) then
+    return nil, "invalid ipv4 address: "..address
+  end
+  if port then 
+    port = tonumber(port) 
+    if port > 65535 then
+      return nil, "invalid port number"
+    end
+  end
+  
+  return fmt("%d.%d.%d.%d",a,b,c,d), port
+end
+
+--- parses, validates and normalizes an ipv6 address.
+-- @param address the string containing the address (formats; ipv6, [ipv6], [ipv6]:port)
+-- @return normalized expanded address (string) + port (number or nil), or alternatively nil+error
+_M.normalize_ipv6 = function(address)
+  local check, port = address:match("^(%b[])(.-)$")
+  if port == "" then port = nil end
+  if check then
+    check = check:sub(2, -2)  -- drop the brackets
+    -- we have ipv6 in brackets, now get port if we got something left
+    if port then 
+      port = port:match("^:(%d-)$")
+      if not port then
+        return nil, "invalid ipv6 address"
+      end
+      port = tonumber(port)
+      if port > 65535 then
+        return nil, "invalid port number"
+      end
+    end
+  else
+    -- no brackets, so full address only; no brackets, no port
+    check = address
+    port = nil
+  end
+  -- check ipv6 format and normalize
+  if check:sub(1,1) == ":" then check = "0"..check end
+  if check:sub(-1,-1) == ":" then check = check.."0" end
+  if check:find("::") then
+    -- expand double colon
+    local _, count = gsub(check, ":", "")
+    local ins = ":"..string.rep("0:", 8 - count)
+    check = gsub(check, "::", ins, 1)  -- replace only 1 occurence!
+  end
+  local a,b,c,d,e,f,g,h = check:match("^(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?):(%x%x?%x?%x?)$")
+  if not a then
+    -- not a valid IPv6 address
+    return nil, "invalid ipv6 address: "..address
+  end
+  local zeros = "0000"
+  return lower(fmt("%s:%s:%s:%s:%s:%s:%s:%s",
+      zeros:sub(1, 4 - #a)..a,
+      zeros:sub(1, 4 - #b)..b,
+      zeros:sub(1, 4 - #c)..c,
+      zeros:sub(1, 4 - #d)..d,
+      zeros:sub(1, 4 - #e)..e,
+      zeros:sub(1, 4 - #f)..f,
+      zeros:sub(1, 4 - #g)..g,
+      zeros:sub(1, 4 - #h)..h)), port
+end
+
+--- parses and validates a hostname.
+-- @param address the string containing the hostname (formats; name, name:port)
+-- @return hostname (string) + port (number or nil), or alternatively nil+error
+_M.check_hostname = function(address)
+  local name = address
+  local port = address:match(":(%d+)$")
+  if port then
+    name = name:sub(1, -(#port+2))
+    port = tonumber(port)
+    if port > 65535 then
+      return nil, "invalid port number"
+    end
+  end
+  local match = name:match("^[%d%a%-%.%_]+$")
+  if match == nil then
+    return nil, "invalid hostname: "..address
+  end
+
+  -- Reject prefix/trailing dashes and dots in each segment
+  -- note: punycode allowes prefixed dash, if the characters before the dash are escaped
+  for _, segment in ipairs(split(name, ".")) do
+    if segment == "" or segment:match("-$") or segment:match("^%.") or segment:match("%.$") then
+      return nil, "invalid hostname: "..address
+    end
+  end
+  return name, port
+end
+
+local verify_types = {
+  ipv4 = _M.normalize_ipv4,
+  ipv6 = _M.normalize_ipv6,
+  name = _M.check_hostname,
+}
+--- verifies and normalizes ip adresses and hostnames. Supports ipv4, ipv4:port, ipv6, [ipv6]:port, name, name:port.
+-- Returned ipv4 addresses will have no leading zero's, ipv6 will be fully expanded without brackets.
+-- Note: a name will not be normalized!
+-- @param address string containing the address
+-- @return table with the following fields: `host` (string; normalized address, or name), `type` (string; 'ipv4', 'ipv6', 'name'), and `port` (number or nil), or alternatively nil+error on invalid input
+_M.normalize_ip = function(address)
+  local atype = _M.hostname_type(address)
+  local addr, port = verify_types[atype](address)
+  if not addr then return nil, port end 
+  return {
+    type = atype,
+    host = addr,
+    port = port
+  }
+end
+
+--- Formats an ip address or hostname with an (optional) port for use in urls.
+-- Supports ipv4, ipv6 and names.
+--
+-- Explictly accepts 'nil+error' as input, to pass through any errors from the normalizing and name checking functions.
+-- @param p1 address to format, either string with name/ip, table returned from `normalize_ip`, or from the `socket.url` library.
+-- @param p2 port (optional) if p1 is a table, then this port will be inserted if no port-field is in the table
+-- @return formatted address or nil+error
+-- @usage
+-- local addr, err = format_ip(normalize_ip("001.002.003.004:123"))  --> "1.2.3.4:123"
+-- local addr, err = format_ip(normalize_ip("::1"))                  --> "[0000:0000:0000:0000:0000:0000:0000:0001]"
+-- local addr, err = format_ip("::1", 80))                           --> "[::1]:80"
+-- local addr, err = format_ip(check_hostname("//bad..name\\"))      --> nil, "invalid hostname: ..."
+_M.format_host = function(p1, p2)
+  local t = type(p1)
+  if t == "nil" then 
+    return p1, p2   -- just pass through any errors passed in
+  end
+  local host, port, typ
+  if t == "table" then
+    port = p1.port or p2
+    host = p1.host
+    typ = p1.type or _M.hostname_type(host)
+  elseif t == "string" then
+    port = p2
+    host = p1
+    typ = _M.hostname_type(host)
+  else
+    return nil, "cannot format type '"..t.."'"
+  end
+  if (typ == "ipv6") and (not find(host, "%[")) then
+    return "["..host.."]" ..  (port and ":"..port or "")
+  else
+    return host ..  (port and ":"..port or "")
+  end
+end
+
+--- Validates a header name.
+-- Checks characters used in a header name to be valid, as per nginx only
+-- a-z, A-Z, 0-9 and '-' are allowed.
+-- @param name (string) the header name to verify
+-- @return the valid header name, or `nil+error`
+_M.validate_header_name = function(name)
+  if name == nil or name == "" then
+    return nil, "no header name provided"
+  end
+
+  if re_match(name, "^[a-zA-Z0-9-]+$", "jo") then
+    return name
+  end
+
+  return nil, "bad header name '" .. name ..
+              "', allowed characters are A-Z, a-z, 0-9 and '-'"
 end
 
 return _M

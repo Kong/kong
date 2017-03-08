@@ -7,11 +7,13 @@ describe("helpers: assertions and modifiers", function()
   setup(function()
     assert(helpers.dao:run_migrations())
     assert(helpers.dao.apis:insert {
-      request_host = "mockbin.com",
+      name = "mockbin",
+      hosts = { "mockbin.com" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.apis:insert {
-      request_host = "httpbin.org",
+      name = "httpbin",
+      hosts = { "httpbin.org" },
       upstream_url = "http://httpbin.org"
     })
 
@@ -27,6 +29,32 @@ describe("helpers: assertions and modifiers", function()
   end)
   after_each(function()
     if client then client:close() end
+  end)
+
+  describe("wait_until()", function()
+    it("does not errors out if thing happens", function()
+      assert.has_no_error(function()
+        local i = 0
+        helpers.wait_until(function()
+          i = i + 1
+          return i > 1
+        end, 3)
+      end)
+    end)
+    it("errors out after delay", function()
+      assert.error_matches(function()
+        helpers.wait_until(function()
+          return false, "thing still not done"
+        end, 1)
+      end, "timeout: thing still not done")
+    end)
+    it("reports errors in test function", function()
+      assert.error_matches(function()
+        helpers.wait_until(function()
+          assert.equal("foo", "bar")
+        end, 1)
+      end, "Expected objects to be equal.", nil, true)
+    end)
   end)
 
   describe("response modifier", function()

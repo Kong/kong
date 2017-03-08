@@ -1,22 +1,34 @@
 local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 describe("Plugin: ldap-auth (access)", function()
-  local client
+  local client, client_admin, api2, plugin2
   local ldap_host_aws = "ec2-54-172-82-117.compute-1.amazonaws.com"
-
   setup(function()
-    assert(helpers.start_kong())
-
     local api1 = assert(helpers.dao.apis:insert {
       name = "test-ldap",
-      request_host = "ldap.com",
+      hosts = { "ldap.com" },
       upstream_url = "http://mockbin.com"
     })
-    local api2 = assert(helpers.dao.apis:insert {
+    api2 = assert(helpers.dao.apis:insert {
       name = "test-ldap2",
-      request_host = "ldap2.com",
+      hosts = { "ldap2.com" },
       upstream_url = "http://mockbin.com"
+    })
+    local api3 = assert(helpers.dao.apis:insert {
+      name = "test-ldap3",
+      hosts = { "ldap3.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    local api4 = assert(helpers.dao.apis:insert {
+      name = "test-ldap4",
+      hosts = { "ldap4.com" },
+      upstream_url = "http://mockbin.com"
+    })
+
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
     })
 
     assert(helpers.dao.plugins:insert {
@@ -31,7 +43,7 @@ describe("Plugin: ldap-auth (access)", function()
       }
     })
 
-    assert(helpers.dao.plugins:insert {
+    plugin2 = assert(helpers.dao.plugins:insert {
       api_id = api2.id,
       name = "ldap-auth",
       config = {
@@ -40,17 +52,48 @@ describe("Plugin: ldap-auth (access)", function()
         start_tls = false,
         base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
         attribute = "uid",
-        hide_credentials = true
+        hide_credentials = true,
+        cache_ttl = 2,
       }
     })
+    assert(helpers.dao.plugins:insert {
+      api_id = api3.id,
+      name = "ldap-auth",
+      config = {
+        ldap_host = ldap_host_aws,
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid",
+        anonymous = anonymous_user.id,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      api_id = api4.id,
+      name = "ldap-auth",
+      config = {
+        ldap_host = "ec2-54-210-29-167.compute-1.amazonaws.com",
+        ldap_port = "389",
+        start_tls = false,
+        base_dn = "ou=scientists,dc=ldap,dc=mashape,dc=com",
+        attribute = "uid",
+        cache_ttl = 2,
+        anonymous = utils.uuid(), -- non existing consumer
+      }
+    })
+
+    assert(helpers.start_kong())
   end)
+
   teardown(function()
     helpers.stop_kong()
   end)
 
   before_each(function()
     client = helpers.proxy_client()
+    client_admin = helpers.admin_client()
   end)
+
   after_each(function()
     if client then client:close() end
   end)
@@ -155,6 +198,7 @@ describe("Plugin: ldap-auth (access)", function()
     assert.response(r).has.status(200)
     local value = assert.request(r).has.header("x-credential-username")
     assert.are.equal("einstein", value)
+    assert.request(r).has_not.header("x-anonymous-username")
   end)
   it("authorization fails if credential does has no password encoded in get request", function()
     local r = assert(client:send {
@@ -219,24 +263,76 @@ describe("Plugin: ldap-auth (access)", function()
       method = "GET",
       path = "/request",
       headers = {
-        host = "ldap.com",
+        host = "ldap2.com",
         authorization = "ldap "..ngx.encode_base64("einstein:password")
       }
     })
     assert.response(r).has.status(200)
 
     -- Check that cache is populated
-    local cache_key = cache.ldap_credential_key("einstein")
-    local exists = true
-    while(exists) do
+    local cache_key = cache.ldap_credential_key(api2.id , "einstein")
+    helpers.wait_until(function()
+      local res = assert(client_admin:send {
+        method = "GET",
+        path = "/cache/"..cache_key
+      })
+      res:read_body()
+      return res.status == 200
+    end)
+
+    -- Check that cache is invalidated
+    helpers.wait_until(function()
+      local res = client_admin:send {
+        method = "GET",
+        path = "/cache/"..cache_key
+      }
+      res:read_body()
+      --if res.status ~= 404 then
+      --  ngx.sleep( plugin2.config.cache_ttl / 5 )
+      --end
+      return res.status == 404
+    end, plugin2.config.cache_ttl + 10)
+  end)
+
+  describe("config.anonymous", function()
+    it("works with right credentials and anonymous", function()
       local r = assert(client:send {
         method = "GET",
-        path = "/cache/"..cache_key,
+        path = "/request",
+        headers = {
+          host = "ldap3.com",
+          authorization = "ldap "..ngx.encode_base64("einstein:password")
+        }
       })
-      if r.status ~= 200 then
-        exists = false
-      end
-    end
-    assert.equals(200, r.status)
+      assert.response(r).has.status(200)
+
+      local value = assert.request(r).has.header("x-credential-username")
+      assert.are.equal("einstein", value)
+      assert.request(r).has_not.header("x-anonymous-username")
+    end)
+    it("works with wrong credentials and anonymous", function()
+       local r = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          host = "ldap3.com"
+        }
+      })
+      assert.response(r).has.status(200)
+      local value = assert.request(r).has.header("x-anonymous-consumer")
+      assert.are.equal("true", value)
+      value = assert.request(r).has.header("x-consumer-username")
+      assert.equal('no-body', value)
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "ldap4.com"
+        }
+      })
+      assert.response(res).has.status(500)
+    end)
   end)
 end)

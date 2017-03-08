@@ -5,13 +5,12 @@ local MB = 2^20
 
 describe("Plugin: request-size-limiting (access)", function()
   local client
-  setup(function()
-    assert(helpers.start_kong())
-    client = helpers.proxy_client()
 
+  setup(function()
     local api = assert(helpers.dao.apis:insert {
-      request_host = "limit.com",
-      upstream_url = "http://mockbin.com/"
+      name = "limit.com",
+      hosts = { "limit.com" },
+      upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
       name = "request-size-limiting",
@@ -20,7 +19,11 @@ describe("Plugin: request-size-limiting (access)", function()
         allowed_payload_size = TEST_SIZE
       }
     })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
   end)
+
   teardown(function()
     if client then client:close() end
     helpers.stop_kong()
@@ -35,7 +38,7 @@ describe("Plugin: request-size-limiting (access)", function()
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       assert.res_status(200, res)
@@ -49,7 +52,7 @@ describe("Plugin: request-size-limiting (access)", function()
         headers = {
           ["Host"] = "limit.com",
           ["Expect"] = "100-continue",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       assert.res_status(200, res)
@@ -62,7 +65,7 @@ describe("Plugin: request-size-limiting (access)", function()
         body = body,
         headers = {
           ["Host"] = "limit.com",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       local body = assert.res_status(413, res)
@@ -77,7 +80,7 @@ describe("Plugin: request-size-limiting (access)", function()
         headers = {
           ["Host"] = "limit.com",
           ["Expect"] = "100-continue",
-          ["Content-Length"] = string.len(body)
+          ["Content-Length"] = #body
         }
       })
       local body = assert.res_status(417, res)

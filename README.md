@@ -178,7 +178,7 @@ Reference](https://getkong.org/docs/latest/lua-reference/).
 
 #### Vagrant
 
-You can use a Vagrant box running Kong and Cassandra that you can find at
+You can use a Vagrant box running Kong and Postgres that you can find at
 [Mashape/kong-vagrant](https://github.com/Mashape/kong-vagrant).
 
 #### Source Install

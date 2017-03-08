@@ -5,7 +5,7 @@ helpers.for_each_dao(function(kong_config)
   describe("Real use-cases with DB: #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       assert(factory:run_migrations())
 
       factory:truncate_tables()
@@ -16,7 +16,7 @@ helpers.for_each_dao(function(kong_config)
 
     it("retrieves plugins for plugins_iterator", function()
       local api, err = factory.apis:insert {
-        name = "mockbin", request_host = "mockbin.com",
+        name = "mockbin", hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }
       assert.falsy(err)
@@ -71,7 +71,7 @@ helpers.for_each_dao(function(kong_config)
 
     it("update a plugin config", function()
       local api, err = factory.apis:insert {
-        name = "mockbin", request_host = "mockbin.com",
+        name = "mockbin", hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }
       assert.falsy(err)
@@ -82,15 +82,15 @@ helpers.for_each_dao(function(kong_config)
       assert.falsy(err)
 
       local updated_key_auth, err = factory.plugins:update({
-        config = {key_names = {"key_updated"}}
+        config = {key_names = {"key-updated"}}
       }, key_auth)
       assert.falsy(err)
-      assert.same({"key_updated"}, updated_key_auth.config.key_names)
+      assert.same({"key-updated"}, updated_key_auth.config.key_names)
     end)
 
     it("does not override plugin config if partial update", function()
       local api, err = factory.apis:insert {
-        name = "mockbin", request_host = "mockbin.com",
+        name = "mockbin", hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }
       assert.falsy(err)
@@ -104,11 +104,38 @@ helpers.for_each_dao(function(kong_config)
       assert.falsy(err)
 
       local updated_key_auth, err = factory.plugins:update({
-        config = {key_names = {"key_set_null_test_updated"}}
+        config = {key_names = {"key-set-null-test-updated"}}
       }, key_auth)
       assert.falsy(err)
-      assert.same({"key_set_null_test_updated"}, updated_key_auth.config.key_names)
+      assert.same({"key-set-null-test-updated"}, updated_key_auth.config.key_names)
       assert.True(updated_key_auth.config.hide_credentials)
+    end)
+  end)
+end)
+
+
+describe("#cassandra", function()
+  describe("LB policy", function()
+    it("accepts DCAwareRoundRobin", function()
+      local helpers = require "spec.helpers"
+
+      local kong_config                = helpers.test_conf
+
+      local database                   = kong_config.database
+      local cassandra_lb_policy        = kong_config.cassandra_lb_policy
+      local cassandra_local_datacenter = kong_config.cassandra_local_datacenter
+
+      finally(function()
+        kong_config.database                   = database
+        kong_config.cassandra_lb_policy        = cassandra_lb_policy
+        kong_config.cassandra_local_datacenter = cassandra_local_datacenter
+      end)
+
+      kong_config.database                   = "cassandra"
+      kong_config.cassandra_lb_policy        = "DCAwareRoundRobin"
+      kong_config.cassandra_local_datacenter = "my-dc"
+
+      assert(Factory.new(kong_config))
     end)
   end)
 end)

@@ -343,4 +343,147 @@ describe("Utils", function()
       end)
     end)
   end)
+
+  describe("hostnames and ip addresses", function()
+    describe("hostname_type", function()
+      -- no check on "name" type as anything not ipv4 and not ipv6 will be labelled as 'name' anyway
+      it("checks valid IPv4 address types", function()
+        assert.are.same("ipv4", utils.hostname_type("123.123.123.123"))
+        assert.are.same("ipv4", utils.hostname_type("1.2.3.4"))
+        assert.are.same("ipv4", utils.hostname_type("1.2.3.4:80"))
+      end)
+      it("checks valid IPv6 address types", function()
+        assert.are.same("ipv6", utils.hostname_type("::1"))
+        assert.are.same("ipv6", utils.hostname_type("2345::6789"))
+        assert.are.same("ipv6", utils.hostname_type("0001:0001:0001:0001:0001:0001:0001:0001"))
+        assert.are.same("ipv6", utils.hostname_type("[2345::6789]:80"))
+      end)
+    end)
+    describe("parsing", function()
+      it("normalizes IPv4 address types", function()
+        assert.are.same({"123.123.123.123"}, {utils.normalize_ipv4("123.123.123.123")})
+        assert.are.same({"123.123.123.123", 80}, {utils.normalize_ipv4("123.123.123.123:80")})
+        assert.are.same({"1.1.1.1"}, {utils.normalize_ipv4("1.1.1.1")})
+        assert.are.same({"1.1.1.1", 80}, {utils.normalize_ipv4("001.001.001.001:00080")})
+      end)
+      it("fails normalizing bad IPv4 address types", function()
+        assert.is_nil(utils.normalize_ipv4("123.123:80"))
+        assert.is_nil(utils.normalize_ipv4("123.123.123.999"))
+        assert.is_nil(utils.normalize_ipv4("123.123.123.123:80a"))
+        assert.is_nil(utils.normalize_ipv4("123.123.123.123.123:80"))
+        assert.is_nil(utils.normalize_ipv4("localhost:80"))
+        assert.is_nil(utils.normalize_ipv4("[::1]:80"))
+        assert.is_nil(utils.normalize_ipv4("123.123.123.123:99999"))
+      end)
+      it("normalizes IPv6 address types", function()
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {utils.normalize_ipv6("::1")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {utils.normalize_ipv6("[::1]")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001", 80}, {utils.normalize_ipv6("[::1]:80")})
+        assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001", 80}, {utils.normalize_ipv6("[0000:0000:0000:0000:0000:0000:0000:0001]:80")})
+      end)
+      it("fails normalizing bad IPv6 address types", function()
+        assert.is_nil(utils.normalize_ipv6("123.123.123.123"))
+        assert.is_nil(utils.normalize_ipv6("localhost:80"))
+        assert.is_nil(utils.normalize_ipv6("::x"))
+        assert.is_nil(utils.normalize_ipv6("[::x]:80"))
+        assert.is_nil(utils.normalize_ipv6("[::1]:80a"))
+        assert.is_nil(utils.normalize_ipv6("1"))
+        assert.is_nil(utils.normalize_ipv6("[::1]:99999"))
+      end)
+      it("validates hostnames", function()
+        local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
+                        "HELLO.com", "123helloWORLD.com", "mockbin.123", "mockbin-api.com",
+                        "hello.abcd", "mockbin_api.com", "localhost",
+                        -- punycode examples from RFC3492; https://tools.ietf.org/html/rfc3492#page-14
+                        -- specifically the japanese ones as they mix ascii with escaped characters
+                        "3B-ww4c5e180e575a65lsy2b", "-with-SUPER-MONKEYS-pc58ag80a8qai00g7n9n",
+                        "Hello-Another-Way--fc4qua05auwb3674vfr0b", "2-u9tlzr9756bt3uc0v",
+                        "MajiKoi5-783gue6qz075azm5e", "de-jg4avhby1noc0d", "d9juau41awczczp",
+                        }
+        local invalids = {"/mockbin", ".mockbin", "mockbin.", "mock;bin",
+                          "mockbin.com/org",
+                          "mockbin-.org", "mockbin.org-",
+                          "hello..mockbin.com", "hello-.mockbin.com",
+                         }
+        for _, name in ipairs(valids) do
+          assert.are.same(name, (utils.check_hostname(name)))
+        end
+        for _, name in ipairs(valids) do
+          assert.are.same({ [1] = name, [2] = 80}, { utils.check_hostname(name..":80")})
+        end
+        for _, name in ipairs(valids) do
+          assert.is_nil((utils.check_hostname(name..":xx")))
+          assert.is_nil((utils.check_hostname(name..":99999")))
+        end
+        for _, name in ipairs(invalids) do
+          assert.is_nil((utils.check_hostname(name)))
+          assert.is_nil((utils.check_hostname(name..":80")))
+        end
+      end)
+      it("validates addresses", function()
+        assert.are.same({host = "1.2.3.4", type = "ipv4", port = 80}, utils.normalize_ip("1.2.3.4:80"))
+        assert.are.same({host = "1.2.3.4", type = "ipv4", port = nil}, utils.normalize_ip("1.2.3.4"))
+        assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = 80}, utils.normalize_ip("[::1]:80"))
+        assert.are.same({host = "0000:0000:0000:0000:0000:0000:0000:0001", type = "ipv6", port = nil}, utils.normalize_ip("::1"))
+        assert.are.same({host = "localhost", type = "name", port = 80}, utils.normalize_ip("localhost:80"))
+        assert.are.same({host = "mashape.com", type = "name", port = nil}, utils.normalize_ip("mashape.com"))
+      
+        assert.is_nil((utils.normalize_ip("1.2.3.4:8x0")))
+        assert.is_nil((utils.normalize_ip("1.2.3.400")))
+        assert.is_nil((utils.normalize_ip("[::1]:8x0")))
+        assert.is_nil((utils.normalize_ip(":x:1")))
+        assert.is_nil((utils.normalize_ip("localhost:8x0")))
+        assert.is_nil((utils.normalize_ip("mashape..com")))
+      end)
+    end)
+    describe("formatting", function()
+      it("correctly formats addresses", function()
+        assert.are.equal("1.2.3.4", utils.format_host("1.2.3.4"))
+        assert.are.equal("1.2.3.4:80", utils.format_host("1.2.3.4", 80))
+        assert.are.equal("[::1]", utils.format_host("::1"))
+        assert.are.equal("[::1]:80", utils.format_host("::1", 80))
+        assert.are.equal("localhost", utils.format_host("localhost"))
+        assert.are.equal("mashape.com:80", utils.format_host("mashape.com", 80))
+        -- passthrough (string)
+        assert.are.equal("1.2.3.4", utils.format_host(utils.normalize_ipv4("1.2.3.4")))
+        assert.are.equal("1.2.3.4:80", utils.format_host(utils.normalize_ipv4("1.2.3.4:80")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host(utils.normalize_ipv6("::1")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host(utils.normalize_ipv6("[::1]:80")))
+        assert.are.equal("localhost", utils.format_host(utils.check_hostname("localhost")))
+        assert.are.equal("mashape.com:80", utils.format_host(utils.check_hostname("mashape.com:80")))
+        -- passthrough general (table)
+        assert.are.equal("1.2.3.4", utils.format_host(utils.normalize_ip("1.2.3.4")))
+        assert.are.equal("1.2.3.4:80", utils.format_host(utils.normalize_ip("1.2.3.4:80")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]", utils.format_host(utils.normalize_ip("::1")))
+        assert.are.equal("[0000:0000:0000:0000:0000:0000:0000:0001]:80", utils.format_host(utils.normalize_ip("[::1]:80")))
+        assert.are.equal("localhost", utils.format_host(utils.normalize_ip("localhost")))
+        assert.are.equal("mashape.com:80", utils.format_host(utils.normalize_ip("mashape.com:80")))
+        -- passthrough errors
+        local one, two = utils.format_host(utils.normalize_ipv4("1.2.3.4.5"))
+        assert.are.equal("nilstring", type(one)..type(two))
+        local one, two = utils.format_host(utils.normalize_ipv6("not ipv6 ..."))
+        assert.are.equal("nilstring", type(one)..type(two))
+        local one, two = utils.format_host(utils.check_hostname("//bad..name\\:123"))
+        assert.are.equal("nilstring", type(one)..type(two))
+        local one, two = utils.format_host(utils.normalize_ip("m a s h a p e.com:80"))
+        assert.are.equal("nilstring", type(one)..type(two))
+      end)
+    end)
+  end)
+
+  it("validate_header_name() validates header names", function()
+    local header_chars = [[-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+
+    for i = 1, 255 do
+      local c = string.char(i)
+
+      if string.find(header_chars, c, nil, true) then
+        assert(utils.validate_header_name(c) == c,
+          "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
+      else
+        assert(utils.validate_header_name(c) == nil,
+          "ascii character " .. i .. " should not have been allowed")
+      end
+    end
+  end)
 end)

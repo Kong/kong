@@ -113,5 +113,39 @@ return {
     down = [[
       ALTER TABLE oauth2_authorization_codes DROP credential_id;
     ]]
+  },
+  {
+    name = "2016-09-19-oauth2_code_index",
+    up = [[
+      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(credential_id);
+    ]]
+  },
+  {
+    name = "2016-09-19-oauth2_api_id",
+    up = [[
+      ALTER TABLE oauth2_authorization_codes ADD api_id uuid;
+      CREATE INDEX IF NOT EXISTS ON oauth2_authorization_codes(api_id);
+
+      ALTER TABLE oauth2_tokens ADD api_id uuid;
+      CREATE INDEX IF NOT EXISTS ON oauth2_tokens(api_id);
+    ]],
+    down = [[
+      ALTER TABLE oauth2_authorization_codes DROP api_id;
+      ALTER TABLE oauth2_tokens DROP api_id;
+    ]]
+  },
+  {
+    name = "2016-12-15-set_global_credentials",
+    up = function(_, _, dao)
+      local rows, err = dao.plugins:find_all({name = "oauth2"})
+      if err then return err end
+      
+      for _, row in ipairs(rows) do
+        row.config.global_credentials = true
+
+        local _, err = dao.plugins:update(row, row)
+        if err then return err end
+      end
+    end
   }
 }

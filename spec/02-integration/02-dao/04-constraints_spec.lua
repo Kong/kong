@@ -4,9 +4,9 @@ local utils = require "kong.tools.utils"
 
 local api_tbl = {
   name = "mockbin",
-  request_host = "mockbin.com",
-  request_path = "/mockbin",
-  strip_request_path = true,
+  hosts = { "mockbin.com" },
+  uris = { "/mockbin" },
+  strip_uri = true,
   upstream_url = "https://mockbin.com"
 }
 
@@ -19,7 +19,7 @@ helpers.for_each_dao(function(kong_config)
     local plugin_fixture, api_fixture
     local factory, apis, plugins
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       apis = factory.apis
       plugins = factory.plugins
       assert(factory:run_migrations())
@@ -45,17 +45,17 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.is_table(plugin)
         assert.equal(api_fixture.id, plugin.api_id)
-        assert.same({hide_credentials = false, key_names = {"apikey"}}, plugin.config)
+        assert.same({hide_credentials = false, key_names = {"apikey"}, anonymous = ""}, plugin.config)
       end)
       it("insert a valid plugin bis", function()
         plugin_fixture.api_id = api_fixture.id
-        plugin_fixture.config = {key_names = {"api_key"}}
+        plugin_fixture.config = {key_names = {"api-key"}}
 
         local plugin, err = plugins:insert(plugin_fixture)
         assert.falsy(err)
         assert.is_table(plugin)
         assert.equal(api_fixture.id, plugin.api_id)
-        assert.same({hide_credentials = false, key_names = {"api_key"}}, plugin.config)
+        assert.same({hide_credentials = false, key_names = {"api-key"}, anonymous = ""}, plugin.config)
       end)
       describe("unique per API/Consumer", function()
         it("API/Plugin", function()
@@ -69,7 +69,9 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.matches("Plugin configuration already exists", tostring(err), nil, true)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'key-auth'",
+                         err, nil, true)
         end)
         it("API/Consumer/Plugin", function()
           local consumer, err = factory.consumers:insert {
@@ -94,7 +96,9 @@ helpers.for_each_dao(function(kong_config)
           assert.truthy(err)
           assert.falsy(plugin)
           assert.True(err.unique)
-          assert.matches("Plugin configuration already exists", tostring(err), nil, true)
+          assert.matches("[" .. kong_config.database .. " error] " ..
+                         "name=already exists with value 'rate-limiting'",
+                         err, nil, true)
         end)
       end)
     end)
@@ -147,8 +151,8 @@ helpers.for_each_dao(function(kong_config)
         local err
         api_fixture, err = apis:insert {
           name = "to-delete",
-          request_host = "to-delete.com",
-          request_path = "/to-delete",
+          hosts = { "to-delete.com" },
+          uris = { "/to-delete" },
           upstream_url = "https://mockbin.com"
         }
         assert.falsy(err)

@@ -24,5 +24,14 @@ return {
     down =  [[
       DROP TABLE basicauth_credentials;
     ]]
+  },
+  {
+    name = "2017-01-25-180400_unique_username",
+    up = [[
+      ALTER TABLE basicauth_credentials ADD CONSTRAINT basicauth_credentials_username_key UNIQUE(username);
+    ]],
+    down = [[
+      ALTER TABLE basicauth_credentials DROP CONSTRAINT basicauth_credentials_username_key;
+    ]]
   }
 }

@@ -1,4 +1,3 @@
-local dnsmasq_signals = require "kong.cmd.utils.dnsmasq_signals"
 local nginx_signals = require "kong.cmd.utils.nginx_signals"
 local serf_signals = require "kong.cmd.utils.serf_signals"
 local conf_loader = require "kong.conf_loader"
@@ -18,7 +17,7 @@ local function execute(args)
          "no such prefix: "..default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_conf))
+  local conf = assert(conf_loader(default_conf.kong_env))
 
   -- try graceful shutdown (QUIT)
   assert(nginx_signals.quit(conf))
@@ -37,11 +36,8 @@ local function execute(args)
     assert(nginx_signals.stop(conf))
   end
 
-  assert(serf_signals.stop(conf, DAOFactory(conf)))
-
-  if conf.dnsmasq then
-    assert(dnsmasq_signals.stop(conf))
-  end
+  local dao = assert(DAOFactory.new(conf))
+  assert(serf_signals.stop(conf, dao))
 
   log("Kong stopped (gracefully)")
 end

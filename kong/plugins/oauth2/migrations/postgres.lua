@@ -111,6 +111,7 @@ return {
           return err
         end
       end
+      schema.fields.redirect_uri.type = "array"
     end,
     down = function(_,_,factory)
       local apps, err = factory.oauth2_credentials:find_all()
@@ -124,6 +125,30 @@ return {
         if err then
           return err
         end
+      end
+    end
+  },
+  {
+    name = "2016-09-19-oauth2_api_id",
+    up = [[
+      ALTER TABLE oauth2_authorization_codes ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+      ALTER TABLE oauth2_tokens ADD COLUMN api_id uuid REFERENCES apis (id) ON DELETE CASCADE;
+    ]],
+    down = [[
+      ALTER TABLE oauth2_authorization_codes DROP COLUMN api_id;
+      ALTER TABLE oauth2_tokens DROP COLUMN api_id;
+    ]]
+  },
+  {
+    name = "2016-12-15-set_global_credentials",
+    up = function(_, _, dao)
+      local rows, err = dao.plugins:find_all({name = "oauth2"})
+      if err then return err end
+      for _, row in ipairs(rows) do
+        row.config.global_credentials = true
+
+        local _, err = dao.plugins:update(row, row)
+        if err then return err end
       end
     end
   }

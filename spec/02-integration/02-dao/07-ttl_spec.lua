@@ -1,11 +1,12 @@
 local helpers = require "spec.02-integration.02-dao.helpers"
+local spec_helpers = require "spec.helpers"
 local Factory = require "kong.dao.factory"
 
 helpers.for_each_dao(function(kong_config)
   describe("TTL with #"..kong_config.database, function()
     local factory
     setup(function()
-      factory = Factory(kong_config)
+      factory = assert(Factory.new(kong_config))
       assert(factory:run_migrations())
 
       factory:truncate_tables()
@@ -17,7 +18,7 @@ helpers.for_each_dao(function(kong_config)
     it("on insert", function()
       local api, err = factory.apis:insert({
         name = "mockbin",
-        request_host = "mockbin.com",
+        hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }, {ttl = 1})
       assert.falsy(err)
@@ -28,15 +29,17 @@ helpers.for_each_dao(function(kong_config)
 
       ngx.sleep(1)
 
-      row, err = factory.apis:find {id = api.id}
-      assert.falsy(err)
-      assert.falsy(row)
+      spec_helpers.wait_until(function()
+        row, err = factory.apis:find {id = api.id}
+        assert.falsy(err)
+        return row == nil
+      end, 1)
     end)
 
     it("on update", function()
       local api, err = factory.apis:insert({
         name = "mockbin",
-        request_host = "mockbin.com",
+        hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
       }, {ttl = 1})
       assert.falsy(err)
@@ -56,26 +59,51 @@ helpers.for_each_dao(function(kong_config)
 
       ngx.sleep(1)
 
-      row, err = factory.apis:find {id = api.id}
-      assert.falsy(err)
-      assert.falsy(row)
+      spec_helpers.wait_until(function()
+        row, err = factory.apis:find {id = api.id}
+        assert.falsy(err)
+        return row == nil
+      end, 1)
     end)
 
     if kong_config.database == "postgres" then
+      it("retrieves proper entity with no TTL properties attached", function()
+        local _, err = factory.apis:insert({
+          name = "mockbin",
+          hosts = { "mockbin.com" },
+          upstream_url = "http://mockbin.com"
+        }, {ttl = 5})
+
+        assert.falsy(err)
+        local rows, err = factory.apis:find_all()
+        assert.falsy(err)
+        assert.is_table(rows)
+        assert.equal(1, #rows)
+
+        -- Check that no TTL stuff is in the returned value
+        assert.is_nil(rows[1].primary_key_value)
+        assert.is_nil(rows[1].primary_uuid_value)
+        assert.is_nil(rows[1].table_name)
+        assert.is_nil(rows[1].primary_key_name)
+        assert.is_nil(rows[1].expire_at)
+      end)
+      
       it("clears old entities", function()
-        local DB = require "kong.dao.postgres_db"
-        local _db = DB(kong_config)
+        local DB = require "kong.dao.db.postgres"
+        local _db = DB.new(kong_config)
 
         for i = 1, 4 do
           local _, err = factory.apis:insert({
-            request_host = "mockbin"..i..".com",
+            name = "api-" .. i,
+            hosts = { "mockbin"..i..".com" },
             upstream_url = "http://mockbin.com"
           }, {ttl = 1})
           assert.falsy(err)
         end
 
         local _, err = factory.apis:insert({
-          request_host = "mockbin-longttl.com",
+          name = "long-ttl",
+          hosts = { "mockbin-longttl.com" },
           upstream_url = "http://mockbin.com"
         }, {ttl = 3})
         assert.falsy(err)
@@ -94,13 +122,15 @@ helpers.for_each_dao(function(kong_config)
         assert.falsy(err)
         assert.truthy(ok)
 
-        res, err = _db:query("SELECT COUNT(*) FROM apis")
-        assert.falsy(err)
-        assert.equal(1, res[1].count)
+        spec_helpers.wait_until(function()
+          local res_apis, err = _db:query("SELECT COUNT(*) FROM apis")
+          assert.falsy(err)
 
-        res, err = _db:query("SELECT COUNT(*) FROM ttls")
-        assert.falsy(err)
-        assert.equal(1, res[1].count)
+          local res_ttls, err = _db:query("SELECT COUNT(*) FROM ttls")
+          assert.falsy(err)
+
+          return res_apis[1].count == 1 and res_ttls[1].count == 1
+        end, 1)
       end)
     end
   end)

@@ -77,6 +77,34 @@ describe("Plugin: basic-auth (API)", function()
           local body = assert.res_status(400, res)
           assert.equal([[{"username":"username is required"}]], body)
         end)
+        it("cannot create two identical usernames", function()
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers/bob/basic-auth",
+            body = {
+              username = "bob",
+              password = "kong"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+
+          assert.res_status(201, res)
+
+          local res = assert(admin_client:send {
+            method = "POST",
+            path = "/consumers/bob/basic-auth",
+            body = {
+              username = "bob",
+              password = "kong"
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            }
+          })
+          assert.res_status(409, res)
+        end)
       end)
     end)
 
