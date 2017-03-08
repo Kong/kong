@@ -10,8 +10,6 @@ local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
 
-local ipv4_port_pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+):(%d+)$"
-
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
   "/etc/kong.conf"
@@ -30,7 +28,7 @@ local PREFIX_PATHS = {
   nginx_conf = {"nginx.conf"},
   nginx_kong_conf = {"nginx-kong.conf"}
   ;
-  kong_conf = {"kong.conf"}
+  kong_env = {".kong_env"}
   ;
   ssl_cert_default = {"ssl", "kong-default.crt"},
   ssl_cert_key_default = {"ssl", "kong-default.key"},
@@ -66,11 +64,13 @@ local CONF_INFERENCES = {
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
+  pg_password = {typ = "string"},
   pg_ssl = {typ = "boolean"},
   pg_ssl_verify = {typ = "boolean"},
 
   cassandra_contact_points = {typ = "array"},
   cassandra_port = {typ = "number"},
+  cassandra_password = {typ = "string"},
   cassandra_timeout = {typ = "number"},
   cassandra_ssl = {typ = "boolean"},
   cassandra_ssl_verify = {typ = "boolean"},
@@ -99,6 +99,7 @@ local CONF_INFERENCES = {
 
   lua_code_cache = {typ = "ngx_boolean"},
   lua_ssl_verify_depth = {typ = "number"},
+  lua_socket_pool_size = {typ = "number"},
 }
 
 -- List of settings whose values must not be printed when
@@ -218,13 +219,16 @@ local function check_and_infer(conf)
     end
   end
 
-  if not conf.cluster_listen:match(ipv4_port_pattern) then
+  local ip, port = utils.normalize_ipv4(conf.cluster_listen)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
   end
-  if not conf.cluster_listen_rpc:match(ipv4_port_pattern) then
+  ip, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
+  if not (ip and port) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  if conf.cluster_advertise and not conf.cluster_advertise:match(ipv4_port_pattern) then
+  ip, port = utils.normalize_ipv4(conf.cluster_advertise or "")
+  if conf.cluster_advertise and not (ip and port) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then

@@ -71,7 +71,7 @@ function _M.new(kong_config)
     cluster_options.lb_policy = policy.new()
   elseif kong_config.cassandra_lb_policy == "DCAwareRoundRobin" then
     local policy = require("resty.cassandra.policies.lb.dc_rr")
-    cluster_options.lb_policy = policy.new(kong_config.cassandra_local_cluster)
+    cluster_options.lb_policy = policy.new(kong_config.cassandra_local_datacenter)
   end
 
   local cluster, err = Cluster.new(cluster_options)
@@ -159,12 +159,58 @@ end
 local function deserialize_rows(rows, schema)
   for i, row in ipairs(rows) do
     for col, value in pairs(row) do
-      local t = schema.fields[col].type
-      if t == "table" or t == "array" then
-        rows[i][col] = cjson.decode(value)
+      if schema.fields[col] then
+        local t = schema.fields[col].type
+        if t == "table" or t == "array" then
+          rows[i][col] = cjson.decode(value)
+        end
       end
     end
   end
+end
+
+local coordinator
+
+function _M:first_coordinator()
+  local peer, err = self.cluster:first_coordinator()
+  if not peer then
+    return nil, err
+  end
+
+  coordinator = peer
+
+  return true
+end
+
+function _M:coordinator_change_keyspace(keyspace)
+  if not coordinator then
+    return nil, "no coordinator"
+  end
+
+  return coordinator:change_keyspace(keyspace)
+end
+
+function _M:close_coordinator()
+  if not coordinator then
+    return nil, "no coordinator"
+  end
+
+  local ok, err = coordinator:close()
+  if not ok then
+    return nil, err
+  end
+
+  coordinator = nil
+
+  return ok
+end
+
+function _M:wait_for_schema_consensus()
+  if not coordinator then
+    return nil, "no coordinator"
+  end
+
+  return self.cluster:wait_schema_consensus(coordinator)
 end
 
 function _M:query(query, args, options, schema, no_keyspace)
@@ -172,6 +218,13 @@ function _M:query(query, args, options, schema, no_keyspace)
   local coordinator_opts = {}
   if no_keyspace then
     coordinator_opts.no_keyspace = true
+  end
+
+  if coordinator then
+    local res, err = coordinator:execute(query, args, coordinator_opts)
+    if not res then return nil, Errors.db(err) end
+
+    return res
   end
 
   local res, err = self.cluster:execute(query, args, opts, coordinator_opts)
@@ -494,7 +547,10 @@ function _M:queries(queries, no_keyspace)
   for _, query in ipairs(utils.split(queries, ";")) do
     query = utils.strip(query)
     if query ~= "" then
-      local res, err = self:query(query, nil, nil, nil, no_keyspace)
+      local res, err = self:query(query, nil, {
+        prepared = false,
+        --consistency = cassandra.consistencies.all,
+      }, nil, no_keyspace)
       if not res then return err end
     end
   end
@@ -540,19 +596,34 @@ function _M:current_migrations()
   -- Check if keyspace exists
   local rows, err = self:query(q_keyspace_exists, {
     self.cluster_options.keyspace
-  }, {prepared = false}, nil, true)
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  }, nil, true)
   if not rows then       return nil, err
   elseif #rows == 0 then return {} end
+
+  if coordinator then
+    local keyspace = self.cluster_options.keyspace
+    local ok, err = self:coordinator_change_keyspace(keyspace)
+    if not ok then
+      return nil, err
+    end
+  end
 
   -- Check if schema_migrations table exists
   rows, err = self:query(q_migrations_table_exists, {
     self.cluster_options.keyspace,
     "schema_migrations"
-  }, {prepared = false})
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  })
   if not rows then return nil, err
   elseif rows[1] and rows[1].count > 0 then
     return self:query("SELECT * FROM schema_migrations", nil, {
-      prepared = false
+      prepared = false,
+      --consistency = cassandra.consistencies.all,
     })
   else return {} end
 end
@@ -562,7 +633,13 @@ function _M:record_migration(id, name)
     UPDATE schema_migrations
     SET migrations = migrations + ?
     WHERE id = ?
-  ]], {cassandra.list({name}), id})
+  ]], {
+    cassandra.list({ name }),
+    id
+  }, {
+    prepared = false,
+    --consistency = cassandra.consistencies.all,
+  })
   if not res then return nil, err end
   return true
 end

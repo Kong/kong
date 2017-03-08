@@ -30,6 +30,7 @@ real_ip_recursive on;
 lua_package_path '${{LUA_PACKAGE_PATH}};;';
 lua_package_cpath '${{LUA_PACKAGE_CPATH}};;';
 lua_code_cache ${{LUA_CODE_CACHE}};
+lua_socket_pool_size ${{LUA_SOCKET_POOL_SIZE}};
 lua_max_running_timers 4096;
 lua_max_pending_timers 16384;
 lua_shared_dict kong 4m;
@@ -85,7 +86,7 @@ server {
     listen ${{PROXY_LISTEN_SSL}} ssl;
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_protocols TLSv1.1 TLSv1.2;
     ssl_certificate_by_lua_block {
         kong.ssl_certificate()
     }
@@ -94,7 +95,6 @@ server {
     location / {
         set $upstream_host nil;
         set $upstream_scheme nil;
-        set $upstream_connection nil;
 
         access_by_lua_block {
             kong.access()
@@ -107,6 +107,7 @@ server {
         proxy_set_header Host $upstream_host;
         proxy_set_header Upgrade $upstream_upgrade;
         proxy_set_header Connection $upstream_connection;
+
         proxy_pass_header Server;
         proxy_pass $upstream_scheme://kong_upstream;
 
@@ -151,6 +152,7 @@ server {
         default_type application/json;
         content_by_lua_block {
             ngx.header['Access-Control-Allow-Origin'] = '*'
+            ngx.header['Access-Control-Allow-Credentials'] = 'false'
             if ngx.req.get_method() == 'OPTIONS' then
                 ngx.header['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE'
                 ngx.header['Access-Control-Allow-Headers'] = 'Content-Type'

@@ -86,6 +86,13 @@ describe("Router", function()
       assert.same(use_case[1], api_t.api)
     end)
 
+    it("[host] ignores port", function()
+      -- host
+      local api_t = router.select("GET", "/", { ["host"] = "domain-1.org:123" })
+      assert.truthy(api_t)
+      assert.same(use_case[1], api_t.api)
+    end)
+
     it("[uri]", function()
       -- uri
       local api_t = router.select("GET", "/my-api", {})
@@ -313,6 +320,52 @@ describe("Router", function()
           local api_t = router.select("GET", "/foobar/baz", {})
           assert.truthy(api_t)
           assert.same(use_case[1], api_t.api)
+        end)
+
+        it("HTTP method does not supersede non-plain URI", function()
+          local use_case = {
+            {
+              name = "api-1",
+              methods = { "GET" },
+            },
+            {
+              name = "api-2",
+              uris = { "/httpbin" },
+            }
+          }
+
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/httpbin", {})
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+
+          api_t = router.select("GET", "/httpbin/status/200", {})
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+        end)
+
+        it("HTTP method does not supersede wildcard domain", function()
+          local use_case = {
+            {
+              name = "api-1",
+              methods = { "GET" },
+            },
+            {
+              name = "api-2",
+              headers = {
+                ["Host"] = { "domain.*" }
+              }
+            }
+          }
+
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/", {})
+          assert.truthy(api_t)
+          assert.same(use_case[1], api_t.api)
+
+          api_t = router.select("GET", "/", { ["host"] = "domain.com" })
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
         end)
       end)
 
@@ -570,18 +623,35 @@ describe("Router", function()
       local router = assert(Router.new(use_case_apis))
 
       local _ngx = mock_ngx("GET", "/my-api", {})
-      local api, upstream_scheme, upstream_host, upstream_port = router.exec(_ngx)
+      local api, upstream = router.exec(_ngx)
       assert.same(use_case_apis[1], api)
-      assert.equal("http", upstream_scheme)
-      assert.equal("httpbin.org", upstream_host)
-      assert.equal(80, upstream_port)
+      assert.equal("http", upstream.scheme)
+      assert.equal("httpbin.org", upstream.host)
+      assert.equal(80, upstream.port)
 
       local _ngx = mock_ngx("GET", "/my-api-2", {})
-      api, upstream_scheme, upstream_host, upstream_port = router.exec(_ngx)
+      api, upstream = router.exec(_ngx)
       assert.same(use_case_apis[2], api)
-      assert.equal("https", upstream_scheme)
-      assert.equal("httpbin.org", upstream_host)
-      assert.equal(443, upstream_port)
+      assert.equal("https", upstream.scheme)
+      assert.equal("httpbin.org", upstream.host)
+      assert.equal(443, upstream.port)
+    end)
+
+    it("parses path component from upstream_url property", function()
+      local use_case_apis = {
+        {
+          name = "api-1",
+          uris = { "/my-api" },
+          upstream_url = "http://httpbin.org/get",
+        }
+      }
+
+      local router = assert(Router.new(use_case_apis))
+
+      local _ngx = mock_ngx("GET", "/my-api", {})
+      local api, upstream = router.exec(_ngx)
+      assert.same(use_case_apis[1], api)
+      assert.equal("/get", upstream.path)
     end)
 
     it("parses upstream_url port", function()
@@ -601,12 +671,12 @@ describe("Router", function()
       local router = assert(Router.new(use_case_apis))
 
       local _ngx = mock_ngx("GET", "/my-api", {})
-      local upstream_port = select(4, router.exec(_ngx))
-      assert.equal(8080, upstream_port)
+      local _, upstream = router.exec(_ngx)
+      assert.equal(8080, upstream.port)
 
       local _ngx = mock_ngx("GET", "/my-api-2", {})
-      upstream_port = select(4, router.exec(_ngx))
-      assert.equal(8443, upstream_port)
+      _, upstream = router.exec(_ngx)
+      assert.equal(8443, upstream.port)
     end)
 
     describe("grab_headers", function()
@@ -708,6 +778,108 @@ describe("Router", function()
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
         assert.equal("/my-api/hello/world", _ngx.var.uri)
+      end)
+
+      it("can find an API with stripped URI several times in a row", function()
+        local _ngx = mock_ngx("GET", "/my-api", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/", _ngx.var.uri)
+
+        _ngx = mock_ngx("GET", "/my-api", {})
+        local api2 = router.exec(_ngx)
+        assert.same(use_case_apis[1], api2)
+        assert.equal("/", _ngx.var.uri)
+      end)
+
+      it("can proxy an API with stripped URI with different URIs in a row", function()
+        local _ngx = mock_ngx("GET", "/my-api", {})
+
+        local api = router.exec(_ngx)
+        assert.same(use_case_apis[1], api)
+        assert.equal("/", _ngx.var.uri)
+
+        _ngx = mock_ngx("GET", "/this-api", {})
+        local api2 = router.exec(_ngx)
+        assert.same(use_case_apis[1], api2)
+        assert.equal("/", _ngx.var.uri)
+      end)
+    end)
+
+    describe("preserve Host header", function()
+      local router
+      local use_case_apis = {
+        -- use the request's Host header
+        {
+          name = "api-1",
+          upstream_url = "http://httpbin.org",
+          preserve_host = true,
+          headers = {
+            ["host"] = { "preserve.com" },
+          }
+        },
+        -- use the API's upstream_url's Host
+        {
+          name = "api-2",
+          upstream_url = "http://httpbin.org",
+          preserve_host = false,
+          headers = {
+            ["host"] = { "discard.com" },
+          }
+        },
+      }
+
+      setup(function()
+        router = assert(Router.new(use_case_apis))
+      end)
+
+      describe("when preserve_host is true", function()
+        local host = "preserve.com"
+
+        it("uses the request's Host header", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal(host, host_header)
+        end)
+
+        it("uses the request's Host header incl. port", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host .. ":123" })
+
+          local api, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal(host .. ":123", host_header)
+        end)
+
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, upstream = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal("httpbin.org", upstream.host)
+        end)
+      end)
+
+      describe("when preserve_host is false", function()
+        local host = "discard.com"
+
+        it("does not change the target upstream", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, upstream = router.exec(_ngx)
+          assert.same(use_case_apis[2], api)
+          assert.equal("httpbin.org", upstream.host)
+        end)
+
+        it("does not set the host_header", function()
+          local _ngx = mock_ngx("GET", "/", { ["host"] = host })
+
+          local api, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[2], api)
+          assert.is_nil(host_header)
+        end)
       end)
     end)
   end)

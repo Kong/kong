@@ -237,7 +237,7 @@ end
 -- Main entry point when resolving
 --===========================================================
 
--- Resolves the target structure in-place (fields `ip` and `port`).
+-- Resolves the target structure in-place (fields `ip`, `port`, and `hostname`).
 --
 -- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool provides it.
@@ -249,6 +249,7 @@ local function execute(target)
     -- it's an ip address (v4 or v6), so nothing we can do...
     target.ip = target.host
     target.port = target.port or 80 -- TODO: remove this fallback value
+    target.hostname = target.host
     return true
   end
 
@@ -309,6 +310,7 @@ local function execute(target)
 
   target.ip = ip
   target.port = port
+  target.hostname = target.host
   return true
 end
 

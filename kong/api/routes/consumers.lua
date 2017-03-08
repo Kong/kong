@@ -17,6 +17,7 @@ return {
 
   ["/consumers/:username_or_id"] = {
     before = function(self, dao_factory, helpers)
+      self.params.username_or_id = ngx.unescape_uri(self.params.username_or_id)
       crud.find_consumer_by_username_or_id(self, dao_factory, helpers)
     end,
 

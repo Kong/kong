@@ -1,12 +1,13 @@
 local utils = require "kong.tools.utils"
 
 local POSSIBLE_TYPES = {
+  url = true,
   table = true,
   array = true,
   string = true,
   number = true,
   boolean = true,
-  url = true
+  timestamp = true,
 }
 
 local custom_types_validation = {
@@ -21,7 +22,10 @@ local custom_types_validation = {
   end,
   ["array"] = function(v)
     return utils.is_array(v)
-  end
+  end,
+  ["timestamp"] = function(v)
+    return v and v > 0
+  end,
 }
 
 local function validate_type(field_type, value)

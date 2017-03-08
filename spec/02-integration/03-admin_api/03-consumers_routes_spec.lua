@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
+local escape = require("socket.url").escape
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -19,12 +20,16 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  local consumer
+  local consumer, consumer2
   before_each(function()
     helpers.dao:truncate_tables()
     consumer = assert(helpers.dao.consumers:insert {
       username = "bob",
       custom_id = "1234"
+    })
+    consumer2 = assert(helpers.dao.consumers:insert {
+      username = "bob pop",  -- containing space for urlencoded test
+      custom_id = "abcd"
     })
   end)
 
@@ -62,7 +67,7 @@ describe("Admin API", function()
                        ..[[a 'username' must be specified"}]], body)
           end
         end)
-        it_content_types("returns 409 on conflict", function(content_type)
+        it_content_types("returns 409 on conflicting username", function(content_type)
           return function()
             local res = assert(client:send {
               method = "POST",
@@ -74,6 +79,21 @@ describe("Admin API", function()
             })
             local body = assert.res_status(409, res)
             assert.equal([[{"username":"already exists with value 'bob'"}]], body)
+          end
+        end)
+        it_content_types("returns 409 on conflicting custom_id", function(content_type)
+          return function()
+            local res = assert(client:send {
+              method = "POST",
+              path = "/consumers",
+              body = {
+                username = "tom",
+                custom_id = consumer.custom_id,
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            local body = assert.res_status(409, res)
+            assert.equal([[{"custom_id":"already exists with value '1234'"}]], body)
           end
         end)
       end)
@@ -192,7 +212,7 @@ describe("Admin API", function()
           methd = "GET",
           path = "/consumers"
         })
-        local res = assert.res_status(200, res)
+        res = assert.res_status(200, res)
         local json = cjson.decode(res)
         assert.equal(10, #json.data)
         assert.equal(10, json.total)
@@ -269,6 +289,15 @@ describe("Admin API", function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.same(consumer, json)
+        end)
+        it("retrieves by urlencoded username", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/consumers/"..escape(consumer2.username)
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(consumer2, json)
         end)
         it("returns 404 if not found", function()
           local res = assert(client:send {

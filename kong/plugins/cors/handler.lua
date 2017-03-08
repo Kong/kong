@@ -17,7 +17,9 @@ local function configure_origin(ngx, conf)
 end
 
 local function configure_credentials(ngx, conf)
-  if (conf.credentials) then
+  if conf.origin == nil or conf.origin == "*" then
+    ngx.header["Access-Control-Allow-Credentials"] = "false"
+  elseif conf.credentials then
     ngx.header["Access-Control-Allow-Credentials"] = "true"
   end
 end

@@ -105,14 +105,14 @@
                                  # to the SSL certificate for the
                                  # `admin_listen_ssl` address.
 
-#admin_ssl_cert_key =            # If `admin_ssl` is enabled, the absolute path 
+#admin_ssl_cert_key =            # If `admin_ssl` is enabled, the absolute path
                                  # to the SSL key for the `admin_listen_ssl`
                                  # address.
 
-#upstream_keepalive = 60         # Sets the maximum number of idle keepalive 
-                                 # connections to upstream servers that are 
-                                 # preserved in the cache of each worker 
-                                 # process. When this number is exceeded, the 
+#upstream_keepalive = 60         # Sets the maximum number of idle keepalive
+                                 # connections to upstream servers that are
+                                 # preserved in the cache of each worker
+                                 # process. When this number is exceeded, the
                                  # least recently used connections are closed.
 
 #------------------------------------------------------------------------------
@@ -208,7 +208,7 @@
 # CLUSTERING
 #------------------------------------------------------------------------------
 
-# In addition to pointing to the same database, each Kong node must be 
+# In addition to pointing to the same database, each Kong node must be
 # reachable by the other nodes in the cluster.
 #
 # Kong's clustering works on the IP layer (hostnames are not supported, only
@@ -247,6 +247,14 @@
 #cluster_encrypt_key =           # base64-encoded 16-bytes key to encrypt
                                  # cluster traffic with.
 
+#cluster_keyring_file =          # Specifies a file to load keyring data from.
+                                 # Kong is able to keep encryption keys in sync
+                                 # and perform key rotations. During a key
+                                 # rotation, there may be some period of time
+                                 # in which Kong is required to maintain more
+                                 # than one encryption key until all members
+                                 # have received the new key.
+
 #cluster_ttl_on_failure = 3600   # Time to live (in seconds) of a node in the
                                  # cluster when it stops sending healthcheck
                                  # pings, possibly caused by a node or network
@@ -268,13 +276,16 @@
 # DNS RESOLVER
 #------------------------------------------------------------------------------
 
-#dns_resolver =                  # Comma separated list of name servers, each
+#dns_resolver =                  # Comma separated list of nameservers, each
                                  # entry in `ipv4[:port]` format to be used by
                                  # Kong. If not specified the nameservers in
                                  # the local `resolv.conf` file will be used.
                                  # Port defaults to 53 if omitted.
 
-#dns_hostsfile = /etc/hosts      # The `hosts` file to use.
+#dns_hostsfile = /etc/hosts      # The hosts file to use. This file is read
+                                 # once and its content is static in memory.
+                                 # To read the file again after modifying it,
+                                 # Kong must be reloaded.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS
@@ -314,3 +325,7 @@
 
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).
+
+#lua_socket_pool_size = 30       # Specifies the size limit for every cosocket
+                                 # connection pool associated with every remote
+                                 # server

@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local dao_helpers = require "spec.02-integration.02-dao.helpers"
 
 local slots_default, slots_max = 100, 2^16
 
@@ -30,18 +31,27 @@ local function validate_order(list, size)
   assert(max == size, "expected array, but got list with holes")
 end
 
+dao_helpers.for_each_dao(function(kong_config)
+
 describe("Admin API", function()
   local client
+  local config_db
+
   setup(function()
+    config_db = helpers.test_conf.database
+    helpers.test_conf.database = kong_config.database
+
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())
   end)
+
   teardown(function()
+    helpers.test_conf.database = config_db
     if client then client:close() end
     helpers.stop_kong()
   end)
 
-  describe("/upstreams", function()
+  describe("/upstreams " .. kong_config.database, function()
     describe("POST", function()
       before_each(function()
         helpers.dao:truncate_tables()
@@ -455,19 +465,69 @@ if content_type == "application/x-www-form-urlencoded" then return end
       end)
     end)
 
+    describe("DELETE", function()
+      it("by id", function(content_type)
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my-upstream",
+              slots = 100,
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+
+          res = assert(client:send {
+            method = "DELETE",
+            path = "/upstreams/" .. json.id,
+          })
+
+          assert.response(res).has.status(204)
+      end)
+
+      it("by name", function(content_type)
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my-upstream",
+              slots = 100,
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
+
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
+
+          res = assert(client:send {
+            method = "DELETE",
+            path = "/upstreams/" .. json.name,
+          })
+
+          assert.response(res).has.status(204)
+      end)
+    end)
+
     it("returns 405 on invalid method", function()
-      local methods = {"DELETE"}
+      local methods = { "DELETE" }
+
       for i = 1, #methods do
         local res = assert(client:send {
           method = methods[i],
-          path = "/apis",
+          path = "/upstreams",
           body = {}, -- tmp: body to allow POST/PUT to work
-          headers = {["Content-Type"] = "application/json"}
+          headers = { ["Content-Type"] = "application/json" }
         })
+
         local body = assert.response(res).has.status(405)
         assert.equal([[{"message":"Method not allowed"}]], body)
       end
     end)
 
   end)
+end)
+
 end)

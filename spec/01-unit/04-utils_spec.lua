@@ -350,11 +350,13 @@ describe("Utils", function()
       it("checks valid IPv4 address types", function()
         assert.are.same("ipv4", utils.hostname_type("123.123.123.123"))
         assert.are.same("ipv4", utils.hostname_type("1.2.3.4"))
+        assert.are.same("ipv4", utils.hostname_type("1.2.3.4:80"))
       end)
       it("checks valid IPv6 address types", function()
         assert.are.same("ipv6", utils.hostname_type("::1"))
         assert.are.same("ipv6", utils.hostname_type("2345::6789"))
         assert.are.same("ipv6", utils.hostname_type("0001:0001:0001:0001:0001:0001:0001:0001"))
+        assert.are.same("ipv6", utils.hostname_type("[2345::6789]:80"))
       end)
     end)
     describe("parsing", function()
@@ -371,6 +373,7 @@ describe("Utils", function()
         assert.is_nil(utils.normalize_ipv4("123.123.123.123.123:80"))
         assert.is_nil(utils.normalize_ipv4("localhost:80"))
         assert.is_nil(utils.normalize_ipv4("[::1]:80"))
+        assert.is_nil(utils.normalize_ipv4("123.123.123.123:99999"))
       end)
       it("normalizes IPv6 address types", function()
         assert.are.same({"0000:0000:0000:0000:0000:0000:0000:0001"}, {utils.normalize_ipv6("::1")})
@@ -385,6 +388,7 @@ describe("Utils", function()
         assert.is_nil(utils.normalize_ipv6("[::x]:80"))
         assert.is_nil(utils.normalize_ipv6("[::1]:80a"))
         assert.is_nil(utils.normalize_ipv6("1"))
+        assert.is_nil(utils.normalize_ipv6("[::1]:99999"))
       end)
       it("validates hostnames", function()
         local valids = {"hello.com", "hello.fr", "test.hello.com", "1991.io", "hello.COM",
@@ -399,7 +403,8 @@ describe("Utils", function()
         local invalids = {"/mockbin", ".mockbin", "mockbin.", "mock;bin",
                           "mockbin.com/org",
                           "mockbin-.org", "mockbin.org-",
-                          "hello..mockbin.com", "hello-.mockbin.com"}
+                          "hello..mockbin.com", "hello-.mockbin.com",
+                         }
         for _, name in ipairs(valids) do
           assert.are.same(name, (utils.check_hostname(name)))
         end
@@ -408,6 +413,7 @@ describe("Utils", function()
         end
         for _, name in ipairs(valids) do
           assert.is_nil((utils.check_hostname(name..":xx")))
+          assert.is_nil((utils.check_hostname(name..":99999")))
         end
         for _, name in ipairs(invalids) do
           assert.is_nil((utils.check_hostname(name)))
@@ -464,5 +470,20 @@ describe("Utils", function()
       end)
     end)
   end)
-  
+
+  it("validate_header_name() validates header names", function()
+    local header_chars = [[-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+
+    for i = 1, 255 do
+      local c = string.char(i)
+
+      if string.find(header_chars, c, nil, true) then
+        assert(utils.validate_header_name(c) == c,
+          "ascii character '" .. c .. "' (" .. i .. ") should have been allowed")
+      else
+        assert(utils.validate_header_name(c) == nil,
+          "ascii character " .. i .. " should not have been allowed")
+      end
+    end
+  end)
 end)

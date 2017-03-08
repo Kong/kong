@@ -79,33 +79,36 @@ return {
 
       ctx.KONG_ACCESS_START = get_now()
 
-      local api, upstream_scheme, upstream_host, upstream_port = router.exec(ngx)
+      local api, upstream, host_header = router.exec(ngx)
       if not api then
         return responses.send_HTTP_NOT_FOUND("no API found with those values")
       end
 
       if api.https_only and not utils.check_https(api.http_if_terminated) then
         ngx.header["connection"] = "Upgrade"
-        ngx.header["upgrade"]    = "TLS/1.0, HTTP/1.1"
+        ngx.header["upgrade"]    = "TLS/1.2, HTTP/1.1"
 
         return responses.send(426, "Please use HTTPS protocol")
       end
 
       local balancer_address = {
-        type                 = utils.hostname_type(upstream_host),  -- the type of `upstream.host`; ipv4, ipv6 or name
-        host                 = upstream_host,  -- supposed target host
-        port                 = upstream_port,  -- final target port
+        type                 = utils.hostname_type(upstream.host),  -- the type of `host`; ipv4, ipv6 or name
+        host                 = upstream.host,  -- target host per `upstream_url`
+        port                 = upstream.port,  -- final target port
         tries                = 0,              -- retry counter
         retries              = api.retries,    -- number of retries for the balancer
-        --  ip               = nil,            -- final target IP address
+        connect_timeout      = api.upstream_connect_timeout or 60000,
+        send_timeout         = api.upstream_send_timeout or 60000,
+        read_timeout         = api.upstream_read_timeout or 60000,
+        -- ip                = nil,            -- final target IP address
         -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
+        -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
 
-      var.upstream_scheme = upstream_scheme
-      var.upstream_host = upstream_host
+      var.upstream_scheme = upstream.scheme
 
-      ctx.api = api
+      ctx.api              = api
       ctx.balancer_address = balancer_address
 
       local ok, err = balancer_execute(balancer_address)
@@ -115,19 +118,17 @@ return {
           "' with: "..tostring(err))
       end
 
-      if balancer_address.hostname and not ngx.ctx.api.preserve_host then
-        ngx.var.upstream_host = balancer_address.hostname
+      -- if set `host_header` is the original header to be preserved
+      var.upstream_host = host_header or 
+          balancer_address.hostname..":"..balancer_address.port
 
-      else
-        ngx.var.upstream_host = upstream_host
-      end
     end,
-    -- Only executed if the `resolver` module found an API and allows nginx to proxy it.
+    -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
       local ctx = ngx.ctx
-
       local now = get_now()
-      ctx.KONG_ACCESS_TIME = now - ngx.ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
+
+      ctx.KONG_ACCESS_TIME = now - ctx.KONG_ACCESS_START -- time spent in Kong's access_by_lua
       ctx.KONG_ACCESS_ENDED_AT = now
       -- time spent in Kong before sending the reqeust to upstream
       ctx.KONG_PROXY_LATENCY = now - ngx.req.start_time() * 1000 -- ngx.req.start_time() is kept in seconds with millisecond resolution.

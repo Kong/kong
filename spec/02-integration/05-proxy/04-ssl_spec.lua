@@ -14,10 +14,16 @@ end
 
 
 describe("SSL", function()
-  local admin_client, client
+  local admin_client, client, https_client
 
   setup(function()
     helpers.dao:truncate_tables()
+
+    assert(helpers.dao.apis:insert {
+      name = "global-cert",
+      hosts = { "global.com" },
+      upstream_url = "http://httpbin.org"
+    })
 
     assert(helpers.dao.apis:insert {
       name = "api-1",
@@ -39,6 +45,7 @@ describe("SSL", function()
 
     admin_client = helpers.admin_client()
     client = helpers.proxy_client()
+    https_client = helpers.proxy_ssl_client()
 
     assert(admin_client:send {
       method = "POST",
@@ -54,6 +61,19 @@ describe("SSL", function()
 
   teardown(function()
     helpers.stop_kong()
+  end)
+
+  describe("global SSL", function()
+    it("fallbacks on the default proxy SSL certificate when SNI is not provided by client", function()
+      local res = assert(https_client:send {
+        method = "GET",
+        path = "/status/200",
+        headers = {
+          Host = "global.com"
+        }
+      })
+      assert.res_status(200, res)
+    end)
   end)
 
   describe("handshake", function()
@@ -85,7 +105,7 @@ describe("SSL", function()
       local body = assert.res_status(426, res)
       assert.equal([[{"message":"Please use HTTPS protocol"}]], body)
       assert.contains("Upgrade", res.headers.connection)
-      assert.equal("TLS/1.0, HTTP/1.1", res.headers.upgrade)
+      assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
     end)
 
     it("blocks request with HTTPS in x-forwarded-proto but no http_if_already_terminated", function()

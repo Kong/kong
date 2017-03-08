@@ -10,7 +10,7 @@ describe("Plugin: request-size-limiting (access)", function()
     local api = assert(helpers.dao.apis:insert {
       name = "limit.com",
       hosts = { "limit.com" },
-      upstream_url = "http://mockbin.com/"
+      upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
       name = "request-size-limiting",

@@ -2,7 +2,6 @@ local url = require "socket.url"
 local cjson = require "cjson.safe"
 local utils = require "kong.tools.utils"
 local cache = require "kong.tools.database_cache"
-local pl_stringx = require "pl.stringx"
 local Multipart = require "multipart"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
@@ -36,10 +35,6 @@ local GRANT_REFRESH_TOKEN = "refresh_token"
 local GRANT_PASSWORD = "password"
 local ERROR = "error"
 local AUTHENTICATED_USERID = "authenticated_userid"
-
-
-local AUTHORIZE_URL = "^%s/oauth2/authorize(/?(\\?[^\\s]*)?)$"
-local TOKEN_URL = "^%s/oauth2/token(/?(\\?[^\\s]*)?)$"
 
 local function generate_token(conf, api, credential, authenticated_userid, scope, state, expiration, disable_refresh)
   local token_expiration = expiration or conf.token_expiration
@@ -449,12 +444,31 @@ local function load_oauth2_credential_into_memory(credential_id)
   return result
 end
 
-local function load_consumer_into_memory(consumer_id)
-  local result, err = singletons.dao.consumers:find {id = consumer_id}
-  if err then
+local function load_consumer_into_memory(consumer_id, anonymous)
+  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  if not result then
+    if anonymous and not err then
+      err = 'anonymous consumer "'..consumer_id..'" not found'
+    end
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
   return result
+end
+  
+local function set_consumer(consumer, credential, token)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  if credential then
+    ngx_set_header("x-authenticated-scope", token.scope)
+    ngx_set_header("x-authenticated-userid", token.authenticated_userid)
+    ngx.ctx.authenticated_credential = credential
+    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+  else
+    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+  
 end
 
 local function do_authentication(conf)
@@ -488,37 +502,42 @@ local function do_authentication(conf)
   local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
     nil, load_consumer_into_memory, credential.consumer_id)
 
-  ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx_set_header("x-authenticated-scope", token.scope)
-  ngx_set_header("x-authenticated-userid", token.authenticated_userid)
-  ngx.ctx.authenticated_credential = credential
-  ngx.ctx.authenticated_consumer = consumer
+  set_consumer(consumer, credential, token)
 
   return true
 end
 
 function _M.execute(conf)
-  -- Check if the API has a request_path and if it's being invoked with the path resolver
-  local path_prefix = (ngx.ctx.api.request_path and pl_stringx.startswith(ngx.var.request_uri, ngx.ctx.api.request_path)) and ngx.ctx.api.request_path or ""
-  if pl_stringx.endswith(path_prefix, "/") then
-    path_prefix = path_prefix:sub(1, path_prefix:len() - 1)
-  end
-
   if ngx.req.get_method() == "POST" then
-    if ngx.re.match(ngx.var.request_uri, string.format(AUTHORIZE_URL, path_prefix)) then
-      authorize(conf)
-    elseif ngx.re.match(ngx.var.request_uri, string.format(TOKEN_URL, path_prefix)) then
+    local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
+    if err then
+      ngx.log(ngx.ERR, "could not search for token path segment: ", err)
+      return
+    end
+
+    if from then
       issue_token(conf)
+
+    else
+      from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/authorize]], "oj")
+      if err then
+        ngx.log(ngx.ERR, "could not search for authorize path segment: ", err)
+        return
+      end
+
+      if from then
+        authorize(conf)
+      end
     end
   end
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous then
-      ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    if conf.anonymous ~= "" then
+      -- get anonymous user
+      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+                       nil, load_consumer_into_memory, conf.anonymous, true)
+      set_consumer(consumer, nil, nil)
     else
       return responses.send(err.status, err.message, err.headers)
     end

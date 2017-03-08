@@ -1,5 +1,6 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
+local utils = require "kong.tools.utils"
 
 describe("#ci Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
@@ -7,6 +8,9 @@ describe("#ci Plugin: oauth2 (access)", function()
   setup(function()
     local consumer = assert(helpers.dao.consumers:insert {
       username = "bob"
+    })
+    local anonymous_user = assert(helpers.dao.consumers:insert {
+      username = "no-body"
     })
     client1 = assert(helpers.dao.oauth2_credentials:insert {
       client_id = "clientid123",
@@ -51,12 +55,29 @@ describe("#ci Plugin: oauth2 (access)", function()
     local api2 = assert(helpers.dao.apis:insert {
       name = "api-2",
       hosts = { "mockbin-path.com" },
-      uris = { "/somepath/" },
       upstream_url = "http://mockbin.com"
     })
     assert(helpers.dao.plugins:insert {
       name = "oauth2",
       api_id = api2.id,
+      config = {
+        scopes = { "email", "profile" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true
+      }
+    })
+
+    local api2bis = assert(helpers.dao.apis:insert {
+      name = "api-2-bis",
+      uris = { "/somepath" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api2bis.id,
       config = {
         scopes = { "email", "profile" },
         enable_authorization_code = true,
@@ -156,7 +177,7 @@ describe("#ci Plugin: oauth2 (access)", function()
         provision_key = "provision123",
         token_expiration = 5,
         enable_implicit_grant = true,
-        anonymous = true,
+        anonymous = anonymous_user.id,
         global_credentials = false
       }
     })
@@ -199,6 +220,26 @@ describe("#ci Plugin: oauth2 (access)", function()
       }
     })
 
+    local api10 = assert(helpers.dao.apis:insert {
+      name = "oauth2_10.com",
+      hosts = { "oauth2_10.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api10.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = true,
+        anonymous = utils.uuid(), -- a non existing consumer
+      }
+    })
+
     assert(helpers.start_kong())
     proxy_client = helpers.proxy_client()
     proxy_ssl_client = helpers.proxy_ssl_client()
@@ -212,8 +253,8 @@ describe("#ci Plugin: oauth2 (access)", function()
   end)
 
   local function provision_code(host)
-    local proxy_ssl_client = helpers.proxy_ssl_client()
-    local res = assert(proxy_ssl_client:send {
+    local request_client = helpers.proxy_ssl_client()
+    local res = assert(request_client:send {
       method = "POST",
       path = "/oauth2/authorize",
       body = {
@@ -229,8 +270,9 @@ describe("#ci Plugin: oauth2 (access)", function()
         ["Content-Type"] = "application/json"
       }
     })
-    local body = cjson.decode(assert.res_status(200, res))
-    proxy_ssl_client:close()
+    assert.response(res).has.status(200)
+    local body = assert.response(res).has.jsonbody()
+    request_client:close()
     if body.redirect_uri then
       local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
       assert.is_nil(err)
@@ -242,7 +284,8 @@ describe("#ci Plugin: oauth2 (access)", function()
 
   local function provision_token(host)
     local code = provision_code(host)
-    local res = assert(proxy_ssl_client:send {
+    local request_client = helpers.proxy_ssl_client()
+    local res = assert(request_client:send {
       method = "POST",
       path = "/oauth2/token",
       body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
@@ -251,8 +294,10 @@ describe("#ci Plugin: oauth2 (access)", function()
         ["Content-Type"] = "application/json"
       }
     })
-    local token = cjson.decode(assert.res_status(200, res))
+    assert.response(res).has.status(200)
+    local token = assert.response(res).has.jsonbody()
     assert.is_table(token)
+    request_client:close()
     return token
   end
 
@@ -552,7 +597,6 @@ describe("#ci Plugin: oauth2 (access)", function()
             response_type = "code"
           },
           headers = {
-            ["Host"] = "mockbin-path.com",
             ["Content-Type"] = "application/json"
           }
         })
@@ -1655,8 +1699,18 @@ describe("#ci Plugin: oauth2 (access)", function()
         }
       })
       local body = cjson.decode(assert.res_status(200, res))
-      assert.is_nil(body.headers["x-consumer-username"])
       assert.are.equal("true", body.headers["x-anonymous-consumer"])
+      assert.equal('no-body', body.headers["x-consumer-username"])
+    end)
+    it("errors when anonymous user doesn't exist", function()
+      local res = assert(proxy_ssl_client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "oauth2_10.com"
+        }
+      })
+      assert.response(res).has.status(500)
     end)
     describe("Global Credentials", function()
       it("does not access two different APIs that are not sharing global credentials", function()
