@@ -1,6 +1,6 @@
 ## [Unreleased][unreleased]
 
-## [0.10.0] - 2016/03/07
+## [0.10.0] - 2017/03/07
 
 Kong 0.10 is one of most significant releases to this day. It ships with
 exciting new features that have been havily requested for the last few months,
