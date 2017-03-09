@@ -1,5 +1,5 @@
 This document guides you through the process of upgrading Kong. First, check if
-a section named "Upgrade to Kong `x.x.x`" exists (`x.x.x`) being the version
+a section named "Upgrade to Kong `x.x.x`" exists, with `x.x.x` being the version
 you are planning to upgrade to. If such a section does not exist, the upgrade
 you want to perform does not have any particular instructions, and you can
 simply consult the [Suggested upgrade path](#suggested-upgrade-path).
@@ -9,19 +9,21 @@ simply consult the [Suggested upgrade path](#suggested-upgrade-path).
 Unless indicated otherwise in one of the upgrade paths of this document, it is
 possible to upgrade Kong **without downtime**:
 
-Considering that Kong is already running on your system, acquire the latest
+Assuming that Kong is already running on your system, acquire the latest
 version from any of the available [installation
-methods](https://getkong.org/install/) and proceed to installing it, overriding
-your previous installation. Once done, consider that this is a good time to
-also modify your configuration.
+methods](https://getkong.org/install/) and proceed to install it, overriding
+your previous installation. 
 
-Then, run any new migration to upgrade your database schema:
+If you are planning to make modifications to your configuration, this is a 
+good time to do so.
+
+Then, run migration to upgrade your database schema:
 
 ```shell
 $ kong migrations up [-c configuration_file]
 ```
 
-If the command is successful and no migration has been ran
+If the command is successful, and no migration ran
 (no output), then you only have to
 [reload](https://getkong.org/docs/latest/cli/#reload) Kong:
 
@@ -29,15 +31,15 @@ If the command is successful and no migration has been ran
 $ kong reload [-c configuration_file]
 ```
 
-**Reminder**: `kong reload` leverages the Nginx `reload` signal and seamlessly
-starts new workers taking over the old ones until they all have been
-terminated. In this way, Kong will serve new requests via the new
+**Reminder**: `kong reload` leverages the Nginx `reload` signal that seamlessly
+starts new workers, which take over from old workers before those old workers
+are terminated. In this way, Kong will serve new requests via the new
 configuration, without dropping existing in-flight connections.
 
 ## Upgrade to `0.10.x`
 
 Due to the breaking changes introduced in this version, we recommend that you
-careful test your cluster deployment.
+carefully test your cluster deployment.
 
 Kong 0.10 introduced the following breaking changes:
 
@@ -48,7 +50,7 @@ Kong 0.10 introduced the following breaking changes:
   capabilities of Kong. This means that Kong can now route incoming requests
   according to a combination of Host headers, URIs, and HTTP
   methods.
-- The `upstream_url` of API Objects does not accept trailing slashes anymore.
+- The `upstream_url` field of API Objects does not accept trailing slashes anymore.
 - Dynamic SSL certificates serving is now handled by the core, and **not**
   through the `ssl` plugin anymore. This version introduced the `/certificates`
   and `/snis` endpoints.  See the new [0.10 Proxy
@@ -59,23 +61,24 @@ Kong 0.10 introduced the following breaking changes:
   requires that you compiled OpenResty with the `--without-luajit-lua52` flag.
   Make sure to do so if you install OpenResty and Kong from source.
 - Dnsmasq is not a dependency anymore (However, be careful before removing it
-  if you configured it to be your DNS name server via Kong's `resolver`
-  property)
+  if you configured it to be your DNS name server via Kong's [`resolver`
+  property](https://getkong.org/docs/0.9.x/configuration/#dns-resolver-section))
 
 We recommend that you consult the full [0.10.0
 Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a full
 list of changes and new features, including load balancing capabilities,
 support for Cassandra 3.x, SRV records resolution, and much more.
 
-Here is how to ensure a smooth upgrade from a 0.9 cluster to 0.10:
+Here is how to ensure a smooth upgrade from a Kong `0.9.x` cluster to `0.10`:
 
-1. Make sure your 0.9 cluster is warm. Most of your entities should be cached
-   by the running Kong nodes already (APIs, Consumers, Plugins), because your
-   datastore will be incompatible with your 0.9 Kong nodes once migrated.
+1. Make sure your 0.9 cluster is warm because your
+   datastore will be incompatible with your 0.9 Kong nodes once migrated. 
+   Most of your entities should be cached
+   by the running Kong nodes already (APIs, Consumers, Plugins).
 2. Provision a 0.10 node and configure it as you wish (environment variables/
-   configuration file). Make sure to point your nodes to your current
+   configuration file). Make sure to point this new 0.10 node to your current
    datastore.
-3. Without starting the 0.10 node and, run the 0.10 migrations against your
+3. **Without starting the 0.10 node**, run the 0.10 migrations against your
    current datastore:
 
 ```
@@ -86,11 +89,11 @@ As usual, this step should be executed from a single node.
 
 4. You can now provision a fresh 0.10 cluster pointing to your migrated
    datastore and start your 0.10 nodes.
-5. Gradually switch your traffic from the 0.9 cluster to the new, 0.10 one.
+5. Gradually switch your traffic from the 0.9 cluster to the new 0.10 cluster.
    Remember, once your database is migrated, your 0.9 nodes will rely on
    their cache and not on the underlying database. Your traffic should switch
    to the new cluster as quickly as possible.
-6. Once your traffic is fully migrated over the 0.10 cluster, decommission
+6. Once your traffic is fully migrated to the 0.10 cluster, decommission
    your 0.9 cluster.
 
 ## Upgrade to `0.9.x`
