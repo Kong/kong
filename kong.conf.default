@@ -68,6 +68,11 @@
                                  # HTTPS requests to the admin API, if
                                  # `admin_ssl` is enabled.
 
+#nginx_user = nobody             # Defines user and group credentials used by
+                                 # worker processes. If group is omitted, a
+                                 # group whose name equals that of user is
+                                 # used. Ex: [user] [group].
+
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
