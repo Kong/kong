@@ -83,7 +83,7 @@ local function create_hash(request, hmac_params, headers)
 end
 
 local function is_digest_equal(digest_1, digest_2)
-  if #digest_1 ~= #digest_1 then
+  if digest_2 == nil or #digest_1 ~= #digest_2 then
     return false
   end
 
