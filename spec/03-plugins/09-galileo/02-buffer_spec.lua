@@ -1,10 +1,10 @@
 local Buffer
 
 local function reload_buffer()
-  package.loaded["spec.03-plugins.05-galileo.ngx"] = nil
+  package.loaded["spec.03-plugins.09-galileo.ngx"] = nil
   package.loaded["kong.plugins.galileo.buffer"] = nil
 
-  _G.ngx = require "spec.03-plugins.05-galileo.ngx"
+  _G.ngx = require "spec.03-plugins.09-galileo.ngx"
   Buffer = require "kong.plugins.galileo.buffer"
 end
 
