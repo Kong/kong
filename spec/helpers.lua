@@ -222,7 +222,7 @@ end
 -- @name proxy_ssl_client
 local function proxy_ssl_client(timeout)
   local client = http_client(conf.proxy_ip, conf.proxy_ssl_port, timeout)
-  client:ssl_handshake()
+  assert(client:ssl_handshake())
   return client
 end
 
@@ -871,7 +871,7 @@ return {
     dao:truncate_tables()
 
     local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-    local running_conf = conf_loader(default_conf.kong_conf)
+    local running_conf = conf_loader(default_conf.kong_env)
     if not running_conf then return end
 
     -- kill kong_tests.conf services

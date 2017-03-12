@@ -11,7 +11,7 @@ return {
       elseif strategy == "NetworkTopologyStrategy" then
         local dcs = {}
         for _, dc_conf in ipairs(kong_config.cassandra_data_centers) do
-          local dc_name, dc_repl = string.match(dc_conf, "(%w+):(%d+)")
+          local dc_name, dc_repl = string.match(dc_conf, "([^:]+):(%d+)")
           if dc_name and dc_repl then
             table.insert(dcs, string.format("'%s': %s", dc_name, dc_repl))
           else
@@ -34,6 +34,11 @@ return {
 
       local res, err = db:query(keyspace_str, nil, nil, nil, true)
       if not res then
+        return err
+      end
+
+      local ok, err = db:coordinator_change_keyspace(keyspace_name)
+      if not ok then
         return err
       end
 
@@ -167,10 +172,13 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        if not row.retries then  -- only if retries is not set already
-          -- we do not specify default values explicitly, as they will be
-          -- taken from the schema automatically by the dao.
-          local _, err = dao.apis:update(row, { id = row.id }, {full = true})
+        if not row.retries then
+
+          local _, err = dao.apis:update({
+            retries = 5
+          }, {
+            id = row.id
+          })
           if err then
             return err
           end
@@ -272,11 +280,28 @@ return {
       end
 
       for _, row in ipairs(rows) do
-        row.hosts = { row.request_host }
-        row.uris = { row.request_path }
-        row.strip_uri = row.strip_request_path
+        local hosts
+        local uris
 
-        local _, err = dao.apis:update(row, { id = row.id }, { full = true })
+        local upstream_url = row.upstream_url
+        while string.sub(upstream_url, #upstream_url) == "/" do
+          upstream_url = string.sub(upstream_url, 1, #upstream_url - 1)
+        end
+
+        if row.request_host then
+          hosts = { row.request_host }
+        end
+
+        if row.request_path then
+          uris = { row.request_path }
+        end
+
+        local _, err = dao.apis:update({
+          hosts = hosts,
+          uris = uris,
+          strip_uri = row.strip_request_path,
+          upstream_url = upstream_url,
+        }, { id = row.id })
         if err then
           return err
         end
@@ -291,14 +316,63 @@ return {
   },
   {
     name = "2016-11-11-151900_new_apis_router_3",
-    up = [[
-      DROP INDEX apis_request_host_idx;
-      DROP INDEX apis_request_path_idx;
+    up = function(db, kong_config)
+      local keyspace_name = kong_config.cassandra_keyspace
 
-      ALTER TABLE apis DROP request_host;
-      ALTER TABLE apis DROP request_path;
-      ALTER TABLE apis DROP strip_request_path;
-    ]],
+      if db.release_version < 3 then
+        local rows, err = db:query([[
+          SELECT *
+          FROM system.schema_columns
+          WHERE keyspace_name = ']] .. keyspace_name .. [['
+            AND columnfamily_name = 'apis'
+            AND column_name IN ('request_host', 'request_path')
+        ]])
+        if err then
+          return err
+        end
+
+        for i = 1, #rows do
+          if rows[i].index_name then
+            local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+            if not res then
+              return err
+            end
+          end
+        end
+
+      else
+        local rows, err = db:query([[
+          SELECT *
+          FROM system_schema.indexes
+          WHERE keyspace_name = ']] .. keyspace_name .. [['
+            AND table_name = 'apis'
+        ]])
+        if err then
+          return err
+        end
+
+        for i = 1, #rows do
+          if rows[i].options and 
+             rows[i].options.target == "request_host" or
+             rows[i].options.target == "request_path" then
+
+            local res, err = db:query("DROP INDEX " .. rows[i].index_name)
+            if not res then
+              return err
+            end
+          end
+        end
+      end
+
+      local err = db:queries [[
+        ALTER TABLE apis DROP request_host;
+        ALTER TABLE apis DROP request_path;
+        ALTER TABLE apis DROP strip_request_path;
+      ]]
+      if err then
+        return err
+      end
+    end,
     down = [[
       ALTER TABLE apis ADD request_host text;
       ALTER TABLE apis ADD request_path text;
@@ -309,37 +383,44 @@ return {
     ]]
   },
   {
-    name = "2016-09-16-141423_upstreams",
-    -- Note on the timestamps;
-    -- The Cassandra timestamps are created in Lua code, and hence ALL entities
-    -- will now be created in millisecond precision. The existing entries will
-    -- remain in second precision, but new ones (for ALL entities!) will be
-    -- in millisecond precision.
-    -- This differs from the Postgres one where only the new entities (upstreams
-    -- and targets) will get millisecond precision.
+    name = "2017-01-24-132600_upstream_timeouts",
     up = [[
-      CREATE TABLE IF NOT EXISTS upstreams(
-        id uuid,
-        name text,
-        slots int,
-        orderlist text,
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-      CREATE INDEX IF NOT EXISTS ON upstreams(name);
-      CREATE TABLE IF NOT EXISTS targets(
-        id uuid,
-        target text,
-        weight int,
-        upstream_id uuid,
-        created_at timestamp,
-        PRIMARY KEY (id)
-      );
-      CREATE INDEX IF NOT EXISTS ON targets(upstream_id);
+      ALTER TABLE apis ADD upstream_connect_timeout int;
+      ALTER TABLE apis ADD upstream_send_timeout int;
+      ALTER TABLE apis ADD upstream_read_timeout int;
     ]],
     down = [[
-      DROP TABLE upstreams;
-      DROP TABLE targets;
-    ]],
+      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_connect_timeout;
+      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_send_timeout;
+      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_read_timeout;
+    ]]
+  },
+  {
+    name = "2017-01-24-132600_upstream_timeouts_2",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM apis;
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if not row.upstream_connect_timeout
+          or not row.upstream_read_timeout
+          or not row.upstream_send_timeout then
+
+          local _, err = dao.apis:update({
+            upstream_connect_timeout = 60000,
+            upstream_send_timeout = 60000,
+            upstream_read_timeout = 60000,
+          }, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
   },
 }

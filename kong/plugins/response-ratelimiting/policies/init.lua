@@ -27,9 +27,7 @@ return {
       local periods = timestamp.get_timestamps(current_timestamp)
       for period, period_date in pairs(periods) do
         local cache_key = get_local_key(api_id, identifier, period_date, name, period)
-        if not cache.sh_get(cache_key) then
-          cache.sh_set(cache_key, 0, EXPIRATIONS[period])
-        end
+        cache.sh_add(cache_key, 0, EXPIRATIONS[period])
 
         local _, err = cache.sh_incr(cache_key, value)
         if err then

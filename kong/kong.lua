@@ -39,10 +39,11 @@ local ngx_balancer = require "ngx.balancer"
 local plugins_iterator = require "kong.core.plugins_iterator"
 local balancer_execute = require("kong.core.balancer").execute
 
-local ipairs = ipairs
+local ipairs           = ipairs
 local get_last_failure = ngx_balancer.get_last_failure
 local set_current_peer = ngx_balancer.set_current_peer
-local set_more_tries = ngx_balancer.set_more_tries
+local set_timeouts     = ngx_balancer.set_timeouts
+local set_more_tries   = ngx_balancer.set_more_tries
 
 local function attach_hooks(events, hooks)
   for k, v in pairs(hooks) do
@@ -124,7 +125,7 @@ function Kong.init()
   local conf_loader = require "kong.conf_loader"
 
   -- retrieve kong_config
-  local conf_path = pl_path.join(ngx.config.prefix(), "kong.conf")
+  local conf_path = pl_path.join(ngx.config.prefix(), ".kong_env")
   local config = assert(conf_loader(conf_path))
 
   local events = Events() -- retrieve node plugins
@@ -238,6 +239,13 @@ function Kong.balancer()
     ngx.log(ngx.ERR, "failed to set the current peer (address:'",
       tostring(addr.ip),"' port:",tostring(addr.port),"): ", tostring(err))
     return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+  end
+
+  ok, err = set_timeouts(addr.connect_timeout / 1000,
+                         addr.send_timeout / 1000,
+                         addr.read_timeout / 1000)
+  if not ok then
+    ngx.log(ngx.ERR, "could not set upstream timeouts: ", err)
   end
 end
 

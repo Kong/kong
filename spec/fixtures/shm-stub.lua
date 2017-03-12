@@ -50,10 +50,14 @@ function SharedDict:delete(key)
   end
 end
 
-function SharedDict:incr(key, value)
+function SharedDict:incr(key, value, init)
   if not self.data[key] then
-    return nil, "not found"
-  elseif type(self.data[key].value) ~= "number" then
+    if not init then
+      return nil, "not found"
+    else
+      self.data[key].value = init
+    end
+  elseif type(self.data[key]) ~= "number" then
     return nil, "not a number"
   end
 

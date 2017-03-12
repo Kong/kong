@@ -35,8 +35,12 @@ function _M.sh_set(key, value, exptime)
   return cache:set(key, value, exptime or 0)
 end
 
-function _M.sh_incr(key, value)
-  return cache:incr(key, value)
+function _M.sh_add(key, value, exptime)
+  return cache:add(key, value, exptime)
+end
+
+function _M.sh_incr(key, value, init)
+  return cache:incr(key, value, init)
 end
 
 function _M.sh_get(key)
@@ -121,6 +125,10 @@ function _M.delete_all()
 end
 
 -- Retrieves a piece of data from the cache or loads it.
+-- **IMPORTANT:** the callback function may not exit the request early by e.g.
+-- sending a 404 response from the callback. The callback will be nested inside
+-- lock/unlock calls, and hence it MUST return or the lock will not be
+-- unlocked. Which in turn will lead to deadlocks and timeouts. 
 -- @param key the key under which to retrieve the data from the cache
 -- @param ttl time-to-live for the entry (in seconds)
 -- @param cb callback function. If no data is found under `key`, then the callback

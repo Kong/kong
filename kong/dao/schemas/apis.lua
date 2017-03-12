@@ -5,13 +5,17 @@ local Errors = require "kong.dao.errors"
 local sub = string.sub
 local match = string.match
 
-local function validate_upstream_url_protocol(value)
+local function validate_upstream_url(value)
   local parsed_url = url.parse(value)
   if parsed_url.scheme and parsed_url.host then
     parsed_url.scheme = parsed_url.scheme:lower()
     if not (parsed_url.scheme == "http" or parsed_url.scheme == "https") then
       return false, "Supported protocols are HTTP and HTTPS"
     end
+  end
+
+  if parsed_url.path and string.sub(value, #value) == "/" then
+    return false, "Cannot end with a slash"
   end
 
   return true
@@ -168,11 +172,20 @@ local function check_name(name)
 end
 
 -- check that retries is a valid number
-local function check_retries(retries)
+local function check_smallint(i)
   -- Postgres 'smallint' size, 2 bytes
-  if (retries < 0) or (math.floor(retries) ~= retries) or (retries > 32767) then
-    return false, "retries must be an integer, from 0 to 32767"
+  if i < 0 or math.floor(i) ~= i or i > 32767 then
+    return false, "must be an integer between 0 and 32767"
   end
+
+  return true
+end
+
+local function check_u_int(t)
+  if t < 1 or t > 2^31 - 1 or math.floor(t) ~= t then
+    return false, "must be an integer between 1 and " .. 2^31 - 1
+  end
+
   return true
 end
 
@@ -183,17 +196,18 @@ return {
     id = {type = "id", dao_insert_value = true, required = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true, required = true},
     name = {type = "string", unique = true, required = true, func = check_name},
-
     hosts = {type = "array", func = check_hosts},
     uris = {type = "array", func = check_uris},
     methods = {type = "array", func = check_methods},
     strip_uri = {type = "boolean", default = true},
     https_only = {type = "boolean", default = false},
     http_if_terminated = {type = "boolean", default = true},
-
-    upstream_url = {type = "url", required = true, func = validate_upstream_url_protocol},
+    upstream_url = {type = "url", required = true, func = validate_upstream_url},
     preserve_host = {type = "boolean", default = false},
-    retries = {type = "number", default = 5, func = check_retries},
+    retries = {type = "number", default = 5, func = check_smallint},
+    upstream_connect_timeout = {type = "number", default = 60000, func = check_u_int},
+    upstream_send_timeout = {type = "number", default = 60000, func = check_u_int},
+    upstream_read_timeout = {type = "number", default = 60000, func = check_u_int},
   },
   marshall_event = function(self, t)
     return { id = t.id }

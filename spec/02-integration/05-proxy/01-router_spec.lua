@@ -67,6 +67,18 @@ describe("Router", function()
           methods = { "POST", "PUT" },
           uris = { "/post", "/put" },
           strip_uri = false,
+        },
+        {
+          name = "api-3",
+          upstream_url = "http://httpbin.org/status",
+          uris = { "/httpbin" },
+          strip_uri = true,
+        },
+        {
+          name = "api-4",
+          upstream_url = "http://httpbin.org/basic-auth",
+          uris = { "/user" },
+          strip_uri = false,
         }
       }
 
@@ -110,6 +122,30 @@ describe("Router", function()
 
       assert.response(res).has_status(200)
       assert.equal("api-1", res.headers["kong-api-name"])
+    end)
+
+    describe("API with a path component in its upstream_url", function()
+      it("with strip_uri = true", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/httpbin/201",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        assert.res_status(201, res)
+        assert.equal("api-3", res.headers["kong-api-name"])
+      end)
+    end)
+
+    it("with strip_uri = false", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/user/passwd",
+          headers = { ["kong-debug"] = 1 },
+        })
+
+        assert.res_status(401, res)
+        assert.equal("api-4", res.headers["kong-api-name"])
     end)
   end)
 
@@ -195,6 +231,83 @@ describe("Router", function()
         }
       })
       assert.response(res).has_status(200)
+    end)
+  end)
+
+  describe("preserve_host", function()
+
+    setup(function()
+      insert_apis {
+        {
+          name = "api-1",
+          preserve_host = true,
+          upstream_url = "http://httpbin.org",
+          hosts = "preserved.com",
+        },
+        {
+          name = "api-2",
+          preserve_host = false,
+          upstream_url = "http://httpbin.org",
+          hosts = "discarded.com",
+        }
+      }
+
+      assert(helpers.start_kong())
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("preserves downstream host if enabled", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "preserved.com" },
+      })
+
+      assert.res_status(200, res)
+      local json = cjson.decode((res:read_body()))
+      assert.equal("preserved.com", json.headers.Host)
+    end)
+
+    pending("preserves downstream host+port if enabled", function()
+      -- pending because httpbin.org seems to not return the exact header
+      -- but a parsed one, with the port stripped.
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "preserved.com:80" },
+      })
+
+      assert.res_status(200, res)
+      local json = cjson.decode((res:read_body()))
+      assert.equal("preserved.com:80", json.headers.Host)
+    end)
+
+    pending("preserves downstream host+non_default_port if enabled", function()
+      -- pending because httpbin.org seems to not return the exact header
+      -- but a parsed one, with the port stripped.
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "preserved.com:123" },
+      })
+
+      assert.res_status(200, res)
+      local json = cjson.decode((res:read_body()))
+      assert.equal("preserved.com:123", json.headers.Host)
+    end)
+
+    it("discards downstream host if disabled", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/get",
+        headers = { ["Host"] = "discarded.com" },
+      })
+
+      assert.response(res).has.status(200)
+      assert.equal("httpbin.org", assert.request(res).has.header("Host"))
     end)
   end)
 

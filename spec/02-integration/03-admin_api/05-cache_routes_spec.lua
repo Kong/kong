@@ -14,18 +14,23 @@ local function do_it(desc, func)
 end
 
 describe("Admin API", function()
-  local client, proxy_client
+  local api_client, proxy_client
   setup(function()
+    assert(helpers.dao.apis:insert {
+      name = "api-cache",
+      hosts = { "cache.com" },
+      upstream_url = "http://mockbin.com"
+    })
     assert(helpers.start_kong({
       custom_plugins = "first-request",
       lua_package_path = "?/init.lua;./kong/?.lua;./spec/fixtures/?.lua"
     }))
-    client = helpers.admin_client()
+    api_client = helpers.admin_client()
     proxy_client = helpers.proxy_client(2000)
   end)
   teardown(function()
-    if client then
-      client:close()
+    if api_client then
+      api_client:close()
       proxy_client:close()
     end
     helpers.stop_kong()
@@ -33,12 +38,7 @@ describe("Admin API", function()
 
   describe("/cache/{key}", function()
     setup(function()
-      assert(helpers.dao.apis:insert {
-        name = "api-cache",
-        hosts = { "cache.com" },
-        upstream_url = "http://mockbin.com"
-      })
-      local res = assert(client:send {
+      local res = assert(api_client:send {
         method = "POST",
         path = "/apis/api-cache/plugins/",
         headers = {
@@ -53,7 +53,7 @@ describe("Admin API", function()
 
     describe("GET", function()
       do_it("returns 404 if not found", function()
-        local res = assert(client:send {
+        local res = assert(api_client:send {
           method = "GET",
           path = "/cache/_inexistent_",
           query = { cache = current_cache },
@@ -70,7 +70,7 @@ describe("Admin API", function()
         })
         assert.response(res).has.status(200)
 
-        res = assert(client:send {
+        res = assert(api_client:send {
           method = "GET",
           path = "/cache/requested",
           query = { cache = current_cache },
@@ -96,7 +96,7 @@ describe("Admin API", function()
         })
         assert.response(res).has.status(200)
 
-        res = assert(client:send {
+        res = assert(api_client:send {
           method = "GET",
           path = "/cache/requested",
           query = { cache = current_cache },
@@ -104,14 +104,14 @@ describe("Admin API", function()
         assert.response(res).has.status(200)
 
         -- delete cache
-        res = assert(client:send {
+        res = assert(api_client:send {
           method = "DELETE",
           path = "/cache/requested",
           query = { cache = current_cache },
         })
         assert.response(res).has.status(204)
 
-        res = assert(client:send {
+        res = assert(api_client:send {
           method = "GET",
           path = "/cache/requested",
           query = { cache = current_cache },
@@ -132,7 +132,7 @@ describe("Admin API", function()
           })
           assert.response(res).has.status(200)
 
-          res = assert(client:send {
+          res = assert(api_client:send {
             method = "GET",
             path = "/cache/requested",
             query = { cache = current_cache },
@@ -140,14 +140,14 @@ describe("Admin API", function()
           assert.response(res).has.status(200)
 
            -- delete cache
-          res = assert(client:send {
+          res = assert(api_client:send {
             method = "DELETE",
             path = "/cache",
             query = { cache = current_cache },
           })
           assert.response(res).has.status(204)
 
-          res = assert(client:send {
+          res = assert(api_client:send {
             method = "GET",
             path = "/cache/requested",
             query = { cache = current_cache },

@@ -14,7 +14,12 @@ local _M = {}
 local function parse_header(header_value, limits)
   local increments = {}
   if header_value then
-    local parts = utils.split(header_value, ",")
+    local parts
+    if type(header_value) == "table" then
+      parts = header_value
+    else
+      parts = utils.split(header_value, ",")
+    end
     for _, v in ipairs(parts) do
       local increment_parts = utils.split(v, "=")
       if #increment_parts == 2 then

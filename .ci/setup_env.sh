@@ -101,8 +101,8 @@ eval `luarocks path`
 # Install ccm & setup Cassandra cluster
 # -------------------------------------
 if [[ "$TEST_SUITE" != "unit" ]] && [[ "$TEST_SUITE" != "lint" ]]; then
-  pip install --user PyYAML six ccm==2.4.6
-  ccm create test -v binary:$CASSANDRA -n 1 -d
+  pip install --user PyYAML six ccm
+  ccm create test -v $CASSANDRA -n 1 -d
   ccm start -v
   ccm status
 fi

@@ -19,16 +19,7 @@ dev: install
 	done;
 
 lint:
-	@luacheck -q . \
-						--exclude-files 'kong/vendor/**/*.lua' \
-						--exclude-files 'spec/fixtures/invalid-module.lua' \
-						--std 'ngx_lua+busted' \
-						--globals '_KONG' \
-						--globals 'ngx' \
-						--globals 'assert' \
-						--no-redefined \
-						--no-unused-args \
-						--ignore 6..
+	@luacheck -q .
 
 test:
 	@$(TEST_CMD) spec/01-unit

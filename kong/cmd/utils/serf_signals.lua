@@ -16,23 +16,50 @@ local serf_event_name = "kong"
 local serf_version_pattern = "^Serf v([%d%.]+)"
 local serf_compatible = version.set(unpack(meta._DEPENDENCIES.serf))
 local start_timeout = 5
+local serf_search_paths = {
+  "serf",
+  "/usr/local/bin/serf"
+}
 
-local function check_serf_bin(kong_config)
-  log.debug("checking 'serf' executable from 'serf_path' config setting")
-
-  local cmd = fmt("%s version", kong_config.serf_path)
+local function check_version(path)
+  local cmd = fmt("%s version", path)
   local ok, _, stdout = pl_utils.executeex(cmd)
   log.debug("%s: '%s'", cmd, pl_stringx.splitlines(stdout)[1])
   if ok and stdout then
     local version_match = stdout:match(serf_version_pattern)
     if not version_match or not serf_compatible:matches(version_match) then
-      return nil, "incompatible serf found. Kong requires version "..
-                  tostring(serf_compatible)..", got "..version_match
+      log.verbose(fmt("incompatible serf found at '%s'. Kong requires version '%s', got '%s'",
+                  path, tostring(serf_compatible), version_match))
+      return nil
     end
     return true
   end
 
-  return nil, "could not find 'serf' executable (is 'serf_path' correctly set?)"
+  log.debug("Serf executable not found at %s", path)
+end
+
+local function check_serf_bin(kong_config)
+  log.debug("searching for 'serf' executable")
+
+  if kong_config.serf_path then
+    serf_search_paths = { kong_config.serf_path }
+  end
+
+  local found
+  for _, path in ipairs(serf_search_paths) do
+    if check_version(path) then
+      found = path
+      log.debug("found 'serf' executable at %s", found)
+      break
+    end
+  end
+
+  if not found then
+    return nil, "could not find 'serf' executable. Kong requires version " ..
+                serf_compatible .. " (you can tweak 'serf_path' to your needs)"
+  end
+
+  return found
 end
 
 local _M = {}
@@ -57,6 +84,7 @@ function _M.start(kong_config, dao)
     ["-rpc-addr"] = kong_config.cluster_listen_rpc,
     ["-advertise"] = kong_config.cluster_advertise,
     ["-encrypt"] = kong_config.cluster_encrypt_key,
+    ["-keyring-file"] = kong_config.cluster_keyring_file,
     ["-log-level"] = "err",
     ["-profile"] = kong_config.cluster_profile,
     ["-node"] = serf.node_name,

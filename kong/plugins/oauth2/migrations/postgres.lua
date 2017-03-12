@@ -111,6 +111,7 @@ return {
           return err
         end
       end
+      schema.fields.redirect_uri.type = "array"
     end,
     down = function(_,_,factory)
       local apps, err = factory.oauth2_credentials:find_all()
