@@ -68,7 +68,9 @@ local function http_server(timeout, count, port, ...)
     end
   }, timeout, count, port)
 
-  return thread:start(...)
+  local server = thread:start(...)
+  ngx.sleep(0.2)  -- attempt to make sure server is started for failing CI tests
+  return server
 end
 
 dao_helpers.for_each_dao(function(kong_config)
@@ -83,6 +85,11 @@ dao_helpers.for_each_dao(function(kong_config)
     teardown(function()
       helpers.test_conf.database = config_db
       config_db = nil
+    end)
+
+    before_each(function()
+      collectgarbage()
+      collectgarbage()
     end)
 
     describe("Balancing", function()
