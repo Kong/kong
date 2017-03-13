@@ -7,7 +7,7 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local singletons = require "kong.singletons"
-local public_utils = require "kong.utils.public"
+local public_utils = require "kong.tools.public"
 
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers

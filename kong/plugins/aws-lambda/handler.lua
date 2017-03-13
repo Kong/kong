@@ -7,7 +7,7 @@ local utils = require "kong.tools.utils"
 local Multipart = require "multipart"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
-local public_utils = require "kong.utils.public"
+local public_utils = require "kong.tools.public"
 
 local string_find = string.find
 local ngx_req_get_headers = ngx.req.get_headers

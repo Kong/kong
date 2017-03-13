@@ -1,7 +1,7 @@
 local runscope_serializer = require "kong.plugins.log-serializers.runscope"
 local BasePlugin = require "kong.plugins.base_plugin"
 local log = require "kong.plugins.runscope.log"
-local public_utils = require "kong.utils.public"
+local public_utils = require "kong.tools.public"
 
 local ngx_log = ngx.log
 local ngx_log_ERR = ngx.ERR
