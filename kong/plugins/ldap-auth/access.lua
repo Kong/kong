@@ -42,7 +42,7 @@ local function ldap_authenticate(given_username, given_password, conf)
   ok, err = sock:connect(conf.ldap_host, conf.ldap_port)
   if not ok then
     ngx_log(ngx_error, "[ldap-auth] failed to connect to "..conf.ldap_host..":"..tostring(conf.ldap_port)..": ", err)
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err, responses.status_codes.HTTP_INTERNAL_SERVER_ERROR
   end
 
   if conf.start_tls then
@@ -68,7 +68,8 @@ end
 local function load_credential(given_username, given_password, conf)
   ngx_log(ngx_debug, "[ldap-auth] authenticating user against LDAP server: "..conf.ldap_host..":"..conf.ldap_port)
 
-  local ok, err = ldap_authenticate(given_username, given_password, conf)
+  local ok, err, status = ldap_authenticate(given_username, given_password, conf)
+  if status ~= nil then return nil, err, status end
   if err ~= nil then ngx_log(ngx_error, err) end
   if not ok then
     return nil
@@ -82,8 +83,9 @@ local function authenticate(conf, given_credentials)
     return false
   end
 
-  local credential = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), 
+  local credential, err, status = cache.get_or_set(cache.ldap_credential_key(ngx.ctx.api.id, given_username), 
       conf.cache_ttl, load_credential, given_username, given_password, conf)
+  if status then responses.send(status, err) end
 
   return credential and credential.password == given_password, credential
 end
@@ -94,7 +96,7 @@ local function load_consumer(consumer_id, anonymous)
     if anonymous and not err then
       err = 'anonymous consumer "'..consumer_id..'" not found'
     end
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -151,8 +153,11 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer, conf.anonymous, true)
+      if err then
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
       set_consumer(consumer, nil)
     else
       return responses.send(err.status, err.message)

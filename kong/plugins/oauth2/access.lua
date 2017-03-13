@@ -74,16 +74,19 @@ end
 local function load_oauth2_credential_by_client_id_into_memory(client_id)
   local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return credentials[1]
 end
 
 local function get_redirect_uri(client_id)
-  local client
+  local client, err
   if client_id then
-    client = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
+    client, err = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
                    load_oauth2_credential_by_client_id_into_memory, client_id)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
   end
   return client and client.redirect_uri or nil, client
 end
@@ -380,7 +383,7 @@ local function load_token_into_memory(conf, api, access_token)
   local credentials, err = singletons.dao.oauth2_tokens:find_all { api_id = api_id, access_token = access_token }
   local result
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   elseif #credentials > 0 then
     result = credentials[1]
   end
@@ -388,10 +391,13 @@ local function load_token_into_memory(conf, api, access_token)
 end
 
 local function retrieve_token(conf, access_token)
-  local token
+  local token, err
   if access_token then
-    token = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
+    token, err = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
                              load_token_into_memory, conf, ngx.ctx.api, access_token)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
   end
   return token
 end
@@ -439,7 +445,7 @@ end
 local function load_oauth2_credential_into_memory(credential_id)
   local result, err = singletons.dao.oauth2_credentials:find {id = credential_id}
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -450,7 +456,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
     if anonymous and not err then
       err = 'anonymous consumer "'..consumer_id..'" not found'
     end
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -495,12 +501,19 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the credential from the token
-  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
+  local credential, err = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
                         nil, load_oauth2_credential_into_memory, token.credential_id)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   -- Retrieve the consumer from the credential
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
     nil, load_consumer_into_memory, credential.consumer_id)
+
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   set_consumer(consumer, credential, token)
 
@@ -535,8 +548,11 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
+      if err then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
       set_consumer(consumer, nil, nil)
     else
       return responses.send(err.status, err.message, err.headers)
