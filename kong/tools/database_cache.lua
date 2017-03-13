@@ -1,10 +1,10 @@
+local utils = require "kong.tools.utils"
 local resty_lock = require "resty.lock"
 local json_encode = require("cjson.safe").encode
 local json_decode = require("cjson.safe").decode
 local cache = ngx.shared.cache
 local ngx_log = ngx.log
 local gettime = ngx.now
-local utils = require "kong.tools.utils"
 local pack = utils.pack
 local unpack = utils.unpack
 
@@ -29,6 +29,10 @@ local CACHE_KEYS = {
   UPSTREAMS = "upstreams",
   TARGETS = "targets",
 }
+
+local function log(lvl, ...)
+  return ngx_log(lvl, "[db cache] ", ...)
+end
 
 local _M = {}
 
@@ -153,14 +157,14 @@ function _M.get_or_set(key, ttl, cb, ...)
     timeout = 5
   })
   if not lock then
-    ngx_log(ngx.ERR, "could not create lock: ", err)
+    log(ngx.ERR, "could not create lock: ", err)
     return
   end
 
   -- The value is missing, acquire a lock
   local elapsed, err = lock:lock(key)
   if not elapsed then
-    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+    log(ngx.ERR, "failed to acquire cache lock: ", err)
     return
   end
 
@@ -172,7 +176,7 @@ function _M.get_or_set(key, ttl, cb, ...)
     -- shm cache success
     local ok, lerr = lock:unlock()
     if not ok and lerr then
-      ngx_log(ngx.ERR, "failed to unlock: ", lerr)
+      log(ngx.ERR, "failed to unlock: ", lerr)
     end
 
     return value
@@ -182,16 +186,15 @@ function _M.get_or_set(key, ttl, cb, ...)
   value = pack(cb(...))
 
   if value[1] ~= nil then
-
     local ok, err = _M.set(key, value[1], ttl)
     if not ok then
-      ngx_log(ngx.ERR, err)
+      log(ngx.ERR, err)
     end
   end
 
   local ok, lerr = lock:unlock()
   if not ok and lerr then
-    ngx_log(ngx.ERR, "failed to unlock: ", lerr)
+    log(ngx.ERR, "failed to unlock: ", lerr)
   end
 
   if value[1] ~= nil then
