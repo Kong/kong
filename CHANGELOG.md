@@ -1,11 +1,16 @@
 ## [Unreleased][unreleased]
 
+### Added
+
+- Plugins:
+  - cors: Support for configuring multiple Origin domains.
+    [#2203](https://github.com/Mashape/kong/pull/2203)
+
 ### Fixed
 
 - Plugins:
-  - hmac: generate an HMAC secret value if none is provided.
+  - hmac: Generate an HMAC secret value if none is provided.
     [#2158](https://github.com/Mashape/kong/pull/2158)
-
 
 ## [0.10.0] - 2016/03/07
 
