@@ -1,7 +1,7 @@
 return {
   no_consumer = true,
   fields = {
-    origin = { type = "string" },
+    origins = { type = "array" },
     headers = { type = "array" },
     exposed_headers = { type = "array" },
     methods = { type = "array", enum = { "HEAD", "GET", "POST", "PUT", "PATCH", "DELETE" } },

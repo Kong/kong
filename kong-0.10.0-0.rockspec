@@ -208,6 +208,8 @@ build = {
 
     ["kong.plugins.cors.handler"] = "kong/plugins/cors/handler.lua",
     ["kong.plugins.cors.schema"] = "kong/plugins/cors/schema.lua",
+    ["kong.plugins.cors.migrations.cassandra"] = "kong/plugins/cors/migrations/cassandra.lua",
+    ["kong.plugins.cors.migrations.postgres"] = "kong/plugins/cors/migrations/postgres.lua",
 
     ["kong.plugins.ip-restriction.handler"] = "kong/plugins/ip-restriction/handler.lua",
     ["kong.plugins.ip-restriction.schema"] = "kong/plugins/ip-restriction/schema.lua",
