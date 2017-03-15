@@ -3,7 +3,7 @@
 ## [0.10.0] - 2017/03/07
 
 Kong 0.10 is one of most significant releases to this day. It ships with
-exciting new features that have been havily requested for the last few months,
+exciting new features that have been heavily requested for the last few months,
 such as load balancing, Cassandra 3.0 compatibility, Websockets support,
 internal DNS resolution (A and SRV records without Dnsmasq), and more flexible
 matching capabilities for APIs routing.
@@ -30,7 +30,7 @@ perform significantly better than any previous version.
 - :warning: Drop the Dnsmasq dependency. We now internally resolve both A and
   SRV DNS records.
   [#1587](https://github.com/Mashape/kong/pull/1587)
-- :warning: Dropping support for unsecure `TLS/1.0` and defaulting `Upgrade`
+- :warning: Dropping support for insecure `TLS/1.0` and defaulting `Upgrade`
   responses to `TLS/1.2`.
   [#2119](https://github.com/Mashape/kong/pull/2119)
 - Bump the compatible OpenResty version to `1.11.2.1` and `1.11.2.2`. Support
@@ -130,7 +130,7 @@ perform significantly better than any previous version.
   - Avoid double-prefixing migration error messages with the database name
     (PostgreSQL/Cassandra).
 - Plugins:
-  - Fix fault tolerancy logic and error reporting in rate-limiting plugins.
+  - Fix fault tolerance logic and error reporting in rate-limiting plugins.
   - CORS: Properly return `Access-Control-Allow-Credentials: false` if
     `Access-Control-Allow-Origin: *`.
     [#2104](https://github.com/Mashape/kong/pull/2104)
@@ -169,7 +169,7 @@ perform significantly better than any previous version.
 ### Fixed
 
 - Plugins:
-  - Fix fault tolerancy logic and error reporting in rate-limiting plugins.
+  - Fix fault tolerance logic and error reporting in rate-limiting plugins.
 
 ## [0.9.7] - 2016/12/21
 
@@ -878,7 +878,7 @@ This is a maintenance release including several bug fixes and usability improvem
 - DAO
   - Cassandra version bumped to 2.1.5
   - Support for Cassandra downtime. If Cassandra goes down and is brought back up, Kong will not need to restart anymore, statements will be re-prepared on-the-fly. This is part of an ongoing effort from [jbochi/lua-resty-cassandra#47](https://github.com/jbochi/lua-resty-cassandra/pull/47), [#146](https://github.com/Mashape/kong/pull/146) and [#187](https://github.com/Mashape/kong/pull/187).
-Queries effectued during the downtime will still be lost. [#11](https://github.com/Mashape/kong/pull/11)
+Queries effectuated during the downtime will still be lost. [#11](https://github.com/Mashape/kong/pull/11)
   - Leverage reused sockets. If the DAO reuses a socket, it will not re-set their keyspace. This should give a small but appreciable performance improvement. [#170](https://github.com/Mashape/kong/pull/170)
   - Cascade delete plugins configurations when deleting a Consumer or an API associated with it. [#107](https://github.com/Mashape/kong/pull/107)
   - Allow Cassandra hosts listening on different ports than the default. [#185](https://github.com/Mashape/kong/pull/185)
