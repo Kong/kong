@@ -239,8 +239,6 @@ perform significantly better than any previous version.
   [#2069](https://github.com/Mashape/kong/pull/2069)
 - Support for `lua_socket_pool_size` property in configuration file.
   [#2109](https://github.com/Mashape/kong/pull/2109)
-- Support for configuring the underlying ngx_http_realip_module directives
-  via new configuration properties: `real_ip_recursive` and `set_real_ip_from`.
 - Plugins:
   - :fireworks: **New AWS Lambda plugin**. Thanks Tim Erickson for his
     collaboration on this new addition.

@@ -67,7 +67,11 @@ describe("Plugin: hmac-auth (access)", function()
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong {
+      real_ip_header    = "X-Forwarded-For",
+      real_ip_recursive = "on",
+      trusted_ips       = "0.0.0.0/0, ::/0",
+    })
     client = helpers.proxy_client()
   end)
 

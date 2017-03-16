@@ -26,6 +26,7 @@
 
 require("kong.core.globalpatches")()
 
+local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
@@ -134,6 +135,7 @@ function Kong.init()
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
+  singletons.ip = ip.init(config)
   singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)
