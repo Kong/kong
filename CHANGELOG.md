@@ -983,14 +983,10 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-<<<<<<< HEAD
-[unreleased]: https://github.com/mashape/kong/compare/0.9.9...next
+[unreleased]: https://github.com/mashape/kong/compare/0.10.0...next
+[0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
 [0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
 [0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8
-=======
-[unreleased]: https://github.com/mashape/kong/compare/0.10.0...next
-[0.10.0]: https://github.com/mashape/kong/compare/0.9.7...0.10.0
->>>>>>> release/0.10.0
 [0.9.7]: https://github.com/mashape/kong/compare/0.9.6...0.9.7
 [0.9.6]: https://github.com/mashape/kong/compare/0.9.5...0.9.6
 [0.9.5]: https://github.com/mashape/kong/compare/0.9.4...0.9.5
