@@ -59,6 +59,10 @@ app.handle_404 = function(self)
 end
 
 app.handle_error = function(self, err, trace)
+  if err and find(err, "don't know how to respond to", nil, true) then
+    return responses.send_HTTP_METHOD_NOT_ALLOWED()
+  end
+
   ngx.log(ngx.ERR, err.."\n"..trace)
   -- We just logged the error so no need to give it to responses and log it twice
   return responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -77,34 +81,16 @@ local handler_helpers = {
 
 local function attach_routes(routes)
   for route_path, methods in pairs(routes) do
-    if not methods.on_error then
-      methods.on_error = on_error
-    end
-
-    for k, v in pairs(methods) do
-      local method = function(self)
-        return v(self, singletons.dao, handler_helpers)
+    methods.on_error = methods.on_error or on_error
+    for method_name, method_handler in pairs(methods) do
+      local wrapped_handler = function(self)
+        return method_handler(self, singletons.dao, handler_helpers)
       end
-      methods[k] = parse_params(method)
+      methods[method_name] = parse_params(wrapped_handler)
     end
 
     app:match(route_path, route_path, app_helpers.respond_to(methods))
   end
-end
-
-local methods_to_define = { "PATCH", "OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT" }
-local function no_method(self, dao_factory, helpers)
-  return responses.send_HTTP_METHOD_NOT_ALLOWED()
-end
-
--- insert 405's for undefined methods
-local function insert_405(routes)
-  for route, methods in pairs(routes) do
-    for _, name in ipairs(methods_to_define) do
-      methods[name] = methods[name] or no_method
-    end
-  end
-  return routes
 end
 
 ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
@@ -112,7 +98,7 @@ ngx.log(ngx.DEBUG, "Loading Admin API endpoints")
 -- Load core routes
 for _, v in ipairs({"kong", "apis", "consumers", "plugins", "cache", "cluster", "certificates", "snis", "upstreams"}) do
   local routes = require("kong.api.routes."..v)
-  attach_routes(insert_405(routes))
+  attach_routes(routes)
 end
 
 -- Loading plugins routes
@@ -121,7 +107,7 @@ if singletons.configuration and singletons.configuration.plugins then
     local loaded, mod = utils.load_module_if_exists("kong.plugins."..k..".api")
     if loaded then
       ngx.log(ngx.DEBUG, "Loading API endpoints for plugin: ", k)
-      attach_routes(insert_405(mod))
+      attach_routes(mod)
     else
       ngx.log(ngx.DEBUG, "No API endpoints loaded for plugin: ", k)
     end
