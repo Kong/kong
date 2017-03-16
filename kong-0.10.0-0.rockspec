@@ -17,7 +17,7 @@ dependencies = {
   "mediator_lua == 1.1.2",
   "lua-resty-http == 0.08",
   "lua-resty-jit-uuid == 0.0.5",
-  "multipart == 0.4",
+  "multipart == 0.5",
   "version == 0.2",
   "lapis == 1.5.1",
   "lua-cassandra == 1.1.1",
