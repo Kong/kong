@@ -154,6 +154,10 @@ describe("Configuration loader", function()
       assert.is_nil(getmetatable(conf.cassandra_contact_points))
       assert.is_nil(getmetatable(conf.cassandra_data_centers))
     end)
+    it("trims array values", function()
+      local conf = assert(conf_loader("spec/fixtures/to-strip.conf"))
+      assert.same({"dc1:2", "dc2:3", "dc3:4"}, conf.cassandra_data_centers)
+    end)
     it("infer ngx_boolean", function()
       local conf = assert(conf_loader(nil, {
         lua_code_cache = true
