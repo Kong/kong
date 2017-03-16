@@ -19,8 +19,9 @@ admin_ssl = on
 admin_ssl_cert = NONE
 admin_ssl_cert_key = NONE
 upstream_keepalive = 60
+real_ip_header = X-Real-IP
 real_ip_recursive = off
-set_real_ip_from = 0.0.0.0/0
+trusted_ips = NONE
 
 database = postgres
 pg_host = 127.0.0.1

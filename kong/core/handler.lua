@@ -19,6 +19,8 @@ local balancer_execute = require("kong.core.balancer").execute
 
 
 local router, router_err
+local tostring = tostring
+local ngx = ngx
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
@@ -119,9 +121,25 @@ return {
       end
 
       -- if set `host_header` is the original header to be preserved
-      var.upstream_host = host_header or 
+      var.upstream_host = host_header or
           balancer_address.hostname..":"..balancer_address.port
 
+      -- X-Forwarded Headers
+      local realip_remote_addr = var.realip_remote_addr
+
+      if not singletons.ip.trusted(realip_remote_addr) then
+        var.upstream_x_forwarded_proto = var.scheme
+        var.upstream_x_forwarded_host  = var.host
+        var.upstream_x_forwarded_port  = var.server_port
+      end
+
+      local http_x_forwarded_for = var.http_x_forwarded_for
+      if http_x_forwarded_for then
+        var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " .. realip_remote_addr
+
+      else
+        var.upstream_x_forwarded_for = realip_remote_addr
+      end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()

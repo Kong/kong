@@ -9,6 +9,7 @@ local pl_path = require "pl.path"
 local tablex = require "pl.tablex"
 local utils = require "kong.tools.utils"
 local log = require "kong.cmd.utils.log"
+local ip = require "kong.tools.ip"
 
 local DEFAULT_PATHS = {
   "/etc/kong/kong.conf",
@@ -61,8 +62,9 @@ local CONF_INFERENCES = {
   cluster_advertise = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
+  real_ip_header = {typ = "string"},
   real_ip_recursive = {typ = "ngx_boolean"},
-  set_real_ip_from = {typ = "array"},
+  trusted_ips = {typ = "array"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -225,16 +227,16 @@ local function check_and_infer(conf)
     end
   end
 
-  local ip, port = utils.normalize_ipv4(conf.cluster_listen)
-  if not (ip and port) then
+  local address, port = utils.normalize_ipv4(conf.cluster_listen)
+  if not (address and port) then
     errors[#errors+1] = "cluster_listen must be in the form of IPv4:port"
   end
-  ip, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
-  if not (ip and port) then
+  address, port = utils.normalize_ipv4(conf.cluster_listen_rpc)
+  if not (address and port) then
     errors[#errors+1] = "cluster_listen_rpc must be in the form of IPv4:port"
   end
-  ip, port = utils.normalize_ipv4(conf.cluster_advertise or "")
-  if conf.cluster_advertise and not (ip and port) then
+  address, port = utils.normalize_ipv4(conf.cluster_advertise or "")
+  if conf.cluster_advertise and not (address and port) then
     errors[#errors+1] = "cluster_advertise must be in the form of IPv4:port"
   end
   if conf.cluster_ttl_on_failure < 60 then
@@ -242,6 +244,15 @@ local function check_and_infer(conf)
   end
   if not conf.lua_package_cpath then
     conf.lua_package_cpath = ""
+  end
+
+  -- Checking the trusted ips
+  for _, address in ipairs(conf.trusted_ips) do
+    if not ip.valid(address) and not address == "unix:" then
+      errors[#errors+1] = "trusted_ips must be a comma separated list in "..
+                          "the form of IPv4 or IPv6 address or CIDR "..
+                          "block or 'unix:', got '" .. address .. "'"
+    end
   end
 
   return #errors == 0, errors[1], errors
@@ -426,7 +437,7 @@ local function load(path, custom_conf)
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
-  
+
   return setmetatable(conf, nil) -- remove Map mt
 end
 
