@@ -335,3 +335,199 @@ describe("Plugin: jwt (access)", function()
     end)
   end)
 end)
+
+
+describe("Plugin: jwt (access)", function()
+
+  local client, user1, user2, anonymous, jwt_token
+
+  setup(function()
+    local api1 = assert(helpers.dao.apis:insert {
+      name = "api-1",
+      hosts = { "logical-and.com" },
+      upstream_url = "http://mockbin.org/request"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "jwt",
+      api_id = api1.id
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api1.id
+    })
+
+    anonymous = assert(helpers.dao.consumers:insert {
+      username = "Anonymous"
+    })
+    user1 = assert(helpers.dao.consumers:insert {
+      username = "Mickey"
+    })
+    user2 = assert(helpers.dao.consumers:insert {
+      username = "Aladdin"
+    })
+
+    local api2 = assert(helpers.dao.apis:insert {
+      name = "api-2",
+      hosts = { "logical-or.com" },
+      upstream_url = "http://mockbin.org/request"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "jwt",
+      api_id = api2.id,
+      config = {
+        anonymous = anonymous.id
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api2.id,
+      config = {
+        anonymous = anonymous.id
+      }
+    })
+
+    assert(helpers.dao.keyauth_credentials:insert {
+      key = "Mouse",
+      consumer_id = user1.id
+    })
+
+    local jwt_secret = assert(helpers.dao.jwt_secrets:insert {
+      consumer_id = user2.id
+    })
+    PAYLOAD.iss = jwt_secret.key
+    jwt_token = "Bearer "..jwt_encoder.encode(PAYLOAD, jwt_secret.secret)
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
+  end)
+
+
+  teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+  end)
+
+  describe("multiple auth without anonymous, logical AND", function()
+
+    it("passes with all credentials provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["apikey"] = "Mouse",
+          ["Authorization"] = jwt_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert(id == user1.id or id == user2.id)
+    end)
+
+    it("fails 401, with only the first credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["apikey"] = "Mouse",
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+    it("fails 401, with only the second credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["Authorization"] = jwt_token,
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+    it("fails 401, with no credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+  end)
+
+  describe("multiple auth with anonymous, logical OR", function()
+
+    it("passes with all credentials provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["apikey"] = "Mouse",
+          ["Authorization"] = jwt_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert(id == user1.id or id == user2.id)
+    end)
+
+    it("passes with only the first credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["apikey"] = "Mouse",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert.equal(user1.id, id)
+    end)
+
+    it("passes with only the second credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["Authorization"] = jwt_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert.equal(user2.id, id)
+    end)
+
+    it("passes with no credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.equal(id, anonymous.id)
+    end)
+
+  end)
+
+end)

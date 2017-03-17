@@ -507,8 +507,17 @@ local function do_authentication(conf)
   return true
 end
 
+
 function _M.execute(conf)
+
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous, 
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+
   if ngx.req.get_method() == "POST" then
+
     local from, _, err = ngx.re.find(ngx.var.uri, [[\/oauth2\/token]], "oj")
     if err then
       ngx.log(ngx.ERR, "could not search for token path segment: ", err)
@@ -538,10 +547,12 @@ function _M.execute(conf)
       local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
       set_consumer(consumer, nil, nil)
+
     else
       return responses.send(err.status, err.message, err.headers)
     end
   end
 end
+
 
 return _M
