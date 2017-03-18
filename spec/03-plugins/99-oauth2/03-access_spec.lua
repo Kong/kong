@@ -2,7 +2,7 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
-local function provision_code(host)
+local function provision_code(host, extra_headers)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
     method = "POST",
@@ -15,10 +15,10 @@ local function provision_code(host)
       state = "hello",
       authenticated_userid = "userid123"
     },
-    headers = {
-      ["Host"] = host and host or "oauth2.com",
+    headers = utils.table_merge({
+      ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
-    }
+    }, extra_headers)
   })
   assert.response(res).has.status(200)
   local body = assert.response(res).has.jsonbody()
@@ -32,17 +32,17 @@ local function provision_code(host)
   end
 end
 
-local function provision_token(host)
-  local code = provision_code(host)
+local function provision_token(host, extra_headers)
+  local code = provision_code(host, extra_headers)
   local request_client = helpers.proxy_ssl_client()
   local res = assert(request_client:send {
     method = "POST",
     path = "/oauth2/token",
     body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
-    headers = {
-      ["Host"] = host and host or "oauth2.com",
+    headers = utils.table_merge({
+      ["Host"] = host or "oauth2.com",
       ["Content-Type"] = "application/json"
-    }
+    }, extra_headers)
   })
   assert.response(res).has.status(200)
   local token = assert.response(res).has.jsonbody()
@@ -2129,7 +2129,11 @@ describe("#ci Plugin: oauth2 (access)", function()
         headers = {
           ["Host"] = "logical-and.com",
           ["apikey"] = "Mouse",
-          ["Authorization"] = "bearer "..provision_token("logical-and.com").access_token,
+          -- we must provide the apikey again in the extra_headers, for the
+          -- token endpoint, because that endpoint is also protected by the
+          -- key-auth plugin. Otherwise getting the token simply fails.
+          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+            {["apikey"] = "Mouse"}).access_token,
         }
       })
       assert.response(res).has.status(200)
@@ -2157,7 +2161,11 @@ describe("#ci Plugin: oauth2 (access)", function()
         path = "/request",
         headers = {
           ["Host"] = "logical-and.com",
-          ["Authorization"] = "bearer "..provision_token("logical-and.com").access_token,
+          -- we must provide the apikey again in the extra_headers, for the
+          -- token endpoint, because that endpoint is also protected by the
+          -- key-auth plugin. Otherwise getting the token simply fails.
+          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+            {["apikey"] = "Mouse"}).access_token,
         }
       })
       assert.response(res).has.status(401)
