@@ -118,6 +118,7 @@ server {
         proxy_pass_header  Server;
         proxy_pass_header  Date;
         proxy_pass         $upstream_scheme://kong_upstream;
+        proxy_ssl_name     $upstream_host;
 
         header_filter_by_lua_block {
             kong.header_filter()
