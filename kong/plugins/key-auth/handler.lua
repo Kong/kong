@@ -132,8 +132,11 @@ function KeyAuthHandler:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer, conf.anonymous, true)
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
+                            nil, load_consumer, conf.anonymous, true)
+      if err then
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
       set_consumer(consumer, nil)
     else
       return responses.send(err.status, err.message)
