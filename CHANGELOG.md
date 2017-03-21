@@ -1,5 +1,11 @@
 ## [Unreleased][unreleased]
 
+### Changed
+
+- Admin API:
+    - Disable support for TLS/1.0.
+      [#2212](https://github.com/Mashape/kong/pull/2212)
+
 ### Added
 
 - Plugins:
@@ -8,9 +14,18 @@
 
 ### Fixed
 
+- Relax multipart MIME type parsing. A space is allowed in between values
+  of the Content-Type header.
+  [#2215](https://github.com/Mashape/kong/pull/2215)
+- CLI:
+  - Better error handling when missing Serf executable.
+    [#2218](https://github.com/Mashape/kong/pull/2218)
 - Plugins:
   - hmac: Generate an HMAC secret value if none is provided.
     [#2158](https://github.com/Mashape/kong/pull/2158)
+  - oauth2: Don't try to remove credential values from request bodies if the
+    MIME type is multipart, since such attemps would result in an error.
+    [#2176](https://github.com/Mashape/kong/pull/2176)
 
 ## [0.10.0] - 2016/03/07
 
