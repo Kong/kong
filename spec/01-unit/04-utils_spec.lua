@@ -486,4 +486,32 @@ describe("Utils", function()
       end
     end
   end)
+  it("pack() stores results, including nils, properly", function()
+    assert.same({ n = 0 }, utils.pack())
+    assert.same({ n = 1 }, utils.pack(nil))
+    assert.same({ n = 3, "1", "2", "3" }, utils.pack("1", "2", "3"))
+    assert.same({ n = 3, [1] = "1", [3] = "3" }, utils.pack("1", nil, "3"))
+  end)
+  it("unpack() unwraps results, including nils, properly", function()
+    local a,b,c
+    a,b,c = utils.unpack({})
+    assert.is_nil(a)
+    assert.is_nil(b)
+    assert.is_nil(c)
+
+    a,b,c = unpack({ n = 1 })
+    assert.is_nil(a)
+    assert.is_nil(b)
+    assert.is_nil(c)
+
+    a,b,c = utils.unpack({ n = 3, "1", "2", "3" })
+    assert.equal("1", a)
+    assert.equal("2", b)
+    assert.equal("3", c)
+
+    a,b,c = utils.unpack({ n = 3, [1] = "1", [3] = "3" })
+    assert.equal("1", a)
+    assert.is_nil(b)
+    assert.equal("3", c)
+  end)
 end)

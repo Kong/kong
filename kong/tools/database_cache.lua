@@ -1,9 +1,12 @@
+local utils = require "kong.tools.utils"
 local resty_lock = require "resty.lock"
 local json_encode = require("cjson.safe").encode
 local json_decode = require("cjson.safe").decode
 local cache = ngx.shared.cache
 local ngx_log = ngx.log
 local gettime = ngx.now
+local pack = utils.pack
+local unpack = utils.unpack
 
 local TTL_EXPIRE_KEY = "___expire_ttl"
 
@@ -26,6 +29,10 @@ local CACHE_KEYS = {
   UPSTREAMS = "upstreams",
   TARGETS = "targets",
 }
+
+local function log(lvl, ...)
+  return ngx_log(lvl, "[db cache] ", ...)
+end
 
 local _M = {}
 
@@ -128,14 +135,17 @@ end
 -- **IMPORTANT:** the callback function may not exit the request early by e.g.
 -- sending a 404 response from the callback. The callback will be nested inside
 -- lock/unlock calls, and hence it MUST return or the lock will not be
--- unlocked. Which in turn will lead to deadlocks and timeouts. 
+-- unlocked. Which in turn will lead to deadlocks and timeouts.
+-- The callback can return any number of values, but only the first will be
+-- stored in the cache. 2nd and more results will only be returned when the
+-- first is `nil`.
 -- @param key the key under which to retrieve the data from the cache
 -- @param ttl time-to-live for the entry (in seconds)
 -- @param cb callback function. If no data is found under `key`, then the callback
--- is called with the additional parameters. The result from the callback is
--- then stored in the cache, and returned.
+-- is called with the additional parameters.
 -- @param ... the additional parameters passed to `cb`
--- @return the (newly) cached value
+-- @return the (newly) cached value, or if `nil` it returns all results from the
+-- callback
 function _M.get_or_set(key, ttl, cb, ...)
 
   -- Try to get the value from the cache
@@ -147,42 +157,53 @@ function _M.get_or_set(key, ttl, cb, ...)
     timeout = 5
   })
   if not lock then
-    ngx_log(ngx.ERR, "could not create lock: ", err)
+    log(ngx.ERR, "could not create lock: ", err)
     return
   end
 
   -- The value is missing, acquire a lock
   local elapsed, err = lock:lock(key)
   if not elapsed then
-    ngx_log(ngx.ERR, "failed to acquire cache lock: ", err)
+    log(ngx.ERR, "failed to acquire cache lock: ", err)
     return
   end
 
   -- Lock acquired. Since in the meantime another worker may have
-  -- populated the value we have to check again
+  -- populated the value we have to check again.
+  -- Errors will be collected, but only dealt with AFTER unlocking
   value = _M.get(key)
-  if value == nil then
-    -- Get from closure
-    value, err = cb(...)
-    if err then
-      return nil, err
+  if value ~= nil then
+    -- shm cache success
+    local ok, lerr = lock:unlock()
+    if not ok and lerr then
+      log(ngx.ERR, "failed to unlock: ", lerr)
     end
 
-    if value ~= nil then
-      local ok, err = _M.set(key, value, ttl)
-      if not ok then
-        ngx_log(ngx.ERR, err)
-        return
-      end
+    return value
+  end
+
+  -- cache failed, we need to invoke the callback
+  value = pack(cb(...))
+
+  if value[1] ~= nil then
+    local ok, err = _M.set(key, value[1], ttl)
+    if not ok then
+      log(ngx.ERR, err)
     end
   end
 
-  local ok, err = lock:unlock()
-  if not ok and err then
-    ngx_log(ngx.ERR, "failed to unlock: ", err)
+  local ok, lerr = lock:unlock()
+  if not ok and lerr then
+    log(ngx.ERR, "failed to unlock: ", lerr)
   end
 
-  return value
+  if value[1] ~= nil then
+    -- only return first value, as on each next lookup the cache will
+    -- also only return a single value
+    return value[1]
+  end
+
+  return unpack(value)
 end
 
 -- Utility Functions
