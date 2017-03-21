@@ -151,6 +151,10 @@ local function check_and_infer(conf)
       -- separated strings to tables (but not when the arr has
       -- only one element)
       value = setmetatable(pl_stringx.split(value, ","), nil) -- remove List mt
+
+      for i = 1, #value do
+        value[i] = pl_stringx.strip(value[i])
+      end
     end
 
     if value == "" then
