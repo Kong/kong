@@ -191,5 +191,18 @@ http {
         location /custom_server_path {
             return 200;
         }
+
+        location /headers-inspect {
+            content_by_lua_block {
+                local cjson = require "cjson"
+
+                local headers = ngx.req.get_headers()
+                local json = cjson.encode(headers)
+
+                ngx.status = 200
+                ngx.say(json)
+                ngx.exit(200)
+            }
+        }
     }
 }
