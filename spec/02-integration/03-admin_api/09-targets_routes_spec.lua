@@ -259,4 +259,65 @@ describe("Admin API", function()
       end)
     end)
   end)
+
+  describe("/upstreams/{upstream}/targets/active/", function()
+    describe("only shows active targets", function()
+      local upstream_name3 = "example.com"
+
+      before_each(function()
+        local upstream3 = assert(helpers.dao.upstreams:insert {
+          name = upstream_name3,
+        })
+
+        -- two target inserts, resulting in a 'down' target
+        assert(helpers.dao.targets:insert {
+          target = "api-1:80",
+          weight = 10,
+          upstream_id = upstream3.id,
+        })
+        assert(helpers.dao.targets:insert {
+          target = "api-1:80",
+          weight = 0,
+          upstream_id = upstream3.id,
+        })
+
+        -- three target inserts, resulting in an 'up' target
+        assert(helpers.dao.targets:insert {
+          target = "api-2:80",
+          weight = 10,
+          upstream_id = upstream3.id,
+        })
+        assert(helpers.dao.targets:insert {
+          target = "api-2:80",
+          weight = 0,
+          upstream_id = upstream3.id,
+        })
+        assert(helpers.dao.targets:insert {
+          target = "api-2:80",
+          weight = 10,
+          upstream_id = upstream3.id,
+        })
+
+        -- and an insert of a separate active target
+        assert(helpers.dao.targets:insert {
+          target = "api-3:80",
+          weight = 10,
+          upstream_id = upstream3.id,
+        })
+      end)
+
+      it("only shows active targets", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/upstreams/" .. upstream_name3 .. "/targets/active/",
+        })
+        assert.response(res).has.status(200)
+        local json = assert.response(res).has.jsonbody()
+        assert.equal(2, #json.data)
+        assert.equal(2, json.total)
+        assert.equal("api-3:80", json.data[1].target)
+        assert.equal("api-2:80", json.data[2].target)
+      end)
+    end)
+  end)
 end)
