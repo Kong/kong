@@ -14,6 +14,9 @@
 
 ### Fixed
 
+- Avoid potential deadlocks upon callback errors in the caching module for
+  database entities.
+  [#2197](https://github.com/Mashape/kong/pull/2197)
 - Relax multipart MIME type parsing. A space is allowed in between values
   of the Content-Type header.
   [#2215](https://github.com/Mashape/kong/pull/2215)
