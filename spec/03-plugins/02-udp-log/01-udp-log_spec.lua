@@ -1,9 +1,9 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-local TCP_PORT = 35000
+local TCP_PORT = 35002
 local UDP_PORT = 35001
-local HTTP_DELAY_PORT = 35003
+local HTTP_DELAY_PORT = 35004
 
 describe("Plugin: udp-log (log)", function()
   local client

@@ -20,14 +20,14 @@ helpers.for_each_dao(function(kong_config)
         name = "mockbin",
         hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
-      }, {ttl = 1})
+      }, {ttl = 3})
       assert.falsy(err)
 
       local row, err = factory.apis:find {id = api.id}
       assert.falsy(err)
       assert.truthy(row)
 
-      ngx.sleep(1)
+      ngx.sleep(4)
 
       spec_helpers.wait_until(function()
         row, err = factory.apis:find {id = api.id}
@@ -41,7 +41,7 @@ helpers.for_each_dao(function(kong_config)
         name = "mockbin",
         hosts = { "mockbin.com" },
         upstream_url = "http://mockbin.com"
-      }, {ttl = 1})
+      }, {ttl = 3})
       assert.falsy(err)
 
       local row, err = factory.apis:find {id = api.id}
@@ -49,7 +49,7 @@ helpers.for_each_dao(function(kong_config)
       assert.truthy(row)
 
       -- Updating the TTL to a higher value
-      factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 2})
+      factory.apis:update({name = "mockbin2"}, {id = api.id}, {ttl = 4})
 
       ngx.sleep(1)
 
@@ -57,7 +57,7 @@ helpers.for_each_dao(function(kong_config)
       assert.falsy(err)
       assert.truthy(row)
 
-      ngx.sleep(1)
+      ngx.sleep(4)
 
       spec_helpers.wait_until(function()
         row, err = factory.apis:find {id = api.id}

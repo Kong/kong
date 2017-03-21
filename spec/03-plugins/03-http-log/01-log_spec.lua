@@ -93,7 +93,7 @@ describe("Plugin: http-log (log)", function()
         assert.same("127.0.0.1", log_message.client_ip)
         return true
       end
-    end)
+    end, 5)
   end, 10)
 
   it("logs to HTTPS", function()
