@@ -259,7 +259,7 @@ describe("Router", function()
       helpers.stop_kong()
     end)
 
-    it("preserves downstream host if enabled", function()
+    pending("preserves downstream host if enabled", function()
       local res = assert(client:send {
         method = "GET",
         path = "/get",
