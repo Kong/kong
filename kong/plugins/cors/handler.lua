@@ -1,12 +1,14 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local responses  = require "kong.tools.responses"
+local url = require "socket.url"
 
-
+local req_get_headers = ngx.req.get_headers
 local req_get_method  = ngx.req.get_method
 local re_find         = ngx.re.find
 local concat          = table.concat
 local tostring        = tostring
 local ipairs          = ipairs
+local fmt             = string.format
 
 
 local CorsHandler = BasePlugin:extend()
@@ -56,8 +58,24 @@ end
 
 local function configure_credentials(ngx, conf)
   if ngx.ctx.cors_allow_all then
-    ngx.header["Access-Control-Allow-Credentials"] = "false"
+    local allow_credentials = false
 
+    -- If it's catch all, then match the Origin requested by the client
+    -- but only if the Origin URL is valid, and only if credentials=true
+    if conf.credentials then
+      local origin = req_get_headers()["Origin"]
+      if origin then
+        local parsed_url = url.parse(origin)
+        if parsed_url.scheme and parsed_url.host then
+          ngx.header["Access-Control-Allow-Origin"] = fmt("%s://%s", 
+                                                          parsed_url.scheme,
+                                                          parsed_url.host)
+          allow_credentials = true
+        end
+      end
+    end
+
+    ngx.header["Access-Control-Allow-Credentials"] = tostring(allow_credentials)
   elseif conf.credentials then
     ngx.header["Access-Control-Allow-Credentials"] = "true"
   end
