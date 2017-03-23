@@ -853,7 +853,12 @@ return {
     local ok, err = prepare_prefix(env.prefix)
     if not ok then return nil, err end
 
-    return kong_exec("start --conf "..TEST_CONF_PATH, env)
+    local nginx_conf = ""
+    if env.nginx_conf then
+      nginx_conf = " --nginx-conf " .. env.nginx_conf
+    end
+
+    return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
   end,
   stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix

@@ -200,7 +200,6 @@ return function(options)
     --
     -- This patched method will create a unique seed per worker process,
     -- using a combination of both time and the worker's pid.
-    -- luacheck: globals math
     local util = require "kong.tools.utils"
     local seeds = {}
     local randomseed = math.randomseed

@@ -884,7 +884,7 @@ describe("Plugin: hmac-auth (access)", function()
       key = "Mouse",
       consumer_id = user1.id
     })
-    credential = assert(helpers.dao.hmacauth_credentials:insert {
+    local credential = assert(helpers.dao.hmacauth_credentials:insert {
       username = "Aladdin",
       secret = "OpenSesame",
       consumer_id = user2.id

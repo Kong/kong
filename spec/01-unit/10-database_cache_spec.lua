@@ -107,5 +107,32 @@ describe("Database cache", function()
       -- verify
       assert.is.Nil(cache.get(key))
     end)
+
+    it("get_or_set only returns a single value on success", function()
+      local cb = function() return 1,2,3,4 end
+      local a,b,c,d = cache.get_or_set("just some key", nil, cb)
+      assert.equal(1, a)
+      assert.is_nil(b)
+      assert.is_nil(c)
+      assert.is_nil(d)
+
+      -- try again, while retrieving the cached value
+      local cb = function() return "result",2,3,4 end
+      local a,b,c,d = cache.get_or_set("just some key", nil, cb)
+      assert.equal(1, a)  -- still 1, cached value
+      assert.is_nil(b)
+      assert.is_nil(c)
+      assert.is_nil(d)
+    end)
+
+    it("get_or_set returns all values on failure", function()
+      local cb = function() return nil,2,3,4 end
+      local a,b,c,d = cache.get_or_set("just some other key", nil, cb)
+      assert.is_nil(a)
+      assert.equal(2, b)
+      assert.equal(3, c)
+      assert.equal(4, d)
+    end)
+
   end)
 end)

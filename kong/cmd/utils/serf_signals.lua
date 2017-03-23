@@ -56,7 +56,8 @@ local function check_serf_bin(kong_config)
 
   if not found then
     return nil, "could not find 'serf' executable. Kong requires version " ..
-                serf_compatible .. " (you can tweak 'serf_path' to your needs)"
+                tostring(serf_compatible) ..
+                " (you can tweak 'serf_path' to your needs)"
   end
 
   return found

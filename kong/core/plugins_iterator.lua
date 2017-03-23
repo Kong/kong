@@ -14,7 +14,7 @@ local function load_plugin_into_memory(api_id, consumer_id, plugin_name)
     name = plugin_name
   }
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
 
   if #rows > 0 then
@@ -37,8 +37,11 @@ end
 -- @treturn table Plugin retrieved from the cache or database.
 local function load_plugin_configuration(api_id, consumer_id, plugin_name)
   local cache_key = cache.plugin_key(plugin_name, api_id, consumer_id)
-  local plugin = cache.get_or_set(cache_key, nil, load_plugin_into_memory,
+  local plugin, err = cache.get_or_set(cache_key, nil, load_plugin_into_memory,
                                   api_id, consumer_id, plugin_name)
+  if err then
+    responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
   if plugin ~= nil and plugin.enabled then
     return plugin.config or {}
   end
