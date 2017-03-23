@@ -28,7 +28,7 @@ end
 
 -- WARN: BAD, this is **blocking** IO. Legacy code from previous Serf
 -- implementation that needs to be upgraded.
-function Serf:invoke_signal(signal, args, no_rpc)
+function Serf:invoke_signal(signal, args, no_rpc, full_error)
   args = args or {}
   if type(args) == "table" then
     setmetatable(args, Serf.args_mt)
@@ -37,8 +37,10 @@ function Serf:invoke_signal(signal, args, no_rpc)
   local cmd = string.format("%s %s %s %s", self.config.serf_path, signal, rpc, tostring(args))
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then
-    -- always print the first error line of serf
-    local err = stdout ~= "" and pl_stringx.splitlines(stdout)[1] or stderr
+    local err = stderr
+    if stdout ~= "" then
+      err = full_error and stdout or pl_stringx.splitlines(stdout)[1]
+    end
     return nil, err
   end
 
@@ -55,8 +57,13 @@ function Serf:leave()
   -- fixed we can check again for any errors returned by the following command.
   self:invoke_signal("leave")
 
-  local _, err = self.dao.nodes:delete {name = self.node_name}
-  if err then return nil, tostring(err) end
+  -- This check is required in case the prefix preparation fails befofe a node
+  -- id can be generated. In that case this value will be nil and the DAO will
+  -- fail because the primary key is missing in the delete operation.
+  if self.node_name then
+    local _, err = self.dao.nodes:delete {name = self.node_name}
+    if err then return nil, tostring(err) end
+  end
 
   return true
 end
@@ -66,6 +73,14 @@ function Serf:force_leave(node_name)
   if not res then return nil, err end
 
   return true
+end
+
+function Serf:keys(action, key)
+  local res, err = self:invoke_signal(string.format("keys %s %s", action, key 
+                                              and key or ""), nil, false, true)
+  if not res then return nil, err end
+
+  return res
 end
 
 function Serf:members()

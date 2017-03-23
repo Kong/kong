@@ -235,7 +235,7 @@ return {
       END$$;
     ]],
     down = [[
-      ALTER TABLE apis DROP COLUMN IF EXISTS headers;
+      ALTER TABLE apis DROP COLUMN IF EXISTS hosts;
       ALTER TABLE apis DROP COLUMN IF EXISTS uris;
       ALTER TABLE apis DROP COLUMN IF EXISTS methods;
       ALTER TABLE apis DROP COLUMN IF EXISTS strip_uri;
@@ -258,16 +258,38 @@ return {
         return err
       end
 
-      for _, row in ipairs(rows) do
-        local fields_to_update = {
-          hosts = { row.request_host },
-          uris = { row.request_path },
-          strip_uri = row.strip_request_path,
-        }
+      local fmt = string.format
+      local cjson = require("cjson")
 
-        local _, err = dao.apis:update(fields_to_update, { id = row.id })
-        if err then
-          return err
+      for _, row in ipairs(rows) do
+        local set = {}
+
+        local upstream_url = row.upstream_url
+        while string.sub(upstream_url, #upstream_url) == "/" do
+          upstream_url = string.sub(upstream_url, 1, #upstream_url - 1)
+        end
+        set[#set + 1] = fmt("upstream_url = '%s'", upstream_url)
+
+        if row.request_host and row.request_host ~= "" then
+          set[#set + 1] = fmt("hosts = '%s'", 
+                              cjson.encode({ row.request_host }))
+        end
+
+        if row.request_path and row.request_path ~= "" then
+          set[#set + 1] = fmt("uris = '%s'", 
+                              cjson.encode({ row.request_path }))
+        end
+
+        set[#set + 1] = fmt("strip_uri = %s", tostring(row.strip_request_path))
+
+        if #set > 0 then
+          local query = [[UPDATE apis SET %s WHERE id = '%s';]]
+          local _, err = dao.db:query(
+            fmt(query, table.concat(set, ", "), row.id)
+          )
+          if err then
+            return err
+          end
         end
       end
     end,
@@ -298,41 +320,53 @@ return {
     ]]
   },
   {
-    name = "2016-09-16-141423_upstreams",
-    -- Note on the timestamps below; these use a precision of milliseconds
-    -- this differs from the other tables above, as they only use second precision.
-    -- This differs from the change to the Cassandra entities.
+    name = "2016-01-25-103600_unique_custom_id",
     up = [[
-      CREATE TABLE IF NOT EXISTS upstreams(
-        id uuid PRIMARY KEY,
-        name text UNIQUE,
-        slots int NOT NULL,
-        orderlist text NOT NULL,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
-      );
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('upstreams_name_idx')) IS NULL THEN
-          CREATE INDEX upstreams_name_idx ON upstreams(name);
-        END IF;
-      END$$;
-      CREATE TABLE IF NOT EXISTS targets(
-        id uuid PRIMARY KEY,
-        target text NOT NULL,
-        weight int NOT NULL,
-        upstream_id uuid REFERENCES upstreams(id) ON DELETE CASCADE,
-        created_at timestamp without time zone default (CURRENT_TIMESTAMP(3) at time zone 'utc')
-      );
-      DO $$
-      BEGIN
-        IF (SELECT to_regclass('targets_target_idx')) IS NULL THEN
-          CREATE INDEX targets_target_idx ON targets(target);
-        END IF;
-      END$$;
+      ALTER TABLE consumers ADD CONSTRAINT consumers_custom_id_key UNIQUE(custom_id);
     ]],
     down = [[
-      DROP TABLE upstreams;
-      DROP TABLE targets;
+      ALTER TABLE consumers DROP CONSTRAINT consumers_custom_id_key;
     ]],
+  },
+  {
+    name = "2017-01-24-132600_upstream_timeouts",
+    up = [[
+      ALTER TABLE apis ADD upstream_connect_timeout integer;
+      ALTER TABLE apis ADD upstream_send_timeout integer;
+      ALTER TABLE apis ADD upstream_read_timeout integer;
+    ]],
+    down = [[
+      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_connect_timeout;
+      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_send_timeout;
+      ALTER TABLE apis DROP COLUMN IF EXISTS upstream_read_timeout;
+    ]]
+  },
+  {
+    name = "2017-01-24-132600_upstream_timeouts_2",
+    up = function(_, _, dao)
+      local rows, err = dao.db:query([[
+        SELECT * FROM apis;
+      ]])
+      if err then
+        return err
+      end
+
+      for _, row in ipairs(rows) do
+        if not row.upstream_connect_timeout
+          or not row.upstream_read_timeout
+          or not row.upstream_send_timeout then
+
+          local _, err = dao.apis:update({
+            upstream_connect_timeout = 60000,
+            upstream_send_timeout = 60000,
+            upstream_read_timeout = 60000,
+          }, { id = row.id })
+          if err then
+            return err
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
   },
 }

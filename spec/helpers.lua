@@ -1,7 +1,7 @@
 ------------------------------------------------------------------
 -- Collection of utilities to help testing Kong features and plugins.
 --
--- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @copyright Copyright 2016-2017 Mashape Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module spec.helpers
 
@@ -222,7 +222,7 @@ end
 -- @name proxy_ssl_client
 local function proxy_ssl_client(timeout)
   local client = http_client(conf.proxy_ip, conf.proxy_ssl_port, timeout)
-  client:ssl_handshake()
+  assert(client:ssl_handshake())
   return client
 end
 
@@ -853,7 +853,12 @@ return {
     local ok, err = prepare_prefix(env.prefix)
     if not ok then return nil, err end
 
-    return kong_exec("start --conf "..TEST_CONF_PATH, env)
+    local nginx_conf = ""
+    if env.nginx_conf then
+      nginx_conf = " --nginx-conf " .. env.nginx_conf
+    end
+
+    return kong_exec("start --conf " .. TEST_CONF_PATH .. nginx_conf, env)
   end,
   stop_kong = function(prefix, preserve_prefix)
     prefix = prefix or conf.prefix
@@ -871,7 +876,7 @@ return {
     dao:truncate_tables()
 
     local default_conf = conf_loader(nil, {prefix = prefix or conf.prefix})
-    local running_conf = conf_loader(default_conf.kong_conf)
+    local running_conf = conf_loader(default_conf.kong_env)
     if not running_conf then return end
 
     -- kill kong_tests.conf services

@@ -4,7 +4,7 @@
 -- NOTE: Before implementing a function here, consider if it will be used in many places
 -- across Kong. If not, a local function in the appropriate module is prefered.
 --
--- @copyright Copyright 2016 Mashape Inc. All rights reserved.
+-- @copyright Copyright 2016-2017 Mashape Inc. All rights reserved.
 -- @license [Apache 2.0](https://opensource.org/licenses/Apache-2.0)
 -- @module kong.tools.utils
 
@@ -29,6 +29,7 @@ local gsub       = string.gsub
 local split      = pl_stringx.split
 local strip      = pl_stringx.strip
 local re_find    = ngx.re.find
+local re_match   = ngx.re.match
 
 ffi.cdef[[
 typedef unsigned char u_char;
@@ -56,6 +57,13 @@ _M.split = split
 -- @function strip
 _M.strip = strip
 
+--- packs a set of arguments in a table.
+-- Explicitly sets field `n` to the number of arguments, so it is `nil` safe
+_M.pack = function(...) return {n = select("#", ...), ...} end
+
+--- unpacks a table to a list of arguments.
+-- Explicitly honors the `n` field if given in the table, so it is `nil` safe
+_M.unpack = function(t, i, j) return unpack(t, i or 1, j or t.n or #t) end
 
 --- Retrieves the hostname of the local machine
 -- @return string  The hostname
@@ -435,7 +443,12 @@ _M.normalize_ipv4 = function(address)
   if (a<0) or (a>255) or (b<0) or (b>255) or (c<0) or (c>255) or (d<0) or (d>255) then
     return nil, "invalid ipv4 address: "..address
   end
-  if port then port = tonumber(port) end
+  if port then 
+    port = tonumber(port) 
+    if port > 65535 then
+      return nil, "invalid port number"
+    end
+  end
   
   return fmt("%d.%d.%d.%d",a,b,c,d), port
 end
@@ -453,6 +466,10 @@ _M.normalize_ipv6 = function(address)
       port = port:match("^:(%d-)$")
       if not port then
         return nil, "invalid ipv6 address"
+      end
+      port = tonumber(port)
+      if port > 65535 then
+        return nil, "invalid port number"
       end
     end
   else
@@ -475,9 +492,6 @@ _M.normalize_ipv6 = function(address)
     return nil, "invalid ipv6 address: "..address
   end
   local zeros = "0000"
-  if port then
-    port = tonumber(port)
-  end
   return lower(fmt("%s:%s:%s:%s:%s:%s:%s:%s",
       zeros:sub(1, 4 - #a)..a,
       zeros:sub(1, 4 - #b)..b,
@@ -498,6 +512,9 @@ _M.check_hostname = function(address)
   if port then
     name = name:sub(1, -(#port+2))
     port = tonumber(port)
+    if port > 65535 then
+      return nil, "invalid port number"
+    end
   end
   local match = name:match("^[%d%a%-%.%_]+$")
   if match == nil then
@@ -569,6 +586,24 @@ _M.format_host = function(p1, p2)
   else
     return host ..  (port and ":"..port or "")
   end
+end
+
+--- Validates a header name.
+-- Checks characters used in a header name to be valid, as per nginx only
+-- a-z, A-Z, 0-9 and '-' are allowed.
+-- @param name (string) the header name to verify
+-- @return the valid header name, or `nil+error`
+_M.validate_header_name = function(name)
+  if name == nil or name == "" then
+    return nil, "no header name provided"
+  end
+
+  if re_match(name, "^[a-zA-Z0-9-]+$", "jo") then
+    return name
+  end
+
+  return nil, "bad header name '" .. name ..
+              "', allowed characters are A-Z, a-z, 0-9 and '-'"
 end
 
 return _M

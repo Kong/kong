@@ -81,9 +81,15 @@ function _M.execute()
   -- retrieve SNI or raw server IP
 
   local sni, err = ssl.server_name()
-  if not sni then
-    log(ERR, "could not retrieve Server Name Indication from client: ", err)
+  if err then
+    log(ERR, "could not retrieve Server Name Indication: ", err)
     return ngx.exit(ngx.ERROR)
+  end
+  if not sni then
+    log(DEBUG, "no Server Name Indication provided by client, serving ", 
+               "default proxy SSL certificate")
+    -- use fallback certificate
+    return
   end
 
   local cert_and_key, err

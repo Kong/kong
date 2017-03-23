@@ -12,11 +12,11 @@ local function execute(args)
   }))
   assert(pl_path.exists(default_conf.prefix),
          "no such prefix: "..default_conf.prefix)
-  assert(pl_path.exists(default_conf.kong_conf),
+  assert(pl_path.exists(default_conf.kong_env),
          "Kong is not running at "..default_conf.prefix)
 
   -- load <PREFIX>/kong.conf containing running node's config
-  local conf = assert(conf_loader(default_conf.kong_conf))
+  local conf = assert(conf_loader(default_conf.kong_env))
 
   local pids = {
     serf = conf.serf_pid,

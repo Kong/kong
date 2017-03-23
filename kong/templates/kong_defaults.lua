@@ -47,6 +47,7 @@ cluster_listen = 0.0.0.0:7946
 cluster_listen_rpc = 127.0.0.1:7373
 cluster_advertise = NONE
 cluster_encrypt_key = NONE
+cluster_keyring_file = NONE
 cluster_profile = wan
 cluster_ttl_on_failure = 3600
 
@@ -54,6 +55,7 @@ dns_resolver = NONE
 dns_hostsfile = /etc/hosts
 
 lua_code_cache = on
+lua_socket_pool_size = 30
 lua_ssl_trusted_certificate = NONE
 lua_ssl_verify_depth = 1
 lua_package_path = ?/init.lua;./kong/?.lua

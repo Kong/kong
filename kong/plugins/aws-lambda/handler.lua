@@ -7,11 +7,11 @@ local utils = require "kong.tools.utils"
 local Multipart = require "multipart"
 local http = require "resty.http"
 local cjson = require "cjson.safe"
+local public_utils = require "kong.tools.public"
 
 local string_find = string.find
 local ngx_req_get_headers = ngx.req.get_headers
 local ngx_req_read_body = ngx.req.read_body
-local ngx_req_get_post_args = ngx.req.get_post_args
 local ngx_req_get_uri_args = ngx.req.get_uri_args
 local ngx_req_get_body_data = ngx.req.get_body_data
 
@@ -35,7 +35,7 @@ local function retrieve_parameters()
       body_parameters = {}
     end
   else
-    body_parameters = ngx_req_get_post_args()
+    body_parameters = public_utils.get_post_args()
   end
 
   return utils.table_merge(ngx_req_get_uri_args(), body_parameters)
@@ -43,11 +43,11 @@ end
 
 function AWSLambdaHandler:access(conf)
   AWSLambdaHandler.super.access(self)
-  
+
   local bodyJson = cjson.encode(retrieve_parameters())
 
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations", 
+  local path = string.format("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
 
   local opts = {
@@ -61,7 +61,7 @@ function AWSLambdaHandler:access(conf)
       ["Content-Type"] = "application/x-amz-json-1.1",
       ["Content-Length"] = tostring(#bodyJson)
     },
-    body = bodyJson, 
+    body = bodyJson,
     path = path,
     access_key = conf.aws_key,
     secret_key = conf.aws_secret,
@@ -92,7 +92,6 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
-  local status = res.status
   local body = res:read_body()
   local headers = res.headers
 
@@ -101,11 +100,16 @@ function AWSLambdaHandler:access(conf)
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
 
+  ngx.status = res.status
+
   -- Send response to client
   for k, v in pairs(headers) do
     ngx.header[k] = v
   end
-  responses.send(status, body, headers, true)
+
+  ngx.say(body)
+
+  return ngx.exit(res.status)
 end
 
 AWSLambdaHandler.PRIORITY = 750

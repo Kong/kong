@@ -26,17 +26,35 @@ local function load_credential(key)
     key = key
   }
   if not creds then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return creds[1]
 end
 
-local function load_consumer(credential)
-  local row, err = singletons.dao.consumers:find { id = credential.consumer_id }
-  if not row then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+local function load_consumer(consumer_id, anonymous)
+  local result, err = singletons.dao.consumers:find { id = consumer_id }
+  if not result then
+    if anonymous and not err then
+      err = 'anonymous consumer "'..consumer_id..'" not found'
+    end
+    return nil, err
   end
-  return row
+  return result
+end
+
+local function set_consumer(consumer, credential)
+  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
+  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
+  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
+  ngx.ctx.authenticated_consumer = consumer
+  if credential then
+    ngx_set_header(constants.HEADERS.CREDENTIAL_USERNAME, credential.username)
+    ngx.ctx.authenticated_credential = credential
+    ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
+  else
+    ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+  end
+  
 end
 
 local function do_authentication(conf)
@@ -80,8 +98,11 @@ local function do_authentication(conf)
   end
 
   -- retrieve our consumer linked to this API key
-  local credential = cache.get_or_set(cache.keyauth_credential_key(key),
+  local credential, err = cache.get_or_set(cache.keyauth_credential_key(key),
                                       nil, load_credential, key)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
   if not credential then
@@ -93,15 +114,13 @@ local function do_authentication(conf)
   -----------------------------------------
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
-                                    nil, load_consumer, credential)
+  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+                                    nil, load_consumer, credential.consumer_id)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
-  ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- In case of auth plugins concatenation
-  ngx_set_header(constants.HEADERS.CONSUMER_ID, consumer.id)
-  ngx_set_header(constants.HEADERS.CONSUMER_CUSTOM_ID, consumer.custom_id)
-  ngx_set_header(constants.HEADERS.CONSUMER_USERNAME, consumer.username)
-  ngx.ctx.authenticated_credential = credential
-  ngx.ctx.authenticated_consumer = consumer
+  set_consumer(consumer, credential)
 
   return true
 end
@@ -111,10 +130,16 @@ function KeyAuthHandler:access(conf)
 
   local ok, err = do_authentication(conf)
   if not ok then
-    if conf.anonymous then
-      ngx_set_header(constants.HEADERS.ANONYMOUS, true)
+    if conf.anonymous ~= "" then
+      -- get anonymous user
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
+                            nil, load_consumer, conf.anonymous, true)
+      if err then
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
+      set_consumer(consumer, nil)
     else
-      return responses.send(err.status, err.message, err.headers)
+      return responses.send(err.status, err.message)
     end
   end
 end

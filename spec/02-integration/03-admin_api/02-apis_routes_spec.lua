@@ -669,6 +669,34 @@ describe("Admin API", function()
             assert.equal([[{"name":"name is required"}]], body)
           end
         end)
+        it_content_types("returns 409 on conflict", function(content_type)
+          return function()
+            -- insert initial plugin
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis/"..api.id.."/plugins",
+              body = {
+                name="basic-auth",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.response(res).has.status(201)
+            assert.response(res).has.jsonbody()
+
+            -- do it again, to provoke the error
+            local res = assert(client:send {
+              method = "POST",
+              path = "/apis/"..api.id.."/plugins",
+              body = {
+                name="basic-auth",
+              },
+              headers = {["Content-Type"] = content_type}
+            })
+            assert.response(res).has.status(409)
+            local json = assert.response(res).has.jsonbody()
+            assert.same({ name = "already exists with value 'basic-auth'"}, json)
+          end
+        end)
       end)
     end)
 
