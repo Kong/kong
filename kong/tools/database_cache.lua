@@ -2,11 +2,18 @@ local utils = require "kong.tools.utils"
 local resty_lock = require "resty.lock"
 local json_encode = require("cjson.safe").encode
 local json_decode = require("cjson.safe").decode
+local lrucache = require "resty.lrucache"
 local cache = ngx.shared.cache
 local ngx_log = ngx.log
 local gettime = ngx.now
 local pack = utils.pack
 local unpack = utils.unpack
+
+-- Lets calculate our LRU cache size based on some memory assumptions...
+local ITEM_SIZE = 1024 -- estimated bytes used per cache entry (probably less)
+local MEM_SIZE = 500 -- megabytes to allocate for maximum cache size
+-- defaults 1024/500 above ---> size = 512000 entries
+local LRU_SIZE = math.floor((MEM_SIZE * 1024 * 1024) / ITEM_SIZE)
 
 local TTL_EXPIRE_KEY = "___expire_ttl"
 
@@ -65,7 +72,7 @@ end
 
 -- Local Memory
 
-local DATA = {}
+local DATA = lrucache.new(LRU_SIZE)
 
 function _M.set(key, value, exptime)
   exptime = exptime or 0
@@ -77,7 +84,7 @@ function _M.set(key, value, exptime)
     }
   end
 
-  DATA[key] = value
+  DATA:set(key, value)
 
   -- Save into Shared Dictionary
   local _, err = _M.sh_set(key, json_encode(value), exptime)
@@ -90,7 +97,7 @@ function _M.get(key)
   local now = gettime()
 
   -- check local memory, and verify ttl
-  local value = DATA[key]
+  local value = DATA:get(key)
   if value ~= nil then
     if type(value) ~= "table" or not value[TTL_EXPIRE_KEY] then
       -- found non-ttl value, just return it
@@ -100,7 +107,7 @@ function _M.get(key)
       return value.value
     end
     -- value with expired ttl, delete it
-    DATA[key] = nil
+    DATA:delete(key)
   end
 
   -- nothing found yet, get it from Shared Dictionary
@@ -110,7 +117,7 @@ function _M.get(key)
     return nil
   end
   value = json_decode(value)
-  DATA[key] = value  -- store in memory, so we don't need to deserialize next time
+  DATA:set(key, value)  -- store in memory, so we don't need to deserialize next time
 
   if type(value) ~= "table" or not value[TTL_EXPIRE_KEY] then
     -- found non-ttl value, just return it
@@ -122,12 +129,12 @@ function _M.get(key)
 end
 
 function _M.delete(key)
-  DATA[key] = nil
+  DATA:delete(key)
   _M.sh_delete(key)
 end
 
 function _M.delete_all()
-  DATA = {}
+  DATA = lrucache.new(LRU_SIZE)
   _M.sh_delete_all()
 end
 
