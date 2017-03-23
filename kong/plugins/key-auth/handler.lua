@@ -26,7 +26,7 @@ local function load_credential(key)
     key = key
   }
   if not creds then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return creds[1]
 end
@@ -37,7 +37,7 @@ local function load_consumer(consumer_id, anonymous)
     if anonymous and not err then
       err = 'anonymous consumer "'..consumer_id..'" not found'
     end
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -98,8 +98,11 @@ local function do_authentication(conf)
   end
 
   -- retrieve our consumer linked to this API key
-  local credential = cache.get_or_set(cache.keyauth_credential_key(key),
+  local credential, err = cache.get_or_set(cache.keyauth_credential_key(key),
                                       nil, load_credential, key)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   -- no credential in DB, for this key, it is invalid, HTTP 403
   if not credential then
@@ -111,8 +114,11 @@ local function do_authentication(conf)
   -----------------------------------------
 
   -- retrieve the consumer linked to this API key, to set appropriate headers
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
                                     nil, load_consumer, credential.consumer_id)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   set_consumer(consumer, credential)
 
@@ -126,8 +132,11 @@ function KeyAuthHandler:access(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
-                       nil, load_consumer, conf.anonymous, true)
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
+                            nil, load_consumer, conf.anonymous, true)
+      if err then
+        responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
       set_consumer(consumer, nil)
     else
       return responses.send(err.status, err.message)

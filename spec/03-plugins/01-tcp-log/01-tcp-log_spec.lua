@@ -1,7 +1,7 @@
 local cjson = require "cjson"
 local helpers = require "spec.helpers"
 
-local TCP_PORT = 35000
+local TCP_PORT = 35001
 local HTTP_DELAY_PORT = 35003
 
 describe("Plugin: tcp-log (log)", function()

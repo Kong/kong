@@ -241,73 +241,88 @@ describe("Router", function()
         {
           name = "api-1",
           preserve_host = true,
-          upstream_url = "http://httpbin.org",
+          upstream_url = "http://localhost:9999/headers-inspect",
           hosts = "preserved.com",
         },
         {
           name = "api-2",
           preserve_host = false,
-          upstream_url = "http://httpbin.org",
+          upstream_url = "http://localhost:9999/headers-inspect",
           hosts = "discarded.com",
-        }
+        },
       }
 
-      assert(helpers.start_kong())
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
     end)
 
     teardown(function()
       helpers.stop_kong()
     end)
 
-    it("preserves downstream host if enabled", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
-        headers = { ["Host"] = "preserved.com" },
-      })
+    describe(" = false (default)", function()
+      it("uses hostname from upstream_url", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/get",
+          headers = { ["Host"] = "discarded.com" },
+        })
 
-      assert.res_status(200, res)
-      local json = cjson.decode((res:read_body()))
-      assert.equal("preserved.com", json.headers.Host)
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.matches("localhost", json.host, nil, true) -- not testing :port
+      end)
+
+      it("uses port value from upstream_url if not default", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/get",
+          headers = { ["Host"] = "discarded.com" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.matches(":9999", json.host, nil, true) -- not testing hostname
+      end)
     end)
 
-    pending("preserves downstream host+port if enabled", function()
-      -- pending because httpbin.org seems to not return the exact header
-      -- but a parsed one, with the port stripped.
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
-        headers = { ["Host"] = "preserved.com:80" },
-      })
+    describe(" = true", function()
+      it("forwards request Host", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/",
+          headers = { ["Host"] = "preserved.com" },
+        })
 
-      assert.res_status(200, res)
-      local json = cjson.decode((res:read_body()))
-      assert.equal("preserved.com:80", json.headers.Host)
-    end)
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("preserved.com", json.host)
+      end)
 
-    pending("preserves downstream host+non_default_port if enabled", function()
-      -- pending because httpbin.org seems to not return the exact header
-      -- but a parsed one, with the port stripped.
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
-        headers = { ["Host"] = "preserved.com:123" },
-      })
+      it("forwards request Host:Port even if port is default", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/get",
+          headers = { ["Host"] = "preserved.com:80" },
+        })
 
-      assert.res_status(200, res)
-      local json = cjson.decode((res:read_body()))
-      assert.equal("preserved.com:123", json.headers.Host)
-    end)
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("preserved.com:80", json.host)
+      end)
 
-    it("discards downstream host if disabled", function()
-      local res = assert(client:send {
-        method = "GET",
-        path = "/get",
-        headers = { ["Host"] = "discarded.com" },
-      })
+      it("forwards request Host:Port if port isn't default", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/get",
+          headers = { ["Host"] = "preserved.com:123" },
+        })
 
-      assert.response(res).has.status(200)
-      assert.equal("httpbin.org", assert.request(res).has.header("Host"))
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("preserved.com:123", json.host)
+      end)
     end)
   end)
 

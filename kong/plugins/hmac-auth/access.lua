@@ -106,17 +106,22 @@ end
 local function load_credential_into_memory(username)
   local keys, err = singletons.dao.hmacauth_credentials:find_all { username = username }
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return keys[1]
 end
 
 local function load_credential(username)
-  local credential
+  local credential, err
   if username then
-    credential = cache.get_or_set(cache.hmacauth_credential_key(username),
+    credential, err = cache.get_or_set(cache.hmacauth_credential_key(username),
                                   nil, load_credential_into_memory, username)
   end
+
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+
   return credential
 end
 
@@ -144,7 +149,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
     if anonymous and not err then
       err = 'anonymous consumer "'..consumer_id..'" not found'
     end
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -197,8 +202,11 @@ local function do_authentication(conf)
   end
 
   -- Retrieve consumer
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
                    nil, load_consumer_into_memory, credential.consumer_id)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   set_consumer(consumer, credential)
 
@@ -210,8 +218,11 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
+      if err then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
       set_consumer(consumer, nil)
     else
       return responses.send(err.status, err.message)

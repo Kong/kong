@@ -7,6 +7,7 @@ local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local timestamp = require "kong.tools.timestamp"
 local singletons = require "kong.singletons"
+local public_utils = require "kong.tools.public"
 
 local string_find = string.find
 local req_get_headers = ngx.req.get_headers
@@ -74,16 +75,19 @@ end
 local function load_oauth2_credential_by_client_id_into_memory(client_id)
   local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return credentials[1]
 end
 
 local function get_redirect_uri(client_id)
-  local client
+  local client, err
   if client_id then
-    client = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
+    client, err = cache.get_or_set(cache.oauth2_credential_key(client_id), nil,
                    load_oauth2_credential_by_client_id_into_memory, client_id)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
   end
   return client and client.redirect_uri or nil, client
 end
@@ -99,7 +103,7 @@ local function retrieve_parameters()
     body_parameters, err = cjson.decode(ngx.req.get_body_data())
     if err then body_parameters = {} end
   else
-    body_parameters = ngx.req.get_post_args()
+    body_parameters = public_utils.get_post_args()
   end
 
   return utils.table_merge(ngx.req.get_uri_args(), body_parameters)
@@ -380,7 +384,7 @@ local function load_token_into_memory(conf, api, access_token)
   local credentials, err = singletons.dao.oauth2_tokens:find_all { api_id = api_id, access_token = access_token }
   local result
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   elseif #credentials > 0 then
     result = credentials[1]
   end
@@ -388,10 +392,13 @@ local function load_token_into_memory(conf, api, access_token)
 end
 
 local function retrieve_token(conf, access_token)
-  local token
+  local token, err
   if access_token then
-    token = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
+    token, err = cache.get_or_set(cache.oauth2_token_key(access_token), nil,
                              load_token_into_memory, conf, ngx.ctx.api, access_token)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
   end
   return token
 end
@@ -422,9 +429,13 @@ local function parse_access_token(conf)
       parameters[ACCESS_TOKEN] = nil
       ngx.req.set_uri_args(parameters)
 
-      if ngx.req.get_method() ~= "GET" then -- Remove from body
+      local content_type = req_get_headers()[CONTENT_TYPE]
+      local is_form_post = content_type and
+        string_find(content_type, "application/x-www-form-urlencoded", 1, true)
+
+      if ngx.req.get_method() ~= "GET" and is_form_post then -- Remove from body
         ngx.req.read_body()
-        parameters = ngx.req.get_post_args()
+        parameters = public_utils.get_post_args()
         parameters[ACCESS_TOKEN] = nil
         local encoded_args = ngx.encode_args(parameters)
         ngx.req.set_header(CONTENT_LENGTH, #encoded_args)
@@ -439,7 +450,7 @@ end
 local function load_oauth2_credential_into_memory(credential_id)
   local result, err = singletons.dao.oauth2_credentials:find {id = credential_id}
   if err then
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -450,7 +461,7 @@ local function load_consumer_into_memory(consumer_id, anonymous)
     if anonymous and not err then
       err = 'anonymous consumer "'..consumer_id..'" not found'
     end
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    return nil, err
   end
   return result
 end
@@ -495,12 +506,19 @@ local function do_authentication(conf)
   end
 
   -- Retrieve the credential from the token
-  local credential = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
+  local credential, err = cache.get_or_set(cache.oauth2_credential_key(token.credential_id), 
                         nil, load_oauth2_credential_into_memory, token.credential_id)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   -- Retrieve the consumer from the credential
-  local consumer = cache.get_or_set(cache.consumer_key(credential.consumer_id),
+  local consumer, err = cache.get_or_set(cache.consumer_key(credential.consumer_id),
     nil, load_consumer_into_memory, credential.consumer_id)
+
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
   set_consumer(consumer, credential, token)
 
@@ -535,8 +553,11 @@ function _M.execute(conf)
   if not ok then
     if conf.anonymous ~= "" then
       -- get anonymous user
-      local consumer = cache.get_or_set(cache.consumer_key(conf.anonymous),
+      local consumer, err = cache.get_or_set(cache.consumer_key(conf.anonymous),
                        nil, load_consumer_into_memory, conf.anonymous, true)
+      if err then
+        return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+      end
       set_consumer(consumer, nil, nil)
     else
       return responses.send(err.status, err.message, err.headers)
