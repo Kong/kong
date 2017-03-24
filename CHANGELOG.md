@@ -5,9 +5,19 @@
 - Admin API:
     - Disable support for TLS/1.0.
       [#2212](https://github.com/Mashape/kong/pull/2212)
+- :warning: The default configuration for `X-Forwarded-*` and `X-Real-IP`
+  upstream headers was changed considerably. Previously Kong trusted and
+  forwarded those headers by default. With this release we do **not** trust
+  those headers anymore by default. This is all configurable by now. Please
+  read more about this change from our
+  [0.10.x Proxy Reference](https://getkong.org/docs/0.10.x/proxy/#3-proxying-upstream-timeouts)
+  and
+  [0.10.x Configuration Reference](https://getkong.org/docs/0.10.x/configuration/#real_ip_header)
 
 ### Added
 
+- :fireworks: Configurable `X-Forwarded-*` and `X-Real-IP` upstream headers.
+  [#2236](https://github.com/Mashape/kong/pull/2236)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
     [#2203](https://github.com/Mashape/kong/pull/2203)
