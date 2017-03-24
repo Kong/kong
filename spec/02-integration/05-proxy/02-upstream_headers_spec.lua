@@ -190,7 +190,7 @@ describe("Upstream header(s)", function()
       end)
     end)
 
-    pending("with the downstream host preserved", function()
+    pending("with the downstream host preserved (pending: because the test fails to connect to API when preserve_host = true)", function()
 --      it("should be added if not present in request while preserving the downstream host", function()
 --        local headers = request_headers {
 --          ["Host"] = "preserved.com",
@@ -530,7 +530,7 @@ describe("Upstream header(s)", function()
         assert.equal(14, tonumber(headers["x-forwarded-port"]))
       end)
 
-      pending("should take a port from X-Forwarded-For header if it has a port in it", function()
+      pending("should take a port from X-Forwarded-For header if it has a port in it (pending: because it is a rare edge case)", function()
 --        local headers = request_headers {
 --          ["Host"]             = "proxy-mock.com",
 --          ["X-Forwarded-For"]  = "127.0.0.1:14, 10.0.0.1:15, 192.168.0.1:16, 127.0.0.1:17, 172.16.0.1:18",
