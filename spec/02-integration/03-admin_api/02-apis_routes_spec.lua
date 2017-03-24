@@ -1061,50 +1061,59 @@ describe("Admin API", function()
       end)
     end)
   end)
+end)
 
-  describe("request size", function()
-    setup(function()
-      assert(helpers.dao.apis:insert {
-        name = "my-cool-api",
-        hosts = "my.api.com",
-        upstream_url = "http://api.com"
-      })
-    end)
-    it("handles req bodies < 10MB", function()
-      local ip = "204.48.16.0"
-      local n = 2^20 / #ip
-      local buf = {}
-      for i = 1, n do buf[#buf+1] = ip end
-      local ips = table.concat(buf, ",")
+describe("Admin API request size", function()
+  local client
+  setup(function()
+    assert(helpers.dao.apis:insert {
+      name = "my-cool-api",
+      hosts = "my.api.com",
+      upstream_url = "http://api.com"
+    })
 
-      local res = assert(client:send {
-        method = "POST",
-        path = "/apis/my-cool-api/plugins",
-        body = {
-          name = "ip-restriction",
-          ["config.blacklist"] = ips
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-      assert.res_status(201, res)
-    end)
-    it("fails with req bodies 10MB", function()
-      local ip = "204.48.16.0"
-      local n = 11 * 2^20 / #ip
-      local buf = {}
-      for i = 1, n do buf[#buf+1] = ip end
-      local ips = table.concat(buf, ",")
+    assert(helpers.start_kong())
+    client = assert(helpers.admin_client())
+  end)
+  teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+  end)
 
-      local res = assert(client:send {
-        method = "POST",
-        path = "/apis/my-cool-api/plugins",
-        body = {
-          name = "ip-restriction",
-          ["config.blacklist"] = ips
-        },
-        headers = {["Content-Type"] = "application/json"}
-      })
-      assert.res_status(413, res)
-    end)
+  it("handles req bodies < 10MB", function()
+    local ip = "204.48.16.0"
+    local n = 2^20 / #ip
+    local buf = {}
+    for i = 1, n do buf[#buf+1] = ip end
+    local ips = table.concat(buf, ",")
+
+    local res = assert(client:send {
+      method = "POST",
+      path = "/apis/my-cool-api/plugins",
+      body = {
+        name = "ip-restriction",
+        ["config.blacklist"] = ips
+      },
+      headers = {["Content-Type"] = "application/json"}
+    })
+    assert.res_status(201, res)
+  end)
+  it("fails with req bodies 10MB", function()
+    local ip = "204.48.16.0"
+    local n = 11 * 2^20 / #ip
+    local buf = {}
+    for i = 1, n do buf[#buf+1] = ip end
+    local ips = table.concat(buf, ",")
+
+    local res = assert(client:send {
+      method = "POST",
+      path = "/apis/my-cool-api/plugins",
+      body = {
+        name = "ip-restriction",
+        ["config.blacklist"] = ips
+      },
+      headers = {["Content-Type"] = "application/json"}
+    })
+    assert.res_status(413, res)
   end)
 end)
