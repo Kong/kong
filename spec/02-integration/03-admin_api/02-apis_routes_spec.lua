@@ -900,6 +900,15 @@ describe("Admin API", function()
           local json = cjson.decode(body)
           assert.same(plugin, json)
         end)
+        it("retrieves by plugin name", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/apis/"..api.name.."/plugins/"..plugin.name
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(plugin, json)
+        end)
         it("only retrieves if associated to the correct API", function()
           -- Create an API and try to query our plugin through it
           local w_api = assert(helpers.dao.apis:insert {
