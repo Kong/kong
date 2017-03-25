@@ -14,6 +14,9 @@
 
 ### Fixed
 
+- Use an LRU cache for Lua-land entities caching to avoid exhausting the Lua
+  VM memory in long-running instances.
+  [#2246](https://github.com/Mashape/kong/pull/2246)
 - Avoid potential deadlocks upon callback errors in the caching module for
   database entities.
   [#2197](https://github.com/Mashape/kong/pull/2197)
@@ -23,6 +26,9 @@
 - CLI:
   - Better error handling when missing Serf executable.
     [#2218](https://github.com/Mashape/kong/pull/2218)
+  - Fix a bug in the `kong migrations` command that would prevent it to run
+    correctly.
+    [#2238](https://github.com/Mashape/kong/pull/2238)
 - Plugins:
   - hmac: Generate an HMAC secret value if none is provided.
     [#2158](https://github.com/Mashape/kong/pull/2158)
