@@ -63,6 +63,9 @@ Kong 0.10 introduced the following breaking changes:
 - Dnsmasq is not a dependency anymore (However, be careful before removing it
   if you configured it to be your DNS name server via Kong's [`resolver`
   property](https://getkong.org/docs/0.9.x/configuration/#dns-resolver-section))
+- The `cassandra_contact_points` in kong's config file do not allow specifying the
+  port anymore. All the cassandra nodes must listen on the same port which must
+  be specified in `cassandra_port`
 
 We recommend that you consult the full [0.10.0
 Changelog](https://github.com/Mashape/kong/blob/master/CHANGELOG.md) for a full
