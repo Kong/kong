@@ -63,7 +63,7 @@ local function configure_credentials(ngx, conf)
     -- If it's catch all, then match the Origin requested by the client
     -- but only if the Origin URL is valid, and only if credentials=true
     if conf.credentials then
-      local origin = req_get_headers()["Origin"]
+      local origin = ngx.var.http_origin
       if origin then
         local parsed_url = url.parse(origin)
         if parsed_url.scheme and parsed_url.host then
@@ -76,6 +76,7 @@ local function configure_credentials(ngx, conf)
     end
 
     ngx.header["Access-Control-Allow-Credentials"] = tostring(allow_credentials)
+    
   elseif conf.credentials then
     ngx.header["Access-Control-Allow-Credentials"] = "true"
   end
