@@ -185,6 +185,15 @@ describe("NGINX conf compiler", function()
         assert.matches("set_real_ip_from%s+192.168.1.0",    nginx_conf)
         assert.matches("set_real_ip_from%s+2001:0db8::/32", nginx_conf)
       end)
+      it("proxy_protocol", function()
+        local conf = assert(conf_loader(nil, {
+          real_ip_header = "proxy_protocol"
+        }))
+        local nginx_conf = prefix_handler.compile_kong_conf(conf)
+        assert.matches("real_ip_header%s+proxy_protocol", nginx_conf)
+        assert.matches("listen 0.0.0.0:8000 proxy_protocol;", nginx_conf)
+        assert.matches("listen 0.0.0.0:8443 proxy_protocol ssl;", nginx_conf)
+      end)
     end)
   end)
 

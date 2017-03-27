@@ -147,7 +147,9 @@
                                  #
                                  # If the special value `unix:` is specified,
                                  # all UNIX-domain sockets will be trusted.
-# Note: See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
 # examples of accepted values.
 
 #real_ip_header = X-Real-IP      # Defines the request header field whose value
@@ -155,13 +157,25 @@
                                  # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-# Note: See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+                                 #
+                                 # If this value receives `proxy_protocol`, the
+                                 # `proxy_protocol` parameter will be appended
+                                 # to the `listen` directive of the Nginx
+                                 # template.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
 # for a description of this directive.
+#
+# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
+# details about the `proxy_protocol` parameter.
 
 #real_ip_recursive = off         # This value sets the ngx_http_realip_module
                                  # directive of the same name in the Nginx
                                  # configuration.
-# Note: See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
 # for a description of this directive.
 
 #------------------------------------------------------------------------------

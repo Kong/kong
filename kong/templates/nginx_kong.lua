@@ -62,14 +62,22 @@ upstream kong_upstream {
 
 server {
     server_name kong;
+> if real_ip_header == "proxy_protocol" then
+    listen ${{PROXY_LISTEN}} proxy_protocol;
+> else
     listen ${{PROXY_LISTEN}};
+> end
     error_page 404 408 411 412 413 414 417 /kong_error_handler;
     error_page 500 502 503 504 /kong_error_handler;
 
     access_log logs/access.log;
 
 > if ssl then
+> if real_ip_header == "proxy_protocol" then
+    listen ${{PROXY_LISTEN_SSL}} proxy_protocol ssl;
+> else
     listen ${{PROXY_LISTEN_SSL}} ssl;
+> end
     ssl_certificate ${{SSL_CERT}};
     ssl_certificate_key ${{SSL_CERT_KEY}};
     ssl_protocols TLSv1.1 TLSv1.2;
