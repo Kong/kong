@@ -1,16 +1,32 @@
 ## [Unreleased][unreleased]
 
+## [0.10.1] - 2016/03/27
+
 ### Changed
 
+- :warning: Serf has been downgraded to version 0.7 in our distributions, 
+  although versions up to 0.8.1 are still supported. This fixes a problem when 
+  automatically detecting the first non-loopback private IP address, which was 
+  defaulted to `127.0.0.1` in Kong 0.10.0. Greater versions of Serf can still 
+  be used, but the IP address needs to be manually specified in the 
+  `cluster_advertise` configuration property.
 - Admin API:
     - Disable support for TLS/1.0.
       [#2212](https://github.com/Mashape/kong/pull/2212)
 
 ### Added
 
+- Admin API:
+  - Active targets can be pulled with `GET /upstreams/{name}/targets/active`.
+    [#2230](https://github.com/Mashape/kong/pull/2230)
+  - Targets can now be deleted with
+      `DELETE /upstreams/{name}/targets/{target}`.
+      [#2256](https://github.com/Mashape/kong/pull/2256)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
     [#2203](https://github.com/Mashape/kong/pull/2203)
+  - aws-lambda: Support for `us-west-2` region in schema.
+    [#2257](https://github.com/Mashape/kong/pull/2257)
 
 ### Fixed
 
@@ -1019,7 +1035,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.10.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.10.1...next
+[0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
 [0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
 [0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8
