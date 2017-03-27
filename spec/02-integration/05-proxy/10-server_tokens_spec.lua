@@ -10,7 +10,9 @@ local function start(config)
     helpers.dao.apis:insert {
       name = "api-1",
       upstream_url = "http://localhost:9999/headers-inspect",
-      hosts = "inexistent.com",
+      hosts = {
+        "header-inspect.com",
+      }
     }
 
     config = config or {}
@@ -42,32 +44,32 @@ describe("Server Tokens", function()
 
     teardown(helpers.stop_kong)
 
-    it("should return Kong 'Via' header but not change the 'Server' header", function()
+    it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "inexistent.com"
+          host  = "header-inspect.com",
         }
       })
 
-      assert.response(res).has.status(200)
+      assert.res_status(200, res)
       assert.not_equal(default_server_header, res.headers["server"])
       assert.equal(default_server_header, res.headers["via"])
     end)
 
-    it("should return Kong 'Server' header but not the Kong 'Via' header", function()
+    it("should return Kong 'Server' header but not the Kong 'Via' header when no API matched (no proxy)", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "404.com"
+          host  = "404.com",
         }
       })
 
-      assert.response(res).has.status(404)
-      assert.response(res).has_not.header "via"
+      assert.res_status(404, res)
       assert.equal(default_server_header, res.headers["server"])
+      assert.equal(nil, res.headers["via"])
     end)
 
   end)
@@ -81,32 +83,32 @@ describe("Server Tokens", function()
 
     teardown(helpers.stop_kong)
 
-    it("should return Kong 'Via' header but not change the 'Server' header", function()
+    it("should return Kong 'Via' header but not change the 'Server' header when request was proxied", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "inexistent.com"
+          host  = "header-inspect.com",
         }
       })
 
-      assert.response(res).has.status(200)
+      assert.res_status(200, res)
       assert.not_equal(default_server_header, res.headers["server"])
       assert.equal(default_server_header, res.headers["via"])
     end)
 
-    it("should return Kong 'Server' header but not the Kong 'Via' header", function()
+    it("should return Kong 'Server' header but not the Kong 'Via' header when no API matched (no proxy)", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "404.com"
+          host  = "404.com",
         }
       })
 
-      assert.response(res).has.status(404)
-      assert.response(res).has_not.header "via"
+      assert.res_status(404, res)
       assert.equal(default_server_header, res.headers["server"])
+      assert.equal(nil, res.headers["via"])
     end)
 
   end)
@@ -120,33 +122,33 @@ describe("Server Tokens", function()
 
     teardown(helpers.stop_kong)
 
-    it("should not return Kong 'Via' header but it should forward the 'Server' header", function()
+    it("should not return Kong 'Via' header but it should forward the 'Server' header when request was proxied", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "inexistent.com"
+          host  = "header-inspect.com",
         }
       })
 
-      assert.response(res).has.status(200)
+      assert.res_status(200, res)
       assert.response(res).has.header "server"
       assert.response(res).has_not.header "via"
       assert.not_equal(default_server_header, res.headers["server"])
     end)
 
-    it("should not return Kong 'Server' or 'Via' headers", function()
+    it("should not return Kong 'Server' or 'Via' headers when no API matched (no proxy)", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "404.com"
+          host  = "404.com",
         }
       })
 
-      assert.response(res).has.status(404)
-      assert.response(res).has_not.header "server"
-      assert.response(res).has_not.header "via"
+      assert.res_status(404, res)
+      assert.equal(nil, res.headers["server"])
+      assert.equal(nil, res.headers["via"])
     end)
 
   end)
@@ -174,32 +176,32 @@ describe("Latency Tokens", function()
 
     teardown(helpers.stop_kong)
 
-    it("should be returned", function()
+    it("should be returned when request was proxied", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "inexistent.com"
+          host  = "header-inspect.com",
         }
       })
 
-      assert.response(res).has.status(200)
-      assert.response(res).has.header(constants.HEADERS.UPSTREAM_LATENCY)
-      assert.response(res).has.header(constants.HEADERS.PROXY_LATENCY)
+      assert.res_status(200, res)
+      assert.not_equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.not_equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
-    it("should not be returned", function()
+    it("should not be returned when no API matched (no proxy)", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "404.com"
+          host  = "404.com",
         }
       })
 
-      assert.response(res).has.status(404)
-      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
-      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
+      assert.res_status(404, res)
+      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
   end)
@@ -213,32 +215,32 @@ describe("Latency Tokens", function()
 
     teardown(helpers.stop_kong)
 
-    it("should be returned", function()
+    it("should be returned when request was proxied", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "inexistent.com"
+          host  = "header-inspect.com"
         }
       })
 
-      assert.response(res).has.status(200)
-      assert.response(res).has.header(constants.HEADERS.UPSTREAM_LATENCY)
-      assert.response(res).has.header(constants.HEADERS.PROXY_LATENCY)
+      assert.res_status(200, res)
+      assert.not_equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.not_equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
-    it("should not be returned", function()
+    it("should not be returned when no API matched (no proxy)", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "404.com"
+          host  = "404.com",
         }
       })
 
-      assert.response(res).has.status(404)
-      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
-      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
+      assert.res_status(404, res)
+      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
   end)
@@ -254,32 +256,32 @@ describe("Latency Tokens", function()
       helpers.stop_kong()
     end)
 
-    it("should not be returned", function()
+    it("should not be returned when request was proxied", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "inexistent.com"
+          host  = "header-inspect.com",
         }
       })
 
-      assert.response(res).has.status(200)
-      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
-      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
+      assert.res_status(200, res)
+      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
-    it("should not be returned", function()
+    it("should not be returned when no API matched (no proxy)", function()
       local res = assert(client:send {
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "404.com"
+          host  = "404.com",
         }
       })
 
-      assert.response(res).has.status(404)
-      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
-      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
+      assert.res_status(404, res)
+      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
   end)
