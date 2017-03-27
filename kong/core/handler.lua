@@ -138,7 +138,7 @@ return {
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " .. realip_remote_addr
 
       else
-        var.upstream_x_forwarded_for = realip_remote_addr
+        var.upstream_x_forwarded_for = var.remote_addr
       end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
