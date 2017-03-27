@@ -2,6 +2,7 @@ local crud = require "kong.api.crud_helpers"
 local app_helpers = require "lapis.application"
 local responses = require "kong.tools.responses"
 
+
 -- clean the target history for a given upstream
 local function clean_history(upstream_id, dao_factory)
   -- when to cleanup: invalid-entries > (valid-ones * cleanup_factor)
