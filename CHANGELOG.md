@@ -63,7 +63,7 @@
     MIME type is multipart, since such attemps would result in an error.
     [#2176](https://github.com/Mashape/kong/pull/2176)
   - ldap: This plugin should not be applied to a single Consumer, however, this
-    was not properly enforced. It is not impossible to apply this plugin to a
+    was not properly enforced. It is now impossible to apply this plugin to a
     single Consumer (as per all authentication plugin).
     [#2237](https://github.com/Mashape/kong/pull/2237)
   - aws-lambda: Support for `us-west-2` region in schema.
