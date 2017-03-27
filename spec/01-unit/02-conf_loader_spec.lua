@@ -262,6 +262,20 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
+    it("errors when hosts have a bad format in cassandra_contact_points", function()
+      local conf, err = conf_loader(nil, {
+          cassandra_contact_points = [[some/really\bad/host\name,addr2]]
+      })
+      assert.equal([[bad cassandra contact point 'some/really\bad/host\name': invalid hostname: some/really\bad/host\name]], err)
+      assert.is_nil(conf)
+    end)
+    it("errors when specifying a port in cassandra_contact_points", function()
+      local conf, err = conf_loader(nil, {
+          cassandra_contact_points = "addr1:9042,addr2"
+      })
+      assert.equal("bad cassandra contact point 'addr1:9042': port must be specified in cassandra_port", err)
+      assert.is_nil(conf)
+    end)
     it("cluster_ttl_on_failure cannot be lower than 60 seconds", function()
       local conf, err = conf_loader(nil, {
         cluster_ttl_on_failure = 40
