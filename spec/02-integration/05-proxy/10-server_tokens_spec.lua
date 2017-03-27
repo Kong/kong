@@ -51,7 +51,7 @@ describe("Server Tokens", function()
         }
       })
 
-      assert.res_status(200, res)
+      assert.response(res).has.status(200)
       assert.not_equal(default_server_header, res.headers["server"])
       assert.equal(default_server_header, res.headers["via"])
     end)
@@ -65,9 +65,9 @@ describe("Server Tokens", function()
         }
       })
 
-      assert.res_status(404, res)
+      assert.response(res).has.status(404)
+      assert.response(res).has_not.header "via"
       assert.equal(default_server_header, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
     end)
 
   end)
@@ -90,7 +90,7 @@ describe("Server Tokens", function()
         }
       })
 
-      assert.res_status(200, res)
+      assert.response(res).has.status(200)
       assert.not_equal(default_server_header, res.headers["server"])
       assert.equal(default_server_header, res.headers["via"])
     end)
@@ -104,9 +104,9 @@ describe("Server Tokens", function()
         }
       })
 
-      assert.res_status(404, res)
+      assert.response(res).has.status(404)
+      assert.response(res).has_not.header "via"
       assert.equal(default_server_header, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
     end)
 
   end)
@@ -129,10 +129,10 @@ describe("Server Tokens", function()
         }
       })
 
-      assert.res_status(200, res)
-      assert.not_equal(nil, res.headers["server"])
+      assert.response(res).has.status(200)
+      assert.response(res).has.header "server"
+      assert.response(res).has_not.header "via"
       assert.not_equal(default_server_header, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
     end)
 
     it("should not return Kong 'Server' or 'Via' headers", function()
@@ -144,9 +144,9 @@ describe("Server Tokens", function()
         }
       })
 
-      assert.res_status(404, res)
-      assert.equal(nil, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
+      assert.response(res).has.status(404)
+      assert.response(res).has_not.header "server"
+      assert.response(res).has_not.header "via"
     end)
 
   end)
@@ -183,9 +183,9 @@ describe("Latency Tokens", function()
         }
       })
 
-      assert.res_status(200, res)
-      assert.not_equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.not_equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.response(res).has.status(200)
+      assert.response(res).has.header(constants.HEADERS.UPSTREAM_LATENCY)
+      assert.response(res).has.header(constants.HEADERS.PROXY_LATENCY)
     end)
 
     it("should not be returned", function()
@@ -197,9 +197,9 @@ describe("Latency Tokens", function()
         }
       })
 
-      assert.res_status(404, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.response(res).has.status(404)
+      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
+      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
     end)
 
   end)
@@ -222,9 +222,9 @@ describe("Latency Tokens", function()
         }
       })
 
-      assert.res_status(200, res)
-      assert.not_equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.not_equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.response(res).has.status(200)
+      assert.response(res).has.header(constants.HEADERS.UPSTREAM_LATENCY)
+      assert.response(res).has.header(constants.HEADERS.PROXY_LATENCY)
     end)
 
     it("should not be returned", function()
@@ -236,9 +236,9 @@ describe("Latency Tokens", function()
         }
       })
 
-      assert.res_status(404, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.response(res).has.status(404)
+      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
+      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
     end)
 
   end)
@@ -263,9 +263,9 @@ describe("Latency Tokens", function()
         }
       })
 
-      assert.res_status(200, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.response(res).has.status(200)
+      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
+      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
     end)
 
     it("should not be returned", function()
@@ -277,9 +277,9 @@ describe("Latency Tokens", function()
         }
       })
 
-      assert.res_status(404, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.response(res).has.status(404)
+      assert.response(res).has_not.header(constants.HEADERS.UPSTREAM_LATENCY)
+      assert.response(res).has_not.header(constants.HEADERS.PROXY_LATENCY)
     end)
 
   end)
