@@ -11,7 +11,7 @@ local function start(config)
       name = "api-1",
       upstream_url = "http://localhost:9999/headers-inspect",
       hosts = {
-        "header-inspect.com",
+        "headers-inspect.com",
       }
     }
 
@@ -49,7 +49,7 @@ describe("Server Tokens", function()
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "header-inspect.com",
+          host  = "headers-inspect.com",
         }
       })
 
@@ -69,7 +69,7 @@ describe("Server Tokens", function()
 
       assert.res_status(404, res)
       assert.equal(default_server_header, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
+      assert.is_nil(res.headers["via"])
     end)
 
   end)
@@ -88,7 +88,7 @@ describe("Server Tokens", function()
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "header-inspect.com",
+          host  = "headers-inspect.com",
         }
       })
 
@@ -108,7 +108,7 @@ describe("Server Tokens", function()
 
       assert.res_status(404, res)
       assert.equal(default_server_header, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
+      assert.is_nil(res.headers["via"])
     end)
 
   end)
@@ -127,7 +127,7 @@ describe("Server Tokens", function()
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "header-inspect.com",
+          host  = "headers-inspect.com",
         }
       })
 
@@ -147,8 +147,8 @@ describe("Server Tokens", function()
       })
 
       assert.res_status(404, res)
-      assert.equal(nil, res.headers["server"])
-      assert.equal(nil, res.headers["via"])
+      assert.is_nil(res.headers["server"])
+      assert.is_nil(res.headers["via"])
     end)
 
   end)
@@ -181,13 +181,13 @@ describe("Latency Tokens", function()
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "header-inspect.com",
+          host  = "headers-inspect.com",
         }
       })
 
       assert.res_status(200, res)
-      assert.not_equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.not_equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
     it("should not be returned when no API matched (no proxy)", function()
@@ -200,8 +200,8 @@ describe("Latency Tokens", function()
       })
 
       assert.res_status(404, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
   end)
@@ -220,13 +220,13 @@ describe("Latency Tokens", function()
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "header-inspect.com"
+          host  = "headers-inspect.com"
         }
       })
 
       assert.res_status(200, res)
-      assert.not_equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.not_equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.is_not_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.is_not_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
     it("should not be returned when no API matched (no proxy)", function()
@@ -239,8 +239,8 @@ describe("Latency Tokens", function()
       })
 
       assert.res_status(404, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
   end)
@@ -261,13 +261,13 @@ describe("Latency Tokens", function()
         method  = "GET",
         path    = "/get",
         headers = {
-          host  = "header-inspect.com",
+          host  = "headers-inspect.com",
         }
       })
 
       assert.res_status(200, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
     it("should not be returned when no API matched (no proxy)", function()
@@ -280,8 +280,8 @@ describe("Latency Tokens", function()
       })
 
       assert.res_status(404, res)
-      assert.equal(nil, res.headers[constants.HEADERS.UPSTREAM_LATENCY])
-      assert.equal(nil, res.headers[constants.HEADERS.PROXY_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.UPSTREAM_LATENCY])
+      assert.is_nil(res.headers[constants.HEADERS.PROXY_LATENCY])
     end)
 
   end)
