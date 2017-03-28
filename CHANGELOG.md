@@ -8,6 +8,10 @@
 
 ### Added
 
+- :fireworks: `server_tokens` and `latency_tokens` configuration fields.
+  Check the [0.10 Configuration Guide](https://getkong.org/docs/0.10.x/configuration/#server_tokens)
+  to learn more.
+  [#2259](https://github.com/Mashape/kong/pull/2259)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
     [#2203](https://github.com/Mashape/kong/pull/2203)
