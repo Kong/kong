@@ -17,6 +17,8 @@ local ngx_req_get_body_data = ngx.req.get_body_data
 
 local CONTENT_TYPE = "content-type"
 
+local AWS_PORT = 443
+
 local AWSLambdaHandler = BasePlugin:extend()
 
 function AWSLambdaHandler:new()
@@ -49,7 +51,6 @@ function AWSLambdaHandler:access(conf)
   local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
   local path = string.format("/2015-03-31/functions/%s/invocations",
                             conf.function_name)
-
   local opts = {
     region = conf.aws_region,
     service = "lambda",
@@ -75,7 +76,7 @@ function AWSLambdaHandler:access(conf)
 
   -- Trigger request
   local client = http.new()
-  client:connect(host, 443)
+  client:connect(host, conf.port or AWS_PORT)
   client:set_timeout(conf.timeout)
   local ok, err = client:ssl_handshake()
   if not ok then
