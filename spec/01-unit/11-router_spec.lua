@@ -81,56 +81,56 @@ describe("Router", function()
 
     it("[host]", function()
       -- host
-      local api_t = router.select("GET", "/", { ["host"] = "domain-1.org" })
+      local api_t = router.select("GET", "/", "domain-1.org")
       assert.truthy(api_t)
       assert.same(use_case[1], api_t.api)
     end)
 
     it("[host] ignores port", function()
       -- host
-      local api_t = router.select("GET", "/", { ["host"] = "domain-1.org:123" })
+      local api_t = router.select("GET", "/", "domain-1.org:123")
       assert.truthy(api_t)
       assert.same(use_case[1], api_t.api)
     end)
 
     it("[uri]", function()
       -- uri
-      local api_t = router.select("GET", "/my-api", {})
+      local api_t = router.select("GET", "/my-api")
       assert.truthy(api_t)
       assert.same(use_case[3], api_t.api)
     end)
 
     it("[method]", function()
       -- method
-      local api_t = router.select("TRACE", "/", {})
+      local api_t = router.select("TRACE", "/")
       assert.truthy(api_t)
       assert.same(use_case[2], api_t.api)
     end)
 
     it("[host + uri]", function()
       -- host + uri
-      local api_t = router.select("GET", "/api-4", { ["host"] = "domain-1.org" })
+      local api_t = router.select("GET", "/api-4", "domain-1.org")
       assert.truthy(api_t)
       assert.same(use_case[4], api_t.api)
     end)
 
     it("[host + method]", function()
       -- host + method
-      local api_t = router.select("POST", "/", { ["host"] = "domain-1.org" })
+      local api_t = router.select("POST", "/", "domain-1.org")
       assert.truthy(api_t)
       assert.same(use_case[5], api_t.api)
     end)
 
     it("[uri + method]", function()
       -- uri + method
-      local api_t = router.select("PUT", "/api-6", {})
+      local api_t = router.select("PUT", "/api-6")
       assert.truthy(api_t)
       assert.same(use_case[6], api_t.api)
     end)
 
     it("[host + uri + method]", function()
       -- uri + method
-      local api_t = router.select("PUT", "/my-api-uri", { ["host"] = "domain-with-uri-2.org" })
+      local api_t = router.select("PUT", "/my-api-uri", "domain-with-uri-2.org")
       assert.truthy(api_t)
       assert.same(use_case[7], api_t.api)
     end)
@@ -138,7 +138,7 @@ describe("Router", function()
     describe("[uri] as a prefix", function()
       it("matches when given [uri] is in request URI prefix", function()
         -- uri prefix
-        local api_t = router.select("GET", "/my-api/some/path", {})
+        local api_t = router.select("GET", "/my-api/some/path")
         assert.truthy(api_t)
         assert.same(use_case[3], api_t.api)
       end)
@@ -157,19 +157,19 @@ describe("Router", function()
 
         local router = assert(Router.new(use_case))
 
-        local api_t = router.select("GET", "/my-api/hello", {})
+        local api_t = router.select("GET", "/my-api/hello")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
-        api_t = router.select("GET", "/my-api/hello/world", {})
+        api_t = router.select("GET", "/my-api/hello/world")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
-        api_t = router.select("GET", "/my-api", {})
+        api_t = router.select("GET", "/my-api")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
 
-        api_t = router.select("GET", "/my-api/world", {})
+        api_t = router.select("GET", "/my-api/world")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -194,13 +194,13 @@ describe("Router", function()
       local router = assert(Router.new(use_case))
 
       it("matches leftmost wildcards", function()
-        local api_t = router.select("GET", "/", { ["host"] = "foo.api.com" })
+        local api_t = router.select("GET", "/", "foo.api.com")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
       end)
 
       it("matches rightmost wildcards", function()
-        local api_t = router.select("GET", "/", { ["host"] = "api.org" })
+        local api_t = router.select("GET", "/", "api.org")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -224,19 +224,19 @@ describe("Router", function()
 
         router = assert(Router.new(use_case))
 
-        local api_t = router.select("GET", "/", { ["host"] = "api.com" })
+        local api_t = router.select("GET", "/", "api.com")
         assert.truthy(api_t)
         assert.same(use_case[4], api_t.api)
 
-        api_t = router.select("GET", "/", { ["host"] = "api.org" })
+        api_t = router.select("GET", "/", "api.org")
         assert.truthy(api_t)
         assert.same(use_case[3], api_t.api)
 
-        api_t = router.select("GET", "/", { ["host"] = "plain.api.com" })
+        api_t = router.select("GET", "/", "plain.api.com")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
-        api_t = router.select("GET", "/", { ["host"] = "foo.api.com" })
+        api_t = router.select("GET", "/", "foo.api.com")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -256,18 +256,18 @@ describe("Router", function()
 
         router = assert(Router.new(use_case))
 
-        local api_t = router.select("POST", "/path", { ["host"] = "foo.domain.com" })
+        local api_t = router.select("POST", "/path", "foo.domain.com")
         assert.is_nil(api_t)
 
-        api_t = router.select("GET", "/path", { ["host"] = "foo.domain.com" })
+        api_t = router.select("GET", "/path", "foo.domain.com")
         assert.truthy(api_t)
         assert.same(use_case[#use_case], api_t.api)
 
-        api_t = router.select("TRACE", "/path", { ["host"] = "example.com" })
+        api_t = router.select("TRACE", "/path", "example.com")
         assert.truthy(api_t)
         assert.same(use_case[#use_case], api_t.api)
 
-        api_t = router.select("POST", "/path", { ["host"] = "foo.domain.com" })
+        api_t = router.select("POST", "/path", "foo.domain.com")
         assert.is_nil(api_t)
       end)
     end)
@@ -275,12 +275,12 @@ describe("Router", function()
     describe("edge-cases", function()
       it("[host] and [uri] have higher priority than [method]", function()
         -- host
-        local api_t = router.select("TRACE", "/", { ["host"] = "domain-2.org" })
+        local api_t = router.select("TRACE", "/", "domain-2.org")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
         -- uri
-        local api_t = router.select("TRACE", "/my-api", {})
+        local api_t = router.select("TRACE", "/my-api")
         assert.truthy(api_t)
         assert.same(use_case[3], api_t.api)
       end)
@@ -304,11 +304,11 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local api_t = router.select("GET", "/v1/path", { ["host"] = "host1.com" })
+        local api_t = router.select("GET", "/v1/path", "host1.com")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
-        api_t = router.select("GET", "/v1/path", { ["host"] = "host2.com" })
+        api_t = router.select("GET", "/v1/path", "host2.com")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -332,11 +332,11 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local api_t = router.select("GET", "/", { ["host"] = "host.com" })
+        local api_t = router.select("GET", "/", "host.com")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
-        api_t = router.select("POST", "/", { ["host"] = "host.com" })
+        api_t = router.select("POST", "/", "host.com")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -354,11 +354,11 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local api_t = router.select("GET", "/httpbin", {})
+        local api_t = router.select("GET", "/httpbin")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
 
-        api_t = router.select("GET", "/httpbin/status/200", {})
+        api_t = router.select("GET", "/httpbin/status/200")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -378,11 +378,11 @@ describe("Router", function()
         }
 
         local router = assert(Router.new(use_case))
-        local api_t = router.select("GET", "/", {})
+        local api_t = router.select("GET", "/")
         assert.truthy(api_t)
         assert.same(use_case[1], api_t.api)
 
-        api_t = router.select("GET", "/", { ["host"] = "domain.com" })
+        api_t = router.select("GET", "/", "domain.com")
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
@@ -401,27 +401,73 @@ describe("Router", function()
 
         it("request with [method]", function()
           local router = assert(Router.new(use_case))
-          local api_t = router.select("GET", "/", {})
+          local api_t = router.select("GET", "/")
           assert.truthy(api_t)
           assert.same(use_case[1], api_t.api)
         end)
 
         it("does not supersede another API", function()
           local router = assert(Router.new(use_case))
-          local api_t = router.select("GET", "/my-api", {})
+          local api_t = router.select("GET", "/my-api")
           assert.truthy(api_t)
           assert.same(use_case[4], api_t.api)
 
-          api_t = router.select("GET", "/my-api/hello/world", {})
+          api_t = router.select("GET", "/my-api/hello/world")
           assert.truthy(api_t)
           assert.same(use_case[4], api_t.api)
         end)
 
         it("acts as a catch-all API", function()
           local router = assert(Router.new(use_case))
-          local api_t = router.select("GET", "/foobar/baz", {})
+          local api_t = router.select("GET", "/foobar/baz")
           assert.truthy(api_t)
           assert.same(use_case[1], api_t.api)
+        end)
+
+        it("HTTP method does not supersede non-plain URI", function()
+          local use_case = {
+            {
+              name = "api-1",
+              methods = { "GET" },
+            },
+            {
+              name = "api-2",
+              uris = { "/httpbin" },
+            }
+          }
+
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/httpbin")
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+
+          api_t = router.select("GET", "/httpbin/status/200")
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
+        end)
+
+        it("HTTP method does not supersede wildcard domain", function()
+          local use_case = {
+            {
+              name = "api-1",
+              methods = { "GET" },
+            },
+            {
+              name = "api-2",
+              headers = {
+                ["Host"] = { "domain.*" }
+              }
+            }
+          }
+
+          local router = assert(Router.new(use_case))
+          local api_t = router.select("GET", "/")
+          assert.truthy(api_t)
+          assert.same(use_case[1], api_t.api)
+
+          api_t = router.select("GET", "/", "domain.com")
+          assert.truthy(api_t)
+          assert.same(use_case[2], api_t.api)
         end)
       end)
 
@@ -461,7 +507,7 @@ describe("Router", function()
 
         it("matches correct API", function()
           local router = assert(Router.new(use_case))
-          local api_t = router.select("GET", "/my-target-uri", { ["host"] = "domain.org" })
+          local api_t = router.select("GET", "/my-target-uri", "domain.org")
           assert.truthy(api_t)
           assert.same(use_case[#use_case], api_t.api)
         end)
@@ -470,27 +516,27 @@ describe("Router", function()
 
     describe("misses", function()
       it("invalid [host]", function()
-        assert.is_nil(router.select("GET", "/", { ["host"] = "domain-3.org" }))
+        assert.is_nil(router.select("GET", "/", "domain-3.org"))
       end)
 
       it("invalid host in [host + uri]", function()
-        assert.is_nil(router.select("GET", "/api-4", { ["host"] = "domain-3.org" }))
+        assert.is_nil(router.select("GET", "/api-4", "domain-3.org"))
       end)
 
       it("invalid host in [host + method]", function()
-        assert.is_nil(router.select("GET", "/", { ["host"] = "domain-3.org" }))
+        assert.is_nil(router.select("GET", "/", "domain-3.org"))
       end)
 
       it("invalid method in [host + uri + method]", function()
-        assert.is_nil(router.select("GET", "/some-uri", { ["host"] = "domain-with-uri-2.org" }))
+        assert.is_nil(router.select("GET", "/some-uri", "domain-with-uri-2.org"))
       end)
 
       it("invalid uri in [host + uri + method]", function()
-        assert.is_nil(router.select("PUT", "/some-uri-foo", { ["host"] = "domain-with-uri-2.org" }))
+        assert.is_nil(router.select("PUT", "/some-uri-foo", "domain-with-uri-2.org"))
       end)
 
       it("does not match when given [uri] is in URI but not in prefix", function()
-        local api_t = router.select("GET", "/some-other-prefix/my-api", {})
+        local api_t = router.select("GET", "/some-other-prefix/my-api")
         assert.is_nil(api_t)
       end)
     end)
@@ -526,7 +572,7 @@ describe("Router", function()
         end)
 
         it("takes < 1ms", function()
-          local api_t = router.select("GET", "/", { ["host"] = target_domain })
+          local api_t = router.select("GET", "/", target_domain)
           assert.truthy(api_t)
           assert.same(benchmark_use_cases[#benchmark_use_cases], api_t.api)
         end)
@@ -571,7 +617,7 @@ describe("Router", function()
         end)
 
         it("takes < 1ms", function()
-          local api_t = router.select("POST", target_uri, { ["host"] = target_domain })
+          local api_t = router.select("POST", target_uri, target_domain)
           assert.truthy(api_t)
           assert.same(benchmark_use_cases[#benchmark_use_cases], api_t.api)
         end)
@@ -614,7 +660,7 @@ describe("Router", function()
         end)
 
         it("takes < 1ms", function()
-          local api_t = router.select("GET", target_uri, { ["host"] = target_domain })
+          local api_t = router.select("GET", target_uri, target_domain)
           assert.truthy(api_t)
           assert.same(benchmark_use_cases[#benchmark_use_cases], api_t.api)
         end)
@@ -632,21 +678,32 @@ describe("Router", function()
         end, "arg #2 uri must be a string", nil, true)
 
         assert.error_matches(function()
-          router.select("GET", "/")
-        end, "arg #3 headers must be a table", nil, true)
+          router.select("GET", "/", 1)
+        end, "arg #3 host must be a string", nil, true)
       end)
     end)
   end)
 
   describe("exec()", function()
+    local spy_stub = {
+      nop = function() end
+    }
+
     local function mock_ngx(method, uri, headers)
       local _ngx
       _ngx = {
         re = ngx.re,
-        var = {
+        var = setmetatable({
           uri = uri,
-          http_host = headers["host"] or headers["Host"],
-        },
+          http_kong_debug = headers.kong_debug
+        }, {
+          __index = function(_, key)
+            if key == "http_host" then
+              spy_stub.nop()
+              return headers.host
+            end
+          end
+        }),
         req = {
           set_uri = function(uri)
             _ngx.var.uri = uri
@@ -744,18 +801,20 @@ describe("Router", function()
         }
       }
 
-      it("does not read request headers if not required", function()
+      it("does not read Host header if not required", function()
         local _ngx = mock_ngx("GET", "/my-api", {})
-        spy.on(_ngx.req, "get_headers")
+
+        local var_mt = getmetatable(_ngx.var)
+        spy.on(spy_stub, "nop")
 
         local router = assert(Router.new(use_case_apis))
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[1], api)
-        assert.spy(_ngx.req.get_headers).was.not_called()
+        assert.spy(spy_stub.nop).was.not_called()
       end)
 
-      it("reads request headers if required", function()
+      it("reads Host header if required", function()
         table.insert(use_case_apis, {
           name = "api-2",
           uris = { "/my-api" },
@@ -765,13 +824,13 @@ describe("Router", function()
         })
 
         local _ngx = mock_ngx("GET", "/my-api", { host = "my-api.com" })
-        spy.on(_ngx.req, "get_headers")
+        spy.on(spy_stub, "nop")
 
         local router = assert(Router.new(use_case_apis))
 
         local api = router.exec(_ngx)
         assert.same(use_case_apis[2], api)
-        assert.spy(_ngx.req.get_headers).was.called(1)
+        assert.spy(spy_stub.nop).was.called(1)
       end)
     end)
 
