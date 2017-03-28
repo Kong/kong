@@ -183,6 +183,18 @@ local function check_and_infer(conf)
                         "DCAwareRoundRobin policy is in use"
   end
 
+  for _, contact_point in ipairs(conf.cassandra_contact_points) do
+    local endpoint, err = utils.normalize_ip(contact_point)
+    if not endpoint then
+      errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
+                          "': " .. err
+
+    elseif endpoint.port then
+      errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
+                          "': port must be specified in cassandra_port"
+    end
+  end
+
   if conf.ssl then
     if conf.ssl_cert and not conf.ssl_cert_key then
       errors[#errors+1] = "ssl_cert_key must be specified"
