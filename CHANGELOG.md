@@ -18,6 +18,8 @@
 
 - :fireworks: Configurable `X-Forwarded-*` and `X-Real-IP` upstream headers.
   [#2236](https://github.com/Mashape/kong/pull/2236)
+- :fireworks: Support for The PROXY protocol.
+  [#2236](https://github.com/Mashape/kong/pull/2236)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
     [#2203](https://github.com/Mashape/kong/pull/2203)
