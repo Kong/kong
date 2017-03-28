@@ -22,13 +22,19 @@ describe("Plugin: AWS Lambda (access)", function()
       upstream_url = "http://httpbin.org"
     })
 
+    local api4 = assert(helpers.dao.apis:insert {
+      name = "lambda4.com",
+      hosts = { "lambda4.com" },
+      upstream_url = "http://httpbin.org"
+    })
+
     assert(helpers.dao.plugins:insert {
       name = "aws-lambda",
       api_id = api1.id,
       config = {
-        aws_key = "AKIAIDPNYYGMJOXN26SQ",
-        aws_secret = "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",
-        aws_region = "us-east-1",
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "mock",
         function_name = "kongLambdaTest"
       }
     })
@@ -37,9 +43,9 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api2.id,
       config = {
-        aws_key = "AKIAIDPNYYGMJOXN26SQ",
-        aws_secret = "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",
-        aws_region = "us-east-1",
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "mock",
         function_name = "kongLambdaTest",
         invocation_type = "Event"
       }
@@ -49,15 +55,29 @@ describe("Plugin: AWS Lambda (access)", function()
       name = "aws-lambda",
       api_id = api3.id,
       config = {
-        aws_key = "AKIAIDPNYYGMJOXN26SQ",
-        aws_secret = "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",
-        aws_region = "us-east-1",
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "mock",
         function_name = "kongLambdaTest",
         invocation_type = "DryRun"
       }
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.dao.plugins:insert {
+      name = "aws-lambda",
+      api_id = api4.id,
+      config = {
+        aws_key = "mock-key",
+        aws_secret = "mock-secret",
+        aws_region = "mock",
+        function_name = "kongLambdaTest",
+        timeout = 100,
+      }
+    })
+
+    assert(helpers.start_kong{
+      nginx_conf = "spec/fixtures/custom_nginx.template",
+    })
   end)
 
   before_each(function()
@@ -172,6 +192,16 @@ describe("Plugin: AWS Lambda (access)", function()
     })
     assert.res_status(204, res)
     assert.is_string(res.headers["x-amzn-RequestId"])
+  end)
+  it("errors on connection timeout", function()
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda4.com",
+      }
+    })
+    assert.res_status(500, res)
   end)
 
 end)
