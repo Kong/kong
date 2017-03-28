@@ -35,23 +35,6 @@ local function start_kong(config)
     }
 
     assert(helpers.start_kong(config))
-
-    local admin_client = helpers.admin_client()
-
-    local res = assert(admin_client:send {
-      method = "POST",
-      path   = "/apis/headers-inspect/plugins",
-      body   = {
-        name = "headers-inspect",
-      },
-      headers = {
-        ["Content-Type"] = "application/json",
-      }
-    })
-
-    assert.res_status(201, res)
-
-    admin_client:close()
   end
 end
 
