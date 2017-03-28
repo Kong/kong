@@ -270,5 +270,41 @@ http {
                 ngx.say(name)
             }
         }
+
+        location ~ "/2015-03-31/functions/(?:[^/])*/invocations" {
+            content_by_lua_block {
+                local function say(res, status)
+                  ngx.header["x-amzn-RequestId"] = "foo"
+                  ngx.status = status
+
+                  if type(res) == 'string' then
+                    ngx.header["Content-Length"] = #res + 1
+                    ngx.say(res)
+
+                  else
+                    ngx.req.discard_body()
+                    ngx.header['Content-Length'] = 0
+                  end
+
+                  ngx.exit(0)
+                end
+
+                ngx.sleep(.2) -- mock some network latency
+
+                local invocation_type = ngx.var.http_x_amz_invocation_type
+                if invocation_type == 'Event' then
+                  say(nil, 202)
+
+                elseif invocation_type == 'DryRun' then
+                  say(nil, 204)
+                end
+
+                local qargs = ngx.req.get_uri_args()
+                ngx.req.read_body()
+                local args = require("cjson").decode(ngx.req.get_body_data())
+
+                say(string.format("%q", qargs.key1 or args.key1), 200)
+            }
+        }
     }
 }
