@@ -10,6 +10,9 @@
   defaulted to `127.0.0.1` in Kong 0.10.0. Greater versions of Serf can still
   be used, but the IP address needs to be manually specified in the
   `cluster_advertise` configuration property.
+- :warning: [CORS Plugin](https://getkong.org/plugins/cors/) parameter
+`config.origin` is now `config.origins`.
+  [#2203](https://github.com/Mashape/kong/pull/2203)
 - Admin API:
   - Disable support for TLS/1.0.
     [#2212](https://github.com/Mashape/kong/pull/2212)
