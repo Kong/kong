@@ -31,6 +31,99 @@ describe("Admin API", function()
         helpers.dao:truncate_tables()
       end)
 
+      it("returns a conflict when duplicates snis are present in the request", function()
+        local res = assert(client:send {
+          method  = "POST",
+          path    = "/certificates",
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = "foo.com,bar.com,foo.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(409, res)
+        local json = cjson.decode(body)
+        assert.equals('duplicate requested sni name foo.com', json.message)
+
+        -- make sure we dont add any snis
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(0, #json.data)
+        assert.equal(0, json.total)
+
+        -- make sure we didnt add the certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(0, #json)
+      end)
+
+      it("returns a conflict when a pre-existing sni is detected", function()
+        local res = assert(client:send {
+          method  = "POST",
+          path    = "/certificates",
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = "foo.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        assert.res_status(201, res)
+
+        res = assert(client:send {
+          method  = "POST",
+          path    = "/certificates",
+          body    = {
+            cert  = ssl_fixtures.cert,
+            key   = ssl_fixtures.key,
+            snis  = "foo.com,bar.com",
+          },
+          headers = { ["Content-Type"] = "application/x-www-form-urlencoded" },
+        })
+
+        local body = assert.res_status(409, res)
+        local json = cjson.decode(body)
+        assert.equals('entry already exists with name foo.com', json.message)
+
+        -- make sure we only have one sni
+        res = assert(client:send {
+          method  = "GET",
+          path    = "/snis",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(1, #json.data)
+        assert.equal(1, json.total)
+        assert.equal("foo.com", json.data[1].name)
+
+        -- make sure we only have one certificate
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates",
+        })
+
+        body = assert.res_status(200, res)
+        json = cjson.decode(body)
+        assert.equal(1, #json)
+        assert.is_string(json[1].cert)
+        assert.is_string(json[1].key)
+        assert.same({ "foo.com" }, json[1].snis)
+      end)
+
       it_content_types("creates a certificate", function(content_type)
         return function()
           local res = assert(client:send {
@@ -68,99 +161,99 @@ describe("Admin API", function()
         assert.same({ "foo.com", "bar.com" }, json[1].snis)
       end)
     end)
+  end)
 
-    describe("/certificates/:sni_or_uuid", function()
+  describe("/certificates/:sni_or_uuid", function()
 
-      describe("GET", function()
-        it("retrieves a certificate by SNI", function()
-          local res1 = assert(client:send {
-            method   = "GET",
-            path     = "/certificates/foo.com",
-          })
+    describe("GET", function()
+      it("retrieves a certificate by SNI", function()
+        local res1 = assert(client:send {
+          method   = "GET",
+          path     = "/certificates/foo.com",
+        })
 
-          local body1 = assert.res_status(200, res1)
-          local json1 = cjson.decode(body1)
+        local body1 = assert.res_status(200, res1)
+        local json1 = cjson.decode(body1)
 
-          local res2 = assert(client:send {
-            method   = "GET",
-            path     = "/certificates/bar.com",
-          })
+        local res2 = assert(client:send {
+          method   = "GET",
+          path     = "/certificates/bar.com",
+        })
 
-          local body2 = assert.res_status(200, res2)
-          local json2 = cjson.decode(body2)
+        local body2 = assert.res_status(200, res2)
+        local json2 = cjson.decode(body2)
 
-          assert.is_string(json1.cert)
-          assert.is_string(json1.key)
-          assert.same({ "foo.com", "bar.com" }, json1.snis)
-          assert.same(json1, json2)
-        end)
+        assert.is_string(json1.cert)
+        assert.is_string(json1.key)
+        assert.same({ "foo.com", "bar.com" }, json1.snis)
+        assert.same(json1, json2)
       end)
+    end)
 
-      describe("PATCH", function()
-        it_content_types("updates a certificate by SNI", function(content_type)
-          return function()
-            local res = assert(client:send {
-              method = "PATCH",
-              path = "/certificates/foo.com",
-              body = {
-                cert = content_type
-              },
-              headers = { ["Content-Type"] = content_type }
-            })
-
-            local body = assert.res_status(200, res)
-            local json = cjson.decode(body)
-
-            assert.equal(content_type, json.cert)
-          end
-        end)
-      end)
-
-      describe("DELETE", function()
-        it("deletes a certificate and all related SNIs", function()
+    describe("PATCH", function()
+      it_content_types("updates a certificate by SNI", function(content_type)
+        return function()
           local res = assert(client:send {
-            method  = "DELETE",
-            path    = "/certificates/foo.com",
-          })
-
-          assert.res_status(204, res)
-
-          res = assert(client:send {
-            method = "GET",
+            method = "PATCH",
             path = "/certificates/foo.com",
-          })
-
-          assert.res_status(404, res)
-
-          res = assert(client:send {
-            method = "GET",
-            path = "/certificates/bar.com",
-          })
-
-          assert.res_status(404, res)
-        end)
-
-        it("deletes a certificate by id", function()
-          local res = assert(client:send {
-            method = "POST",
-            path = "/certificates",
             body = {
-              cert = "foo",
-              key = "bar",
+              cert = content_type
             },
-            headers = { ["Content-Type"] = "application/json" }
+            headers = { ["Content-Type"] = content_type }
           })
 
-          local body = assert.res_status(201, res)
+          local body = assert.res_status(200, res)
           local json = cjson.decode(body)
 
-          res = assert(client:send {
-            method = "DELETE",
-            path = "/certificates/" .. json.id,
-          })
+          assert.equal(content_type, json.cert)
+        end
+      end)
+    end)
 
-          assert.res_status(204, res)
-        end)
+    describe("DELETE", function()
+      it("deletes a certificate and all related SNIs", function()
+        local res = assert(client:send {
+          method  = "DELETE",
+          path    = "/certificates/foo.com",
+        })
+
+        assert.res_status(204, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates/foo.com",
+        })
+
+        assert.res_status(404, res)
+
+        res = assert(client:send {
+          method = "GET",
+          path = "/certificates/bar.com",
+        })
+
+        assert.res_status(404, res)
+      end)
+
+      it("deletes a certificate by id", function()
+        local res = assert(client:send {
+          method = "POST",
+          path = "/certificates",
+          body = {
+            cert = "foo",
+            key = "bar",
+          },
+          headers = { ["Content-Type"] = "application/json" }
+        })
+
+        local body = assert.res_status(201, res)
+        local json = cjson.decode(body)
+
+        res = assert(client:send {
+          method = "DELETE",
+          path = "/certificates/" .. json.id,
+        })
+
+        assert.res_status(204, res)
       end)
     end)
   end)
