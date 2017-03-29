@@ -8,9 +8,9 @@
 
 ### Added
 
-- :fireworks: `server_tokens` and `latency_tokens` configuration fields.
-  Check the [0.10 Configuration Guide](https://getkong.org/docs/0.10.x/configuration/#server_tokens)
-  to learn more.
+- Ability to hide Kong-specific response headers. Two new configuration fields:
+  `server_tokens` and `latency_tokens` will respectively toggle whether the
+  `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
   [#2259](https://github.com/Mashape/kong/pull/2259)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
