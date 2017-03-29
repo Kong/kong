@@ -4,9 +4,9 @@ local responses = require "kong.tools.responses"
 
 
 -- clean the target history for a given upstream
-local function clean_history(upstream_id, dao_factory)
+local function clean_history(upstream_id, dao_factory, given_cleanup_factor)
   -- when to cleanup: invalid-entries > (valid-ones * cleanup_factor)
-  local cleanup_factor = 10
+  local cleanup_factor = given_cleanup_factor or 10
 
   --cleaning up history, check if it's necessary...
   local target_history = dao_factory.targets:find_all({
@@ -41,7 +41,7 @@ local function clean_history(upstream_id, dao_factory)
     end
 
     -- do we need to cleanup?
-    -- either nothing left, or when 10x more outdated than active entries
+    -- either nothing left, or when cleanup_factor x more outdated than active entries
     if (#cleaned == 0 and #delete > 0) or
        (#delete >= (math.max(#cleaned,1)*cleanup_factor)) then
 
@@ -63,8 +63,12 @@ local function clean_history(upstream_id, dao_factory)
       ngx.log(ngx.INFO, "[admin api] Finished cleanup of target table",
         " for upstream ", tostring(upstream_id),
         " removed ", tostring(cnt), " target entries")
+
+      return cnt
     end
   end
+
+  return 0
 end
 
 return {
@@ -163,6 +167,21 @@ return {
       return responses.send_HTTP_OK {
         total = found_n,
         data  = found,
+      }
+    end
+  },
+
+  ["/upstreams/:name_or_id/targets/clean/"] = {
+    before = function(self, dao_factory, helpers)
+      crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+    end,
+
+    POST = function(self, dao_factory)
+      local factor = self.params.factor or 1
+      local cnt = clean_history(self.upstream.id, dao_factory, factor)
+
+      return responses.send_HTTP_OK {
+        deleted = cnt,
       }
     end
   },
