@@ -107,6 +107,13 @@ function CorsHandler:access(conf)
   CorsHandler.super.access(self)
 
   if req_get_method() == "OPTIONS" then
+    -- Don't add any response header when the incoming request is an OPTIONS request
+    -- because we are delegating the preflight to 
+    -- the upstream API (conf.preflight_continue=true)
+    -- or interrupt the execution of the current request 
+    -- and return ngx.HTTP_NOT_FOUND to nginx
+    ngx.ctx.skip_response_headers = true
+
     if not conf.preflight_continue then
       configure_origin(ngx, conf)
       configure_credentials(ngx, conf)
@@ -114,15 +121,8 @@ function CorsHandler:access(conf)
       configure_methods(ngx, conf)
       configure_max_age(ngx, conf)
 
-      -- Don't add response headers because we already added them all
-      ngx.ctx.skip_response_headers = true
-
       return responses.send_HTTP_NO_CONTENT()
     end
-
-    -- Don't add any response header because we are delegating the preflight to
-    -- the upstream API (conf.preflight_continue=true)
-    ngx.ctx.skip_response_headers = true
   end
 end
 
