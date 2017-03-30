@@ -167,9 +167,10 @@ return {
     end
   },
 
-  ["/upstreams/:name_or_id/targets/:target"] = {
+  ["/upstreams/:name_or_id/targets/:target_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+      crud.find_target_by_target_or_id(self, dao_factory, helpers)
     end,
 
     DELETE = function(self, dao_factory)
@@ -177,7 +178,7 @@ return {
 
       -- this is just a wrapper around POSTing a new target with weight=0
       local data, err = dao_factory.targets:insert({
-        target      = self.params.target,
+        target      = self.target.target,
         upstream_id = self.upstream.id,
         weight      = 0,
       })
