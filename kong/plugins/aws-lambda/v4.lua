@@ -109,10 +109,10 @@ local function prepare_awsv4_request(tbl)
       return nil, "either 'signing_key' or 'secret_key' must be provided"
     end
   end
-  local timestamp = tbl.timestamp or os.time()
   local tls = tbl.tls
   if tls == nil then tls = true end
   local port = tbl.port or (tls and 443 or 80)
+  local timestamp = tbl.timestamp or ngx.time()
   local req_date = os.date("!%Y%m%dT%H%M%SZ", timestamp)
   local date = os.date("!%Y%m%d", timestamp)
 
