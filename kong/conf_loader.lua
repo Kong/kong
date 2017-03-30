@@ -62,7 +62,8 @@ local CONF_INFERENCES = {
   nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
-
+  redis_host = {typ = "string"},
+  redis_port = {typ = "number"},
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
   pg_password = {typ = "string"},
