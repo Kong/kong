@@ -68,6 +68,11 @@
                                  # HTTPS requests to the admin API, if
                                  # `admin_ssl` is enabled.
 
+#nginx_user = nobody             # Defines user and group credentials used by
+                                 # worker processes. If group is omitted, a
+                                 # group whose name equals that of user is
+                                 # used. Ex: [user] [group].
+
 #nginx_worker_processes = auto   # Determines the number of worker processes
                                  # spawned by Nginx.
 
@@ -152,7 +157,7 @@
 #pg_host = 127.0.0.1             # The PostgreSQL host to connect to.
 #pg_port = 5432                  # The port to connect to.
 #pg_user = kong                  # The username to authenticate if required.
-#pg_password = kong              # The password to authenticate if required.
+#pg_password =                   # The password to authenticate if required.
 #pg_database = kong              # The database name to connect to.
 
 #pg_ssl = off                    # Toggles client-server TLS connections
@@ -186,7 +191,7 @@
 #cassandra_username = kong       # Username when using the
                                  # `PasswordAuthenticator` scheme.
 
-#cassandra_password = kong       # Password when using the
+#cassandra_password =            # Password when using the
                                  # `PasswordAuthenticator` scheme.
 
 #cassandra_consistency = ONE     # Consistency setting to use when reading/

@@ -1,4 +1,5 @@
 return [[
+user ${{NGINX_USER}};
 worker_processes ${{NGINX_WORKER_PROCESSES}};
 daemon ${{NGINX_DAEMON}};
 

@@ -60,6 +60,7 @@ local CONF_INFERENCES = {
   cluster_listen = {typ = "string"},
   cluster_listen_rpc = {typ = "string"},
   cluster_advertise = {typ = "string"},
+  nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
   real_ip_header = {typ = "string"},

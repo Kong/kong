@@ -2,17 +2,14 @@
 
 ### Changed
 
-- Admin API:
-    - Disable support for TLS/1.0.
-      [#2212](https://github.com/Mashape/kong/pull/2212)
 - :warning: The default configuration for `X-Forwarded-*` and `X-Real-IP`
   upstream headers was changed considerably. Previously Kong trusted and
   forwarded those headers by default. With this release we do **not** trust
   those headers anymore by default. This is all configurable by now. Please
   read more about this change from our
-  [0.10.x Proxy Reference](https://getkong.org/docs/0.10.x/proxy/#3-proxying-upstream-timeouts)
+  [0.10.x Proxy Reference](https://getkong.org/docs/0.10.x/proxy/)
   and
-  [0.10.x Configuration Reference](https://getkong.org/docs/0.10.x/configuration/#real_ip_header)
+  [0.10.x Configuration Reference](https://getkong.org/docs/0.10.x/configuration/)
 
 ### Added
 
@@ -20,29 +17,77 @@
   [#2236](https://github.com/Mashape/kong/pull/2236)
 - :fireworks: Support for The PROXY protocol.
   [#2236](https://github.com/Mashape/kong/pull/2236)
+
+## [0.10.1] - 2017/03/27
+
+### Changed
+
+- :warning: Serf has been downgraded to version 0.7 in our distributions,
+  although versions up to 0.8.1 are still supported. This fixes a problem when
+  automatically detecting the first non-loopback private IP address, which was
+  defaulted to `127.0.0.1` in Kong 0.10.0. Greater versions of Serf can still
+  be used, but the IP address needs to be manually specified in the
+  `cluster_advertise` configuration property.
+- Admin API:
+  - Disable support for TLS/1.0.
+    [#2212](https://github.com/Mashape/kong/pull/2212)
+
+### Added
+
+- Admin API:
+  - Active targets can be pulled with `GET /upstreams/{name}/targets/active`.
+    [#2230](https://github.com/Mashape/kong/pull/2230)
+  - Provide a convenience endpoint to disable targets at:
+    `DELETE /upstreams/{name}/targets/{target}`.
+    Under the hood, this creates a new target with `weigth = 0` (the
+    correct way of disabling targets, which used to cause confusion).
+    [#2256](https://github.com/Mashape/kong/pull/2256)
 - Plugins:
   - cors: Support for configuring multiple Origin domains.
     [#2203](https://github.com/Mashape/kong/pull/2203)
 
 ### Fixed
 
+- Use an LRU cache for Lua-land entities caching to avoid exhausting the Lua
+  VM memory in long-running instances.
+  [#2246](https://github.com/Mashape/kong/pull/2246)
 - Avoid potential deadlocks upon callback errors in the caching module for
   database entities.
   [#2197](https://github.com/Mashape/kong/pull/2197)
 - Relax multipart MIME type parsing. A space is allowed in between values
   of the Content-Type header.
   [#2215](https://github.com/Mashape/kong/pull/2215)
+- Admin API:
+  - Better handling of non-supported HTTP methods on endpoints of the Admin
+    API. In some cases this used to throw an internal error. Calling any
+    endpoint with a non-supported HTTP method now always returns `405 Method
+    Not Allowed` as expected.
+    [#2213](https://github.com/Mashape/kong/pull/2213)
 - CLI:
   - Better error handling when missing Serf executable.
     [#2218](https://github.com/Mashape/kong/pull/2218)
+  - Fix a bug in the `kong migrations` command that would prevent it to run
+    correctly.
+    [#2238](https://github.com/Mashape/kong/pull/2238)
+  - Trim list values specified in the configuration file.
+    [#2206](https://github.com/Mashape/kong/pull/2206)
+  - Align the default configuration file's values to the actual, hard-coded
+    default values to avoid confusion.
+    [#2254](https://github.com/Mashape/kong/issues/2254)
 - Plugins:
   - hmac: Generate an HMAC secret value if none is provided.
     [#2158](https://github.com/Mashape/kong/pull/2158)
   - oauth2: Don't try to remove credential values from request bodies if the
     MIME type is multipart, since such attemps would result in an error.
     [#2176](https://github.com/Mashape/kong/pull/2176)
+  - ldap: This plugin should not be applied to a single Consumer, however, this
+    was not properly enforced. It is now impossible to apply this plugin to a
+    single Consumer (as per all authentication plugin).
+    [#2237](https://github.com/Mashape/kong/pull/2237)
+  - aws-lambda: Support for `us-west-2` region in schema.
+    [#2257](https://github.com/Mashape/kong/pull/2257)
 
-## [0.10.0] - 2016/03/07
+## [0.10.0] - 2017/03/07
 
 Kong 0.10 is one of most significant releases to this day. It ships with
 exciting new features that have been heavily requested for the last few months,
@@ -1025,7 +1070,8 @@ First version running with Cassandra.
 - CLI `bin/kong` script.
 - Database migrations (using `db.lua`).
 
-[unreleased]: https://github.com/mashape/kong/compare/0.10.0...next
+[unreleased]: https://github.com/mashape/kong/compare/0.10.1...next
+[0.10.1]: https://github.com/mashape/kong/compare/0.10.0...0.10.1
 [0.10.0]: https://github.com/mashape/kong/compare/0.9.9...0.10.0
 [0.9.9]: https://github.com/mashape/kong/compare/0.9.8...0.9.9
 [0.9.8]: https://github.com/mashape/kong/compare/0.9.7...0.9.8

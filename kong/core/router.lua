@@ -446,25 +446,24 @@ function _M.new(apis)
   end)
 
 
-  local grab_headers = #wildcard_hosts > 0 or next(indexes.plain_hosts) ~= nil
+  local grab_host = #wildcard_hosts > 0 or next(indexes.plain_hosts) ~= nil
 
 
-  local function find_api(method, uri, headers)
+  local function find_api(method, uri, host)
     if type(method) ~= "string" then
       return error("arg #1 method must be a string")
     end
     if type(uri) ~= "string" then
       return error("arg #2 uri must be a string")
     end
-    if type(headers) ~= "table" then
-      return error("arg #3 headers must be a table")
+    if host and type(host) ~= "string" then
+      return error("arg #3 host must be a string")
     end
 
 
     method = upper(method)
 
 
-    local host = headers["host"] or headers["Host"]
     if host then
       -- strip port number if given
       local m, err = re_match(host, "^([^:]+)", "jo")
@@ -574,21 +573,18 @@ function _M.new(apis)
     local uri = ngx.var.uri
     local new_uri = uri
     local host_header
-    local headers
+    local req_host
 
 
-    --print("grab headers: ", grab_headers)
+    --print("grab host header: ", grab_host)
 
 
-    if grab_headers then
-      headers = ngx.req.get_headers()
-
-    else
-      headers = empty_t
+    if grab_host then
+      req_host = ngx.var.http_host
     end
 
 
-    local api_t = find_api(method, uri, headers)
+    local api_t = find_api(method, uri, req_host)
     if not api_t then
       return nil
     end
@@ -615,11 +611,7 @@ function _M.new(apis)
 
 
     if api_t.preserve_host then
-      if not headers then
-        headers = ngx.req.get_headers()
-      end
-
-      host_header = headers["host"]
+      host_header = req_host
     end
 
 
