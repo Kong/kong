@@ -44,6 +44,7 @@ function _M.new(kong_config)
     keyspace = kong_config.cassandra_keyspace,
     timeout_connect = kong_config.cassandra_timeout,
     timeout_read = kong_config.cassandra_timeout,
+    max_schema_consensus_wait = kong_config.cassandra_schema_consensus_timeout,
     ssl = kong_config.cassandra_ssl,
     verify = kong_config.cassandra_ssl_verify,
     lock_timeout = 30,
