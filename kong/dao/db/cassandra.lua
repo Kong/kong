@@ -389,7 +389,22 @@ function _M:find_all(table_name, tbl, schema)
   local query = select_query(table_name, where)
   local res_rows = {}
 
-  for rows, page_err in self.cluster:iterate(query, args, opts) do
+  local iter = self.cluster.iterate
+  local iter_self = self.cluster
+  if coordinator then
+    -- we are in migrations, and need to wait for a schema consensus
+    -- before performing such a DML query
+    local ok, err = self:wait_for_schema_consensus()
+    if not ok then
+      return nil, "could not wait for schema consensus: " .. err
+    end
+
+    iter = coordinator.page_iterator
+    iter_self = coordinator
+    opts.prepared = false
+  end
+
+  for rows, page_err in iter(iter_self, query, args, opts) do
     if page_err then
       err = Errors.db(page_err)
       res_rows = nil
