@@ -11,6 +11,7 @@ local upper = string.upper
 local lower = string.lower
 local find = string.find
 local fmt = string.format
+local sub = string.sub
 local tonumber = tonumber
 local ipairs = ipairs
 local pairs = pairs
@@ -640,8 +641,25 @@ function _M.new(apis)
     end
 
 
-    if api_t.upstream.path then
-      new_uri = api_t.upstream.path .. new_uri
+    local upstream_path = api_t.upstream.path
+    if upstream_path then
+      if new_uri == "/" then
+        new_uri = upstream_path
+
+      else
+        new_uri = upstream_path .. (sub(upstream_path, -1) == "/" and sub(new_uri, 2) or new_uri)
+      end
+    end
+
+
+    local req_uri_slash = sub(uri,     -1) == "/"
+    local new_uri_slash = sub(new_uri, -1) == "/"
+
+    if new_uri_slash and not req_uri_slash and new_uri ~= "/" then
+      new_uri = sub(new_uri, 1, -2)
+
+    elseif not new_uri_slash and req_uri_slash and uri ~= "/" then
+      new_uri = new_uri .. "/"
     end
 
 

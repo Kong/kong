@@ -388,4 +388,98 @@ describe("Router", function()
       assert.equal("fixture-api", res.headers["kong-api-name"])
     end)
   end)
+
+  describe("trailing slash", function()
+    local checks = {
+      -- upstream url    request path    expected path           strip uri
+      {  "/",            "/",            "/",                    nil       },
+      {  "/",            "/foo/bar",     "/",                    nil       },
+      {  "/",            "/foo/bar/",    "/",                    nil       },
+      {  "/foo/bar",     "/",            "/foo/bar",             nil       },
+      {  "/foo/bar/",    "/",            "/foo/bar/",            nil       },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",             nil       },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/",            "/",            "/",                    true      },
+      {  "/",            "/foo/bar",     "/",                    true      },
+      {  "/",            "/foo/bar/",    "/",                    true      },
+      {  "/foo/bar",     "/",            "/foo/bar",             true      },
+      {  "/foo/bar/",    "/",            "/foo/bar/",            true      },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",             true      },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/",            "/",            "/",                    false     },
+      {  "/",            "/foo/bar",     "/foo/bar",             false     },
+      {  "/",            "/foo/bar/",    "/foo/bar/",            false     },
+      {  "/foo/bar",     "/",            "/foo/bar",             false     },
+      {  "/foo/bar/",    "/",            "/foo/bar/",            false     },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+    }
+
+    setup(function()
+      helpers.dao:truncate_tables()
+
+      for i, args in ipairs(checks) do
+        assert(helpers.dao.apis:insert {
+            name         = "localbin-" .. i,
+            strip_uri    = args[4],
+            upstream_url = "http://localhost:9999" .. args[1],
+            hosts        = {
+              "localbin-" .. i .. ".com",
+            },
+            uris         = {
+              args[2],
+            }
+        })
+      end
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    local function check(i, request_uri, expected_uri)
+      return function()
+        local res = assert(client:send {
+          method  = "GET",
+          path    = request_uri,
+          headers = {
+            ["Host"] = "localbin-" .. i .. ".com",
+          }
+        })
+
+        local json = assert.res_status(200, res)
+        local data = cjson.decode(json)
+
+        assert.equal(expected_uri, data.vars.request_uri)
+      end
+    end
+
+    for i, args in ipairs(checks) do
+
+      local config = "(strip_uri = n/a)"
+
+      if args[4] == true then
+        config = "(strip_uri = on) "
+
+      elseif args[4] == false then
+        config = "(strip_uri = off)"
+      end
+
+      local space = string.sub(args[1], -1) == "/" and "" or " "
+
+      it(config .. " is not appended to upstream uri " .. args[1] ..
+          space .. " when requesting "                 .. args[2],
+        check(i, args[2], args[3]))
+    end
+  end)
 end)
