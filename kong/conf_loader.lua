@@ -62,6 +62,8 @@ local CONF_INFERENCES = {
   nginx_user = {typ = "string"},
   nginx_worker_processes = {typ = "string"},
   upstream_keepalive = {typ = "number"},
+  server_tokens = {typ = "boolean"},
+  latency_tokens = {typ = "boolean"},
 
   database = {enum = {"postgres", "cassandra"}},
   pg_port = {typ = "number"},
@@ -425,7 +427,7 @@ local function load(path, custom_conf)
   -- initialize the dns client, so the globally patched tcp.connect method
   -- will work from here onwards.
   assert(require("kong.tools.dns")(conf))
-  
+
   return setmetatable(conf, nil) -- remove Map mt
 end
 

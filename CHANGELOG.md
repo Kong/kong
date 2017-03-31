@@ -1,5 +1,12 @@
 ## [Unreleased][unreleased]
 
+### Added
+
+- Ability to hide Kong-specific response headers. Two new configuration fields:
+  `server_tokens` and `latency_tokens` will respectively toggle whether the
+  `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
+  [#2259](https://github.com/Mashape/kong/pull/2259)
+
 ## [0.10.1] - 2017/03/27
 
 ### Changed
