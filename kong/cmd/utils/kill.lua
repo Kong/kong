@@ -1,4 +1,5 @@
 local pl_path = require "pl.path"
+local pl_utils = require "pl.utils"
 local log = require "kong.cmd.utils.log"
 
 local cmd_tmpl = [[kill %s `cat %s` >/dev/null 2>&1]]
@@ -8,7 +9,8 @@ local function kill(pid_file, args)
   local cmd = string.format(cmd_tmpl, args or "-0", pid_file)
   if pl_path.exists(pid_file) then
     log.debug(cmd)
-    return os.execute(cmd)
+    local _, code = pl_utils.execute(cmd)
+    return code
   else
     log.debug("no pid file at: %s", pid_file)
     return 0
