@@ -140,19 +140,25 @@ return {
       end
       table.sort(target_history, function(a, b) return a.order > b.order end)
 
-      local ignored = {}
-      local found   = {}
-      local found_n = 0
+      local seen     = {}
+      local active   = {}
+      local active_n = 0
 
       for _, entry in ipairs(target_history) do
-        if not found[entry.target] and not ignored[entry.target] then
-          if entry.weight ~= 0 then
-            entry.order = nil -- dont show our order key to the client
-            found_n = found_n + 1
-            found[found_n] = entry
+        if not seen[entry.target] then
+          if entry.weight == 0 then
+            seen[entry.target] = true
 
           else
-            ignored[entry.target] = true
+            entry.order = nil -- dont show our order key to the client
+
+            -- add what we want to send to the client in our array
+            active_n = active_n + 1
+            active[active_n] = entry
+
+            -- track that we found this host:port so we only show
+            -- the most recent one (kinda)
+            seen[entry.target] = true
           end
         end
       end
@@ -161,8 +167,8 @@ return {
       -- we also end up returning a "backwards" list of targets because
       -- of how we sorted- do we care?
       return responses.send_HTTP_OK {
-        total = found_n,
-        data  = found,
+        total = active_n,
+        data  = active,
       }
     end
   },
