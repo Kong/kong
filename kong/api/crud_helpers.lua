@@ -59,6 +59,29 @@ function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
   end
 end
 
+-- this function will return the exact target if specified by `id`, or just
+-- 'any target entry' if specified by target (= 'hostname:port')
+function _M.find_target_by_target_or_id(self, dao_factory, helpers)
+  local filter_keys = {
+    upstream_id = self.upstream.id,
+    [utils.is_valid_uuid(self.params.target_or_id) and "id" or "target"] = self.params.target_or_id
+  }
+  self.params.target_or_id = nil
+
+  local rows, err = dao_factory.targets:find_all(filter_keys)
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  -- if looked up by `target` property we can have multiple targets here, but
+  -- anyone will do as they all have the same 'target' field, so just pick
+  -- the first
+  self.target = rows[1]
+  if not self.target then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
 function _M.paginated_set(self, dao_collection)
   local size = self.params.size and tonumber(self.params.size) or 100
   local offset = self.params.offset and ngx.decode_base64(self.params.offset)
