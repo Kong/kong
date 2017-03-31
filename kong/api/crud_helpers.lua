@@ -59,6 +59,8 @@ function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
   end
 end
 
+-- this function will return the exact target if specified by `id`, or just
+-- 'any target entry' if specified by target (= 'hostname:port')
 function _M.find_target_by_target_or_id(self, dao_factory, helpers)
   local filter_keys = {
     upstream_id = self.upstream.id,
@@ -71,7 +73,9 @@ function _M.find_target_by_target_or_id(self, dao_factory, helpers)
     return helpers.yield_error(err)
   end
 
-  -- We know target and id are unique, so if we have a row, it must be the only one
+  -- if looked up by `target` property we can have multiple targets here, but
+  -- anyone will do as they all have the same 'target' field, so just pick
+  -- the first
   self.target = rows[1]
   if not self.target then
     return helpers.responses.send_HTTP_NOT_FOUND()
