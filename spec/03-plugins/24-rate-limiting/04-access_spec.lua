@@ -14,7 +14,7 @@ local function wait(second_offset)
   -- of the current minute is > 30, then we wait till the new minute kicks in
   local current_second = timestamp.get_timetable().sec
   if current_second > (second_offset or 0) then
-    os.execute("sleep "..tostring(60 - current_second))
+    ngx.sleep(60 - current_second)
   end
 end
 
