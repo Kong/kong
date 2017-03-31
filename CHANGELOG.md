@@ -27,14 +27,16 @@
   requests. The added functionality is now described in
   [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
   [#2315](https://github.com/Mashape/kong/pull/2315).
-- The http-log plugin will now set a basic-auth authorization header if the
-  configured log target-url includes credentials. Thanks to
-  [Amir M. Saeid](https://github.com/amir) for the contribution.
-  [#2430](https://github.com/Mashape/kong/pull/2430)
+- Serf commands are now logged with a `DEBUG` log level.
+- Ability to hide Kong-specific response headers. Two new configuration fields:
+  `server_tokens` and `latency_tokens` will respectively toggle whether the
+  `Server` and `X-Kong-*-Latency` headers should be sent to downstream clients.
+  [#2259](https://github.com/Mashape/kong/pull/2259)
+- Serf commands executed by a running Kong node are now logged in the Nginx
+  error logs with a `DEBUG` level.
+  [#2410](https://github.com/Mashape/kong/pull/2410)
 - Logging retries and failure information.
   [#2429](https://github.com/Mashape/kong/pull/2429).
-- Serf commands are now logged with a `DEBUG` log level.
-  [#2410](https://github.com/Mashape/kong/pull/2410)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
@@ -46,9 +48,13 @@
     which contains the properties of the authenticated Consumer
     (`id`, `custom_id`, and `username`), if any.
     [#2367](https://github.com/Mashape/kong/pull/2367)
-  - File-log plugin now has a new `reopen` setting to close and 
-    reopen the logfiles on every request which enables rotating the logs.
+  - File-log plugin now has a new `reopen` setting to close and repoen the
+    logfiles on every request which enables rotating the logs.
     [#2348](https://github.com/Mashape/kong/pull/2348)
+  - The http-log plugin will now set a basic-auth authorization header if the
+    configured log target-url includes credentials. Thanks to
+    [Amir M. Saeid](https://github.com/amir) for the contribution.
+    [#2430](https://github.com/Mashape/kong/pull/2430)
 
 ### Fixed
 

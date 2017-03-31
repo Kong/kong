@@ -1,3 +1,5 @@
+local singletons = require "kong.singletons"
+
 local find = string.find
 local format = string.format
 
@@ -52,7 +54,10 @@ return function(ngx)
   local status = ngx.status
   message = BODIES["s"..status] and BODIES["s"..status] or format(BODIES.default, status)
 
-  ngx.header["Server"] = SERVER_HEADER
+  if singletons.configuration.server_tokens then
+    ngx.header["Server"] = SERVER_HEADER
+  end
+
   ngx.header["Content-Type"] = content_type
   ngx.say(format(template, message))
 end
