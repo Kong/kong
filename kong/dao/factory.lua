@@ -306,7 +306,7 @@ function _M:run_migrations(on_migrate, on_success)
       local ok, err = self.db:wait_for_schema_consensus()
       if not ok then
         return ret_error_string(self.db.name, nil,
-                                "could not wait for schema consensus: " .. err)
+                                "failed waiting for schema consensus: " .. err)
       end
     end
 

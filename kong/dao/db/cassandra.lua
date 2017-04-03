@@ -397,7 +397,7 @@ function _M:find_all(table_name, tbl, schema)
     -- before performing such a DML query
     local ok, err = self:wait_for_schema_consensus()
     if not ok then
-      return nil, "could not wait for schema consensus: " .. err
+      return nil, "failed waiting for schema consensus: " .. err
     end
 
     iter = coordinator.page_iterator
