@@ -383,6 +383,14 @@ local function load(path, custom_conf)
     setmetatable(conf.plugins, nil) -- remove Map mt
   end
 
+  -- nginx user directive
+  do
+    local user = conf.nginx_user:gsub("^%s*", ""):gsub("%s$", ""):gsub("%s+", " ")
+    if user == "nobody" or user == "nobody nobody" then
+      conf.nginx_user = nil
+    end
+  end
+
   -- extract ports/listen ips
   do
     local ip_port_pat = "(.+):([%d]+)$"
