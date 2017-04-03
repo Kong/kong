@@ -15,7 +15,7 @@
 
 - :fireworks: Configurable `X-Forwarded-*` and `X-Real-IP` upstream headers.
   [#2236](https://github.com/Mashape/kong/pull/2236)
-- :fireworks: Support for The PROXY protocol.
+- :fireworks: Support for the PROXY protocol.
   [#2236](https://github.com/Mashape/kong/pull/2236)
 
 ## [0.10.1] - 2017/03/27
