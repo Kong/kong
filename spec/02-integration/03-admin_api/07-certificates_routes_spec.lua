@@ -1,4 +1,6 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
+local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local DAOFactory = require "kong.dao.factory"
 local helpers = require "spec.helpers"
 local cjson = require "cjson"
 
@@ -11,24 +13,35 @@ local function it_content_types(title, fn)
 end
 
 
+dao_helpers.for_each_dao(function(kong_config)
+
 describe("Admin API", function()
   local client
+  local dao
 
   setup(function()
-    assert(helpers.start_kong())
+    dao = assert(DAOFactory.new(kong_config))
+
+    assert(helpers.start_kong({
+      database = kong_config.database
+    }))
+
     client = assert(helpers.admin_client())
   end)
 
   teardown(function()
-    if client then client:close() end
+    if client then
+      client:close()
+    end
+
     helpers.stop_kong()
   end)
 
-  describe("/certificates", function()
+  describe("/certificates with " .. kong_config.database, function()
 
     describe("POST", function()
       before_each(function()
-        helpers.dao:truncate_tables()
+        dao:truncate_tables()
       end)
 
       it("returns a conflict when duplicates snis are present in the request", function()
@@ -96,7 +109,7 @@ describe("Admin API", function()
 
         local body = assert.res_status(409, res)
         local json = cjson.decode(body)
-        assert.equals('entry already exists with name foo.com', json.message)
+        assert.equals("entry already exists with name foo.com", json.message)
 
         -- make sure we only have one sni
         res = assert(client:send {
@@ -259,14 +272,14 @@ describe("Admin API", function()
   end)
 
 
-  describe("/snis", function()
+  describe("/snis with " .. kong_config.database, function()
     local ssl_certificate
 
     describe("POST", function()
       before_each(function()
-        helpers.dao:truncate_tables()
+        dao:truncate_tables()
 
-        ssl_certificate = assert(helpers.dao.ssl_certificates:insert {
+        ssl_certificate = assert(dao.ssl_certificates:insert {
           cert = ssl_fixtures.cert,
           key = ssl_fixtures.key,
         })
@@ -308,6 +321,27 @@ describe("Admin API", function()
           assert.equal(ssl_certificate.id, json.ssl_certificate_id)
         end
       end)
+
+      it("returns a conflict when an SNI already exists", function()
+          assert(dao.ssl_servers_names:insert {
+            name = "foo.com",
+            ssl_certificate_id = ssl_certificate.id,
+          })
+
+          local res = assert(client:send {
+            method  = "POST",
+            path    = "/snis",
+            body    = {
+              name               = "foo.com",
+              ssl_certificate_id = ssl_certificate.id,
+            },
+            headers = { ["Content-Type"] = "application/json" },
+          })
+
+          local body = assert.res_status(409, res)
+          local json = cjson.decode(body)
+          assert.equals("already exists with value 'foo.com'", json.name)
+      end)
     end)
 
     describe("GET", function()
@@ -346,26 +380,39 @@ describe("Admin API", function()
         local ssl_certificate_2
 
         setup(function()
-          ssl_certificate_2 = assert(helpers.dao.ssl_certificates:insert {
+          ssl_certificate_2 = assert(dao.ssl_certificates:insert {
             cert = "foo",
             key = "bar",
           })
         end)
 
-        it("updates a SNI", function()
-          local res = assert(client:send {
-            method  = "PATCH",
-            path    = "/snis/foo.com",
-            body    = {
-              ssl_certificate_id = ssl_certificate_2.id,
-            },
-            headers = { ["Content-Type"] = "application/json" },
-          })
+        do
+          local test = it
+          if kong_config.database == "cassandra" then
+            test = pending
+          end
 
-          local body = assert.res_status(200, res)
-          local json = cjson.decode(body)
-          assert.equal(ssl_certificate_2.id, json.ssl_certificate_id)
-        end)
+          test("updates a SNI", function()
+            -- SKIP: this test fails with Cassandra because the PRIMARY KEY
+            -- used by the C* table is a composite of (name,
+            -- ssl_certificate_id), and hence, we cannot update the
+            -- ssl_certificate_id field because it is in the `SET` part of the
+            -- query built by the DAO, but in C*, one cannot change a value
+            -- from the clustering key.
+            local res = assert(client:send {
+              method  = "PATCH",
+              path    = "/snis/foo.com",
+              body    = {
+                ssl_certificate_id = ssl_certificate_2.id,
+              },
+              headers = { ["Content-Type"] = "application/json" },
+            })
+
+            local body = assert.res_status(200, res)
+            local json = cjson.decode(body)
+            assert.equal(ssl_certificate_2.id, json.ssl_certificate_id)
+          end)
+        end
       end)
 
       describe("DELETE", function()
@@ -380,4 +427,6 @@ describe("Admin API", function()
       end)
     end)
   end)
+end)
+
 end)
