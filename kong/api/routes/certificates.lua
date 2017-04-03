@@ -12,23 +12,21 @@ return {
         self.params.snis = nil
       end
 
-      -- dont add the certificate or any snis if we have an SNI conflict
-      -- its fairly inefficient that we have to loop twice over the datastore
-      -- but no support for OR queries means we gotsta!
       if snis then
+        -- dont add the certificate or any snis if we have an SNI conflict
+        -- its fairly inefficient that we have to loop twice over the datastore
+        -- but no support for OR queries means we gotsta!
         local seen = {}
 
-        for i = 1, #snis do
-          local sni_name = snis[i]
-
-          if seen[sni_name] then
+        for _, sni in ipairs(snis) do
+          if seen[sni] then
             return helpers.responses.send_HTTP_CONFLICT(
-              "duplicate requested sni name " .. sni_name
+              "duplicate requested sni name " .. sni
             )
           end
 
           local cnt, err = dao_factory.ssl_servers_names:count({
-            name = sni_name,
+            name = sni,
           })
           if err then
             return helpers.yield_error(err)
@@ -36,11 +34,11 @@ return {
 
           if cnt > 0 then
             return helpers.responses.send_HTTP_CONFLICT(
-              "entry already exists with name " .. sni_name
+              "entry already exists with name " .. sni
             )
           end
 
-          seen[sni_name] = true
+          seen[sni] = true
         end
       end
 
@@ -51,12 +49,12 @@ return {
 
       -- insert SNIs if given
 
-      if type(snis) == "table" then
+      if snis then
         ssl_cert.snis = {}
 
-        for i = 1, #snis do
+        for _, sni in ipairs(snis) do
           local ssl_server_name = {
-            name                = snis[i],
+            name                = sni,
             ssl_certificate_id  = ssl_cert.id,
           }
 
