@@ -5,7 +5,7 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
-    assert.equal("nobody nobody", conf.nginx_user)
+    assert.is_nil(conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
     assert.equal("0.0.0.0:8001", conf.admin_listen)
     assert.equal("0.0.0.0:8000", conf.proxy_listen)
@@ -22,8 +22,8 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.equal("nobody nobody", conf.nginx_user)
-    assert.equal("1", conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_user)
+    assert.equal("1",            conf.nginx_worker_processes)
     assert.equal("0.0.0.0:9001", conf.admin_listen)
     assert.equal("0.0.0.0:9000", conf.proxy_listen)
     assert.equal("0.0.0.0:9443", conf.proxy_listen_ssl)
@@ -41,11 +41,11 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
-    assert.equal("nobody nobody", conf.nginx_user)
-    assert.equal("auto", conf.nginx_worker_processes)
+    assert.is_nil(conf.nginx_user)
+    assert.equal("auto",           conf.nginx_worker_processes)
     assert.equal("127.0.0.1:9001", conf.admin_listen)
-    assert.equal("0.0.0.0:9000", conf.proxy_listen)
-    assert.equal("0.0.0.0:9443", conf.proxy_listen_ssl)
+    assert.equal("0.0.0.0:9000",   conf.proxy_listen)
+    assert.equal("0.0.0.0:9443",   conf.proxy_listen_ssl)
     assert.is_nil(getmetatable(conf))
   end)
   it("strips extraneous properties (not in defaults)", function()
@@ -68,7 +68,7 @@ describe("Configuration loader", function()
   end)
   it("loads custom plugins surrounded by spaces", function()
     local conf = assert(conf_loader(nil, {
-      custom_plugins = " hello-world ,   another-one  "  
+      custom_plugins = " hello-world ,   another-one  "
     }))
     assert.True(conf.plugins["hello-world"])
     assert.True(conf.plugins["another-one"])
@@ -115,6 +115,31 @@ describe("Configuration loader", function()
     assert.False(conf.pg_ssl)
     assert.True(conf.plugins.foobar)
     assert.True(conf.plugins["hello-world"])
+  end)
+
+  describe("nginx_user", function()
+    it("is nil by default", function()
+      local conf = assert(conf_loader(helpers.test_conf_path))
+      assert.is_nil(conf.nginx_user)
+    end)
+    it("is nil when 'nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_user = "nobody"
+      }))
+      assert.is_nil(conf.nginx_user)
+    end)
+    it("is nil when 'nobody nobody'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_user = "nobody nobody"
+      }))
+      assert.is_nil(conf.nginx_user)
+    end)
+    it("is 'www_data www_data' when 'www_data www_data'", function()
+      local conf = assert(conf_loader(helpers.test_conf_path, {
+        nginx_user = "www_data www_data"
+      }))
+      assert.equal("www_data www_data", conf.nginx_user)
+    end)
   end)
 
   describe("inferences", function()
