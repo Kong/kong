@@ -1,5 +1,12 @@
 ## [Unreleased][unreleased]
 
+### Added
+
+- Request termination plugin. Allowing to terminate a request with a custom
+  status and message. Thanks to [Paul Austin](https://github.com/pauldaustin)
+  for the contribution.
+  [#2051](https://github.com/Mashape/kong/pull/2051)
+
 ## [0.10.1] - 2017/03/27
 
 ### Changed
