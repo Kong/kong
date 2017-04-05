@@ -17,6 +17,10 @@ local ngx_req_get_body_data = ngx.req.get_body_data
 
 local CONTENT_TYPE = "content-type"
 
+local MOCK_AWS_HOST = 'localhost'
+local MOCK_AWS_PORT = 10001
+local AWS_PORT = 443
+
 local AWSLambdaHandler = BasePlugin:extend()
 
 function AWSLambdaHandler:new()
@@ -46,10 +50,19 @@ function AWSLambdaHandler:access(conf)
 
   local bodyJson = cjson.encode(retrieve_parameters())
 
-  local host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
-  local path = string.format("/2015-03-31/functions/%s/invocations",
-                            conf.function_name)
+  local host, path, port
 
+  if conf.aws_region ~= 'mock' then
+    host = string.format("lambda.%s.amazonaws.com", conf.aws_region)
+    port = AWS_PORT
+
+  else
+    host = MOCK_AWS_HOST
+    port = MOCK_AWS_PORT
+  end
+
+  path = string.format("/2015-03-31/functions/%s/invocations",
+                            conf.function_name)
   local opts = {
     region = conf.aws_region,
     service = "lambda",
@@ -75,7 +88,7 @@ function AWSLambdaHandler:access(conf)
 
   -- Trigger request
   local client = http.new()
-  client:connect(host, 443)
+  client:connect(host, port)
   client:set_timeout(conf.timeout)
   local ok, err = client:ssl_handshake()
   if not ok then
