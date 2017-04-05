@@ -19,17 +19,7 @@ local next = next
 local band = bit.band
 local bor = bit.bor
 local ERR = ngx.ERR
-local new_tab
 local log
-
-
-do
-  local ok
-  ok, new_tab = pcall(require, "table.new")
-  if not ok then
-    new_tab = function(narr, nrec) return {} end
-  end
-end
 
 
 do
@@ -92,13 +82,13 @@ local function marshall_api(api)
 
   if api.headers then
     if type(api.headers) ~= "table" then
-      return nil,  "headers field must be a table"
+      return nil, "headers field must be a table"
     end
 
     for header_name in pairs(api.headers) do
       if lower(header_name) ~= "host" then
-        return nil, "only 'Host' header is supported in headers field, "..
-                         "found: " .. header_name
+        return nil, "only 'Host' header is supported in headers field, " ..
+                    "found: " .. header_name
       end
     end
 
@@ -108,9 +98,7 @@ local function marshall_api(api)
     end
 
     if #host_values > 0 then
-      api_t.match_rules    = bor(api_t.match_rules, MATCH_RULES.HOST)
-      api_t.hosts          = {}
-      api_t.wildcard_hosts = {}
+      api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.HOST)
 
       for _, host_value in ipairs(host_values) do
         if find(host_value, "*", nil, true) then
@@ -138,9 +126,7 @@ local function marshall_api(api)
     end
 
     if #api.uris > 0 then
-      api_t.match_rules         = bor(api_t.match_rules, MATCH_RULES.URI)
-      api_t.uris                = new_tab(0, #api.uris)
-      api_t.uris_prefixes_regexes = new_tab(#api.uris, 0)
+      api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.URI)
 
       for i, uri in ipairs(api.uris) do
         local escaped_uri = uri:gsub("/", "\\/")
@@ -169,7 +155,6 @@ local function marshall_api(api)
 
     if #api.methods > 0 then
       api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.METHOD)
-      api_t.methods     = new_tab(0, #api.methods)
 
       for _, method in ipairs(api.methods) do
         api_t.methods[upper(method)] = true
@@ -206,79 +191,73 @@ local function marshall_api(api)
 end
 
 
-local function index_api_t(api_t, indexes)
+local function index_api_t(api_t, plain_indexes, uris_prefixes, wildcard_hosts)
   for host in pairs(api_t.hosts) do
-    indexes.plain_hosts[host] = true
+    plain_indexes.hosts[host] = true
   end
 
   for uri in pairs(api_t.uris) do
-    indexes.plain_uris[uri] = true
+    plain_indexes.uris[uri] = true
   end
 
   for method in pairs(api_t.methods) do
-    indexes.methods[method] = true
+    plain_indexes.methods[method] = true
+  end
+
+  for _, wildcard_host in ipairs(api_t.wildcard_hosts) do
+    insert(wildcard_hosts, wildcard_host)
+  end
+
+  api_t.wildcard_hosts = nil
+
+  for _, uri_prefix_regex in ipairs(api_t.uris_prefixes_regexes) do
+    insert(uris_prefixes, uri_prefix_regex.regex)
   end
 end
 
 
-local function categorize_api_t(api_t, categories, uris_prefixes, wildcard_hosts)
+local function categorize_api_t(api_t, categories)
   local category = categories[api_t.match_rules]
   if not category then
-    category      = {
-      plain_hosts = {},
-      plain_uris  = {},
-      methods     = {},
-      apis        = {},
+    category              = {
+      apis_by_plain_hosts = {},
+      apis_by_plain_uris  = {},
+      apis_by_methods     = {},
+      apis                = {},
     }
+
     categories[api_t.match_rules] = category
   end
 
   insert(category.apis, api_t)
 
   for host in pairs(api_t.hosts) do
-    if not category.plain_hosts[host] then
-      category.plain_hosts[host] = {}
+    if not category.apis_by_plain_hosts[host] then
+      category.apis_by_plain_hosts[host] = {}
     end
 
-    insert(category.plain_hosts[host], api_t)
+    insert(category.apis_by_plain_hosts[host], api_t)
   end
 
   for uri in pairs(api_t.uris) do
-    if not category.plain_uris[uri] then
-      category.plain_uris[uri] = {}
+    if not category.apis_by_plain_uris[uri] then
+      category.apis_by_plain_uris[uri] = {}
     end
 
-    insert(category.plain_uris[uri], api_t)
+    insert(category.apis_by_plain_uris[uri], api_t)
   end
 
   for method in pairs(api_t.methods) do
-    if not category.methods[method] then
-      category.methods[method] = {}
+    if not category.apis_by_methods[method] then
+      category.apis_by_methods[method] = {}
     end
 
-    insert(category.methods[method], api_t)
-  end
-
-  for _, wildcard_host in ipairs(api_t.wildcard_hosts) do
-    insert(wildcard_hosts, {
-      value = wildcard_host.value,
-      regex = wildcard_host.regex,
-      api_t = api_t,
-    })
-  end
-
-  for i, uri_prefix_regex in ipairs(api_t.uris_prefixes_regexes) do
-    insert(uris_prefixes, {
-      uri   = api_t.api.uris[i],
-      regex = uri_prefix_regex.regex,
-      api_t = api_t,
-    })
+    insert(category.apis_by_methods[method], api_t)
   end
 end
 
 
 do
-
   local matchers = {
     [MATCH_RULES.HOST] = function(api_t, _, _, host)
       if api_t.hosts[host] then
@@ -324,9 +303,7 @@ do
       return matchers[api_t.match_rules](api_t, method, uri, host)
     end
 
-
     -- build and cache matcher
-
 
     local matchers_set = {}
 
@@ -352,34 +329,28 @@ end
 
 
 do
-
   local reducers = {
     [MATCH_RULES.HOST] = function(category, _, _, host)
-      return category.plain_hosts[host]
+      return category.apis_by_plain_hosts[host]
     end,
 
     [MATCH_RULES.URI] = function(category, _, uri)
-      return category.plain_uris[uri]
+      return category.apis_by_plain_uris[uri]
     end,
 
     [MATCH_RULES.METHOD] = function(category, method)
-      return category.methods[method]
+      return category.apis_by_methods[method]
     end,
   }
 
-  reduce = function(categories, bit_category, method, uri, host)
-    if not categories[bit_category] then
-      return
-    end
 
+  reduce = function(category, bit_category, method, uri, host)
     -- run cached reducer
     if type(reducers[bit_category]) == "function" then
-      return reducers[bit_category](categories[bit_category], method, uri, host)
+      return reducers[bit_category](category, method, uri, host), category.apis
     end
 
-
     -- build and cache reducer
-
 
     local reducers_set = {}
 
@@ -401,10 +372,10 @@ do
         end
       end
 
-      return smallest_set
+      return smallest_set, category.apis
     end
 
-    return reducers[bit_category](categories[bit_category], method, uri, host)
+    return reducers[bit_category](category, method, uri, host)
   end
 end
 
@@ -417,22 +388,28 @@ function _M.new(apis)
     return error("expected arg #1 apis to be a table")
   end
 
+
   local self = {}
 
-  -- hash table for fast lookup to determine is
-  -- an API is registered at given host or URI
-  local indexes = {
-    plain_hosts = {},
-    plain_uris  = {},
-    methods     = {},
+
+  -- hash table for fast lookup of plain hosts, uris
+  -- and methods from incoming requests
+  local plain_indexes = {
+    hosts             = {},
+    uris              = {},
+    methods           = {},
   }
 
-  local categories = {}
 
-  -- arrays of URIs as prefix and wildcard hosts when
-  -- indexes lookups could not determine any candidate
+  -- when hash lookup in plain_indexes fails, those are arrays
+  -- of regexes for `uris` as prefixes and `hosts` as wildcards
   local uris_prefixes  = {}
   local wildcard_hosts = {}
+
+
+  -- all APIs grouped by the category they belong to, to reduce
+  -- iterations over sets of APIs per request
+  local categories = {}
 
 
   local cache = lrucache.new(MATCH_LRUCACHE_SIZE)
@@ -447,8 +424,8 @@ function _M.new(apis)
       return nil, err
     end
 
-    index_api_t(api_t, indexes)
-    categorize_api_t(api_t, categories, uris_prefixes, wildcard_hosts)
+    index_api_t(api_t, plain_indexes, uris_prefixes, wildcard_hosts)
+    categorize_api_t(api_t, categories)
   end
 
 
@@ -478,24 +455,7 @@ function _M.new(apis)
   end
 
 
-  --[[
-  table.sort(wildcard_hosts, function(a, b)
-    return a.api_t.match_rules > b.api_t.match_rules
-  end)
-  --]]
-
-  --[[
-  table.sort(uris_prefixes, function(a, b)
-    if a.api_t.match_rules == b.api_t.match_rules then
-      return #a.regex > #b.regex
-    end
-
-    return a.api_t.match_rules > b.api_t.match_rules
-  end)
-  --]]
-
-
-  local grab_headers = #wildcard_hosts > 0 or next(indexes.plain_hosts) ~= nil
+  local grab_headers = #wildcard_hosts > 0 or next(plain_indexes.hosts) ~= nil
 
 
   local function find_api(method, uri, headers)
@@ -510,8 +470,10 @@ function _M.new(apis)
     end
 
 
-    method = upper(method)
+    -- input sanitization
 
+
+    method = upper(method)
 
     local host = headers["host"] or headers["Host"]
     if host then
@@ -527,97 +489,116 @@ function _M.new(apis)
     end
 
 
-    -- cache checking
+    -- cache lookup
 
 
     local cache_key = fmt("%s:%s:%s", method, uri, host)
-    local api_t_from_cache = cache:get(cache_key)
-    if api_t_from_cache then
-      return api_t_from_cache
+
+    do
+      local api_t_from_cache = cache:get(cache_key)
+      if api_t_from_cache then
+        return api_t_from_cache
+      end
     end
 
 
-    do
-      local req_category = 0x00
+    -- router, router, which of these APIs is the fairest?
+    --
+    -- determine which category this request *might* be targeting
 
-      if indexes.plain_hosts[host] then
-        req_category = bor(req_category, MATCH_RULES.HOST)
 
-      elseif host then
-        for i = 1, #wildcard_hosts do
-          local m, err = re_match(host, wildcard_hosts[i].regex, "jo")
-          if err then
-            log(ERR, "could not match wildcard host: ", err)
-            return
-          end
+    local req_category = 0x00
 
-          if m then
-            host = wildcard_hosts[i].value
-            req_category = bor(req_category, MATCH_RULES.HOST)
-            break
-          end
+    if plain_indexes.hosts[host] then
+      req_category = bor(req_category, MATCH_RULES.HOST)
+
+    elseif host then
+      for i = 1, #wildcard_hosts do
+        local from, _, err = re_find(host, wildcard_hosts[i].regex, "jo")
+        if err then
+          log(ERR, "could not match wildcard host: ", err)
+          return
+        end
+
+        if from then
+          host = wildcard_hosts[i].value
+          req_category = bor(req_category, MATCH_RULES.HOST)
+          break
         end
       end
+    end
 
+    if plain_indexes.uris[uri] then
+      req_category = bor(req_category, MATCH_RULES.URI)
 
-      if indexes.plain_uris[uri] then
-        req_category = bor(req_category, MATCH_RULES.URI)
+    else
+      for i = 1, #uris_prefixes do
+        local from, _, err = re_find(uri, uris_prefixes[i], "jo")
+        if err then
+          log(ERR, "could not search for URI prefix: ", err)
+          return
+        end
 
-      else
-        for i = 1, #uris_prefixes do
-          local from, _, err = re_find(uri, uris_prefixes[i].regex, "jo")
-          if err then
-            log(ERR, "could not search for URI prefix: ", err)
-            return
-          end
-
-          if from then
-            --uri = uris_prefixes[i].uri
-            req_category = bor(req_category, MATCH_RULES.URI)
-            break
-          end
+        if from then
+          req_category = bor(req_category, MATCH_RULES.URI)
+          break
         end
       end
+    end
+
+    if plain_indexes.methods[method] then
+      req_category = bor(req_category, MATCH_RULES.METHOD)
+    end
 
 
-      if indexes.methods[method] then
-        req_category = bor(req_category, MATCH_RULES.METHOD)
-      end
+    --print("highest potential category: ", req_category)
+
+    -- iterate from the highest matching to the lowest category to
+    -- find our API
 
 
-      --print("highest potential category: ", req_category)
+    if req_category ~= 0x00 then
+      local category_idx = CATEGORIES_LOOKUP[req_category]
+      local matched_api
 
+      while category_idx <= categories_len do
+        local bit_category = CATEGORIES[category_idx]
+        local category     = categories[bit_category]
 
-      if req_category ~= 0x00 then
-        -- we might have a match from our indexes of plain
-        -- hosts/URIs/methods
-        local category_idx = CATEGORIES_LOOKUP[req_category]
-
-        while category_idx <= categories_len do
-          local bit_category = CATEGORIES[category_idx]
-
-          local candidates = reduce(categories, bit_category, method, uri, host)
-          if candidates then
-            for i = 1, #candidates do
-              if match_api(candidates[i], method, uri, host) then
-                cache:set(cache_key, candidates[i])
-                return candidates[i]
+        if category then
+          local plain_candidates, apis_for_category = reduce(category,
+                                                             bit_category,
+                                                             method, uri, host)
+          if plain_candidates then
+            -- check for results from a set of reduced plain indexes
+            -- this is our best case scenario with hash lookups only
+            for i = 1, #plain_candidates do
+              if match_api(plain_candidates[i], method, uri, host) then
+                matched_api = plain_candidates[i]
+                break
               end
             end
           end
 
-          candidates = categories[bit_category]
-          if candidates then
-            for i = 1, #candidates.apis do
-              if match_api(candidates.apis[i], method, uri, host) then
-                cache:set(cache_key, candidates.apis[i])
-                return candidates.apis[i]
+          if not matched_api then
+            -- must check for results from the full list of APIs from that
+            -- category before checking a lower category
+            for i = 1, #apis_for_category do
+              if match_api(apis_for_category[i], method, uri, host) then
+                matched_api = apis_for_category[i]
+                break
               end
             end
           end
 
-          category_idx = category_idx + 1
+          if matched_api then
+            cache:set(cache_key, matched_api)
+            return matched_api
+          end
         end
+
+        -- check lower category
+        category_idx = category_idx + 1
       end
     end
 
