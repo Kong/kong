@@ -33,6 +33,7 @@ lua_shared_dict kong 4m;
 lua_shared_dict cache ${{MEM_CACHE_SIZE}};
 lua_shared_dict cache_locks 100k;
 lua_shared_dict process_events 1m;
+lua_shared_dict cluster_events 1m;
 lua_shared_dict cassandra 5m;
 lua_socket_log_errors off;
 > if lua_ssl_trusted_certificate then

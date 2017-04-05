@@ -42,6 +42,10 @@ build = {
     ["kong.singletons"] = "kong/singletons.lua",
     ["kong.conf_loader"] = "kong/conf_loader.lua",
 
+    ["kong.cluster_events"] = "kong/cluster_events.lua",
+    ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
+    ["kong.cluster_events.strategies.postgres"] = "kong/cluster_events/strategies/postgres.lua",
+
     ["kong.templates.nginx"] = "kong/templates/nginx.lua",
     ["kong.templates.nginx_kong"] = "kong/templates/nginx_kong.lua",
     ["kong.templates.kong_defaults"] = "kong/templates/kong_defaults.lua",

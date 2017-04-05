@@ -32,7 +32,7 @@ _M.dao_insert_values = {
   end
 }
 
-_M.additional_tables = {"ttls"}
+_M.additional_tables = { "ttls", "cluster_events" }
 
 function _M.new(kong_config)
   local self = _M.super.new()

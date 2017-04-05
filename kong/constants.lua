@@ -70,5 +70,5 @@ return {
   CACHE = {
     CLUSTER = "cluster"
   },
-  DICTS = { "kong", "cache", "cache_locks", "process_events", "cassandra"},
+  DICTS = { "kong", "cache", "cache_locks", "process_events", "cassandra", "cluster_events" },
 }
