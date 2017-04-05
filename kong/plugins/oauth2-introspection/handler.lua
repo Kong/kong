@@ -207,17 +207,17 @@ function OAuth2Introspection:access(conf)
   ngx.ctx.authenticated_credential = credential
 
   -- Set upstream headers
-  ngx_set_header("x-scope", credential.scope)
-  ngx_set_header("x-client-id", credential.client_id)
-  ngx_set_header("x-username", credential.username)
-  ngx_set_header("x-token-type", credential.token_type)
-  ngx_set_header("x-exp", credential.exp)
-  ngx_set_header("x-iat", credential.iat)
-  ngx_set_header("x-nbf", credential.nbf)
-  ngx_set_header("x-sub", credential.sub)
-  ngx_set_header("x-aud", credential.aud)
-  ngx_set_header("x-iss", credential.iss)
-  ngx_set_header("x-jti", credential.jti)
+  ngx_set_header("x-credential-scope", credential.scope)
+  ngx_set_header("x-credential-client-id", credential.client_id)
+  ngx_set_header("x-credential-username", credential.username)
+  ngx_set_header("x-credential-token-type", credential.token_type)
+  ngx_set_header("x-credential-exp", credential.exp)
+  ngx_set_header("x-credential-iat", credential.iat)
+  ngx_set_header("x-credential-nbf", credential.nbf)
+  ngx_set_header("x-credential-sub", credential.sub)
+  ngx_set_header("x-credential-aud", credential.aud)
+  ngx_set_header("x-credential-iss", credential.iss)
+  ngx_set_header("x-credential-jti", credential.jti)
   ngx_set_header(constants.HEADERS.ANONYMOUS, nil) -- in case of auth plugins concatenation
 end
 
