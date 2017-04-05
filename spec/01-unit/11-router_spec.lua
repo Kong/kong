@@ -136,7 +136,7 @@ describe("Router", function()
     end)
 
     describe("[uri] as a prefix", function()
-      it("matches when given [uri] is in request URI prefix", function()
+      it("#o matches when given [uri] is in request URI prefix", function()
         -- uri prefix
         local api_t = router.select("GET", "/my-api/some/path", {})
         assert.truthy(api_t)
@@ -283,6 +283,35 @@ describe("Router", function()
         local api_t = router.select("TRACE", "/my-api", {})
         assert.truthy(api_t)
         assert.same(use_case[3], api_t.api)
+      end)
+
+      it("#oo does supersede another API with a longer URI prefix on a different host", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { "/v1/path"  },
+            headers = {
+              ["host"] = { "host1.com" },
+            }
+          },
+          {
+            name = "api-2",
+            uris = { "/" },
+            headers = {
+              ["host"] = { "host2.com" },
+            }
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/v1/path", { ["host"] = "host1.com" })
+        assert.truthy(api_t)
+        assert.same(use_case[1], api_t.api)
+
+        local api_t = router.select("GET", "/v1/path", { ["host"] = "host2.com" })
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
       end)
 
       describe("root / [uri]", function()

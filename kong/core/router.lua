@@ -140,7 +140,7 @@ local function marshall_api(api)
     if #api.uris > 0 then
       api_t.match_rules         = bor(api_t.match_rules, MATCH_RULES.URI)
       api_t.uris                = new_tab(0, #api.uris)
-      api_t.uris_prefix_regexes = new_tab(#api.uris, 0)
+      api_t.uris_prefixes_regexes = new_tab(#api.uris, 0)
 
       for i, uri in ipairs(api.uris) do
         local escaped_uri = uri:gsub("/", "\\/")
@@ -228,9 +228,12 @@ local function categorize_api_t(api_t, categories, uris_prefixes, wildcard_hosts
       plain_hosts = {},
       plain_uris  = {},
       methods     = {},
+      apis        = {},
     }
     categories[api_t.match_rules] = category
   end
+
+  insert(category.apis, api_t)
 
   for host in pairs(api_t.hosts) do
     if not category.plain_hosts[host] then
@@ -290,6 +293,22 @@ do
         end
 
         return true
+      end
+
+      for i = 1, #api_t.uris_prefixes_regexes do
+        local from, _, err = re_find(uri, api_t.uris_prefixes_regexes[i].regex, "jo")
+        if err then
+          log(ERR, "could not search for URI prefix: ", err)
+          return
+        end
+
+        if from then
+          if api_t.strip_uri then
+            api_t.strip_uri_regex = api_t.uris_prefixes_regexes[i].strip_regex
+          end
+
+          return true
+        end
       end
     end,
 
@@ -433,10 +452,39 @@ function _M.new(apis)
   end
 
 
+  for category_bit, category in pairs(categories) do
+    table.sort(category.apis, function(a, b)
+      if not band(category_bit, MATCH_RULES.URI) then
+        return
+      end
+
+      local max_uri_a = 0
+      local max_uri_b = 0
+
+      for _, prefix in ipairs(a.uris_prefixes_regexes) do
+        if #prefix.regex > max_uri_a then
+          max_uri_a = #prefix.regex
+        end
+      end
+
+      for _, prefix in ipairs(b.uris_prefixes_regexes) do
+        if #prefix.regex > max_uri_b then
+          max_uri_b = #prefix.regex
+        end
+      end
+
+      return max_uri_a > max_uri_b
+    end)
+  end
+
+
+  --[[
   table.sort(wildcard_hosts, function(a, b)
     return a.api_t.match_rules > b.api_t.match_rules
   end)
+  --]]
 
+  --[[
   table.sort(uris_prefixes, function(a, b)
     if a.api_t.match_rules == b.api_t.match_rules then
       return #a.regex > #b.regex
@@ -444,6 +492,7 @@ function _M.new(apis)
 
     return a.api_t.match_rules > b.api_t.match_rules
   end)
+  --]]
 
 
   local grab_headers = #wildcard_hosts > 0 or next(indexes.plain_hosts) ~= nil
@@ -523,7 +572,7 @@ function _M.new(apis)
           end
 
           if from then
-            uri = uris_prefixes[i].uri
+            --uri = uris_prefixes[i].uri
             req_category = bor(req_category, MATCH_RULES.URI)
             break
           end
@@ -553,6 +602,16 @@ function _M.new(apis)
               if match_api(candidates[i], method, uri, host) then
                 cache:set(cache_key, candidates[i])
                 return candidates[i]
+              end
+            end
+          end
+
+          candidates = categories[bit_category]
+          if candidates then
+            for i = 1, #candidates.apis do
+              if match_api(candidates.apis[i], method, uri, host) then
+                cache:set(cache_key, candidates.apis[i])
+                return candidates.apis[i]
               end
             end
           end
