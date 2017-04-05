@@ -1,25 +1,25 @@
 local lrucache = require "resty.lrucache"
-local url = require "socket.url"
-local bit = require "bit"
+local url      = require "socket.url"
+local bit      = require "bit"
 
 
 local re_match = ngx.re.match
-local re_find = ngx.re.find
-local re_sub = ngx.re.sub
-local insert = table.insert
-local upper = string.upper
-local lower = string.lower
-local find = string.find
-local fmt = string.format
-local sub = string.sub
+local re_find  = ngx.re.find
+local re_sub   = ngx.re.sub
+local insert   = table.insert
+local upper    = string.upper
+local lower    = string.lower
+local find     = string.find
+local fmt      = string.format
+local sub      = string.sub
 local tonumber = tonumber
-local ipairs = ipairs
-local pairs = pairs
-local type = type
-local next = next
-local band = bit.band
-local bor = bit.bor
-local ERR = ngx.ERR
+local ipairs   = ipairs
+local pairs    = pairs
+local type     = type
+local next     = next
+local band     = bit.band
+local bor      = bit.bor
+local ERR      = ngx.ERR
 local log
 
 
@@ -41,13 +41,13 @@ local MATCH_RULES = {
 }
 
 local CATEGORIES = {
-  bor(MATCH_RULES.HOST, MATCH_RULES.URI, MATCH_RULES.METHOD),
-  bor(MATCH_RULES.HOST, MATCH_RULES.URI),
-  bor(MATCH_RULES.HOST, MATCH_RULES.METHOD),
+  bor(MATCH_RULES.HOST,   MATCH_RULES.URI,     MATCH_RULES.METHOD),
+  bor(MATCH_RULES.HOST,   MATCH_RULES.URI),
+  bor(MATCH_RULES.HOST,   MATCH_RULES.METHOD),
   bor(MATCH_RULES.METHOD, MATCH_RULES.URI),
-  MATCH_RULES.HOST,
-  MATCH_RULES.URI,
-  MATCH_RULES.METHOD,
+      MATCH_RULES.HOST,
+      MATCH_RULES.URI,
+      MATCH_RULES.METHOD,
 }
 
 local categories_len = #CATEGORIES
@@ -104,8 +104,8 @@ local function marshall_api(api)
       for _, host_value in ipairs(host_values) do
         if find(host_value, "*", nil, true) then
           -- wildcard host matching
-          local wildcard_host_regex = "^" .. host_value:gsub("%.", "\\.")
-                                                       :gsub("%*", ".+") .. "$"
+          local wildcard_host_regex = host_value:gsub("%.", "\\.")
+                                                :gsub("%*", ".+") .. "$"
           insert(api_t.wildcard_hosts, {
             value = host_value,
             regex = wildcard_host_regex
@@ -130,15 +130,15 @@ local function marshall_api(api)
       api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.URI)
 
       for i, uri in ipairs(api.uris) do
-        local escaped_uri = uri:gsub("/", "\\/")
-        local strip_regex = "^" .. escaped_uri .. "\\/?(.*)"
+        local escaped_uri = [[\Q]] .. uri .. [[\E]]
+        local strip_regex = escaped_uri .. [[\/?(.*)]]
 
         api_t.uris[uri] = {
           strip_regex = strip_regex,
         }
 
         api_t.uris_prefixes_regexes[i] = {
-          regex = "^" .. escaped_uri,
+          regex       = escaped_uri,
           strip_regex = strip_regex,
         }
       end
@@ -174,8 +174,13 @@ local function marshall_api(api)
       scheme       = parsed.scheme,
       host         = parsed.host,
       port         = tonumber(parsed.port),
-      path         = parsed.path,
     }
+
+    if parsed.path then
+      api_t.upstream.path = parsed.path
+      api_t.upstream.file = sub(parsed.path, -1) == "/" and parsed.path ~= "/" and
+                            sub(parsed.path,  1, -2)     or parsed.path
+    end
 
     if not api_t.upstream.port then
       if parsed.scheme == "https" then
@@ -478,7 +483,7 @@ function _M.new(apis)
 
     if host then
       -- strip port number if given
-      local m, err = re_match(host, "^([^:]+)", "jo")
+      local m, err = re_match(host, "([^:]+)", "ajo")
       if not m then
         log(ERR, "could not strip port from Host header: ", err)
       end
@@ -514,7 +519,7 @@ function _M.new(apis)
 
     elseif host then
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(host, wildcard_hosts[i].regex, "jo")
+        local from, _, err = re_find(host, wildcard_hosts[i].regex, "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
@@ -533,7 +538,7 @@ function _M.new(apis)
 
     else
       for i = 1, #uris_prefixes do
-        local from, _, err = re_find(uri, uris_prefixes[i], "jo")
+        local from, _, err = re_find(uri, uris_prefixes[i], "ajo")
         if err then
           log(ERR, "could not search for URI prefix: ", err)
           return
@@ -610,9 +615,10 @@ function _M.new(apis)
 
 
   function self.exec(ngx)
-    local method = ngx.req.get_method()
-    local uri = ngx.var.uri
-    local new_uri = uri
+    local method      = ngx.req.get_method()
+    local uri         = ngx.var.uri
+    local uri_root    = uri == "/"
+    local new_uri     = uri
     local host_header
     local req_host
 
@@ -631,9 +637,9 @@ function _M.new(apis)
     end
 
 
-    if api_t.strip_uri_regex then
+    if not uri_root and api_t.strip_uri_regex then
       local err
-      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
+      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
       if not new_uri then
         log(ERR, "could not strip URI: ", err)
         return
@@ -641,25 +647,29 @@ function _M.new(apis)
     end
 
 
-    local upstream_path = api_t.upstream.path
-    if upstream_path then
-      if new_uri == "/" then
-        new_uri = upstream_path
+    local upstream = api_t.upstream
+    if upstream.path and upstream.path ~= "/" then
+      if new_uri ~= "/" then
+        new_uri = upstream.file .. new_uri
 
       else
-        new_uri = upstream_path .. (sub(upstream_path, -1) == "/" and sub(new_uri, 2) or new_uri)
+        if upstream.path ~= upstream.file then
+          if uri_root or sub(uri, -1) == "/" then
+            new_uri = upstream.path
+
+          else
+            new_uri = upstream.file
+          end
+
+        else
+          if uri_root or sub(uri, -1) ~= "/" then
+            new_uri = upstream.file
+
+          else
+            new_uri = upstream.file .. new_uri
+          end
+        end
       end
-    end
-
-
-    local req_uri_slash = sub(uri,     -1) == "/"
-    local new_uri_slash = sub(new_uri, -1) == "/"
-
-    if new_uri_slash and not req_uri_slash and new_uri ~= "/" then
-      new_uri = sub(new_uri, 1, -2)
-
-    elseif not new_uri_slash and req_uri_slash and uri ~= "/" then
-      new_uri = new_uri .. "/"
     end
 
 

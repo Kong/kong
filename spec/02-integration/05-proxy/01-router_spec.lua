@@ -391,34 +391,52 @@ describe("Router", function()
 
   describe("trailing slash", function()
     local checks = {
-      -- upstream url    request path    expected path           strip uri
-      {  "/",            "/",            "/",                    nil       },
-      {  "/",            "/foo/bar",     "/",                    nil       },
-      {  "/",            "/foo/bar/",    "/",                    nil       },
-      {  "/foo/bar",     "/",            "/foo/bar",             nil       },
-      {  "/foo/bar/",    "/",            "/foo/bar/",            nil       },
-      {  "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
-      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",             nil       },
-      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",            nil       },
-      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
-      {  "/",            "/",            "/",                    true      },
-      {  "/",            "/foo/bar",     "/",                    true      },
-      {  "/",            "/foo/bar/",    "/",                    true      },
-      {  "/foo/bar",     "/",            "/foo/bar",             true      },
-      {  "/foo/bar/",    "/",            "/foo/bar/",            true      },
-      {  "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
-      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",             true      },
-      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",            true      },
-      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
-      {  "/",            "/",            "/",                    false     },
-      {  "/",            "/foo/bar",     "/foo/bar",             false     },
-      {  "/",            "/foo/bar/",    "/foo/bar/",            false     },
-      {  "/foo/bar",     "/",            "/foo/bar",             false     },
-      {  "/foo/bar/",    "/",            "/foo/bar/",            false     },
-      {  "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
-      {  "/foo/bar/",    "/foo/bar",     "/foo/bar/foo/bar",     false     },
-      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
-      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      -- upstream url    uris            request path    expected path           strip uri
+      {  "/",            "/",            "/",            "/",                    nil       },
+      {  "/",            "/",            "/foo/bar",     "/foo/bar",             nil       },
+      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/",            "/foo/bar",     "/foo/bar",     "/",                    nil       },
+      {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    nil       },
+      {  "/foo/bar",     "/",            "/",            "/foo/bar",             nil       },
+      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     nil       },
+      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    nil       },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            nil       },
+      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     nil       },
+      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    nil       },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/",            "/",            "/",            "/",                    true      },
+      {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
+      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+      {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
+      {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
+      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
+      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/",            "/",            "/",            "/",                    false     },
+      {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
+      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
+      {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
+      {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
+      {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
+      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
+      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
     }
 
     setup(function()
@@ -427,14 +445,14 @@ describe("Router", function()
       for i, args in ipairs(checks) do
         assert(helpers.dao.apis:insert {
             name         = "localbin-" .. i,
-            strip_uri    = args[4],
+            strip_uri    = args[5],
             upstream_url = "http://localhost:9999" .. args[1],
+            uris         = {
+              args[2],
+            },
             hosts        = {
               "localbin-" .. i .. ".com",
             },
-            uris         = {
-              args[2],
-            }
         })
       end
 
@@ -468,18 +486,17 @@ describe("Router", function()
 
       local config = "(strip_uri = n/a)"
 
-      if args[4] == true then
+      if args[5] == true then
         config = "(strip_uri = on) "
 
-      elseif args[4] == false then
+      elseif args[5] == false then
         config = "(strip_uri = off)"
       end
 
-      local space = string.sub(args[1], -1) == "/" and "" or " "
-
-      it(config .. " is not appended to upstream uri " .. args[1] ..
-          space .. " when requesting "                 .. args[2],
-        check(i, args[2], args[3]))
+      it(config .. " is not appended to upstream url " .. args[1] ..
+                   " (with uri "                       .. args[2] .. ")" ..
+                   " when requesting "                 .. args[3],
+        check(i, args[3], args[4]))
     end
   end)
 end)
