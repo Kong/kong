@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
---local cjson = require "cjson"
+local cjson = require "cjson"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -11,11 +11,11 @@ end
 local upstream_name = "my_upstream"
 
 describe("Admin API", function()
-  
+
   local client, upstream
   local weight_default, weight_min, weight_max = 100, 0, 1000
   local default_port = 8000
-  
+
   before_each(function()
     assert(helpers.start_kong())
     client = assert(helpers.admin_client())
@@ -26,7 +26,7 @@ describe("Admin API", function()
       orderlist = { 1,2,3,4,5,6,7,8,9,10 }
     })
   end)
-  
+
   after_each(function()
     if client then client:close() end
     helpers.stop_kong()
@@ -317,6 +317,126 @@ describe("Admin API", function()
         assert.equal(2, json.total)
         assert.equal("api-3:80", json.data[1].target)
         assert.equal("api-2:80", json.data[2].target)
+      end)
+    end)
+  end)
+
+  describe("/upstreams/{upstream}/targets/clean/", function()
+    describe("POST", function()
+      it("cleans targets with a cleanup factor of 1 by default", function()
+        -- count to 2; 1 old and 1 new
+        for i = 1, 2 do
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/"..upstream_name.."/targets/",
+            body = {
+              target = "mashape.com:123",
+              weight = 99,
+            },
+            headers = {
+              ["Content-Type"] = "application/json"
+            },
+          })
+          assert.response(res).has.status(201)
+        end
+        local history = assert(helpers.dao.targets:find_all {
+          upstream_id = upstream.id,
+        })
+        assert.equal(2, #history)
+
+        -- do the cleanup
+        local res = assert(client:send {
+          method = "POST",
+          path = "/upstreams/" .. upstream_name .. "/targets/clean/",
+          headers = { ["Content-Type"] = "application/www-form-urlencoded" },
+        })
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equals(1, json.deleted)
+
+        history = assert(helpers.dao.targets:find_all {
+          upstream_id = upstream.id,
+        })
+        -- there should be 1 left; 1 from the cleanup
+        assert.equal(1, #history)
+      end)
+
+      describe("cleans targets with a custom cleanup factor", function()
+        it("resulting in deletions", function()
+          for i = 1, 6 do
+            local res = assert(client:send {
+              method = "POST",
+              path = "/upstreams/"..upstream_name.."/targets/",
+              body = {
+                target = "mashape.com:123",
+                weight = 99,
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+            })
+            assert.response(res).has.status(201)
+          end
+          local history = assert(helpers.dao.targets:find_all {
+            upstream_id = upstream.id,
+          })
+          assert.equal(6, #history)
+
+          -- do the cleanup
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/" .. upstream_name .. "/targets/clean/",
+            headers = { ["Content-Type"] = "application/www-form-urlencoded" },
+            body = { factor = 5 },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equals(5, json.deleted)
+
+          history = assert(helpers.dao.targets:find_all {
+            upstream_id = upstream.id,
+          })
+          -- there should be 1 left; 1 from the cleanup
+          assert.equal(1, #history)
+        end)
+
+        it("resulting in no deletions", function()
+          for i = 1, 10 do
+            local res = assert(client:send {
+              method = "POST",
+              path = "/upstreams/"..upstream_name.."/targets/",
+              body = {
+                target = "mashape.com:123" .. tostring(i % 7),
+                weight = 99,
+              },
+              headers = {
+                ["Content-Type"] = "application/json"
+              },
+            })
+            assert.response(res).has.status(201)
+          end
+          local history = assert(helpers.dao.targets:find_all {
+            upstream_id = upstream.id,
+          })
+          assert.equal(10, #history)
+
+          -- try to cleanup, but with a factor too low to result in cleanup
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams/" .. upstream_name .. "/targets/clean/",
+            headers = { ["Content-Type"] = "application/www-form-urlencoded" },
+            body = { factor = 2 },
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.equals(0, json.deleted)
+
+          history = assert(helpers.dao.targets:find_all {
+            upstream_id = upstream.id,
+          })
+          -- we didnt clean anything up
+          assert.equal(10, #history)
+        end)
       end)
     end)
   end)
