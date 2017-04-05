@@ -588,7 +588,8 @@ describe("Router", function()
       _ngx = {
         re = ngx.re,
         var = {
-          uri = uri
+          uri = uri,
+          http_host = headers["host"] or headers["Host"],
         },
         req = {
           set_uri = function(uri)
@@ -859,6 +860,25 @@ describe("Router", function()
           local api, upstream = router.exec(_ngx)
           assert.same(use_case_apis[1], api)
           assert.equal("httpbin.org", upstream.host)
+        end)
+
+        it("uses the request's Host header when `grab_header` is disabled", function()
+          local use_case_apis = {
+            {
+              name          = "api-1",
+              upstream_url  = "http://httpbin.org",
+              preserve_host = true,
+              uris          = { "/foo" },
+            }
+          }
+
+          local router = assert(Router.new(use_case_apis))
+
+          local _ngx = mock_ngx("GET", "/foo", { ["host"] = "preserve.com" })
+
+          local api, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal("preserve.com", host_header)
         end)
       end)
 

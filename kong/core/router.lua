@@ -615,11 +615,7 @@ function _M.new(apis)
 
 
     if api_t.preserve_host then
-      if not headers then
-        headers = ngx.req.get_headers()
-      end
-
-      host_header = headers["host"]
+      host_header = ngx.var.http_host
     end
 
 
