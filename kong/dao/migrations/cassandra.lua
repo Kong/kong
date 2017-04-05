@@ -423,4 +423,36 @@ return {
     end,
     down = function(_, _, dao) end
   },
+  {
+    name = "2017-03-27-132300_anonymous",
+    -- this should have been in 0.10, but instead goes into 0.10.1 as a bugfix
+    up = function(_, _, dao)
+      local json_decode = require("cjson").decode
+      local json_encode = require("cjson").encode
+      for _, name in ipairs({
+        "basic-auth",
+        "hmac-auth",
+        "jwt",
+        "key-auth",
+        "ldap-auth",
+        "oauth2",
+      }) do
+        local rows, err = dao.plugins:find_all( { name = name } )
+        if err then
+          return err
+        end
+
+        for _, row in ipairs(rows) do
+          if not row.config.anonymnous then
+            row.config.anonymous = ""
+            local _, err = dao.plugins:update(row, { id = row.id })
+            if err then
+              return err
+            end
+          end
+        end
+      end
+    end,
+    down = function(_, _, dao) end
+  },
 }
