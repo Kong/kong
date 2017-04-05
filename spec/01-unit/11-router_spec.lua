@@ -896,5 +896,71 @@ describe("Router", function()
         end)
       end)
     end)
+
+    describe("trailing slash", function()
+      local checks = {
+        -- upstream url    uris            request path    expected path           strip uri
+        {  "/",            "/",            "/",            "/",                    true      },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
+        {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
+        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
+        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/",            "/",            "/",            "/",                    false     },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
+        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
+        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      }
+
+      for i, args in ipairs(checks) do
+
+        local config = args[5] == true and "(strip_uri = on)" or "(strip_uri = off)"
+
+        it(config .. " is not appended to upstream url " .. args[1] ..
+                     " (with uri "                       .. args[2] .. ")" ..
+                     " when requesting "                 .. args[3], function()
+
+
+          local use_case_apis = {
+            {
+              name         = "api-1",
+              strip_uri    = args[5],
+              upstream_url = "http://httpbin.org" .. args[1],
+              uris         = {
+                args[2],
+              },
+            }
+          }
+
+          local router = assert(Router.new(use_case_apis) )
+
+          local _ngx = mock_ngx("GET", args[3], {})
+          local api, upstream = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal(args[1], upstream.path)
+          assert.equal(args[4], _ngx.var.uri)
+        end)
+      end
+    end)
   end)
 end)
