@@ -5,6 +5,7 @@ describe("Configuration loader", function()
   it("loads the defaults", function()
     local conf = assert(conf_loader())
     assert.is_string(conf.lua_package_path)
+    assert.equal("nobody", conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
     assert.equal("0.0.0.0:8001", conf.admin_listen)
     assert.equal("0.0.0.0:8000", conf.proxy_listen)
@@ -21,6 +22,7 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
+    assert.equal("nobody", conf.nginx_user)
     assert.equal("1", conf.nginx_worker_processes)
     assert.equal("0.0.0.0:9001", conf.admin_listen)
     assert.equal("0.0.0.0:9000", conf.proxy_listen)
@@ -39,6 +41,7 @@ describe("Configuration loader", function()
     -- defaults
     assert.equal("on", conf.nginx_daemon)
     -- overrides
+    assert.equal("nobody", conf.nginx_user)
     assert.equal("auto", conf.nginx_worker_processes)
     assert.equal("127.0.0.1:9001", conf.admin_listen)
     assert.equal("0.0.0.0:9000", conf.proxy_listen)
