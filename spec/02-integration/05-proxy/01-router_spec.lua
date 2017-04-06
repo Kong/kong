@@ -250,6 +250,13 @@ describe("Router", function()
           upstream_url = "http://localhost:9999/headers-inspect",
           hosts = "discarded.com",
         },
+        {
+          name = "api-3",
+          strip_uri = false,
+          preserve_host = true,
+          upstream_url = "http://localhost:9999",
+          uris = "/headers-inspect",
+        }
       }
 
       assert(helpers.start_kong {
@@ -322,6 +329,18 @@ describe("Router", function()
         local body = assert.res_status(200, res)
         local json = cjson.decode(body)
         assert.equal("preserved.com:123", json.host)
+      end)
+
+      it("forwards request Host even if not matched by [hosts]", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/headers-inspect",
+          headers = { ["Host"] = "preserved.com" },
+        })
+
+        local body = assert.res_status(200, res)
+        local json = cjson.decode(body)
+        assert.equal("preserved.com", json.host)
       end)
     end)
   end)
