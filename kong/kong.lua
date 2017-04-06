@@ -257,6 +257,16 @@ function Kong.balancer()
   end
 end
 
+function Kong.rewrite()
+  core.rewrite.before()
+
+  for _, plugin in ipairs(singletons.loaded_plugins) do
+    plugin.handler:rewrite()
+  end
+
+  core.rewrite.after()
+end
+
 function Kong.access()
   core.access.before()
 
