@@ -66,6 +66,15 @@ return {
       certificate.execute()
     end
   },
+  rewrite = {
+    before = function()
+      ngx.ctx.KONG_REWRITE_START = get_now()
+    end,
+    after = function ()
+      local ctx = ngx.ctx
+      ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
+    end
+  },
   access = {
     before = function()
       if not router then

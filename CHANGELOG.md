@@ -21,6 +21,13 @@
 
 ### Added
 
+  :fireworks: Plugins can implement a new `rewrite_by_lua` handler to execute
+  code in the Nginx rewrite phase. This phase is executed prior to matching a
+  registered Kong API, and prior to any authentication plugin. As such, plugins
+  implementing this phase don't have to be configured via the Admin API to be
+  executed. Enabled plugins (loaded via the `custom_plugins` Kong configuration
+  value) will execute their `rewrite_by_lua` handler for each request.
+  [#2354](https://github.com/Mashape/kong/pull/2354)
 - Ability for the client to chose whether the upstream request (Kong <->
   upstream) should contain a trailing slash in its URI. Prior to this change,
   Kong 0.10 would unconditionally append a trailing slash to all upstream
