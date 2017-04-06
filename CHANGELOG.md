@@ -33,6 +33,9 @@
     which contains the properties of the authenticated Consumer
     (`id`, `custom_id`, and `username`), if any.
     [#2367](https://github.com/Mashape/kong/pull/2367)
+  - File-log plugin now has a new `valid` setting (in seconds) to close and 
+    reopen the logfiles automatically which enables rotating the logs.
+    [#2348](https://github.com/Mashape/kong/pull/2348)
 
 ### Fixed
 

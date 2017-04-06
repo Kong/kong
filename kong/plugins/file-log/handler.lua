@@ -17,9 +17,12 @@ local S_IROTH = system_constants.S_IROTH()
 local oflags = bit.bor(O_WRONLY, O_CREAT, O_APPEND)
 local mode = bit.bor(S_IRUSR, S_IWUSR, S_IRGRP, S_IROTH)
 
+local now = ngx.now
+
 ffi.cdef[[
 int open(char * filename, int flags, int mode);
 int write(int fd, void * ptr, int numbytes);
+int close(int fd);
 char *strerror(int errnum);
 ]]
 
@@ -27,11 +30,25 @@ char *strerror(int errnum);
 local file_descriptors = {}
 
 local function get_fd(conf_path)
-  return file_descriptors[conf_path]
+  local fd = file_descriptors[conf_path]
+  if not fd then
+    return nil
+  elseif fd.timeout > now() then
+    return fd.descriptor
+  end
+  -- resetting fd, clear cache
+  ngx.log(ngx.DEBUG, "[file-log] closing file :", conf_path)
+  ffi.C.close(fd.descriptor)
+  file_descriptors[conf_path] = nil
+  return nil 
 end
 
-local function set_fd(conf_path, file_descriptor)
-  file_descriptors[conf_path] = file_descriptor
+local function set_fd(conf_path, file_descriptor, valid)
+  local fd = {
+    descriptor = file_descriptor,
+    timeout = now() + (valid or 60), -- TODO: remove default, replace it by a migration setting that default
+  }
+  file_descriptors[conf_path] = fd
 end
 
 local function string_to_char(str)
@@ -54,7 +71,7 @@ local function log(premature, conf, message)
       local errno = ffi.errno()
       ngx.log(ngx.ERR, "[file-log] failed to open the file: ", ffi.string(ffi.C.strerror(errno)))
     else
-      set_fd(conf.path, fd)
+      set_fd(conf.path, fd, conf.valid)
     end
   end
 

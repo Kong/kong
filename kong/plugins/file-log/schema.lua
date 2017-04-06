@@ -11,8 +11,17 @@ local function validate_file(value)
   return true
 end
 
+local function validate_valid(value)
+  if value < 0 then
+    return false, "Value for 'valid' cannot be less than 0"
+  end
+
+  return true
+end
+
 return {
   fields = {
-    path = { required = true, type = "string", func = validate_file }
+    path = { required = true, type = "string", func = validate_file },
+    valid = { type = "number", default = 60, func = validate_valid },
   }
 }
