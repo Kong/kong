@@ -464,7 +464,7 @@ function _M.new(apis)
     method = upper(method)
 
 
-    local host = headers["host"] or headers["Host"]
+    local host = headers["X-Host-Override"] or headers["x-host-override"] or headers["host"] or headers["Host"]
     if host then
       -- strip port number if given
       local m, err = re_match(host, "^([^:]+)", "jo")
