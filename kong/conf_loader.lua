@@ -81,6 +81,7 @@ local CONF_INFERENCES = {
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},
   cassandra_data_centers = {typ = "array"},
+  cassandra_schema_consensus_timeout = {typ = "number"},
 
   cluster_profile = {enum = {"local", "lan", "wan"}},
   cluster_ttl_on_failure = {typ = "number"},
