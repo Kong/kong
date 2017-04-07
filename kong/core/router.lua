@@ -281,7 +281,7 @@ do
       end
 
       for i = 1, #api_t.uris_prefixes_regexes do
-        local from, _, err = re_find(uri, api_t.uris_prefixes_regexes[i].regex, "jo")
+        local from, _, err = re_find(uri, api_t.uris_prefixes_regexes[i].regex, "ajo")
         if err then
           log(ERR, "could not search for URI prefix: ", err)
           return
