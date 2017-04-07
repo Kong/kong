@@ -173,6 +173,29 @@ describe("Router", function()
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
+
+      it("only matches URI as a prefix (anchored mode)", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { "/something/my-api" },
+          },
+          {
+            name = "api-2",
+            uris = { "/my-api" },
+            headers = {
+              ["host"] = { "example.com" },
+            },
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/something/my-api", "example.com")
+        assert.truthy(api_t)
+        -- would be api-2 if URI matching was not prefix-only (anchored mode)
+        assert.same(use_case[1], api_t.api)
+      end)
     end)
 
     describe("wildcard domains", function()
