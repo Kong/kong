@@ -1,24 +1,25 @@
 local lrucache = require "resty.lrucache"
-local url = require "socket.url"
-local bit = require "bit"
+local url      = require "socket.url"
+local bit      = require "bit"
 
 
 local re_match = ngx.re.match
-local re_find = ngx.re.find
-local re_sub = ngx.re.sub
-local insert = table.insert
-local upper = string.upper
-local lower = string.lower
-local find = string.find
-local fmt = string.format
+local re_find  = ngx.re.find
+local re_sub   = ngx.re.sub
+local insert   = table.insert
+local upper    = string.upper
+local lower    = string.lower
+local find     = string.find
+local fmt      = string.format
+local sub      = string.sub
 local tonumber = tonumber
-local ipairs = ipairs
-local pairs = pairs
-local type = type
-local next = next
-local band = bit.band
-local bor = bit.bor
-local ERR = ngx.ERR
+local ipairs   = ipairs
+local pairs    = pairs
+local type     = type
+local next     = next
+local band     = bit.band
+local bor      = bit.bor
+local ERR      = ngx.ERR
 local log
 
 
@@ -40,13 +41,13 @@ local MATCH_RULES = {
 }
 
 local CATEGORIES = {
-  bor(MATCH_RULES.HOST, MATCH_RULES.URI, MATCH_RULES.METHOD),
-  bor(MATCH_RULES.HOST, MATCH_RULES.URI),
-  bor(MATCH_RULES.HOST, MATCH_RULES.METHOD),
+  bor(MATCH_RULES.HOST,   MATCH_RULES.URI,     MATCH_RULES.METHOD),
+  bor(MATCH_RULES.HOST,   MATCH_RULES.URI),
+  bor(MATCH_RULES.HOST,   MATCH_RULES.METHOD),
   bor(MATCH_RULES.METHOD, MATCH_RULES.URI),
-  MATCH_RULES.HOST,
-  MATCH_RULES.URI,
-  MATCH_RULES.METHOD,
+      MATCH_RULES.HOST,
+      MATCH_RULES.URI,
+      MATCH_RULES.METHOD,
 }
 
 local categories_len = #CATEGORIES
@@ -103,8 +104,8 @@ local function marshall_api(api)
       for _, host_value in ipairs(host_values) do
         if find(host_value, "*", nil, true) then
           -- wildcard host matching
-          local wildcard_host_regex = "^" .. host_value:gsub("%.", "\\.")
-                                                       :gsub("%*", ".+") .. "$"
+          local wildcard_host_regex = host_value:gsub("%.", "\\.")
+                                                :gsub("%*", ".+") .. "$"
           insert(api_t.wildcard_hosts, {
             value = host_value,
             regex = wildcard_host_regex
@@ -129,15 +130,15 @@ local function marshall_api(api)
       api_t.match_rules = bor(api_t.match_rules, MATCH_RULES.URI)
 
       for i, uri in ipairs(api.uris) do
-        local escaped_uri = uri:gsub("/", "\\/")
-        local strip_regex = "^" .. escaped_uri .. "\\/?(.*)"
+        local escaped_uri = [[\Q]] .. uri .. [[\E]]
+        local strip_regex = escaped_uri .. [[\/?(.*)]]
 
         api_t.uris[uri] = {
           strip_regex = strip_regex,
         }
 
         api_t.uris_prefixes_regexes[i] = {
-          regex = "^" .. escaped_uri,
+          regex       = escaped_uri,
           strip_regex = strip_regex,
         }
       end
@@ -173,8 +174,13 @@ local function marshall_api(api)
       scheme       = parsed.scheme,
       host         = parsed.host,
       port         = tonumber(parsed.port),
-      path         = parsed.path,
     }
+
+    if parsed.path then
+      api_t.upstream.path = parsed.path
+      api_t.upstream.file = sub(parsed.path, -1) == "/" and parsed.path ~= "/" and
+                            sub(parsed.path,  1, -2)     or parsed.path
+    end
 
     if not api_t.upstream.port then
       if parsed.scheme == "https" then
@@ -455,18 +461,18 @@ function _M.new(apis)
   end
 
 
-  local grab_headers = #wildcard_hosts > 0 or next(plain_indexes.hosts) ~= nil
+  local grab_host = #wildcard_hosts > 0 or next(plain_indexes.hosts) ~= nil
 
 
-  local function find_api(method, uri, headers)
+  local function find_api(method, uri, host)
     if type(method) ~= "string" then
       return error("arg #1 method must be a string")
     end
     if type(uri) ~= "string" then
       return error("arg #2 uri must be a string")
     end
-    if type(headers) ~= "table" then
-      return error("arg #3 headers must be a table")
+    if host and type(host) ~= "string" then
+      return error("arg #3 host must be a string")
     end
 
 
@@ -475,10 +481,9 @@ function _M.new(apis)
 
     method = upper(method)
 
-    local host = headers["host"] or headers["Host"]
     if host then
       -- strip port number if given
-      local m, err = re_match(host, "^([^:]+)", "jo")
+      local m, err = re_match(host, "([^:]+)", "ajo")
       if not m then
         log(ERR, "could not strip port from Host header: ", err)
       end
@@ -514,7 +519,7 @@ function _M.new(apis)
 
     elseif host then
       for i = 1, #wildcard_hosts do
-        local from, _, err = re_find(host, wildcard_hosts[i].regex, "jo")
+        local from, _, err = re_find(host, wildcard_hosts[i].regex, "ajo")
         if err then
           log(ERR, "could not match wildcard host: ", err)
           return
@@ -533,7 +538,7 @@ function _M.new(apis)
 
     else
       for i = 1, #uris_prefixes do
-        local from, _, err = re_find(uri, uris_prefixes[i], "jo")
+        local from, _, err = re_find(uri, uris_prefixes[i], "ajo")
         if err then
           log(ERR, "could not search for URI prefix: ", err)
           return
@@ -610,33 +615,31 @@ function _M.new(apis)
 
 
   function self.exec(ngx)
-    local method = ngx.req.get_method()
-    local uri = ngx.var.uri
-    local new_uri = uri
+    local method      = ngx.req.get_method()
+    local uri         = ngx.var.uri
+    local uri_root    = uri == "/"
+    local new_uri     = uri
     local host_header
-    local headers
+    local req_host
 
 
-    --print("grab headers: ", grab_headers)
+    --print("grab host header: ", grab_host)
 
 
-    if grab_headers then
-      headers = ngx.req.get_headers()
-
-    else
-      headers = empty_t
+    if grab_host then
+      req_host = ngx.var.http_host
     end
 
 
-    local api_t = find_api(method, uri, headers)
+    local api_t = find_api(method, uri, req_host)
     if not api_t then
       return nil
     end
 
 
-    if api_t.strip_uri_regex then
+    if not uri_root and api_t.strip_uri_regex then
       local err
-      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "jo")
+      new_uri, err = re_sub(uri, api_t.strip_uri_regex, "/$1", "ajo")
       if not new_uri then
         log(ERR, "could not strip URI: ", err)
         return
@@ -644,8 +647,29 @@ function _M.new(apis)
     end
 
 
-    if api_t.upstream.path then
-      new_uri = api_t.upstream.path .. new_uri
+    local upstream = api_t.upstream
+    if upstream.path and upstream.path ~= "/" then
+      if new_uri ~= "/" then
+        new_uri = upstream.file .. new_uri
+
+      else
+        if upstream.path ~= upstream.file then
+          if uri_root or sub(uri, -1) == "/" then
+            new_uri = upstream.path
+
+          else
+            new_uri = upstream.file
+          end
+
+        else
+          if uri_root or sub(uri, -1) ~= "/" then
+            new_uri = upstream.file
+
+          else
+            new_uri = upstream.file .. new_uri
+          end
+        end
+      end
     end
 
 
@@ -655,7 +679,7 @@ function _M.new(apis)
 
 
     if api_t.preserve_host then
-      host_header = ngx.var.http_host
+      host_header = req_host or ngx.var.http_host
     end
 
 

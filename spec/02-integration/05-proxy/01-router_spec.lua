@@ -388,4 +388,115 @@ describe("Router", function()
       assert.equal("fixture-api", res.headers["kong-api-name"])
     end)
   end)
+
+  describe("trailing slash", function()
+    local checks = {
+      -- upstream url    uris            request path    expected path           strip uri
+      {  "/",            "/",            "/",            "/",                    nil       },
+      {  "/",            "/",            "/foo/bar",     "/foo/bar",             nil       },
+      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/",            "/foo/bar",     "/foo/bar",     "/",                    nil       },
+      {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    nil       },
+      {  "/foo/bar",     "/",            "/",            "/foo/bar",             nil       },
+      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     nil       },
+      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    nil       },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            nil       },
+      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     nil       },
+      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    nil       },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             nil       },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            nil       },
+      {  "/",            "/",            "/",            "/",                    true      },
+      {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
+      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+      {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
+      {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
+      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
+      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+      {  "/",            "/",            "/",            "/",                    false     },
+      {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
+      {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
+      {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
+      {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
+      {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
+      {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
+      {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+      {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+    }
+
+    setup(function()
+      helpers.dao:truncate_tables()
+
+      for i, args in ipairs(checks) do
+        assert(helpers.dao.apis:insert {
+            name         = "localbin-" .. i,
+            strip_uri    = args[5],
+            upstream_url = "http://localhost:9999" .. args[1],
+            uris         = {
+              args[2],
+            },
+            hosts        = {
+              "localbin-" .. i .. ".com",
+            },
+        })
+      end
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    local function check(i, request_uri, expected_uri)
+      return function()
+        local res = assert(client:send {
+          method  = "GET",
+          path    = request_uri,
+          headers = {
+            ["Host"] = "localbin-" .. i .. ".com",
+          }
+        })
+
+        local json = assert.res_status(200, res)
+        local data = cjson.decode(json)
+
+        assert.equal(expected_uri, data.vars.request_uri)
+      end
+    end
+
+    for i, args in ipairs(checks) do
+
+      local config = "(strip_uri = n/a)"
+
+      if args[5] == true then
+        config = "(strip_uri = on) "
+
+      elseif args[5] == false then
+        config = "(strip_uri = off)"
+      end
+
+      it(config .. " is not appended to upstream url " .. args[1] ..
+                   " (with uri "                       .. args[2] .. ")" ..
+                   " when requesting "                 .. args[3],
+        check(i, args[3], args[4]))
+    end
+  end)
 end)
