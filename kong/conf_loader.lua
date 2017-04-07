@@ -84,6 +84,7 @@ local CONF_INFERENCES = {
   cassandra_repl_strategy = {enum = {"SimpleStrategy", "NetworkTopologyStrategy"}},
   cassandra_repl_factor = {typ = "number"},
   cassandra_data_centers = {typ = "array"},
+  cassandra_schema_consensus_timeout = {typ = "number"},
 
   cluster_profile = {enum = {"local", "lan", "wan"}},
   cluster_ttl_on_failure = {typ = "number"},
@@ -184,6 +185,18 @@ local function check_and_infer(conf)
      not conf.cassandra_local_datacenter then
      errors[#errors+1] = "must specify 'cassandra_local_datacenter' when "..
                         "DCAwareRoundRobin policy is in use"
+  end
+
+  for _, contact_point in ipairs(conf.cassandra_contact_points) do
+    local endpoint, err = utils.normalize_ip(contact_point)
+    if not endpoint then
+      errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
+                          "': " .. err
+
+    elseif endpoint.port then
+      errors[#errors+1] = "bad cassandra contact point '" .. contact_point ..
+                          "': port must be specified in cassandra_port"
+    end
   end
 
   if conf.ssl then

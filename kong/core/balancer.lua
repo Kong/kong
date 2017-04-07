@@ -278,7 +278,7 @@ local function execute(target)
     -- have to invoke the ring-balancer
     local hashValue = nil  -- TODO: implement, nil does simple round-robin
 
-    local ip, port, hostname = balancer:getPeer(hashValue, dns_cache_only)
+    local ip, port, hostname = balancer:getPeer(hashValue, nil, dns_cache_only)
     if not ip then
       if port == "No peers are available" then
         -- in this case a "503 service unavailable", others will be a 500.

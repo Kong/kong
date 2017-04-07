@@ -173,6 +173,29 @@ describe("Router", function()
         assert.truthy(api_t)
         assert.same(use_case[2], api_t.api)
       end)
+
+      it("only matches URI as a prefix (anchored mode)", function()
+        local use_case = {
+          {
+            name = "api-1",
+            uris = { "/something/my-api" },
+          },
+          {
+            name = "api-2",
+            uris = { "/my-api" },
+            headers = {
+              ["host"] = { "example.com" },
+            },
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+
+        local api_t = router.select("GET", "/something/my-api", "example.com")
+        assert.truthy(api_t)
+        -- would be api-2 if URI matching was not prefix-only (anchored mode)
+        assert.same(use_case[1], api_t.api)
+      end)
     end)
 
     describe("wildcard domains", function()
@@ -285,6 +308,108 @@ describe("Router", function()
         assert.same(use_case[3], api_t.api)
       end)
 
+      it("half [uri] and [host] match does not supersede another API", function()
+        local use_case = {
+          {
+            name       = "api-1",
+            uris       = { "/v1/path"  },
+            headers    = {
+              ["host"] = { "host1.com" },
+            }
+          },
+          {
+            name       = "api-2",
+            uris       = { "/" },
+            headers    = {
+              ["host"] = { "host2.com" },
+            }
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+        local api_t = router.select("GET", "/v1/path", "host1.com")
+        assert.truthy(api_t)
+        assert.same(use_case[1], api_t.api)
+
+        api_t = router.select("GET", "/v1/path", "host2.com")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
+
+      it("half [wildcard host] and [method] match does not supersede another API", function()
+        local use_case = {
+          {
+            name       = "api-1",
+            methods    = { "GET" },
+            headers    = {
+              ["host"] = { "host.*" },
+            }
+          },
+          {
+            name       = "api-2",
+            methods    = { "POST" },
+            headers    = {
+              ["host"] = { "host.*" },
+            }
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+        local api_t = router.select("GET", "/", "host.com")
+        assert.truthy(api_t)
+        assert.same(use_case[1], api_t.api)
+
+        api_t = router.select("POST", "/", "host.com")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
+
+      it("[method] does not supersede non-plain [uri]", function()
+        local use_case = {
+          {
+            name = "api-1",
+            methods = { "GET" },
+          },
+          {
+            name = "api-2",
+            uris = { "/httpbin" },
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+        local api_t = router.select("GET", "/httpbin")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+
+        api_t = router.select("GET", "/httpbin/status/200")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
+
+      it("[method] does not supersede wildcard [host]", function()
+        local use_case = {
+          {
+            name    = "api-1",
+            methods = { "GET" },
+          },
+          {
+            name       = "api-2",
+            headers    = {
+              ["Host"] = { "domain.*" }
+            }
+          }
+        }
+
+        local router = assert(Router.new(use_case))
+        local api_t = router.select("GET", "/")
+        assert.truthy(api_t)
+        assert.same(use_case[1], api_t.api)
+
+        api_t = router.select("GET", "/", "domain.com")
+        assert.truthy(api_t)
+        assert.same(use_case[2], api_t.api)
+      end)
+
       describe("root / [uri]", function()
         setup(function()
           table.insert(use_case, 1, {
@@ -297,14 +422,14 @@ describe("Router", function()
           table.remove(use_case, 1)
         end)
 
-        it("routes with GET /", function()
+        it("request with [method]", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/")
           assert.truthy(api_t)
           assert.same(use_case[1], api_t.api)
         end)
 
-        it("does not superseds another API", function()
+        it("does not supersede another API", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/my-api")
           assert.truthy(api_t)
@@ -315,7 +440,7 @@ describe("Router", function()
           assert.same(use_case[4], api_t.api)
         end)
 
-        it("acts as a catch-all", function()
+        it("acts as a catch-all API", function()
           local router = assert(Router.new(use_case))
           local api_t = router.select("GET", "/foobar/baz")
           assert.truthy(api_t)
@@ -874,6 +999,25 @@ describe("Router", function()
           assert.same(use_case_apis[1], api)
           assert.equal("httpbin.org", upstream.host)
         end)
+
+        it("uses the request's Host header when `grab_header` is disabled", function()
+          local use_case_apis = {
+            {
+              name          = "api-1",
+              upstream_url  = "http://httpbin.org",
+              preserve_host = true,
+              uris          = { "/foo" },
+            }
+          }
+
+          local router = assert(Router.new(use_case_apis))
+
+          local _ngx = mock_ngx("GET", "/foo", { ["host"] = "preserve.com" })
+
+          local api, _, host_header = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal("preserve.com", host_header)
+        end)
       end)
 
       describe("when preserve_host is false", function()
@@ -895,6 +1039,72 @@ describe("Router", function()
           assert.is_nil(host_header)
         end)
       end)
+    end)
+
+    describe("trailing slash", function()
+      local checks = {
+        -- upstream url    uris            request path    expected path           strip uri
+        {  "/",            "/",            "/",            "/",                    true      },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             true      },
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/",                    true      },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/",                    true      },
+        {  "/foo/bar",     "/",            "/",            "/foo/bar",             true      },
+        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            true      },
+        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     true      },
+        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    true      },
+        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar",             true      },
+        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            true      },
+        {  "/",            "/",            "/",            "/",                    false     },
+        {  "/",            "/",            "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/",            "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/",            "/foo/bar",     "/foo/bar",     "/foo/bar",             false     },
+        {  "/",            "/foo/bar/",    "/foo/bar/",    "/foo/bar/",            false     },
+        {  "/foo/bar",     "/",            "/",            "/foo/bar",             false     },
+        {  "/foo/bar",     "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar",     "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/foo/bar",     "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar",     "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/foo/bar/",    "/",            "/",            "/foo/bar/",            false     },
+        {  "/foo/bar/",    "/",            "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar/",    "/",            "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+        {  "/foo/bar/",    "/foo/bar",     "/foo/bar",     "/foo/bar/foo/bar",     false     },
+        {  "/foo/bar/",    "/foo/bar/",    "/foo/bar/",    "/foo/bar/foo/bar/",    false     },
+      }
+
+      for i, args in ipairs(checks) do
+
+        local config = args[5] == true and "(strip_uri = on)" or "(strip_uri = off)"
+
+        it(config .. " is not appended to upstream url " .. args[1] ..
+                     " (with uri "                       .. args[2] .. ")" ..
+                     " when requesting "                 .. args[3], function()
+
+
+          local use_case_apis = {
+            {
+              name         = "api-1",
+              strip_uri    = args[5],
+              upstream_url = "http://httpbin.org" .. args[1],
+              uris         = {
+                args[2],
+              },
+            }
+          }
+
+          local router = assert(Router.new(use_case_apis) )
+
+          local _ngx = mock_ngx("GET", args[3], {})
+          local api, upstream = router.exec(_ngx)
+          assert.same(use_case_apis[1], api)
+          assert.equal(args[1], upstream.path)
+          assert.equal(args[4], _ngx.var.uri)
+        end)
+      end
     end)
   end)
 end)

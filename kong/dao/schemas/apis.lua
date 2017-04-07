@@ -14,10 +14,6 @@ local function validate_upstream_url(value)
     end
   end
 
-  if parsed_url.path and string.sub(value, #value) == "/" then
-    return false, "Cannot end with a slash"
-  end
-
   return true
 end
 

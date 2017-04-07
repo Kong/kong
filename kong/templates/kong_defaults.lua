@@ -45,6 +45,7 @@ cassandra_local_datacenter = NONE
 cassandra_repl_strategy = SimpleStrategy
 cassandra_repl_factor = 1
 cassandra_data_centers = dc1:2,dc2:3
+cassandra_schema_consensus_timeout = 10000
 
 cluster_listen = 0.0.0.0:7946
 cluster_listen_rpc = 127.0.0.1:7373

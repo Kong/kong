@@ -108,6 +108,23 @@ describe("Plugin: hmac-auth (access)", function()
       assert.equal(SIGNATURE_NOT_VALID, body.message)
     end)
 
+    it("should not be authorized when the HMAC signature is not properly base64 encoded", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+        ..[[headers="date",signature="not really a base64 encoded value!!!"]]
+      local res  = assert(client:send {
+        method          = "POST",
+        headers         = {
+          ["HOST"]      = "hmacauth.com",
+          date          = date,
+          authorization = hmacAuth
+        }
+      })
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature does not match", body.message)
+    end)
+
     it("should not be authorized when date header is missing", function()
       local res = assert(client:send {
         method = "POST",

@@ -117,7 +117,7 @@ return {
     end,
   },
 
-  ["/upstreams/:name_or_id/targets/active/"] = {
+  ["/upstreams/:name_or_id/targets/active"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       self.params.upstream_id = self.upstream.id
@@ -140,19 +140,25 @@ return {
       end
       table.sort(target_history, function(a, b) return a.order > b.order end)
 
-      local ignored = {}
-      local found   = {}
-      local found_n = 0
+      local seen     = {}
+      local active   = {}
+      local active_n = 0
 
       for _, entry in ipairs(target_history) do
-        if not found[entry.target] and not ignored[entry.target] then
-          if entry.weight ~= 0 then
-            entry.order = nil -- dont show our order key to the client
-            found_n = found_n + 1
-            found[found_n] = entry
+        if not seen[entry.target] then
+          if entry.weight == 0 then
+            seen[entry.target] = true
 
           else
-            ignored[entry.target] = true
+            entry.order = nil -- dont show our order key to the client
+
+            -- add what we want to send to the client in our array
+            active_n = active_n + 1
+            active[active_n] = entry
+
+            -- track that we found this host:port so we only show
+            -- the most recent one (kinda)
+            seen[entry.target] = true
           end
         end
       end
@@ -161,15 +167,16 @@ return {
       -- we also end up returning a "backwards" list of targets because
       -- of how we sorted- do we care?
       return responses.send_HTTP_OK {
-        total = found_n,
-        data  = found,
+        total = active_n,
+        data  = active,
       }
     end
   },
 
-  ["/upstreams/:name_or_id/targets/:target"] = {
+  ["/upstreams/:name_or_id/targets/:target_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
+      crud.find_target_by_target_or_id(self, dao_factory, helpers)
     end,
 
     DELETE = function(self, dao_factory)
@@ -177,7 +184,7 @@ return {
 
       -- this is just a wrapper around POSTing a new target with weight=0
       local data, err = dao_factory.targets:insert({
-        target      = self.params.target,
+        target      = self.target.target,
         upstream_id = self.upstream.id,
         weight      = 0,
       })

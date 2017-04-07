@@ -20,7 +20,7 @@ dependencies = {
   "multipart == 0.5",
   "version == 0.2",
   "lapis == 1.5.1",
-  "lua-cassandra == 1.1.1",
+  "lua-cassandra == 1.2.1",
   "pgmoon-mashape == 2.0.1",
   "luatz == 0.3",
   "lua_system_constants == 0.1.1",
@@ -28,7 +28,7 @@ dependencies = {
   "luacrypto == 0.3.2",
   "luasyslog == 1.0.0",
   "lua_pack == 1.0.4",
-  "lua-resty-dns-client == 0.3.2",
+  "lua-resty-dns-client == 0.4.0",
   "lua-resty-worker-events == 0.3.0",
 }
 build = {
@@ -275,5 +275,8 @@ build = {
     ["kong.plugins.aws-lambda.handler"] = "kong/plugins/aws-lambda/handler.lua",
     ["kong.plugins.aws-lambda.schema"] = "kong/plugins/aws-lambda/schema.lua",
     ["kong.plugins.aws-lambda.v4"] = "kong/plugins/aws-lambda/v4.lua",
+
+    ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
+    ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
   }
 }

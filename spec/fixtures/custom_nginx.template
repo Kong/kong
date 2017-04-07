@@ -195,6 +195,51 @@ http {
             return 200;
         }
 
+        location / {
+            content_by_lua_block {
+                local cjson = require "cjson"
+                local var   = ngx.var
+                local req   = ngx.req
+
+                req.read_body()
+
+                local json = cjson.encode {
+                    vars = {
+                        uri                = var.uri,
+                        host               = var.host,
+                        hostname           = var.hostname,
+                        https              = var.https,
+                        scheme             = var.scheme,
+                        is_args            = var.is_args,
+                        server_addr        = var.server_addr,
+                        server_port        = var.server_port,
+                        server_name        = var.server_name,
+                        server_protocol    = var.server_protocol,
+                        remote_addr        = var.remote_addr,
+                        remote_port        = var.remote_port,
+                        realip_remote_addr = var.realip_remote_addr,
+                        realip_remote_port = var.realip_remote_port,
+                        binary_remote_addr = var.binary_remote_addr,
+                        request            = var.request,
+                        request_uri        = var.request_uri,
+                        request_time       = var.request_time,
+                        request_length     = var.request_length,
+                        request_method     = var.request_method,
+                        bytes_received     = var.bytes_received,
+                    },
+                    method       = req.get_method(),
+                    headers      = req.get_headers(0),
+                    uri_args     = req.get_uri_args(0),
+                    post_args    = req.get_post_args(0),
+                    http_version = req.http_version(),
+                }
+
+                ngx.status = 200
+                ngx.say(json)
+                ngx.exit(200)
+            }
+        }
+
         location /headers-inspect {
             content_by_lua_block {
                 local cjson = require "cjson"
