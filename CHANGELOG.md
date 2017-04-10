@@ -6,6 +6,9 @@
   status and message. Thanks to [Paul Austin](https://github.com/pauldaustin)
   for the contribution.
   [#2051](https://github.com/Mashape/kong/pull/2051)
+- Plugins:
+  - logging: The authenticated Consumer is also logged.
+    [#2367](https://github.com/Mashape/kong/pull/2367)
 
 ## [0.10.1] - 2017/03/27
 
