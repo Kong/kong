@@ -204,6 +204,13 @@
                                        # The format is a comma-separated list
                                        # made of <dc_name>:<repl_factor>.
 
+#cassandra_schema_consensus_timeout = 10000  # Defines the timeout (in ms) for
+                                             # the waiting period to reach a
+                                             # schema consensus between your
+                                             # Cassandra nodes.
+                                             # This value is only used during
+                                             # migrations.
+
 #------------------------------------------------------------------------------
 # CLUSTERING
 #------------------------------------------------------------------------------

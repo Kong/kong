@@ -42,8 +42,9 @@ function _M.new(kong_config)
     contact_points = kong_config.cassandra_contact_points,
     default_port = kong_config.cassandra_port,
     keyspace = kong_config.cassandra_keyspace,
-    connect_timeout = kong_config.cassandra_timeout,
-    read_timeout = kong_config.cassandra_timeout,
+    timeout_connect = kong_config.cassandra_timeout,
+    timeout_read = kong_config.cassandra_timeout,
+    max_schema_consensus_wait = kong_config.cassandra_schema_consensus_timeout,
     ssl = kong_config.cassandra_ssl,
     verify = kong_config.cassandra_ssl_verify,
     lock_timeout = 30,
@@ -389,7 +390,22 @@ function _M:find_all(table_name, tbl, schema)
   local query = select_query(table_name, where)
   local res_rows = {}
 
-  for rows, page_err in self.cluster:iterate(query, args, opts) do
+  local iter = self.cluster.iterate
+  local iter_self = self.cluster
+  if coordinator then
+    -- we are in migrations, and need to wait for a schema consensus
+    -- before performing such a DML query
+    local ok, err = self:wait_for_schema_consensus()
+    if not ok then
+      return nil, "failed waiting for schema consensus: " .. err
+    end
+
+    iter = coordinator.page_iterator
+    iter_self = coordinator
+    opts.prepared = false
+  end
+
+  for rows, page_err in iter(iter_self, query, args, opts) do
     if page_err then
       err = Errors.db(page_err)
       res_rows = nil
