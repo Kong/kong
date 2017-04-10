@@ -83,6 +83,11 @@ return {
       return false, Errors.schema "No consumer can be configured for that plugin"
     end
 
+    -- Check if the schema has a `no_api` field
+    if config_schema.no_api and plugin_t.api_id ~= nil then
+      return false, Errors.schema "No API can be configured for that plugin"
+    end
+
     if config_schema.self_check and type(config_schema.self_check) == "function" then
       local ok, err = config_schema.self_check(config_schema, plugin_t.config and plugin_t.config or {}, dao, is_update)
       if not ok then

@@ -21,7 +21,7 @@ describe("OpenResty handlers", function()
 
     local res = assert(api_client:send {
       method = "POST",
-      path = "/apis/rewrite-api/plugins/",
+      path = "/plugins/",
       headers = {
         ["Content-Type"] = "application/json"
       },

@@ -261,7 +261,9 @@ function Kong.rewrite()
   core.rewrite.before()
 
   for _, plugin in ipairs(singletons.loaded_plugins) do
-    plugin.handler:rewrite()
+    if plugin.schema.no_consumer and plugin.schema.no_api then
+      plugin.handler:rewrite()
+    end
   end
 
   core.rewrite.after()

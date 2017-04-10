@@ -686,6 +686,26 @@ describe("Entities Schemas", function()
         assert.is_true(valid)
         assert.falsy(err)
       end)
+      it("should refuse `api_id` if specified in the config schema", function()
+        local stub_config_schema = {
+          no_api = true,
+          fields = {
+            string = {type = "string", required = true}
+          }
+        }
+
+        plugins_schema.fields.config.schema = function()
+          return stub_config_schema
+        end
+
+        local valid, _, err = validate_entity({name = "stub", api_id = "0000", consumer_id = "0000", config = {string = "foo"}}, plugins_schema)
+        assert.is_false(valid)
+        assert.equal("No API can be configured for that plugin", err.message)
+
+        valid, err = validate_entity({name = "stub", consumer_id = "0000", config = {string = "foo"}}, plugins_schema, {dao = dao_stub})
+        assert.is_true(valid)
+        assert.falsy(err)
+      end)
     end)
   end)
 
