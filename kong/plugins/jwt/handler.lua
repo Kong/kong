@@ -22,6 +22,11 @@ JwtHandler.PRIORITY = 1000
 local function retrieve_token(request, conf)
   local uri_parameters = request.get_uri_args()
 
+  local jwt_cookie = ngx.var["cookie_" ..  conf.cookie_name]
+  if jwt_cookie then
+    return jwt_cookie
+  end
+
   for _, v in ipairs(conf.uri_param_names) do
     if uri_parameters[v] then
       return uri_parameters[v]
