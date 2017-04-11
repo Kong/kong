@@ -149,12 +149,21 @@ function _M.stop(kong_config, dao)
   if not ok then return nil, err end
   log.verbose("left serf cluster")
 
-  log.verbose("stopping serf agent at %s", kong_config.serf_pid)
-  local code = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
-  if code == 256 then -- If no error is returned
+  if not kill.is_running(kong_config.serf_pid) then
     pl_file.delete(kong_config.serf_pid)
+
+  else
+    log.verbose("stopping serf agent at %s", kong_config.serf_pid)
+    local code = kill.kill(kong_config.serf_pid, "-15") --SIGTERM
+    if code ~= 0 then
+      log.error("serf agent could not be stopped")
+
+    else
+      pl_file.delete(kong_config.serf_pid)
+      log.verbose("serf agent stopped")
+    end
   end
-  log.verbose("serf agent stopped")
+
   return true
 end
 
