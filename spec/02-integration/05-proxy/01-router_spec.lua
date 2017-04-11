@@ -499,4 +499,44 @@ describe("Router", function()
         check(i, args[3], args[4]))
     end
   end)
+
+  describe("url encoded uris", function()
+
+    setup(function()
+      helpers.dao:truncate_tables()
+      assert(helpers.dao.apis:insert {
+        name         = "localbin",
+        upstream_url = "http://localhost:9999/",
+        uris         = {
+          "/",
+        },
+        hosts        = {
+          "localbin.com",
+        },
+      })
+
+      assert(helpers.start_kong {
+        nginx_conf = "spec/fixtures/custom_nginx.template",
+      })
+    end)
+
+    teardown(function()
+      helpers.stop_kong()
+    end)
+
+    it("are allowed and passed on properly", function()
+      local res = assert(client:send {
+        method  = "GET",
+        path    = "/endel%C3%B8st",
+        headers = {
+          ["Host"] = "localbin.com",
+        }
+      })
+
+      local json = assert.res_status(200, res)
+      local data = cjson.decode(json)
+
+      assert.equal("/endel%C3%B8st", data.vars.request_uri)
+    end)
+  end)
 end)

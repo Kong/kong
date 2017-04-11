@@ -616,7 +616,14 @@ function _M.new(apis)
 
   function self.exec(ngx)
     local method      = ngx.req.get_method()
-    local uri         = ngx.var.uri
+    local uri         = ngx.var.request_uri
+    do
+      local s = find(uri, "?", 2, true)
+      if s then
+        uri = sub(uri, 1, s - 1)
+      end
+    end
+
     local uri_root    = uri == "/"
     local new_uri     = uri
     local host_header
