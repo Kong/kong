@@ -136,6 +136,15 @@ function Kong.init()
   -- populate singletons
   singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
+  singletons.global_plugins = {}
+
+  -- Load global plugins in a separate table
+  for _, plugin in ipairs(singletons.loaded_plugins) do
+    if plugin.schema and plugin.schema.no_consumer and plugin.schema.no_api then
+      singletons.global_plugins[#singletons.global_plugins + 1] = plugin
+    end
+  end
+
   singletons.serf = Serf.new(config, dao)
   singletons.dao = dao
   singletons.events = events
@@ -260,10 +269,8 @@ end
 function Kong.rewrite()
   core.rewrite.before()
 
-  for _, plugin in ipairs(singletons.loaded_plugins) do
-    if plugin.schema.no_consumer and plugin.schema.no_api then
-      plugin.handler:rewrite()
-    end
+  for _, plugin in ipairs(singletons.global_plugins) do
+    plugin.handler:rewrite()
   end
 
   core.rewrite.after()
