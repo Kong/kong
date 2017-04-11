@@ -472,7 +472,7 @@ describe("Utils", function()
   end)
 
   it("validate_header_name() validates header names", function()
-    local header_chars = [[-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
+    local header_chars = [[_-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]]
 
     for i = 1, 255 do
       local c = string.char(i)

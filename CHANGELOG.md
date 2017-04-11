@@ -10,6 +10,9 @@
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
+- Plugins:
+  - key-auth: Allow setting API key header names with an underscore.
+    [#2370](https://github.com/Mashape/kong/pull/2370)
 
 ### Added
 
