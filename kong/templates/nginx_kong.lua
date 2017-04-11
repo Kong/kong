@@ -60,31 +60,6 @@ upstream kong_upstream {
     keepalive ${{UPSTREAM_KEEPALIVE}};
 }
 
-map $http_upgrade $upstream_connection {
-    default   keep-alive;
-    websocket upgrade;
-}
-
-map $http_upgrade $upstream_upgrade {
-    default   '';
-    websocket websocket;
-}
-
-map $http_x_forwarded_proto $upstream_x_forwarded_proto {
-    default $http_x_forwarded_proto;
-    ''      $scheme;
-}
-
-map $http_x_forwarded_host $upstream_x_forwarded_host {
-    default $http_x_forwarded_host;
-    ''      $host;
-}
-
-map $http_x_forwarded_port $upstream_x_forwarded_port {
-    default $http_x_forwarded_port;
-    ''      $server_port;
-}
-
 server {
     server_name kong;
 > if real_ip_header == "proxy_protocol" then
@@ -118,23 +93,28 @@ server {
 > end
 
     location / {
-        set $upstream_host              nil;
-        set $upstream_scheme            nil;
-        set $upstream_x_forwarded_for   nil;
+        set $upstream_host               '';
+        set $upstream_upgrade            '';
+        set $upstream_connection         '';
+        set $upstream_scheme             '';
+        set $upstream_x_forwarded_for    '';
+        set $upstream_x_forwarded_proto  '';
+        set $upstream_x_forwarded_host   '';
+        set $upstream_x_forwarded_port   '';
 
         access_by_lua_block {
             kong.access()
         }
 
         proxy_http_version 1.1;
-        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   Host              $upstream_host;
+        proxy_set_header   Upgrade           $upstream_upgrade;
+        proxy_set_header   Connection        $upstream_connection;
         proxy_set_header   X-Forwarded-For   $upstream_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $upstream_x_forwarded_proto;
         proxy_set_header   X-Forwarded-Host  $upstream_x_forwarded_host;
         proxy_set_header   X-Forwarded-Port  $upstream_x_forwarded_port;
-        proxy_set_header   Host              $upstream_host;
-        proxy_set_header   Upgrade           $upstream_upgrade;
-        proxy_set_header   Connection        $upstream_connection;
+        proxy_set_header   X-Real-IP         $remote_addr;
         proxy_pass_header  Server;
         proxy_pass_header  Date;
         proxy_pass         $upstream_scheme://kong_upstream;

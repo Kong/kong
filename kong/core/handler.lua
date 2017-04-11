@@ -124,21 +124,43 @@ return {
       var.upstream_host = host_header or
           balancer_address.hostname..":"..balancer_address.port
 
-      -- X-Forwarded Headers
-      local realip_remote_addr = var.realip_remote_addr
+      -- Keep-Alive and WebWocket Protocol Upgrade Headers
+      if var.http_upgrade == "websocket" then
+        var.upstream_connection = "upgrade"
+        var.upstream_upgrade    = "websocket"
 
-      if not singletons.ip.trusted(realip_remote_addr) then
-        var.upstream_x_forwarded_proto = var.scheme
-        var.upstream_x_forwarded_host  = var.host
-        var.upstream_x_forwarded_port  = var.server_port
+      else
+        var.upstream_connection = "keep-alive"
       end
 
+      -- X-Forwarded Headers
+      --
+      -- We could use $proxy_add_x_forwarded_for, but it does not work properly
+      -- with the realip module. The realip module overrides $remote_addr and it
+      -- is okay for us to use it in case no X-Forwarded-For header was present.
+      -- But in case it was given, we will append the $realip_remote_addr that
+      -- contains the IP that was originally in $remote_addr before realip module
+      -- overrode that (aka the client that connected us).
+
+      local realip_remote_addr   = var.realip_remote_addr
       local http_x_forwarded_for = var.http_x_forwarded_for
+
       if http_x_forwarded_for then
         var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " .. realip_remote_addr
 
       else
         var.upstream_x_forwarded_for = var.remote_addr
+      end
+
+      if singletons.ip.trusted(realip_remote_addr) then
+        var.upstream_x_forwarded_proto = var.http_x_forwarded_proto or var.scheme
+        var.upstream_x_forwarded_host  = var.http_x_forwarded_host  or var.host
+        var.upstream_x_forwarded_port  = var.http_x_forwarded_port  or var.server_port
+
+      else
+        var.upstream_x_forwarded_proto = var.scheme
+        var.upstream_x_forwarded_host  = var.host
+        var.upstream_x_forwarded_port  = var.server_port
       end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
