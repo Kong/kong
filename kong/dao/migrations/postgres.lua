@@ -389,7 +389,7 @@ return {
         end
 
         for _, row in ipairs(rows) do
-          if not row.config.anonymnous then
+          if not row.config.anonymous then
             row.config.anonymous = ""
             local _, err = dao.plugins:update(row, { id = row.id })
             if err then
