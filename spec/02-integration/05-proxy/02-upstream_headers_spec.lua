@@ -169,7 +169,7 @@ describe("Upstream header(s)", function()
       end)
     end)
 
-    describe("with the downstream host preserved (pending: because the test fails to connect to API when preserve_host = true)", function()
+    describe("with the downstream host preserved", function()
       it("should be added if not present in request while preserving the downstream host", function()
         local headers = request_headers {
           ["Host"] = "preserved.com",
