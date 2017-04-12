@@ -29,8 +29,10 @@
     upstream services. Thanks [Paul Austin](https://github.com/pauldaustin)
     for the contribution.
     [#2051](https://github.com/Mashape/kong/pull/2051)
-  - logging: Logging plugins now also log the authenticated Consumer.
-    [#2367](https://github.com/Mashape/kong/pull/2367)
+  - Logging plugins: The produced logs now include a `consumer` field,
+   which contains the properties of the authenticated Consumer (`id`, 
+   `custom_id`, and `username`), if any.
+   [#2367](https://github.com/Mashape/kong/pull/2367)
 
 ### Fixed
 
