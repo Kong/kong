@@ -180,6 +180,10 @@ local function compile_conf(kong_config, conf_template)
 
   compile_env = pl_tablex.merge(compile_env, kong_config, true) -- union
 
+  if type(compile_env.dns_resolver) == "table" then
+    compile_env.dns_resolver = table.concat(compile_env.dns_resolver, " ")
+  end
+
   local post_template = pl_template.substitute(conf_template, compile_env)
   return string.gsub(post_template, "(${%b{}})", function(w)
     local name = w:sub(4, -3)
