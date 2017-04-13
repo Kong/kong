@@ -124,7 +124,7 @@ return {
       var.upstream_host = host_header or
           balancer_address.hostname..":"..balancer_address.port
 
-      -- Keep-Alive and WebWocket Protocol Upgrade Headers
+      -- Keep-Alive and WebSocket Protocol Upgrade Headers
       if var.http_upgrade == "websocket" then
         var.upstream_connection = "upgrade"
         var.upstream_upgrade    = "websocket"
