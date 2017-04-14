@@ -20,6 +20,7 @@ local balancer_execute = require("kong.core.balancer").execute
 
 local router, router_err
 local tostring = tostring
+local lower = string.lower
 local ngx = ngx
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
@@ -125,7 +126,7 @@ return {
           balancer_address.hostname..":"..balancer_address.port
 
       -- Keep-Alive and WebSocket Protocol Upgrade Headers
-      if var.http_upgrade == "websocket" then
+      if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
         var.upstream_connection = "upgrade"
         var.upstream_upgrade    = "websocket"
 
