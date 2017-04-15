@@ -130,6 +130,54 @@
                                  # and "X-Kong-Upstream-Latency" response
                                  # header fields.
 
+#trusted_ips =                   # Defines trusted IP addresses blocks that are
+                                 # known to send correct X-Forwarded-* headers.
+                                 # Requests from trusted IPs make Kong forward
+                                 # their X-Forwarded-* headers upstream.
+                                 # Non-trusted requests make Kong insert its
+                                 # own X-Forwarded-* headers.
+                                 #
+                                 # This property also sets the `set_real_ip_from`
+                                 # directive(s) in the Nginx configuration. It
+                                 # accepts the same type of values (CIDR blocks)
+                                 # but as a comma-separated list.
+                                 #
+                                 # To trust *all* /!\ IPs, set this value to
+                                 # `0.0.0.0/0,::/0`.
+                                 #
+                                 # If the special value `unix:` is specified,
+                                 # all UNIX-domain sockets will be trusted.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html for
+# examples of accepted values.
+
+#real_ip_header = X-Real-IP      # Defines the request header field whose value
+                                 # will be used to replace the client address.
+                                 # This value sets the ngx_http_realip_module
+                                 # directive of the same name in the Nginx
+                                 # configuration.
+                                 #
+                                 # If this value receives `proxy_protocol`, the
+                                 # `proxy_protocol` parameter will be appended
+                                 # to the `listen` directive of the Nginx
+                                 # template.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_header
+# for a description of this directive.
+#
+# See https://www.nginx.com/resources/admin-guide/proxy-protocol/ for more
+# details about the `proxy_protocol` parameter.
+
+#real_ip_recursive = off         # This value sets the ngx_http_realip_module
+                                 # directive of the same name in the Nginx
+                                 # configuration.
+# Note:
+#
+# See http://nginx.org/en/docs/http/ngx_http_realip_module.html#real_ip_recursive
+# for a description of this directive.
+
 #------------------------------------------------------------------------------
 # DATASTORE
 #------------------------------------------------------------------------------
@@ -324,27 +372,6 @@
                                  # format. This certificate will be the one
                                  # used for verifying Kong's database
                                  # connections, when `pg_ssl_verify` or
-                                 # `cassandra_ssl_verify` are enabled.
-
-#lua_ssl_verify_depth = 1        # Sets the verification depth in the server
-                                 # certificates chain used by Lua cosockets,
-                                 # set by `lua_ssl_trusted_certificate`.
-                                 # This includes the certificates configured
-                                 # for Kong's database connections.
-
-#lua_code_cache = on             # When disabled, every request will run in a
-                                 # separate Lua VM instance: all Lua modules
-                                 # will be loaded from scratch. Useful for
-                                 # adopting an edit-and-refresh approach while
-                                 # developing a plugin.
-                                 # Turning this directive off has a severe
-                                 # impact on performance.
-
-#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
-                                 # Useful when developing or using custom
-                                 # plugins not stored in the default search
-                                 # path.
-
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).
 
