@@ -372,6 +372,27 @@
                                  # format. This certificate will be the one
                                  # used for verifying Kong's database
                                  # connections, when `pg_ssl_verify` or
+                                 # `cassandra_ssl_verify` are enabled.
+
+#lua_ssl_verify_depth = 1        # Sets the verification depth in the server
+                                 # certificates chain used by Lua cosockets,
+                                 # set by `lua_ssl_trusted_certificate`.
+                                 # This includes the certificates configured
+                                 # for Kong's database connections.
+
+#lua_code_cache = on             # When disabled, every request will run in a
+                                 # separate Lua VM instance: all Lua modules
+                                 # will be loaded from scratch. Useful for
+                                 # adopting an edit-and-refresh approach while
+                                 # developing a plugin.
+                                 # Turning this directive off has a severe
+                                 # impact on performance.
+
+#lua_package_path =              # Sets the Lua module search path (LUA_PATH).
+                                 # Useful when developing or using custom
+                                 # plugins not stored in the default search
+                                 # path.
+
 #lua_package_cpath =             # Sets the Lua C module search path
                                  # (LUA_CPATH).
 
