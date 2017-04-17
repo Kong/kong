@@ -1,6 +1,7 @@
 local ssl_fixtures = require "spec.fixtures.ssl"
 local cache = require "kong.tools.database_cache"
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 
 local function get_cert(server_name)
@@ -103,7 +104,8 @@ describe("SSL", function()
       })
 
       local body = assert.res_status(426, res)
-      assert.equal([[{"message":"Please use HTTPS protocol"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Please use HTTPS protocol" }, json)
       assert.contains("Upgrade", res.headers.connection)
       assert.equal("TLS/1.2, HTTP/1.1", res.headers.upgrade)
     end)

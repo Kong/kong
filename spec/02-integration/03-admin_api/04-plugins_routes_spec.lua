@@ -64,7 +64,8 @@ describe("Admin API", function()
           headers = {["Content-Type"] = "application/json"}
         })
         local body = assert.response(res).has.status(405)
-        assert.equal([[{"message":"Method not allowed"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ message = "Method not allowed" }, json)
       end
     end)
 
@@ -171,7 +172,8 @@ describe("Admin API", function()
           path = "/plugins/schema/foobar",
         })
         local body = assert.res_status(404, res)
-        assert.equal([[{"message":"No plugin named 'foobar'"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ message = "No plugin named 'foobar'" }, json)
       end)
     end)
   end)

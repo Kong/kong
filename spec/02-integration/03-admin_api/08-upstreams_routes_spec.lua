@@ -1,5 +1,6 @@
 local helpers = require "spec.helpers"
 local dao_helpers = require "spec.02-integration.02-dao.helpers"
+local cjson = require "cjson"
 
 local slots_default, slots_max = 100, 2^16
 
@@ -157,7 +158,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"name":"name is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
 
             -- Invalid name parameter
             res = assert(client:send {
@@ -169,7 +171,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"message":"Invalid name; must be a valid hostname"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "Invalid name; must be a valid hostname" }, json)
             -- Invalid slots parameter
             res = assert(client:send {
               method = "POST",
@@ -181,7 +184,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"message":"number of slots must be between 10 and 65536"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "number of slots must be between 10 and 65536" }, json)
           end
         end)
         it_content_types("handles invalid input - orderlist", function(content_type)
@@ -200,7 +204,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"message":"invalid orderlist"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "invalid orderlist" }, json)
             -- non-consecutive
             res = assert(client:send {
               method = "POST",
@@ -213,7 +218,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"message":"invalid orderlist"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "invalid orderlist" }, json)
             -- doubles
             res = assert(client:send {
               method = "POST",
@@ -226,7 +232,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
               headers = {["Content-Type"] = content_type}
             })
             body = assert.res_status(400, res)
-            assert.equal([[{"message":"invalid orderlist"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "invalid orderlist" }, json)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -250,7 +257,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"name":"already exists with value 'my.upstream'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ name = "already exists with value 'my.upstream'" }, json)
           end
         end)
       end)
@@ -327,7 +335,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.response(res).has.status(400)
-            assert.equal([[{"name":"name is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ name = "name is required" }, json)
 
             -- Invalid parameter
             res = assert(client:send {
@@ -340,7 +349,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
               headers = {["Content-Type"] = content_type}
             })
             body = assert.response(res).has.status(400)
-            assert.equal([[{"message":"Invalid name; no ip addresses allowed"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "Invalid name; no ip addresses allowed" }, json)
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -369,7 +379,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
                 headers = {["Content-Type"] = content_type}
               })
               local body = assert.response(res).has.status(409)
-              assert.equal([[{"name":"already exists with value 'my-upstream'"}]], body)
+              local json = cjson.decode(body)
+              assert.same({ name = "already exists with value 'my-upstream'" }, json)
             end
         end)
       end)
@@ -435,7 +446,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
             query = {foo = "bar"}
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"foo":"unknown field"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ foo = "unknown field" }, json)
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
@@ -460,7 +472,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
             path = "/upstreams"
           })
           local body = assert.res_status(200, res)
-          assert.equal([[{"data":[],"total":0}]], body)
+          local json = cjson.decode(body)
+          assert.same({ data = {}, total = 0 }, json)
         end)
       end)
     end)
@@ -523,7 +536,8 @@ if content_type == "application/x-www-form-urlencoded" then return end
         })
 
         local body = assert.response(res).has.status(405)
-        assert.equal([[{"message":"Method not allowed"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ message = "Method not allowed" }, json)
       end
     end)
 
