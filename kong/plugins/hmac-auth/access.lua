@@ -8,15 +8,20 @@ local math_abs = math.abs
 local ngx_time = ngx.time
 local ngx_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 local ngx_parse_time = ngx.parse_http_time
 local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_log = ngx.log
+local req_read_body = ngx.req.read_body
+local req_get_body_data = ngx.req.get_body_data
+local resty_sha256 = require "resty.sha256"
 
 local split = utils.split
 
 local AUTHORIZATION = "authorization"
+local DIGEST = "digest"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 local DATE = "date"
 local X_DATE = "x-date"
@@ -27,7 +32,7 @@ local _M = {}
 local function retrieve_hmac_fields(request, headers, header_name, conf)
   local hmac_params = {}
   local authorization_header = headers[header_name]
-  -- parse the header to retrieve hamc parameters
+  -- parse the header to retrieve hmac parameters
   if authorization_header then
     local iterator, iter_err = ngx_gmatch(authorization_header, "\\s*[Hh]mac\\s*username=\"(.+)\",\\s*algorithm=\"(.+)\",\\s*headers=\"(.+)\",\\s*signature=\"(.+)\"")
     if not iterator then
@@ -79,13 +84,14 @@ local function create_hash(request, hmac_params, headers)
       signing_string = signing_string.."\n"
     end
   end
+
   return ngx_sha1(hmac_params.secret, signing_string)
 end
 
-local function is_digest_equal(digest_1, digest_2)
+local function is_signature_equal(signature_1, signature_2)
   local result = true
-  for i=1, #digest_1 do
-    if digest_1:sub(i, i) ~= digest_2:sub(i, i) then
+  for i=1, #signature_1 do
+    if signature_1:sub(i, i) ~= signature_2:sub(i, i) then
       result = false
     end
   end
@@ -93,16 +99,16 @@ local function is_digest_equal(digest_1, digest_2)
 end
 
 local function validate_signature(request, hmac_params, headers)
-  local digest = create_hash(request, hmac_params, headers)
-  local sig = ngx_decode_base64(hmac_params.signature)
+  local signature_1 = create_hash(request, hmac_params, headers)
+  local signature_2 = ngx_decode_base64(hmac_params.signature)
 
   -- we didnt receive a well-formed base64 encoding
-  if not sig then
+  if not signature_2 then
     return false
   end
 
-  if digest then
-   return is_digest_equal(digest, sig)
+  if signature_1 then
+    return is_signature_equal(signature_1, signature_2)
   end
 end
 
@@ -169,18 +175,56 @@ local function set_consumer(consumer, credential)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
+end
+
+local function validate_request_body(headers, body)
+  local sha_recieved = headers[DIGEST]
+
+  if body == nil then
+    return true
+  elseif not sha_recieved then
+    return false
+  end
+
+  local sha256 = resty_sha256:new()
+  sha256:update(body)
+  local sha_created = ngx_encode_base64(sha256:final())
+
+  return sha_created == sha_recieved
+end
+
+local function mandatory_hmac_params_missing(conf, date_header_used_in_clock_skew, hmac_params, body)
+  if not (hmac_params and hmac_params.username and hmac_params.signature) then
+    return true
+  end
+
+  if not utils.table_contains(hmac_params.hmac_headers, date_header_used_in_clock_skew) then
+    return true
+  end
+
+  if body and conf.validate_request_body and not utils.table_contains(hmac_params.hmac_headers, DIGEST) then
+    return true
+  end
+
+  return false
 end
 
 local function do_authentication(conf)
   local headers = ngx_get_headers()
+
   -- If both headers are missing, return 401
   if not (headers[AUTHORIZATION] or headers[PROXY_AUTHORIZATION]) then
     return false, {status = 401}
   end
 
   -- validate clock skew
-  if not (validate_clock_skew(headers, X_DATE, conf.clock_skew) or validate_clock_skew(headers, DATE, conf.clock_skew)) then
+  local date_header_used_in_clock_skew = ''
+  if validate_clock_skew(headers, X_DATE, conf.clock_skew) then
+    date_header_used_in_clock_skew = X_DATE
+  elseif validate_clock_skew(headers, DATE, conf.clock_skew) then
+    date_header_used_in_clock_skew = DATE
+  else
     return false, {status = 403, message = "HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication"}
   end
 
@@ -190,8 +234,18 @@ local function do_authentication(conf)
   if not hmac_params.username then
     hmac_params = retrieve_hmac_fields(ngx.req, headers, AUTHORIZATION, conf)
   end
-  if not (hmac_params.username and hmac_params.signature) then
+
+  -- retrieve request body
+  req_read_body()
+  local body = req_get_body_data()
+
+  if mandatory_hmac_params_missing(conf, date_header_used_in_clock_skew, hmac_params, body) then
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
+  end
+
+  -- If request body validation is enabled, then verify hash of request body.
+  if conf.validate_request_body and not validate_request_body(headers, body) then
+    return false, {status = 403, message = "HMAC signature cannot be verified, a valid Sha-256 digest header is required for HMAC Authentication"}
   end
 
   -- validate signature
@@ -199,6 +253,7 @@ local function do_authentication(conf)
   if not credential then
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
+
   hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
     return false, {status = 403, message = "HMAC signature does not match"}
