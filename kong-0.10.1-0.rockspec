@@ -30,6 +30,7 @@ dependencies = {
   "lua_pack == 1.0.4",
   "lua-resty-dns-client == 0.4.0",
   "lua-resty-worker-events == 0.3.0",
+  "lua-resty-mediador == 0.1.2",
 }
 build = {
   type = "builtin",
@@ -79,6 +80,7 @@ build = {
     ["kong.api.routes.certificates"] = "kong/api/routes/certificates.lua",
     ["kong.api.routes.snis"] = "kong/api/routes/snis.lua",
 
+    ["kong.tools.ip"] = "kong/tools/ip.lua",
     ["kong.tools.dns"] = "kong/tools/dns.lua",
     ["kong.tools.utils"] = "kong/tools/utils.lua",
     ["kong.tools.public"] = "kong/tools/public.lua",
