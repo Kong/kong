@@ -62,9 +62,14 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"custom_id":"At least a 'custom_id' or a 'username' ]]
-                       ..[[must be specified","username":"At least a 'custom_id' or ]]
-                       ..[[a 'username' must be specified"}]], body)
+            local json = cjson.decode(body)
+            assert.same(
+              {
+                custom_id = "At least a 'custom_id' or a 'username' must be specified",
+                username  = "At least a 'custom_id' or a 'username' must be specified"
+              },
+              json
+            )
           end
         end)
         it_content_types("returns 409 on conflicting username", function(content_type)
@@ -78,7 +83,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"username":"already exists with value 'bob'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ username = "already exists with value 'bob'" }, json)
           end
         end)
         it_content_types("returns 409 on conflicting custom_id", function(content_type)
@@ -93,7 +99,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"custom_id":"already exists with value '1234'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ custom_id = "already exists with value '1234'" }, json)
           end
         end)
       end)
@@ -158,9 +165,14 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"custom_id":"At least a 'custom_id' or a 'username' ]]
-                       ..[[must be specified","username":"At least a 'custom_id' or ]]
-                       ..[[a 'username' must be specified"}]], body)
+            local json = cjson.decode(body)
+            assert.same(
+              {
+                custom_id = "At least a 'custom_id' or a 'username' must be specified",
+                username  = "At least a 'custom_id' or a 'username' must be specified"
+              },
+              json
+            )
           end
         end)
         it_content_types("returns 409 on conflict", function(content_type)
@@ -187,7 +199,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.res_status(409, res)
-            assert.equal([[{"username":"already exists with value 'alice'"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ username = "already exists with value 'alice'" }, json)
           end
         end)
       end)
@@ -253,7 +266,8 @@ describe("Admin API", function()
           query = {foo = "bar"}
         })
         local body = assert.res_status(400, res)
-        assert.equal([[{"foo":"unknown field"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ foo = "unknown field" }, json)
       end)
     end)
     it("returns 405 on invalid method", function()
@@ -266,7 +280,8 @@ describe("Admin API", function()
           headers = {["Content-Type"] = "application/json"}
         })
         local body = assert.response(res).has.status(405)
-        assert.equal([[{"message":"Method not allowed"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ message = "Method not allowed" }, json)
       end
     end)
 
@@ -370,7 +385,8 @@ describe("Admin API", function()
                 headers = {["Content-Type"] = content_type}
               })
               local body = assert.res_status(400, res)
-              assert.equal([[{"message":"empty body"}]], body)
+              local json = cjson.decode(body)
+              assert.same({ message = "empty body" }, json)
             end
           end)
         end)

@@ -1,5 +1,5 @@
 local helpers = require "spec.helpers"
---local cjson = require "cjson"
+local cjson = require "cjson"
 
 local function it_content_types(title, fn)
   local test_form_encoded = fn("application/x-www-form-urlencoded")
@@ -105,7 +105,8 @@ describe("Admin API", function()
             headers = {["Content-Type"] = "application/json"}
           })
           local body = assert.response(res).has.status(400)
-          assert.equal('{"message":"Cannot parse JSON body"}', body)
+          local json = cjson.decode(body)
+          assert.same({ message = "Cannot parse JSON body" }, json)
         end)
         it_content_types("handles invalid input", function(content_type)
           return function()
@@ -119,7 +120,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             local body = assert.response(res).has.status(400)
-            assert.equal([[{"target":"target is required"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ target = "target is required" }, json)
 
             -- Invalid target parameter
             res = assert(client:send {
@@ -131,7 +133,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             body = assert.response(res).has.status(400)
-            assert.equal([[{"message":"Invalid target; not a valid hostname or ip address"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "Invalid target; not a valid hostname or ip address" }, json)
             
             -- Invalid weight parameter
             res = assert(client:send {
@@ -144,7 +147,8 @@ describe("Admin API", function()
               headers = {["Content-Type"] = content_type}
             })
             body = assert.response(res).has.status(400)
-            assert.equal([[{"message":"weight must be from 0 to 1000"}]], body)
+            local json = cjson.decode(body)
+            assert.same({ message = "weight must be from 0 to 1000" }, json)
           end
         end)
         
@@ -223,7 +227,8 @@ describe("Admin API", function()
           query = {foo = "bar"},
         })
         local body = assert.response(res).has.status(400)
-        assert.equal([[{"foo":"unknown field"}]], body)
+        local json = cjson.decode(body)
+        assert.same({ foo = "unknown field" }, json)
       end)
       it("ignores an invalid body", function()
         local res = assert(client:send {
@@ -254,7 +259,8 @@ describe("Admin API", function()
             path = "/upstreams/"..upstream_name2.."/targets/",
           })
           local body = assert.response(res).has.status(200)
-          assert.equal([[{"data":[],"total":0}]], body)
+          local json = cjson.decode(body)
+          assert.same({ data = {}, total = 0 }, json)
         end)
       end)
     end)
