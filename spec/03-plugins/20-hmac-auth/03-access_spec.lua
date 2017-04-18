@@ -971,6 +971,7 @@ describe("Plugin: hmac-auth (access)", function()
       assert.equal("HMAC signature cannot be verified, a valid Sha-256 digest header is required for HMAC Authentication", body.message)
     end)
 
+  
     it("should not pass with POST when body validation enabled and digest header is tampered", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local postBody = '{"a":"apple","b":"ball"}'
