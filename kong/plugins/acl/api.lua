@@ -79,7 +79,7 @@ return {
       local acls, err = dao_factory.acls:find_all(filter_keys)
       if err then
         return helpers.yield_error(err)
-      elseif next(acls) == nil then
+      elseif #acls == 0 then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
 
