@@ -62,6 +62,14 @@ local function get_usage(conf, api_id, identifier, current_timestamp, limits)
   return usage, stop
 end
 
+local function get_api_id(conf)
+  if conf.cross_api then
+    return "00000000-0000-0000-0000-000000000000"
+  else
+    return ngx.ctx.api.id
+  end
+end
+
 function RateLimitingHandler:new()
   RateLimitingHandler.super.new(self, "rate-limiting")
 end
@@ -72,7 +80,7 @@ function RateLimitingHandler:access(conf)
 
   -- Consumer is identified by ip address or authenticated_credential id
   local identifier = get_identifier(conf)
-  local api_id = ngx.ctx.api.id
+  local api_id = get_api_id(conf)
   local policy = conf.policy
   local fault_tolerant = conf.fault_tolerant
 
