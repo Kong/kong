@@ -33,6 +33,8 @@
     which contains the properties of the authenticated Consumer
     (`id`, `custom_id`, and `username`), if any.
     [#2367](https://github.com/Mashape/kong/pull/2367)
+- Serf commands are now logged with a `DEBUG` log level.
+  [#2410](https://github.com/Mashape/kong/pull/2410)
 
 ### Fixed
 
