@@ -711,10 +711,10 @@ describe("Plugin: hmac-auth (access)", function()
     it("should pass with GET with x-date malformed but date correct", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local encodedSignature = ngx.encode_base64(
-        hmac_sha1_binary("secret", "content-md5: md5"
+        hmac_sha1_binary("secret", "date: "..date.."\ncontent-md5: md5"
           .."\nGET /requests HTTP/1.1"))
       local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
-        ..[[  headers="content-md5 request-line",signature="]]
+        ..[[  headers="date content-md5 request-line",signature="]]
         ..encodedSignature..[["]]
       local res = assert(client:send {
         method = "GET",
@@ -754,7 +754,7 @@ describe("Plugin: hmac-auth (access)", function()
       assert.res_status(200, res)
     end)
 
-    it("should pass with x-date malformed and used for signature but skew test pass", function()
+    it("should not pass with x-date malformed and used for signature but skew test passes with date", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "x-date: ".."wrong date".."\n"
@@ -774,10 +774,12 @@ describe("Plugin: hmac-auth (access)", function()
           ["content-md5"] = "md5"
         }
       })
-      assert.res_status(200, res)
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature cannot be verified", body.message)
     end)
 
-    it("should pass with date malformed and used for signature but skew test pass", function()
+    it("should not pass with date malformed and used for signature but skew test passes with x-date", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local encodedSignature = ngx.encode_base64(
         hmac_sha1_binary("secret", "date: ".."wrong date".."\n"
@@ -797,7 +799,9 @@ describe("Plugin: hmac-auth (access)", function()
           ["content-md5"] = "md5"
         }
       })
-      assert.res_status(200, res)
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature cannot be verified", body.message)
     end)
 
     it("should pass with valid credentials and anonymous", function()
@@ -891,6 +895,31 @@ describe("Plugin: hmac-auth (access)", function()
       local body = assert.res_status(200, res)
     end)
 
+    it("should not pass with GET with date header missing from hmac-headers", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local encodedSignature = ngx.encode_base64(
+        hmac_sha1_binary("secret", "content-md5: md5"
+                .."\nGET /requests HTTP/1.1"))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[  headers="content-md5 request-line",signature="]]
+              ..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "GET",
+        path = "/requests",
+        body = {},
+        headers = {
+          ["HOST"] = "hmacauth.com",
+          ["x-date"] = "wrong date",
+          date = date,
+          authorization = hmacAuth,
+          ["content-md5"] = "md5"
+        }
+      })
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature cannot be verified", body.message)
+    end)
+
     it("should not pass with POST when body validation enabled and digest header missing", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local postBody = '{"a":"apple","b":"ball"}'
@@ -971,7 +1000,6 @@ describe("Plugin: hmac-auth (access)", function()
       assert.equal("HMAC signature cannot be verified, a valid Sha-256 digest header is required for HMAC Authentication", body.message)
     end)
 
-  
     it("should not pass with POST when body validation enabled and digest header is tampered", function()
       local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
       local postBody = '{"a":"apple","b":"ball"}'
