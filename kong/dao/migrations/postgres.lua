@@ -401,4 +401,54 @@ return {
     end,
     down = function(_, _, dao) end
   },
+  {
+    name = "2017-04-18-153000_unique_plugins_id",
+    up = function(_, _, dao)
+      local duplicates, err = dao.db:query([[
+        SELECT plugins.*
+        FROM plugins
+        JOIN (
+          SELECT id
+          FROM plugins
+          GROUP BY id
+          HAVING COUNT(1) > 1)
+        AS x
+        USING (id)
+        ORDER BY id, name;
+      ]])
+      if err then
+        return err
+      end
+
+      -- we didnt find any duplicates; we're golden!
+      if #duplicates == 0 then
+        return
+      end
+
+      -- print a human-readable output of all the plugins with conflicting ids
+      local t = {}
+      t[#t + 1] = "\n\nPlease correct the following duplicate plugin entries and re-run this migration:\n"
+      for i = 1, #duplicates do
+        local d = duplicates[i]
+        local p = {}
+        for k, v in pairs(d) do
+          p[#p + 1] = k .. ": " .. tostring(v)
+        end
+        t[#t + 1] = table.concat(p, "\n")
+        t[#t + 1] = "\n"
+      end
+
+      return table.concat(t, "\n")
+    end,
+    down = function(_, _, dao) return end
+  },
+  {
+    name = "2017-04-18-153000_unique_plugins_id_2",
+    up = [[
+      ALTER TABLE plugins ADD CONSTRAINT plugins_id_key UNIQUE(id);
+    ]],
+    down = [[
+      ALTER TABLE plugins DROP CONSTRAINT plugins_id_key;
+    ]],
+  },
 }
