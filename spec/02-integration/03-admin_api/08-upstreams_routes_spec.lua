@@ -37,7 +37,6 @@ dao_helpers.for_each_dao(function(kong_config)
 
 describe("Admin API", function()
   local client
-  local config_db
   local dao
 
   setup(function()
@@ -481,61 +480,49 @@ if content_type == "application/x-www-form-urlencoded" then return end
     end)
 
     describe("DELETE", function()
-      do
-        -- DELETE is currently broken when using cassandra
-        -- because the schema defines the primary key as {id, name}
-        -- but both postgres and cassandra schemas actually define
-        -- their PK with id. this causes failures because cassandra
-        -- tries to delete against a non PK column. see #2358
-        local test = it
-        if kong_config.database == "cassandra" then
-          test = pending
-        end
+      it("by id", function(content_type)
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my-upstream",
+              slots = 100,
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
 
-        test("by id", function(content_type)
-            local res = assert(client:send {
-              method = "POST",
-              path = "/upstreams",
-              body = {
-                name = "my-upstream",
-                slots = 100,
-              },
-              headers = { ["Content-Type"] = "application/json" }
-            })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
 
-            assert.response(res).has.status(201)
-            local json = assert.response(res).has.jsonbody()
+          res = assert(client:send {
+            method = "DELETE",
+            path = "/upstreams/" .. json.id,
+          })
 
-            res = assert(client:send {
-              method = "DELETE",
-              path = "/upstreams/" .. json.id,
-            })
+          assert.response(res).has.status(204)
+      end)
 
-            assert.response(res).has.status(204)
-        end)
+      it("by name", function(content_type)
+          local res = assert(client:send {
+            method = "POST",
+            path = "/upstreams",
+            body = {
+              name = "my-upstream",
+              slots = 100,
+            },
+            headers = { ["Content-Type"] = "application/json" }
+          })
 
-        test("by name", function(content_type)
-            local res = assert(client:send {
-              method = "POST",
-              path = "/upstreams",
-              body = {
-                name = "my-upstream",
-                slots = 100,
-              },
-              headers = { ["Content-Type"] = "application/json" }
-            })
+          assert.response(res).has.status(201)
+          local json = assert.response(res).has.jsonbody()
 
-            assert.response(res).has.status(201)
-            local json = assert.response(res).has.jsonbody()
+          res = assert(client:send {
+            method = "DELETE",
+            path = "/upstreams/" .. json.name,
+          })
 
-            res = assert(client:send {
-              method = "DELETE",
-              path = "/upstreams/" .. json.name,
-            })
-
-            assert.response(res).has.status(204)
-        end)
-      end
+          assert.response(res).has.status(204)
+      end)
     end)
 
     it("returns 405 on invalid method", function()

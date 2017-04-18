@@ -7,7 +7,7 @@ local SLOTS_MSG = "number of slots must be between "..SLOTS_MIN.." and "..SLOTS_
 
 return {
   table = "upstreams",
-  primary_key = {"id", "name"},
+  primary_key = {"id"},
   fields = {
     id = {
       type = "id", 
