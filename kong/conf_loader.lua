@@ -143,7 +143,12 @@ local function check_and_infer(conf)
     local typ = v_schema.typ
 
     if type(value) == "string" then
-      value = string.gsub(value, "#.-$", "") -- remove trailing comment if any
+
+      -- remove trailing comment, if any
+      -- and remove escape chars from octothorpes
+      value = string.gsub(value, "[^\\]#.-$", "")
+      value = string.gsub(value, "\\#", "#")
+
       value = pl_stringx.strip(value)
     end
 
