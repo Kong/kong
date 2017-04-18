@@ -51,7 +51,9 @@ describe("Plugin: acl (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"group":"group is required"}]], body)
+          assert.are.same({
+            group = "group is required"
+          }, cjson.decode(body))
         end)
       end)
     end)
@@ -84,7 +86,9 @@ describe("Plugin: acl (API)", function()
           }
         })
           local body = assert.res_status(400, res)
-          assert.equal([[{"group":"group is required"}]], body)
+          assert.are.same({
+            group = "group is required"
+          }, cjson.decode(body))
         end)
       end)
     end)
@@ -225,7 +229,9 @@ describe("Plugin: acl (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"group":"ACL group already exist for this consumer"}]], body)
+          assert.are.same({
+            group = "ACL group already exist for this consumer"
+          }, cjson.decode(body))
         end)
       end)
     end)
@@ -298,7 +304,10 @@ describe("Plugin: acl (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"consumer_id":"consumer_id is required","group":"group is required"}]], body)
+          assert.are.same({
+            consumer_id = "consumer_id is required",
+            group = "group is required"
+          }, cjson.decode(body))
         end)
       end)
     end)
@@ -331,7 +340,10 @@ describe("Plugin: acl (API)", function()
             }
           })
           local body = assert.res_status(400, res)
-          assert.equal([[{"consumer_id":"consumer_id is required","group":"group is required"}]], body)
+          assert.are.same({
+            consumer_id = "consumer_id is required",
+            group = "group is required"
+          }, cjson.decode(body))
         end)
       end)
     end)
@@ -414,7 +426,9 @@ describe("Plugin: acl (API)", function()
               }
             })
             local body = assert.res_status(400, res)
-            assert.equal([[{"group":"group is required"}]], body)
+            assert.are.same({
+              group = "group is required"
+            }, cjson.decode(body))
           end)
         end)
       end)

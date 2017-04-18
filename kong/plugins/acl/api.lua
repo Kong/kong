@@ -75,7 +75,6 @@ return {
         id = self.params.id,
         consumer_id = self.params.consumer_id,
       }
-      self.params.group_or_id = nil
 
       local acls, err = dao_factory.acls:find_all(filter_keys)
       if err then
