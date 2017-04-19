@@ -399,6 +399,11 @@
 # DNS RESOLVER
 #------------------------------------------------------------------------------
 
+# By default the DNS resolver will use the standard configuration files
+# `/etc/hosts` and `/etc/resolv.conf`. The settings in the latter file will be
+# overridden by the environment variables `LOCALDOMAIN` and `RES_OPTIONS` if
+# they have been set.
+
 #dns_resolver =                  # Comma separated list of nameservers, each
                                  # entry in `ipv4[:port]` format to be used by
                                  # Kong. If not specified the nameservers in
@@ -409,6 +414,17 @@
                                  # once and its content is static in memory.
                                  # To read the file again after modifying it,
                                  # Kong must be reloaded.
+
+#dns_order = LAST,SRV,A,CNAME    # the order in which to resolve different
+                                 # record types. The `LAST` type means the
+                                 # type of the last successful lookup (for the
+                                 # specified name). The format is a (case
+                                 # insensitive) comma separated list.
+
+#dns_not_found_ttl = 30.0        # ttl in seconds for empty DNS responses and
+                                 # "(3) name error" responses.
+
+#dns_error_ttl = 1.0             # ttl in seconds for error responses.
 
 #------------------------------------------------------------------------------
 # DEVELOPMENT & MISCELLANEOUS

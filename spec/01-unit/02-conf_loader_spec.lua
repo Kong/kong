@@ -294,6 +294,30 @@ describe("Configuration loader", function()
       assert.is_nil(err)
       assert.is_table(conf)
     end)
+    it("errors when the hosts file does not exist", function()
+      local tmpfile = "/a_file_that_does_not_exist"
+      local conf, err = conf_loader(nil, {
+        dns_hostsfile = tmpfile,
+      })
+      assert.equal([[dns_hostsfile: file does not exist]], err)
+      assert.is_nil(conf)
+    end)
+    it("accepts an existing hosts file", function()
+      local tmpfile = require("pl.path").tmpname()  -- this creates the file!
+      finally(function() os.remove(tmpfile) end)
+      local conf, err = conf_loader(nil, {
+        dns_hostsfile = tmpfile,
+      })
+      assert.is_nil(err)
+      assert.equal(tmpfile, conf.dns_hostsfile)
+    end)
+    it("errors on bad entries in the order list", function()
+      local conf, err = conf_loader(nil, {
+        dns_order = "A,CXAME,SRV",
+      })
+      assert.is_nil(conf)
+      assert.equal([[dns_order: invalid entry 'CXAME']], err)
+    end)
     it("errors when hosts have a bad format in cassandra_contact_points", function()
       local conf, err = conf_loader(nil, {
           cassandra_contact_points = [[some/really\bad/host\name,addr2]]
