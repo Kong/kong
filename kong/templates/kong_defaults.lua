@@ -69,6 +69,9 @@ cluster_ttl_on_failure = 3600
 
 dns_resolver = NONE
 dns_hostsfile = /etc/hosts
+dns_order = LAST,SRV,A,CNAME
+dns_not_found_ttl = 30.0
+dns_error_ttl = 1.0
 
 lua_code_cache = on
 lua_socket_pool_size = 30

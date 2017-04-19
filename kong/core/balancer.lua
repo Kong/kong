@@ -299,7 +299,7 @@ local function execute(target)
   -- have to do a regular DNS lookup
   local ip, port = toip(target.host, target.port, dns_cache_only)
   if not ip then
-    if port == "dns server error; 3 name error" then
+    if port == "dns server error: 3 name error" then
       -- in this case a "503 service unavailable", others will be a 500.
       log(ERROR, "name resolution failed for '", tostring(target.host),
                  "': ", port)

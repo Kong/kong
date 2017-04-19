@@ -99,6 +99,10 @@ local CONF_INFERENCES = {
   cluster_ttl_on_failure = {typ = "number"},
 
   dns_resolver = {typ = "array"},
+  dns_hostsfile = {typ = "string"},
+  dns_order = {typ = "array"},
+  dns_not_found_ttl = {typ = "number"},
+  dns_error_ttl = {typ = "number"},
 
   ssl = {typ = "boolean"},
   client_ssl = {typ = "boolean"},
@@ -278,6 +282,21 @@ local function check_and_infer(conf)
       if (not dns) or (dns.type ~= "ipv4") then
         errors[#errors+1] = "dns_resolver must be a comma separated list in "..
                             "the form of IPv4 or IPv4:port, got '"..server.."'"
+      end
+    end
+  end
+
+  if conf.dns_hostsfile then
+    if not pl_path.isfile(conf.dns_hostsfile) then
+      errors[#errors+1] = "dns_hostsfile: file does not exist"
+    end
+  end
+
+  if conf.dns_order then
+    local allowed = { LAST = true, A = true, CNAME = true, SRV = true }
+    for _, name in ipairs(conf.dns_order) do
+      if not allowed[name:upper()] then
+        errors[#errors+1] = "dns_order: invalid entry '" .. tostring(name) .. "'"
       end
     end
   end
