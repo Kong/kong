@@ -13,6 +13,8 @@ local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_log = ngx.log
+local req_read_body = ngx.req.read_body
+local req_get_body_data = ngx.req.get_body_data
 
 local split = utils.split
 
@@ -20,6 +22,7 @@ local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 local DATE = "date"
 local X_DATE = "x-date"
+local DIGEST = "digest"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 
 local _M = {}
@@ -27,7 +30,7 @@ local _M = {}
 local function retrieve_hmac_fields(request, headers, header_name, conf)
   local hmac_params = {}
   local authorization_header = headers[header_name]
-  -- parse the header to retrieve hamc parameters
+  -- parse the header to retrieve hmac parameters
   if authorization_header then
     local iterator, iter_err = ngx_gmatch(authorization_header, "\\s*[Hh]mac\\s*username=\"(.+)\",\\s*algorithm=\"(.+)\",\\s*headers=\"(.+)\",\\s*signature=\"(.+)\"")
     if not iterator then
@@ -172,6 +175,22 @@ local function set_consumer(consumer, credential)
   
 end
 
+local function mandatory_hmac_params_missing(conf, date_header_used_in_clock_skew, hmac_params, has_body)
+  if not (hmac_params and hmac_params.username and hmac_params.signature) then
+    return true
+  end
+
+  if not utils.table_contains(hmac_params.hmac_headers, date_header_used_in_clock_skew) then
+    return true
+  end
+
+  if has_body and conf.validate_request_body and not utils.table_contains(hmac_params.hmac_headers, DIGEST) then
+    return true
+  end
+
+  return false
+end
+
 local function do_authentication(conf)
   local headers = ngx_get_headers()
   -- If both headers are missing, return 401
@@ -180,7 +199,12 @@ local function do_authentication(conf)
   end
 
   -- validate clock skew
-  if not (validate_clock_skew(headers, X_DATE, conf.clock_skew) or validate_clock_skew(headers, DATE, conf.clock_skew)) then
+  local date_header_used_in_skew_test = ''
+  if validate_clock_skew(headers, X_DATE, conf.clock_skew) then
+    date_header_used_in_skew_test = X_DATE
+  elseif validate_clock_skew(headers, DATE, conf.clock_skew) then
+    date_header_used_in_skew_test = DATE
+  else
     return false, {status = 403, message = "HMAC signature cannot be verified, a valid date or x-date header is required for HMAC Authentication"}
   end
 
@@ -190,7 +214,13 @@ local function do_authentication(conf)
   if not hmac_params.username then
     hmac_params = retrieve_hmac_fields(ngx.req, headers, AUTHORIZATION, conf)
   end
-  if not (hmac_params.username and hmac_params.signature) then
+
+  -- retrieve request body
+  req_read_body()
+  local body = req_get_body_data()
+  local has_body = body == nil
+
+  if mandatory_hmac_params_missing(conf, date_header_used_in_skew_test, hmac_params, has_body) then
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
   end
 
