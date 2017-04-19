@@ -3,16 +3,20 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local resty_sha256 = require "resty.sha256"
 
 local math_abs = math.abs
 local ngx_time = ngx.time
 local ngx_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 local ngx_parse_time = ngx.parse_http_time
 local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_log = ngx.log
+local req_read_body = ngx.req.read_body
+local req_get_body_data = ngx.req.get_body_data
 
 local split = utils.split
 
@@ -20,7 +24,9 @@ local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 local DATE = "date"
 local X_DATE = "x-date"
+local DIGEST = "digest"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
+local SIGNATURE_NOT_SAME = "HMAC signature does not match"
 
 local _M = {}
 
@@ -83,10 +89,10 @@ local function create_hash(request, hmac_params, headers)
 end
 
 local function validate_signature(request, hmac_params, headers)
-  local digest = create_hash(request, hmac_params, headers)
-  local sig = ngx_decode_base64(hmac_params.signature)
+  local signature_1 = create_hash(request, hmac_params, headers)
+  local signature_2 = ngx_decode_base64(hmac_params.signature)
 
-  return digest == sig
+  return signature_1 == signature_2
 end
 
 local function load_credential_into_memory(username)
@@ -129,6 +135,26 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
   return true
 end
 
+local function validate_body(digest_recieved)
+  -- client doesnt want body validation
+  if not digest_recieved then
+    return true
+  end
+
+  req_read_body()
+  local body = req_get_body_data()
+  -- request must have body as client sent a digest header
+  if not body then
+    return false
+  end
+
+  local sha256 = resty_sha256:new()
+  sha256:update(body)
+  local digest_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
+
+  return digest_created == digest_recieved
+end
+
 local function load_consumer_into_memory(consumer_id, anonymous)
   local result, err = singletons.dao.consumers:find { id = consumer_id }
   if not result then
@@ -152,7 +178,7 @@ local function set_consumer(consumer, credential)
   else
     ngx_set_header(constants.HEADERS.ANONYMOUS, true)
   end
-  
+
 end
 
 local function do_authentication(conf)
@@ -184,7 +210,12 @@ local function do_authentication(conf)
   end
   hmac_params.secret = credential.secret
   if not validate_signature(ngx.req, hmac_params, headers) then
-    return false, {status = 403, message = "HMAC signature does not match"}
+    return false, { status = 403, message = SIGNATURE_NOT_SAME }
+  end
+
+  -- If request body validation is enabled, then verify digest.
+  if conf.validate_request_body and not validate_body(headers[DIGEST]) then
+    return false, { status = 403, message = SIGNATURE_NOT_SAME }
   end
 
   -- Retrieve consumer
@@ -203,7 +234,7 @@ end
 function _M.execute(conf)
 
   if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
-    -- we're already authenticated, and we're configured for using anonymous, 
+    -- we're already authenticated, and we're configured for using anonymous,
     -- hence we're in a logical OR between auth methods and we're already done.
     return
   end

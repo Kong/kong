@@ -2,6 +2,7 @@ local cjson = require "cjson"
 local crypto = require "crypto"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
+local resty_sha256 = require "resty.sha256"
 
 local hmac_sha1_binary = function(secret, data)
   return crypto.hmac.digest("sha1", data, secret, true)
@@ -64,6 +65,20 @@ describe("Plugin: hmac-auth (access)", function()
       config = {
         anonymous = utils.uuid(),  -- non existing consumer
         clock_skew = 3000
+      }
+    })
+
+    local api4 = assert(helpers.dao.apis:insert {
+      name = "api-4",
+      hosts = { "hmacauth4.com" },
+      upstream_url = "http://mockbin.com"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "hmac-auth",
+      api_id = api4.id,
+      config = {
+        clock_skew = 3000,
+        validate_request_body = true
       }
     })
 
@@ -847,6 +862,155 @@ describe("Plugin: hmac-auth (access)", function()
       })
       assert.response(res).has.status(500)
     end)
+
+    it("should pass with GET when body validation enabled", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local encodedSignature   = ngx.encode_base64(hmac_sha1_binary("secret", "date: "..date))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[headers="date",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "GET",
+        path = "/requests",
+        body = {},
+        headers = {
+          ["HOST"] = "hmacauth4.com",
+          date = date,
+          authorization = hmacAuth
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("should pass with POST when body validation enabled and digest header present", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local postBody = '{"a":"apple","b":"ball"}'
+      local sha256 = resty_sha256:new()
+      sha256:update(postBody)
+      local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
+
+      local encodedSignature   = ngx.encode_base64(
+        hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/requests",
+        body = postBody,
+        headers = {
+          ["HOST"] = "hmacauth4.com",
+          date = date,
+          digest = digest,
+          authorization = hmacAuth
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("should pass with POST when body validation enabled but digest header not used", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local postBody = '{"a":"apple","b":"ball"}'
+      local sha256 = resty_sha256:new()
+      sha256:update(postBody)
+      local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
+
+      local encodedSignature   = ngx.encode_base64(
+        hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/requests",
+        body = postBody,
+        headers = {
+          ["HOST"] = "hmacauth4.com",
+          date = date,
+          digest = digest,
+          authorization = hmacAuth
+        }
+      })
+      assert.res_status(200, res)
+    end)
+
+    it("should not pass with POST when body validation enabled and digest header missing", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local postBody = '{"a":"apple","b":"ball"}'
+      local sha256 = resty_sha256:new()
+      sha256:update(postBody)
+      local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
+
+      local encodedSignature   = ngx.encode_base64(
+        hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/requests",
+        body = postBody,
+        headers = {
+          ["HOST"] = "hmacauth4.com",
+          date = date,
+          authorization = hmacAuth,
+        }
+      })
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature does not match", body.message)
+    end)
+
+    it("should not pass with POST when body validation enabled and postBody is tampered", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local postBody = '{"a":"apple","b":"ball"}'
+      local sha256 = resty_sha256:new()
+      sha256:update(postBody)
+      local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
+
+      local encodedSignature   = ngx.encode_base64(
+        hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/requests",
+        body = "abc",
+        headers = {
+          ["HOST"] = "hmacauth4.com",
+          date = date,
+          digest = digest,
+          authorization = hmacAuth
+        }
+      })
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature does not match", body.message)
+    end)
+
+    it("should not pass with POST when body validation enabled and digest header is tampered", function()
+      local date = os.date("!%a, %d %b %Y %H:%M:%S GMT")
+      local postBody = '{"a":"apple","b":"ball"}'
+      local sha256 = resty_sha256:new()
+      sha256:update(postBody)
+      local digest = "SHA-256=" .. ngx.encode_base64(sha256:final())
+
+      local encodedSignature   = ngx.encode_base64(
+        hmac_sha1_binary("secret", "date: "..date.."\n".."digest: "..digest))
+      local hmacAuth = [["hmac username="bob",algorithm="hmac-sha1",]]
+              ..[[headers="date digest",signature="]]..encodedSignature..[["]]
+      local res = assert(client:send {
+        method = "POST",
+        path = "/requests",
+        body = postBody,
+        headers = {
+          ["HOST"] = "hmacauth4.com",
+          date = date,
+          digest = digest .. "spoofed",
+          authorization = hmacAuth
+        }
+      })
+      local body = assert.res_status(403, res)
+      body = cjson.decode(body)
+      assert.equal("HMAC signature does not match", body.message)
+    end)
+
   end)
 end)
 
