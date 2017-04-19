@@ -213,12 +213,41 @@ function _M:close_coordinator()
   return true
 end
 
-function _M:wait_for_schema_consensus()
+function _M:check_schema_consensus()
+  local close_coordinator
+
+  if not coordinator then
+    close_coordinator = true
+
+    local peer, err = self:first_coordinator()
+    if not peer then
+      return nil, "could not retrieve coordinator: " .. err
+    end
+
+    -- coordinator = peer -- done by first_coordinator()
+  end
+
+  local ok, err = self.cluster.check_schema_consensus(coordinator)
+
+  if close_coordinator then
+    -- ignore errors
+    self:close_coordinator()
+  end
+
+  if err then
+    return nil, err
+  end
+
+  return ok
+end
+
+-- timeout is optional, defaults to `max_schema_consensus_wait` setting
+function _M:wait_for_schema_consensus(timeout)
   if not coordinator then
     return nil, "no coordinator"
   end
 
-  return self.cluster:wait_schema_consensus(coordinator)
+  return self.cluster:wait_schema_consensus(coordinator, timeout)
 end
 
 function _M:query(query, args, options, schema, no_keyspace)
