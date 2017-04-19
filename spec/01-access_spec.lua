@@ -49,6 +49,17 @@ describe("Plugin: basic-auth (access)", function()
     assert(helpers.dao.consumers:insert {
       username = "bob"
     })
+    local consumer = assert(helpers.dao.consumers:insert {
+      username = "limited-bob"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "rate-limiting",
+      api_id = api1.id,
+      consumer_id = consumer.id,
+      config = {
+        minute = 8,
+      }
+    })
 
     assert(helpers.start_kong({
       custom_plugins = "introspection-endpoint",
@@ -186,6 +197,22 @@ describe("Plugin: basic-auth (access)", function()
         local body = cjson.decode(assert.res_status(200, res))
         assert.equal("bob", body.headers["x-consumer-username"])
         assert.is_string(body.headers["x-consumer-id"])
+        assert.is_nil(res.headers["x-ratelimit-limit-minute"])
+      end)
+      it("invokes other consumer-specific plugins", function()
+        local res = assert(client:send {
+          method = "GET",
+          path = "/request?access_token=valid_consumer_limited",
+          headers = {
+            ["Host"] = "introspection.com"
+          }
+        })
+
+        local body = cjson.decode(assert.res_status(200, res))
+        assert.equal("limited-bob", body.headers["x-consumer-username"])
+        assert.is_string(body.headers["x-consumer-id"])
+        assert.are.same(8, tonumber(res.headers["x-ratelimit-limit-minute"]))
+        assert.are.same(7, tonumber(res.headers["x-ratelimit-remaining-minute"]))
       end)
     end)
 
