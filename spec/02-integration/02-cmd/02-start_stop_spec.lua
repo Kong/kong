@@ -100,7 +100,7 @@ describe("kong start/stop", function()
 
   describe("/etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
-      assert(helpers.kong_exec("start --vv --conf " .. helpers.test_conf_path, {
+      assert(helpers.kong_exec("start --vv --run-migrations --conf " .. helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
@@ -110,6 +110,36 @@ describe("kong start/stop", function()
         pg_host = "localhost",
         database = "postgres"
       }))
+    end)
+  end)
+
+  describe("--run-migrations", function()
+    before_each(function()
+      helpers.dao:drop_schema()
+    end)
+    after_each(function()
+      helpers.dao:drop_schema()
+      helpers.dao:run_migrations()
+    end)
+
+    describe("errors", function()
+      it("does not start with an empty datastore", function()
+        local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
+        assert.False(ok)
+        assert.matches("the current database schema does not match this version of Kong.", stderr)
+      end)
+      it("does not start if migrations are not up to date", function()
+        helpers.dao:run_migrations()
+        -- Delete a migration to simulate inconsistencies between version
+        local _, err = helpers.dao.db:query([[
+          DELETE FROM schema_migrations WHERE id='rate-limiting'
+        ]])
+        assert.is_nil(err)
+
+        local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
+        assert.False(ok)
+        assert.matches("the current database schema does not match this version of Kong.", stderr)
+      end)
     end)
   end)
 
