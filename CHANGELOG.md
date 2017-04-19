@@ -10,6 +10,11 @@
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
+  - Endpoints with parameters `xxx_or_id` will now also yield the proper
+    result if the `xxx` field is formatted as a uuid. Most notably this fixes
+    a problem with consumers (where the username is a uuid) not being found,
+    but also other endpoints suffering from the same flaw have also been fixed.
+    [#2420](https://github.com/Mashape/kong/pull/2420)
 - Plugins:
   - key-auth: Allow setting API key header names with an underscore.
     [#2370](https://github.com/Mashape/kong/pull/2370)
