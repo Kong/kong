@@ -21,5 +21,6 @@ return {
     hide_credentials = { type = "boolean", default = false },
     clock_skew = { type = "number", default = 300, func = check_clock_skew_positive },
     anonymous = {type = "string", default = "", func = check_user},
+    validate_request_body = { type = "boolean", default = false },
   }
 }

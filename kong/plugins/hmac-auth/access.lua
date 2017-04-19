@@ -3,16 +3,20 @@ local cache = require "kong.tools.database_cache"
 local responses = require "kong.tools.responses"
 local constants = require "kong.constants"
 local singletons = require "kong.singletons"
+local resty_sha256 = require "resty.sha256"
 
 local math_abs = math.abs
 local ngx_time = ngx.time
 local ngx_gmatch = ngx.re.gmatch
 local ngx_decode_base64 = ngx.decode_base64
+local ngx_encode_base64 = ngx.encode_base64
 local ngx_parse_time = ngx.parse_http_time
 local ngx_sha1 = ngx.hmac_sha1
 local ngx_set_header = ngx.req.set_header
 local ngx_get_headers = ngx.req.get_headers
 local ngx_log = ngx.log
+local req_read_body = ngx.req.read_body
+local req_get_body_data = ngx.req.get_body_data
 
 local split = utils.split
 
@@ -20,6 +24,7 @@ local AUTHORIZATION = "authorization"
 local PROXY_AUTHORIZATION = "proxy-authorization"
 local DATE = "date"
 local X_DATE = "x-date"
+local DIGEST = "digest"
 local SIGNATURE_NOT_VALID = "HMAC signature cannot be verified"
 
 local _M = {}
@@ -83,10 +88,10 @@ local function create_hash(request, hmac_params, headers)
 end
 
 local function validate_signature(request, hmac_params, headers)
-  local digest = create_hash(request, hmac_params, headers)
-  local sig = ngx_decode_base64(hmac_params.signature)
+  local signature_1 = create_hash(request, hmac_params, headers)
+  local signature_2 = ngx_decode_base64(hmac_params.signature)
 
-  return digest == sig
+  return signature_1 == signature_2
 end
 
 local function load_credential_into_memory(username)
@@ -127,6 +132,22 @@ local function validate_clock_skew(headers, date_header_name, allowed_clock_skew
     return false
   end
   return true
+end
+
+local function validate_request_body(headers, body)
+  local sha_recieved = headers[DIGEST]
+
+  if body == nil then
+    return true
+  elseif sha_recieved == nil then
+    return false
+  end
+
+  local sha256 = resty_sha256:new()
+  sha256:update(body)
+  local sha_created = "SHA-256=" .. ngx_encode_base64(sha256:final())
+
+  return sha_created == sha_recieved
 end
 
 local function load_consumer_into_memory(consumer_id, anonymous)
@@ -175,6 +196,16 @@ local function do_authentication(conf)
   end
   if not (hmac_params.username and hmac_params.signature) then
     return false, {status = 403, message = SIGNATURE_NOT_VALID}
+  end
+
+  -- If request body validation is enabled, then verify hash of request body.
+  if conf.validate_request_body then
+    -- retrieve request body
+    req_read_body()
+    local body = req_get_body_data()
+    if not validate_request_body(headers, body) then
+      return false, {status = 403, message = "HMAC signature cannot be verified, a valid Sha-256 digest header is required for HMAC Authentication"}
+    end
   end
 
   -- validate signature
