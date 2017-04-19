@@ -2,6 +2,14 @@
 
 ### Changed
 
+- :warning: Automatic database migrations have been disabled. Previously
+  database migrations would be executed automatically on `kong start` or
+  `kong restart`. Now they need to be **explicitly** executed **before** Kong is
+  started with `kong migrations up`. You can still use the old behavior by
+  adding the optional `--run-migrations` argument to `kong start` or 
+  `kong restart`, which will automatically runs the migrations before starting
+  the process.
+  [#2421](https://github.com/Mashape/kong/pull/2421)
 - :warning: Previously, the `X-Forwarded-*` and `X-Real-IP` were trusted from
   any client by default, and forwarded upstream. With the introduction of the
   new `trusted_ips` property (see the below "Added" section), and to enforce

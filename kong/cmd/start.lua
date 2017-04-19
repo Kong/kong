@@ -18,7 +18,10 @@ local function execute(args)
   local dao = assert(DAOFactory.new(conf))
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
-    assert(dao:run_migrations())
+    if args.run_migrations then
+      assert(dao:run_migrations())
+    end
+    assert(dao:are_migrations_uptodate())
     assert(serf_signals.start(conf, dao))
     assert(nginx_signals.start(conf))
     log("Kong started")
@@ -42,9 +45,10 @@ Start Kong (Nginx and other configured services) in the configured
 prefix directory.
 
 Options:
- -c,--conf    (optional string) configuration file
- -p,--prefix  (optional string) override prefix directory
- --nginx-conf (optional string) custom Nginx configuration template
+ -c,--conf        (optional string)   configuration file
+ -p,--prefix      (optional string)   override prefix directory
+ --nginx-conf     (optional string)   custom Nginx configuration template
+ --run-migrations (optional boolean)  optionally run migrations on the DB 
 ]]
 
 return {

@@ -103,16 +103,37 @@ describe("kong start/stop", function()
 
   describe("/etc/hosts resolving in CLI", function()
     it("resolves #cassandra hostname", function()
-      assert(helpers.kong_exec("start --vv --conf "..helpers.test_conf_path, {
+      assert(helpers.kong_exec("start --run-migrations --vv --conf "..helpers.test_conf_path, {
         cassandra_contact_points = "localhost",
         database = "cassandra"
       }))
     end)
     it("resolves #postgres hostname", function()
-      assert(helpers.kong_exec("start --conf "..helpers.test_conf_path, {
+      assert(helpers.kong_exec("start --run-migrations --conf "..helpers.test_conf_path, {
         pg_host = "localhost",
         database = "postgres"
       }))
+    end)
+  end)
+
+  describe("--run-migrations", function()
+    before_each(function()
+      helpers.dao:drop_schema()
+    end)
+    after_each(function()
+      helpers.dao:run_migrations()
+    end)
+
+    it("automatically migrates database", function()
+      assert(helpers.kong_exec("start --run-migrations --conf "..helpers.test_conf_path))
+    end)
+
+    describe("errors", function()
+      it("does not start if migrations are not up to date", function()
+        local ok, stderr  = helpers.kong_exec("start --conf "..helpers.test_conf_path)
+        assert.False(ok)
+        assert.matches("migrations are not up to date", stderr)
+      end)
     end)
   end)
 
