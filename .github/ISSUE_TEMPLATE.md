@@ -1,3 +1,8 @@
+*Note: GitHub issues should be reserved only for bug reports. Please use the
+[Kong mailing list](https://groups.google.com/forum/#!forum/konglayer) or
+[Gitter](https://gitter.im/Mashape/kong) for user support, development
+questions, feature requests, etc.*
+
 ### Summary
 
 SUMMARY_GOES_HERE
