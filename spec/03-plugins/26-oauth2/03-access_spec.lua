@@ -2,6 +2,56 @@ local cjson = require "cjson"
 local helpers = require "spec.helpers"
 local utils = require "kong.tools.utils"
 
+local function provision_code(host, extra_headers)
+  local request_client = helpers.proxy_ssl_client()
+  local res = assert(request_client:send {
+    method = "POST",
+    path = "/oauth2/authorize",
+    body = {
+      provision_key = "provision123",
+      client_id = "clientid123",
+      scope = "email",
+      response_type = "code",
+      state = "hello",
+      authenticated_userid = "userid123"
+    },
+    headers = utils.table_merge({
+      ["Host"] = host or "oauth2.com",
+      ["Content-Type"] = "application/json"
+    }, extra_headers)
+  })
+  assert.response(res).has.status(200)
+  local body = assert.response(res).has.jsonbody()
+  request_client:close()
+  if body.redirect_uri then
+    local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
+    assert.is_nil(err)
+    local m, err = iterator()
+    assert.is_nil(err)
+    return m[1]
+  end
+end
+
+local function provision_token(host, extra_headers)
+  local code = provision_code(host, extra_headers)
+  local request_client = helpers.proxy_ssl_client()
+  local res = assert(request_client:send {
+    method = "POST",
+    path = "/oauth2/token",
+    body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
+    headers = utils.table_merge({
+      ["Host"] = host or "oauth2.com",
+      ["Content-Type"] = "application/json"
+    }, extra_headers)
+  })
+  assert.response(res).has.status(200)
+  local token = assert.response(res).has.jsonbody()
+  assert.is_table(token)
+  request_client:close()
+  return token
+end
+
+
 describe("#ci Plugin: oauth2 (access)", function()
   local proxy_ssl_client, proxy_client
   local client1
@@ -251,55 +301,6 @@ describe("#ci Plugin: oauth2 (access)", function()
     end
     helpers.stop_kong()
   end)
-
-  local function provision_code(host)
-    local request_client = helpers.proxy_ssl_client()
-    local res = assert(request_client:send {
-      method = "POST",
-      path = "/oauth2/authorize",
-      body = {
-        provision_key = "provision123",
-        client_id = "clientid123",
-        scope = "email",
-        response_type = "code",
-        state = "hello",
-        authenticated_userid = "userid123"
-      },
-      headers = {
-        ["Host"] = host and host or "oauth2.com",
-        ["Content-Type"] = "application/json"
-      }
-    })
-    assert.response(res).has.status(200)
-    local body = assert.response(res).has.jsonbody()
-    request_client:close()
-    if body.redirect_uri then
-      local iterator, err = ngx.re.gmatch(body.redirect_uri, "^http://google\\.com/kong\\?code=([\\w]{32,32})&state=hello$")
-      assert.is_nil(err)
-      local m, err = iterator()
-      assert.is_nil(err)
-      return m[1]
-    end
-  end
-
-  local function provision_token(host)
-    local code = provision_code(host)
-    local request_client = helpers.proxy_ssl_client()
-    local res = assert(request_client:send {
-      method = "POST",
-      path = "/oauth2/token",
-      body = { code = code, client_id = "clientid123", client_secret = "secret123", grant_type = "authorization_code" },
-      headers = {
-        ["Host"] = host and host or "oauth2.com",
-        ["Content-Type"] = "application/json"
-      }
-    })
-    assert.response(res).has.status(200)
-    local token = assert.response(res).has.jsonbody()
-    assert.is_table(token)
-    request_client:close()
-    return token
-  end
 
   describe("OAuth2 Authorization", function()
     describe("Code Grant", function()
@@ -2044,4 +2045,226 @@ describe("#ci Plugin: oauth2 (access)", function()
       assert.res_status(200, res)
     end)
   end)
+end)
+
+
+describe("#ci Plugin: oauth2 (access)", function()
+
+  local client, user1, user2, anonymous
+
+  setup(function()
+    local api1 = assert(helpers.dao.apis:insert {
+      name = "api-1",
+      hosts = { "logical-and.com" },
+      upstream_url = "http://mockbin.org/request"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api1.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = false,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api1.id
+    })
+
+    anonymous = assert(helpers.dao.consumers:insert {
+      username = "Anonymous"
+    })
+    user1 = assert(helpers.dao.consumers:insert {
+      username = "Mickey"
+    })
+    user2 = assert(helpers.dao.consumers:insert {
+      username = "Aladdin"
+    })
+
+    local api2 = assert(helpers.dao.apis:insert {
+      name = "api-2",
+      hosts = { "logical-or.com" },
+      upstream_url = "http://mockbin.org/request"
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "oauth2",
+      api_id = api2.id,
+      config = {
+        scopes = { "email", "profile", "user.email" },
+        enable_authorization_code = true,
+        mandatory_scope = true,
+        provision_key = "provision123",
+        token_expiration = 5,
+        enable_implicit_grant = true,
+        global_credentials = false,
+        anonymous = anonymous.id,
+      }
+    })
+    assert(helpers.dao.plugins:insert {
+      name = "key-auth",
+      api_id = api2.id,
+      config = {
+        anonymous = anonymous.id
+      }
+    })
+
+    assert(helpers.dao.keyauth_credentials:insert {
+      key = "Mouse",
+      consumer_id = user1.id
+    })
+
+    assert(helpers.dao.oauth2_credentials:insert {
+      client_id = "clientid123",
+      client_secret = "secret123",
+      redirect_uri = "http://google.com/kong",
+      name = "testapp",
+      consumer_id = user2.id
+    })
+
+    assert(helpers.start_kong())
+    client = helpers.proxy_client()
+  end)
+
+
+  teardown(function()
+    if client then client:close() end
+    helpers.stop_kong()
+  end)
+
+  describe("multiple auth without anonymous, logical AND", function()
+
+    it("passes with all credentials provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["apikey"] = "Mouse",
+          -- we must provide the apikey again in the extra_headers, for the
+          -- token endpoint, because that endpoint is also protected by the
+          -- key-auth plugin. Otherwise getting the token simply fails.
+          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+            {["apikey"] = "Mouse"}).access_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert(id == user1.id or id == user2.id)
+    end)
+
+    it("fails 401, with only the first credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          ["apikey"] = "Mouse",
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+    it("fails 401, with only the second credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+          -- we must provide the apikey again in the extra_headers, for the
+          -- token endpoint, because that endpoint is also protected by the
+          -- key-auth plugin. Otherwise getting the token simply fails.
+          ["Authorization"] = "bearer "..provision_token("logical-and.com",
+            {["apikey"] = "Mouse"}).access_token,
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+    it("fails 401, with no credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-and.com",
+        }
+      })
+      assert.response(res).has.status(401)
+    end)
+
+  end)
+
+  describe("multiple auth with anonymous, logical OR", function()
+
+    it("passes with all credentials provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["apikey"] = "Mouse",
+          ["Authorization"] = "bearer "..provision_token("logical-or.com").access_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert(id == user1.id or id == user2.id)
+    end)
+
+    it("passes with only the first credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["apikey"] = "Mouse",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert.equal(user1.id, id)
+    end)
+
+    it("passes with only the second credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+          ["Authorization"] = "bearer "..provision_token("logical-or.com").access_token,
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.no.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.not_equal(id, anonymous.id)
+      assert.equal(user2.id, id)
+    end)
+
+    it("passes with no credential provided", function()
+      local res = assert(client:send {
+        method = "GET",
+        path = "/request",
+        headers = {
+          ["Host"] = "logical-or.com",
+        }
+      })
+      assert.response(res).has.status(200)
+      assert.request(res).has.header("x-anonymous-consumer")
+      local id = assert.request(res).has.header("x-consumer-id")
+      assert.equal(id, anonymous.id)
+    end)
+
+  end)
+
 end)
