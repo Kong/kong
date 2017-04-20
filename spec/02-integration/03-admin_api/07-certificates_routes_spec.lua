@@ -298,8 +298,9 @@ describe("Admin API", function()
           })
 
           local body = assert.res_status(404, res)
-          assert.equal([[{"ssl_certificate_id":"does not exist with value ]]
-                    .. [['585e4c16-c656-11e6-8db9-5f512d8a12cd'"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ ssl_certificate_id = "does not exist with value "
+                    .. "'585e4c16-c656-11e6-8db9-5f512d8a12cd'" }, json)
         end)
       end)
 

@@ -85,7 +85,8 @@ describe("Plugin: jwt (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"message":"No mandatory 'iss' in claims"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "No mandatory 'iss' in claims" }, json)
     end)
     it("returns 403 Forbidden if the iss does not match a credential", function()
       PAYLOAD.iss = "123456789"
@@ -100,7 +101,8 @@ describe("Plugin: jwt (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"No credentials found for given 'iss'"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "No credentials found for given 'iss'" }, json)
     end)
     it("returns 403 Forbidden if the signature is invalid", function()
       PAYLOAD.iss = jwt_secret.key
@@ -115,7 +117,8 @@ describe("Plugin: jwt (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid signature"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid signature" }, json)
     end)
     it("returns 403 Forbidden if the alg does not match the credential", function()
       local header = {typ = "JWT", alg = 'RS256'}
@@ -130,7 +133,8 @@ describe("Plugin: jwt (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid algorithm"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid algorithm" }, json)
     end)
   end)
 

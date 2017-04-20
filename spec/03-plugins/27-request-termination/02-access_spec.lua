@@ -107,7 +107,8 @@ describe("Plugin: request-termination (access)", function()
         }
       })
       local body = assert.res_status(503, res)
-      assert.equal([[{"message":"Service unavailable"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Service unavailable" }, json)
     end)
     
     it("status code with default message", function()
@@ -119,7 +120,8 @@ describe("Plugin: request-termination (access)", function()
         }
       })
       local body = assert.res_status(404, res)
-      assert.equal([[{"message":"Not found"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Not found" }, json)
     end)
     
     it("status code with custom message", function()
@@ -131,7 +133,8 @@ describe("Plugin: request-termination (access)", function()
         }
       })
       local body = assert.res_status(406, res)
-      assert.equal([[{"message":"Invalid"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid" }, json)
     end)
 
   end)
@@ -170,7 +173,8 @@ describe("Plugin: request-termination (access)", function()
         }
       })
       local body = assert.res_status(503, res)
-      assert.equal([[{"code": 1, "message": "Service unavailable"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ code = 1, message = "Service unavailable" }, json)
     end)
 
   end)

@@ -85,7 +85,8 @@ describe("Plugin: key-auth (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"message":"No API key found in headers or querystring"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "No API key found in headers or querystring" }, json)
     end)
     it("returns WWW-Authenticate header on missing credentials", function()
       local res = assert(client:send {
@@ -120,7 +121,8 @@ describe("Plugin: key-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
     it("handles duplicated key in querystring", function()
       local res = assert(client:send {
@@ -131,7 +133,8 @@ describe("Plugin: key-auth (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"message":"Duplicate API key found"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Duplicate API key found" }, json)
     end)
   end)
 
@@ -157,7 +160,8 @@ describe("Plugin: key-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
   end)
 

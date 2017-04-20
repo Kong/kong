@@ -96,7 +96,8 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       local body = assert.res_status(401, res)
-      assert.equal([[{"message":"Unauthorized"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Unauthorized" }, json)
     end)
 
     it("returns WWW-Authenticate header on missing credentials", function()
@@ -126,7 +127,8 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
 
     it("returns 403 Forbidden on invalid credentials in Proxy-Authorization", function()
@@ -139,7 +141,8 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
 
     it("returns 403 Forbidden on password only", function()
@@ -152,7 +155,8 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
 
     it("returns 403 Forbidden on username only", function()
@@ -165,7 +169,8 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
 
     it("authenticates valid credentials in Authorization", function()
@@ -203,7 +208,8 @@ describe("Plugin: basic-auth (access)", function()
         }
       })
       local body = assert.res_status(403, res)
-      assert.equal([[{"message":"Invalid authentication credentials"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Invalid authentication credentials" }, json)
     end)
 
     it("authenticates valid credentials in Proxy-Authorization", function()

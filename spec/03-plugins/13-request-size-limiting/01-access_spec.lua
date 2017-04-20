@@ -1,4 +1,5 @@
 local helpers = require "spec.helpers"
+local cjson = require "cjson"
 
 local TEST_SIZE = 2
 local MB = 2^20
@@ -69,7 +70,8 @@ describe("Plugin: request-size-limiting (access)", function()
         }
       })
       local body = assert.res_status(413, res)
-      assert.matches([[{"message":"Request size limit exceeded"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Request size limit exceeded" }, json)
     end)
     it("blocks if size is greater than limit and Expect header", function()
       local body = string.rep("a", (TEST_SIZE * MB) + 1)
@@ -84,7 +86,8 @@ describe("Plugin: request-size-limiting (access)", function()
         }
       })
       local body = assert.res_status(417, res)
-      assert.matches([[{"message":"Request size limit exceeded"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Request size limit exceeded" }, json)
     end)
   end)
 
@@ -125,7 +128,8 @@ describe("Plugin: request-size-limiting (access)", function()
         }
       })
       local body = assert.res_status(413, res)
-      assert.matches([[{"message":"Request size limit exceeded"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Request size limit exceeded" }, json)
     end)
     it("blocks if size is greater than limit and Expect header", function()
       local body = string.rep("a", (TEST_SIZE * MB) + 1)
@@ -139,7 +143,8 @@ describe("Plugin: request-size-limiting (access)", function()
         }
       })
       local body = assert.res_status(417, res)
-      assert.matches([[{"message":"Request size limit exceeded"}]], body)
+      local json = cjson.decode(body)
+      assert.same({ message = "Request size limit exceeded" }, json)
     end)
   end)
 end)

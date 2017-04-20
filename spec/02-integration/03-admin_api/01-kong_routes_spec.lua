@@ -47,7 +47,8 @@ describe("Admin API", function()
             headers = {["Content-Type"] = "application/json"}
           })
           local body = assert.response(res).has.status(405)
-          assert.equal([[{"message":"Method not allowed"}]], body)
+          local json = cjson.decode(body)
+          assert.same({ message = "Method not allowed" }, json)
         end
       end)
       it("exposes the node's configuration", function()
