@@ -20,6 +20,9 @@
 - Relax multipart MIME type parsing. A space is allowed in between values
   of the Content-Type header.
   [#2215](https://github.com/Mashape/kong/pull/2215)
+- Multiple auth plugins would overwrite eachothers results, causing 
+  false negatives in an OR scenario.
+  [#2222](https://github.com/Mashape/kong/pull/2222)
 - CLI:
   - Better error handling when missing Serf executable.
     [#2218](https://github.com/Mashape/kong/pull/2218)
