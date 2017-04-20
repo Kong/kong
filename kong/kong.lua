@@ -26,6 +26,7 @@
 
 require("kong.core.globalpatches")()
 
+local ip = require "kong.tools.ip"
 local dns = require "kong.tools.dns"
 local core = require "kong.core.handler"
 local Serf = require "kong.serf"
@@ -134,6 +135,7 @@ function Kong.init()
   assert(dao:run_migrations()) -- migrating in case embedded in custom nginx
 
   -- populate singletons
+  singletons.ip = ip.init(config)
   singletons.dns = dns(config)
   singletons.loaded_plugins = assert(load_plugins(config, dao, events))
   singletons.serf = Serf.new(config, dao)
@@ -221,9 +223,10 @@ function Kong.balancer()
 
     local ok, err = balancer_execute(addr)
     if not ok then
-      return responses.send_HTTP_INTERNAL_SERVER_ERROR("failed to retry the "..
-        "dns/balancer resolver for '"..addr.upstream.host..
-        "' with: "..tostring(err))
+      ngx.log(ngx.ERR, "failed to retry the dns/balancer resolver for ",
+              addr.upstream.host, "' with: ", tostring(err))
+
+      return responses.send(500)
     end
   else
     -- first try, so set the max number of retries
@@ -236,9 +239,11 @@ function Kong.balancer()
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
   if not ok then
-    ngx.log(ngx.ERR, "failed to set the current peer (address:'",
-      tostring(addr.ip),"' port:",tostring(addr.port),"): ", tostring(err))
-    return responses.send_HTTP_INTERNAL_SERVER_ERROR()
+    ngx.log(ngx.ERR, "failed to set the current peer (address: ",
+            tostring(addr.ip), " port: ", tostring(addr.port),"): ",
+            tostring(err))
+
+    return responses.send(500)
   end
 
   ok, err = set_timeouts(addr.connect_timeout / 1000,

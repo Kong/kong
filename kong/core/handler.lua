@@ -19,6 +19,9 @@ local balancer_execute = require("kong.core.balancer").execute
 
 
 local router, router_err
+local tostring = tostring
+local lower = string.lower
+local ngx = ngx
 local ngx_now = ngx.now
 local server_header = _KONG._NAME.."/".._KONG._VERSION
 
@@ -119,9 +122,54 @@ return {
       end
 
       -- if set `host_header` is the original header to be preserved
-      var.upstream_host = host_header or 
+      var.upstream_host = host_header or
           balancer_address.hostname..":"..balancer_address.port
 
+      -- Keep-Alive and WebSocket Protocol Upgrade Headers
+      if var.http_upgrade and lower(var.http_upgrade) == "websocket" then
+        var.upstream_connection = "upgrade"
+        var.upstream_upgrade    = "websocket"
+
+      else
+        var.upstream_connection = "keep-alive"
+      end
+
+      -- X-Forwarded-* Headers
+      --
+      -- We could use $proxy_add_x_forwarded_for, but it does not work properly
+      -- with the realip module. The realip module overrides $remote_addr and
+      -- it is okay for us to use it in case no X-Forwarded-For header was
+      -- present. But in case it was given, we will append the
+      -- $realip_remote_addr that contains the IP that was originally in
+      -- $remote_addr before realip module overrode that (aka the client that
+      -- connected us).
+
+      local realip_remote_addr   = var.realip_remote_addr
+      local http_x_forwarded_for = var.http_x_forwarded_for
+
+      if http_x_forwarded_for then
+        var.upstream_x_forwarded_for = http_x_forwarded_for .. ", " ..
+                                       realip_remote_addr
+
+      else
+        var.upstream_x_forwarded_for = var.remote_addr
+      end
+
+      if singletons.ip.trusted(realip_remote_addr) then
+        var.upstream_x_forwarded_proto = var.http_x_forwarded_proto or
+                                         var.scheme
+
+        var.upstream_x_forwarded_host  = var.http_x_forwarded_host  or
+                                         var.host
+
+        var.upstream_x_forwarded_port  = var.http_x_forwarded_port  or
+                                         var.server_port
+
+      else
+        var.upstream_x_forwarded_proto = var.scheme
+        var.upstream_x_forwarded_host  = var.host
+        var.upstream_x_forwarded_port  = var.server_port
+      end
     end,
     -- Only executed if the `router` module found an API and allows nginx to proxy it.
     after = function()
@@ -137,19 +185,34 @@ return {
   },
   header_filter = {
     before = function()
-      if ngx.ctx.KONG_PROXIED then
+      local ctx = ngx.ctx
+
+      if ctx.KONG_PROXIED then
         local now = get_now()
-        ngx.ctx.KONG_WAITING_TIME = now - ngx.ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
-        ngx.ctx.KONG_HEADER_FILTER_STARTED_AT = now
+        ctx.KONG_WAITING_TIME = now - ctx.KONG_ACCESS_ENDED_AT -- time spent waiting for a response from upstream
+        ctx.KONG_HEADER_FILTER_STARTED_AT = now
       end
     end,
     after = function()
-      if ngx.ctx.KONG_PROXIED then
-        ngx.header[constants.HEADERS.UPSTREAM_LATENCY] = ngx.ctx.KONG_WAITING_TIME
-        ngx.header[constants.HEADERS.PROXY_LATENCY] = ngx.ctx.KONG_PROXY_LATENCY
-        ngx.header["Via"] = server_header
+      local ctx, header = ngx.ctx, ngx.header
+
+      if ctx.KONG_PROXIED then
+        if singletons.configuration.latency_tokens then
+          header[constants.HEADERS.UPSTREAM_LATENCY] = ctx.KONG_WAITING_TIME
+          header[constants.HEADERS.PROXY_LATENCY]    = ctx.KONG_PROXY_LATENCY
+        end
+
+        if singletons.configuration.server_tokens then
+          header["Via"] = server_header
+        end
+
       else
-        ngx.header["Server"] = server_header
+        if singletons.configuration.server_tokens then
+          header["Server"] = server_header
+
+        else
+          header["Server"] = nil
+        end
       end
     end
   },

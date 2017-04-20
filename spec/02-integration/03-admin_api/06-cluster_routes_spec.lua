@@ -21,7 +21,7 @@ describe("Admin API", function()
     describe("GET", function()
       it("retrieves the members list", function()
         -- old test converted
-        --os.execute("sleep 2") -- Let's wait for serf to register the node
+        --ngx.sleep(2) -- Let's wait for serf to register the node
         local res = assert(client:send {
           method = "GET",
           path = "/cluster"

@@ -51,7 +51,11 @@ describe("Plugin: jwt (access)", function()
       rsa_public_key = fixtures.rs256_public_key
     })
 
-    assert(helpers.start_kong())
+    assert(helpers.start_kong {
+      real_ip_header    = "X-Forwarded-For",
+      real_ip_recursive = "on",
+      trusted_ips       = "0.0.0.0/0, ::/0",
+    })
     proxy_client = helpers.proxy_client()
     admin_client = helpers.admin_client()
   end)
