@@ -1,6 +1,9 @@
 local helpers = require "spec.helpers"
 
-describe("Plugin: AWS Lambda (access)", function()
+pending("Plugin: AWS Lambda (access)", function()
+  -- pending due to AWS account issues and
+  -- waiting for a mock solution as suggested by
+  -- https://github.com/Mashape/kong/pull/2287
   local client, api_client
 
   setup(function()
@@ -58,6 +61,19 @@ describe("Plugin: AWS Lambda (access)", function()
     })
 
     assert(helpers.start_kong())
+
+    -- Improve test reliability here: warm up AWS lambda because the first
+    -- invocation will take the most time
+    client = helpers.proxy_client()
+    client:set_timeout(2 * 60 * 1000) -- 2 minute timeout for the warmup
+    local res = assert(client:send {
+      method = "GET",
+      path = "/get?key1=some_value1&key2=some_value2&key3=some_value3",
+      headers = {
+        ["Host"] = "lambda.com"
+      }
+    })
+    client:close()
   end)
 
   before_each(function()

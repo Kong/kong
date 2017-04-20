@@ -83,10 +83,6 @@ local function create_hash(request, hmac_params, headers)
 end
 
 local function is_digest_equal(digest_1, digest_2)
-  if #digest_1 ~= #digest_1 then
-    return false
-  end
-
   local result = true
   for i=1, #digest_1 do
     if digest_1:sub(i, i) ~= digest_2:sub(i, i) then
@@ -98,8 +94,15 @@ end
 
 local function validate_signature(request, hmac_params, headers)
   local digest = create_hash(request, hmac_params, headers)
+  local sig = ngx_decode_base64(hmac_params.signature)
+
+  -- we didnt receive a well-formed base64 encoding
+  if not sig then
+    return false
+  end
+
   if digest then
-   return is_digest_equal(digest, ngx_decode_base64(hmac_params.signature))
+   return is_digest_equal(digest, sig)
   end
 end
 

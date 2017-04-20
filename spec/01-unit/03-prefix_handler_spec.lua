@@ -154,6 +154,14 @@ describe("NGINX conf compiler", function()
       assert.matches("worker_connections %d+;", nginx_conf)
       assert.matches("multi_accept on;", nginx_conf)
     end)
+    it("converts dns_resolver to string", function()
+      local nginx_conf = prefix_handler.compile_nginx_conf({
+        dns_resolver = { "8.8.8.8", "8.8.4.4" }
+      }, [[
+        "resolver ${{DNS_RESOLVER}} ipv6=off;"
+      ]])
+      assert.matches("resolver 8.8.8.8 8.8.4.4 ipv6=off;", nginx_conf, nil, true)
+    end)
   end)
 
   describe("prepare_prefix()", function()
