@@ -28,7 +28,7 @@ end
 
 local function execute(args)
   local conf = assert(conf_loader(args.conf))
-  local dao = assert(DAOFactory.new(conf, conf.plugins))
+  local dao = assert(DAOFactory.new(conf))
 
   if args.command == "up" then
     assert(dao:run_migrations())

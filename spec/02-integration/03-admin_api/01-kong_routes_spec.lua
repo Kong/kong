@@ -38,7 +38,7 @@ describe("Admin API", function()
         assert.is_nil(res.headers.via) -- Via is only set for proxied requests
       end)
       it("returns 405 on invalid method", function()
-        local methods = {"POST", "PUT", "DELETE", "PATCH"}
+        local methods = {"POST", "PUT", "DELETE", "PATCH", "GEEEET"}
         for i = 1, #methods do
           local res = assert(client:send {
             method = methods[i],

@@ -58,8 +58,11 @@ describe("Response helpers", function()
       end)
     end
   end)
-  it("calls `ngx.log` if and only if a 500 status code range was given", function()
+  it("calls `ngx.log` if and only if a 500 status code was given", function()
     responses.send_HTTP_BAD_REQUEST()
+    assert.stub(ngx.log).was_not_called()
+    
+    responses.send_HTTP_BAD_REQUEST("error")
     assert.stub(ngx.log).was_not_called()
 
     responses.send_HTTP_INTERNAL_SERVER_ERROR()
@@ -67,6 +70,14 @@ describe("Response helpers", function()
 
     responses.send_HTTP_INTERNAL_SERVER_ERROR("error")
     assert.stub(ngx.log).was_called()
+  end)
+
+  it("don't call `ngx.log` if a 503 status code was given", function()
+    responses.send_HTTP_SERVICE_UNAVAILABLE()
+    assert.stub(ngx.log).was_not_called()
+
+    responses.send_HTTP_SERVICE_UNAVAILABLE()
+    assert.stub(ngx.log).was_not_called("error")
   end)
 
   describe("default content rules for some status codes", function()
@@ -85,6 +96,12 @@ describe("Response helpers", function()
       assert.stub(ngx.say).was.called_with("{\"message\":\"An unexpected error occurred\"}")
       responses.send_HTTP_INTERNAL_SERVER_ERROR("override")
       assert.stub(ngx.say).was.called_with("{\"message\":\"An unexpected error occurred\"}")
+    end)
+    it("should apply default content rules for some status codes", function()
+      responses.send_HTTP_SERVICE_UNAVAILABLE()
+      assert.stub(ngx.say).was.called_with("{\"message\":\"Service unavailable\"}")
+      responses.send_HTTP_SERVICE_UNAVAILABLE("override")
+      assert.stub(ngx.say).was.called_with("{\"message\":\"override\"}")
     end)
   end)
 

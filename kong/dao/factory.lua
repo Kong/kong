@@ -299,13 +299,15 @@ function _M:run_migrations(on_migrate, on_success)
   end
 
   if self.db.name == "cassandra" then
-    log.verbose("now waiting for schema consensus (%dms) timeout",
-                self.db.cluster.max_schema_consensus_wait)
+    if migrations_ran > 0 then
+      log.verbose("now waiting for schema consensus (%dms) timeout",
+                  self.db.cluster.max_schema_consensus_wait)
 
-    local ok, err = self.db:wait_for_schema_consensus()
-    if not ok then
-      return ret_error_string(self.db.name, nil,
-                              "could not wait for schema consensus: " .. err)
+      local ok, err = self.db:wait_for_schema_consensus()
+      if not ok then
+        return ret_error_string(self.db.name, nil,
+                                "failed waiting for schema consensus: " .. err)
+      end
     end
 
     ok, err = self.db:close_coordinator()

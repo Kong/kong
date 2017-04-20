@@ -9,6 +9,7 @@ local function check_user(anonymous)
 end
 
 return {
+  no_consumer = true,
   fields = {
     ldap_host = {required = true, type = "string"},
     ldap_port = {required = true, type = "number"},
