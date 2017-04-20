@@ -7,9 +7,9 @@ local _M = {}
 
 function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+    [utils.is_valid_uuid(self.params.api_name_or_id) and "id" or "name"] = self.params.api_name_or_id
   }
-  self.params.name_or_id = nil
+  self.params.api_name_or_id = nil
 
   local rows, err = dao_factory.apis:find_all(filter_keys)
   if err then
@@ -19,6 +19,28 @@ function _M.find_api_by_name_or_id(self, dao_factory, helpers)
   -- We know name and id are unique for APIs, hence if we have a row, it must be the only one
   self.api = rows[1]
   if not self.api then
+    return helpers.responses.send_HTTP_NOT_FOUND()
+  end
+end
+
+-- this function will lookup a plugin by name or id, but REQUIRES
+-- also the api to be specified by name or id
+function _M.find_plugin_by_name_or_id(self, dao_factory, helpers)
+  _M.find_api_by_name_or_id(self, dao_factory, helpers)
+  local filter_keys = {
+    api_id = self.api.id,
+    [utils.is_valid_uuid(self.params.plugin_name_or_id) and "id" or "name"] = self.params.plugin_name_or_id
+  }
+  self.params.plugin_name_or_id = nil
+
+  local rows, err = dao_factory.plugins:find_all(filter_keys)
+  if err then
+    return helpers.yield_error(err)
+  end
+
+  -- We know combi of api+plugin is unique for plugins, hence if we have a row, it must be the only one
+  self.plugin = rows[1]
+  if not self.plugin then
     return helpers.responses.send_HTTP_NOT_FOUND()
   end
 end
@@ -43,9 +65,9 @@ end
 
 function _M.find_upstream_by_name_or_id(self, dao_factory, helpers)
   local filter_keys = {
-    [utils.is_valid_uuid(self.params.name_or_id) and "id" or "name"] = self.params.name_or_id
+    [utils.is_valid_uuid(self.params.upstream_name_or_id) and "id" or "name"] = self.params.upstream_name_or_id
   }
-  self.params.name_or_id = nil
+  self.params.upstream_name_or_id = nil
 
   local rows, err = dao_factory.upstreams:find_all(filter_keys)
   if err then

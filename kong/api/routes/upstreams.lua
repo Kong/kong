@@ -82,7 +82,7 @@ return {
     end
   },
 
-  ["/upstreams/:name_or_id"] = {
+  ["/upstreams/:upstream_name_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
     end,
@@ -100,7 +100,7 @@ return {
     end
   },
 
-  ["/upstreams/:name_or_id/targets/"] = {
+  ["/upstreams/:upstream_name_or_id/targets/"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       self.params.upstream_id = self.upstream.id
@@ -117,7 +117,7 @@ return {
     end,
   },
 
-  ["/upstreams/:name_or_id/targets/active"] = {
+  ["/upstreams/:upstream_name_or_id/targets/active/"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       self.params.upstream_id = self.upstream.id
@@ -173,7 +173,7 @@ return {
     end
   },
 
-  ["/upstreams/:name_or_id/targets/:target_or_id"] = {
+  ["/upstreams/:upstream_name_or_id/targets/:target_or_id"] = {
     before = function(self, dao_factory, helpers)
       crud.find_upstream_by_name_or_id(self, dao_factory, helpers)
       crud.find_target_by_target_or_id(self, dao_factory, helpers)

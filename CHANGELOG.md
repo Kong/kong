@@ -19,6 +19,9 @@
     weight Targets, instead of all nonzero weight targets. This is to provide
     a better picture of the Targets currently in use by the Kong load balancer.
     [#2310](https://github.com/Mashape/kong/pull/2310)
+  - The endpoint `/apis/:api_name_or_id/plugins/:plugin_name_or_id` now accepts
+    the plugin name as well for the last parameter.
+    [#2252](https://github.com/Mashape/kong/pull/2252)
 - Plugins:
   - key-auth: Allow setting API key header names with an underscore.
     [#2370](https://github.com/Mashape/kong/pull/2370)
