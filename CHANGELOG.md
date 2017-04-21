@@ -31,6 +31,8 @@
   configured log target-url includes credentials. Thanks to
   [Amir M. Saeid](https://github.com/amir) for the contribution.
   [#2430](https://github.com/Mashape/kong/pull/2430)
+- Logging retries and failure information.
+  [#2429](https://github.com/Mashape/kong/pull/2429).
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and

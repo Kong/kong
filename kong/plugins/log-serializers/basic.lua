@@ -8,6 +8,10 @@ function _M.serialize(ngx)
       consumer_id = ngx.ctx.authenticated_credential.consumer_id
     }
   end
+  
+  local addr = ngx.ctx.balancer_address
+  local tries = addr.failures or {}
+  tries.count = addr.tries
 
   return {
     request = {
@@ -23,6 +27,7 @@ function _M.serialize(ngx)
       headers = ngx.resp.get_headers(),
       size = ngx.var.bytes_sent
     },
+    tries = tries,
     latencies = {
       kong = (ngx.ctx.KONG_ACCESS_TIME or 0) +
              (ngx.ctx.KONG_RECEIVE_TIME or 0),

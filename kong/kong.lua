@@ -215,9 +215,14 @@ function Kong.balancer()
     -- where the retries are executed
 
     -- record failure data
-    addr.failures = addr.failures or {}
     local state, code = get_last_failure()
-    addr.failures[addr.tries-1] = { name = state, code = code }
+    addr.failures = addr.failures or {}
+    addr.failures[addr.tries-1] = {
+      state = state,
+      code  = code,
+      ip    = addr.ip,
+      port  = addr.port,
+    }
 
     local ok, err = balancer_execute(addr)
     if not ok then
