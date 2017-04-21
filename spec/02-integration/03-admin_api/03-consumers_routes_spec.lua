@@ -20,7 +20,7 @@ describe("Admin API", function()
     helpers.stop_kong()
   end)
 
-  local consumer, consumer2
+  local consumer, consumer2, consumer3
   before_each(function()
     helpers.dao:truncate_tables()
     consumer = assert(helpers.dao.consumers:insert {
@@ -30,6 +30,10 @@ describe("Admin API", function()
     consumer2 = assert(helpers.dao.consumers:insert {
       username = "bob pop",  -- containing space for urlencoded test
       custom_id = "abcd"
+    })
+    consumer3 = assert(helpers.dao.consumers:insert {
+      username = "83825bb5-38c7-4160-8c23-54dd2b007f31",  -- uuid format
+      custom_id = "1a2b"
     })
   end)
 
@@ -304,6 +308,15 @@ describe("Admin API", function()
           local body = assert.res_status(200, res)
           local json = cjson.decode(body)
           assert.same(consumer, json)
+        end)
+        it("retrieves by username in uuid format", function()
+          local res = assert(client:send {
+            method = "GET",
+            path = "/consumers/"..consumer3.username
+          })
+          local body = assert.res_status(200, res)
+          local json = cjson.decode(body)
+          assert.same(consumer3, json)
         end)
         it("retrieves by urlencoded username", function()
           local res = assert(client:send {
