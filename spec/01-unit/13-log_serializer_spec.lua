@@ -5,7 +5,11 @@ describe("Log Serializer", function()
 
   before_each(function()
     ngx = {
-      ctx = {},
+      ctx = {
+        balancer_address = {
+          tries = 1,
+        },
+      },
       var = {
         request_uri = "/request_uri",
         scheme = "http",
@@ -60,6 +64,10 @@ describe("Log Serializer", function()
       assert.is_nil(res.api)
       assert.is_nil(res.consumer)
       assert.is_nil(res.authenticated_entity)
+
+      -- Tries
+      assert.is_table(res.tries)
+      assert.equal(1, res.tries.count)
     end)
 
     it("serializes the API object", function()
@@ -95,6 +103,31 @@ describe("Log Serializer", function()
                   res.authenticated_entity)
       assert.is_nil(res.consumer)
       assert.is_nil(res.api)
+    end)
+
+    it("serializes the tries and failure information", function()
+      ngx.ctx.balancer_address.tries = 3
+      ngx.ctx.balancer_address.failures = {
+        { state = "next",   code = 502, ip = "127.0.0.1", port = 1234 },
+        { state = "failed", code = nil, ip = "127.0.0.1", port = 1234 },
+      }
+
+      local res = basic.serialize(ngx)
+      assert.is_table(res)
+
+      assert.same({
+          count = 3,
+          {
+            code  = 502,
+            ip    = '127.0.0.1',
+            port  = 1234,
+            state = 'next',
+          }, {
+            ip    = '127.0.0.1',
+            port  = 1234,
+            state = 'failed',
+          }
+        }, res.tries)
     end)
   end)
 end)
