@@ -76,6 +76,9 @@
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
     [#2283](https://github.com/Mashape/kong/pull/2283)
+  - jwt: Returns `401 unauthorized` on invalid claims, instead of previous
+    `403 forbidden`.
+    [#2433](https://github.com/Mashape/kong/pull/2433)
 - Admin API:
   - Detect conflicts between SNI Objects in the `/snis` and `/certificates`
     endpoint.
