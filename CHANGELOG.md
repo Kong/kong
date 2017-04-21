@@ -70,6 +70,8 @@
 - Ensure consumer based plugins run if the consumer was set without a
   credential.
   [#2424](https://github.com/Mashape/kong/pull/2424)
+- CNAME records are now properly cached by the dns resolver.
+  [#2303](https://github.com/Mashape/kong/pull/2303)
 - Plugins:
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
