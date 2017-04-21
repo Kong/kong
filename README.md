@@ -181,6 +181,11 @@ Reference](https://getkong.org/docs/latest/lua-reference/).
 You can use a Vagrant box running Kong and Postgres that you can find at
 [Mashape/kong-vagrant](https://github.com/Mashape/kong-vagrant).
 
+#### Docker Compose
+
+You can use a docker compose running Kong and PostgreSQL that you can find at
+[WALL-E/kong-dev-kit](https://github.com/WALL-E/kong-dev-kit).
+
 #### Source Install
 
 Kong mostly is an OpenResty application made of Lua source files, but also
