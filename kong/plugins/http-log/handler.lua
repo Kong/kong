@@ -23,9 +23,18 @@ local function generate_post_payload(method, content_type, parsed_url, body)
   else
     url = parsed_url.path
   end
-  return string.format(
-    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: %s\r\nContent-Length: %s\r\n\r\n%s",
-    method:upper(), url, parsed_url.host, content_type, #body, body)
+  local headers = string.format(
+    "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: %s\r\nContent-Length: %s\r\n",
+    method:upper(), url, parsed_url.host, content_type, #body)
+
+  if parsed_url.userinfo then
+    local auth_header = string.format(
+      "Authorization: Basic %s\r\n",
+      ngx.encode_base64(parsed_url.userinfo))
+    headers = headers .. auth_header
+  end
+
+  return string.format("%s\r\n%s", headers, body)
 end
 
 -- Parse host url.
