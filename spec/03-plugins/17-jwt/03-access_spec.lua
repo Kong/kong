@@ -276,10 +276,10 @@ describe("Plugin: jwt (access)", function()
           ["Host"] = "jwt3.com"
         }
       })
-      local body = assert.res_status(403, res)
+      local body = assert.res_status(401, res)
       assert.equal('{"nbf":"must be a number","exp":"must be a number"}', body)
     end)
-    it("checks if the fields are valid", function()
+    it("checks if the fields are valid: `exp` claim", function()
       local payload = {
         iss = jwt_secret.key,
         exp = os.time() - 10,
@@ -293,8 +293,25 @@ describe("Plugin: jwt (access)", function()
           ["Host"] = "jwt3.com"
         }
       })
-      local body = assert.res_status(403, res)
+      local body = assert.res_status(401, res)
       assert.equal('{"exp":"token expired"}', body)
+    end)
+    it("checks if the fields are valid: `nbf` claim", function()
+      local payload = {
+        iss = jwt_secret.key,
+        exp = os.time() + 10,
+        nbf = os.time() + 5
+      }
+      local jwt = jwt_encoder.encode(payload, jwt_secret.secret)
+      local res = assert(proxy_client:send {
+        method = "GET",
+        path = "/request/?jwt="..jwt,
+        headers = {
+          ["Host"] = "jwt3.com"
+        }
+      })
+      local body = assert.res_status(401, res)
+      assert.equal('{"nbf":"token not valid yet"}', body)
     end)
   end)
 
