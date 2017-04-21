@@ -56,6 +56,7 @@ describe("Plugin: http-log (log)", function()
     })
 
     local api3 = assert(helpers.dao.apis:insert {
+      name = "api-3",
       hosts = { "http_basic_auth_logging.com" },
       upstream_url = "http://mockbin.com"
     })
@@ -63,7 +64,7 @@ describe("Plugin: http-log (log)", function()
       api_id = api3.id,
       name = "http-log",
       config = {
-        http_endpoint = "http://test:test@mockbin.org/bin/"..mock_bin_http_basic_auth
+        http_endpoint = "http://testuser:testpassword@mockbin.org/bin/"..mock_bin_http_basic_auth
       }
     })
 
@@ -139,7 +140,7 @@ describe("Plugin: http-log (log)", function()
     end, 10)
   end)
 
-  it("adds Authorization if userinfo is present", function()
+  it("adds authorization if userinfo is present", function()
     local res = assert(client:send({
       method = "GET",
       path = "/status/200",
@@ -163,7 +164,7 @@ describe("Plugin: http-log (log)", function()
       if #body.log.entries == 1 then
         for key, value in pairs(body.log.entries[1].request.headers) do
           if value.name == "authorization" then
-            assert.same("Basic dGVzdDp0ZXN0", value.value)
+            assert.same("Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk", value.value)
             return true
           end
         end

@@ -3,6 +3,9 @@ local BasePlugin = require "kong.plugins.base_plugin"
 local cjson = require "cjson"
 local url = require "socket.url"
 
+local string_format = string.format
+local cjson_encode = cjson.encode
+
 local HttpLogHandler = BasePlugin:extend()
 
 HttpLogHandler.PRIORITY = 1
@@ -23,18 +26,19 @@ local function generate_post_payload(method, content_type, parsed_url, body)
   else
     url = parsed_url.path
   end
-  local headers = string.format(
+  local headers = string_format(
     "%s %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: %s\r\nContent-Length: %s\r\n",
     method:upper(), url, parsed_url.host, content_type, #body)
 
   if parsed_url.userinfo then
-    local auth_header = string.format(
+    local auth_header = string_format(
       "Authorization: Basic %s\r\n",
-      ngx.encode_base64(parsed_url.userinfo))
+      ngx.encode_base64(parsed_url.userinfo)
+    )
     headers = headers .. auth_header
   end
 
-  return string.format("%s\r\n%s", headers, body)
+  return string_format("%s\r\n%s", headers, body)
 end
 
 -- Parse host url.
@@ -108,7 +112,7 @@ end
 -- @param `conf` plugin configuration table, holds http endpoint details
 -- @return html body as string
 function HttpLogHandler:serialize(ngx, conf)
-  return cjson.encode(basic_serializer.serialize(ngx))
+  return cjson_encode(basic_serializer.serialize(ngx))
 end
 
 function HttpLogHandler:log(conf)
