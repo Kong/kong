@@ -61,6 +61,9 @@
 - Prevent an upstream or legitimate internal error in the load balancing code
   from throwing a Lua-land error as well.
   [#2327](https://github.com/Mashape/kong/pull/2327)
+- Ensure consumer based plugins run if the consumer was set without a
+  credential.
+  [#2424](https://github.com/Mashape/kong/pull/2424)
 - Plugins:
   - hmac: Better handling of invalid base64-encoded signatures. Previously Kong
     would return an HTTP 500 error. We now properly return HTTP 403 Forbidden.
