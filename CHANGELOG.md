@@ -27,11 +27,15 @@
   requests. The added functionality is now described in
   [#2211](https://github.com/Mashape/kong/issues/2211), and was implemented in
   [#2315](https://github.com/Mashape/kong/pull/2315).
+- The http-log plugin will now set a basic-auth authorization header if the
+  configured log target-url includes credentials. Thanks to
+  [Amir M. Saeid](https://github.com/amir) for the contribution.
+  [#2430](https://github.com/Mashape/kong/pull/2430)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
     body to your client. Useful for use-cases such as maintenance mode for your
-    upstream services. Thanks [Paul Austin](https://github.com/pauldaustin)
+    upstream services. Thanks to [Paul Austin](https://github.com/pauldaustin)
     for the contribution.
     [#2051](https://github.com/Mashape/kong/pull/2051)
   - Logging plugins: The produced logs now include a `consumer` field,
