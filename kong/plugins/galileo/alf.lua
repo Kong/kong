@@ -94,8 +94,8 @@ end
 -- @param[type=table] _ngx The ngx table, containing .var and .ctx
 -- @param[type=string] req_body_str The request body
 -- @param[type=string] res_body_str The response body
--- @treturn table The entry created
--- @treturn number The new size of the `entries` array
+-- @return table The entry created
+-- @return number The new size of the `entries` array
 function _M:add_entry(_ngx, req_body_str, resp_body_str)
   if not self.entries then
     return nil, "no entries table"
@@ -231,7 +231,7 @@ local _alf_max_size = 20 * 2^20
 --- Encode the current ALF to JSON
 -- @param[type=string] service_token The ALF `serviceToken`
 -- @param[type=string] environment (optional) The ALF `environment`
--- @treturn string The ALF, JSON encoded
+-- @return string The ALF, JSON encoded
 function _M:serialize(service_token, environment)
   if not self.entries then
     return nil, "no entries table"

@@ -319,7 +319,7 @@ end
 -- `plugins`) will be appended to the final configuration table.
 -- @param[type=string] path (optional) Path to a configuration file.
 -- @param[type=table] custom_conf A key/value table with the highest precedence.
--- @treturn table A table holding a valid configuration.
+-- @return table A table holding a valid configuration.
 local function load(path, custom_conf)
   ------------------------
   -- Default configuration

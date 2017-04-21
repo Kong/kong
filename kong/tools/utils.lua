@@ -194,7 +194,7 @@ do
   -- @see https://github.com/Mashape/kong/issues/749
   -- @param[type=table] args A key/value table containing the query args to encode.
   -- @param[type=boolean] raw If true, will not percent-encode any key/value and will ignore special boolean rules.
-  -- @treturn string A valid querystring (without the prefixing '?')
+  -- @return string A valid querystring (without the prefixing '?')
   function _M.encode_args(args, raw)
     local query = {}
     local keys = {}

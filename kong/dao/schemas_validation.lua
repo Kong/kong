@@ -44,10 +44,10 @@ local _M = {}
 -- for each schema field with a `dao_insert_value` property. An `update` boolean, if the validation
 -- is performed during an update of the entity, and a `full_update` boolean, if the validaiton is
 -- performed during a full update of the entity.
--- @treturn boolean `ok`: A boolean describing if the entity was valid not not.
--- @treturn table `errors`: A list of errors describing the invalid properties of the entity. Those errors
+-- @return boolean `ok`: A boolean describing if the entity was valid not not.
+-- @return table `errors`: A list of errors describing the invalid properties of the entity. Those errors
 -- are purely related to schema validation, unlike the third return value.
--- @treturn table `self_check_error`: If any, an error returned by the `self_check` function of a schema.
+-- @return table `self_check_error`: If any, an error returned by the `self_check` function of a schema.
 -- This error is not returned in the second return value because it might be unrelated to schema validation,
 -- and hence have a different error type (DB error for example).
 function _M.validate_entity(tbl, schema, options)
