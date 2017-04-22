@@ -7,6 +7,9 @@ local pl_file = require "pl.file"
 local cjson = require "cjson.safe"
 local log = require "kong.cmd.utils.log"
 
+local ngx_log = ngx.log
+local DEBUG = ngx.DEBUG
+
 local Serf = {}
 Serf.__index = Serf
 
@@ -35,6 +38,7 @@ function Serf:invoke_signal(signal, args, no_rpc, full_error)
   end
   local rpc = no_rpc and "" or "-rpc-addr="..self.config.cluster_listen_rpc
   local cmd = string.format("%s %s %s %s", self.config.serf_path, signal, rpc, tostring(args))
+  ngx_log(DEBUG, "[serf] running command: ", cmd)
   local ok, code, stdout, stderr = pl_utils.executeex(cmd)
   if not ok or code ~= 0 then
     local err = stderr

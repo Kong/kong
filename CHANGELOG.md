@@ -33,6 +33,8 @@
   [#2430](https://github.com/Mashape/kong/pull/2430)
 - Logging retries and failure information.
   [#2429](https://github.com/Mashape/kong/pull/2429).
+- Serf commands are now logged with a `DEBUG` log level.
+  [#2410](https://github.com/Mashape/kong/pull/2410)
 - Plugins:
   - :fireworks: **New Request termination plugin**. This plugin allows to
     temporarily disable an API and return a pre-configured response status and
